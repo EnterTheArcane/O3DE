@@ -132,10 +132,11 @@ if (PAL_TRAIT_BUILD_HOST_TOOLS)
 
     include(${pal_dir}/lrelease_${PAL_PLATFORM_NAME_LOWERCASE}.cmake)
 
-    ly_add_target_files(
-        TARGETS ${gem_name}.Editor
-        FILES ${lrelease_files}
-    )
+    # QT6_TODO
+    #ly_add_target_files(
+    #    TARGETS ${gem_name}.Editor
+    #    FILES ${lrelease_files}
+    #)
 
     # by default, load the above "Gem::${gem_name}.Editor" module in dev tools
     ly_create_alias(NAME ${gem_name}.Builders NAMESPACE Gem TARGETS Gem::${gem_name}.Editor)
