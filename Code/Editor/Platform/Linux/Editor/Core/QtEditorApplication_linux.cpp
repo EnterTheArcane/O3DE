@@ -13,7 +13,6 @@
 #include <AzFramework/XcbConnectionManager.h>
 #include <AzFramework/Input/Buses/Requests/InputSystemCursorRequestBus.h>
 #include <AzFramework/Input/Devices/Mouse/InputDeviceMouse.h>
-#include <qpa/qplatformnativeinterface.h>
 #include <AzFramework/XcbEventHandler.h>
 #endif
 
@@ -30,6 +29,8 @@ namespace Editor
 
     xcb_connection_t* EditorQtApplicationXcb::GetXcbConnectionFromQt()
     {
+        // #QT6_TODO
+        /*
         QPlatformNativeInterface* native = platformNativeInterface();
         AZ_Warning("EditorQtApplicationXcb", native, "Unable to retrieve the native platform interface");
         if (!native)
@@ -37,6 +38,8 @@ namespace Editor
             return nullptr;
         }
         return reinterpret_cast<xcb_connection_t*>(native->nativeResourceForIntegration(QByteArray("connection")));
+        */
+       return nullptr;
     }
 
     void EditorQtApplicationXcb::OnStartPlayInEditor()
