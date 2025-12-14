@@ -36,7 +36,7 @@ namespace AZ
             }
             SetJobPolicy(graphJobPolicy);
         }
-        
+
         RHI::ResultCode FrameGraphExecuter::InitInternal(const RHI::FrameGraphExecuterDescriptor& descriptor)
         {
             for (auto& [deviceIndex, platformLimitsDescriptor] : descriptor.m_platformLimitsDescriptors)
@@ -50,11 +50,11 @@ namespace AZ
 
             return RHI::ResultCode::Success;
         }
-        
+
         void FrameGraphExecuter::ShutdownInternal()
         {
         }
-        
+
         void FrameGraphExecuter::BeginInternal(const RHI::FrameGraph& frameGraph)
         {
             AZStd::vector<Scope*> mergedScopes;
@@ -82,9 +82,10 @@ namespace AZ
                     }
                     else
                     {
-                        mergedScopes.push_back(static_cast<const Scope*>(scopeBase));
-                        FrameGraphExecuteGroupMerged* scopeContextGroup = AddGroup<FrameGraphExecuteGroupMerged>();
-                        scopeContextGroup->Init(static_cast<Device&>(scopeBase->GetDevice()), AZStd::move(mergedScopes), GetGroupCount());
+                        mergedScopes.clear();
+                        mergedScopes.push_back(&scope);
+                        FrameGraphExecuteGroupPrimary* scopeContextGroup = AddGroup<FrameGraphExecuteGroupPrimary>();
+                        scopeContextGroup->Init(static_cast<Device&>(scope.GetDevice()), AZStd::move(mergedScopes));
                     }
                 }
             }
@@ -235,8 +236,8 @@ namespace AZ
                 // This will execute the recorded work into the queue.
                 handler->End();
             }
-        }    
-    
+        }
+
         void FrameGraphExecuter::EndInternal()
         {
             for(auto& entry : m_groupHandlers)
@@ -245,7 +246,7 @@ namespace AZ
             }
             m_groupHandlers.clear();
         }
-    
+
         void FrameGraphExecuter::AddExecuteGroupHandler(const RHI::GraphGroupId& groupId, const AZStd::vector<RHI::FrameGraphExecuteGroup*>& groups)
         {
             if (groups.empty())

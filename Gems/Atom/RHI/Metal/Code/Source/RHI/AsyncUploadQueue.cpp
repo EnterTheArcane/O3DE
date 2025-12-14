@@ -29,17 +29,17 @@ namespace AZ
         {
             Base::Init(device);
             id<MTLDevice> hwDevice = device.GetMtlDevice();
-            
+
             m_copyQueue = &device.GetCommandQueueContext().GetCommandQueue(RHI::HardwareQueueClass::Copy);
-            
+
             m_uploadFence.Init(&device, RHI::FenceState::Signaled);
             m_commandBuffer.Init(m_copyQueue->GetPlatformQueue());
-            
+
             NSUInteger bufferOptions = MTLResourceCPUCacheModeWriteCombined //< optimize for cpu write once
                                      | CovertStorageMode(GetCPUGPUMemoryMode()) //< Managed for mac and shared for ios
                                      | MTLResourceHazardTrackingModeUntracked //< The upload queue already has to track this so tell the driver not to duplicate the work
                                      ;
-             
+
            for (size_t i = 0; i < descriptor.m_frameCount; ++i)
            {
                 m_framePackets.emplace_back();
@@ -51,7 +51,7 @@ namespace AZ
 
                 framePacket.m_stagingResourceData = static_cast<uint8_t*>(framePacket.m_stagingResource.contents);
             }
-            
+
             m_asyncWaitQueue.Init();
         }
 
@@ -76,7 +76,7 @@ namespace AZ
             const MemoryView& destMemoryView = destBuffer.GetMemoryView();
             MTLStorageMode mtlStorageMode = destBuffer.GetMemoryView().GetStorageMode();
             RHI::DeviceBufferPool& bufferPool = static_cast<RHI::DeviceBufferPool&>(*destBuffer.GetPool());
-            
+
             // No need to use staging buffers since it's host memory.
             // We just map, copy and then unmap.
             if(mtlStorageMode == MTLStorageModeShared || mtlStorageMode == GetCPUGPUMemoryMode())
@@ -95,12 +95,12 @@ namespace AZ
                 }
                 return m_uploadFence.GetPendingValue();
             }
-            
+
             Fence* fenceToSignal = nullptr;
             size_t byteCount = uploadRequest.m_byteCount;
-            size_t byteOffset = destMemoryView.GetOffset() + uploadRequest.m_byteOffset;            
+            size_t byteOffset = destMemoryView.GetOffset() + uploadRequest.m_byteOffset;
             uint64_t queueValue = m_uploadFence.Increment();
-            
+
             const uint8_t* sourceData = reinterpret_cast<const uint8_t*>(uploadRequest.m_sourceData);
 
             if (uploadRequest.m_fenceToSignal)
@@ -109,13 +109,13 @@ namespace AZ
                 fenceToSignal = &fence;
             }
 
-            m_copyQueue->QueueCommand([=](void* queue)
+            m_copyQueue->QueueCommand([=, this](void* queue)
             {
                 AZ_PROFILE_SCOPE(RHI, "Upload Buffer");
                 size_t pendingByteOffset = 0;
                 size_t pendingByteCount = byteCount;
                 CommandQueue* commandQueue = static_cast<CommandQueue*>(queue);
-                
+
                 while (pendingByteCount > 0)
                 {
                     AZ_PROFILE_SCOPE(RHI, "Upload Buffer Chunk");
@@ -141,14 +141,14 @@ namespace AZ
 
                     pendingByteOffset += bytesToCopy;
                     pendingByteCount -= bytesToCopy;
-                    
+
                     if (!pendingByteCount) // do signals on the last frame packet
                     {
                         if (fenceToSignal)
                         {
                             fenceToSignal->SignalFromGpu(framePacket->m_mtlCommandBuffer);
                         }
-                        
+
                         m_uploadFence.SignalFromGpu(framePacket->m_mtlCommandBuffer, queueValue);
                     }
 
@@ -158,7 +158,7 @@ namespace AZ
 
             return queueValue;
         }
-                
+
         // [GFX TODO][ATOM-4205] Stage/Upload 3D streaming images more efficiently.
         RHI::AsyncWorkHandle AsyncUploadQueue::QueueUpload(const RHI::DeviceStreamingImageExpandRequest& request, uint32_t residentMip)
         {
@@ -169,12 +169,12 @@ namespace AZ
             const uint16_t endMip = static_cast<uint16_t>(residentMip - request.m_mipSlices.size());
 
             uint64_t queueValue = m_uploadFence.Increment();
-            
-            CommandQueue::Command command = [=](void* queue)
+
+            CommandQueue::Command command = [=, this](void* queue)
             {
                 CommandQueue* commandQueue = static_cast<CommandQueue*>(queue);
                 FramePacket* framePacket = BeginFramePacket(commandQueue);
-                
+
                 //[GFX TODO][ATOM-5605] - Cache alignments for all formats at Init
                 const static uint32_t bufferOffsetAlign = static_cast<uint32_t>([mtlDevice minimumTextureBufferAlignmentForPixelFormat: ConvertPixelFormat(image->GetDescriptor().m_format)]);
 
@@ -195,7 +195,7 @@ namespace AZ
                     const uint32_t stagingSlicePitch = RHI::AlignUp(subresourceLayout.m_rowCount * stagingRowPitch, bufferOffsetAlign);
                     const uint32_t rowsPerSplit = static_cast<uint32_t>(m_descriptor.m_stagingSizeInBytes) / stagingRowPitch;
                     const uint32_t compressedTexelBlockSizeHeight = subresourceLayout.m_blockElementHeight;
-                    
+
                     // ImageHeight must be bigger than or equal to the Image's row count. Images with a RowCount that is less than the ImageHeight indicates a block compression.
                     // Images with a RowCount which is higher than the ImageHeight indicates a planar image, which is not supported for streaming images.
                     if (subresourceLayout.m_size.m_height < subresourceLayout.m_rowCount)
@@ -301,7 +301,7 @@ namespace AZ
                                         uint32_t HeightDiff = (destHeight + heightToCopy) - subresourceLayout.m_size.m_height;
                                         heightToCopy -= HeightDiff;
                                     }
-                                                                                         
+
                                     const RHI::Size sourceSize = RHI::Size(subresourceLayout.m_size.m_width, heightToCopy, 1);
                                     const RHI::Origin sourceOrigin = RHI::Origin(0, destHeight, depth);
                                     CopyBufferToImage(framePacket, image, stagingRowPitch, bytesCopied,
@@ -322,7 +322,7 @@ namespace AZ
             };
 
             m_copyQueue->QueueCommand(AZStd::move(command));
-                    
+
             if (request.m_waitForUpload)
             {
                 // No need to add wait event.
@@ -339,7 +339,7 @@ namespace AZ
                 {
                     auto waitEvent = [this, request, image]()
                     {
-                        RHI::AsyncWorkHandle uploadHandle = image->GetUploadHandle();                        
+                        RHI::AsyncWorkHandle uploadHandle = image->GetUploadHandle();
                         // Add the callback so it can be processed from the main thread.
                         {
                             AZStd::unique_lock<AZStd::mutex> lock(m_callbackListMutex);
@@ -349,10 +349,10 @@ namespace AZ
                         // if the image is destroyed before the callback is triggered from the TickBus. Because of this we save the callbacks in this
                         // class and when an image is destroyed, we just execute any pending callback for that image.
                         AZ::TickBus::QueueFunction([this, uploadHandle]() { ProcessCallback(uploadHandle); });
-                        
+
                     };
                     uploadHandle = CreateAsyncWork(m_uploadFence, waitEvent);
-                    
+
                 }
                 else
                 {
@@ -373,12 +373,12 @@ namespace AZ
             AZ_PROFILE_SCOPE(RHI, "AsyncUploadQueue: Wait copy frame");
             FramePacket& framePacket = m_framePackets[m_frameIndex];
             framePacket.m_fence.WaitOnCpu(); // ensure any previous uploads using this frame have completed
-                        
+
             framePacket.m_fence.Increment();
             framePacket.m_dataOffset = 0;
-            
+
             framePacket.m_mtlCommandBuffer = commandQueue->GetCommandBuffer().AcquireMTLCommandBuffer();
-            
+
             m_recordingFrame = true;
 
             return &framePacket;
@@ -412,7 +412,7 @@ namespace AZ
             m_asyncWaitQueue.WaitToFinish(workHandle);
             ProcessCallback(workHandle);
         }
-    
+
         RHI::AsyncWorkHandle AsyncUploadQueue::CreateAsyncWork(Fence& fence, RHI::DeviceFence::SignalCallback callback )
         {
             return m_asyncWaitQueue.CreateAsyncWork([fence, callback]()
@@ -424,7 +424,7 @@ namespace AZ
                 }
             });
         }
-    
+
         void AsyncUploadQueue::ProcessCallback(const RHI::AsyncWorkHandle& handle)
         {
             AZStd::unique_lock<AZStd::mutex> lock(m_callbackListMutex);
@@ -435,7 +435,7 @@ namespace AZ
                 m_callbackList.erase(findIter);
             }
         }
-    
+
         void AsyncUploadQueue::CopyBufferToImage(FramePacket* framePacket,
                                                  Image* destImage,
                                                  uint32_t stagingRowPitch,
@@ -447,11 +447,11 @@ namespace AZ
         {
             id<MTLBlitCommandEncoder> blitEncoder = [framePacket->m_mtlCommandBuffer blitCommandEncoder];
             MTLOrigin destinationOrigin = MTLOriginMake(sourceOrigin.m_left,sourceOrigin.m_top,sourceOrigin.m_front);
-            
+
             MTLSize mtlSourceSize = MTLSizeMake(sourceSize.m_width,
                                             sourceSize.m_height,
                                             sourceSize.m_depth);
-            
+
             MTLBlitOption mtlBlitOption = GetBlitOption(destImage->GetDescriptor().m_format, RHI::ImageAspect::Color);
 
             [blitEncoder copyFromBuffer:framePacket->m_stagingResource

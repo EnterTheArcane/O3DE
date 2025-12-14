@@ -26,11 +26,11 @@ namespace UnitTest
     };
 
     template <class A, class T>
-    bool cmpxchg_weak_loop(A& atomic, T& expected, T desired) 
+    bool cmpxchg_weak_loop(A& atomic, T& expected, T desired)
     {
-        for (int i = 0; i < 10; i++) 
+        for (int i = 0; i < 10; i++)
         {
-            if (atomic.compare_exchange_weak(expected, desired) == true) 
+            if (atomic.compare_exchange_weak(expected, desired) == true)
             {
                 return true;
             }
@@ -40,11 +40,11 @@ namespace UnitTest
     }
 
     template <class A, class T>
-    bool cmpxchg_weak_loop(A& atomic, T& expected, T desired, AZStd::memory_order success, AZStd::memory_order failure) 
+    bool cmpxchg_weak_loop(A& atomic, T& expected, T desired, AZStd::memory_order success, AZStd::memory_order failure)
     {
-        for (int i = 0; i < 10; i++) 
+        for (int i = 0; i < 10; i++)
         {
-            if (atomic.compare_exchange_weak(expected, desired, success, failure) == true) 
+            if (atomic.compare_exchange_weak(expected, desired, success, failure) == true)
             {
                 return true;
             }
@@ -54,11 +54,11 @@ namespace UnitTest
     }
 
     template <class A, class T>
-    bool c_cmpxchg_weak_loop(A* atomic, T* expected, T desired) 
+    bool c_cmpxchg_weak_loop(A* atomic, T* expected, T desired)
     {
-        for (int i = 0; i < 10; i++) 
+        for (int i = 0; i < 10; i++)
         {
-            if (AZStd::atomic_compare_exchange_weak(atomic, expected, desired) == true) 
+            if (AZStd::atomic_compare_exchange_weak(atomic, expected, desired) == true)
             {
                 return true;
             }
@@ -70,9 +70,9 @@ namespace UnitTest
     template <class A, class T>
     bool c_cmpxchg_weak_loop(A* atomic, T* expected, T desired, AZStd::memory_order success, AZStd::memory_order failure)
     {
-        for (int i = 0; i < 10; i++) 
+        for (int i = 0; i < 10; i++)
         {
-            if (AZStd::atomic_compare_exchange_weak_explicit(atomic, expected, desired, success, failure) == true) 
+            if (AZStd::atomic_compare_exchange_weak_explicit(atomic, expected, desired, success, failure) == true)
             {
                 return true;
             }
@@ -570,12 +570,6 @@ namespace UnitTest
         EXPECT_TRUE(vt == TypeParam(2));
     }
 
-    TEST_F(Atomics, AtomicVarInit)
-    {
-        AZStd::atomic<int> v = AZ_ATOMIC_VAR_INIT(5);
-        EXPECT_TRUE(v == 5);
-    }
-
     template <class Tp>
     void test_ctor() {
         typedef AZStd::atomic<Tp> Atomic;
@@ -589,7 +583,7 @@ namespace UnitTest
             EXPECT_TRUE(a == t);
         }
         {
-            Atomic a = AZ_ATOMIC_VAR_INIT(t);
+            Atomic a = t;
             EXPECT_TRUE(a == t);
         }
     }

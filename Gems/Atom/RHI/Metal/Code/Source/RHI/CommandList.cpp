@@ -38,14 +38,14 @@ namespace AZ
         void CommandList::Reset()
         {
             m_state = State();
-            
+
             m_state.m_pipelineState = nullptr;
             m_state.m_pipelineLayout = nullptr;
             m_state.m_rasterizerStateHash = AZ::HashValue64{0};
             m_state.m_depthStencilStateHash = 0;
             m_state.m_stencilRef = -1;
             AZStd::fill(m_state.m_streamsHashes.begin(), m_state.m_streamsHashes.end(), AZ::HashValue64{0});
-            
+
             CommandListBase::Reset();
         }
 
@@ -100,7 +100,7 @@ namespace AZ
                     MTLOrigin destinationOrigin = MTLOriginMake(descriptor.m_destinationOrigin.m_left,
                                                     descriptor.m_destinationOrigin.m_top,
                                                     descriptor.m_destinationOrigin.m_front);
-                    
+
                     [blitEncoder copyFromTexture: sourceImage->GetMemoryView().GetGpuAddress<id<MTLTexture>>()
                                      sourceSlice: descriptor.m_sourceSubresource.m_arraySlice
                                      sourceLevel: descriptor.m_sourceSubresource.m_mipSlice
@@ -273,7 +273,7 @@ namespace AZ
             {
                 const ShaderResourceGroup* shaderResourceGroup = bindings.m_srgsBySlot[slot];
                 uint32_t slotIndex = static_cast<uint32_t>(pipelineLayout->GetIndexBySlot(slot));
- 
+
                 //Check explicitly for Bindless SRG.
                 if (slot == m_device->GetBindlessArgumentBuffer().GetBindlessSrgBindingSlot() &&
                     slotIndex != RHI::Limits::Pipeline::ShaderResourceGroupCountMax &&
@@ -284,23 +284,23 @@ namespace AZ
                     {
                         continue;
                     }
-                    
+
                     //Add the bindless AB info to the arrays in order to bind it to the appropriate encoder
                     m_device->GetBindlessArgumentBuffer().BindBindlessArgumentBuffer(slotIndex, m_commandEncoderType,
                                                                         m_mtlVertexArgBuffers, m_mtlVertexArgBufferOffsets,
                                                                         m_mtlFragmentOrComputeArgBuffers, m_mtlFragmentOrComputeArgBufferOffsets,
                                                                         bufferVertexRegisterIdMin, bufferVertexRegisterIdMax,
                                                                         bufferFragmentOrComputeRegisterIdMin, bufferFragmentOrComputeRegisterIdMax);
-                    
+
                     //Make all the relevant ABs resident. This only applies to ABs related to unbounded array support
                     m_device->GetBindlessArgumentBuffer().MakeBindlessArgumentBuffersResident(m_commandEncoderType,
                                                                                               m_untrackedResourcesGfxRead,
                                                                                               m_untrackedResourcesComputeRead);
-                     
+
                     m_state.m_bindBindlessHeap = true;
                     continue;
                 }
-                
+
                 if(!shaderResourceGroup || slotIndex == RHI::Limits::Pipeline::ShaderResourceGroupCountMax)
                 {
                     continue;
@@ -374,7 +374,7 @@ namespace AZ
                             CollectBindlessGfxUntrackedResources(shaderResourceGroup,
                                                                  m_untrackedResourcesGfxRead,
                                                                  m_untrackedResourcesGfxReadWrite);
-                            
+
                             //Collect resources bound via shaderResourceGroup
                             shaderResourceGroup->CollectUntrackedResources(srgResourcesVisInfo,
                                                                            m_untrackedResourcesGfxRead,
@@ -386,7 +386,7 @@ namespace AZ
                             CollectBindlessComputeUntrackedResources(shaderResourceGroup,
                                                                      m_untrackedResourcesComputeRead,
                                                                      m_untrackedResourcesComputeReadWrite);
-                            
+
                             //Collect resources bound via shaderResourceGroup
                             shaderResourceGroup->CollectUntrackedResources(srgResourcesVisInfo,
                                                                            m_untrackedResourcesComputeRead,
@@ -458,7 +458,7 @@ namespace AZ
             }
             return CommandList::ResourceProperties(isReadOnlyResource, mtlResourceView);
         }
-    
+
         void CommandList::CollectBindlessComputeUntrackedResources(const ShaderResourceGroup* shaderResourceGroup,
                                                 ArgumentBuffer::ResourcesForCompute& untrackedResourceComputeRead,
                                                 ArgumentBuffer::ResourcesForCompute& untrackedResourceComputeReadWrite)
@@ -467,7 +467,7 @@ namespace AZ
             {
                 return;
             }
-            
+
             for (const auto& it : shaderResourceGroup->GetData().GetBindlessResourceViews())
             {
                 for(const auto& resourceViewsIt : it.second.m_bindlessResources)
@@ -486,7 +486,7 @@ namespace AZ
                 }
             }
         }
-    
+
         void CommandList::CollectBindlessGfxUntrackedResources(const ShaderResourceGroup* shaderResourceGroup,
                                             ArgumentBuffer::ResourcesPerStageForGraphics& untrackedResourcesGfxRead,
                                             ArgumentBuffer::ResourcesPerStageForGraphics& untrackedResourcesGfxReadWrite)
@@ -495,7 +495,7 @@ namespace AZ
             {
                 return;
             }
-            
+
             for (const auto& it : shaderResourceGroup->GetData().GetBindlessResourceViews())
             {
                 // Iterate through all the ResourceViews
@@ -517,7 +517,7 @@ namespace AZ
                 }
             }
         }
-    
+
         void CommandList::BindArgumentBuffers(RHI::ShaderStage shaderStage,
                                               uint16_t registerIdMin,
                                               uint16_t registerIdMax,
@@ -694,7 +694,7 @@ namespace AZ
                     {
                         id<MTLRenderCommandEncoder> renderEncoder = GetEncoder<id<MTLRenderCommandEncoder>>();
                         SetRasterizerState(pipelineState->GetRasterizerState());
-                        
+
                         id<MTLDepthStencilState> mtlDSstate = pipelineState->GetDepthStencilState();
                         if(mtlDSstate && m_state.m_depthStencilStateHash != mtlDSstate.hash)
                         {
@@ -753,7 +753,7 @@ namespace AZ
                     needsBinding = true;
                 }
             }
-            
+
             AZStd::array<id<MTLBuffer>, METAL_MAX_ENTRIES_BUFFER_ARG_TABLE> mtlStreamBuffers;
             AZStd::array<NSUInteger, METAL_MAX_ENTRIES_BUFFER_ARG_TABLE> mtlStreamBufferOffsets;
             if (needsBinding)
@@ -822,7 +822,7 @@ namespace AZ
                 AZ_Error("CommandList", false, "Pipeline state not provided");
                 return false;
             }
-            
+
             const PipelineLayout* pipelineLayout = pipelineState->GetPipelineLayout();
             if(!pipelineLayout)
             {
@@ -938,7 +938,9 @@ namespace AZ
         }
 
         void CommandList::BuildTopLevelAccelerationStructure(
-            const RHI::DeviceRayTracingTlas& rayTracingTlas, const AZStd::vector<const RHI::DeviceRayTracingBlas*>& changedBlasList)
+            const RHI::DeviceRayTracingTlas& rayTracingTlas,
+            const AZStd::vector<const RHI::DeviceRayTracingBlas*>& changedBlasList,
+            const AZStd::vector<const RHI::DeviceRayTracingClusterBlas*>& changedClusterBlasList)
         {
             // [GFX TODO][ATOM-5268] Implement Metal Ray Tracing
             AZ_Assert(false, "Not implemented");

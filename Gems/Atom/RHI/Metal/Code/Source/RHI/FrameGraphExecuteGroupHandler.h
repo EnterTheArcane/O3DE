@@ -24,7 +24,8 @@ namespace AZ
     {
         class Device;
         class FrameGraphExecuteGroup;
-    
+        struct RenderPassContext;
+
         //! Base class for handler classes that manage frame graph execute groups.
         //! Contains common functionality for all types of handlers including
         //! how execute groups are handled and how work requests are sent

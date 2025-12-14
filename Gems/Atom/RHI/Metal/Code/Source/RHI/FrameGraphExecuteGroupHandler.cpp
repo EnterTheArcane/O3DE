@@ -26,7 +26,7 @@ namespace AZ
             m_device = &device;
             m_executeGroups = executeGroups;
             m_hardwareQueueClass = static_cast<FrameGraphExecuteGroup*>(executeGroups.back())->GetHardwareQueueClass();
-            
+
             m_commandBuffer.Init(device.GetCommandQueueContext().GetCommandQueue(m_hardwareQueueClass).GetPlatformQueue());
             m_commandBuffer.AcquireMTLCommandBuffer();
             m_workRequest.m_commandBuffer = &m_commandBuffer;
@@ -38,7 +38,7 @@ namespace AZ
             }
             return InitInternal(device, executeGroups);
         }
-    
+
         void FrameGraphExecuteGroupHandler::Shutdown()
         {
             m_device = nullptr;
@@ -54,8 +54,8 @@ namespace AZ
 
             if constexpr (RHI::ForceCpuGpuInSync)
             {
-                //Cache the name of the scope we just queued and wait for it to finish on the cpu
-                m_device->SetLastExecutingScope(m_workRequest.m_commandList->GetName().GetStringView());
+                // Cache the name of the scope we just queued and wait for it to finish on the cpu
+                m_device->SetLastExecutingScope(m_workRequest.m_commandLists.front()->GetName().GetStringView());
                 cmdQueue->FlushCommands();
                 cmdQueue->WaitForIdle();
             }
@@ -94,7 +94,7 @@ namespace AZ
             InsertWorkRequestElements(m_workRequest.m_scopeFencesToSignal, workRequest.m_scopeFencesToSignal);
             m_workRequest.m_signalFenceValue = AZStd::max(m_workRequest.m_signalFenceValue, workRequest.m_signalFenceValue);
         }
-    
+
         void FrameGraphExecuteGroupHandler::UpdateSwapChain(RenderPassContext &context)
         {
             // Check if the renderpass is using the swapchain texture
@@ -121,7 +121,7 @@ namespace AZ
                 context.m_renderPassDescriptor.colorAttachments[context.m_swapChainAttachmentIndex].texture = drawableTexture;
              }
         }
-    
+
         void FrameGraphExecuteGroupHandler::BeginGroup(const FrameGraphExecuteGroup* group)
         {
             if(!m_hasBegun.exchange(true))
@@ -130,7 +130,7 @@ namespace AZ
             }
             BeginGroupInternal(group);
         }
-    
+
         void FrameGraphExecuteGroupHandler::EndGroup(const FrameGraphExecuteGroup* group)
         {
             EndGroupInternal(group);

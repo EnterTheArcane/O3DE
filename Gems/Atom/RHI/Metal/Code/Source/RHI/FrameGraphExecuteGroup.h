@@ -9,6 +9,7 @@
 
 #include <Atom/RHI/FrameGraphExecuteGroup.h>
 #include <RHI/CommandQueue.h>
+#include <RHI/Scope.h>
 
 namespace AZ
 {
@@ -17,7 +18,7 @@ namespace AZ
         class Device;
         class CommandQueueCommandBuffer;
         class FrameGraphExecuteGroupHandler;
-        
+
         class FrameGraphExecuteGroup
             : public RHI::FrameGraphExecuteGroup
         {
@@ -38,16 +39,16 @@ namespace AZ
 
             //! Returns the group id of this FrameGraphExecuteGroup (used for subpass grouping)
             const RHI::GraphGroupId& GetGroupId() const;
-            
+
             //! Set the command buffer that the group will use.
             void SetCommandBuffer(CommandQueueCommandBuffer* commandBuffer);
 
             //! Set the FrameGraphExecuteGroupHandler that this group belongs.
             void SetHandler(FrameGraphExecuteGroupHandler* handler);
-            
+
             virtual AZStd::span<const Scope* const> GetScopes() const = 0;
             virtual AZStd::span<Scope* const> GetScopes() = 0;
-            
+
         protected:
             void BeginInternal() override;
             void EndInternal() override;
@@ -59,14 +60,14 @@ namespace AZ
                 uint32_t contextIndex) override;
 
             CommandList* AcquireCommandList() const;
-            
+
             //! Go through all the wait fences across all queues and encode them if needed
             void EncodeWaitEvents() const;
-            
+
             ExecuteWorkRequest m_workRequest;
             RHI::HardwareQueueClass m_hardwareQueueClass = RHI::HardwareQueueClass::Graphics;
             CommandQueueCommandBuffer* m_commandBuffer = nullptr;
-            
+
         private:
             Device* m_device = nullptr;
             RHI::GraphGroupId m_groupId;

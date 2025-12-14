@@ -31,7 +31,7 @@ namespace AZ
         class Device;
         class ImageView;
         class PipelineState;
-        
+
         class CommandList
             : public RHI::CommandList
             , public CommandListBase
@@ -40,13 +40,13 @@ namespace AZ
             AZ_CLASS_ALLOCATOR(CommandList, AZ::SystemAllocator);
             using MetalArgumentBufferArray = AZStd::array<id<MTLBuffer>, RHI::Limits::Pipeline::ShaderResourceGroupCountMax>;
             using MetalArgumentBufferArrayOffsets = AZStd::array<NSUInteger, RHI::Limits::Pipeline::ShaderResourceGroupCountMax>;
-            
+
             //first = is the resource read only
             //second = native mtlresource pointer
             using ResourceProperties = AZStd::pair<bool, id<MTLResource>>;
-            
+
             static RHI::Ptr<CommandList> Create();
-            
+
             void Init(RHI::HardwareQueueClass hardwareQueueClass, Device* device);
             void Shutdown();
 
@@ -79,26 +79,27 @@ namespace AZ
                 const RHI::DeviceRayTracingBlas &sourceBlas,
                 const RHI::DeviceRayTracingBlas &compactBlas) override;
             void BuildTopLevelAccelerationStructure(
-                const RHI::DeviceRayTracingTlas &rayTracingTlas,
-                const AZStd::vector<const RHI::DeviceRayTracingBlas *> &changedBlasList) override;
+                const RHI::DeviceRayTracingTlas& rayTracingTlas,
+                const AZStd::vector<const RHI::DeviceRayTracingBlas*>& changedBlasList,
+                const AZStd::vector<const RHI::DeviceRayTracingClusterBlas*>& changedClusterBlasList) override;
             void SetFragmentShadingRate(
                 [[maybe_unused]] RHI::ShadingRate rate,
                 [[maybe_unused]] const RHI::ShadingRateCombinators& combinators = DefaultShadingRateCombinators) override {}
 
         private:
-            
+
             void SetPipelineState(const PipelineState* pipelineState);
             void SetStreamBuffers(const RHI::DeviceGeometryView& geometryView, const RHI::StreamBufferIndices& streamIndices);
             void SetIndexBuffer(const RHI::DeviceIndexBufferView& descriptor);
             void SetStencilRef(AZ::u8 stencilRef);
             void SetRasterizerState(const RasterizerState& rastState);
-                        
+
             bool SetArgumentBuffers(const PipelineState* pipelineState, RHI::PipelineStateType stateType);
             bool IsSRGBoundToStage(uint32_t srgIndex, uint32_t shaderStage);
-            
+
             template <typename Item>
             void SetRootConstants(const Item& item, const PipelineState* pipelineState);
-            
+
             template <RHI::PipelineStateType>
             void SetShaderResourceGroup(const ShaderResourceGroup* shaderResourceGroup);
 
@@ -110,35 +111,35 @@ namespace AZ
 
             void CommitViewportState();
             void CommitScissorState();
-                        
+
             struct ShaderResourceBindings
             {
                 AZStd::array<const ShaderResourceGroup*, RHI::Limits::Pipeline::ShaderResourceGroupCountMax> m_srgsByIndex;
                 AZStd::array<const ShaderResourceGroup*, RHI::Limits::Pipeline::ShaderResourceGroupCountMax> m_srgsBySlot;
                 AZStd::array<AZ::HashValue64, RHI::Limits::Pipeline::ShaderResourceGroupCountMax> m_srgVisHashByIndex;
             };
-                        
+
             void BindArgumentBuffers(RHI::ShaderStage shaderStage,
                                      uint16_t registerIdMin,
                                      uint16_t registerIdMax,
                                      MetalArgumentBufferArray& mtlArgBuffers,
                                      MetalArgumentBufferArrayOffsets mtlArgBufferOffsets);
-            
+
             //! Helper functions that help cache untracked resources (within Bindless SRG) for compute and graphics work
             void CollectBindlessComputeUntrackedResources(const ShaderResourceGroup* shaderResourceGroup,
                                                           ArgumentBuffer::ResourcesForCompute& untrackedResourceComputeRead,
                                                           ArgumentBuffer::ResourcesForCompute& untrackedResourceComputeReadWrite);
-            
+
             void CollectBindlessGfxUntrackedResources(const ShaderResourceGroup* shaderResourceGroup,
                                                       ArgumentBuffer::ResourcesPerStageForGraphics& untrackedResourcesGfxRead,
                                                       ArgumentBuffer::ResourcesPerStageForGraphics& untrackedResourcesGfxReadWrite);
             //! Helper function to return a bool to indicate if the resource is read only as well as the native resource pointer
             AZStd::pair<bool, id<MTLResource>> GetResourceInfo(RHI::BindlessResourceType resourceType,
                                                                const RHI::DeviceResourceView* resourceView);
-            
+
             //Returns the SRG binding based on the PSO type
             ShaderResourceBindings& GetShaderResourceBindingsByPipelineType(RHI::PipelineStateType pipelineType);
-            
+
             //Arrays to cache all the buffers and offsets (related to graphics work) in order to make batch calls
             MetalArgumentBufferArray m_mtlVertexArgBuffers;
             MetalArgumentBufferArrayOffsets m_mtlVertexArgBufferOffsets;
@@ -152,18 +153,18 @@ namespace AZ
             struct State
             {
                 State() = default;
-                
+
                 // Draw State
                 const RHI::DevicePipelineState* m_pipelineState = nullptr;
                 const PipelineLayout* m_pipelineLayout = nullptr;
                 AZStd::array<AZ::HashValue64, RHI::Limits::Pipeline::StreamCountMax> m_streamsHashes = {AZ::HashValue64{0}};
-                
+
                 AZ::HashValue64 m_rasterizerStateHash = AZ::HashValue64{0};
                 uint64_t m_depthStencilStateHash = 0;
                 uint32_t m_stencilRef = static_cast<uint32_t>(-1);
                 RHI::CommandListScissorState m_scissorState;
                 RHI::CommandListViewportState m_viewportState;
-                
+
                 RHI::Viewport m_viewport;
                 // Array of shader resource bindings, indexed by command pipe.
                 AZStd::array<ShaderResourceBindings, static_cast<size_t>(RHI::PipelineStateType::Count)> m_bindingsByPipe;
@@ -173,7 +174,7 @@ namespace AZ
 
             } m_state;
         };
-        
+
         template <RHI::PipelineStateType pipelineType>
         void CommandList::SetShaderResourceGroup(const ShaderResourceGroup* shaderResourceGroup)
         {
@@ -184,7 +185,7 @@ namespace AZ
                 return;
             }
 #endif
-            
+
             const uint32_t bindingSlot = shaderResourceGroup->GetBindingSlot();
             AZ_Assert(bindingSlot<RHI::Limits::Pipeline::ShaderResourceGroupCountMax, "Binding slot higher than allowed.");
             GetShaderResourceBindingsByPipelineType(pipelineType).m_srgsBySlot[bindingSlot] = shaderResourceGroup;
