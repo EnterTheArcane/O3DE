@@ -34,6 +34,11 @@ on:
             required: false
             default: true
             type: boolean
+        mac_build:
+            description: 'Build Mac'
+            required: false
+            default: false
+            type: boolean
   push:
     branches:
       - main
@@ -200,4 +205,40 @@ jobs:
             last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
             ndk_version: '25.1.8937393'
             gradle_version: '8.12'
+            cmake_version: '~3.24'
+
+#### Mac Build ####
+    Mac-Profile:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            config: profile
+            image: macos-26-arm64
+            platform: Mac
+            type: profile
+            clang_version: '17'
+            cmake_version: '~3.24'
+
+    Mac-Asset:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        needs: Mac-Profile
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            config: profile
+            image: macos-26-arm64
+            platform: Mac
+            type: asset_profile
+            clang_version: '17'
+            cmake_version: '~3.24'
+
+    Mac-Test:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        needs: Mac-Asset
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            config: profile
+            image: macos-26-arm64
+            platform: Mac
+            type: test_profile
+            clang_version: '17'
             cmake_version: '~3.24'
