@@ -37,24 +37,24 @@ namespace AZ::Metal
             const RHI::ImageScopeAttachmentDescriptor& bindingDescriptor = scopeAttachment->GetDescriptor();
             id<MTLTexture> imageViewMtlTexture = imageView->GetMemoryView().GetGpuAddress<id<MTLTexture>>();
             const RHI::AttachmentId attachmentId = bindingDescriptor.m_attachmentId;
-            
+
             const bool isClearAction        = bindingDescriptor.m_loadStoreAction.m_loadAction == RHI::AttachmentLoadAction::Clear;
             const bool isClearActionStencil = bindingDescriptor.m_loadStoreAction.m_loadActionStencil == RHI::AttachmentLoadAction::Clear;
-            
+
             const bool isLoadAction         = bindingDescriptor.m_loadStoreAction.m_loadAction == RHI::AttachmentLoadAction::Load;
-            
+
             // Metal doesn't support RHI::AttachmentStoreAction::None so we treat it as RHI::AttachmentStoreAction::Store
             const bool isStoreAction = bindingDescriptor.m_loadStoreAction.m_storeAction == RHI::AttachmentStoreAction::Store ||
             bindingDescriptor.m_loadStoreAction.m_storeAction == RHI::AttachmentStoreAction::None;
             const bool isStoreActionStencil  = bindingDescriptor.m_loadStoreAction.m_storeActionStencil == RHI::AttachmentStoreAction::Store ||
             bindingDescriptor.m_loadStoreAction.m_storeActionStencil == RHI::AttachmentStoreAction::None;
-            
-            
+
+
             MTLLoadAction mtlLoadAction = MTLLoadActionDontCare;
             MTLStoreAction mtlStoreAction = MTLStoreActionDontCare;
             MTLLoadAction mtlLoadActionStencil = MTLLoadActionDontCare;
             MTLStoreAction mtlStoreActionStencil = MTLStoreActionDontCare;
-            
+
             if(isClearAction)
             {
                 mtlLoadAction = MTLLoadActionClear;
@@ -63,12 +63,12 @@ namespace AZ::Metal
             {
                 mtlLoadAction = MTLLoadActionLoad;
             }
-            
+
             if(isStoreAction)
             {
                 mtlStoreAction = MTLStoreActionStore;
             }
-            
+
             if(isClearActionStencil)
             {
                 mtlLoadActionStencil = MTLLoadActionClear;
@@ -77,12 +77,12 @@ namespace AZ::Metal
             {
                 mtlLoadActionStencil = MTLLoadActionLoad;
             }
-            
+
             if(isStoreActionStencil)
             {
                 mtlStoreActionStencil = MTLStoreActionStore;
             }
-            
+
             switch (scopeAttachment->GetUsage())
             {
                 case RHI::ScopeAttachmentUsage::Shader:
@@ -97,10 +97,10 @@ namespace AZ::Metal
                     {
                         id<MTLTexture> renderTargetTexture = imageViewMtlTexture;
                         m_renderPassDescriptor.colorAttachments[colorAttachmentIndex].texture = renderTargetTexture;
-                        
+
                         MTLRenderPassColorAttachmentDescriptor* colorAttachment = m_renderPassDescriptor.colorAttachments[colorAttachmentIndex];
                         colorAttachment.loadAction = mtlLoadAction;
-                        
+
                         RHI::ClearValue clearVal = bindingDescriptor.m_loadStoreAction.m_clearValue;
                         if (mtlLoadAction == MTLLoadActionClear)
                         {
@@ -113,7 +113,7 @@ namespace AZ::Metal
                                 colorAttachment.clearColor = MTLClearColorMake(clearVal.m_vector4Uint[0], clearVal.m_vector4Uint[1], clearVal.m_vector4Uint[2], clearVal.m_vector4Uint[3]);
                             }
                         }
- 
+
                         //Cubemap/cubemaparray and 3d textures have restrictions placed on them by the
                         //drivers when creating a new texture view. Hence we cant get a view with subresource range
                         //of the original texture. As a result in order to write into specific slice or depth plane
@@ -127,7 +127,7 @@ namespace AZ::Metal
                         {
                             m_renderPassDescriptor.colorAttachments[colorAttachmentIndex].depthPlane = imgViewDescriptor.m_depthSliceMin;
                         }
-                        
+
                         ApplyMSAACustomPositions(imageView);
                         m_colorAttachmentsIndex[attachmentId] = colorAttachmentIndex;
                         m_currentColorAttachmentIndex++;
@@ -166,7 +166,7 @@ namespace AZ::Metal
                         }
                         depthAttachment.storeAction = mtlStoreAction;
                     }
-                    
+
                     // Set the stencil only if the format support it and we either have a null stencil or the attachment is stencil only.
                     if(IsDepthStencilMerged(imageView->GetSpecificFormat()) &&
                        (RHI::CheckBitsAll(viewDescriptor.m_aspectFlags, RHI::ImageAspectFlags::Stencil) ||
@@ -185,7 +185,7 @@ namespace AZ::Metal
                         }
                         stencilAttachment.storeAction = mtlStoreActionStencil;
                     }
-                    
+
                     if (depthAttachmentTexture == nil || stencilAttachmentTexture == nil)
                     {
                         ApplyMSAACustomPositions(imageView);
@@ -200,11 +200,11 @@ namespace AZ::Metal
                     AZ_Assert(attachmentsIndex.find(resolveAttachmentId) != attachmentsIndex.end(), "Failed to find resolvable attachment %s", resolveAttachmentId.GetCStr());
                     ResolveAttachmentData resolveAttachmentData = attachmentsIndex[resolveAttachmentId];
                     MTLRenderPassDescriptor* renderPassDesc = resolveAttachmentData.m_renderPassDesc;
-                    
+
                     id<MTLTexture> renderTargetTexture = imageViewMtlTexture;
-                    
+
                     MTLStoreAction resolveStoreAction = resolveAttachmentData.m_isStoreAction ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionMultisampleResolve;
-                    
+
                     if(resolveAttachmentData.m_attachmentUsage == RHI::ScopeAttachmentUsage::RenderTarget)
                     {
                         MTLRenderPassColorAttachmentDescriptor* colorAttachment = renderPassDesc.colorAttachments[resolveAttachmentData.m_colorAttachmentIndex];
@@ -239,7 +239,7 @@ namespace AZ::Metal
         {
             return RHI::ResultCode::InvalidArgument;
         }
-        
+
         context.m_renderPassDescriptor = m_renderPassDescriptor;
         context.m_scopeMultisampleState = m_scopeMultisampleState;
         context.m_swapChainAttachment = m_swapChainFrameAttachment;
@@ -254,7 +254,7 @@ namespace AZ::Metal
         {
             m_renderPassDescriptor = nil;
         }
-        
+
         m_scopes.clear();
         m_colorAttachmentsIndex.clear();
         m_currentColorAttachmentIndex = 0;
@@ -264,7 +264,7 @@ namespace AZ::Metal
     {
         const Image& image = imageView->GetImage();
         const RHI::ImageDescriptor& imageDescriptor = image.GetDescriptor();
-        
+
         m_scopeMultisampleState = imageDescriptor.m_multisampleState;
         if(m_scopeMultisampleState.m_customPositionsCount > 0)
         {

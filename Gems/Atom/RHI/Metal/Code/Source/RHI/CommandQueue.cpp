@@ -36,11 +36,11 @@ namespace AZ
         RHI::ResultCode CommandQueue::InitInternal(RHI::Device& deviceBase, const RHI::CommandQueueDescriptor& descriptor)
         {
             RHI::DeviceObject::Init(deviceBase);
-            
+
             auto& device = static_cast<Device&>(deviceBase);
             m_hwQueue = [device.GetMtlDevice() newCommandQueue];
             AZ_Assert(m_hwQueue, "Could not create the metal queue");
-            
+
             switch (descriptor.m_hardwareQueueClass)
             {
             case RHI::HardwareQueueClass::Copy:
@@ -55,14 +55,14 @@ namespace AZ
                 m_hwQueue.label = @"Graphics Queue";
                 break;
             }
-            
+
             m_commandBuffer.Init(m_hwQueue);
             return RHI::ResultCode::Success;
         }
 
         void CommandQueue::ShutdownInternal()
         {
-            m_hwQueue = nil;            
+            m_hwQueue = nil;
         }
 
         void CommandQueue::QueueGpuSignal(Fence& fence)
@@ -88,11 +88,11 @@ namespace AZ
         {
             auto& device = static_cast<Device&>(GetDevice());
             const ExecuteWorkRequest& request = static_cast<const ExecuteWorkRequest&>(rhiRequest);
-            
+
             bool isCommitNeeded = request.m_signalFenceValue > 0 ||
                                    request.m_scopeFencesToSignal.size() > 0 ||
                                    request.m_swapChainsToPresent.size() > 0;
-            
+
             for (uint32_t index = 0; index < aznumeric_cast<uint32_t>(request.m_commandLists.size()) && !isCommitNeeded; ++index)
             {
                 CommandList& commandList = *request.m_commandLists[index];
@@ -102,18 +102,18 @@ namespace AZ
                     break;
                 }
             }
-            
+
             id<MTLCommandBuffer> workRequestCommandBuffer = request.m_commandBuffer->GetMtlCommandBuffer();
             CommandQueueContext& context = device.GetCommandQueueContext();
             const FenceSet& compiledFences = context.GetCompiledFences();
-            
+
             if(isCommitNeeded)
             {
                 //Since we call executework on all the groups in the correct order we safely call enqueue here to ensure
                 //that we reserve a place for the command buffer in the correct order on the associated hw command queue.
                 [workRequestCommandBuffer enqueue];
             }
-            
+
             //Queue the fence signals, swapchain presents and commit call for this command buffer
             QueueCommand([=, this](void* unused)
             {
@@ -122,7 +122,7 @@ namespace AZ
                  {
                      AZ_PROFILE_SCOPE(RHI, "ExecuteWork");
                      AZ::Debug::ScopedTimer executionTimer(m_lastExecuteDuration);
-                     
+
                      if (request.m_signalFenceValue > 0)
                      {
                          compiledFences.GetFence(GetDescriptor().m_hardwareQueueClass).SignalFromGpu(workRequestCommandBuffer, request.m_signalFenceValue);
@@ -132,7 +132,7 @@ namespace AZ
                      {
                          fence->SignalFromGpu(workRequestCommandBuffer);
                      }
-                     
+
                      {
                          AZ::Debug::ScopedTimer presentTimer(m_lastPresentDuration);
                          for (RHI::DeviceSwapChain* swapChain : request.m_swapChainsToPresent)
@@ -141,7 +141,7 @@ namespace AZ
                              swapChain->Present();
                          }
                      }
-                     
+
                      //Commit the command buffer to the command queue
                      request.m_commandBuffer->CommitMetalCommandBuffer(isCommitNeeded);
                  }
@@ -162,12 +162,12 @@ namespace AZ
         {
             return this;
         }
-        
+
         void CommandQueue::ClearTimers()
         {
             m_lastExecuteDuration = 0;
         }
-    
+
         AZStd::sys_time_t CommandQueue::GetLastExecuteDuration() const
         {
             return m_lastExecuteDuration;
