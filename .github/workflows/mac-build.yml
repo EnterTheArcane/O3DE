@@ -70,8 +70,8 @@ jobs:
         if: ${{ inputs.clang_version }}
         run: |
           brew install llvm@${{ inputs.clang_version }}
-          echo "CC=$(brew --prefix llvm@${{ inputs.clang_version }}/bin/clang)" >> $GITHUB_ENV
-          echo "CXX=$(brew --prefix llvm@${{ inputs.clang_version }}/bin/clang++)" >> $GITHUB_ENV
+          echo "CC=$(brew --prefix llvm@${{ inputs.clang_version }})/bin/clang" >> $GITHUB_ENV
+          echo "CXX=$(brew --prefix llvm@${{ inputs.clang_version }})/bin/clang++" >> $GITHUB_ENV
 
       - name: Build ${{ inputs.type }}
         # Builds with presets in ../scripts/build/Platform/Mac/build_config.json
