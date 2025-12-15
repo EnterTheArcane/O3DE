@@ -77,9 +77,9 @@ jobs:
         continue-on-error: true
         run: |
           echo "Installing dependencies"
-          pushd ./scripts/build/build_node/Platform/Linux
+          pushd ./scripts/build/build_node/Platform/Mac
           echo "Getting python..."
-          ./python/get_python.sh
+          ./install-python.sh
           popd
           echo "Installing additional python dependencies..."
           ./python/pip.sh install tempfile2 PyGithub
