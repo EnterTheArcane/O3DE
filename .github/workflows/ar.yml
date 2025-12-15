@@ -212,33 +212,18 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
         uses: ./.github/workflows/mac-build.yml
         with:
-            config: profile
-            image: macos-26
-            platform: Mac
             type: profile
-            clang_version: '17'
-            cmake_version: '~3.24'
 
     Mac-Asset:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
         needs: Mac-Profile
         uses: ./.github/workflows/mac-build.yml
         with:
-            config: profile
-            image: macos-26
-            platform: Mac
             type: asset_profile
-            clang_version: '17'
-            cmake_version: '~3.24'
 
     Mac-Test:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
         needs: Mac-Asset
         uses: ./.github/workflows/mac-build.yml
         with:
-            config: profile
-            image: macos-26
-            platform: Mac
             type: test_profile
-            clang_version: '17'
-            cmake_version: '~3.24'
