@@ -76,11 +76,8 @@ jobs:
       - name: Configure environment
         continue-on-error: true
         run: |
-          echo "Installing dependencies"
-          pushd ./scripts/build/build_node/Platform/Mac
           echo "Getting python..."
-          ./install-python.sh
-          popd
+          ./python/get_python.sh
           echo "Installing additional python dependencies..."
           ./python/pip.sh install tempfile2 PyGithub
 
