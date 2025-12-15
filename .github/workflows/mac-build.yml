@@ -15,22 +15,18 @@ on:
   workflow_call:
     inputs:
       config:
-        required: true
         type: string
         default: profile
       image:
-        required: true
         type: string
         default: macos-26
       platform:
-        required: true
         type: string
         default: Mac
       type:
         required: true
         type: string
       cmake_version:
-        required: false
         type: string
         default: '~3.24'
 
