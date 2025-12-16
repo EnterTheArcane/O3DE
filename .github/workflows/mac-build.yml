@@ -56,6 +56,82 @@ jobs:
           git lfs install
           [[ "${{ inputs.type }}" == "profile" ]] && git lfs pull --include "*.ico,*.bmp" || git lfs pull
 
+
+      - name: Setup 3p, user, and build folders
+        run: |
+          mkdir -p .o3de build 3rdParty && ln -sf "$(pwd)/.o3de" ~/.o3de
+      - name: Setup ccache
+        uses: Chocobo1/setup-ccache-action@f84f86840109403e0fe0ded8b0766c9633affa16 # v1.4.7
+        continue-on-error: true
+        if: always()
+        with:
+          prepend_symlinks_to_path: false
+          store_cache: false
+          restore_cache: false
+          ccache_options: |
+            max_size=10G
+            hash_dir=false
+            cache_dir=${{ github.workspace }}/.ccache
+
+      - name: Check for rerun
+        id: check-rerun
+        run: |
+          # GitHub sets GITHUB_RUN_ATTEMPT to track reruns
+          if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
+            echo "is_rerun=true" >> $GITHUB_OUTPUT
+            echo "This is rerun attempt #$GITHUB_RUN_ATTEMPT"
+          else
+            echo "is_rerun=false" >> $GITHUB_OUTPUT
+            echo "This is the first run attempt"
+          fi
+
+      - name: Get last run
+        # Get the last runid of the target branch of a PR or the current branch
+        # Skip if this is a rerun to either freshly build or get artifacts from existing run
+        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
+        id: last-run-id
+        if: ${{ inputs.last_artifact && steps.check-rerun.outputs.is_rerun != 'true' }}
+        continue-on-error: true
+        with:
+          workflow_search: true
+          workflow_conclusion: ""
+          branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.ref_name }}
+          search_artifacts: true
+          check_artifacts: true
+          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          dry_run: true
+                  
+      - name: Set artifact run id
+        # Set the run id of the artifact to be used for the download step
+        id: set-artifact-run-id
+        if: steps.last-run-id.outcome == 'success' && inputs.last_artifact == true
+        run: |
+          runId=${{ fromJSON(steps.last-run-id.outputs.artifacts)[0].workflow_run.id }}
+          echo "artifact_run_id=$runId" >> $GITHUB_OUTPUT
+          echo "Using artifacts from previous run: $runId"
+      
+      - name: Restore artifact cache
+        # Restore the artifact from the "Get last run" step or from the current run
+        id: restore-artifact-cache
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        continue-on-error: true
+        with:
+          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.set-artifact-run-id.outputs.artifact_run_id || github.run_id }}
+
+      - name: Extract artifact
+        # Extract the tar file from the artifact
+        id: extract-artifact
+        continue-on-error: true
+        if: ${{ steps.restore-artifact-cache.outcome == 'success' }}
+        run: |
+          if [ -f ${{ github.workspace }}/cache.tar ]; then          
+            tar -xvpf ${{ github.workspace }}/cache.tar --ignore-failed-read
+            rm ${{ github.workspace }}/cache.tar
+            ccache --zero-stats --cleanup
+          fi
+
       - name: Setup cmake
         # Pin the version of cmake
         if: ${{ inputs.cmake_version }}
@@ -66,15 +142,10 @@ jobs:
       - name: Configure environment
         continue-on-error: true
         run: |
-          echo "Installing dependencies..."
-          brew install ccache sccache
           echo "Getting python..."
           ./python/get_python.sh
           echo "Installing additional python dependencies..."
           ./python/pip.sh install tempfile2 PyGithub
-
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Build ${{ inputs.type }}
         # Builds with presets in ../scripts/build/Platform/Mac/build_config.json
@@ -82,6 +153,30 @@ jobs:
         run: |
           export LY_3RDPARTY_PATH=${{ github.workspace }}/3rdParty
           export LY_PACKAGE_SERVER_URLS="https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
-          export CMAKE_C_COMPILER_LAUNCHER=sccache
-          export CMAKE_CXX_COMPILER_LAUNCHER=sccache
+          export CMAKE_C_COMPILER_LAUNCHER=ccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
           python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
+
+      - name: Compress artifacts
+        # Compress with posix format to preserve permissions and timestamps at nanosecond precision
+        # Skip compression and upload if the type is a test to reduce dirty build artifacts from previous runs
+        id: compress-artifacts
+        if: ${{ (steps.extract-artifact.outcome == 'success' || steps.extract-artifact.outcome == 'skipped') && !cancelled() && !contains(inputs.type, 'test') }}
+        continue-on-error: true
+        run: |
+          tar --format=posix -cvpf ${{ github.workspace }}/cache.tar --ignore-failed-read \
+            .ccache \
+            .o3de/python/downloaded_packages \
+            3rdParty/downloaded_packages \
+            AutomatedTesting/Cache
+
+      - name: Save artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ steps.compress-artifacts.conclusion == 'success' && !cancelled() && !contains(inputs.type, 'test') }}
+        continue-on-error: true
+        with:
+          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          compression-level: 1
+          overwrite: true
+          path: |
+            ${{ github.workspace }}/cache.tar
