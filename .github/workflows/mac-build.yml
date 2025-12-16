@@ -14,6 +14,9 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
+      type:
+        required: true
+        type: string
       config:
         type: string
         default: profile
@@ -23,12 +26,9 @@ on:
       platform:
         type: string
         default: Mac
-      type:
-        required: true
-        type: string
       cmake_version:
         type: string
-        default: '~3.24'
+        default: ~3.24
 
 run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 
@@ -55,7 +55,6 @@ jobs:
         run: |
           git lfs install
           [[ "${{ inputs.type }}" == "profile" ]] && git lfs pull --include "*.ico,*.bmp" || git lfs pull
-
 
       - name: Setup 3p, user, and build folders
         run: |
@@ -164,7 +163,7 @@ jobs:
         if: ${{ (steps.extract-artifact.outcome == 'success' || steps.extract-artifact.outcome == 'skipped') && !cancelled() && !contains(inputs.type, 'test') }}
         continue-on-error: true
         run: |
-          tar --format=posix -cvpf ${{ github.workspace }}/cache.tar --ignore-failed-read \
+          tar --format=posix -cvpf ${{ github.workspace }}/cache.tar \
             .ccache \
             .o3de/python/downloaded_packages \
             3rdParty/downloaded_packages \
