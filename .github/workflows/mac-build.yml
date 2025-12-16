@@ -67,11 +67,14 @@ jobs:
         continue-on-error: true
         run: |
           echo "Installing dependencies..."
-          brew install ccache
+          brew install ccache sccache
           echo "Getting python..."
           ./python/get_python.sh
           echo "Installing additional python dependencies..."
           ./python/pip.sh install tempfile2 PyGithub
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Build ${{ inputs.type }}
         # Builds with presets in ../scripts/build/Platform/Mac/build_config.json
@@ -79,6 +82,6 @@ jobs:
         run: |
           export LY_3RDPARTY_PATH=${{ github.workspace }}/3rdParty
           export LY_PACKAGE_SERVER_URLS="https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
-          export CMAKE_C_COMPILER_LAUNCHER=ccache
-          export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+          export CMAKE_C_COMPILER_LAUNCHER=sccache
+          export CMAKE_CXX_COMPILER_LAUNCHER=sccache
           python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
