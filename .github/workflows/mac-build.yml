@@ -141,6 +141,8 @@ jobs:
       - name: Configure environment
         continue-on-error: true
         run: |
+          echo "Installing dependencies..."
+          brew install gnu-tar
           echo "Getting python..."
           ./python/get_python.sh
           echo "Installing additional python dependencies..."
@@ -163,7 +165,7 @@ jobs:
         if: ${{ (steps.extract-artifact.outcome == 'success' || steps.extract-artifact.outcome == 'skipped') && !cancelled() && !contains(inputs.type, 'test') }}
         continue-on-error: true
         run: |
-          tar --format=posix -cvpf ${{ github.workspace }}/cache.tar \
+          gtar --format=posix -cvpf ${{ github.workspace }}/cache.tar --ignore-failed-read \
             .ccache \
             .o3de/python/downloaded_packages \
             3rdParty/downloaded_packages \
