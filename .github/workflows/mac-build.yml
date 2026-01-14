@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
 
-    runs-on: ${{ inputs.image }}
+    runs-on: [self-hosted, macOS]
 
     steps:
       - name: Checkout repo
