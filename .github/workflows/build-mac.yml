@@ -16,12 +16,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.1
         with:
-          lfs: false
+          lfs: true
 
-      - name: Git lfs pull
-        run: |
-          git lfs install
-          [[ "${{ inputs.type }}" == "profile" ]] && git lfs pull --include "*.ico,*.bmp" || git lfs pull
+      # - name: Git lfs pull
+      #   run: |
+      #     git lfs install
+      #     git lfs pull
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
