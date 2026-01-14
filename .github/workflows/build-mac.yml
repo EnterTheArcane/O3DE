@@ -37,7 +37,7 @@ jobs:
           path: |
             ~/.o3de
             Cache
-          key: ${{ runner.os }}-o3de
+          key: ${{ runner.os }}-${{ runner.arch }}
 
       - name: Setup cmake
         uses: lukka/get-cmake@v4.2.1
