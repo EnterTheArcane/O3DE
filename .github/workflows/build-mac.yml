@@ -11,11 +11,6 @@ jobs:
       fail-fast: false
 
     runs-on: macos-15
-    
-    env:
-      SCCACHE_GHA_ENABLED: true
-      CMAKE_C_COMPILER_LAUNCHER: sccache
-      CMAKE_CXX_COMPILER_LAUNCHER: sccache
 
     steps:
       - name: Checkout
@@ -37,9 +32,9 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-            
+
       - name: Restore cache
-        id: cache-restore
+        id: cache
         uses: actions/cache/restore@v4
         with:
           path: Cache
@@ -49,6 +44,8 @@ jobs:
         uses: lukka/get-cmake@v4.2.1
         with:
           cmakeVersion: "4.2.1"
+          ninjaVersion: "1.13.2"
+          useLocalCache: true
 
       - name: Configure environment
         continue-on-error: true
@@ -69,8 +66,7 @@ jobs:
           python/python.sh -u scripts/build/ci_build.py --platform Mac --type profile
 
       - name: Save cache
-        id: cache-save
         uses: actions/cache/save@v4
         with:
           path: Cache
-          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+          key: ${{ steps.cache.outputs.cache-primary-key }}
