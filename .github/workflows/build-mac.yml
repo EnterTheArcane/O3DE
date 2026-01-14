@@ -33,12 +33,11 @@ jobs:
             core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Restore cache
-        id: cache
-        uses: actions/cache/restore@v4
+      - name: Setup cache
+        uses: actions/cache@v4
         with:
-          path: Cache
-          key: ${{ runner.os }}
+          path: Cache/3rdParty
+          key: ${{ runner.os }}-3rdparty
 
       - name: Setup cmake
         uses: lukka/get-cmake@v4.2.1
@@ -64,9 +63,3 @@ jobs:
           export CMAKE_CXX_COMPILER_LAUNCHER=sccache
           export SCCACHE_GHA_ENABLED=true
           python/python.sh -u scripts/build/ci_build.py --platform Mac --type profile
-
-      - name: Save cache
-        uses: actions/cache/save@v4
-        with:
-          path: Cache
-          key: ${{ steps.cache.outputs.cache-primary-key }}
