@@ -4,45 +4,60 @@ on:
   push:
   workflow_dispatch:
     inputs:
-      build_linux:
-        description: Build Linux
+      linux:
+        description: Linux
         type: boolean
         required: false
         default: true
-      build_mac:
-        description: Build Mac
+      mac:
+        description: Mac
         type: boolean
         required: false
         default: true
-      build_windows:
-        description: Build Windows
+      windows:
+        description: Windows
         type: boolean
         required: false
         default: true
 
 jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - id: gen
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isDispatch = context.eventName === "workflow_dispatch";
+
+            const want = {
+              Linux: !isDispatch || (core.getInput("linux") === "true"),
+              Mac: !isDispatch || (core.getInput("mac") === "true"),
+              Windows: !isDispatch || (core.getInput("windows") === "true"),
+            };
+
+            const include = [];
+            if (want.Linux) include.push({ platform: "Linux", image: "ubuntu-24.04" });
+            if (want.Mac) include.push({ platform: "Mac", image: "macos-26" });
+            if (want.Windows) include.push({ platform: "Windows", image: "windows-2022" });
+
+            const matrix = { include };
+            core.setOutput("matrix", JSON.stringify(matrix));
+
+          linux: ${{ inputs.linux }}
+          mac: ${{ inputs.mac }}
+          windows: ${{ inputs.windows }}
+  
   build:
     name: Build ${{ matrix.platform }}
-
+    needs: plan
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - platform: Linux
-            image: ubuntu-24.04
-          - platform: Mac
-            image: macos-26
-          - platform: Windows
-            image: windows-2022
-
+      matrix: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.image }}
-
-    if: |
-      (github.event_name != 'workflow_dispatch') ||
-      (matrix.platform == 'Linux' && inputs.build_linux) ||
-      (matrix.platform == 'Mac' && inputs.build_mac) ||
-      (matrix.platform == 'Windows' && inputs.build_windows)
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.1
@@ -92,7 +107,7 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
           SCCACHE_GHA_ENABLED: true
-        run: python -u scripts/build/ci_build.py --platform ${{ matrix.platform}} --type profile
+        run: python -u scripts/build/ci_build.py --platform ${{ matrix.platform }} --type profile
 
       - name: Save cache
         if: always() && steps.cache.outputs.cache-hit != 'true'
