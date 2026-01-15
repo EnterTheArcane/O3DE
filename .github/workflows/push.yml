@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }}
+    name: ${{ matrix.platform }}
     secrets: inherit
     uses: ./.github/workflows/build.yml
     strategy:
