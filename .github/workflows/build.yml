@@ -29,11 +29,14 @@ jobs:
           git lfs install
           git lfs pull
 
-      - name: Setup cache
-        uses: actions/cache@v4
+      - name: Restore cache
+        id: cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.o3de
-          key: ${{ runner.os }}-${{ runner.arch }}
+          key: o3de-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            o3de-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
@@ -58,3 +61,10 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
           SCCACHE_GHA_ENABLED: true
         run: python -u scripts/build/ci_build.py --platform ${{ matrix.platform}} --type profile
+
+      - name: Save cache
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.o3de
+          key: ${{ steps.cache.outputs.cache-primary-key }}
