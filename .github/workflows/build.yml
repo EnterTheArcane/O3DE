@@ -2,6 +2,23 @@ name: Build
 
 on:
   push:
+  workflow_dispatch:
+    inputs:
+      build_linux:
+        description: Build Linux
+        type: boolean
+        required: false
+        default: true
+      build_mac:
+        description: Build Mac
+        type: boolean
+        required: false
+        default: true
+      build_windows:
+        description: Build Windows
+        type: boolean
+        required: false
+        default: true
 
 jobs:
   build:
@@ -19,6 +36,12 @@ jobs:
             image: windows-2022
 
     runs-on: ${{ matrix.image }}
+
+    if: |
+      (github.event_name != 'workflow_dispatch') ||
+      (matrix.platform == 'Linux' && inputs.build_linux) ||
+      (matrix.platform == 'Mac' && inputs.build_mac) ||
+      (matrix.platform == 'Windows' && inputs.build_windows)
 
     steps:
       - name: Checkout
