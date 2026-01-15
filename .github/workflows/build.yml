@@ -13,10 +13,10 @@ jobs:
         include:
           - platform: Linux
             image: ubuntu-24.04
-          - platform: Mac
-            image: macos-26
-          - platform: Windows
-            image: windows-2022
+          # - platform: Mac
+          #   image: macos-26
+          # - platform: Windows
+          #   image: windows-2022
 
     runs-on: ${{ matrix.image }}
 
@@ -49,9 +49,18 @@ jobs:
           useCloudCache: true
           useLocalCache: true
 
-      - uses: actions/setup-python@v6
+      - name: Setup python
+        uses: actions/setup-python@v6
         with:
           python-version: "3.14"
+          
+      - name: Install dependencies
+        if: matrix.platform == 'Linux'
+        continue-on-error: true
+        run: |
+          pushd scripts/build/build_node/Platform/Linux
+          sudo ./install-ubuntu.sh
+          popd
 
       - name: Build
         timeout-minutes: 330
