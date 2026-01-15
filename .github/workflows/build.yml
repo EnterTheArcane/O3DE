@@ -22,7 +22,6 @@ on:
 
 jobs:
   plan:
-    name: Plan
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
@@ -32,25 +31,26 @@ jobs:
         with:
           script: |
             const isDispatch = context.eventName === "workflow_dispatch";
+            const dispatchInputs = (context.payload && context.payload.inputs) ? context.payload.inputs : {};
 
-            const want = {
-              Linux: !isDispatch || (core.getInput("linux") === "true"),
-              Mac: !isDispatch || (core.getInput("mac") === "true"),
-              Windows: !isDispatch || (core.getInput("windows") === "true"),
-            };
+            const pick = (name) => String(dispatchInputs[name] ?? "true") === "true";
+
+            const wantLinux = !isDispatch || pick("linux");
+            const wantMac = !isDispatch || pick("mac");
+            const wantWindows = !isDispatch || pick("windows");
 
             const include = [];
-            if (want.Linux) include.push({ platform: "Linux", image: "ubuntu-24.04" });
-            if (want.Mac) include.push({ platform: "Mac", image: "macos-26" });
-            if (want.Windows) include.push({ platform: "Windows", image: "windows-2022" });
+            if (wantLinux) include.push({ platform: "Linux", image: "ubuntu-24.04" });
+            if (wantMac) include.push({ platform: "Mac", image: "macos-26" });
+            if (wantWindows) include.push({ platform: "Windows", image: "windows-2022" });
 
-            const matrix = { include };
-            core.setOutput("matrix", JSON.stringify(matrix));
+            if (include.length === 0) {
+              core.setFailed("No platforms selected.");
+              return;
+            }
 
-          linux: ${{ inputs.linux }}
-          mac: ${{ inputs.mac }}
-          windows: ${{ inputs.windows }}
-  
+            core.setOutput("matrix", JSON.stringify({ include }));
+
   build:
     name: Build ${{ matrix.platform }}
     needs: plan
