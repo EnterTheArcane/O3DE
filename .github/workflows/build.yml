@@ -14,10 +14,13 @@ jobs:
         include:
           - platform: Linux
             image: ubuntu-24.04
+            type: profile
           - platform: Mac
             image: macos-26
+            type: profile
           - platform: Windows
             image: windows-2022
+            type: profile
 
     runs-on: ${{ matrix.image }}
 
@@ -34,10 +37,14 @@ jobs:
         id: cache
         uses: actions/cache/restore@v4
         with:
-          path: ~/.o3de
-          key: o3de-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          path: |
+            ~/.o3de/3rdParty
+            ~/.o3de/Cache
+            ~/.o3de/Python
+          key: O3DE-${{ matrix.platform }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
-            o3de-${{ runner.os }}-${{ runner.arch }}-
+            O3DE-${{ matrix.platform }}-${{ runner.arch }}-
+            O3DE-${{ matrix.platform }}-
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
@@ -54,23 +61,24 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.14"
+          pip-install: -r scripts/build/build_node/Platform/Common/requirements.txt
+          cache: pip
 
-      - name: Install dependencies
-        if: matrix.platform == 'Linux'
+      - name: Setup platform
         continue-on-error: true
-        run: |
-          pushd scripts/build/build_node/Platform/Linux
-          sudo ./install-ubuntu.sh
-          popd
+        run: scripts/build/build_node/Platform/${{ matrix.platform }}/setup.ps1
 
-      - name: Build
+      - name: Build (${{ matrix.type }})
         timeout-minutes: 330
         env:
           LY_PACKAGE_SERVER_URLS: https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
           SCCACHE_GHA_ENABLED: true
-        run: python -u scripts/build/ci_build.py --platform ${{ matrix.platform }} --type profile
+        run: >-
+          python -u scripts/build/ci_build.py
+          --platform ${{ matrix.platform }}
+          --type ${{ matrix.type }}
 
       - name: Save cache
         if: always() && steps.cache.outputs.cache-hit != 'true'
