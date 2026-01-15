@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
 
-    runs-on: [self-hosted, macOS]
+    runs-on: macos-26
 
     steps:
       - name: Checkout
@@ -23,13 +23,6 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
-
-      # - name: Configure sccache
-      #   uses: actions/github-script@v8
-      #   with:
-      #     script: |
-      #       core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
-      #       core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Setup cache
         uses: actions/cache@v4
