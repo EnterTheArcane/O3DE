@@ -11,12 +11,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - platform: Linux
-          #   image: ubuntu-24.04
+          - platform: Linux
+            image: ubuntu-24.04
           - platform: Mac
             image: macos-26
-          # - platform: Windows
-          #   image: windows-2022
+          - platform: Windows
+            image: windows-2022
 
     runs-on: ${{ matrix.image }}
 
@@ -40,7 +40,7 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
-          
+
       - name: Setup cmake
         uses: lukka/get-cmake@v4.2.1
         with:
@@ -53,7 +53,7 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-          
+
       - name: Install dependencies
         if: matrix.platform == 'Linux'
         continue-on-error: true
