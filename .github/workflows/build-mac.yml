@@ -10,7 +10,8 @@ jobs:
     strategy:
       fail-fast: false
 
-    runs-on: macos-26
+    # runs-on: macos-26
+    runs-on: [self-hosted, macOS]
 
     steps:
       - name: Checkout
@@ -27,9 +28,7 @@ jobs:
       - name: Setup cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.o3de
-            Cache
+          path: ~/.o3de
           key: ${{ runner.os }}-${{ runner.arch }}
 
       - name: Setup cmake
@@ -43,17 +42,14 @@ jobs:
       - name: Configure environment
         continue-on-error: true
         run: |
-          echo "Getting python..."
-          ./python/get_python.sh
-          echo "Installing additional python dependencies..."
-          ./python/pip.sh install tempfile2 PyGithub
+          python/get_python.sh
+          python/pip.sh install tempfile2 PyGithub
 
       - name: Build (Profile)
         timeout-minutes: 330
-        run: |
-          export LY_3RDPARTY_PATH=${{ github.workspace }}/Cache/3rdParty
-          export LY_PACKAGE_SERVER_URLS="https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
-          export CMAKE_C_COMPILER_LAUNCHER=sccache
-          export CMAKE_CXX_COMPILER_LAUNCHER=sccache
-          export SCCACHE_GHA_ENABLED=true
-          python/python.sh -u scripts/build/ci_build.py --platform Mac --type profile
+        env:
+          LY_PACKAGE_SERVER_URLS: "https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+          SCCACHE_GHA_ENABLED: true
+        run: python/python.sh -u scripts/build/ci_build.py --platform Mac --type profile
