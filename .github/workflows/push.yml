@@ -5,13 +5,17 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.platform }}
+    name: Build ${{ matrix.platform }}
     secrets: inherit
     uses: ./.github/workflows/build.yml
     strategy:
       fail-fast: false
       matrix:
         include:
+          - platform: Android
+            runner: windows-2022
+          - platform: iOS
+            runner: macos-26
           - platform: Linux
             runner: ubuntu-24.04
           - platform: Mac
@@ -21,4 +25,3 @@ jobs:
     with:
       platform: ${{ matrix.platform }}
       runner: ${{ matrix.runner }}
-    
