@@ -1,28 +1,23 @@
 name: Build
 
 on:
-  push:
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        required: true
+      type:
+        type: string
+        default: profile
+      runner:
+        type: string
+        required: true
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }}
+    name: Build ${{ inputs.platform }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: Linux
-            image: ubuntu-24.04
-            type: profile
-          - platform: Mac
-            image: macos-26
-            type: profile
-          - platform: Windows
-            image: windows-2022
-            type: profile
-
-    runs-on: ${{ matrix.image }}
+    runs-on: ${{ inputs.runner }}
 
     steps:
       - name: Checkout
@@ -41,10 +36,10 @@ jobs:
             ~/.o3de/3rdParty
             ~/.o3de/Cache
             ~/.o3de/Python
-          key: O3DE-${{ matrix.platform }}-${{ runner.arch }}-${{ github.sha }}
+          key: O3DE-${{ inputs.platform }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
-            O3DE-${{ matrix.platform }}-${{ runner.arch }}-
-            O3DE-${{ matrix.platform }}-
+            O3DE-${{ inputs.platform }}-${{ runner.arch }}-
+            O3DE-${{ inputs.platform }}-
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
@@ -61,14 +56,14 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.14"
-          pip-install: -r scripts/build/build_node/Platform/Common/requirements.txt
+          # pip-install: -r scripts/build/build_node/Platform/Common/requirements.txt
           cache: pip
 
       - name: Setup platform
         continue-on-error: true
-        run: scripts/build/build_node/Platform/${{ matrix.platform }}/setup.ps1
+        run: scripts/build/build_node/Platform/${{ inputs.platform }}/setup.ps1
 
-      - name: Build (${{ matrix.type }})
+      - name: Build (${{ inputs.type }})
         timeout-minutes: 330
         env:
           LY_PACKAGE_SERVER_URLS: https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net
@@ -77,8 +72,8 @@ jobs:
           SCCACHE_GHA_ENABLED: true
         run: >-
           python -u scripts/build/ci_build.py
-          --platform ${{ matrix.platform }}
-          --type ${{ matrix.type }}
+          --platform ${{ inputs.platform }}
+          --type ${{ inputs.type }}
 
       - name: Save cache
         if: always() && steps.cache.outputs.cache-hit != 'true'

@@ -1,0 +1,25 @@
+name: Push
+
+on:
+  push:
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux
+            runner: ubuntu-24.04
+          - platform: Mac
+            runner: macos-26
+          - platform: Windows
+            runner: windows-2022
+
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: ${{ matrix.platform }}
+      runner: ${{ matrix.runner }}
+    secrets: inherit
