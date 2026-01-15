@@ -5,8 +5,9 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.platform }}
-
+    name: ${{ matrix.platform }}
+    secrets: inherit
+    uses: ./.github/workflows/build.yml
     strategy:
       fail-fast: false
       matrix:
@@ -17,9 +18,7 @@ jobs:
             runner: macos-26
           - platform: Windows
             runner: windows-2022
-
-    uses: ./.github/workflows/build.yml
     with:
       platform: ${{ matrix.platform }}
       runner: ${{ matrix.runner }}
-    secrets: inherit
+    

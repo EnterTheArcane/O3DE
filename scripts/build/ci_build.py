@@ -33,7 +33,7 @@ def parse_args():
 
     return args
 
-def build(build_config_filename, build_platform, build_type):
+def build(build_config_filename: str, build_platform: str, build_type: str):
     # Read build_config and locate build_type
     cwd_dir = os.getcwd()
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,8 +49,10 @@ def build(build_config_filename, build_platform, build_type):
 
     with open(build_config_abspath) as f:
         build_config_json = json.load(f)
+        # convert top-level build type keys to lowercase for case-insensitive matching
+        build_config_json = {k.lower(): v for k, v in build_config_json.items()}
 
-    build_type_config = build_config_json[build_type]
+    build_type_config = build_config_json[build_type.lower()]
     if build_type_config is None:
         print('[ci_build] Build type {} was not found in {}'.format(build_type, build_config_abspath))
 

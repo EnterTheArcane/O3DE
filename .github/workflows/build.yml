@@ -8,14 +8,14 @@ on:
         required: true
       type:
         type: string
-        default: profile
+        default: Profile
       runner:
         type: string
         required: true
 
 jobs:
   build:
-    name: Build ${{ inputs.platform }}
+    name: ${{ inputs.type }}
 
     runs-on: ${{ inputs.runner }}
 
