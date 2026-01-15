@@ -3,61 +3,24 @@ name: Build
 on:
   push:
   workflow_dispatch:
-    inputs:
-      linux:
-        description: Linux
-        type: boolean
-        required: false
-        default: true
-      mac:
-        description: Mac
-        type: boolean
-        required: false
-        default: true
-      windows:
-        description: Windows
-        type: boolean
-        required: false
-        default: true
 
 jobs:
-  plan:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.gen.outputs.matrix }}
-    steps:
-      - id: gen
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const isDispatch = context.eventName === "workflow_dispatch";
-            const dispatchInputs = (context.payload && context.payload.inputs) ? context.payload.inputs : {};
-
-            const pick = (name) => String(dispatchInputs[name] ?? "true") === "true";
-
-            const wantLinux = !isDispatch || pick("linux");
-            const wantMac = !isDispatch || pick("mac");
-            const wantWindows = !isDispatch || pick("windows");
-
-            const include = [];
-            if (wantLinux) include.push({ platform: "Linux", image: "ubuntu-24.04" });
-            if (wantMac) include.push({ platform: "Mac", image: "macos-26" });
-            if (wantWindows) include.push({ platform: "Windows", image: "windows-2022" });
-
-            if (include.length === 0) {
-              core.setFailed("No platforms selected.");
-              return;
-            }
-
-            core.setOutput("matrix", JSON.stringify({ include }));
-
   build:
     name: Build ${{ matrix.platform }}
-    needs: plan
+
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.set-matrix.outputs.matrix) }}
+      matrix:
+        include:
+          - platform: Linux
+            image: ubuntu-24.04
+          - platform: Mac
+            image: macos-26
+          - platform: Windows
+            image: windows-2022
+
     runs-on: ${{ matrix.image }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.1
