@@ -11,10 +11,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: Linux
-            image: ubuntu-24.04
-          # - platform: Mac
-          #   image: macos-26
+          # - platform: Linux
+          #   image: ubuntu-24.04
+          - platform: Mac
+            image: macos-26
           # - platform: Windows
           #   image: windows-2022
 
