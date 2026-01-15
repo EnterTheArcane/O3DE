@@ -1,17 +1,24 @@
-name: Build Mac
+name: Build
 
 on:
   push:
 
 jobs:
   build:
-    name: Build
+    name: Build ${{ matrix.platform }}
 
     strategy:
       fail-fast: false
+      matrix:
+        include:
+          - platform: Linux
+            image: ubuntu-24.04
+          - platform: Mac
+            image: macos-26
+          - platform: Windows
+            image: windows-2022
 
-    # runs-on: macos-26
-    runs-on: [self-hosted, macOS]
+    runs-on: ${{ matrix.image }}
 
     steps:
       - name: Checkout
@@ -22,15 +29,15 @@ jobs:
           git lfs install
           git lfs pull
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       - name: Setup cache
         uses: actions/cache@v4
         with:
           path: ~/.o3de
           key: ${{ runner.os }}-${{ runner.arch }}
 
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+          
       - name: Setup cmake
         uses: lukka/get-cmake@v4.2.1
         with:
@@ -39,17 +46,15 @@ jobs:
           useCloudCache: true
           useLocalCache: true
 
-      - name: Configure environment
-        continue-on-error: true
-        run: |
-          python/get_python.sh
-          python/pip.sh install tempfile2 PyGithub
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
 
-      - name: Build (Profile)
+      - name: Build
         timeout-minutes: 330
         env:
-          LY_PACKAGE_SERVER_URLS: "https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
+          LY_PACKAGE_SERVER_URLS: https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
           SCCACHE_GHA_ENABLED: true
-        run: python/python.sh -u scripts/build/ci_build.py --platform Mac --type profile
+        run: python -u scripts/build/ci_build.py --platform ${{ matrix.platform}} --type profile
