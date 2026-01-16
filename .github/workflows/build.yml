@@ -96,6 +96,10 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
+        
+      - name: Setup msvc
+        uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
 
       - name: Setup platform
         continue-on-error: true
