@@ -1,0 +1,24 @@
+name: Build All
+
+on:
+  push:
+
+jobs:
+  build:
+    name: ${{ matrix.platform }}
+    secrets: inherit
+    uses: ./.github/workflows/build.yml
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - Android
+          - iOS
+          - Linux
+          - Mac
+          - Windows
+        type:
+          - Profile
+    with:
+      platform: ${{ matrix.platform }}
+      type: ${{ matrix.type }}

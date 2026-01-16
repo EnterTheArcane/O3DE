@@ -9,18 +9,42 @@ on:
       type:
         type: string
         default: Profile
-      runner:
-        type: string
-        required: true
       cache:
         type: boolean
         default: true
 
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform
+        type: choice
+        default: Linux
+        options:
+          - Android
+          - iOS
+          - Linux
+          - Mac
+          - Windows
+      type:
+        description: Build Type
+        type: string
+        default: Profile
+
 jobs:
+  plan:
+    name: Plan
+
   build:
     name: ${{ inputs.type }}
 
-    runs-on: ${{ inputs.runner }}
+    runs-on: |
+      ${{ fromJSON('{
+        "android":"windows-2022",
+        "ios":"macos-26",
+        "linux":"ubuntu-24.04",
+        "mac":"macos-26",
+        "windows":"windows-2022"
+      }')[toLower(inputs.platform || 'linux')] }}
 
     steps:
       - name: Maximize build space
