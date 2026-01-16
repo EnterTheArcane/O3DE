@@ -37,7 +37,7 @@ jobs:
     runs-on: |
       ${{ fromJSON('{
         "Android":"windows-2022",
-        "iOS":"macos-26",
+        "iOS":"macos-15",
         "Linux":"ubuntu-24.04",
         "Mac":"macos-26",
         "Windows":"windows-2022"
