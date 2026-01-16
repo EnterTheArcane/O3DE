@@ -35,8 +35,8 @@
     "COMMAND":"../Windows/build_ninja_windows.cmd",
     "PARAMETERS": {
       "CONFIGURATION":"debug",
-      "OUTPUT_DIRECTORY":"build\\android",
-      "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
+      "OUTPUT_DIRECTORY":"build/android",
+      "CMAKE_OPTIONS":"-G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/Platform/Android/Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
       "CMAKE_TARGET":"all",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
@@ -50,8 +50,8 @@
     "COMMAND":"../Windows/build_ninja_windows.cmd",
     "PARAMETERS": {
       "CONFIGURATION":"profile",
-      "OUTPUT_DIRECTORY":"build\\android",
-      "CMAKE_OPTIONS":"-G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
+      "OUTPUT_DIRECTORY":"build/android",
+      "CMAKE_OPTIONS":"-G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/Platform/Android/Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
       "CMAKE_TARGET":"all",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
@@ -66,8 +66,8 @@
     "COMMAND":"../Windows/build_ninja_windows.cmd",
     "PARAMETERS": {
       "CONFIGURATION":"profile",
-      "OUTPUT_DIRECTORY":"build\\android",
-      "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\" -DLY_UNITY_BUILD=FALSE",
+      "OUTPUT_DIRECTORY":"build/android",
+      "CMAKE_OPTIONS":"-G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/Platform/Android/Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\" -DLY_UNITY_BUILD=FALSE",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
       "CMAKE_TARGET":"all",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
@@ -82,12 +82,12 @@
     "COMMAND":"../Windows/build_asset_windows.cmd",
     "PARAMETERS": {
         "CONFIGURATION":"profile",
-        "OUTPUT_DIRECTORY":"build\\windows",
+        "OUTPUT_DIRECTORY":"build/windows",
         "CMAKE_OPTIONS":"-DCMAKE_SYSTEM_VERSION=10.0",
         "CMAKE_LY_PROJECTS":"AutomatedTesting",
         "CMAKE_TARGET":"AssetProcessorBatch",
         "CMAKE_NATIVE_BUILD_ARGS": "/m /nologo",
-        "ASSET_PROCESSOR_BINARY": "bin\\profile\\AssetProcessorBatch.exe",
+        "ASSET_PROCESSOR_BINARY": "bin/profile/AssetProcessorBatch.exe",
         "ASSET_PROCESSOR_OPTIONS": "--zeroAnalysisMode --ignoreFutureAssetDatabaseVersionError --regset=\"/Amazon/AssetProcessor/Settings/Exclude Android/pattern=.*/DiffuseGlobalIllumination/.*precompiledshader\"",
         "ASSET_PROCESSOR_PLATFORMS":"android"
     }
@@ -101,8 +101,8 @@
     "COMMAND":"../Windows/build_ninja_windows.cmd",
     "PARAMETERS": {
       "CONFIGURATION":"release",
-      "OUTPUT_DIRECTORY":"build\\android",
-      "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
+      "OUTPUT_DIRECTORY":"build/android",
+      "CMAKE_OPTIONS":"-G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/Platform/Android/Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
       "CMAKE_TARGET":"all",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
@@ -117,8 +117,8 @@
     "COMMAND":"../Windows/build_ninja_windows.cmd",
     "PARAMETERS": {
       "CONFIGURATION":"release",
-      "OUTPUT_DIRECTORY":"build\\mono_android",
-      "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\" -DLY_MONOLITHIC_GAME=TRUE",
+      "OUTPUT_DIRECTORY":"build/mono_android",
+      "CMAKE_OPTIONS":"-G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/Platform/Android/Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\" -DLY_MONOLITHIC_GAME=TRUE",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
       "CMAKE_TARGET":"all",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
@@ -133,7 +133,7 @@
     "COMMAND":"gradle_windows.cmd",
     "PARAMETERS": {
       "CONFIGURATION":"profile",
-      "OUTPUT_DIRECTORY":"build\\ad_grd",
+      "OUTPUT_DIRECTORY":"build/ad_grd",
       "SIGN_APK": "false",
       "GRADLE_BUILD_CMD": "build",
       "ADDITIONAL_GENERATE_ARGS": ""
@@ -145,7 +145,7 @@
     "COMMAND":"build_and_run_unit_tests.cmd",
     "PARAMETERS": {
       "CONFIGURATION":"profile",
-      "OUTPUT_DIRECTORY":"build\\android_unittest",
+      "OUTPUT_DIRECTORY":"build/android_unittest",
       "GAME_PROJECT": "AutomatedTesting",
       "SIGN_APK": "true",
       "GRADLE_BUILD_CMD": "assemble",
