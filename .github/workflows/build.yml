@@ -77,8 +77,12 @@ jobs:
             O3DE-${{ runner.os }}-${{ runner.arch }}-
             O3DE-${{ runner.os }}-
 
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+git      - name: Setup python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+          pip-install: -r python/requirements.txt
+          cache: pip
 
       - name: Setup cmake
         uses: lukka/get-cmake@v4.2.1
@@ -88,12 +92,8 @@ jobs:
           useCloudCache: true
           useLocalCache: true
 
-      - name: Setup python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-          # pip-install: -r scripts/build/build_node/Platform/Common/requirements.txt
-          cache: pip
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Setup platform
         continue-on-error: true
@@ -102,9 +102,10 @@ jobs:
       - name: Build (${{ inputs.type }})
         timeout-minutes: 330
         env:
-          LY_PACKAGE_SERVER_URLS: https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net
           CMAKE_C_COMPILER_LAUNCHER: sccache
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
+          LY_PACKAGE_SERVER_URLS: https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net
+          NDK_VERSION: "25.1.8937393"
           SCCACHE_GHA_ENABLED: true
         run: >-
           python -u scripts/build/ci_build.py
