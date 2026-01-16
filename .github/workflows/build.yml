@@ -47,10 +47,10 @@ jobs:
             ~/.o3de/3rdParty
             ~/.o3de/Cache
             ~/.o3de/Python
-          key: O3DE-${{ inputs.platform }}-${{ runner.arch }}-${{ github.sha }}
+          key: O3DE-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
-            O3DE-${{ inputs.platform }}-${{ runner.arch }}-
-            O3DE-${{ inputs.platform }}-
+            O3DE-${{ runner.os }}-${{ runner.arch }}-
+            O3DE-${{ runner.os }}-
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.9
