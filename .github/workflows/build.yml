@@ -36,12 +36,12 @@ jobs:
 
     runs-on: |
       ${{ fromJSON('{
-        "android":"windows-2022",
-        "ios":"macos-26",
-        "linux":"ubuntu-24.04",
-        "mac":"macos-26",
-        "windows":"windows-2022"
-      }')[toLower(inputs.platform || 'linux')] }}
+        "Android":"windows-2022",
+        "iOS":"macos-26",
+        "Linux":"ubuntu-24.04",
+        "Mac":"macos-26",
+        "Windows":"windows-2022"
+      }')[inputs.platform] }}
 
     steps:
       - name: Maximize build space
