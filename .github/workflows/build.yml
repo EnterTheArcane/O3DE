@@ -38,7 +38,7 @@ jobs:
 
     runs-on: |
       ${{ fromJSON('{
-        "Android":"ubuntu-24.04",
+        "Android":"windows-2022",
         "iOS":"macos-26",
         "Linux":"ubuntu-24.04",
         "Mac":"macos-26",
@@ -115,6 +115,7 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: sccache
           LY_PACKAGE_SERVER_URLS: https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net
           NDK_VERSION: "25.1.8937393"
+          O3DE_COMPILER_CACHE: sccache
           O3DE_ENABLE_COMPILER_CACHE: true
           SCCACHE_GHA_ENABLED: true
         run: >-

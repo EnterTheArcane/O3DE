@@ -36,20 +36,70 @@
 function(o3de_compiler_cache_activation CACHE_EXE_PATH)
     message(STATUS "[COMPILER CACHE] Cache is enabled")
 
-    # Check for custom compiler cache path, CMake variable takes precedence over environment
+    # 1) Prefer explicit cache path (CMake var, then environment)
     if(DEFINED O3DE_COMPILER_CACHE_PATH)
-        set(cache_path ${O3DE_COMPILER_CACHE_PATH})
+        set(cache_path "${O3DE_COMPILER_CACHE_PATH}")
     elseif(DEFINED ENV{O3DE_COMPILER_CACHE_PATH})
-        set(cache_path $ENV{O3DE_COMPILER_CACHE_PATH})
+        set(cache_path "$ENV{O3DE_COMPILER_CACHE_PATH}")
     else()
-        message(FATAL_ERROR "[COMPILER CACHE] O3DE_COMPILER_CACHE_PATH not provided. This required if compiler cache is enabled.")
+        # 2) If O3DE_COMPILER_CACHE is set, try to resolve it via PATH (find_program)
+        set(_compile_cache "")
+        if(DEFINED O3DE_COMPILER_CACHE)
+            set(_compile_cache "${O3DE_COMPILER_CACHE}")
+        elseif(DEFINED ENV{O3DE_COMPILER_CACHE})
+            set(_compile_cache "$ENV{O3DE_COMPILER_CACHE}")
+        endif()
+
+        if(NOT _compile_cache STREQUAL "")
+            # If it looks like a path (absolute or relative with a slash), trust it as-is.
+            # Otherwise, treat it like a program name and search on PATH.
+            if(_compile_cache MATCHES [[[/\\]]])
+                set(cache_path "${_compile_cache}")
+            else()
+                find_program(_found_cache_exe
+                    NAMES
+                        "${_compile_cache}"
+                        "${_compile_cache}.exe"
+                    DOC "Resolved compiler cache executable"
+                )
+
+                # Convenience: if user sets O3DE_COMPILER_CACHE to a truthy value, try common tool names.
+                if(NOT _found_cache_exe AND _compile_cache MATCHES "^(1|ON|YES|TRUE|ENABLED)$")
+                    find_program(_found_cache_exe
+                        NAMES sccache sccache.exe ccache ccache.exe
+                        DOC "Resolved compiler cache executable"
+                    )
+                endif()
+
+                if(_found_cache_exe)
+                    set(cache_path "${_found_cache_exe}")
+                else()
+                    message(FATAL_ERROR
+                        "[COMPILER CACHE] O3DE_COMPILER_CACHE is set to '${_compile_cache}', "
+                        "but that executable was not found on PATH."
+                    )
+                endif()
+            endif()
+
+            # Populate O3DE_COMPILER_CACHE_PATH so downstream logic and GUIs can see it.
+            # (This does not override a user-specified O3DE_COMPILER_CACHE_PATH since we are in the else branch.)
+            set(O3DE_COMPILER_CACHE_PATH "${cache_path}" CACHE FILEPATH
+                "Path to ccache/sccache executable or a directory containing it"
+                FORCE
+            )
+        else()
+            message(FATAL_ERROR
+                "[COMPILER CACHE] O3DE_COMPILER_CACHE_PATH not provided. "
+                "Set O3DE_COMPILER_CACHE_PATH or set O3DE_COMPILER_CACHE to a program on PATH."
+            )
+        endif()
     endif()
 
     # Convert to absolute path and normalize slashes
     cmake_path(ABSOLUTE_PATH cache_path OUTPUT_VARIABLE cache_path)
     string(REPLACE "\\" "/" cache_path "${cache_path}")
     string(TOLOWER "${cache_path}" cache_path)
-    
+
     if(NOT EXISTS "${cache_path}")
         message(FATAL_ERROR "[COMPILER CACHE] Path does not exist: ${cache_path}")
     endif()
@@ -57,7 +107,7 @@ function(o3de_compiler_cache_activation CACHE_EXE_PATH)
     # If it's a Chocolatey shim or directory, search for the actual executable
     if(cache_path MATCHES ".*/chocolatey/bin/.*" OR IS_DIRECTORY "${cache_path}")
         set(search_path "${cache_path}")
-        
+
         # If it's a Chocolatey shim, convert bin path to lib path
         if(cache_path MATCHES ".*/chocolatey/bin/.*")
             string(REPLACE "/bin/" "/lib/" search_path "${cache_path}")
@@ -65,10 +115,10 @@ function(o3de_compiler_cache_activation CACHE_EXE_PATH)
             message(STATUS "[COMPILER CACHE] Detected Chocolatey shim path, searching in lib directory")
         endif()
 
-        file(GLOB_RECURSE potential_exes 
-            "${search_path}/**/ccache.exe" 
+        file(GLOB_RECURSE potential_exes
+            "${search_path}/**/ccache.exe"
             "${search_path}/**/sccache.exe")
-        
+
         if(potential_exes)
             list(GET potential_exes 0 cache_exe)
             string(REPLACE "\\" "/" cache_exe "${cache_exe}")
