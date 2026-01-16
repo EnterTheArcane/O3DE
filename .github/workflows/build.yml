@@ -12,6 +12,9 @@ on:
       runner:
         type: string
         required: true
+      cache:
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -42,6 +45,7 @@ jobs:
       - name: Restore cache
         id: cache
         uses: actions/cache/restore@v4
+        if: ${{ inputs.cache }}
         with:
           path: |
             ~/.o3de/3rdParty
@@ -87,7 +91,7 @@ jobs:
           --type ${{ inputs.type }}
 
       - name: Save cache
-        if: always() && steps.cache.outputs.cache-hit != 'true'
+        if: ${{ always() && inputs.cache && steps.cache.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: ~/.o3de
