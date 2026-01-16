@@ -31,9 +31,6 @@ on:
         default: Profile
 
 jobs:
-  plan:
-    name: Plan
-
   build:
     name: ${{ inputs.type }}
 
