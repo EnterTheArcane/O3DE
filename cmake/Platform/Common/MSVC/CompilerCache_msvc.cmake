@@ -7,136 +7,105 @@
 #
 
 #
-# o3de_compile_cache_activation activates compiler caching support for O3DE builds in using MSVC 
-# This currently supports ccache or sccache and can significantly speed up build times 
-# by caching compilation results and reusing them when possible, but only under certain conditions:
-# 1. /Z7 or embedded debug must be set
-# 2. If on CMake versions > 3.30, set cmake policy CMP0141 to NEW to use CMAKE_MSVC_DEBUG_INFORMATION_FORMAT instead of /Z7
+# o3de_compiler_cache_activation activates compiler caching support for O3DE builds using MSVC.
+# This supports ccache or sccache and can significantly speed up build times by caching compilation
+# results and reusing them when possible, but only under certain conditions:
+# 1. /Z7 (embedded debug) must be set (or, for CMake >= 3.30, set policy CMP0141 to NEW and use
+#    CMAKE_MSVC_DEBUG_INFORMATION_FORMAT)
 # 2. TrackFileAccess should be disabled or the cache folder has to be placed in %TMP% or %APPDATA%
-# Compiler flag examples for CMake can be found here: 
+#
+# Compiler flag examples:
 # https://github.com/ccache/ccache/wiki/MS-Visual-Studio
-# https://github.com/mozilla/sccache?tab=readme-ov-file#usage 
-# 
+# https://github.com/mozilla/sccache?tab=readme-ov-file#usage
+#
+# - To enable compiler caching, set O3DE_COMPILER_CACHE to one of:
+#   1. A truthy value (ON, TRUE, 1, YES, ENABLED)
+#      - CMake will try to find sccache or ccache on PATH (prefers sccache, then ccache)
+#   2. A program name (sccache or ccache, or another wrapper name)
+#      - CMake will try to find that program on PATH
+#   3. A path (absolute or relative) to:
+#      - the cache program
+#      - a directory containing ccache or sccache
+#      - a directory containing a bin/ subdirectory with ccache or sccache
+#
+# - If O3DE_COMPILER_CACHE is unset or set to a falsy value (OFF, FALSE, 0, NO, DISABLED),
+#   compiler caching is not used.
+#
+# - O3DE_COMPILER_CACHE can be set via:
+#   - CMake variable: -DO3DE_COMPILER_CACHE=<value>
+#   - Environment variable: O3DE_COMPILER_CACHE=<value>
+#   - CMake variable takes precedence over environment variable
+#
+# - Once resolved, O3DE_COMPILER_CACHE_PATH is populated in the CMake cache for visibility
+#   (path to the resolved executable or directory).
+#
 
-# - To enable compiler caching, you need to:
-#   1. Have ccache or sccache installed
-#   2. Set O3DE_ENABLE_COMPILER_CACHE to "true"
-#   2. Set O3DE_COMPILER_CACHE_PATH to either:
-#      - Direct path to the ccache/sccache executable
-#      - A partial directory containing ccache.exe or sccache.exe
-#
-# - The cache path and enable flag can be set either through:
-#   - CMake variable: -DO3DE_COMPILER_CACHE_PATH=<path> -DO3DE_ENABLE_COMPILER_CACHE=true
-#   - Environment variable: O3DE_COMPILER_CACHE_PATH=<path> O3DE_ENABLE_COMPILER_CACHE=true
-#
-# - CMake variables take precedence over environment variables
-# - This is primarily used for AR/CI processes but can also be used for local builds
-#
+if(NOT DEFINED O3DE_COMPILER_CACHE AND DEFINED ENV{O3DE_COMPILER_CACHE})
+    set(O3DE_COMPILER_CACHE "$ENV{O3DE_COMPILER_CACHE}")
+endif()
+
+set(O3DE_COMPILER_CACHE_ENABLED "${O3DE_COMPILER_CACHE}" CACHE BOOL "Enable compiler cache" FORCE)
 
 function(o3de_compiler_cache_activation CACHE_EXE_PATH)
+    if (NOT O3DE_COMPILER_CACHE)
+        return()
+    endif ()
+
     message(STATUS "[COMPILER CACHE] Cache is enabled")
 
-    # 1) Prefer explicit cache path (CMake var, then environment)
-    if(DEFINED O3DE_COMPILER_CACHE_PATH)
-        set(cache_path "${O3DE_COMPILER_CACHE_PATH}")
-    elseif(DEFINED ENV{O3DE_COMPILER_CACHE_PATH})
-        set(cache_path "$ENV{O3DE_COMPILER_CACHE_PATH}")
-    else()
-        # 2) If O3DE_COMPILER_CACHE is set, try to resolve it via PATH (find_program)
-        set(_compile_cache "")
-        if(DEFINED O3DE_COMPILER_CACHE)
-            set(_compile_cache "${O3DE_COMPILER_CACHE}")
-        elseif(DEFINED ENV{O3DE_COMPILER_CACHE})
-            set(_compile_cache "$ENV{O3DE_COMPILER_CACHE}")
-        endif()
+    # Determine how to interpret O3DE_COMPILER_CACHE:
+    # - If it looks like a path (contains / or \), treat it as a path (file or directory).
+    # - Else if truthy, try sccache then ccache via PATH.
+    # - Else treat it as a program name and find it on PATH.
+    if (O3DE_COMPILER_CACHE MATCHES "[/\\\\]")
+        set(cache_path "${O3DE_COMPILER_CACHE}")
+    elseif (O3DE_COMPILER_CACHE)
+        find_program(found_cache_exe NAMES sccache ccache)
+        if (found_cache_exe)
+            set(cache_path "${found_cache_exe}")
+        else ()
+            message(FATAL_ERROR "[COMPILER CACHE] Compiler cache is enabled, but neither sccache nor ccache was found on PATH")
+        endif ()
+    else ()
+        find_program(found_cache_exe "${O3DE_COMPILER_CACHE}")
+        if (found_cache_exe)
+            set(cache_path "${found_cache_exe}")
+        else ()
+            message(FATAL_ERROR "[COMPILER CACHE] O3DE_COMPILER_CACHE is set to '${O3DE_COMPILER_CACHE}', but it could not be found on PATH")
+        endif ()
+    endif ()
 
-        if(NOT _compile_cache STREQUAL "")
-            # If it looks like a path (absolute or relative with a slash), trust it as-is.
-            # Otherwise, treat it like a program name and search on PATH.
-            if(_compile_cache MATCHES [[[/\\]]])
-                set(cache_path "${_compile_cache}")
-            else()
-                find_program(_found_cache_exe
-                    NAMES
-                        "${_compile_cache}"
-                        "${_compile_cache}.exe"
-                    DOC "Resolved compiler cache executable"
-                )
-
-                # Convenience: if user sets O3DE_COMPILER_CACHE to a truthy value, try common tool names.
-                if(NOT _found_cache_exe AND _compile_cache MATCHES "^(1|ON|YES|TRUE|ENABLED)$")
-                    find_program(_found_cache_exe
-                        NAMES sccache sccache.exe ccache ccache.exe
-                        DOC "Resolved compiler cache executable"
-                    )
-                endif()
-
-                if(_found_cache_exe)
-                    set(cache_path "${_found_cache_exe}")
-                else()
-                    message(FATAL_ERROR
-                        "[COMPILER CACHE] O3DE_COMPILER_CACHE is set to '${_compile_cache}', "
-                        "but that executable was not found on PATH."
-                    )
-                endif()
-            endif()
-
-            # Populate O3DE_COMPILER_CACHE_PATH so downstream logic and GUIs can see it.
-            # (This does not override a user-specified O3DE_COMPILER_CACHE_PATH since we are in the else branch.)
-            set(O3DE_COMPILER_CACHE_PATH "${cache_path}" CACHE FILEPATH
-                "Path to ccache/sccache executable or a directory containing it"
-                FORCE
-            )
-        else()
-            message(FATAL_ERROR
-                "[COMPILER CACHE] O3DE_COMPILER_CACHE_PATH not provided. "
-                "Set O3DE_COMPILER_CACHE_PATH or set O3DE_COMPILER_CACHE to a program on PATH."
-            )
-        endif()
-    endif()
-
-    # Convert to absolute path and normalize slashes
     cmake_path(ABSOLUTE_PATH cache_path OUTPUT_VARIABLE cache_path)
-    string(REPLACE "\\" "/" cache_path "${cache_path}")
-    string(TOLOWER "${cache_path}" cache_path)
 
-    if(NOT EXISTS "${cache_path}")
+    if (NOT EXISTS "${cache_path}")
         message(FATAL_ERROR "[COMPILER CACHE] Path does not exist: ${cache_path}")
-    endif()
+    endif ()
 
-    # If it's a Chocolatey shim or directory, search for the actual executable
-    if(cache_path MATCHES ".*/chocolatey/bin/.*" OR IS_DIRECTORY "${cache_path}")
-        set(search_path "${cache_path}")
+    # Resolve executable:
+    # - If cache_path is a directory, search in that directory (and common subdirs) for sccache/ccache.
+    # - If cache_path is a file, use it directly.
+    if (IS_DIRECTORY "${cache_path}")
+        find_program(cache_exe
+            NAMES sccache ccache
+            PATHS "${cache_path}" "${cache_path}/bin"
+            NO_DEFAULT_PATH
+        )
 
-        # If it's a Chocolatey shim, convert bin path to lib path
-        if(cache_path MATCHES ".*/chocolatey/bin/.*")
-            string(REPLACE "/bin/" "/lib/" search_path "${cache_path}")
-            get_filename_component(search_path "${search_path}" DIRECTORY)
-            message(STATUS "[COMPILER CACHE] Detected Chocolatey shim path, searching in lib directory")
-        endif()
-
-        file(GLOB_RECURSE potential_exes
-            "${search_path}/**/ccache.exe"
-            "${search_path}/**/sccache.exe")
-
-        if(potential_exes)
-            list(GET potential_exes 0 cache_exe)
-            string(REPLACE "\\" "/" cache_exe "${cache_exe}")
-        else()
-            message(FATAL_ERROR "[COMPILER CACHE] Could not find ccache.exe or sccache.exe in directory: ${search_path}")
-        endif()
-    else()
+        if (NOT cache_exe)
+            message(FATAL_ERROR "[COMPILER CACHE] Could not find sccache or ccache in directory: ${cache_path}")
+        endif ()
+    else ()
         set(cache_exe "${cache_path}")
-    endif()
+    endif ()
+
+    set(O3DE_COMPILER_CACHE_PATH "${cache_exe}" CACHE FILEPATH "Resolved path to compiler cache program" FORCE)
 
     message(STATUS "[COMPILER CACHE] Found at ${cache_exe}, using it for this build")
 
-    if(CMAKE_GENERATOR MATCHES "^Ninja.*") # "Ninja" or "Ninja Multi-Config"
-        set(${CACHE_EXE_PATH} ${cache_exe} PARENT_SCOPE)
-    else()
-        # Copy cache executable as an alternative cl.exe. This will act as a wrapper for the real cl.exe
-        set(copied_cache_exe ${CMAKE_BINARY_DIR}/cl.exe)
-        file(COPY_FILE ${cache_exe} ${copied_cache_exe} ONLY_IF_DIFFERENT)
-        set(${CACHE_EXE_PATH} ${copied_cache_exe} PARENT_SCOPE)
-    endif()
+    if (CMAKE_GENERATOR MATCHES "^Ninja.*") # "Ninja" or "Ninja Multi-Config"
+        set(${CACHE_EXE_PATH} "${cache_exe}" PARENT_SCOPE)
+    else ()
+        set(${CACHE_EXE_PATH} "${CMAKE_BINARY_DIR}/cl.exe" PARENT_SCOPE)
+        file(COPY_FILE "${cache_exe}" "${CACHE_EXE_PATH}" ONLY_IF_DIFFERENT)
+    endif ()
 endfunction()
