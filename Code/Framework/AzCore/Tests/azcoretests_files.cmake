@@ -99,6 +99,7 @@ set(FILES
     EnumTests.cpp
     EventTests.cpp
     FileIOBaseTestTypes.h
+    HashTests.cpp
     Geometry2DUtils.cpp
     Interface.cpp
     IO/FileReaderTests.cpp

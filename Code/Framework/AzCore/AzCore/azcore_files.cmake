@@ -155,6 +155,9 @@ set(FILES
     EBus/Internal/Debug.h
     EBus/Internal/Handlers.h
     EBus/Internal/StoragePolicies.h
+    Hash/City.cpp
+    Hash/City.h
+    Hash/XX.h
     Instance/InstancePool.h
     Interface/Interface.h
     IO/AnsiTerminalUtils.cpp
