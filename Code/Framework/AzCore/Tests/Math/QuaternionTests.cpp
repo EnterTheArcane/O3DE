@@ -12,7 +12,6 @@
 #include <AzCore/Math/Matrix3x3.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/UnitTest/TestTypes.h>
-#include <AZTestShared/Math/MathTestHelpers.h>
 
 using namespace AZ;
 
@@ -544,7 +543,7 @@ namespace UnitTest
 
         // Test backwards computation Quaternion -> Tait-Brian angles
         const auto sourceDegrees = Vector3RadToDeg(param.euler);
-        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < Constants::Tolerance;
+        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < AZ::Constants::Tolerance;
 
         const auto anglesTaitBryanRadiansXYZ = param.result.GetEulerRadiansXYZ();
 
@@ -574,7 +573,7 @@ namespace UnitTest
         EXPECT_THAT(AZ::Quaternion::CreateFromEulerDegreesXYZ(sourceDegrees), IsClose(param.result));
 
         // Test backwards computation Quaternion -> Tait-Brian angles
-        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < Constants::Tolerance;
+        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < AZ::Constants::Tolerance;
 
         const auto anglesTaitBryanDegreesXYZ = param.result.GetEulerDegreesXYZ();
 
@@ -684,7 +683,7 @@ namespace UnitTest
 
         // Test backwards computation Quaternion -> Tait-Brian angles
         const auto sourceDegrees = Vector3RadToDeg(param.euler);
-        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < Constants::Tolerance;
+        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < AZ::Constants::Tolerance;
 
         const auto anglesTaitBryanRadiansZYX = param.result.GetEulerRadiansZYX();
 
@@ -700,7 +699,7 @@ namespace UnitTest
         EXPECT_THAT(AZ::Quaternion::CreateFromEulerDegreesZYX(sourceDegrees), IsClose(param.result));
 
         // Test backwards computation Quaternion -> Tait-Brian angles
-        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < Constants::Tolerance;
+        const bool isGimbleLock = fabs(fabs(sourceDegrees.GetY()) - 90.0f) < AZ::Constants::Tolerance;
 
         const auto anglesTaitBryanDegreesZYX = param.result.GetEulerDegreesZYX();
 
