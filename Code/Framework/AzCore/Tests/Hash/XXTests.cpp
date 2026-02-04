@@ -13,6 +13,8 @@ namespace UnitTest
 {
     TEST_F(Hash, XX_Example)
     {
+        AZ_Printf("TEST", "Hello World!");
+        GTEST_LOG_(INFO) << "Hello World!";
         EXPECT_EQ(0, 0);
     }
 } // namespace UnitTest
