@@ -29,8 +29,18 @@ on:
             required: false
             default: true
             type: boolean
+        mac_build:
+            description: 'Build Mac'
+            required: false
+            default: true
+            type: boolean
         android_build:
             description: 'Build Android'
+            required: false
+            default: true
+            type: boolean
+        ios_build:
+            description: 'Build iOS'
             required: false
             default: true
             type: boolean
@@ -48,8 +58,8 @@ jobs:
 # The parameters are the following:
 # - compiler: The compiler to use (msvc, clang, gcc)
 # - config: The configuration to use (profile, release). This is defined by presets in ../scripts/build/Platform/<os>/build_config.json
-# - image: The image to use (windows-2022, ubuntu-22.04). The images are defined from runners images repo: https://github.com/actions/runner-images
-# - platform: The platform to use (Windows, Linux, Android)
+# - image: The image to use (windows-2022, ubuntu-22.04, macos-15, macos-15-intel). The images are defined from runners images repo: https://github.com/actions/runner-images
+# - platform: The platform to use (Windows, Linux, Mac, Android, iOS)
 # - type: The type of build to use (profile, asset_profile, test_profile, test_cpu_profile, release)
 # - last_artifact: Whether to use the artifact from the last run, from the target branch if it's a pull request or its own branch if it's a push
 # - desktop: Whether to use the desktop environment for tests (Linux only)
@@ -59,6 +69,7 @@ jobs:
 # - ndk_version: Android NDK version to install (Android only)
 # - cmake_version: CMake version constraint to use (all platforms)
 # - gradle_version: Gradle version to use (Android only)
+# - arch: Target architecture (ARM or X64)
 
 #### Windows Build ####
     Windows-Profile:
@@ -158,6 +169,86 @@ jobs:
             clang_version: '14'
             cmake_version: '~3.24'
 
+#### Mac ARM Build ####
+    Mac-ARM-Profile:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15
+            platform: Mac
+            type: profile
+            arch: arm
+            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
+            cmake_version: '~3.24'
+
+    Mac-ARM-Asset:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        needs: Mac-ARM-Profile
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15
+            platform: Mac
+            type: asset_profile
+            arch: arm
+            cmake_version: '~3.24'
+
+    Mac-ARM-Test:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        needs: Mac-ARM-Asset
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15
+            platform: Mac
+            type: test_profile
+            arch: arm
+            cmake_version: '~3.24'
+
+#### Mac X64 Build ####
+    Mac-X64-Profile:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15-intel
+            platform: Mac
+            type: profile
+            arch: X64
+            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
+            cmake_version: '~3.24'
+
+    Mac-X64-Asset:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        needs: Mac-X64-Profile
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15-intel
+            platform: Mac
+            type: asset_profile
+            arch: X64
+            cmake_version: '~3.24'
+
+    Mac-X64-Test:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
+        needs: Mac-X64-Asset
+        uses: ./.github/workflows/mac-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15-intel
+            platform: Mac
+            type: test_profile
+            arch: X64
+            cmake_version: '~3.24'
+
 #### Android Build ####
     Android-Profile:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
@@ -201,4 +292,29 @@ jobs:
             last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
             ndk_version: '25.1.8937393'
             gradle_version: '8.12'
+            cmake_version: '~3.24'
+
+#### iOS Build ####
+    iOS-Profile:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
+        uses: ./.github/workflows/ios-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15
+            platform: iOS
+            type: profile
+            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
+            cmake_version: '~3.24'
+
+    iOS-Asset:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
+        needs: iOS-Profile
+        uses: ./.github/workflows/ios-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15
+            platform: iOS
+            type: asset_profile
             cmake_version: '~3.24'
