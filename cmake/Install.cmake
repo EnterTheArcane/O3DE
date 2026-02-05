@@ -6,7 +6,7 @@
 #
 #
 
-set(LY_INSTALL_ENABLED TRUE CACHE BOOL "Indicates if the install process is enabled")
+set(LY_INSTALL_ENABLED FALSE CACHE BOOL "Indicates if the install process is enabled")
 
 #! ly_install: wrapper to install that handles common functionality
 #

@@ -57,6 +57,11 @@ string(CONFIGURE ${LY_PACKAGE_UNPACK_LOCATION} LY_PACKAGE_UNPACK_LOCATION @ONLY)
 set(LY_PACKAGE_VALIDATE_CONTENTS FALSE CACHE BOOL "If enabled, will fully validate every file in every package based on the SHA256SUMS file from the package")
 set(LY_PACKAGE_VALIDATE_PACKAGE FALSE CACHE BOOL "If enabled, will validate that the downloaded package files hash matches the expected hash even if already downloaded and verified before.")
 
+# When enabled (default), ly_enable_package will perform package validation checks on every configure.
+# Disabling this can significantly speed up re-configures on systems with slow filesystem metadata operations,
+# at the cost of relying on the on-download validation + a minimal presence check.
+set(LY_PACKAGE_REVALIDATE_ON_CONFIGURE TRUE CACHE BOOL "If enabled, revalidate package contents/presence on each configure. Disable to speed up re-configures.")
+
 # you can also enable verbose/debug logging from the package system.
 set(LY_PACKAGE_DEBUG FALSE CACHE BOOL "If enabled, will output detailed information during package operations" )
 
@@ -587,25 +592,49 @@ function(ly_enable_package package_name)
 
     # add it to the prefixes so that we search here first
     # we add it in front so it can override any later paths, so "last one to declare" wins
-    if (NOT "${DOWNLOAD_LOCATION}/${package_name}" IN_LIST "${CMAKE_MODULE_PATH}")
-        set(CMAKE_MODULE_PATH ${DOWNLOAD_LOCATION}/${package_name} ${CMAKE_MODULE_PATH} PARENT_SCOPE)
+    if (NOT "${DOWNLOAD_LOCATION}/${package_name}" IN_LIST CMAKE_MODULE_PATH)
+        set(updated_module_path ${DOWNLOAD_LOCATION}/${package_name} ${CMAKE_MODULE_PATH})
+        set(CMAKE_MODULE_PATH ${updated_module_path})
+        set(CMAKE_MODULE_PATH ${updated_module_path} PARENT_SCOPE)
     endif()
 
-    get_property(existing_state GLOBAL PROPERTY LY_${package_name}_VALIDATED SET)
+    get_property(existing_state GLOBAL PROPERTY "LY_${package_name}_VALIDATED" SET)
 
-    if(NOT ${existing_state}) # note - check is for whether its SET, not whether its TRUE
+    if(NOT existing_state) # note - check is for whether its SET, not whether its TRUE
         # if we get here, its not SET, so set it to FALSE pre-emptively so that
         # we don't try to download over and over, if the attempt to download fails.
-        set_property(GLOBAL PROPERTY LY_${package_name}_VALIDATED FALSE)
-        
-        ly_validate_package(${package_name}) # sets VALIDATED in this scope.
-        if (NOT ${package_name}_VALIDATED)
-            # this will also validate it and set VALIDATED in this scope
-            ly_force_download_package(${package_name})
+        set_property(GLOBAL PROPERTY "LY_${package_name}_VALIDATED" FALSE)
+
+        set(use_cached_validation FALSE)
+        unset(validated_cache_var)
+        if (NOT LY_PACKAGE_REVALIDATE_ON_CONFIGURE)
+            # Cache validation per package + download location across configure runs.
+            string(MD5 package_cache_key "${DOWNLOAD_LOCATION};${package_name}")
+            set(validated_cache_var "LY_PACKAGE_VALIDATED_${package_cache_key}")
+
+            if (DEFINED ${validated_cache_var} AND ${validated_cache_var})
+                if (EXISTS "${DOWNLOAD_LOCATION}/${package_name}/PackageInfo.json")
+                    set(${package_name}_VALIDATED TRUE)
+                    set(use_cached_validation TRUE)
+                else()
+                    set(${validated_cache_var} FALSE CACHE INTERNAL "Package validation cache" FORCE)
+                endif()
+            endif()
         endif()
         
-        if(${package_name}_VALIDATED)
-            set_property(GLOBAL PROPERTY LY_${package_name}_VALIDATED TRUE)
+        if (NOT use_cached_validation)
+            ly_validate_package(${package_name}) # sets VALIDATED in this scope.
+            if (NOT DEFINED ${package_name}_VALIDATED OR NOT ${package_name}_VALIDATED)
+                # this will also validate it and set VALIDATED in this scope
+                ly_force_download_package(${package_name})
+            endif()
+        endif()
+        
+        if(DEFINED ${package_name}_VALIDATED AND ${package_name}_VALIDATED)
+            set_property(GLOBAL PROPERTY "LY_${package_name}_VALIDATED" TRUE)
+            if (validated_cache_var)
+                set(${validated_cache_var} TRUE CACHE INTERNAL "Package validation cache" FORCE)
+            endif()
             # this message is unconditional as it will help prove that the package even was
             # attempted to be mounted using our package system.  In the absence of this message
             # its going to be difficult to know why a package is missing in the logs

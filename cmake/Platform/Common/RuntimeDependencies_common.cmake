@@ -42,14 +42,14 @@ function(o3de_get_dependencies_for_target)
     set(link_dependencies_var "${${CMAKE_CURRENT_FUNCTION}_LINK_DEPENDENCIES_VAR}")
     set(imported_dependencies_var "${${CMAKE_CURRENT_FUNCTION}_IMPORTED_DEPENDENCIES_VAR}")
 
-    # check to see if this target is a 3rdParty lib that was a downloaded package,
-    # and if so, activate it.  This also calls find_package so there is no reason
-    # to do so later.
-
-    ly_parse_third_party_dependencies(${target})
-    # The above needs to be done before the below early out of this function!
+    # Check to see if this target is a 3rdParty lib that was a downloaded package,
+    # and if so, activate it. This can call find_package, so avoid calling it when
+    # the target already exists.
     if(NOT TARGET ${target})
-        return() # Nothing to do
+        ly_parse_third_party_dependencies(${target})
+        if(NOT TARGET ${target})
+            return() # Nothing to do
+        endif()
     endif()
 
     ly_de_alias_target(${target} target)
@@ -108,7 +108,15 @@ function(o3de_get_dependencies_for_target)
     # link dependencies are not runtime dependencies (we dont have anything to copy) however, we need to traverse
     # them since them or some dependency downstream could have something to copy over
     foreach(link_dependency IN LISTS link_dependencies)
-        if(${link_dependency} MATCHES "^::@")
+        # Filter out common non-target tokens and generator expressions to avoid
+        # unnecessary recursion/work.
+        if(link_dependency STREQUAL "debug" OR link_dependency STREQUAL "optimized" OR link_dependency STREQUAL "general")
+            continue()
+        endif()
+        if(link_dependency MATCHES "^\\$<")
+            continue()
+        endif()
+        if(link_dependency MATCHES "^::@")
             # Skip wraping produced when targets are not created in the same directory
             # (https://cmake.org/cmake/help/latest/prop_tgt/LINK_LIBRARIES.html)
             continue()
@@ -289,17 +297,24 @@ function(o3de_get_command_for_dependency)
     set(command_var "${${CMAKE_CURRENT_FUNCTION}_COMMAND_VAR}")
     set(file_dependency_var "${${CMAKE_CURRENT_FUNCTION}_FILE_DEPENDENCY_VAR}")
 
+    # Cache lookups based on the raw dependency string can be expensive and can also
+    # produce awkward global-property keys (paths, generator expressions, etc.).
+    # Hash the dependency into a stable key for property access.
+    string(MD5 dependency_hash "${dependency}")
+    set(command_cache_key "O3DE_COMMAND_FOR_DEPENDENCY_${dependency_hash}")
+    set(file_dependency_cache_key "O3DE_FILE_DEPENDENCY_FOR_DEPENDENCY_${dependency_hash}")
+
     # To optimize this, we are going to cache the commands for the targets we requested. A lot of targets end up being
     # dependencies of other targets.
-    get_property(is_command_cached GLOBAL PROPERTY O3DE_COMMAND_FOR_DEPENDENCY_${dependency} SET)
+    get_property(is_command_cached GLOBAL PROPERTY ${command_cache_key} SET)
     if(is_command_cached)
         # We already walked through this target
         if (NOT command_var STREQUAL "")
-            get_property(cached_command GLOBAL PROPERTY O3DE_COMMAND_FOR_DEPENDENCY_${dependency})
+            get_property(cached_command GLOBAL PROPERTY ${command_cache_key})
             set(${command_var} ${cached_command} PARENT_SCOPE)
         endif()
         if (NOT file_dependency_var STREQUAL "")
-            get_property(cached_depend GLOBAL PROPERTY O3DE_FILE_DEPENDENCY_FOR_DEPENDENCY_${dependency})
+            get_property(cached_depend GLOBAL PROPERTY ${file_dependency_cache_key})
             set(${file_dependency_var} "${cached_depend}" PARENT_SCOPE)
         endif()
         return()
@@ -344,10 +359,10 @@ function(o3de_get_command_for_dependency)
     string(APPEND runtime_command "ly_copy(\"${source_file}\" \"${target_directory}\" TARGET_FILE_DIR \"@target_file_dir@\""
         " SOURCE_TYPE \"${source_type}\" SOURCE_GEM_MODULE \"${source_gem_module}\")\n")
 
-    set_property(GLOBAL PROPERTY O3DE_COMMAND_FOR_DEPENDENCY_${dependency} "${runtime_command}")
+    set_property(GLOBAL PROPERTY ${command_cache_key} "${runtime_command}")
     set(${command_var} ${runtime_command} PARENT_SCOPE)
-    if(NOT command_var STREQUAL "")
-        set_property(GLOBAL PROPERTY O3DE_FILE_DEPENDENCY_FOR_DEPENDENCY_${dependency} "${source_file}")
+    if(NOT file_dependency_var STREQUAL "")
+        set_property(GLOBAL PROPERTY ${file_dependency_cache_key} "${source_file}")
     endif()
     if (NOT file_dependency_var STREQUAL "")
         set(${file_dependency_var} "${source_file}" PARENT_SCOPE)
@@ -417,6 +432,20 @@ function(ly_delayed_generate_runtime_dependencies)
     get_property(additional_module_paths GLOBAL PROPERTY LY_ADDITIONAL_MODULE_PATH)
     list(APPEND CMAKE_MODULE_PATH ${additional_module_paths})
 
+    if(DEFINED ENV{USERPROFILE} AND EXISTS $ENV{USERPROFILE})
+        set(PYTHON_ROOT_PATH "$ENV{USERPROFILE}/.o3de/Python") # Windows
+    else()
+        set(PYTHON_ROOT_PATH "$ENV{HOME}/.o3de/Python") # Unix
+    endif()
+    set(PYTHON_PACKAGES_ROOT_PATH "${PYTHON_ROOT_PATH}/packages")
+    cmake_path(NORMAL_PATH PYTHON_PACKAGES_ROOT_PATH )
+
+    set(LY_CURRENT_PYTHON_PACKAGE_PATH "${PYTHON_PACKAGES_ROOT_PATH}/${LY_PYTHON_PACKAGE_NAME}")
+    cmake_path(NORMAL_PATH LY_CURRENT_PYTHON_PACKAGE_PATH )
+
+    # Read the runtime dependencies template once; it is constant across all targets.
+    ly_file_read(${LY_RUNTIME_DEPENDENCIES_TEMPLATE} template_file)
+
     get_property(all_targets GLOBAL PROPERTY LY_ALL_TARGETS)
     foreach(aliased_target IN LISTS all_targets)
 
@@ -444,22 +473,25 @@ function(ly_delayed_generate_runtime_dependencies)
             IMPORTED_DEPENDENCIES_VAR target_imported_dependencies
         )
 
-        # Convert dependencies to files or generator expressions that can transform to files
-        o3de_transform_dependencies_to_files(FILES_VAR target_copy_files
-            DEPENDENCIES "${target_copy_dependencies}")
-        o3de_transform_dependencies_to_files(FILES_VAR target_target_files
-            DEPENDENCIES "${target_target_dependencies}")
-        o3de_transform_dependencies_to_files(FILES_VAR target_link_files
-            DEPENDENCIES "${target_link_dependencies}")
-        o3de_transform_dependencies_to_files(FILES_VAR target_imported_files
-            DEPENDENCIES "${target_imported_dependencies}")
+        # The dependency-to-file transforms below are only used for debug logging.
+        # Avoid paying their cost during normal configure runs.
+        if(DEFINED CMAKE_MESSAGE_LOG_LEVEL AND CMAKE_MESSAGE_LOG_LEVEL MATCHES "^(DEBUG|TRACE)$")
+            # Convert dependencies to files or generator expressions that can transform to files
+            o3de_transform_dependencies_to_files(FILES_VAR target_copy_files
+                DEPENDENCIES "${target_copy_dependencies}")
+            o3de_transform_dependencies_to_files(FILES_VAR target_target_files
+                DEPENDENCIES "${target_target_dependencies}")
+            o3de_transform_dependencies_to_files(FILES_VAR target_link_files
+                DEPENDENCIES "${target_link_dependencies}")
+            o3de_transform_dependencies_to_files(FILES_VAR target_imported_files
+                DEPENDENCIES "${target_imported_dependencies}")
 
-
-        message(DEBUG "TARGET \"${target}\" has the following file dependencies:\n"
-            "copy files -> \"${target_copy_files}\""
-            "target files -> \"${target_target_files}\""
-            "link files -> \"${target_copy_files}\""
-            "imported files -> \"${target_copy_files}\"")
+            message(DEBUG "TARGET \"${target}\" has the following file dependencies:\n"
+                "copy files -> \"${target_copy_files}\"\n"
+                "target files -> \"${target_target_files}\"\n"
+                "link files -> \"${target_link_files}\"\n"
+                "imported files -> \"${target_imported_files}\"")
+        endif()
 
         foreach(dependency_for_target IN LISTS target_copy_dependencies
             target_link_dependencies
@@ -498,18 +530,6 @@ function(ly_delayed_generate_runtime_dependencies)
             unset(target_file)
         endif()
 
-        if(DEFINED ENV{USERPROFILE} AND EXISTS $ENV{USERPROFILE})
-            set(PYTHON_ROOT_PATH "$ENV{USERPROFILE}/.o3de/Python") # Windows
-        else()
-            set(PYTHON_ROOT_PATH "$ENV{HOME}/.o3de/Python") # Unix
-        endif()
-        set(PYTHON_PACKAGES_ROOT_PATH "${PYTHON_ROOT_PATH}/packages")
-        cmake_path(NORMAL_PATH PYTHON_PACKAGES_ROOT_PATH )
-
-        set(LY_CURRENT_PYTHON_PACKAGE_PATH "${PYTHON_PACKAGES_ROOT_PATH}/${LY_PYTHON_PACKAGE_NAME}")
-        cmake_path(NORMAL_PATH LY_CURRENT_PYTHON_PACKAGE_PATH )
-
-        ly_file_read(${LY_RUNTIME_DEPENDENCIES_TEMPLATE} template_file)
         string(CONFIGURE "${LY_COPY_COMMANDS}" LY_COPY_COMMANDS @ONLY)
         string(CONFIGURE "${template_file}" configured_template_file @ONLY)
         file(GENERATE

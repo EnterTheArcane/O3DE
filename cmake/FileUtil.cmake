@@ -21,6 +21,10 @@
 #
 function(ly_include_cmake_file_list file)
 
+    if(NOT DEFINED LY_VALIDATE_FILE_LISTS)
+        set(LY_VALIDATE_FILE_LISTS TRUE CACHE BOOL "Validate that files referenced by *_files.cmake exist during configure")
+    endif()
+
     set(UNITY_AUTO_EXCLUSIONS)
 
     include(${file})
@@ -37,9 +41,11 @@ function(ly_include_cmake_file_list file)
     endif()
 
     foreach(f ${FILES})
-        get_filename_component(absolute_path ${f} ABSOLUTE)
-        if(NOT EXISTS ${absolute_path})
-            message(SEND_ERROR "File ${absolute_path} referenced in ${file} not found")
+        if(LY_VALIDATE_FILE_LISTS)
+            get_filename_component(absolute_path ${f} ABSOLUTE)
+            if(NOT EXISTS ${absolute_path})
+                message(SEND_ERROR "File ${absolute_path} referenced in ${file} not found")
+            endif()
         endif()
 
         # Automatically exclude any extensions marked for the current platform
@@ -66,9 +72,11 @@ function(ly_include_cmake_file_list file)
 
     # Check if there are any files to exclude from unity groupings
     foreach(f ${SKIP_UNITY_BUILD_INCLUSION_FILES})
-        get_filename_component(absolute_path ${f} ABSOLUTE)
-        if(NOT EXISTS ${absolute_path})
-            message(FATAL_ERROR "File ${absolute_path} for SKIP_UNITY_BUILD_INCLUSION_FILES referenced in ${file} not found")
+        if(LY_VALIDATE_FILE_LISTS)
+            get_filename_component(absolute_path ${f} ABSOLUTE)
+            if(NOT EXISTS ${absolute_path})
+                message(FATAL_ERROR "File ${absolute_path} for SKIP_UNITY_BUILD_INCLUSION_FILES referenced in ${file} not found")
+            endif()
         endif()
         if(NOT f IN_LIST FILES)
             list(APPEND FILES ${f})
