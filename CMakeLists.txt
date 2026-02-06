@@ -24,6 +24,7 @@ include(cmake/OutputDirectory.cmake)
 
 if(NOT PROJECT_NAME)
     include(cmake/CompilerSettings.cmake)
+    include(cmake/CompilerCache.cmake)
     project(O3DE
         LANGUAGES C CXX
         VERSION ${O3DE_INSTALL_VERSION_STRING}
