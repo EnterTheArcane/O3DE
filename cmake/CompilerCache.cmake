@@ -21,7 +21,12 @@
 
 include_guard(GLOBAL)
 
-set(O3DE_COMPILER_CACHE "off" CACHE STRING "Compiler cache to use (on, ccache, sccache, off)")
+set(_o3de_compiler_cache "off")
+if (DEFINED ENV{O3DE_COMPILER_CACHE} AND NOT "$ENV{O3DE_COMPILER_CACHE}" STREQUAL "")
+    set(_o3de_compiler_cache "$ENV{O3DE_COMPILER_CACHE}")
+endif ()
+
+set(O3DE_COMPILER_CACHE "${_o3de_compiler_cache}" CACHE STRING "Compiler cache to use (on, ccache, sccache, off)")
 set_property(CACHE O3DE_COMPILER_CACHE PROPERTY STRINGS "on" "ccache" "sccache" "off")
 
 # Allow case-insensitive values (e.g. CCACHE, ccache, On, OFF)

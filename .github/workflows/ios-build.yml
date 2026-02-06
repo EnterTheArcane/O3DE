@@ -168,7 +168,7 @@ jobs:
         run: |
           export LY_3RDPARTY_PATH=${{ github.workspace }}/3rdParty
           export LY_PACKAGE_SERVER_URLS="https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
-          export EXTRA_CMAKE_OPTIONS="-DO3DE_COMPILER_CACHE=ccache"
+          export O3DE_COMPILER_CACHE=ccache
           python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
 
       - name: Compress artifacts
