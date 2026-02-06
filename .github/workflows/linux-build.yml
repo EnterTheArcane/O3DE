@@ -164,7 +164,7 @@ jobs:
         if: ${{ steps.restore-artifact-cache.outcome == 'success' }}
         run: |
           if [ -f ${{ github.workspace }}/cache.tar ]; then          
-            tar -xvpf ${{ github.workspace }}/cache.tar --ignore-failed-read
+            gtar -xvpf ${{ github.workspace }}/cache.tar --ignore-failed-read
             rm ${{ github.workspace }}/cache.tar
             ccache --zero-stats --cleanup
           fi
@@ -229,7 +229,7 @@ jobs:
         if: ${{ (steps.extract-artifact.outcome == 'success' || steps.extract-artifact.outcome == 'skipped') && !cancelled() && !contains(inputs.type, 'test') }}
         continue-on-error: true
         run: |
-          tar --format=posix -cvpf ${{ github.workspace }}/cache.tar --ignore-failed-read \
+          gtar --format=posix -cvpf ${{ github.workspace }}/cache.tar --ignore-failed-read \
             .ccache \
             .o3de/python/downloaded_packages \
             3rdParty/downloaded_packages \
