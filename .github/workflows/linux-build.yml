@@ -94,8 +94,9 @@ jobs:
       - name: Setup 3p, user, and build folders
         run: |
           mkdir -p .o3de build 3rdParty && ln -sf "$(pwd)/.o3de" ~/.o3de
+
       - name: Setup ccache
-        uses: Chocobo1/setup-ccache-action@f84f86840109403e0fe0ded8b0766c9633affa16 # v1.4.7
+        uses: chocobo1/setup-ccache-action@37c3347f8a7738e82aab7a06f276f7a12e3008fb # v1.5.3
         continue-on-error: true
         if: always()
         with:
@@ -103,9 +104,9 @@ jobs:
           store_cache: false
           restore_cache: false
           ccache_options: |
-            max_size=10G
-            hash_dir=false
             cache_dir=${{ github.workspace }}/.ccache
+            hash_dir=false
+            max_size=10G
 
       - name: Check for rerun
         id: check-rerun
