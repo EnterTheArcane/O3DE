@@ -45,8 +45,7 @@ run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 # Avoid using the tag version, which is vulnerable to supply chain attacks
 
 jobs:
-  build:
-    name: Build
+  Build:
     runs-on: ${{ inputs.image }}
 
     steps:

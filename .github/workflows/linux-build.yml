@@ -48,8 +48,7 @@ run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 # Avoid using the tag version, which is vulnerable to supply chain attacks
 
 jobs:
-  build:
-    name: Build
+  Build:
     runs-on: ${{ inputs.image }}
 
     steps:
@@ -135,7 +134,7 @@ jobs:
           check_artifacts: true
           name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
           dry_run: true
-                  
+
       - name: Set artifact run ID
         # Set the run ID of the artifact to be used for the download step
         id: set-artifact-run-id
@@ -144,7 +143,7 @@ jobs:
           runId=${{ fromJSON(steps.last-run-id.outputs.artifacts)[0].workflow_run.id }}
           echo "artifact_run_id=$runId" >> $GITHUB_OUTPUT
           echo "Using artifacts from previous run: $runId"
-      
+
       - name: Restore artifact cache
         # Restore the artifact from the "Get last run" step or from the current run
         id: restore-artifact-cache
@@ -203,7 +202,7 @@ jobs:
           sudo apt -y autoclean
           sudo apt clean
           df -h
-          
+
       - name: Build ${{ inputs.type }}
         # Builds with presets in ../scripts/build/Platform/Linux/build_config.json
         timeout-minutes: 330

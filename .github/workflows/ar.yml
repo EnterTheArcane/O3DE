@@ -63,9 +63,8 @@ jobs:
   # - cmake_version: CMake version constraint to use (all platforms)
   # - gradle_version: Gradle version to use (Android only)
 
-#### Android Build ####
-  android-profile:
-    name: Android (Profile)
+  #### Android Build ####
+  Android-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
     uses: ./.github/workflows/android-build.yml
     with:
@@ -79,8 +78,7 @@ jobs:
       gradle_version: "8.12"
       cmake_version: "~3.25"
 
-  android-asset:
-    name: Android (Asset)
+  Android-Asset:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
     uses: ./.github/workflows/android-build.yml
     with:
@@ -96,8 +94,7 @@ jobs:
       gradle_version: "8.12"
       cmake_version: "~3.25"
 
-  android-gradle:
-    name: Android (Gradle)
+  Android-Gradle:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
     uses: ./.github/workflows/android-build.yml
     with:
@@ -111,9 +108,8 @@ jobs:
       gradle_version: "8.12"
       cmake_version: "~3.25"
 
-#### iOS Build ####
-  ios-profile:
-    name: iOS (Profile)
+  #### iOS Build ####
+  iOS-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
     uses: ./.github/workflows/ios-build.yml
     with:
@@ -125,10 +121,9 @@ jobs:
       last_artifact: ${{ !inputs.CLEAN_ARTIFACTS }}
       cmake_version: "~3.25"
 
-  ios-asset:
-    name: iOS (Asset)
+  iOS-Asset:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
-    needs: ios-profile
+    needs: iOS-Profile
     uses: ./.github/workflows/ios-build.yml
     with:
       compiler: clang
@@ -138,10 +133,9 @@ jobs:
       type: asset_profile
       cmake_version: "~3.25"
 
-  ios-test:
-    name: iOS (Test)
+  iOS-Test:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
-    needs: ios-asset
+    needs: iOS-Asset
     uses: ./.github/workflows/ios-build.yml
     with:
       compiler: clang
@@ -151,9 +145,8 @@ jobs:
       type: device_test_profile
       cmake_version: "~3.25"
 
-#### Linux Build ####
-  linux-profile:
-    name: Linux (Profile)
+  #### Linux Build ####
+  Linux-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_build }}
     uses: ./.github/workflows/linux-build.yml
     with:
@@ -166,10 +159,9 @@ jobs:
       clang_version: "14"
       cmake_version: "~3.25"
 
-  linux-asset:
-    name: Linux (Asset)
+  Linux-Asset:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_build }}
-    needs: linux-profile
+    needs: Linux-Profile
     uses: ./.github/workflows/linux-build.yml
     with:
       compiler: clang
@@ -180,10 +172,9 @@ jobs:
       clang_version: "14"
       cmake_version: "~3.25"
 
-  linux-test:
-    name: Linux (Test)
+  Linux-Test:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_build }}
-    needs: linux-asset
+    needs: Linux-Asset
     uses: ./.github/workflows/linux-build.yml
     with:
       compiler: clang
@@ -195,9 +186,8 @@ jobs:
       clang_version: "14"
       cmake_version: "~3.25"
 
-#### Mac Build ####
-  mac-profile:
-    name: Mac (Profile)
+  #### Mac Build ####
+  Mac-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
     uses: ./.github/workflows/mac-build.yml
     with:
@@ -209,10 +199,9 @@ jobs:
       last_artifact: ${{ !inputs.CLEAN_ARTIFACTS }}
       cmake_version: "~3.25"
 
-  mac-asset:
-    name: Mac (Asset)
+  Mac-Asset:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
-    needs: mac-profile
+    needs: Mac-Profile
     uses: ./.github/workflows/mac-build.yml
     with:
       compiler: clang
@@ -222,10 +211,9 @@ jobs:
       type: asset_profile
       cmake_version: "~3.25"
 
-  mac-test:
-    name: Mac (Test)
+  Mac-Test:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
-    needs: mac-asset
+    needs: Mac-Asset
     uses: ./.github/workflows/mac-build.yml
     with:
       compiler: clang
@@ -235,9 +223,8 @@ jobs:
       type: test_profile
       cmake_version: "~3.25"
 
-#### Windows Build ####
-  windows-profile:
-    name: Windows (Profile)
+  #### Windows Build ####
+  Windows-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
     uses: ./.github/workflows/windows-build.yml
     with:
@@ -251,10 +238,9 @@ jobs:
       msvc_platform_toolset: "v142"
       cmake_version: "~3.25"
 
-  windows-asset:
-    name: Windows (Asset)
+  Windows-Asset:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-    needs: windows-profile
+    needs: Windows-Profile
     uses: ./.github/workflows/windows-build.yml
     with:
       compiler: msvc
@@ -266,10 +252,9 @@ jobs:
       msvc_platform_toolset: "v142"
       cmake_version: "~3.25"
 
-  windows-test:
-    name: Windows (Test)
+  Windows-Test:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-    needs: windows-asset
+    needs: Windows-Asset
     uses: ./.github/workflows/windows-build.yml
     with:
       compiler: msvc
@@ -281,8 +266,7 @@ jobs:
       msvc_platform_toolset: "v142"
       cmake_version: "~3.25"
 
-  windows-release:
-    name: Windows (Release)
+  Windows-Release:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
     uses: ./.github/workflows/windows-build.yml
     with:
