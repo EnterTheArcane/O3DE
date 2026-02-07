@@ -55,9 +55,10 @@ jobs:
           show-progress: false
 
       - name: Git LFS pull
+        # Minimal pull for profile builds, otherwise pull all
         run: |
           git lfs install
-          git lfs pull
+          [[ "${{ inputs.type }}" == "profile" ]] && git lfs pull --include "*.ico,*.bmp" || git lfs pull
 
       - name: Setup 3p, user, and build folders
         run: |

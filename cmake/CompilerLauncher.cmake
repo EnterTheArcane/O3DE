@@ -30,6 +30,48 @@ include_guard(GLOBAL)
 block()
     set(supported_languages C CXX)
 
+    # Resolves Chocolatey shim executables to their real tool paths.
+    # Chocolatey commonly places shims in <ChocolateyInstall>/bin. The real tool
+    # is usually located somewhere under <ChocolateyInstall>/lib/<tool>/tools/**.
+    # Copying the shim elsewhere breaks its relative lookup.
+    function(resolve_chocolatey_shim in_path out_path)
+        if (NOT in_path)
+            set(${out_path} "" PARENT_SCOPE)
+            return()
+        endif ()
+
+        set(resolved "${in_path}")
+        set(normalized "${resolved}")
+        string(REPLACE "\\" "/" normalized "${normalized}")
+        string(TOLOWER "${normalized}" normalized)
+
+        # Attempt to resolve any Chocolatey shim under chocolatey/bin/<tool>.exe
+        if (normalized MATCHES ".*/chocolatey/bin/([^/]+)\\.exe$")
+            set(tool "${CMAKE_MATCH_1}")
+            set(search_root "${normalized}")
+            string(REPLACE "/bin/${tool}.exe" "/lib/${tool}" search_root "${search_root}")
+
+            file(GLOB_RECURSE candidates "${search_root}/tools/**/${tool}.exe")
+            if (candidates)
+                list(GET candidates 0 candidate)
+                string(REPLACE "\\" "/" candidate "${candidate}")
+                set(resolved "${candidate}")
+            else ()
+                # Some Chocolatey packages ship a differently named executable in tools/.
+                # If there is exactly one .exe under tools, prefer that rather than the shim.
+                file(GLOB_RECURSE candidates "${search_root}/tools/**/*.exe")
+                list(LENGTH candidates candidate_count)
+                if (candidate_count EQUAL 1)
+                    list(GET candidates 0 candidate)
+                    string(REPLACE "\\" "/" candidate "${candidate}")
+                    set(resolved "${candidate}")
+                endif ()
+            endif ()
+        endif ()
+
+        set(${out_path} "${resolved}" PARENT_SCOPE)
+    endfunction()
+
     # CMake does not natively initialize CMAKE_<LANG>_COMPILER_LAUNCHER from
     # environment variables, so we do it here as a convenience.
     foreach (cl_lang IN ITEMS ${supported_languages})
@@ -119,8 +161,40 @@ block()
             return()
         endif ()
 
-        # Copy launcher as cl.exe in the build directory
-        file(COPY_FILE "${cl_vs_launcher}" "${CMAKE_BINARY_DIR}/cl.exe" ONLY_IF_DIFFERENT)
+        # Visual Studio requires a concrete executable path; re-resolve here if needed.
+        if (NOT (IS_ABSOLUTE "${cl_vs_launcher}" AND EXISTS "${cl_vs_launcher}"))
+            find_program(cl_vs_launcher_found "${cl_vs_launcher}" NO_CACHE)
+            if (cl_vs_launcher_found)
+                set(cl_vs_launcher "${cl_vs_launcher_found}")
+            else ()
+                message(WARNING "CompilerLauncher: Could not resolve Visual Studio launcher '${cl_vs_launcher}' to an absolute path")
+                return()
+            endif ()
+        endif ()
+
+        # Prefer a symlink to avoid relocating Chocolatey shims (which depend on their install-relative layout).
+        # If symlinks are not permitted, fall back to copying.
+        set(cl_vs_wrapper "${CMAKE_BINARY_DIR}/cl.exe")
+        if (EXISTS "${cl_vs_wrapper}")
+            file(REMOVE "${cl_vs_wrapper}")
+        endif ()
+
+        execute_process(
+            COMMAND "${CMAKE_COMMAND}" -E create_symlink "${cl_vs_launcher}" "${cl_vs_wrapper}"
+            RESULT_VARIABLE cl_vs_link_result
+            OUTPUT_QUIET
+            ERROR_VARIABLE cl_vs_link_error
+        )
+
+        if (NOT cl_vs_link_result EQUAL 0)
+            # Copy launcher as cl.exe in the build directory.
+            # When forced to copy, resolve Chocolatey shims to their real tool path first.
+            resolve_chocolatey_shim("${cl_vs_launcher}" cl_vs_launcher_copy_source)
+            file(COPY_FILE "${cl_vs_launcher_copy_source}" "${cl_vs_wrapper}" ONLY_IF_DIFFERENT)
+            message(STATUS "CompilerLauncher: Visual Studio cl.exe wrapper copied (symlink unavailable)")
+        else ()
+            message(STATUS "CompilerLauncher: Visual Studio cl.exe wrapper symlinked")
+        endif ()
 
         list(APPEND CMAKE_VS_GLOBALS
             "CLToolExe=cl.exe"
