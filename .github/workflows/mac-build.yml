@@ -52,7 +52,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          path: "."
           show-progress: false
 
       - name: Git LFS pull
@@ -102,7 +101,7 @@ jobs:
           branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.ref_name }}
           search_artifacts: true
           check_artifacts: true
-          name: O3DE-${{ inputs.platform }}-${{ inputs.arch }}-${{ inputs.config }}-build
+          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
           dry_run: true
 
       - name: Set artifact run ID
@@ -120,7 +119,7 @@ jobs:
         uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         continue-on-error: true
         with:
-          name: O3DE-${{ inputs.platform }}-${{ inputs.arch }}-${{ inputs.config }}-build
+          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ steps.set-artifact-run-id.outputs.artifact_run_id || github.run_id }}
 
@@ -186,7 +185,7 @@ jobs:
         if: ${{ steps.compress-artifacts.conclusion == 'success' && !cancelled() && !contains(inputs.type, 'test') }}
         continue-on-error: true
         with:
-          name: O3DE-${{ inputs.platform }}-${{ inputs.arch }}-${{ inputs.config }}-build
+          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
           compression-level: 1
           overwrite: true
           path: |
