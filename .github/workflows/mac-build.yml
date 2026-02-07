@@ -15,32 +15,28 @@ on:
   workflow_call:
     inputs:
       compiler:
-        required: true
         type: string
+        required: true
       config:
-        required: true
         type: string
+        required: true
       image:
-        required: true
         type: string
+        required: true
       platform:
-        required: true
         type: string
+        required: true
       type:
-        required: true
         type: string
-      arch:
         required: true
-        type: string
-        description: Target architecture (ARM, X64)
       last_artifact:
-        required: false
         type: boolean
-      cmake_version:
         required: false
+      cmake_version:
         type: string
+        required: false
 
-run-name: ${{ inputs.platform }} (${{ inputs.arch }}) - ${{ inputs.type }}
+run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 
 # Note: All 3P Github Actions use the commit hash for security reasons
 # Avoid using the tag version, which is vulnerable to supply chain attacks

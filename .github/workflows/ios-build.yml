@@ -15,26 +15,26 @@ on:
   workflow_call:
     inputs:
       compiler:
-        required: true
         type: string
+        required: true
       config:
-        required: true
         type: string
+        required: true
       image:
-        required: true
         type: string
+        required: true
       platform:
-        required: true
         type: string
+        required: true
       type:
+        type: string
         required: true
-        type: string
       last_artifact:
-        required: false
         type: boolean
-      cmake_version:
         required: false
+      cmake_version:
         type: string
+        default: "~3.25"
 
 run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 

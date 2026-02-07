@@ -15,38 +15,38 @@ on:
   workflow_call:
     inputs:
       compiler:
-        required: true
         type: string
+        required: true
       config:
-        required: true
         type: string
+        required: true
       image:
-        required: true
         type: string
+        required: true
       platform:
-        required: true
         type: string
+        required: true
       type:
+        type: string
         required: true
-        type: string
       last_artifact:
-        required: false
         type: boolean
+        required: false
       ndk_version:
-        required: false
         type: string
+        required: false
       cmake_version:
-        required: false
         type: string
+        required: false
       gradle_version:
-        required: false
         type: string
+        required: false
       msvc_toolset_version:
-        required: false
         type: string
+        required: false
       msvc_platform_toolset:
-        required: false
         type: string
+        required: false
 
 run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 
