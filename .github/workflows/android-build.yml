@@ -61,9 +61,6 @@ env:
 
 jobs:
   Build:
-    strategy:
-      fail-fast: false
-
     runs-on: ${{ inputs.image }}
         
     steps:

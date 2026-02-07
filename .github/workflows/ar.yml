@@ -266,6 +266,7 @@ jobs:
 
     Android-Asset:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
+        needs: Android-Profile
         uses: ./.github/workflows/android-build.yml
         with:
             compiler: msvc
@@ -279,9 +280,10 @@ jobs:
             ndk_version: '25.1.8937393'
             gradle_version: '8.12'
             cmake_version: '~3.25'
-            
+
     Android-Gradle:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
+        needs: Android-Asset
         uses: ./.github/workflows/android-build.yml
         with:
             compiler: clang
