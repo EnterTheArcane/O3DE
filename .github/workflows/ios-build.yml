@@ -160,11 +160,12 @@ jobs:
       - name: Build ${{ inputs.type }}
         # Builds with presets in ../scripts/build/Platform/iOS/build_config.json
         timeout-minutes: 330
-        run: |
-          export LY_3RDPARTY_PATH=${{ github.workspace }}/3rdParty
-          export LY_PACKAGE_SERVER_URLS="https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
-          export O3DE_COMPILER_CACHE=ccache
-          python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          LY_3RDPARTY_PATH: ${{ github.workspace }}/3rdParty
+          LY_PACKAGE_SERVER_URLS: "https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
+        run: python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
 
       - name: Compress artifacts
         # Compress with posix format to preserve permissions and timestamps at nanosecond precision
