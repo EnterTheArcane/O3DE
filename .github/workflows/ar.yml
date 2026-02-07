@@ -135,6 +135,18 @@ jobs:
             type: asset_profile
             cmake_version: "~3.25"
 
+    iOS-Test:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
+        needs: iOS-Asset
+        uses: ./.github/workflows/ios-build.yml
+        with:
+            compiler: clang
+            config: profile
+            image: macos-15
+            platform: iOS
+            type: device_test_profile
+            cmake_version: "~3.25"
+
 #### Linux Build ####
     Linux-Profile:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_build }}
