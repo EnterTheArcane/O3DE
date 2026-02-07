@@ -24,7 +24,6 @@ include(cmake/OutputDirectory.cmake)
 
 if(NOT PROJECT_NAME)
     include(cmake/CompilerSettings.cmake)
-    include(cmake/CompilerCache.cmake)
     project(O3DE
         LANGUAGES C CXX
         VERSION ${O3DE_INSTALL_VERSION_STRING}
@@ -56,6 +55,7 @@ endif()
 message(STATUS "Initializing O3DE CMake system...")
 list(APPEND CMAKE_MESSAGE_INDENT "  ")
 include(CTest)
+include(cmake/CompilerLauncher.cmake)
 include(cmake/PAL.cmake)
 include(cmake/PALTools.cmake)
 include(cmake/RuntimeDependencies.cmake)

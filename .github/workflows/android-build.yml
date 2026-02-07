@@ -52,8 +52,8 @@ run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 
 # Activate compiler cache
 env: 
-  O3DE_ENABLE_COMPILER_CACHE: true
-  O3DE_COMPILER_CACHE_PATH: 'C:\ProgramData\Chocolatey\bin\ccache.exe'
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
   NDK_VERSION: ${{ inputs.ndk_version }}
 
 # Note: All 3P Github Actions use the commit hash for security reasons 
@@ -180,7 +180,7 @@ jobs:
           if (Test-Path ${{ env.DEV_DRIVE_WORKSPACE }}\cache.tar) {          
             tar -xvpf ${{ env.DEV_DRIVE_WORKSPACE }}\cache.tar
             rm ${{ env.DEV_DRIVE_WORKSPACE }}\cache.tar
-            ${{ env.O3DE_COMPILER_CACHE_PATH }} --zero-stats --cleanup
+            ccache --zero-stats --cleanup
           }
       
       - name: Setup cmake

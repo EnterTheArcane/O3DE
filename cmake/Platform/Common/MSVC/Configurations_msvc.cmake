@@ -48,7 +48,6 @@ endif()
 
 include(cmake/Platform/Common/Configurations_common.cmake)
 include(cmake/Platform/Common/MSVC/VisualStudio_common.cmake)
-include(cmake/Platform/Common/MSVC/CompilerCache_msvc.cmake)
 
 # Verify that it wasn't invoked with an unsupported target/host architecture. Currently only supports x64/x64
 if(CMAKE_VS_PLATFORM_NAME AND NOT CMAKE_VS_PLATFORM_NAME STREQUAL "x64")
@@ -139,29 +138,16 @@ ly_append_configurations_options(
         /INCREMENTAL:NO
 )
 
-# Look for O3DE_ENABLE_COMPILER_CACHE as a CMake flag or environment variable, then sets the appropriate compatible flags for caching
-# More details about the compiler cache can be found in CompilerCache.cmake
-
-if((O3DE_ENABLE_COMPILER_CACHE OR "$ENV{O3DE_ENABLE_COMPILER_CACHE}" STREQUAL "true") AND NOT O3DE_SCRIPT_ONLY)
-    o3de_compiler_cache_activation(cache_exe_path) # Activates the compiler cache
-
-    # Configure debug info format and compiler launcher for cache compatibility
-    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "Embedded")
-    set(CMAKE_C_COMPILER_LAUNCHER ${cache_exe_path})
-    set(CMAKE_CXX_COMPILER_LAUNCHER ${cache_exe_path})
-
-    # Fallback to compiler flags if the debug format doesn't work, which can depend on CMake version
+# If a compiler launcher is configured (set up by cmake/CompilerLauncher.cmake),
+# use /Z7 embedded debug info which is required for ccache/sccache compatibility.
+# CompilerLauncher.cmake already sets CMAKE_MSVC_DEBUG_INFORMATION_FORMAT to
+# "Embedded" and handles the Visual Studio cl.exe wrapper + CMAKE_VS_GLOBALS.
+if(CMAKE_C_COMPILER_LAUNCHER AND NOT O3DE_SCRIPT_ONLY)
     ly_append_configurations_options(
         COMPILATION_PROFILE
-            /Z7             # Use embedded debug info instead of PDB
+            /Z7             # Embedded debug info (required for compiler launcher)
         COMPILATION_RELEASE
             /Z7
-    )
-
-    # Set required VS globals for compiler cache
-    set(CMAKE_VS_GLOBALS
-        "CLToolExe=cl.exe"
-        "CLToolPath=${CMAKE_BINARY_DIR}"
     )
 else()
     ly_append_configurations_options(
