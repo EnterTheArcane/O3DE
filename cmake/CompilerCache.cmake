@@ -62,7 +62,7 @@ block()
 
     if (NOT _compiler_cache_executable)
         if (_o3de_compiler_cache STREQUAL "on")
-            message(STATUS "CompilerCache: Not found (ccache/sccache not in PATH)")
+            message(WARNING "CompilerCache: not found (ccache/sccache not in PATH)")
         endif ()
         return()
     endif ()
@@ -74,7 +74,7 @@ block()
         # Use CMAKE_XCODE_ATTRIBUTE_CC/CXX with wrapper scripts instead.
         # See: https://crascit.com/2016/04/09/using-ccache-with-cmake/
 
-        set(_wrapper_dir "${CMAKE_BINARY_DIR}/bin")
+        set(_wrapper_dir "${CMAKE_BINARY_DIR}/_wrappers")
         file(MAKE_DIRECTORY "${_wrapper_dir}")
 
         execute_process(
