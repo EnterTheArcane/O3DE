@@ -60,10 +60,8 @@ env:
 # Avoid using the tag version, which is vulnerable to supply chain attacks
 
 jobs:
-  Build:
-    strategy:
-      fail-fast: false
-
+  build:
+    name: Build
     runs-on: ${{ inputs.image }}
         
     steps:
