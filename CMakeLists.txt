@@ -6,14 +6,14 @@
 #
 #
 
-# Cmake version 3.24 is the minimum version needed for all of Open 3D Engine's supported platforms
-cmake_minimum_required(VERSION 3.24)
+# Cmake version 3.25 is the minimum version needed for all of Open 3D Engine's supported platforms
+cmake_minimum_required(VERSION 3.25)
 
 if(NOT ${CMAKE_VERSION} VERSION_LESS "3.24") 
     # CMP0135 - controls whether, when unpacking an archive file, it should:
     # (OLD) set the file timestamps to what they are in the archive (not recommended)
     # (NEW) set the file timestamps to the time of extraction (recommended)
-    cmake_policy(SET CMP0135 NEW) 
+    cmake_policy(SET CMP0135 NEW)
 endif()
 
 include(cmake/LySet.cmake)
@@ -26,7 +26,7 @@ if(NOT PROJECT_NAME)
     include(cmake/CompilerSettings.cmake)
     include(cmake/CompilerCache.cmake)
     project(O3DE
-        LANGUAGES C CXX
+        LANGUAGES C CXX OBJC OBJCXX
         VERSION ${O3DE_INSTALL_VERSION_STRING}
     )
 endif()
