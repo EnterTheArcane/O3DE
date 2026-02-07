@@ -74,7 +74,7 @@ block()
         # Use CMAKE_XCODE_ATTRIBUTE_CC/CXX with wrapper scripts instead.
         # See: https://crascit.com/2016/04/09/using-ccache-with-cmake/
 
-        set(_wrapper_dir "${CMAKE_BINARY_DIR}/_compiler_cache_wrappers")
+        set(_wrapper_dir "${CMAKE_BINARY_DIR}/bin")
         file(MAKE_DIRECTORY "${_wrapper_dir}")
 
         execute_process(
