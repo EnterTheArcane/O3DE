@@ -42,7 +42,7 @@ block()
 
     # Early exit if no launcher is configured
     if (NOT CMAKE_C_COMPILER_LAUNCHER AND NOT CMAKE_CXX_COMPILER_LAUNCHER)
-        message(VERBOSE "CompilerLauncher: No compiler launcher configured")
+        message(VERBOSE "CompilerLauncher: Not configured")
         return()
     endif ()
 
@@ -119,13 +119,16 @@ block()
             return()
         endif ()
 
-        # Copy launcher as launch-cl.exe in the build directory
-        file(COPY_FILE "${cl_vs_launcher}" "${CMAKE_BINARY_DIR}/launch-cl.exe" ONLY_IF_DIFFERENT)
+        # Copy launcher as cl.exe in the build directory
+        file(COPY_FILE "${cl_vs_launcher}" "${CMAKE_BINARY_DIR}/cl.exe" ONLY_IF_DIFFERENT)
 
-        set(VS_GLOBAL_CLToolExe "launch-cl.exe" CACHE STRING "" FORCE)
-        set(VS_GLOBAL_CLToolPath "${CMAKE_BINARY_DIR}" CACHE STRING "" FORCE)
-        set(VS_GLOBAL_TrackFileAccess "false" CACHE STRING "" FORCE)
-        set(VS_GLOBAL_UseMultiToolTask "true" CACHE STRING "" FORCE)
+        list(APPEND CMAKE_VS_GLOBALS
+            "CLToolExe=cl.exe"
+            "CLToolPath=${CMAKE_BINARY_DIR}"
+            "TrackFileAccess=false"
+            "UseMultiToolTask=true"
+        )
+        set(CMAKE_VS_GLOBALS "${CMAKE_VS_GLOBALS}" PARENT_SCOPE)
 
         # Embedded debug info is required for compiler launcher compatibility
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "Embedded" CACHE STRING "" FORCE)
