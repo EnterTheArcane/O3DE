@@ -138,24 +138,6 @@ ly_append_configurations_options(
         /INCREMENTAL:NO
 )
 
-# If a compiler launcher is configured (set up by cmake/CompilerLauncher.cmake),
-# use /Z7 embedded debug info which is required for ccache/sccache compatibility.
-# CompilerLauncher.cmake already sets CMAKE_MSVC_DEBUG_INFORMATION_FORMAT to
-# "Embedded" and handles the Visual Studio cl.exe wrapper + CMAKE_VS_GLOBALS.
-if(CMAKE_C_COMPILER_LAUNCHER AND NOT O3DE_SCRIPT_ONLY)
-    ly_append_configurations_options(
-        COMPILATION_PROFILE
-            /Z7             # Embedded debug info (required for compiler launcher)
-        COMPILATION_RELEASE
-            /Z7
-    )
-else()
-    ly_append_configurations_options(
-        COMPILATION_PROFILE
-            /Zi             # Generate debugging information (no Edit/Continue)
-    )
-endif()
-
 set(LY_BUILD_WITH_ADDRESS_SANITIZER FALSE CACHE BOOL "Builds using AddressSanitizer (ASan). Will disable Edit/Continue, Incremental building and Run-Time checks (default = FALSE)")
 if(LY_BUILD_WITH_ADDRESS_SANITIZER)
     set(LY_BUILD_WITH_INCREMENTAL_LINKING_DEBUG FALSE)
