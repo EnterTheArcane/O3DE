@@ -172,7 +172,15 @@ block()
             endif ()
         endif ()
 
-        # Prefer a symlink to avoid relocating Chocolatey shims (which depend on their install-relative layout).
+        # Resolve Chocolatey shims (in .../Chocolatey/bin) to the real executable under .../Chocolatey/lib/.../tools/.
+        # This is required even when using a symlink, because the shim uses install-relative paths based on
+        # its own module location; executing it via a build-directory symlink makes it look for ..\lib\... in the build tree.
+        resolve_chocolatey_shim("${cl_vs_launcher}" cl_vs_launcher_real)
+        if (cl_vs_launcher_real)
+            set(cl_vs_launcher "${cl_vs_launcher_real}")
+        endif ()
+
+        # Prefer a symlink to avoid copying the launcher.
         # If symlinks are not permitted, fall back to copying.
         set(cl_vs_wrapper "${CMAKE_BINARY_DIR}/cl.exe")
         if (EXISTS "${cl_vs_wrapper}")
@@ -188,9 +196,7 @@ block()
 
         if (NOT cl_vs_link_result EQUAL 0)
             # Copy launcher as cl.exe in the build directory.
-            # When forced to copy, resolve Chocolatey shims to their real tool path first.
-            resolve_chocolatey_shim("${cl_vs_launcher}" cl_vs_launcher_copy_source)
-            file(COPY_FILE "${cl_vs_launcher_copy_source}" "${cl_vs_wrapper}" ONLY_IF_DIFFERENT)
+            file(COPY_FILE "${cl_vs_launcher}" "${cl_vs_wrapper}" ONLY_IF_DIFFERENT)
             message(STATUS "CompilerLauncher: Visual Studio cl.exe wrapper copied (symlink unavailable)")
         else ()
             message(STATUS "CompilerLauncher: Visual Studio cl.exe wrapper symlinked")
