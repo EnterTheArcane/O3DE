@@ -61,47 +61,47 @@ jobs:
 # - gradle_version: Gradle version to use (Android only)
 
 #### Windows Build ####
-#    Windows-Profile:
-#        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-#        uses: ./.github/workflows/windows-build.yml
-#        with:
-#            compiler: msvc
-#            config: profile
-#            image: windows-2022
-#            platform: Windows
-#            type: profile
-#            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }} # If CLEAN_ARTIFACTS is false, then this returns true
-#            msvc_toolset_version: '14.29'
-#            msvc_platform_toolset: 'v142'
-#            cmake_version: '~3.24'
-#
-#    Windows-Asset:
-#        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-#        needs: Windows-Profile
-#        uses: ./.github/workflows/windows-build.yml
-#        with:
-#            compiler: msvc
-#            config: profile
-#            image: windows-2022
-#            platform: Windows
-#            type: asset_profile
-#            msvc_toolset_version: '14.29'
-#            msvc_platform_toolset: 'v142'
-#            cmake_version: '~3.24'
-#
-#    Windows-Test:
-#        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-#        needs: Windows-Asset
-#        uses: ./.github/workflows/windows-build.yml
-#        with:
-#            compiler: msvc
-#            config: profile
-#            image: windows-2022
-#            platform: Windows
-#            type: test_cpu_profile
-#            msvc_toolset_version: '14.29'
-#            msvc_platform_toolset: 'v142'
-#            cmake_version: '~3.24'
+    Windows-Profile:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
+        uses: ./.github/workflows/windows-build.yml
+        with:
+            compiler: msvc
+            config: profile
+            image: windows-2022
+            platform: Windows
+            type: profile
+            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }} # If CLEAN_ARTIFACTS is false, then this returns true
+            msvc_toolset_version: '14.29'
+            msvc_platform_toolset: 'v142'
+            cmake_version: '~3.24'
+
+    Windows-Asset:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
+        needs: Windows-Profile
+        uses: ./.github/workflows/windows-build.yml
+        with:
+            compiler: msvc
+            config: profile
+            image: windows-2022
+            platform: Windows
+            type: asset_profile
+            msvc_toolset_version: '14.29'
+            msvc_platform_toolset: 'v142'
+            cmake_version: '~3.24'
+
+    Windows-Test:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
+        needs: Windows-Asset
+        uses: ./.github/workflows/windows-build.yml
+        with:
+            compiler: msvc
+            config: profile
+            image: windows-2022
+            platform: Windows
+            type: test_cpu_profile
+            msvc_toolset_version: '14.29'
+            msvc_platform_toolset: 'v142'
+            cmake_version: '~3.24'
 
     Windows-Clang:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
@@ -109,7 +109,7 @@ jobs:
         with:
             compiler: clang
             config: release
-            image: windows-2026
+            image: windows-2022
             platform: Windows
             type: release_ninja
             last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
@@ -122,26 +122,26 @@ jobs:
         with:
             compiler: clang-cl
             config: release
-            image: windows-2026
+            image: windows-2022
             platform: Windows
             type: release_ninja
             last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
             llvm_version: '21.1.8'
             cmake_version: '~3.24'
 
-#    Windows-Release:
-#        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-#        uses: ./.github/workflows/windows-build.yml
-#        with:
-#            compiler: msvc
-#            config: release
-#            image: windows-2022
-#            platform: Windows
-#            type: release
-#            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
-#            msvc_toolset_version: '14.29'
-#            msvc_platform_toolset: 'v142'
-#            cmake_version: '~3.24'
+    Windows-Release:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
+        uses: ./.github/workflows/windows-build.yml
+        with:
+            compiler: msvc
+            config: release
+            image: windows-2022
+            platform: Windows
+            type: release
+            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
+            msvc_toolset_version: '14.29'
+            msvc_platform_toolset: 'v142'
+            cmake_version: '~3.24'
 
 #### Linux Build ####
     Linux-Profile:
