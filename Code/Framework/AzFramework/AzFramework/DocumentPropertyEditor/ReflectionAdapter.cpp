@@ -180,7 +180,7 @@ namespace AZ::DocumentPropertyEditor
                 Nodes::PropertyEditor::OnChanged.InvokeOnDomNode(containerNode, newValue, Nodes::ValueChangeType::FinishedEdit);
                 // rebuild the view based on the new contents, which could be many rows.
                 // This deletes the 'this' pointer!
-                impl->m_adapter->NotifyResetDocument(); 
+                impl->m_adapter->NotifyResetDocument();
             }
 
             void OnAddElement(ReflectionAdapterReflectionImpl* impl, const AZ::Dom::Path& path)
@@ -385,6 +385,7 @@ namespace AZ::DocumentPropertyEditor
                 void* instance, size_t elementIndex, const Reflection::IAttributes& attributes)
             {
                 AZ_Assert(instance != nullptr, "Instance was nullptr when attempting to create a ContainerElement");
+                AZ_UNUSED(instance);
 
                 AZ::Serialize::IDataContainer* parentContainer{};
                 if (auto parentContainerValue = attributes.Find(AZ::Reflection::DescriptorAttributes::ParentContainer);

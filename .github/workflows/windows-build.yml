@@ -188,7 +188,6 @@ jobs:
         uses: kylemayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2.0.9
         with:
           version: ${{ inputs.llvm_version }}
-          directory: ${{ env.DEV_DRIVE }}\llvm
 
       - name: Configure generator/toolset env for CMake
         # Set the environment variables for the CMake generator and toolset depending on CMake version
@@ -208,24 +207,6 @@ jobs:
             echo "CMAKE_GENERATOR_TOOLSET=${{ inputs.msvc_platform_toolset }}" >> $env:GITHUB_ENV
           }
 
-      - name: Configure clang environment
-        if: ${{ inputs.compiler == 'clang' }}
-        shell: pwsh
-        run: |
-          @"
-          CC=${env:DEV_DRIVE}\llvm\bin\clang.exe
-          CXX=${env:DEV_DRIVE}\llvm\bin\clang++.exe
-          "@ | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Configure clang-cl environment
-        if: ${{ inputs.compiler == 'clang-cl' }}
-        shell: pwsh
-        run: |
-          @"
-          CC=${env:DEV_DRIVE}\llvm\bin\clang-cl.exe
-          CXX=${env:DEV_DRIVE}\llvm\bin\clang-cl.exe
-          "@ | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
       - name: Install specific MSVC toolset
         # Install a specific MSVC toolset into VS2022
         if: ${{ inputs.msvc_toolset_version && inputs.msvc_platform_toolset }}
@@ -241,8 +222,24 @@ jobs:
 
       - name: Configure environment
         working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
+        shell: pwsh
         run: |
-          echo "Installing dependencies"
+          if ("${{ inputs.compiler }}" -eq "clang") {
+            echo "Setting CC and CXX for clang"
+            echo "CC=${env:LLVM_PATH}\bin\clang.exe" >> $env:GITHUB_ENV
+            echo "CXX=${env:LLVM_PATH}\bin\clang++.exe" >> $env:GITHUB_ENV
+          }
+          elseif ("${{ inputs.compiler }}" -eq "clang-cl") {
+            echo "Setting CC and CXX for clang-cl"
+            echo "CC=${env:LLVM_PATH}\bin\clang-cl.exe" >> $env:GITHUB_ENV
+            echo "CXX=${env:LLVM_PATH}\bin\clang-cl.exe" >> $env:GITHUB_ENV
+          }
+          elseif ("${{ inputs.compiler }}" -eq "msvc") {
+            echo "Setting CC and CXX for MSVC"
+            echo "CC=cl.exe" >> $env:GITHUB_ENV
+            echo "CXX=cl.exe" >> $env:GITHUB_ENV
+          }
+
           echo "Getting python..."
           python\get_python.bat
           echo "Installing additional python dependencies..."
