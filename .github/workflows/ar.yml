@@ -103,6 +103,32 @@ jobs:
             msvc_platform_toolset: 'v142'
             cmake_version: '~3.24'
 
+    Windows-Clang:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
+        uses: ./.github/workflows/windows-build.yml
+        with:
+            compiler: clang
+            config: release
+            image: windows-2026
+            platform: Windows
+            type: release_ninja
+            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
+            llvm_version: '21.1.8'
+            cmake_version: '~3.24'
+
+    Windows-ClangCL:
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
+        uses: ./.github/workflows/windows-build.yml
+        with:
+            compiler: clang-cl
+            config: release
+            image: windows-2026
+            platform: Windows
+            type: release_ninja
+            last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
+            llvm_version: '21.1.8'
+            cmake_version: '~3.24'
+
     Windows-Release:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
         uses: ./.github/workflows/windows-build.yml

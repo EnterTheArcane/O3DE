@@ -38,6 +38,9 @@ on:
       msvc_platform_toolset:
         required: false
         type: string
+      llvm_version:
+        required: false
+        type: string
       cmake_version:
         required: false
         type: string
@@ -180,8 +183,16 @@ jobs:
         with:
           cmakeVersion: "${{ inputs.cmake_version }}"
 
+      - name: Install llvm
+        if: ${{ inputs.llvm_version }}
+        uses: kylemayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2.0.9
+        with:
+          version: ${{ inputs.llvm_version }}
+          directory: ${{ env.DEV_DRIVE }}\llvm
+
       - name: Configure generator/toolset env for CMake
         # Set the environment variables for the CMake generator and toolset depending on CMake version
+        if: ${{ inputs.compiler == 'msvc' }}
         run: |
           $cap = cmake -E capabilities | ConvertFrom-Json
           $maj = [int]$cap.version.major
@@ -196,6 +207,24 @@ jobs:
             # CMake 3.24: omit 'version='; MSBuild line is selected by msvc-dev-cmd
             echo "CMAKE_GENERATOR_TOOLSET=${{ inputs.msvc_platform_toolset }}" >> $env:GITHUB_ENV
           }
+
+      - name: Configure clang environment
+        if: ${{ inputs.compiler == 'clang' }}
+        shell: pwsh
+        run: |
+          @"
+          CC=${env:DEV_DRIVE}\llvm\bin\clang.exe
+          CXX=${env:DEV_DRIVE}\llvm\bin\clang++.exe
+          "@ | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Configure clang-cl environment
+        if: ${{ inputs.compiler == 'clang-cl' }}
+        shell: pwsh
+        run: |
+          @"
+          CC=${env:DEV_DRIVE}\llvm\bin\clang-cl.exe
+          CXX=${env:DEV_DRIVE}\llvm\bin\clang-cl.exe
+          "@ | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install specific MSVC toolset
         # Install a specific MSVC toolset into VS2022
