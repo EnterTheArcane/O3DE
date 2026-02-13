@@ -109,7 +109,7 @@ jobs:
         with:
             compiler: clang
             config: release
-            image: windows-2022
+            image: windows-2025
             platform: Windows
             type: release_ninja
             last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
@@ -122,7 +122,7 @@ jobs:
         with:
             compiler: clang-cl
             config: release
-            image: windows-2022
+            image: windows-2025
             platform: Windows
             type: release_ninja
             last_artifact: ${{ inputs.CLEAN_ARTIFACTS == false }}
