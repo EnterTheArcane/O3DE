@@ -63,7 +63,7 @@ jobs:
   # - cmake_version: CMake version constraint to use (all platforms)
   # - gradle_version: Gradle version to use (Android only)
 
-  #### Android Build ####
+#### Android Build ####
   Android-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
     uses: ./.github/workflows/android-build.yml
@@ -108,7 +108,7 @@ jobs:
       gradle_version: "8.12"
       cmake_version: "4.2.3"
 
-  #### iOS Build ####
+#### iOS Build ####
   iOS-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
     uses: ./.github/workflows/ios-build.yml
@@ -145,7 +145,7 @@ jobs:
       type: device_test_profile
       cmake_version: "4.2.3"
 
-  #### Linux Build ####
+#### Linux Build ####
   Linux-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_build }}
     uses: ./.github/workflows/linux-build.yml
@@ -186,7 +186,7 @@ jobs:
       clang_version: "14"
       cmake_version: "4.2.3"
 
-  #### Mac Build ####
+#### Mac Build ####
   Mac-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
     uses: ./.github/workflows/mac-build.yml
@@ -223,7 +223,7 @@ jobs:
       type: test_profile
       cmake_version: "4.2.3"
 
-  #### Windows Build ####
+#### Windows Build ####
   Windows-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
     uses: ./.github/workflows/windows-build.yml
