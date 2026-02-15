@@ -110,7 +110,7 @@ jobs:
 
 #### iOS Build ####
   iOS-Profile:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
+    if: ${{ inputs.ios_build }}
     uses: ./.github/workflows/ios-build.yml
     with:
       compiler: clang
@@ -122,7 +122,7 @@ jobs:
       cmake_version: "4.2.3"
 
   iOS-Asset:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
+    if: ${{ inputs.ios_build }}
     needs: iOS-Profile
     uses: ./.github/workflows/ios-build.yml
     with:
@@ -134,7 +134,7 @@ jobs:
       cmake_version: "4.2.3"
 
   iOS-Test:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
+    if: ${{ inputs.ios_build }}
     needs: iOS-Asset
     uses: ./.github/workflows/ios-build.yml
     with:
