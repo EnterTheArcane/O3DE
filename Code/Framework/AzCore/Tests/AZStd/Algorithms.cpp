@@ -221,7 +221,7 @@ namespace UnitTest
         {
             EXPECT_LT(elements1[i - 1], elements1[i]);
         }
-        insertion_sort(elements1.begin(), elements1.end(), AZStd::greater<int>());
+        AZStd::insertion_sort(elements1.begin(), elements1.end(), AZStd::greater<int>());
         for (size_t i = 1; i < elements1.size(); ++i)
         {
             EXPECT_GT(elements1[i - 1], elements1[i]);

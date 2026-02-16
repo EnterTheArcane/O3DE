@@ -784,9 +784,9 @@ namespace UnitTest
                 using iterator_category = AZStd::bidirectional_iterator_tag;
 
                 const int& operator*() const { return m_charElement; }
-                int& operator*() { return m_intElement; }
+                //int& operator*() { return m_intElement; }
                 const int* operator->() const { return &m_charElement; }
-                int* operator->() { return &m_intElement; }
+                //int* operator->() { return &m_intElement; }
                 iterator& operator++() { ++m_intElement; return *this; }
                 iterator operator++(int) { iterator tmp(*this); ++m_intElement; return tmp; }
                 iterator& operator--() { --m_intElement; return *this; }

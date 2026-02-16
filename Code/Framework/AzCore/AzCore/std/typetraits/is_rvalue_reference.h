@@ -12,7 +12,5 @@
 namespace AZStd
 {
     using std::is_rvalue_reference;
-    
-    template <typename T>
-    constexpr bool is_rvalue_reference_v = std::is_rvalue_reference<T>::value;
+    using std::is_rvalue_reference_v;
 }

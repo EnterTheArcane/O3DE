@@ -111,13 +111,6 @@ namespace AZStd
         base_node_ptr_type m_node{};
     };
 
-
-    // To allow incomplete types to be used with the const_iterator
-    // the list_iterator has specializations added for the basic_const_iterator
-    // constraints
-    template<class T>
-    inline constexpr bool input_or_output_iterator<list_iterator<T>> = true;
-
     /**
     * The list container (double linked list) is complaint with \ref CStd (23.2.2). In addition we introduce the following \ref ListExtensions "extensions".
     *

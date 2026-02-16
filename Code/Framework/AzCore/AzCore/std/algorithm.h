@@ -132,9 +132,8 @@ namespace AZStd
     {
         return AZStd::minmax(ilist, AZStd::less<T>());
     }
-    
-    template<class T>
-    constexpr T clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }
+
+    using std::clamp;
 
     namespace Internal
     {
@@ -269,22 +268,7 @@ namespace AZStd
         return f;
     }
 
-    // count_if
-    template <class InputIter, class Predicate>
-    constexpr typename iterator_traits<InputIter>::difference_type
-    count_if(InputIter first, InputIter last, Predicate pred)
-    {
-        //DEBUG_CHECK(check_range(first, last))
-        typename iterator_traits<InputIter>::difference_type n = 0;
-        for (; first != last; ++first)
-        {
-            if (pred(*first))
-            {
-                ++n;
-            }
-        }
-        return n;
-    }
+    using std::count_if;
 
     //////////////////////////////////////////////////////////////////////////
     // Find
@@ -327,31 +311,7 @@ namespace AZStd
         return first;
     }
 
-    // adjacent_find.
-    template <class ForwardIter, class BinaryPredicate>
-    constexpr ForwardIter adjacent_find(ForwardIter first, ForwardIter last, BinaryPredicate binary_pred)
-    {
-        //DEBUG_CHECK(check_range(first, last))
-        if (first == last)
-        {
-            return last;
-        }
-        ForwardIter next = first;
-        while (++next != last)
-        {
-            if (binary_pred(*first, *next))
-            {
-                return first;
-            }
-            first = next;
-        }
-        return last;
-    }
-    template <class ForwardIter>
-    constexpr ForwardIter adjacent_find(ForwardIter first, ForwardIter last)
-    {
-        return AZStd::adjacent_find(first, last, AZStd::equal_to<typename iterator_traits<ForwardIter>::value_type>());
-    }
+    using std::adjacent_find;
 
     // find_first_of, with and without an explicitly supplied comparison function.
     template <class InputIter, class ForwardIter, class BinaryPredicate>
@@ -383,13 +343,7 @@ namespace AZStd
     // find_end for forward iterators.
     // find_end for bidirectional iterators.
 
-    //! True if operation returns true for all elements in the range.
-    //! True if range is empty.
-    template <class InputIter, class UnaryOperation>
-    constexpr bool all_of(InputIter first, InputIter last, UnaryOperation operation)
-    {
-        return AZStd::find_if_not(first, last, operation) == last;
-    }
+    using std::all_of;
 
     //! True if operation returns true for any element in the range.
     //! False if the range is empty.
@@ -938,141 +892,12 @@ namespace AZStd
         return last1;
     }
 
-    template <class ForwardIterator>
-    constexpr bool is_sorted(ForwardIterator first, ForwardIterator last)
-    {
-        return is_sorted(first, last, AZStd::less<AZStd::remove_cvref_t<decltype(*first)>>());
-    }
-
-    template <class ForwardIterator, class Compare>
-    constexpr bool is_sorted(ForwardIterator first, ForwardIterator last, Compare comp)
-    {
-        if (first == last)
-        {
-            return true;
-        }
-        ForwardIterator next = first;
-        while (++next != last)
-        {
-            if (comp(*next, *first))
-            {
-                return false;
-            }
-            ++first;
-        }
-        return true;
-    }
-
-    template<class ForwardIterator>
-    constexpr ForwardIterator unique(ForwardIterator first, ForwardIterator last)
-    {
-        return unique(first, last, AZStd::equal_to<>{});
-    }
-
-    template<class ForwardIterator, class BinaryPredicate>
-    constexpr ForwardIterator unique(ForwardIterator first, ForwardIterator last, BinaryPredicate pred)
-    {
-        if (first == last)
-        {
-            return last;
-        }
-
-        ForwardIterator result = first;
-        while (++first != last)
-        {
-            if (!pred(*result, *first) && ++result != first)
-            {
-                *result = AZStd::move(*first);
-            }
-        }
-        return ++result;
-    }
-
+    using std::is_sorted;
+    using std::unique;
     using std::binary_search;
-
-    // todo search_n
-    //////////////////////////////////////////////////////////////////////////
-
-    //////////////////////////////////////////////////////////////////////////
-    // set_difference
-    template <class Compare, class InputIterator1, class InputIterator2, class OutputIterator>
-    constexpr OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, Compare comp)
-    {
-        while (first1 != last1)
-        {
-            if (first2 == last2)
-            {
-                return AZStd::copy(first1, last1, result);
-            }
-
-            if (comp(*first1, *first2))
-            {
-                *result = *first1;
-                ++result;
-                ++first1;
-            }
-            else
-            {
-                if (!comp(*first2, *first1))
-                {
-                    ++first1;
-                }
-                ++first2;
-            }
-        }
-        return result;
-    }
-
-    template <class InputIterator1, class InputIterator2, class OutputIterator>
-    constexpr OutputIterator set_difference(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result)
-    {
-        return AZStd::set_difference(first1, last1, first2, last2, result,
-            AZStd::less<AZStd::common_type_t<typename iterator_traits<InputIterator1>::value_type,
-                                             typename iterator_traits<InputIterator2>::value_type>>());
-    }
-    //////////////////////////////////////////////////////////////////////////
-
-    template<class InputIterator1, class InputIterator2>
-    constexpr bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2)
-    {
-        for (; first1 != last1 && first2 != last2; ++first1, ++first2)
-        {
-            if (*first1 < *first2)
-            {
-                return true;
-            }
-            if (*first2 < *first1)
-            {
-                return false;
-            }
-        }
-        return first1 == last1 && first2 != last2;
-    }
-
-    constexpr bool lexicographical_compare(const unsigned char* first1, const unsigned char* last1, const unsigned char* first2, const unsigned char* last2)
-    {
-        ptrdiff_t len1 = last1 - first1;
-        ptrdiff_t len2 = last2 - first2;
-        int res = __builtin_memcmp(first1, first2, len1 < len2 ? len1 : len2);
-        return (res < 0 || (res == 0 && len1 < len2));
-    }
-
-    template<class InputIterator1, class InputIterator2, class Compare>
-    constexpr bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, Compare comp)
-    {
-        for (; first1 != last1 && first2 != last2; ++first1, ++first2)
-        {
-            if (comp(*first1, *first2))
-            {
-                return true;
-            }
-            if (comp(*first2, *first1))
-            {
-                return false;
-            }
-        }
-        return first1 == last1 && first2 != last2;
-    }
+    using std::search_n;
+    using std::set_difference;
+    using std::lexicographical_compare;
 
     //////////////////////////////////////////////////////////////////////////
     /**

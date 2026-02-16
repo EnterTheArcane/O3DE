@@ -12,6 +12,5 @@
 namespace AZStd
 {
     using std::remove_const;
-    template<class T>
-    using remove_const_t = std::remove_const_t<T>;
+    using std::remove_const_t;
 }

@@ -114,7 +114,5 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class I1, class I2 = I1>
-    /*concept*/ constexpr bool indirectly_swappable = Internal::indirectly_swappable_impl<I1, I2>;
+    using std::indirectly_swappable;
 }
-

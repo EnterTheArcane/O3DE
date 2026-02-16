@@ -35,22 +35,14 @@
 
 namespace AZStd
 {
-    // alias std::pointer_traits into the AZStd::namespace
     using std::pointer_traits;
 
-    // Alias re-declarations from iterator.h
-    /// Identifying tag for input iterators.
-    using input_iterator_tag = std::input_iterator_tag;
-    /// Identifying tag for output iterators.
-    using output_iterator_tag = std::output_iterator_tag;
-    /// Identifying tag for forward iterators.
-    using forward_iterator_tag = std::forward_iterator_tag;
-    /// Identifying tag for bidirectional iterators.
-    using bidirectional_iterator_tag = std::bidirectional_iterator_tag;
-    /// Identifying tag for random-access iterators.
-    using random_access_iterator_tag = std::random_access_iterator_tag;
-    /// Identifying tag for contagious iterators
-    struct contiguous_iterator_tag;
+    using std::input_iterator_tag;
+    using std::output_iterator_tag;
+    using std::forward_iterator_tag;
+    using std::bidirectional_iterator_tag;
+    using std::random_access_iterator_tag;
+    using std::contiguous_iterator_tag;
 }
 
 namespace AZStd::Internal
@@ -133,14 +125,13 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template<class T, class U>
-    /*concept*/ constexpr bool different_from = !same_as<remove_cvref_t<T>, remove_cvref_t<U>>;
+    concept different_from = !same_as<remove_cvref_t<T>, remove_cvref_t<U>>;
 
     template <class It, class = void>
     constexpr bool is_class_or_enum = false;
     template <class It>
     constexpr bool is_class_or_enum<It, enable_if_t<disjunction_v<
         is_class<remove_cvref_t<It>>, is_enum<remove_cvref_t<It>> >>> = true;
-
 
     template<class T, class U, class = void>
     constexpr bool common_with_impl = false;
@@ -157,21 +148,14 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class T, class U>
-    /*concept*/ constexpr bool common_with = Internal::common_with_impl<T, U>;
-
-
-    template<class Derived, class Base>
-    /*concept*/ constexpr bool derived_from = conjunction_v<is_base_of<Base, Derived>,
-        is_convertible<const volatile Derived*, const volatile Base*>>;
+    using std::common_with;
+    using std::derived_from;
 }
 
 namespace AZStd
 {
-    template <class T>
-    /*concept*/ constexpr bool signed_integral = conjunction_v<bool_constant<integral<T>>, is_signed<T>>;
-    template <class T>
-    /*concept*/ constexpr bool unsigned_integral = conjunction_v<bool_constant<integral<T>>, bool_constant<!signed_integral<T>>>;
+    using std::signed_integral;
+    using std::unsigned_integral;
 }
 
 
@@ -216,8 +200,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class T>
-    /*concept*/ constexpr bool equality_comparable = Internal::weakly_equality_comparable_with<T, T>;
+    using std::equality_comparable;
 }
 
 namespace AZStd::Internal
@@ -237,14 +220,12 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class T, class U>
-    /*concept*/ constexpr bool equality_comparable_with = Internal::equally_comparable_with_impl<T, U>;
+    using std::equality_comparable_with;
 
     template<class T, class U>
     /*concept*/ constexpr bool partially_ordered_with = Internal::partially_ordered_with_impl<T, U>;
 
-    template<class T>
-    /*concept*/ constexpr bool totally_ordered = equality_comparable<T> && partially_ordered_with<T, T>;
+    using std::totally_ordered;
 }
 
 namespace AZStd::Internal
@@ -264,8 +245,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class T, class U>
-    /*concept*/ constexpr bool totally_ordered_with = Internal::totally_ordered_with_impl<T, U>;
+    using std::totally_ordered_with;
 }
 
 namespace AZStd::Internal
@@ -287,21 +267,14 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // default_initializable
-    template<class T>
-    /*concept*/ constexpr bool default_initializable = Internal::default_initializable_impl<T>;
+    using std::default_initializable;
 }
 
 
 namespace AZStd
 {
-    // semiregular
-    template<class T>
-    /*concept*/ constexpr bool semiregular = conjunction_v<bool_constant<copyable<T>>, bool_constant<default_initializable<T>>>;
-
-    // regular
-    template<class T>
-    /*concept*/ constexpr bool regular = conjunction_v<bool_constant<semiregular<T>>, bool_constant<equality_comparable<T>>>;
+    using std::semiregular;
+    using std::regular;
 }
 
 // Iterator Concepts
@@ -326,14 +299,8 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // models weakly_incrementable concept
-    template <class T>
-    /*concept*/ constexpr bool weakly_incrementable = Internal::weakly_incrementable_impl<T>;
-
-    // models input_or_output_iterator concept
-    template <class T>
-    /*concept*/ constexpr bool input_or_output_iterator = conjunction_v<bool_constant<!is_void_v<T>>,
-        bool_constant<weakly_incrementable<T>>>;
+    using std::weakly_incrementable;
+    using std::input_or_output_iterator;
 }
 
 namespace AZStd::Internal
@@ -350,8 +317,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template <class T>
-    /*concept*/ constexpr bool incrementable = Internal::incrementable_impl<T>;
+    using std::incrementable;
 }
 
 namespace AZStd
@@ -451,9 +417,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // input iterator
-    template<class I>
-    /*concept*/ constexpr bool input_iterator = Internal::input_iterator_impl<I>;
+    using std::input_iterator;
 }
 
 namespace AZStd::Internal
@@ -470,9 +434,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // output iterator
-    template<class I, class T>
-    /*concept*/ constexpr bool output_iterator = Internal::output_iterator_impl<I, T>;
+    using std::output_iterator;
 }
 
 namespace AZStd::Internal
@@ -489,9 +451,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // forward_iterator
-    template<class I>
-    /*concept*/ constexpr bool forward_iterator = Internal::forward_iterator_impl<I>;
+    using std::forward_iterator;
 }
 
 namespace AZStd::Internal
@@ -508,9 +468,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // bidirectional iterator
-    template<class I>
-    /*concept*/ constexpr bool bidirectional_iterator = Internal::bidirectional_iterator_impl<I>;
+    using std::bidirectional_iterator;
 }
 
 namespace AZStd::Internal
@@ -534,8 +492,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class I>
-    /*concept*/ constexpr bool random_access_iterator = Internal::random_access_iterator_impl<I>;
+    using std::random_access_iterator;
 }
 
 namespace AZStd::Internal
@@ -555,9 +512,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // contiguous iterator
-    template<class I>
-    /*concept*/ constexpr bool contiguous_iterator = Internal::contiguous_iterator_impl<I>;
+    using std::contiguous_iterator;
 }
 
 namespace AZStd::Internal
@@ -686,157 +641,24 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // models the predicate concept
-    template <class F, class... Args>
-    /*concept*/ constexpr bool predicate = Internal::predicate_impl<regular_invocable<F, Args...>, F, Args...>;
-
-    // models the relation concept
-    template <class R, class T, class U>
-    /*concept*/ constexpr bool relation = conjunction_v<
-        bool_constant<predicate<R, T, T>>,
-        bool_constant<predicate<R, U, U>>,
-        bool_constant<predicate<R, T, U>>,
-        bool_constant<predicate<R, U, T>>>;
-
-    // models the equivalence_relation concept
-    // Note: semantically this is different than relation
-    // since it can't be enforced at compile time
-    template <class R, class T, class U>
-    /*concept*/ constexpr bool equivalence_relation = relation<R, T, U>;
-
-    // models the strict_weak_order concept
-    // Note: semantically this is different than relation
-    // since it can't be enforced at compile time
-    template <class R, class T, class U>
-    /*concept*/ constexpr bool strict_weak_order = relation<R, T, U>;
+    using std::predicate;
+    using std::relation;
+    using std::equivalence_relation;
+    using std::strict_weak_order;
 }
 
 namespace AZStd
 {
-    // https://eel.is/c++draft/iterators#indirectcallable.indirectinvocable
-    template<class F, class I, class = void>
-    /*concept*/ constexpr bool indirectly_unary_invocable = false;
-    template<class F, class I>
-    /*concept*/ constexpr bool indirectly_unary_invocable<F, I, enable_if_t<conjunction_v<
-        bool_constant<indirectly_readable<I>>,
-        bool_constant<copy_constructible<F>>,
-        bool_constant<invocable<F&, iter_value_t<I>&>>,
-        bool_constant<invocable<F&, iter_reference_t<I>>>,
-        bool_constant<invocable<F&, iter_common_reference_t<I>>>,
-        bool_constant<common_reference_with<invoke_result_t<F&, iter_value_t<I>&>, invoke_result_t<F&, iter_reference_t<I>>>>
-        >>> = true;
+    using std::indirectly_unary_invocable;
+    using std::indirectly_regular_unary_invocable;
 
-    template<class F, class I, class = void>
-    /*concept*/ constexpr bool indirectly_regular_unary_invocable = false;
-    template<class F, class I>
-    /*concept*/ constexpr bool indirectly_regular_unary_invocable<
-        F,
-        I,
-        enable_if_t<conjunction_v<
-            bool_constant<indirectly_readable<I>>,
-            bool_constant<copy_constructible<F>>,
-            bool_constant<regular_invocable<F&, iter_value_t<I>&>>,
-            bool_constant<regular_invocable<F&, iter_reference_t<I>>>,
-            bool_constant<regular_invocable<F&, iter_common_reference_t<I>>>,
-            bool_constant<common_reference_with<invoke_result_t<F&, iter_value_t<I>&>, invoke_result_t<F&, iter_reference_t<I>>>>>>> = true;
+    using std::indirect_unary_predicate;
+    using std::indirect_binary_predicate;
 
-    template<class F, class I, class = void>
-    /*concept*/ constexpr bool indirect_unary_predicate = false;
-    template<class F, class I>
-    /*concept*/ constexpr bool indirect_unary_predicate<
-        F,
-        I,
-        enable_if_t<conjunction_v<
-            bool_constant<indirectly_readable<I>>,
-            bool_constant<copy_constructible<F>>,
-            bool_constant<predicate<F&, iter_value_t<I>&>>,
-            bool_constant<predicate<F&, iter_reference_t<I>>>,
-            bool_constant<predicate<F&, iter_common_reference_t<I>>>>>> = true;
+    using std::indirect_equivalence_relation;
+    using std::indirect_strict_weak_order;
 
-    template<class F, class I1, class I2, class = void>
-    /*concept*/ constexpr bool indirect_binary_predicate = false;
-    template<class F, class I1, class I2>
-    /*concept*/ constexpr bool indirect_binary_predicate<
-        F,
-        I1,
-        I2,
-        enable_if_t<conjunction_v<
-            bool_constant<indirectly_readable<I1>>,
-            bool_constant<indirectly_readable<I2>>,
-            bool_constant<copy_constructible<F>>,
-            bool_constant<predicate<F&, iter_value_t<I1>&, iter_value_t<I2>&>>,
-            bool_constant<predicate<F&, iter_value_t<I1>&, iter_reference_t<I2>>>,
-            bool_constant<predicate<F&, iter_reference_t<I1>, iter_value_t<I2>&>>,
-            bool_constant<predicate<F&, iter_reference_t<I1>, iter_reference_t<I2>>>,
-            bool_constant<predicate<F&, iter_common_reference_t<I1>, iter_common_reference_t<I2>>>>>> = true;
+    using std::indirect_result_t;
 
-    template<class F, class I1, class I2 = I1, class = void>
-    /*concept*/ constexpr bool indirect_equivalence_relation = false;
-    template<class F, class I1, class I2>
-    /*concept*/ constexpr bool indirect_equivalence_relation<
-        F,
-        I1,
-        I2,
-        enable_if_t<conjunction_v<
-            bool_constant<indirectly_readable<I1>>,
-            bool_constant<indirectly_readable<I2>>,
-            bool_constant<copy_constructible<F>>,
-            bool_constant<equivalence_relation<F&, iter_value_t<I1>&, iter_value_t<I2>&>>,
-            bool_constant<equivalence_relation<F&, iter_value_t<I1>&, iter_reference_t<I2>>>,
-            bool_constant<equivalence_relation<F&, iter_reference_t<I1>, iter_value_t<I2>&>>,
-            bool_constant<equivalence_relation<F&, iter_reference_t<I1>, iter_reference_t<I2>>>,
-            bool_constant<equivalence_relation<F&, iter_common_reference_t<I1>, iter_common_reference_t<I2>>>>>> = true;
-
-    template<class F, class I1, class I2 = I1, class = void>
-    /*concept*/ constexpr bool indirect_strict_weak_order = false;
-    template<class F, class I1, class I2>
-    /*concept*/ constexpr bool indirect_strict_weak_order<
-        F,
-        I1,
-        I2,
-        enable_if_t<conjunction_v<
-            bool_constant<indirectly_readable<I1>>,
-            bool_constant<indirectly_readable<I2>>,
-            bool_constant<copy_constructible<F>>,
-            bool_constant<strict_weak_order<F&, iter_value_t<I1>&, iter_value_t<I2>&>>,
-            bool_constant<strict_weak_order<F&, iter_value_t<I1>&, iter_reference_t<I2>>>,
-            bool_constant<strict_weak_order<F&, iter_reference_t<I1>, iter_value_t<I2>&>>,
-            bool_constant<strict_weak_order<F&, iter_reference_t<I1>, iter_reference_t<I2>>>,
-            bool_constant<strict_weak_order<F&, iter_common_reference_t<I1>, iter_common_reference_t<I2>>>>>> = true;
-
-    namespace Internal
-    {
-        template<bool Invocable, class F, class... Is>
-        struct indirect_result;
-        template<class F, class... Is>
-        struct indirect_result<true, F, Is...>
-        {
-            using type = invoke_result_t<F, iter_reference_t<Is>...>;
-        };
-    }
-    template<class F, class... Is>
-    using indirect_result_t = typename Internal::indirect_result<conjunction_v<
-            bool_constant<indirectly_readable<Is>>...,
-            bool_constant<AZStd::invocable<F, iter_reference_t<Is>...>>>,
-        F, Is...>::type;
-
-    // https://eel.is/c++draft/iterators#projected
-    template<class I, class Proj, class = void>
-    struct projected;
-
-    template<class I, class Proj>
-    struct projected<
-        I,
-        Proj,
-        enable_if_t<conjunction_v<bool_constant<indirectly_readable<I>>, bool_constant<indirectly_regular_unary_invocable<Proj, I>>>>>
-    {
-        using value_type = remove_cvref_t<indirect_result_t<Proj&, I>>;
-        indirect_result_t<Proj&, I> operator*() const; // not defined
-    };
-
-    template <class I, class Proj>
-    struct incrementable_traits<projected<I, Proj>, enable_if_t<weakly_incrementable<I>>>
-    {
-        using difference_type = iter_difference_t<I>;
-    };
+    using std::projected;
 }

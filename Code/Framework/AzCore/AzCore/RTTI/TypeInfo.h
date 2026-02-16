@@ -27,16 +27,7 @@ namespace AZ
 namespace AZStd
 {
     class allocator;
-    template <class T>
-    struct less;
-    template <class T>
-    struct less_equal;
-    template <class T>
-    struct greater;
-    template <class T>
-    struct greater_equal;
-    template <class T>
-    struct equal_to;
+
     template <class T>
     struct hash;
     template< class T1, class T2>

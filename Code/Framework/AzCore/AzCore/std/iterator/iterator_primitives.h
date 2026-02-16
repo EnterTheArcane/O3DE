@@ -29,6 +29,26 @@
 #include <AzCore/std/typetraits/remove_extent.h>
 #include <AzCore/std/typetraits/void_t.h>
 
+namespace AZStd
+{
+    using std::indirectly_readable_traits;
+    using std::iter_value_t;
+    using std::iter_reference_t;
+    using std::incrementable_traits;
+    using std::iter_difference_t;
+    using std::iter_rvalue_reference_t;
+    using std::indirectly_readable;
+    using std::iter_common_reference_t;
+
+    template<indirectly_readable It>
+    using iter_const_reference_t = common_reference_t<const iter_value_t<It>&&, iter_reference_t<It>>;
+
+    using std::indirectly_writable;
+    using std::indirectly_movable;
+    using std::indirectly_movable_storable;
+    using std::indirectly_copyable;
+    using std::indirectly_copyable_storable;
+}
 
 namespace AZStd
 {
@@ -150,78 +170,19 @@ namespace AZStd::Internal
     {
         using difference_type = make_signed_t<decltype(declval<T>() - declval<T>())>;
     };
-}
 
-namespace AZStd
-{
-    // indirectly_readable_traits for iter_value_t
-    template <typename T>
-    struct indirectly_readable_traits
-        : Internal::indirectly_readable_requires<T> {};
-    template <typename T>
-    struct indirectly_readable_traits<T*>
-        : Internal::object_type_value_requires<T> {};
-    template <typename T>
-    struct indirectly_readable_traits<const T>
-        : indirectly_readable_traits<T> {};
+    // model the indirectly readable concept
+    template <class In, class = void>
+    constexpr bool indirectly_readable_impl = false;
 
-    template <typename T>
-    using iter_value_t = typename indirectly_readable_traits<remove_cvref_t<T>>::value_type;
-
-    template <typename T>
-    using iter_reference_t = enable_if_t<Internal::dereferenceable<T>, decltype(*declval<T&>())>;
-
-    // incrementable_traits for iter_difference_t
-    template <typename T, class = void>
-    struct incrementable_traits
-        : Internal::incrementable_requires<T> {};
-    template <typename T>
-    struct incrementable_traits<T*>
-        : Internal::object_type_difference_requires<T> {};
-    template <typename T>
-    struct incrementable_traits<const T>
-        : incrementable_traits<T> {};
-
-    template <typename T>
-    using iter_difference_t = typename incrementable_traits<remove_cvref_t<T>>::difference_type;
-
-    template <typename T>
-    using iter_rvalue_reference_t = decltype(ranges::iter_move(declval<T&>()));
-
-    namespace Internal
-    {
-        // model the indirectly readable concept
-        template <class In, class = void>
-        constexpr bool indirectly_readable_impl = false;
-
-        template <class In>
-        constexpr bool indirectly_readable_impl<In, enable_if_t<conjunction_v<
-            bool_constant<same_as<decltype(*declval<In>()), iter_reference_t<In>>>,
-            bool_constant<same_as<decltype(AZStd::ranges::iter_move(declval<In>())), iter_rvalue_reference_t<In>>>,
-            bool_constant<common_reference_with<iter_reference_t<In>&&, iter_value_t<In>&>>,
-            bool_constant<common_reference_with<iter_reference_t<In>&&, iter_rvalue_reference_t<In>&>>,
-            bool_constant<common_reference_with<iter_rvalue_reference_t<In>&&, const iter_value_t<In>&>> >>> = true;
-    }
-
-    template <typename T>
-    using iter_common_reference_t = enable_if_t<Internal::indirectly_readable_impl<T>,
-        common_reference_t<iter_reference_t<T>, iter_value_t<T>&>>;
-
-    template<class It>
-    using iter_const_reference_t = enable_if_t<Internal::indirectly_readable_impl<It>,
-        common_reference_t<const iter_value_t<It>&&, iter_reference_t<It>>>;
-
-}
-
-namespace AZStd
-{
-    // indirectly readable
     template <class In>
-    /*concept*/ constexpr bool indirectly_readable = Internal::indirectly_readable_impl<remove_cvref_t<In>>;
-}
+    constexpr bool indirectly_readable_impl<In, enable_if_t<conjunction_v<
+        bool_constant<same_as<decltype(*declval<In>()), iter_reference_t<In>>>,
+        bool_constant<same_as<decltype(AZStd::ranges::iter_move(declval<In>())), iter_rvalue_reference_t<In>>>,
+        bool_constant<common_reference_with<iter_reference_t<In>&&, iter_value_t<In>&>>,
+        bool_constant<common_reference_with<iter_reference_t<In>&&, iter_rvalue_reference_t<In>&>>,
+        bool_constant<common_reference_with<iter_rvalue_reference_t<In>&&, const iter_value_t<In>&>> >>> = true;
 
-namespace AZStd::Internal
-{
     // model the indirectly writable concept
     template <class Out, class T, class = void>
     constexpr bool indirectly_writable_impl = false;
@@ -233,21 +194,7 @@ namespace AZStd::Internal
         decltype(const_cast<const iter_reference_t<Out>&&>(*declval<Out&>()) = declval<T>()),
         decltype(const_cast<const iter_reference_t<Out>&&>(*declval<Out>()) = declval<T>())>
     > = true;
-}
-namespace AZStd
-{
-    // indirectly writable
-    template <class Out, class T>
-    /*concept*/ constexpr bool indirectly_writable = Internal::indirectly_writable_impl<Out, T>;
 
-    // indirectly movable
-    template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_movable = conjunction_v<bool_constant<indirectly_readable<In>>,
-        bool_constant<indirectly_writable<Out, iter_rvalue_reference_t<In>>>>;
-}
-
-namespace AZStd::Internal
-{
     template<class In, class Out, class = void>
     constexpr bool indirectly_movable_storage_impl = false;
 
@@ -258,16 +205,7 @@ namespace AZStd::Internal
         bool_constant<movable<iter_value_t<In>>>,
         bool_constant<constructible_from<iter_value_t<In>, iter_rvalue_reference_t<In>>>,
         bool_constant<assignable_from<iter_value_t<In>&, iter_rvalue_reference_t<In>>> >>> = true;
-}
 
-namespace AZStd
-{
-    template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_movable_storable = Internal::indirectly_movable_storage_impl<In, Out>;
-}
-
-namespace AZStd::Internal
-{
     template<class In, class Out, class = void>
     constexpr bool indirectly_copyable_impl = false;
 
@@ -275,16 +213,7 @@ namespace AZStd::Internal
     constexpr bool indirectly_copyable_impl<In, Out, enable_if_t<conjunction_v<
         bool_constant<indirectly_readable<In>>,
         bool_constant<indirectly_writable<Out, iter_reference_t<In>>> >>> = true;
-}
 
-namespace AZStd
-{
-    // indirectly copyable
-    template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_copyable = Internal::indirectly_copyable_impl<In, Out>;
-}
-namespace AZStd::Internal
-{
     template<class In, class Out, class = void>
     constexpr bool indirectly_copyable_storable_impl = false;
 
@@ -299,10 +228,4 @@ namespace AZStd::Internal
         bool_constant<constructible_from<iter_value_t<In>, iter_reference_t<In>>>,
         bool_constant<assignable_from<iter_value_t<In>&, iter_reference_t<In>>>
         >>> = true;
-}
-
-namespace AZStd
-{
-    template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_copyable_storable = Internal::indirectly_copyable_storable_impl<In, Out>;
 }

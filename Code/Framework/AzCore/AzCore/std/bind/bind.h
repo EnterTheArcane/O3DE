@@ -28,10 +28,8 @@ namespace AZStd
     using std::bind;
 
     using std::is_bind_expression;
-    template<class T>
-    constexpr bool is_bind_expression_v = std::is_bind_expression<T>::value;
+    using std::is_bind_expression_v;
 
     using std::is_placeholder;
-    template<class T>
-    constexpr size_t is_placeholder_v = is_placeholder<T>::value;
+    using std::is_placeholder_v;
 }

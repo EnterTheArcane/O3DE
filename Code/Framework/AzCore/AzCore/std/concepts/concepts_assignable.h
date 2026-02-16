@@ -29,6 +29,5 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class LHS, class RHS>
-    /*concept*/ constexpr bool assignable_from = Internal::assignable_from_impl<LHS, RHS>;
+    using std::assignable_from;
 }
