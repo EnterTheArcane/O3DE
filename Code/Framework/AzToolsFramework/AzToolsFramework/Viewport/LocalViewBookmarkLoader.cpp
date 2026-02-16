@@ -390,8 +390,9 @@ namespace AzToolsFramework
         }
 
         // merge the current view bookmark file into the settings registry
+        auto bookmarkBuffer = m_streamReadFn(localBookmarksFileName);
         if (registry->MergeSettings(
-                m_streamReadFn(localBookmarksFileName), AZ::SettingsRegistryInterface::Format::JsonMergePatch, ViewBookmarksRegistryPath))
+                AZStd::string_view(bookmarkBuffer), AZ::SettingsRegistryInterface::Format::JsonMergePatch, ViewBookmarksRegistryPath))
         {
             ViewBookmarkVisitor viewBookmarkVisitor;
             auto VisitBookmarkKey = [&registry, &viewBookmarkVisitor](const AZ::SettingsRegistryInterface::VisitArgs& visitArgs)

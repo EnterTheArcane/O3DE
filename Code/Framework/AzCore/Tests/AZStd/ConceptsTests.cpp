@@ -101,8 +101,8 @@ namespace UnitTest
         // concept swappable
         static_assert(AZStd::swappable<Base>);
         static_assert(!AZStd::swappable<NoMove>);
-        static_assert(AZStd::swappable_with<Base, Base>);
-        static_assert(!AZStd::swappable_with<NoMove, Base>);
+        static_assert(AZStd::swappable_with<Base&, Base&>);
+        static_assert(!AZStd::swappable_with<NoMove&, Base&>);
 
         // concept destructible
         static_assert(AZStd::destructible<Base>);

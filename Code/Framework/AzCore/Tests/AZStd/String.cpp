@@ -2490,8 +2490,8 @@ namespace UnitTest
     {
         // Validates the c++23 range constructor for AZStd::string_view
         static_assert(AZStd::constructible_from<AZStd::string_view, AZStd::vector<char>>);
-        static_assert(AZStd::constructible_from<AZStd::string, AZStd::vector<char>>);
-        const auto testString = AZStd::string(AZStd::vector<char>{'H', 'e', 'l', 'l', 'o'});
+        static_assert(AZStd::constructible_from<AZStd::string, AZStd::from_range_t, AZStd::vector<char>>);
+        const auto testString = AZStd::string(AZStd::from_range, AZStd::vector<char>{'H', 'e', 'l', 'l', 'o'});
         EXPECT_EQ("Hello", testString);
     }
 

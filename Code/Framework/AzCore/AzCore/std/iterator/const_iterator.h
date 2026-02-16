@@ -26,11 +26,10 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template<class It, class = void>
-    /*concept*/ constexpr bool constant_iterator = false;
     template<class It>
-    /*concept*/ constexpr bool constant_iterator<It, enable_if_t<input_iterator<It> &&
-        same_as<iter_const_reference_t<It>, iter_reference_t<It>> >> = true;
+    concept constant_iterator =
+        input_iterator<It>
+        && same_as<iter_const_reference_t<It>, iter_reference_t<It>>;
 
     template<class I, class = void>
     struct basic_const_iterator_iter_category {};
@@ -50,11 +49,40 @@ namespace AZStd
     template<class S>
     using const_sentinel = conditional_t<input_iterator<S>, const_iterator<S>, S>;
 
-    // Not a const concept is false if the iterator is a specialization of the basic_const_iterator template
+    // not_a_const_iterator concept - uses a constexpr bool helper since concepts can't be partially specialized
+    namespace Internal
+    {
+        template<class It>
+        constexpr bool not_a_const_iterator_v = true;
+        template<class It>
+        constexpr bool not_a_const_iterator_v<basic_const_iterator<It>> = is_primary_template_v<basic_const_iterator<It>>;
+    }
+
     template<class It>
-    /*concept*/ constexpr bool not_a_const_iterator = true;
-    template<class It>
-    /*concept*/ constexpr bool not_a_const_iterator<basic_const_iterator<It>> = Internal::is_primary_template_v<basic_const_iterator<It>>;
+    concept not_a_const_iterator = Internal::not_a_const_iterator_v<It>;
+
+    // Guarded concept evaluation helpers for basic_const_iterator comparison operators.
+    // These use partial specialization to ensure the concept is only evaluated when
+    // the guard condition is true. This avoids concept satisfaction circularity that
+    // occurs when basic_const_iterator's operator== is found via implicit conversion
+    // during _Weakly_equality_comparable_with<I, I> checks inside sentinel_for.
+    namespace Internal
+    {
+        template<bool DifferentFromBCI, class S, class I>
+        constexpr bool guarded_sentinel_for = false;
+        template<class S, class I>
+        constexpr bool guarded_sentinel_for<true, S, I> = sentinel_for<S, I>;
+
+        template<bool DifferentFromBCI, class T1, class T2>
+        constexpr bool guarded_totally_ordered_with = false;
+        template<class T1, class T2>
+        constexpr bool guarded_totally_ordered_with<true, T1, T2> = totally_ordered_with<T1, T2>;
+
+        template<bool DifferentFromBCI, class S, class I>
+        constexpr bool guarded_sized_sentinel_for = false;
+        template<class S, class I>
+        constexpr bool guarded_sized_sentinel_for<true, S, I> = sized_sentinel_for<S, I>;
+    }
 
     template<class I>
     class basic_const_iterator
@@ -183,112 +211,144 @@ namespace AZStd
         }
 
 
-        // comparison operations
+        // non-template same-type comparison
+        // Uses a requires-expression instead of sentinel_for<I, I> to avoid
+        // concept satisfaction circularity when this operator is found via
+        // implicit conversion during _Weakly_equality_comparable_with<I, I> checks
+        template<bool Enable = requires(const I& a, const I& b) { a == b; }, class = enable_if_t<Enable>>
+        friend constexpr bool operator==(const basic_const_iterator& x, const basic_const_iterator& y)
+        {
+            return x.base() == y.base();
+        }
+
+        template<bool Enable = requires(const I& a, const I& b) { a == b; }, class = enable_if_t<Enable>>
+        friend constexpr bool operator!=(const basic_const_iterator& x, const basic_const_iterator& y)
+        {
+            return !(x == y);
+        }
+
+        // comparison operations with sentinel types
+        // Uses guarded_sentinel_for to prevent sentinel_for evaluation when S = basic_const_iterator,
+        // avoiding concept satisfaction circularity via partial specialization guard
         template<class S>
         friend constexpr auto operator==(const basic_const_iterator& i, const S& s)
-            -> enable_if_t<sentinel_for<S, I>, bool>
+            -> enable_if_t<Internal::guarded_sentinel_for<Internal::different_from<S, basic_const_iterator>, S, I>, bool>
         {
             return i.base() == s;
         }
 
         template<class S>
         friend constexpr auto operator!=(const basic_const_iterator& i, const S& s)
-            -> enable_if_t<sentinel_for<S, I>, bool>
+            -> enable_if_t<Internal::guarded_sentinel_for<Internal::different_from<S, basic_const_iterator>, S, I>, bool>
         {
-            return !operator==(i, s);
+            return !(i == s);
         }
 
         // friend comparison functions
         template<class S>
         friend constexpr auto operator==(const S& s, const basic_const_iterator& i)
-            -> enable_if_t<sentinel_for<S, I> && Internal::different_from<S, basic_const_iterator>, bool>
+            -> enable_if_t<Internal::guarded_sentinel_for<Internal::different_from<S, basic_const_iterator>, S, I>, bool>
         {
-            return operator==(i, s);
+            return i == s;
         }
 
         template<class S>
         friend constexpr auto operator!=(const S& s, const basic_const_iterator& i)
-            -> enable_if_t<sentinel_for<S, I> && Internal::different_from<S, basic_const_iterator>, bool>
+            -> enable_if_t<Internal::guarded_sentinel_for<Internal::different_from<S, basic_const_iterator>, S, I>, bool>
         {
-            return !operator==(i, s);
+            return !(i == s);
         }
 
-        template<bool Enable = random_access_iterator<I>, class = enable_if_t<Enable>>
+        // non-template ordered comparisons use requires-expression instead of
+        // random_access_iterator<I> to avoid concept satisfaction circularity
+        // when found via implicit conversion during _Half_ordered<I, I> checks
+        template<bool Enable = requires(const I& a, const I& b) { a < b; }, class = enable_if_t<Enable>>
         friend constexpr bool operator<(const basic_const_iterator& x, const basic_const_iterator& y)
         {
             return x.base() < y.base();
         }
-        template<bool Enable = random_access_iterator<I>, class = enable_if_t<Enable>>
+        template<bool Enable = requires(const I& a, const I& b) { a < b; }, class = enable_if_t<Enable>>
         friend constexpr bool operator>(const basic_const_iterator& x, const basic_const_iterator& y)
         {
             return x.base() > y.base();
         }
-        template<bool Enable = random_access_iterator<I>, class = enable_if_t<Enable>>
+        template<bool Enable = requires(const I& a, const I& b) { a < b; }, class = enable_if_t<Enable>>
         friend constexpr bool operator<=(const basic_const_iterator& x, const basic_const_iterator& y)
         {
             return x.base() <= y.base();
         }
-        template<bool Enable = random_access_iterator<I>, class = enable_if_t<Enable>>
+        template<bool Enable = requires(const I& a, const I& b) { a < b; }, class = enable_if_t<Enable>>
         friend constexpr bool operator>=(const basic_const_iterator& x, const basic_const_iterator& y)
         {
             return x.base() >= y.base();
         }
 
         // comparison against iterators that are not the exact type of this class
+        // Uses guarded_totally_ordered_with to prevent totally_ordered_with evaluation
+        // when I2 = basic_const_iterator, avoiding concept satisfaction circularity
         template<class I2>
         friend constexpr auto operator<(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I> && totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x.base() < y;
         }
         template<class I2>
         friend constexpr auto operator>(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x.base() > y;
         }
         template<class I2>
         friend constexpr auto operator<=(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x.base() <= y;
         }
         template<class I2>
         friend constexpr auto operator>=(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x.base() >= y;
         }
 
         // compares a specialization of basic_const_iterator against this instance
+        // Uses guarded_totally_ordered_with with different_from as the guard key
         template<class I2>
         friend constexpr auto operator<(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x < y.base();
         }
         template<class I2>
         friend constexpr auto operator>(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x > y.base();
         }
         template<class I2>
         friend constexpr auto operator<=(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x <= y.base();
         }
         template<class I2>
         friend constexpr auto operator>=(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
+            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>
+                && Internal::guarded_totally_ordered_with<Internal::different_from<I2, basic_const_iterator>, I, I2>,
             bool>
         {
             return x >= y.base();
@@ -313,16 +373,23 @@ namespace AZStd
         }
 
         // friend navigation operators
+        // Non-template same-type subtraction (avoids sized_sentinel_for circularity)
+        template<bool Enable = requires(const I& a, const I& b) { a - b; }, class = enable_if_t<Enable>>
+        friend constexpr difference_type operator-(const basic_const_iterator& x, const basic_const_iterator& y)
+        {
+            return x.base() - y.base();
+        }
+
         template<class S>
         friend constexpr auto operator-(const basic_const_iterator& i, const S& s)
-            -> enable_if_t<sized_sentinel_for<S, I>, difference_type>
+            -> enable_if_t<Internal::guarded_sized_sentinel_for<Internal::different_from<S, basic_const_iterator>, S, I>, difference_type>
         {
             return i.base() - s;
         }
 
         template<class S>
         friend constexpr auto operator-(const S& s, const basic_const_iterator& i)
-            -> enable_if_t<sized_sentinel_for<S, I> && Internal::different_from<S, basic_const_iterator>, difference_type>
+            -> enable_if_t<Internal::guarded_sized_sentinel_for<Internal::different_from<S, basic_const_iterator>, S, I>, difference_type>
         {
             return s - i.base();
         }

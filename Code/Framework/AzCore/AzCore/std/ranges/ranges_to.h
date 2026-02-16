@@ -16,61 +16,38 @@ namespace AZStd::ranges
 {
     namespace Internal
     {
-        template<class Container, class = void>
-        constexpr bool has_reserve = false;
         template<class Container>
-        constexpr bool has_reserve<Container, enable_if_t<
-            sfinae_trigger_v<decltype(declval<Container&>().reserve(declval<range_size_t<Container>>()))>
-            >> = true;
+        concept has_reserve = requires(Container& c) {
+            c.reserve(declval<range_size_t<Container>>());
+        };
 
-        template<class Container, class = void>
-        constexpr bool has_capacity = false;
         template<class Container>
-        constexpr bool has_capacity<Container, enable_if_t<
-            same_as<decltype(declval<Container&>().capacity()), range_size_t<Container>>
-            >> = true;
+        concept has_capacity = requires(Container& c) {
+            { c.capacity() } -> same_as<range_size_t<Container>>;
+        };
 
-        template<class Container, class = void>
-        constexpr bool has_max_size = false;
         template<class Container>
-        constexpr bool has_max_size<Container, enable_if_t<
-            same_as<decltype(declval<Container&>().max_size()), range_size_t<Container>>
-            >> = true;
+        concept has_max_size = requires(Container& c) {
+            { c.max_size() } -> same_as<range_size_t<Container>>;
+        };
 
-        template<class Container, class = void>
-        constexpr bool reservable_container = false;
         template<class Container>
-        constexpr bool reservable_container<Container, enable_if_t<conjunction_v<
-            bool_constant<sized_range<Container>>,
-            bool_constant<has_reserve<Container>>,
-            bool_constant<has_capacity<Container>>,
-            bool_constant<has_max_size<Container>>
-            >>> = true;
+        concept reservable_container = sized_range<Container> &&
+            has_reserve<Container> && has_capacity<Container> && has_max_size<Container>;
 
-        template<class Container, class Ref, class = void>
-        constexpr bool has_push_back = false;
         template<class Container, class Ref>
-        constexpr bool has_push_back<Container, Ref, enable_if_t<
-            sfinae_trigger_v<decltype(declval<Container&>().push_back(declval<Ref&&>()))>
-            >> = true;
+        concept has_push_back = requires(Container& c) {
+            c.push_back(declval<Ref&&>());
+        };
 
-        template<class Container, class Ref, class = void>
-        constexpr bool has_insert = false;
         template<class Container, class Ref>
-        constexpr bool has_insert<Container, Ref, enable_if_t<
-            sfinae_trigger_v<decltype(declval<Container&>().insert(declval<Container&>().end(), declval<Ref&&>()))>
-            >> = true;
+        concept has_insert = requires(Container& c) {
+            c.insert(c.end(), declval<Ref&&>());
+        };
 
-        template<class Container, class Ref, class = void>
-        constexpr bool container_insertable = false;
-        // Disjunction is used here as the condition is a logical-or
-        // most of the concept conditions have been logical-and until now
         // https://eel.is/c++draft/range.utility.conv#general-4
         template<class Container, class Ref>
-        constexpr bool container_insertable<Container, Ref, enable_if_t<disjunction_v<
-            bool_constant<has_push_back<Container, Ref>>,
-            bool_constant<has_insert<Container, Ref>>
-            >>> = true;
+        concept container_insertable = has_push_back<Container, Ref> || has_insert<Container, Ref>;
 
         template<class Ref, class Container>
         constexpr auto container_inserter(Container& c)
@@ -90,7 +67,7 @@ namespace AZStd::ranges
         {
             template<template<class...> class C, class R, class... Args>
             constexpr false_type operator()(...);
-            
+
             template<template<class...> class C, class R, class... Args>
             constexpr auto operator()(int) -> enable_if_t<
                 sfinae_trigger_v<decltype(C(declval<R>(), declval<Args>()...))>,
@@ -112,7 +89,7 @@ namespace AZStd::ranges
         template<template<class...> class C, class R, class... Args>
         constexpr bool container_range_tag_type_constructible_v =
             decltype(container_range_tag_type_constructible{}.operator()<C, R, Args...>(0))::value;
-        
+
         struct container_range_common_iterator_constructible
         {
             template<template<class...> class C, class I, class... Args>
@@ -126,7 +103,7 @@ namespace AZStd::ranges
         template<template<class...> class C, class I, class... Args>
         constexpr bool container_range_common_iterator_constructible_v =
             decltype(container_range_common_iterator_constructible{}.operator()<C, I, Args...>(0))::value;
-        
+
 
         // Exposition only type for deducing the template argument for the container template C
         // https://eel.is/c++draft/range.utility.conv#to-2

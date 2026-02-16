@@ -49,35 +49,26 @@ namespace AZStd::ranges
     namespace Internal
     {
         template <typename From, typename To>
-        /*concept*/ constexpr bool uses_nonqualification_pointer_conversion =
+        concept uses_nonqualification_pointer_conversion =
             is_pointer_v<From> && is_pointer_v<To> &&
             !convertible_to<remove_pointer_t<From>(*)[], remove_pointer_t<To>(*)[]>;
 
         template<class From, class To>
-        /*concept*/ constexpr bool convertible_to_non_slicing =
+        concept convertible_to_non_slicing =
             convertible_to<From, To> &&
             !uses_nonqualification_pointer_conversion<decay_t<From>, decay_t<To>>;
 
-        template<class T, class = void>
-        /*concept*/ constexpr bool pair_like = false;
-
         template<class T>
-        /*concept*/ constexpr bool pair_like<T, enable_if_t<conjunction_v<
-            bool_constant<!is_reference_v<T>>,
-            sfinae_trigger<typename tuple_size<T>::type>,
-            bool_constant<derived_from<tuple_size<T>, integral_constant<size_t, 2>>>,
-            sfinae_trigger<
-            tuple_element_t<0, remove_const_t<T>>,
-            tuple_element_t<1, remove_const_t<T>>>,
-            bool_constant<convertible_to<decltype(AZStd::get<0>(declval<T>())), const tuple_element_t<0, T>&>>,
-            bool_constant<convertible_to<decltype(AZStd::get<1>(declval<T>())), const tuple_element_t<1, T>&>>>
-            >> = true;
+        concept pair_like = !is_reference_v<T> && requires {
+            typename tuple_size<T>::type;
+            requires derived_from<tuple_size<T>, integral_constant<size_t, 2>>;
+            typename tuple_element_t<0, remove_const_t<T>>;
+            typename tuple_element_t<1, remove_const_t<T>>;
+        } && convertible_to<decltype(AZStd::get<0>(declval<T>())), const tuple_element_t<0, T>&> &&
+             convertible_to<decltype(AZStd::get<1>(declval<T>())), const tuple_element_t<1, T>&>;
 
-        template<class T, class U, class V, class = void>
-        /*concept*/ constexpr bool pair_like_convertible_from = false;
         template<class T, class U, class V>
-        /*concept*/ constexpr bool pair_like_convertible_from<T, U, V, enable_if_t<
-            !range<T> && pair_like<T> && constructible_from<T, U, V>>> =
+        concept pair_like_convertible_from = !range<T> && pair_like<T> && constructible_from<T, U, V> &&
             convertible_to_non_slicing<U, tuple_element_t<0, T>> &&
             convertible_to<V, tuple_element_t<1, T>>;
     }

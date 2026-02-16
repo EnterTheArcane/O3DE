@@ -96,25 +96,16 @@ namespace AZStd::ranges
     }
 }
 
-namespace AZStd::Internal
-{
-    template <class I1, class I2, class = void>
-    constexpr bool indirectly_swappable_impl = false;
-    template <class I1, class I2>
-    constexpr bool indirectly_swappable_impl<I1, I2, enable_if_t<conjunction_v<
-        bool_constant<indirectly_readable<I1>>,
-        bool_constant<indirectly_readable<I2>>,
-        is_void<void_t<
-        decltype(AZStd::ranges::iter_swap(declval<I1>(), declval<I1>())),
-        decltype(AZStd::ranges::iter_swap(declval<I2>(), declval<I2>())),
-        decltype(AZStd::ranges::iter_swap(declval<I1>(), declval<I2>())),
-        decltype(AZStd::ranges::iter_swap(declval<I2>(), declval<I1>()))>>
-        >>> = true;
-}
-
 namespace AZStd
 {
     template<class I1, class I2 = I1>
-    /*concept*/ constexpr bool indirectly_swappable = Internal::indirectly_swappable_impl<I1, I2>;
+    concept indirectly_swappable =
+        indirectly_readable<I1>
+        && indirectly_readable<I2>
+        && requires(const I1 i1, const I2 i2) {
+            AZStd::ranges::iter_swap(i1, i1);
+            AZStd::ranges::iter_swap(i2, i2);
+            AZStd::ranges::iter_swap(i1, i2);
+            AZStd::ranges::iter_swap(i2, i1);
+        };
 }
-

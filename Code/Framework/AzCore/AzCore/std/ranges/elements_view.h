@@ -16,10 +16,10 @@ namespace AZStd::ranges
     namespace Internal
     {
         template<class T, size_t N, class = void>
-        /*concept*/ constexpr bool has_tuple_element = false;
+        constexpr bool has_tuple_element = false;
 
         template<class T, size_t N>
-        /*concept*/ constexpr bool has_tuple_element<T, N, enable_if_t<conjunction_v<
+        constexpr bool has_tuple_element<T, N, enable_if_t<conjunction_v<
             sfinae_trigger<typename tuple_size<T>::type>,
             bool_constant<(N < tuple_size_v<T>)>,
             sfinae_trigger<tuple_element_t<N, T>>,
@@ -27,14 +27,14 @@ namespace AZStd::ranges
         >> = true;
 
         template<class T, size_t N, class = void>
-        /*concept*/ constexpr bool returnable_element = false;
+        constexpr bool returnable_element = false;
 
         template<class T, size_t N>
-        /*concept*/ constexpr bool returnable_element<T, N, enable_if_t<
+        constexpr bool returnable_element<T, N, enable_if_t<
             is_reference_v<T>> > = true;
 
         template<class T, size_t N>
-        /*concept*/ constexpr bool returnable_element<T, N, enable_if_t<
+        constexpr bool returnable_element<T, N, enable_if_t<
             move_constructible<tuple_element_t<N, T>>> > = true;
     }
 

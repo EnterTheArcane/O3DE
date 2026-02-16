@@ -218,19 +218,5 @@ namespace AZStd
     template <class... T>
     using common_reference_t = typename common_reference<T...>::type;
 
-    // models the common reference concept
-    namespace Internal
-    {
-        template<class T, class U, typename = void>
-        constexpr bool common_reference_with_impl = false;
-        template<class T, class U>
-        constexpr bool common_reference_with_impl<T, U, enable_if_t<
-            same_as<common_reference_t<T, U>, common_reference_t<U, T>>
-            && convertible_to<T, common_reference_t<T, U>>
-            && convertible_to<U, common_reference_t<T, U>>
-            >> = true;
-    }
-
-    template<class T, class U>
-    /*concept*/ constexpr bool common_reference_with = Internal::common_reference_with_impl<T, U>;
+    using std::common_reference_with;
 }

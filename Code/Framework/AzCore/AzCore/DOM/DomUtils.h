@@ -185,7 +185,7 @@ namespace AZ::Dom::Utils
         else if constexpr (AZStd::is_constructible_v<AZStd::string_view, WrapperType>)
         {
             constexpr bool deepCopyString = true;
-            return Dom::Value(value, deepCopyString);
+            return Dom::Value(AZStd::string_view(value), deepCopyString);
         }
         else if constexpr (AZStd::is_constructible_v<Dom::Value, const WrapperType&>)
         {

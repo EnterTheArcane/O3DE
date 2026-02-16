@@ -784,9 +784,7 @@ namespace UnitTest
                 using iterator_category = AZStd::bidirectional_iterator_tag;
 
                 const int& operator*() const { return m_charElement; }
-                int& operator*() { return m_intElement; }
                 const int* operator->() const { return &m_charElement; }
-                int* operator->() { return &m_intElement; }
                 iterator& operator++() { ++m_intElement; return *this; }
                 iterator operator++(int) { iterator tmp(*this); ++m_intElement; return tmp; }
                 iterator& operator--() { --m_intElement; return *this; }
@@ -813,7 +811,7 @@ namespace UnitTest
     {
         RangesViewTestInternal::ConstMutableContainer testContainer;
         AZStd::ranges::iterator_t<RangesViewTestInternal::ConstMutableContainer> foundIter = testContainer.begin();
-        EXPECT_EQ(55, *foundIter);
+        EXPECT_EQ('A', *foundIter);
 
         auto constView = testContainer | AZStd::views::as_const;
         ASSERT_NE(constView.end(), constView.begin());

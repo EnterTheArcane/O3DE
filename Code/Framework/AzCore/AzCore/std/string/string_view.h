@@ -665,6 +665,7 @@ namespace AZStd
 
         // double SFINAE is used to defer evaluation of the contiguous range
         // until after validating the input type isn't basic_string_view
+        // explicit per C++23 [string.view.cons]
         template <typename R,
             typename = enable_if_t<conjunction_v<
             bool_constant<!same_as<remove_cvref_t<R>, basic_string_view>>,
@@ -677,7 +678,7 @@ namespace AZStd
             bool_constant<!Internal::convertible_to_string_view<Element, Traits, R>>,
             bool_constant<Internal::range_trait_type_matches<Element, Traits, R>>
             >>>
-        constexpr basic_string_view(R&& r)
+        explicit constexpr basic_string_view(R&& r)
             : m_begin(ranges::data(r))
             , m_size(ranges::size(r))
         {}

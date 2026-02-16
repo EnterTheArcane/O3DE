@@ -18,16 +18,6 @@ namespace AZStd
     using std::is_convertible;
     using std::is_convertible_v;
 
-    // models the C++20 convertible_to concept
-    namespace Internal
-    {
-        template<typename From, typename To, typename = void>
-        constexpr bool convertible_to_impl = false;
-        template<typename From, typename To>
-        constexpr bool convertible_to_impl<From, To, enable_if_t<
-            is_convertible_v<From, To>, void_t<decltype(static_cast<To>(declval<From>()))>>> = true;
-    }
-    template<typename From, typename To>
-    /*concept*/ constexpr bool convertible_to = Internal::convertible_to_impl<From, To>;
+    using std::convertible_to;
 }
 

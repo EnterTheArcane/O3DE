@@ -530,6 +530,7 @@ namespace AZStd::ranges
 
 namespace AZStd::ranges
 {
+    // range concept delegates to SFINAE-based impl to avoid circularity with CPO constraints
     namespace Internal
     {
         template<class T, class = void>
@@ -539,9 +540,8 @@ namespace AZStd::ranges
             decltype(ranges::begin(declval<T&>())), decltype(ranges::end(declval<T&>()))>> = true;
     }
 
-    // Models range concept
     template<class T>
-    /*concept*/ constexpr bool range = Internal::range_impl<T>;
+    concept range = Internal::range_impl<T>;
 
     // sentinel type can now be defined after the range concept has been modeled
     template<class R>
@@ -554,8 +554,7 @@ namespace AZStd::ranges
 
     // Models borrowed range concept
     template<class T>
-    /*concept*/ constexpr bool borrowed_range = conjunction_v<bool_constant<range<T>>,
-        disjunction<is_lvalue_reference<T>, bool_constant<enable_borrowed_range<remove_cvref_t<T>>>>>;
+    concept borrowed_range = range<T> && (is_lvalue_reference_v<T> || enable_borrowed_range<remove_cvref_t<T>>);
 
     struct dangling
     {
@@ -570,7 +569,7 @@ namespace AZStd::ranges
     template<class R>
     using borrowed_subrange_t = conditional_t<borrowed_range<R>, subrange<iterator_t<R>>, dangling>;
 
-    // Models sized range concept
+    // sized_range concept delegates to SFINAE-based impl to avoid circularity with CPO constraints
     namespace Internal
     {
         template<class T, class = void>
@@ -581,77 +580,22 @@ namespace AZStd::ranges
     }
 
     template<class T>
-    /*concept*/ constexpr bool sized_range = Internal::sized_range_impl<T>;
-
-    namespace Internal
-    {
-        template<class R, class T, class = void>
-        constexpr bool output_range_impl = false;
-        template<class R, class T>
-        constexpr bool output_range_impl<R, T, enable_if_t<conjunction_v<
-            bool_constant<range<R>>,
-            bool_constant<output_iterator<iterator_t<R>, T>>
-            >>> = true;
-    }
+    concept sized_range = Internal::sized_range_impl<T>;
 
     template<class R, class T>
-    /*concept*/ constexpr bool output_range = Internal::output_range_impl<R, T>;
-
-    namespace Internal
-    {
-        template<class T, class = void>
-        constexpr bool input_range_impl = false;
-        template<class T>
-        constexpr bool input_range_impl<T, enable_if_t<conjunction_v<
-            bool_constant<range<T>>,
-            bool_constant<input_iterator<iterator_t<T>>>
-            >>> = true;
-    }
+    concept output_range = range<R> && output_iterator<iterator_t<R>, T>;
 
     template<class T>
-    /*concept*/ constexpr bool input_range = Internal::input_range_impl<T>;
-
-    namespace Internal
-    {
-        template<class T, class = void>
-        constexpr bool forward_range_impl = false;
-        template<class T>
-        constexpr bool forward_range_impl<T, enable_if_t<conjunction_v<
-            bool_constant<input_range<T>>,
-            bool_constant<forward_iterator<iterator_t<T>>>
-            >>> = true;
-    }
+    concept input_range = range<T> && input_iterator<iterator_t<T>>;
 
     template<class T>
-    /*concept*/ constexpr bool forward_range = Internal::forward_range_impl<T>;
-
-    namespace Internal
-    {
-        template<class T, class = void>
-        constexpr bool bidirectional_range_impl = false;
-        template<class T>
-        constexpr bool bidirectional_range_impl<T, enable_if_t<conjunction_v<
-            bool_constant<forward_range<T>>,
-            bool_constant<bidirectional_iterator<iterator_t<T>>>
-            >>> = true;
-    }
+    concept forward_range = input_range<T> && forward_iterator<iterator_t<T>>;
 
     template<class T>
-    /*concept*/ constexpr bool bidirectional_range = Internal::bidirectional_range_impl<T>;
-
-    namespace Internal
-    {
-        template<class T, class = void>
-        constexpr bool random_access_range_impl = false;
-        template<class T>
-        constexpr bool random_access_range_impl<T, enable_if_t<conjunction_v<
-            bool_constant<bidirectional_range<T>>,
-            bool_constant<random_access_iterator<iterator_t<T>>>
-            >>> = true;
-    }
+    concept bidirectional_range = forward_range<T> && bidirectional_iterator<iterator_t<T>>;
 
     template<class T>
-    /*concept*/ constexpr bool random_access_range = Internal::random_access_range_impl<T>;
+    concept random_access_range = bidirectional_range<T> && random_access_iterator<iterator_t<T>>;
 
     template<class R>
     using range_size_t = enable_if_t<sized_range<R>, decltype(ranges::size(declval<R&>()))>;
@@ -665,6 +609,7 @@ namespace AZStd::ranges
     using range_rvalue_reference_t = enable_if_t<range<R>, iter_rvalue_reference_t<iterator_t<R>>>;
 
 
+    // contiguous_range delegates to SFINAE-based impl to avoid circularity with CPO constraints
     namespace Internal
     {
         template<class T, class = void>
@@ -678,15 +623,13 @@ namespace AZStd::ranges
     }
 
     template<class T>
-    /*concept*/ constexpr bool contiguous_range = Internal::contiguous_range_impl<T>;
+    concept contiguous_range = Internal::contiguous_range_impl<T>;
 
     template<class T>
-    /*concept*/ constexpr bool common_range = conjunction_v<bool_constant<range<T>>,
-        bool_constant<same_as<iterator_t<T>, sentinel_t<T>>>>;
+    concept common_range = range<T> && same_as<iterator_t<T>, sentinel_t<T>>;
 
     template<class T>
-    /*concept*/ constexpr bool constant_range = conjunction_v<bool_constant<input_range<T>>,
-        bool_constant<::AZStd::Internal::constant_iterator<iterator_t<T>>> >;
+    concept constant_range = input_range<T> && ::AZStd::Internal::constant_iterator<iterator_t<T>>;
 
     namespace Internal
     {
@@ -1030,21 +973,12 @@ namespace AZStd::ranges
     inline constexpr bool enable_view = derived_from<T, view_base> || Internal::is_derived_from_view_interface<T>;
 
     template<class T>
-    /*concept*/ constexpr bool view = conjunction_v<bool_constant<range<T>>, bool_constant<movable<T>>, bool_constant<enable_view<T>>>;
+    concept view = range<T> && movable<T> && enable_view<T>;
 
     template<class T>
-    /*concept*/ constexpr bool viewable_range = conjunction_v<bool_constant<range<T>>,
-        disjunction<
-            conjunction<bool_constant<view<remove_cvref_t<T>>>, bool_constant<constructible_from<remove_cvref_t<T>, T>>>,
-            conjunction<bool_constant<!view<remove_cvref_t<T>>>,
-                disjunction<is_lvalue_reference<T>,
-                    conjunction<bool_constant<movable<remove_reference_t<T>>>,
-                    bool_constant<!Internal::is_initializer_list<T>>
-                    >
-                >
-            >
-        >
-    >;
+    concept viewable_range = range<T> &&
+        ((view<remove_cvref_t<T>> && constructible_from<remove_cvref_t<T>, T>) ||
+         (!view<remove_cvref_t<T>> && (is_lvalue_reference_v<T> || (movable<remove_reference_t<T>> && !Internal::is_initializer_list<T>))));
 
     template<class D>
     class view_interface<D, enable_if_t<is_class_v<D> && same_as<D, remove_cv_t<D>> >>
@@ -1163,25 +1097,16 @@ namespace AZStd::ranges
         template<bool Const, class T>
         using maybe_const = conditional_t<Const, const T, T>;
 
-        template<class R, class = void>
-        /*concept*/ constexpr bool simple_view = false;
         template<class R>
-        /*concept*/ inline constexpr bool simple_view<R, enable_if_t<conjunction_v<
-            bool_constant<view<R>>,
-            bool_constant<range<const R>>,
-            bool_constant<same_as<iterator_t<R>, iterator_t<const R>>>,
-            bool_constant<same_as<sentinel_t<R>, sentinel_t<const R>>> >>> = true;
+        concept simple_view = view<R> && range<const R>
+            && same_as<iterator_t<R>, iterator_t<const R>>
+            && same_as<sentinel_t<R>, sentinel_t<const R>>;
 
-        template<class I, class = void>
-        /*concept*/ constexpr bool has_arrow = false;
         template<class I>
-        /*concept*/ inline constexpr bool has_arrow<I, enable_if_t<conjunction_v<
-            bool_constant<input_iterator<I>>,
-            disjunction<is_pointer<I>, sfinae_trigger<decltype(declval<I>().operator->())>>
-            >>> = true;
+        concept has_arrow = input_iterator<I> && (is_pointer_v<I> || requires(I i) { i.operator->(); });
 
         template<class T, class U>
-        /*concept*/ constexpr bool different_from = ::AZStd::Internal::different_from<T, U>;
+        concept different_from = ::AZStd::Internal::different_from<T, U>;
     }
 }
 
@@ -1247,24 +1172,6 @@ namespace AZStd::ranges
     inline namespace customization_point_object
     {
         constexpr Internal::swap_ranges_fn swap_ranges{};
-    }
-}
-
-namespace AZStd::ranges::Internal
-{
-    // Implementation of ranges::swap customization point overload which calls ranges::swap_ranges
-    // Must be done after the ranges::swap_ranges function has been declared
-    // ranges::swap customization point https://eel.is/c++draft/concepts#concept.swappable-2.2
-    template <class T, class U>
-    constexpr auto swap_fn::operator()(T&& t, U&& u) const noexcept(noexcept((*this)(*t, *u)))
-        ->enable_if_t<conjunction_v<
-        bool_constant<!is_class_or_enum_with_swap_adl<T, U>>,
-        is_array<T>,
-        is_array<U>,
-        bool_constant<extent_v<T> == extent_v<U>>
-        >>
-    {
-        ranges::swap_ranges(t, u);
     }
 }
 

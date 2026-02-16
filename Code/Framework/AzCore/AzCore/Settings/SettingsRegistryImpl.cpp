@@ -240,7 +240,7 @@ namespace AZ
                     path.remove_prefix(1); // Remove the leading slash as the StackedString will add this back in.
                     // Push each JSON pointer reference token to avoid '/' being encoded
                     AZStd::ranges::for_each(path | AZStd::views::split(JsonPointerReferenceTokenPrefix),
-                        [&jsonPath](AZStd::string_view refToken) { jsonPath.Push(refToken); });
+                        [&jsonPath](auto&& refToken) { jsonPath.Push(AZStd::string_view(refToken)); });
                 }
                 // Extract the last token of the JSON pointer to use as the valueName
                 AZStd::string_view valueName;

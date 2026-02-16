@@ -206,5 +206,5 @@ namespace AZ
     using HasAzEnumTraits = AZStd::bool_constant<Internal::HasAzEnumTraitsImpl<AZStd::remove_cvref_t<T>>>;
 
     template<class T>
-    /*concept*/ inline constexpr bool HasAzEnumTraits_v = HasAzEnumTraits<T>::value;
+    concept HasAzEnumTraits_v = HasAzEnumTraits<T>::value;
 }

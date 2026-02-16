@@ -17,18 +17,14 @@ namespace AZStd::ranges
 {
     namespace Internal
     {
-        template<class Range, class Pattern, class = void>
-        /*concept*/ constexpr bool compatible_joinable_ranges = false;
         template<class Range, class Pattern>
-        /*concept*/ constexpr bool compatible_joinable_ranges<Range, Pattern, enable_if_t<conjunction_v<
-            bool_constant<common_with<range_value_t<Range>, range_value_t<Pattern>>>,
-            bool_constant<common_reference_with<range_reference_t<Range>, range_reference_t<Pattern>>>,
-            bool_constant<common_reference_with<range_rvalue_reference_t<Range>, range_rvalue_reference_t<Pattern>>>
-            >
-        >> = true;
+        concept compatible_joinable_ranges =
+            common_with<range_value_t<Range>, range_value_t<Pattern>>
+            && common_reference_with<range_reference_t<Range>, range_reference_t<Pattern>>
+            && common_reference_with<range_rvalue_reference_t<Range>, range_rvalue_reference_t<Pattern>>;
 
         template<class R>
-        /*concept*/ constexpr bool bidirectional_common = bidirectional_range<R> && common_range<R>;
+        concept bidirectional_common = bidirectional_range<R> && common_range<R>;
     }
 
     template<class View, class Pattern, class = enable_if_t<conjunction_v<

@@ -231,17 +231,9 @@ namespace UnitTest
                 bool m_boolValue{};
             };
 
-            int& operator*()
-            {
-                return m_value;
-            }
             const int& operator*() const
             {
                 return m_value;
-            }
-            TestOperatorArrow* operator->()
-            {
-                return &m_operatorArrow;
             }
             const TestOperatorArrow* operator->() const
             {
