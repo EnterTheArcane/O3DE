@@ -29,7 +29,5 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // movable
-    template <class T>
-    /*concept*/ constexpr bool movable = Internal::movable_impl<T>;
+    using std::movable;
 }

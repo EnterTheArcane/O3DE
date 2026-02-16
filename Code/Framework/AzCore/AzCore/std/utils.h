@@ -32,33 +32,7 @@ namespace AZStd
     using std::forward;
     using std::exchange;
 
-    template <class T>
-    struct default_delete
-    {
-        template <class U, 
-            class = typename enable_if<is_convertible<U*, T*>::value, void>::type>
-        void operator()(U* ptr) const
-        {
-            delete ptr;
-        }
-    };
-
-    template <class T>
-    struct default_delete<T[]>
-    {
-        template<class U,
-            class = typename enable_if<is_convertible<U(*)[], T(*)[]>::value, void>::type>
-        default_delete(const default_delete<U[]>&)
-        {
-        }
-
-        template<class U,
-            class = typename enable_if<is_convertible<U(*)[], T(*)[]>::value, void>::type>
-        void operator()(U *ptr) const
-        {
-            delete[] ptr;
-        }
-    };
+    using std::default_delete;
 
     template <class T>
     struct no_delete

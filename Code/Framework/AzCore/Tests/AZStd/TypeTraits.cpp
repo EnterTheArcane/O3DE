@@ -390,20 +390,17 @@ namespace UnitTest
     {};
 }
 
-namespace AZStd
+template <template <class> class TQual, template <class> class UQual>
+struct std::basic_common_reference<UnitTest::CommonReferenceSpecializationTest, int, TQual, UQual>
 {
-    template <template <class> class TQual, template <class> class UQual>
-    struct basic_common_reference<UnitTest::CommonReferenceSpecializationTest, int, TQual, UQual>
-    {
-        using type = int&;
-    };
-    template <template <class> class TQual, template <class> class UQual>
-    struct basic_common_reference<int, UnitTest::CommonReferenceSpecializationTest, TQual, UQual>
-    {
-        using type = int&;
-    };
+    using type = int&;
+};
 
-}
+template <template <class> class TQual, template <class> class UQual>
+struct std::basic_common_reference<int, UnitTest::CommonReferenceSpecializationTest, TQual, UQual>
+{
+    using type = int&;
+};
 
 namespace UnitTest
 {
@@ -508,19 +505,16 @@ namespace UnitTest
     struct IteratorTraitsSpecializationTest {};
 }
 
-namespace AZStd
+template <>
+struct std::iterator_traits<UnitTest::IteratorTraitsSpecializationTest>
 {
-    template <>
-    struct iterator_traits<UnitTest::IteratorTraitsSpecializationTest>
-    {
-        using difference_type = ptrdiff_t;
-        using value_type = char;
-        using pointer = char*;
-        using reference = char&;
-        using iterator_category = random_access_iterator_tag;
-        using iterator_concept = contiguous_iterator_tag;
-    };
-}
+    using difference_type = ptrdiff_t;
+    using value_type = char;
+    using pointer = char*;
+    using reference = char&;
+    using iterator_category = random_access_iterator_tag;
+    using iterator_concept = contiguous_iterator_tag;
+};
 
 namespace UnitTest
 {

@@ -32,9 +32,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    //  copy constructible
-    template<class T>
-    /*concept*/ constexpr bool copy_constructible = Internal::copy_constructible_impl<T>;
+    using std::copy_constructible;
 }
 
 namespace AZStd::Internal
@@ -53,8 +51,5 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // copyable
-    template<class T>
-    /*concept*/ constexpr bool copyable = Internal::copyable_impl<T>;
-
+    using std::copyable;
 }

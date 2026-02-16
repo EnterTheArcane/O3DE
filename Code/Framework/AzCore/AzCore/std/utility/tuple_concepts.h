@@ -59,22 +59,6 @@ namespace AZStd
     template<class T>
     /*concept*/ constexpr bool
         pair_like<T, enable_if_t<tuple_like<T>>> = tuple_size_v<remove_cvref_t<T>> == 2;
-
-    template<class... TTypes, class... UTypes, template<class> class TQual, template<class> class UQual>
-    struct basic_common_reference<tuple<TTypes...>, tuple<UTypes...>, TQual, UQual>
-        : enable_if_t<Internal::sfinae_trigger_v<tuple<common_reference_t<TQual<TTypes>, UQual<UTypes>>...>>,
-        Internal::requirements_fulfilled>
-    {
-        using type = tuple<common_reference_t<TQual<TTypes>, UQual<UTypes>>...>;
-    };
-
-    template<class T1, class T2, class U1, class U2, template<class> class TQual, template<class> class UQual>
-    struct basic_common_reference<pair<T1, T2>, pair<U1, U2>, TQual, UQual>
-        : enable_if_t<Internal::sfinae_trigger_v<common_reference_t<TQual<T1>, UQual<U1>>, common_reference_t<TQual<T2>, UQual<U2>>>,
-        Internal::requirements_fulfilled>
-    {
-        using type = pair<common_reference_t<TQual<T1>, UQual<U1>>, common_reference_t<TQual<T2>, UQual<U2>>>;
-    };
 }
 
 //! common_type is from the std namespace.
