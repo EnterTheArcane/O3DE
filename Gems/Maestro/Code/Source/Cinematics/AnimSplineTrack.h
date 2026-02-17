@@ -509,7 +509,7 @@ namespace Maestro
             {
                 AZ_WarningOnce("AnimSplineTrack", false, "CreateKey(%f): Time is out of range (%f .. %f) in track (%s), clamped.",
                     time, timeRange.start, timeRange.end, (GetNode() ? GetNode()->GetName() : ""));
-                AZStd::clamp(time, timeRange.start, timeRange.end);
+                time = AZStd::clamp(time, timeRange.start, timeRange.end);
             }
 
             const auto existingKeyIndex = FindKey(time);
