@@ -126,7 +126,7 @@ namespace AZStd
         {   // construct from [first, last)
             assign(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         basic_string(from_range_t, R&& rg, const Allocator& alloc = Allocator())
             : m_storage{ skip_element_tag{}, alloc }
         {

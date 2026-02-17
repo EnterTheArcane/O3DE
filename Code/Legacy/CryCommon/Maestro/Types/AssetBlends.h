@@ -37,7 +37,7 @@ namespace Maestro
             , m_speed(speed)
             , m_bLoop(loop)
         {
-            AZStd::clamp(m_speed, AZ::IAssetBlendKey::s_minSpeed, AZ::IAssetBlendKey::s_maxSpeed);
+            m_speed = AZStd::clamp(m_speed, AZ::IAssetBlendKey::s_minSpeed, AZ::IAssetBlendKey::s_maxSpeed);
         }
 
         bool IsClose(const AssetBlend& rhs, float tolerance = AZ::Constants::Tolerance) const

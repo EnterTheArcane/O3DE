@@ -21,7 +21,7 @@ namespace ScriptCanvas
         AZ::Outcome<void, AZStd::string> outcome = AZ::Success();
 
         AZStd::string failedContract;
-        AZStd::all_of(firstSlot.GetContracts().begin(), firstSlot.GetContracts().end(), [&firstSlot, &secondSlot, &outcome](const AZStd::unique_ptr<Contract>& contract)
+        AZ_UNUSED(AZStd::all_of(firstSlot.GetContracts().begin(), firstSlot.GetContracts().end(), [&firstSlot, &secondSlot, &outcome](const AZStd::unique_ptr<Contract>& contract)
         {
             if (!contract)
             {
@@ -35,7 +35,7 @@ namespace ScriptCanvas
             }
 
             return false;
-        }); 
+        }));
 
         return outcome;
     }

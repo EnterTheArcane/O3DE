@@ -94,7 +94,7 @@ namespace Maestro
         {
             AZ_WarningOnce("AnimSplineTrack", false, "SetValue(%f): Time is out of range (%f .. %f) in track (%s), clamped.",
                 time, timeRange.start, timeRange.end, (GetNode() ? GetNode()->GetName() : ""));
-            AZStd::clamp(time, timeRange.start, timeRange.end);
+            time = AZStd::clamp(time, timeRange.start, timeRange.end);
         }
 
         if (!bDefault)
@@ -173,7 +173,7 @@ namespace Maestro
         {
             AZ_WarningOnce("AnimSplineTrack", false, "CreateKey(%f): Time is out of range (%f .. %f) in track (%s), clamped.",
                 time, timeRange.start, timeRange.end, (GetNode() ? GetNode()->GetName() : ""));
-            AZStd::clamp(time, timeRange.start, timeRange.end);
+            time = AZStd::clamp(time, timeRange.start, timeRange.end);
         }
 
         float value;
@@ -251,7 +251,7 @@ namespace Maestro
         key.time += timeOffset;
 
         const auto timeRange = GetTimeRange();
-        AZStd::clamp(key.time, timeRange.start, timeRange.end);
+        key.time = AZStd::clamp(key.time, timeRange.start, timeRange.end);
 
         // Check that no key is too close
         for (int i = 0; i < numKeys; ++i)

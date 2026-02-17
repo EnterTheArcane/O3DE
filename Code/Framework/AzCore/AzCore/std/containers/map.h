@@ -80,7 +80,7 @@ namespace AZStd
 
         using reverse_iterator = typename tree_type::reverse_iterator;
         using const_reverse_iterator = typename tree_type::const_reverse_iterator;
-        
+
         using node_type = map_node_handle<map_node_traits<key_type, mapped_type, allocator_type, typename tree_type::node_type, typename tree_type::node_deleter>>;
         using insert_return_type = AssociativeInternal::insert_return_type<iterator, node_type>;
 
@@ -93,7 +93,7 @@ namespace AZStd
         {
             m_tree.insert_unique(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         map(from_range_t, R&& rg, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
@@ -131,7 +131,7 @@ namespace AZStd
             : map(first, last, Compare(), alloc)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         map(from_range_t, R&& rg, const Allocator& a)
             : map(from_range, AZStd::forward<R>(rg), Compare(), a)
         {
@@ -534,7 +534,7 @@ namespace AZStd
         {
             m_tree.insert_equal(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         multimap(from_range_t, R&& rg, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
@@ -572,7 +572,7 @@ namespace AZStd
             : multimap(first, last, Compare(), alloc)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         multimap(from_range_t, R&& rg, const Allocator& a)
             : multimap(from_range, AZStd::forward<R>(rg), Compare(), a)
         {
