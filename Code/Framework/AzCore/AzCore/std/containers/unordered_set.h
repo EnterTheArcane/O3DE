@@ -104,7 +104,7 @@ namespace AZStd
             base_type::rehash(numBuckets);
             base_type::insert(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         unordered_set(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),
             const allocator_type& alloc = allocator_type())
@@ -156,12 +156,12 @@ namespace AZStd
             : unordered_set(f, l, n, hf, key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         unordered_set(from_range_t, R&& rg, size_type n, const allocator_type& a)
             : unordered_set(from_range, AZStd::forward<R>(rg), n, hasher(), key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         unordered_set(from_range_t, R&& rg, size_type n, const hasher& hf, const allocator_type& a)
             : unordered_set(from_range, AZStd::forward<R>(rg), n, hf, key_equal(), a)
         {
@@ -411,7 +411,7 @@ namespace AZStd
             base_type::rehash(numBuckets);
             base_type::insert(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         unordered_multiset(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),
             const allocator_type& alloc = allocator_type())
@@ -463,12 +463,12 @@ namespace AZStd
             : unordered_multiset(f, l, n, hf, key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         unordered_multiset(from_range_t, R&& rg, size_type n, const allocator_type& a)
             : unordered_multiset(from_range, AZStd::forward<R>(rg), n, hasher(), key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         unordered_multiset(from_range_t, R&& rg, size_type n, const hasher& hf, const allocator_type& a)
             : unordered_multiset(from_range, AZStd::forward<R>(rg), n, hf, key_equal(), a)
         {

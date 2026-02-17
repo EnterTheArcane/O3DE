@@ -199,7 +199,7 @@ namespace AZStd
             insert_after_iter(before_begin(), first, last, is_integral<InputIterator>());
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         forward_list(from_range_t, R&& rg, const allocator_type& alloc = allocator_type())
             : m_allocator(alloc)
         {
