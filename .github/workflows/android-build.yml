@@ -202,7 +202,7 @@ jobs:
           gradle-version: '${{ inputs.gradle_version }}'
 
       - name: Configure environment
-        # Install dependencies, Android NDK, and Java
+        # Install dependencies for gradle and clang builds from the NDK
         continue-on-error: true
         run: |
           echo "Installing dependencies"
@@ -232,12 +232,6 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME_17_X64" >> $GITHUB_ENV
           echo "USE_GRADLE_FROM_PATH=1" >> $GITHUB_ENV
 
-          sudo apt-get install -qq libevdev-dev libevdev2 -y
-          sudo apt -y autoremove --purge
-          sudo apt -y autoclean
-          sudo apt clean
-          df -h
-
       - name: Build ${{ inputs.type }}
         # Builds with presets in ../scripts/build/Platform/Android/build_config.json
         timeout-minutes: 330
@@ -247,10 +241,6 @@ jobs:
           LY_3RDPARTY_PATH: ${{ github.workspace }}/3rdParty
           LY_PACKAGE_SERVER_URLS: "https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
         run: |
-          if [[ -n "$CC" && -n "$CXX" ]]; then
-            export EXTRA_CMAKE_OPTIONS="-DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX"
-          fi
-          export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
           scripts/o3de.sh register --this-engine
           python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
 
