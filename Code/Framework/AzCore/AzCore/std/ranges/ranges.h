@@ -20,6 +20,9 @@
 #include <AzCore/std/typetraits/remove_cv.h>
 #include <AzCore/std/typetraits/remove_all_extents.h>
 
+#include <iterator>
+#include <ranges>
+
 namespace AZStd
 {
     // alias std:: reverse_iterator names into AZStd::
