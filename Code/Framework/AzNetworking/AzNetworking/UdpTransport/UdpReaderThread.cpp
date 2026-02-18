@@ -108,8 +108,8 @@ namespace AzNetworking
                 back.m_entries.emplace_back(SocketEntry{ socket, ReceivedPackets() });
             }
             m_pendingAdds.clear();
-            AZStd::remove_if(front.m_entries.begin(), front.m_entries.end(), [](auto& socketEntry) { return socketEntry.m_socket == nullptr; });
-            AZStd::remove_if(back.m_entries.begin(), back.m_entries.end(), [](auto& socketEntry) { return socketEntry.m_socket == nullptr; });
+            AZ_UNUSED(AZStd::remove_if(front.m_entries.begin(), front.m_entries.end(), [](auto& socketEntry) { return socketEntry.m_socket == nullptr; }));
+            AZ_UNUSED(AZStd::remove_if(back.m_entries.begin(), back.m_entries.end(), [](auto& socketEntry) { return socketEntry.m_socket == nullptr; }));
             m_backIndex = 1 - m_backIndex;
             m_readerBuffers[m_backIndex].m_receiveBuffer.Resize(0);
         }

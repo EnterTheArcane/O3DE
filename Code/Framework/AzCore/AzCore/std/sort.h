@@ -129,51 +129,7 @@ namespace AZStd
         };
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    // Merge
-    template <class InputIterator1, class InputIterator2, class OutputIterator>
-    OutputIterator merge(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result)
-    {
-        // copy merging ranges, both using operator<
-        for (; first1 != last1 && first2 != last2; ++result)
-        {
-            if (*first2 < *first1)
-            {
-                *result = *first2;
-                ++first2;
-            }
-            else
-            {
-                *result = *first1;
-                ++first1;
-            }
-        }
-
-        result = Internal::copy(first1, last1, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());   // copy any tail
-        return Internal::copy(first2, last2, result, Internal::is_fast_copy<InputIterator2, OutputIterator>());
-    }
-
-    template <class InputIterator1, class InputIterator2, class OutputIterator, class Compare>
-    OutputIterator merge(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, Compare comp)
-    {
-        // copy merging ranges, both using operator<
-        for (; first1 != last1 && first2 != last2; ++result)
-        {
-            if (comp(*first2, *first1))
-            {
-                *result = *first2;
-                ++first2;
-            }
-            else
-            {
-                *result = *first1;
-                ++first1;
-            }
-        }
-
-        result = Internal::copy(first1, last1, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());   // copy any tail
-        return Internal::copy(first2, last2, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());
-    }
+    using std::merge;
 
     template<class BidirectionalIterator1, class BidirectionalIterator2, class BidirectionalIterator3, class Compare>
     BidirectionalIterator3 merge_backward(BidirectionalIterator1 first1, BidirectionalIterator1 last1, BidirectionalIterator2 first2, BidirectionalIterator2 last2, BidirectionalIterator3 result, Compare comp)
@@ -249,6 +205,7 @@ namespace AZStd
             merge_buffered(midn, lastn, last, count1 - count1n, count2 - count2n, buffer, comp);
         }
     }
+
     // TEMPLATE FUNCTION inplace_merge
     template<class BidirectionalIterator, class Difference, class Buffer>
     BidirectionalIterator buffered_rotate(BidirectionalIterator first, BidirectionalIterator mid, BidirectionalIterator last, Difference count1, Difference count2, Buffer& buffer)
@@ -275,36 +232,7 @@ namespace AZStd
     }
     //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    // Partial sort
-    template <class RandomAccessIterator, class Compare>
-    void partial_sort(RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last, Compare comp)
-    {
-        AZStd::make_heap(first, middle, comp);
-        for (RandomAccessIterator next = middle; next < last; ++next)
-        {
-            if (comp(*next, *first))
-            {
-                AZStd::pop_heap(first, middle, next, comp);
-            }
-        }
-        AZStd::sort_heap(first, middle, comp);
-    }
-
-    template <class RandomAccessIterator>
-    void partial_sort(RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last)
-    {
-        AZStd::make_heap(first, middle);
-        for (RandomAccessIterator next = middle; next < last; ++next)
-        {
-            if (*next < *first)
-            {
-                AZStd::pop_heap(first, middle, next);
-            }
-        }
-        AZStd::sort_heap(first, middle);
-    }
-    //////////////////////////////////////////////////////////////////////////
+    using std::partial_sort;
 
     //////////////////////////////////////////////////////////////////////////
     // Insertion sort

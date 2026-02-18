@@ -2622,7 +2622,7 @@ namespace ScriptCanvas
 
         SlotId slotId;
 
-        AZStd::find_if(m_slotIdIteratorCache.begin(), m_slotIdIteratorCache.end(), [&slotId, datum](const AZStd::pair<SlotId, IteratorCache>& cachePair)
+        AZ_UNUSED(AZStd::find_if(m_slotIdIteratorCache.begin(), m_slotIdIteratorCache.end(), [&slotId, datum](const AZStd::pair<SlotId, IteratorCache>& cachePair)
         {
             if (cachePair.second.HasDatum())
             {
@@ -2633,7 +2633,7 @@ namespace ScriptCanvas
             }
 
             return slotId.IsValid();
-        });
+        }));
 
         if (slotId.IsValid())
         {

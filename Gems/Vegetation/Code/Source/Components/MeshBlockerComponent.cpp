@@ -393,9 +393,9 @@ namespace Vegetation
         m_meshBoundsForIntersection = m_meshBounds;
         if (m_meshBoundsForIntersection.IsValid())
         {
-            const auto heights = AZStd::minmax(
+            const auto heights = AZStd::minmax({
                 m_meshBoundsForIntersection.GetMin().GetZ() + m_meshBoundsForIntersection.GetExtents().GetZ() * m_configuration.m_meshHeightPercentMin,
-                m_meshBoundsForIntersection.GetMin().GetZ() + m_meshBoundsForIntersection.GetExtents().GetZ() * m_configuration.m_meshHeightPercentMax);
+                m_meshBoundsForIntersection.GetMin().GetZ() + m_meshBoundsForIntersection.GetExtents().GetZ() * m_configuration.m_meshHeightPercentMax});
 
             AZ::Vector3 cornerMin = m_meshBoundsForIntersection.GetMin();
             cornerMin.SetZ(heights.first - s_rayAABBHeightPadding);

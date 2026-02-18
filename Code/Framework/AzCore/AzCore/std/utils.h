@@ -24,6 +24,7 @@
 #include <AzCore/std/utility/move.h>
 #include <AzCore/std/utility/pair.h>
 
+#include <algorithm>
 #include <utility>
 
 namespace AZStd
@@ -42,27 +43,11 @@ namespace AZStd
     };
     //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    // Swap
     using std::swap;
 
-    template<class ForwardIterator1, class ForwardIterator2>
-    AZ_FORCE_INLINE void                    iter_swap(ForwardIterator1 a, ForwardIterator2 b)
-    {
-        AZStd::swap(*a, *b);
-    }
+    using std::iter_swap;
 
-    template<class ForwardIterator1, class ForwardIterator2>
-    AZ_FORCE_INLINE ForwardIterator2       swap_ranges(ForwardIterator1 first1, ForwardIterator1 last1, ForwardIterator2 first2)
-    {
-        for (; first1 != last1; ++first1, ++first2)
-        {
-            AZStd::iter_swap(first1, first2);
-        }
-
-        return first2;
-    }
-    //////////////////////////////////////////////////////////////////////////
+    using std::swap_ranges;
 
     // The structure that encapsulates index lists
     using std::integer_sequence;
