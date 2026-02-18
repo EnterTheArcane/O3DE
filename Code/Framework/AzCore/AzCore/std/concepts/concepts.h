@@ -328,8 +328,7 @@ namespace AZStd
         bool_constant<input_or_output_iterator<I>>,
         bool_constant<Internal::weakly_equality_comparable_with<S, I>>>;
 
-    template<class S, class I>
-    inline constexpr bool disable_sized_sentinel_for = false;
+    using std::disable_sized_sentinel_for;
 }
 
 namespace AZStd::Internal

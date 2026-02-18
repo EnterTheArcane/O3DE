@@ -337,22 +337,19 @@ namespace AZStd
     }
 }
 
-namespace std
+// As AZStd aliases std::common_type, the specializations need to be put in the std namespace
+template<class T, class U>
+struct std::common_type<AZStd::basic_const_iterator<T>, U>
 {
-    // As AZStd aliases std::common_type, the specializations need to be put in the std namespace
-    template<class T, class U>
-    struct common_type<AZStd::basic_const_iterator<T>, U>
-    {
-        using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
-    };
-    template<class T, class U>
-    struct common_type<U, AZStd::basic_const_iterator<T>>
-    {
-        using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
-    };
-    template<class T, class U>
-    struct common_type<AZStd::basic_const_iterator<T>, AZStd::basic_const_iterator<U>>
-    {
-        using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
-    };
-}
+    using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
+};
+template<class T, class U>
+struct std::common_type<U, AZStd::basic_const_iterator<T>>
+{
+    using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
+};
+template<class T, class U>
+struct std::common_type<AZStd::basic_const_iterator<T>, AZStd::basic_const_iterator<U>>
+{
+    using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
+};
