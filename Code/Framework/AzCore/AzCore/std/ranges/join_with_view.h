@@ -31,14 +31,7 @@ namespace AZStd::ranges
         /*concept*/ constexpr bool bidirectional_common = bidirectional_range<R> && common_range<R>;
     }
 
-    template<class View, class Pattern, class = enable_if_t<conjunction_v<
-        bool_constant<input_range<View>>,
-        bool_constant<view<View>>,
-        bool_constant<input_range<range_reference_t<View>>>,
-        bool_constant<forward_range<Pattern>>,
-        bool_constant<view<Pattern>>,
-        bool_constant<Internal::compatible_joinable_ranges<range_reference_t<View>, Pattern>>
-        >>>
+    template<class View, class Pattern, class = void>
         class join_with_view;
 
     // views::join_with customization point
@@ -76,6 +69,13 @@ namespace AZStd::ranges
     class join_with_view
         : public view_interface<join_with_view<View, Pattern>>
     {
+        static_assert(input_range<View>, "join_with_view requires View to be an input_range");
+        static_assert(view<View>, "join_with_view requires View to satisfy view");
+        static_assert(input_range<range_reference_t<View>>, "join_with_view requires inner range to be an input_range");
+        static_assert(forward_range<Pattern>, "join_with_view requires Pattern to be a forward_range");
+        static_assert(view<Pattern>, "join_with_view requires Pattern to satisfy view");
+        static_assert(Internal::compatible_joinable_ranges<range_reference_t<View>, Pattern>,
+            "join_with_view requires compatible joinable ranges");
         template<bool>
         struct iterator;
         template<bool>

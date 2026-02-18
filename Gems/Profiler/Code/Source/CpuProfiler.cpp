@@ -234,10 +234,10 @@ namespace Profiler
         }
 
         // Clear all TLS that flagged themselves to be deleted, meaning that the thread is already terminated
-        AZStd::remove_if(m_registeredThreads.begin(), m_registeredThreads.end(), [](const AZStd::intrusive_ptr<CpuTimingLocalStorage>& thread)
+        AZ_UNUSED(AZStd::remove_if(m_registeredThreads.begin(), m_registeredThreads.end(), [](const AZStd::intrusive_ptr<CpuTimingLocalStorage>& thread)
         {
             return thread->m_deleteFlag.load();
-        });
+        }));
 
         // Update our saved time regions to the last frame's collected data
         m_timeRegionMap = AZStd::move(newMap);

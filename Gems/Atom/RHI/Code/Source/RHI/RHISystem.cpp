@@ -447,9 +447,9 @@ namespace AZ::RHI
     {
         if (enabled)
         {
-            AZStd::remove(m_drawListTagsDisabledByDefault.begin(),
+            AZ_UNUSED(AZStd::remove(m_drawListTagsDisabledByDefault.begin(),
                           m_drawListTagsDisabledByDefault.end(),
-                          drawListTag);
+                          drawListTag));
         }
         else
         {

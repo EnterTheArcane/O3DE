@@ -1204,7 +1204,7 @@ namespace UnitTest
         auto RemoveIf = []() constexpr
         {
             AZStd::array<int, 4> localArray = { { 6, 2, -423, 0 } };
-            AZStd::remove_if(localArray.begin(), localArray.end(), [](int element) { return element < 0; });
+            AZ_UNUSED(AZStd::remove_if(localArray.begin(), localArray.end(), [](int element) { return element < 0; }));
             return localArray;
         };
 

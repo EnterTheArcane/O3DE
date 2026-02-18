@@ -64,7 +64,7 @@ namespace LmbrCentral
 
     void EditorTagComponent::RemoveTag(const char* tag)
     {
-        AZStd::remove_if(m_tags.begin(), m_tags.end(), [&tag](const AZStd::string& target) { return target == tag; });
+        AZ_UNUSED(AZStd::remove_if(m_tags.begin(), m_tags.end(), [&tag](const AZStd::string& target) { return target == tag; }));
         if (AZStd::find(m_activeTags.begin(), m_activeTags.end(), tag) != m_activeTags.end())
         {
             DeactivateTag(tag);
@@ -125,7 +125,7 @@ namespace LmbrCentral
         TagGlobalNotificationBus::Event(tag, &TagGlobalNotificationBus::Events::OnEntityTagRemoved, entityId);
         TagComponentNotificationsBus::Event(entityId, &TagComponentNotificationsBus::Events::OnTagRemoved, tag);
 
-        AZStd::remove_if(m_activeTags.begin(), m_activeTags.end(), [&tagName](const AZStd::string& target) { return target == tagName; });
+        AZ_UNUSED(AZStd::remove_if(m_activeTags.begin(), m_activeTags.end(), [&tagName](const AZStd::string& target) { return target == tagName; }));
     }
 
     void EditorTagComponent::ActivateTags()

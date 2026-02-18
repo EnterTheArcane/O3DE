@@ -442,7 +442,7 @@ namespace UnitTest
         // Indicates whether the iterator type can be used with C++17 style iterator traits
         // when using algorithms from std namespace
         using CountedIterator = AZStd::counted_iterator<typename AZStd::string::iterator>;
-        using CountedIteratorTraits = AZStd::iterator_traits<CountedIterator>;
+        using CountedIteratorTraits = std::iterator_traits<CountedIterator>;
         static_assert(AZStd::Internal::sfinae_trigger_v<typename CountedIteratorTraits::value_type>);
         static_assert(AZStd::Internal::sfinae_trigger_v<typename CountedIteratorTraits::difference_type>);
         static_assert(AZStd::Internal::sfinae_trigger_v<typename CountedIteratorTraits::iterator_category>);

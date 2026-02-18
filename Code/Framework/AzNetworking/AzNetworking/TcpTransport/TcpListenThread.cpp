@@ -135,7 +135,7 @@ namespace AzNetworking
 
         auto cleanupUnused = [](AZ::ThreadSafeDeque<ListenPort>::DequeType& deque)
         {
-            AZStd::remove_if(deque.begin(), deque.end(), [](ListenPort& listenPort) { return listenPort.m_tcpNetworkInterface == nullptr; });
+            AZ_UNUSED(AZStd::remove_if(deque.begin(), deque.end(), [](ListenPort& listenPort) { return listenPort.m_tcpNetworkInterface == nullptr; }));
         };
         m_listenPorts.VisitDeque(cleanupUnused);
 

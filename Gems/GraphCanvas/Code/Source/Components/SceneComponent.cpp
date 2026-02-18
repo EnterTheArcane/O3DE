@@ -1935,13 +1935,13 @@ namespace GraphCanvas
 
         // Hunt through our nodes for both the source and target endpoint at the same time.
         AZStd::pair<bool, bool> findResult(false, false);
-        AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&findResult, &sourceEndpoint, &targetEndpoint](const AZ::Entity* node) 
+        AZ_UNUSED(AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&findResult, &sourceEndpoint, &targetEndpoint](const AZ::Entity* node)
             { 
                 findResult.first = findResult.first || node->GetId() == sourceEndpoint.GetNodeId(); 
                 findResult.second = findResult.second || node->GetId() == targetEndpoint.GetNodeId();
                 return findResult.first && findResult.second;
             }
-        );
+        ));
 
         if (!findResult.first)
         {
@@ -1974,13 +1974,12 @@ namespace GraphCanvas
 
         // Hunt through our nodes for both the source and target endpoint at the same time.
         AZStd::pair<bool, bool> findResult(false, false);
-        AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&findResult, &sourceEndpoint, &targetEndpoint](const AZ::Entity* node)
+        AZ_UNUSED(AZStd::find_if(m_graphData.m_nodes.begin(), m_graphData.m_nodes.end(), [&findResult, &sourceEndpoint, &targetEndpoint](const AZ::Entity* node)
         {
             findResult.first = findResult.first || node->GetId() == sourceEndpoint.GetNodeId();
             findResult.second = findResult.second || node->GetId() == targetEndpoint.GetNodeId();
             return findResult.first && findResult.second;
-        }
-        );
+        }));
 
         if (!findResult.first)
         {
@@ -3993,7 +3992,7 @@ namespace GraphCanvas
         }
 
         // Remove the effect id from our active particle list so we can limit their numbers properly
-        AZStd::remove(m_activeParticles.begin(), m_activeParticles.end(), effectId);
+        AZ_UNUSED(AZStd::remove(m_activeParticles.begin(), m_activeParticles.end(), effectId));
     }
 
     void SceneComponent::InitConnections()

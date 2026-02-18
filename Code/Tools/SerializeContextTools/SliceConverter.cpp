@@ -83,13 +83,13 @@ namespace AZ
             if (commandLine->HasSwitch("slices"))
             {
                 AZStd::vector<AZStd::string> sliceAbsPaths = Utilities::ReadFileListFromCommandLine(application, "slices");
-                AZStd::remove_if(
+                AZ_UNUSED(AZStd::remove_if(
                     sliceAbsPaths.begin(),
                     sliceAbsPaths.end(),
                     [](const AZStd::string& item)
                     {
                         return !item.ends_with(".slice");
-                    });
+                    }));
 
                 for (const AZStd::string& absolutePath : sliceAbsPaths)
                 {

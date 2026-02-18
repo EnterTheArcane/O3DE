@@ -327,7 +327,6 @@ namespace AZStd
             return result;
         }
     };
-
 } // namespace AZStd
 
 #include <AzCore/std/containers/variant.inl>
