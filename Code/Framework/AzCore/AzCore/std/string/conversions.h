@@ -494,32 +494,35 @@ namespace AZStd
         return wcsxfrm(destination, source, count);
     }
 
-    // Use the C++ standard character classification functions and avoid the issue with negative integer values
-    template<class CharT> bool isalnum(CharT ch, const std::locale& loc = {})  { return std::isalnum(ch, loc); }
-    template<class CharT> bool isalpha(CharT ch, const std::locale& loc = {})  { return std::isalpha(ch, loc); }
-    template<class CharT> bool isblank(CharT ch, const std::locale& loc = {})  { return std::isalnum(ch, loc); }
-    template<class CharT> bool iscntrl(CharT ch, const std::locale& loc = {})  { return std::iscntrl(ch, loc); }
-    template<class CharT> bool isdigit(CharT ch, const std::locale& loc = {})  { return std::isdigit(ch, loc); }
-    template<class CharT> bool isgraph(CharT ch, const std::locale& loc = {})  { return std::isgraph(ch, loc); }
-    template<class CharT> bool islower(CharT ch, const std::locale& loc = {})  { return std::islower(ch, loc); }
-    template<class CharT> bool isprint(CharT ch, const std::locale& loc = {})  { return std::isprint(ch, loc); }
-    template<class CharT> bool ispunct(CharT ch, const std::locale& loc = {})  { return std::ispunct(ch, loc); }
-    template<class CharT> bool isspace(CharT ch, const std::locale& loc = {})  { return std::isspace(ch, loc); }
-    template<class CharT> bool isupper(CharT ch, const std::locale& loc = {})  { return std::isupper(ch, loc); }
-    template<class CharT> bool isxdigit(CharT ch, const std::locale& loc = {}) { return std::isxdigit(ch, loc); }
+    using std::isalnum;
+    using std::isalpha;
+    using std::isblank;
+    using std::iscntrl;
+    using std::isdigit;
+    using std::isgraph;
+    using std::islower;
+    using std::isprint;
+    using std::ispunct;
+    using std::isspace;
+    using std::isupper;
+    using std::isxdigit;
 
-    template<class CharT> bool is_alnum(CharT ch, const std::locale& loc = {})  { return std::isalnum(ch, loc); }
-    template<class CharT> bool is_alpha(CharT ch, const std::locale& loc = {})  { return std::isalpha(ch, loc); }
-    template<class CharT> bool is_blank(CharT ch, const std::locale& loc = {})  { return std::isalnum(ch, loc); }
-    template<class CharT> bool is_cntrl(CharT ch, const std::locale& loc = {})  { return std::iscntrl(ch, loc); }
-    template<class CharT> bool is_digit(CharT ch, const std::locale& loc = {})  { return std::isdigit(ch, loc); }
-    template<class CharT> bool is_graph(CharT ch, const std::locale& loc = {})  { return std::isgraph(ch, loc); }
-    template<class CharT> bool is_lower(CharT ch, const std::locale& loc = {})  { return std::islower(ch, loc); }
-    template<class CharT> bool is_print(CharT ch, const std::locale& loc = {})  { return std::isprint(ch, loc); }
-    template<class CharT> bool is_punct(CharT ch, const std::locale& loc = {})  { return std::ispunct(ch, loc); }
-    template<class CharT> bool is_space(CharT ch, const std::locale& loc = {})  { return std::isspace(ch, loc); }
-    template<class CharT> bool is_upper(CharT ch, const std::locale& loc = {})  { return std::isupper(ch, loc); }
-    template<class CharT> bool is_xdigit(CharT ch, const std::locale& loc = {}) { return std::isxdigit(ch, loc); }
+#define CONV_ALIAS(alias, func) \
+    inline constexpr auto alias = [](auto ch, const std::locale& loc = {}) { return func(ch, loc); }
+    CONV_ALIAS(is_alnum, isalnum);
+    CONV_ALIAS(is_alpha, isalpha);
+    CONV_ALIAS(is_blank, isblank);
+    CONV_ALIAS(is_cntrl, iscntrl);
+    CONV_ALIAS(is_digit, isdigit);
+    CONV_ALIAS(is_graph, isgraph);
+    CONV_ALIAS(is_lower, islower);
+    CONV_ALIAS(is_print, isprint);
+    CONV_ALIAS(is_punct, ispunct);
+    CONV_ALIAS(is_space, isspace);
+    CONV_ALIAS(is_upper, isupper);
+    CONV_ALIAS(is_xdigit, isxdigit);
+#undef CONV_ALIAS
+
     // Wrap the std::locale tolower and toupper functions with a default std::locale argument
     template<class charT>
     charT tolower(charT ch, const std::locale& loc = {})
