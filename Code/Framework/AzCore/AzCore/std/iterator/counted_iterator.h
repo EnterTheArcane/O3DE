@@ -40,8 +40,6 @@ namespace AZStd::Internal
     {
         using iterator_category = typename ITER_TRAITS<I>::iterator_category;
     };
-
-    struct counted_iterator_requirements_fulfilled {};
 }
 
 namespace AZStd

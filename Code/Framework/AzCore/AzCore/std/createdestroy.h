@@ -358,52 +358,6 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    //////////////////////////////////////////////////////////////////////////
-    // Sequence move
-    template <class InputIterator, class ForwardIterator>
-    constexpr ForwardIterator move(InputIterator first, InputIterator last, ForwardIterator result, bool)
-    {
-        // Specialized copy for contiguous iterators which are trivially copyable
-        if constexpr (is_fast_copy_v<InputIterator, ForwardIterator>)
-        {
-            size_t numElements = last - first;
-            if (numElements > 0)
-            {
-#if az_has_builtin_memmove
-                static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Size of value types must match for a trivial copy");
-                __builtin_memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
-#else
-                if (az_builtin_is_constant_evaluated())
-                {
-                    for (; first != last; ++result, ++first)
-                    {
-                        *result = ::AZStd::move(*first);
-                    }
-                    return result;
-                }
-                else
-                {
-                    static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Size of value types must match for a trivial copy");
-                    AZ_Assert((static_cast<const void*>(&*result) < static_cast<const void*>(&*first))
-                        || (static_cast<const void*>(&*result) >= static_cast<const void*>(&*first + numElements)),
-                        "AZStd::move memory overlaps use AZStd::move_backward!");
-                    ::memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
-                }
-#endif
-            }
-            return result + numElements;
-        }
-        else
-        {
-            for (; first != last; ++result, ++first)
-            {
-                *result = ::AZStd::move(*first);
-            }
-            return result;
-        }
-    }
-
-
     // For generic iterators, move is the same as copy.
     template <class BidirectionalIterator1, class BidirectionalIterator2>
     constexpr BidirectionalIterator2 move_backward(BidirectionalIterator1 first, BidirectionalIterator1 last, BidirectionalIterator2 result, bool)
@@ -506,6 +460,7 @@ namespace AZStd
     {
         return AZStd::Internal::uninitialized_move(first, last, result, {});
     }
+
     using std::move;
     using std::move_backward;
 }

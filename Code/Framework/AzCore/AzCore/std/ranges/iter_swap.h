@@ -84,15 +84,9 @@ namespace AZStd::ranges::Internal
 
 namespace AZStd::ranges
 {
-    // Workaround for clang bug https://bugs.llvm.org/show_bug.cgi?id=37556
-    // Using a placeholder namespace to wrap the customization point object
-    // inline namespce and then bring that placeholder namespace into scope
-    namespace workaround
+    inline namespace customization_point_object
     {
-        inline namespace customization_point_object
-        {
-            inline constexpr Internal::iter_swap_fn iter_swap{};
-        }
+        inline constexpr Internal::iter_swap_fn iter_swap{};
     }
 }
 

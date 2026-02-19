@@ -362,10 +362,9 @@ namespace AZStd
                 return a.pi_ == b.pi_;
             }
 
-            friend inline bool operator<(shared_count const& a, shared_count const& b)
+            friend inline auto operator<=>(shared_count const& a, shared_count const& b)
             {
-                //return AZStd::less<sp_counted_base *>()( a.pi_, b.pi_ );
-                return (a.pi_ < b.pi_);
+                return a.pi_ <=> b.pi_;
             }
 
             void* get_deleter(sp_typeinfo const& ti) const
