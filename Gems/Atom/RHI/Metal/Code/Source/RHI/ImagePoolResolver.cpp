@@ -21,7 +21,7 @@ namespace AZ
             : ResourcePoolResolver(device)
         {
         }
-    
+
         RHI::ResultCode ImagePoolResolver::UpdateImage(const RHI::DeviceImageUpdateRequest& request, size_t& bytesTransferred)
         {
             Image* image = static_cast<Image*>(request.m_image);
@@ -31,7 +31,7 @@ namespace AZ
             const uint32_t stagingRowPitch = sourceSubresourceLayout.m_bytesPerRow;
             const uint32_t stagingSlicePitch = sourceSubresourceLayout.m_bytesPerImage;
             const uint32_t stagingSize = stagingSlicePitch * sourceSubresourceLayout.m_size.m_depth;
-            
+
             RHI::Ptr<Buffer> stagingBuffer = m_device.AcquireStagingBuffer(stagingSize, RHI::BufferBindFlags::CopyRead);
             if (!stagingBuffer)
             {
@@ -63,17 +63,17 @@ namespace AZ
                         stagingRowPitch);
                 }
             }
-            
+
             Platform::PublishBufferCpuChangeOnGpu(stagingBuffer->GetMemoryView().GetGpuAddress<id<MTLBuffer>>(), stagingBuffer->GetMemoryView().GetOffset(), stagingSize);
             image->m_pendingResolves++;
             bytesTransferred = stagingSize;
             return RHI::ResultCode::Success;
         }
-        
+
         void ImagePoolResolver::Compile()
         {
         }
-        
+
         void ImagePoolResolver::Resolve(CommandList& commandList) const
         {
             auto& device = static_cast<Device&>(GetDevice());
@@ -100,7 +100,7 @@ namespace AZ
                 device.QueueForRelease(packet.m_stagingBuffer->GetMemoryView());
             }
         }
-        
+
         void ImagePoolResolver::Deactivate()
         {
             AZStd::for_each(m_uploadPackets.begin(), m_uploadPackets.end(), [](auto& packet)
@@ -111,7 +111,7 @@ namespace AZ
 
             m_uploadPackets.clear();
         }
-    
+
         void ImagePoolResolver::OnResourceShutdown(const RHI::DeviceResource& resource)
         {
             AZStd::lock_guard<AZStd::mutex> lock(m_uploadPacketsLock);
@@ -121,7 +121,7 @@ namespace AZ
                 return packet.m_destinationImage == image;
             };
 
-            AZStd::remove_if(m_uploadPackets.begin(), m_uploadPackets.end(), predicatePacket);
+            AZ_UNUSED(AZStd::remove_if(m_uploadPackets.begin(), m_uploadPackets.end(), predicatePacket));
          }
 
     }
