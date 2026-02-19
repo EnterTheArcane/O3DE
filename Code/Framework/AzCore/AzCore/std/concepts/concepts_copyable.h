@@ -14,42 +14,8 @@
 #include <AzCore/std/typetraits/is_convertible.h>
 #include <AzCore/std/typetraits/conjunction.h>
 
-namespace AZStd::Internal
-{
-    template <class T, class = void>
-    constexpr bool copy_constructible_impl = false;
-    template <class T>
-    constexpr bool copy_constructible_impl<T, enable_if_t<conjunction_v<
-        bool_constant<move_constructible<T>>,
-        bool_constant<constructible_from<T, T&>>,
-        bool_constant<convertible_to<T&, T>>,
-        bool_constant<constructible_from<T, const T&>>,
-        bool_constant<convertible_to<const T&, T>>,
-        bool_constant<constructible_from<T, const T>>,
-        bool_constant<convertible_to<const T, T>>
-        >>> = true;
-}
-
 namespace AZStd
 {
     using std::copy_constructible;
-}
-
-namespace AZStd::Internal
-{
-    template <class T, class = void>
-    constexpr bool copyable_impl = false;
-    template <class T>
-    constexpr bool copyable_impl<T, enable_if_t<conjunction_v<
-        bool_constant<copy_constructible<T>>,
-        bool_constant<movable<T>>,
-        bool_constant<assignable_from<T&, T&>>,
-        bool_constant<assignable_from<T&, const T&>>,
-        bool_constant<assignable_from<T&, const T>>
-        >>> = true;
-}
-
-namespace AZStd
-{
     using std::copyable;
 }

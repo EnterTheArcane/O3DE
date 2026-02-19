@@ -283,7 +283,7 @@
 
 #if defined(__has_builtin)
     #if __has_builtin(__builtin_memcpy) && (!defined(AZ_COMPILER_GCC))
-        #define az_has_builtin_memcpy false // true
+        #define az_has_builtin_memcpy true
     #endif
     #if __has_builtin(__builtin_wmemcpy)
         #define az_has_builtin_wmemcpy true

@@ -149,7 +149,6 @@ namespace AZStd
     using std::construct_at;
 }
 
-
 namespace AZStd::Internal
 {
 
