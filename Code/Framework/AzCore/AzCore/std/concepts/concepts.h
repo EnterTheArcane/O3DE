@@ -116,6 +116,11 @@ namespace AZStd
         };
     }
 
+    // NOTE: Do not replace with `using std::to_address` yet.
+    // `std::to_address` can instantiate `std::pointer_traits<T>` in non-SFINAE-friendly ways
+    // on currently supported toolchains (see LWG3545 discussion above), and this header uses
+    // `to_address` from concept/SFINAE-heavy contexts. That turns substitution failure into hard
+    // errors and causes widespread breakage.
     inline namespace customization_point_object
     {
         constexpr Internal::to_address_fn to_address{};
