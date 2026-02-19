@@ -494,7 +494,7 @@ namespace AZStd::ranges
             template<class T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::to_address(ranges::begin(AZStd::forward<T>(t))))) ->
                 enable_if_t<conjunction_v<bool_constant<is_lvalue_or_borrowable<T>>, bool_constant<has_qualified_ranges_begin<T>>>,
-                decltype(AZStd::to_address(ranges::begin(AZStd::forward<T>(t))))>
+                add_pointer_t<iter_reference_t<iterator_t<T>>>>
             {
                 return AZStd::to_address(ranges::begin(AZStd::forward<T>(t)));
             }
@@ -806,14 +806,14 @@ namespace AZStd::ranges
 
         template <class Derived = D>
         constexpr auto data() ->
-            enable_if_t<contiguous_iterator<iterator_t<Derived>>, decltype(AZStd::to_address(ranges::begin(static_cast<Derived&>(*this))))>
+            enable_if_t<contiguous_iterator<iterator_t<Derived>>, add_pointer_t<range_reference_t<Derived>>>
         {
             return to_address(ranges::begin(derived()));
         }
         template <class Derived = D>
         constexpr auto data() const ->
             enable_if_t<range<const Derived> && contiguous_iterator<iterator_t<const Derived>>,
-            decltype(AZStd::to_address(ranges::begin(static_cast<const Derived&>(*this))))>
+            add_pointer_t<range_reference_t<const Derived>>>
         {
             return to_address(ranges::begin(derived()));
         }
