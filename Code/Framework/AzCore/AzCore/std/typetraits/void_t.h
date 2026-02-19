@@ -7,9 +7,12 @@
  */
 #pragma once
 
-#include <type_traits>
-
 namespace AZStd
 {
-    using std::void_t;
+    // Implementation of the C++ standard is void_t meta function
+    // http://en.cppreference.com/w/cpp/types/void_t
+    // This utility function maps any type to void
+    // It can be used to detect ill-formed which are not mappable to void
+    template<typename... Args> struct make_void { using type = void; };
+    template<typename... Args> using void_t = typename make_void<Args...>::type;
 }
