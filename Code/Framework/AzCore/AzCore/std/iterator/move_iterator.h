@@ -13,22 +13,6 @@
 
 #include <iterator>
 
-namespace AZStd::Internal
-{
-    template<class I, class = void>
-    struct move_iterator_iter_category {};
-
-    template<class I>
-    struct move_iterator_iter_category<I, void_t<typename ITER_TRAITS<I>::iterator_category>>
-    {
-        using iterator_category = conditional_t<
-            derived_from<typename ITER_TRAITS<I>::iterator_category, random_access_iterator_tag>,
-            random_access_iterator_tag,
-            typename ITER_TRAITS<I>::iterator_category
-        >;
-    };
-}
-
 namespace AZStd
 {
     using std::move_iterator;

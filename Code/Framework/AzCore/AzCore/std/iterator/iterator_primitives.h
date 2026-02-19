@@ -79,20 +79,4 @@ namespace AZStd::Internal
     constexpr bool has_element_type_v = false;
     template <typename T>
     constexpr bool has_element_type_v<T, void_t<typename T::element_type>> = true;
-
-    template <typename T, typename = void>
-    struct object_type_value_requires {};
-    template <typename T>
-    struct object_type_value_requires<T, enable_if_t<is_object_v<T>>>
-    {
-        using value_type = remove_cv_t<T>;
-    };
-
-    template <typename T, typename = void>
-    struct object_type_difference_requires {};
-    template <typename T>
-    struct object_type_difference_requires<T, enable_if_t<is_object_v<T>>>
-    {
-        using difference_type = ptrdiff_t;
-    };
 }

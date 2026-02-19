@@ -122,17 +122,6 @@ namespace AZStd
 
         template<class It>
         concept is_class_or_enum = disjunction_v<is_class<remove_cvref_t<It>>, is_enum<remove_cvref_t<It>>>;
-
-        template<class T, class U>
-        concept common_with_impl =
-            requires
-            {
-                static_cast<common_type_t<T, U>>(declval<T>());
-                static_cast<common_type_t<T, U>>(declval<U>());
-            }
-            && same_as<common_type_t<T, U>, common_type_t<U, T>>
-            && common_reference_with<add_lvalue_reference_t<const T>, add_lvalue_reference_t<const U>>
-            && common_reference_with<add_lvalue_reference_t<common_type_t<T, U>>, common_reference_t<add_lvalue_reference_t<const T>, add_lvalue_reference_t<const U>>>;
     }
 
     using std::common_with;
@@ -200,16 +189,6 @@ namespace AZStd
 
         template<class T>
         concept is_signed_integer_like = signed_integral<T>;
-
-        template<class T>
-        concept weakly_incrementable_impl =
-            movable<T>
-            && is_signed_integer_like<iter_difference_t<T>>
-            && requires(T t)
-            {
-                { ++t } -> same_as<T&>;
-                t++;
-            };
     }
 
     using std::weakly_incrementable;
@@ -245,21 +224,6 @@ namespace AZStd
         // ITER_TRAITS(I) general concept
         template<class I>
         using ITER_TRAITS = conditional_t<is_primary_template_v<iterator_traits<I>>, I, iterator_traits<I>>;
-
-        // ITER_CONCEPT(I) general concept
-        template<class I>
-        concept use_traits_iterator_concept_for_concept = requires { typename ITER_TRAITS<I>::iterator_concept; };
-
-        template<class I>
-        concept use_traits_iterator_category_for_concept =
-            requires { typename ITER_TRAITS<I>::iterator_category; }
-            && !use_traits_iterator_concept_for_concept<I>;
-
-        template<class I>
-        concept use_random_access_iterator_tag_for_concept =
-            requires { typename ITER_TRAITS<I>; }
-            && !use_traits_iterator_concept_for_concept<I>
-            && !use_traits_iterator_category_for_concept<I>;
     }
 
     using std::input_iterator;

@@ -31,11 +31,6 @@ namespace AZStd::Internal
     constexpr bool is_tuple_like<ranges::subrange<I, S, K>> = true;
 
     template<class T>
-    constexpr bool is_tuple = false;
-    template<class... Ts>
-    constexpr bool is_tuple<tuple<Ts...>> = true;
-
-    template<class T>
     constexpr bool is_subrange_impl = false;
 
     template<class I, class S, ranges::subrange_kind K>
