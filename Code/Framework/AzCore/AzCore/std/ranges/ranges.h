@@ -366,13 +366,12 @@ namespace AZStd::ranges
                 return size(AZStd::forward<T>(t));
             }
 
-            template<class T>
+            template<class T> requires
+                has_end_subtract_begin<T>
+                && sized_sentinel_for<decltype(ranges::end(AZStd::forward<T>(declval<T>()))), decltype(ranges::begin(AZStd::forward<T>(declval<T>())))>
+                && forward_iterator<decltype(ranges::begin(AZStd::forward<T>(declval<T>())))>
             constexpr auto operator()(T&& t) const noexcept(noexcept(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)))) ->
-                enable_if_t<conjunction_v<
-                bool_constant<has_end_subtract_begin<T>>,
-                bool_constant<sized_sentinel_for<decltype(ranges::end(AZStd::forward<T>(t))), decltype(ranges::begin(AZStd::forward<T>(t)))>>,
-                bool_constant<forward_iterator<decltype(ranges::begin(AZStd::forward<T>(t)))>>>,
-                AZStd::make_unsigned_t<decltype(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)))>>
+                AZStd::make_unsigned_t<decltype(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)))>
             {
                 return to_unsigned_like(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)));
             }
@@ -818,19 +817,19 @@ namespace AZStd::ranges
             return to_address(ranges::begin(derived()));
         }
 
-        template <class Derived = D>
+        template <class Derived = D> requires
+            forward_range<Derived>
+            && sized_sentinel_for<sentinel_t<Derived>, iterator_t<Derived>>
         constexpr auto size() ->
-            enable_if_t<conjunction_v<bool_constant<forward_range<Derived>>,
-            bool_constant<sized_sentinel_for<sentinel_t<Derived>, iterator_t<Derived>>>>,
-            decltype(ranges::end(static_cast<Derived&>(*this)) - ranges::begin(static_cast<Derived&>(*this)))>
+            decltype(ranges::end(static_cast<Derived&>(*this)) - ranges::begin(static_cast<Derived&>(*this)))
         {
             return ranges::end(derived()) - ranges::begin(derived());
         }
-        template <class Derived = D>
+        template <class Derived = D> requires
+            forward_range<const Derived>
+            && sized_sentinel_for<sentinel_t<const Derived>, iterator_t<const Derived>>
         constexpr auto size() const ->
-            enable_if_t<conjunction_v<bool_constant<forward_range<const Derived>>,
-            bool_constant<sized_sentinel_for<sentinel_t<const Derived>, iterator_t<const Derived>>>>,
-            decltype(ranges::end(static_cast<const Derived&>(*this)) - ranges::begin(static_cast<const Derived&>(*this)))>
+            decltype(ranges::end(static_cast<const Derived&>(*this)) - ranges::begin(static_cast<const Derived&>(*this)))
         {
             return ranges::end(derived()) - ranges::begin(derived());
         }

@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
@@ -28,20 +29,22 @@ namespace AZStd
     {}
 
     template <class T, size_t Extent>
-    template <class It, class End, enable_if_t<contiguous_iterator<It> &&
-        Internal::is_array_convertible<remove_reference_t<iter_reference_t<It>>, T> &&
-        sized_sentinel_for<End, It> &&
-        Extent == dynamic_extent>*>
+    template <class It, class End> requires
+        contiguous_iterator<It>
+        && Internal::is_array_convertible<remove_reference_t<iter_reference_t<It>>, T>
+        && sized_sentinel_for<End, It>
+        && (Extent == dynamic_extent)
     inline constexpr span<T, Extent>::span(It first, End last)
         : m_data{to_address(first)}
         , m_size(last - first)
     {}
 
     template <class T, size_t Extent>
-    template <class It, class End, enable_if_t<contiguous_iterator<It> &&
-        Internal::is_array_convertible<remove_reference_t<iter_reference_t<It>>, T> &&
-        sized_sentinel_for<End, It> &&
-        Extent != dynamic_extent, int>>
+    template <class It, class End> requires
+        contiguous_iterator<It>
+        && Internal::is_array_convertible<remove_reference_t<iter_reference_t<It>>, T>
+        && sized_sentinel_for<End, It>
+        && (Extent != dynamic_extent)
     inline constexpr span<T, Extent>::span(It first, End last)
         : m_data{to_address(first)}
         , m_size(last - first)

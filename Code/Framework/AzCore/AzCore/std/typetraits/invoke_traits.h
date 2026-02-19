@@ -18,7 +18,4 @@
 #include <AzCore/std/typetraits/is_void.h>
 #include <AzCore/std/typetraits/remove_reference.h>
 
-namespace AZStd
-{
-
-}
+// No longer used

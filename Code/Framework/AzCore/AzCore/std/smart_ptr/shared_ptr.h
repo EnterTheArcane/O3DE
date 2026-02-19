@@ -62,7 +62,9 @@ namespace AZStd
     {
         struct static_cast_tag {};
         struct const_cast_tag {};
+#if defined(AZ_USE_RTTI)
         struct dynamic_cast_tag {};
+#endif // defined(AZ_USE_RTTI)
         struct reinterpret_cast_tag {};
         struct rtti_cast_tag {};
         template<class T>
