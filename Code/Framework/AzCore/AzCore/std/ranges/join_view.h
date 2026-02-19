@@ -319,14 +319,14 @@ namespace AZStd::ranges
         }
 
         template<class OtherBase = Base,
-            class = enable_if_t<ref_is_glvalue && equality_comparable<iterator_t<OtherBase>> &&
+            class = enable_if_t<equality_comparable<iterator_t<OtherBase>> &&
             equality_comparable<iterator_t<range_reference_t<OtherBase>>>>>
         friend constexpr bool operator==(const iterator& x, const iterator& y)
         {
             return x.m_outer == y.m_outer && x.m_inner == y.m_inner;
         }
         template<class OtherBase = Base,
-            class = enable_if_t<ref_is_glvalue && equality_comparable<iterator_t<OtherBase>>&&
+            class = enable_if_t<equality_comparable<iterator_t<OtherBase>>&&
             equality_comparable<iterator_t<range_reference_t<OtherBase>>>>>
         friend constexpr bool operator!=(const iterator& x, const iterator& y)
         {
