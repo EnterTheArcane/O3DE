@@ -68,13 +68,13 @@ namespace AzFramework
         template<typename TController, typename TConfiguration>
         void ComponentAdapter<TController, TConfiguration>::Init()
         {
-            ComponentInitHelper<TController>::Init(m_controller);
+            TryInit(m_controller);
         }
 
         template<typename TController, typename TConfiguration>
         void ComponentAdapter<TController, TConfiguration>::Activate()
         {
-            ComponentActivateHelper<TController>::Activate(m_controller, AZ::EntityComponentIdPair(GetEntityId(), GetId()));
+            TryActivate(m_controller, AZ::EntityComponentIdPair(GetEntityId(), GetId()));
         }
 
         template<typename TController, typename TConfiguration>

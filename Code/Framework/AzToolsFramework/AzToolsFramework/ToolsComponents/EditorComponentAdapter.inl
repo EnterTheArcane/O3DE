@@ -93,7 +93,7 @@ namespace AzToolsFramework
         void EditorComponentAdapter<TController, TRuntimeComponent, TConfiguration>::Init()
         {
             EditorComponentBase::Init();
-            AzFramework::Components::ComponentInitHelper<TController>::Init(m_controller);
+            AzFramework::Components::TryInit(m_controller);
         }
 
         template<typename TController, typename TRuntimeComponent, typename TConfiguration>
@@ -103,8 +103,7 @@ namespace AzToolsFramework
 
             if (ShouldActivateController())
             {
-                AzFramework::Components::ComponentActivateHelper<TController>::Activate(
-                    m_controller, AZ::EntityComponentIdPair(GetEntityId(), GetId()));
+                AzFramework::Components::TryActivate(m_controller, AZ::EntityComponentIdPair(GetEntityId(), GetId()));
             }
         }
 
@@ -145,8 +144,7 @@ namespace AzToolsFramework
 
             if (ShouldActivateController())
             {
-                AzFramework::Components::ComponentActivateHelper<TController>::Activate(
-                    m_controller, AZ::EntityComponentIdPair(GetEntityId(), GetId()));
+                AzFramework::Components::TryActivate(m_controller, AZ::EntityComponentIdPair(GetEntityId(), GetId()));
             }
 
             return AZ::Edit::PropertyRefreshLevels::None;
