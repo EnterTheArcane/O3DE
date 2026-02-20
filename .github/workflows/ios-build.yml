@@ -14,16 +14,10 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      compiler:
-        type: string
-        required: true
-      config:
-        type: string
-        required: true
       image:
         type: string
-        required: true
-      platform:
+        default: macos-15
+      config:
         type: string
         required: true
       type:
@@ -36,7 +30,7 @@ on:
         type: string
         required: false
 
-run-name: ${{ inputs.platform }} - ${{ inputs.type }}
+run-name: iOS - ${{ inputs.type }}
 
 # Note: All 3P Github Actions use the commit hash for security reasons
 # Avoid using the tag version, which is vulnerable to supply chain attacks
@@ -98,7 +92,7 @@ jobs:
           branch: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref || github.ref_name }}
           search_artifacts: true
           check_artifacts: true
-          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          name: O3DE-iOS-${{ inputs.config }}-build
           dry_run: true
 
       - name: Set artifact run ID
@@ -116,7 +110,7 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         continue-on-error: true
         with:
-          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          name: O3DE-iOS-${{ inputs.config }}-build
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ steps.set-artifact-run-id.outputs.artifact_run_id || github.run_id }}
 
@@ -157,7 +151,7 @@ jobs:
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
           LY_3RDPARTY_PATH: ${{ github.workspace }}/3rdParty
           LY_PACKAGE_SERVER_URLS: "https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net"
-        run: python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
+        run: python/python.sh -u scripts/build/ci_build.py --platform iOS --type ${{ inputs.type }}
 
       - name: Compress artifacts
         # Compress with posix format to preserve permissions and timestamps at nanosecond precision
@@ -177,7 +171,7 @@ jobs:
         if: ${{ steps.compress-artifacts.conclusion == 'success' && !cancelled() && !contains(inputs.type, 'test') }}
         continue-on-error: true
         with:
-          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          name: O3DE-iOS-${{ inputs.config }}-build
           compression-level: 1
           overwrite: true
           path: |
