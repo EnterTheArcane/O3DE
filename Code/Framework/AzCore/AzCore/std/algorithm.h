@@ -106,7 +106,7 @@ namespace AZStd
                     {
                         result.second = next;
                     }
-                    
+
                 }
             }
         }
@@ -132,7 +132,7 @@ namespace AZStd
     {
         return AZStd::minmax(ilist, AZStd::less<T>());
     }
-    
+
     template<class T>
     constexpr T clamp(const T& val, const T& lower, const T& upper) { return GetMin(upper, GetMax(val, lower)); }
 
@@ -938,12 +938,6 @@ namespace AZStd
         return last1;
     }
 
-    template <class ForwardIterator>
-    constexpr bool is_sorted(ForwardIterator first, ForwardIterator last)
-    {
-        return is_sorted(first, last, AZStd::less<AZStd::remove_cvref_t<decltype(*first)>>());
-    }
-
     template <class ForwardIterator, class Compare>
     constexpr bool is_sorted(ForwardIterator first, ForwardIterator last, Compare comp)
     {
@@ -964,9 +958,9 @@ namespace AZStd
     }
 
     template<class ForwardIterator>
-    constexpr ForwardIterator unique(ForwardIterator first, ForwardIterator last)
+    constexpr bool is_sorted(ForwardIterator first, ForwardIterator last)
     {
-        return unique(first, last, AZStd::equal_to<>{});
+        return AZStd::is_sorted(first, last, AZStd::less<AZStd::remove_cvref_t<decltype(*first)>>());
     }
 
     template<class ForwardIterator, class BinaryPredicate>
@@ -986,6 +980,12 @@ namespace AZStd
             }
         }
         return ++result;
+    }
+
+    template<class ForwardIterator>
+    constexpr ForwardIterator unique(ForwardIterator first, ForwardIterator last)
+    {
+        return AZStd::unique(first, last, AZStd::equal_to<>{});
     }
 
     using std::binary_search;

@@ -453,7 +453,8 @@ namespace AZStd
         {}
 
 
-        AZ_FORCE_INLINE hash_table(const value_type* first, const value_type* last, const hasher& hash, const key_equal& keyEqual, const allocator_type& alloc)
+        template<class InputIterator>
+        AZ_FORCE_INLINE hash_table(InputIterator first, InputIterator last, const hasher& hash, const key_equal& keyEqual, const allocator_type& alloc)
             : m_data(alloc)
             , m_keyEqual(keyEqual)
             , m_hasher(hash)

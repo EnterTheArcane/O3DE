@@ -883,7 +883,8 @@ namespace AZStd
             return iterator(AZSTD_CHECKED_ITERATOR(iterator_impl, lastNode));
         }
 
-        AZ_FORCE_INLINE void erase(const key_type* first, const key_type* last)
+        template<class InputIterator> requires (!is_convertible_v<InputIterator, const_iterator>)
+        AZ_FORCE_INLINE void erase(InputIterator first, InputIterator last)
         {
             while (first != last)
             {
