@@ -899,13 +899,13 @@ namespace UnitTest
 
         using iteratorType = int;
         auto testValue = myArr;
-        AZStd::reverse_iterator<iteratorType*> rend = testValue.rend();
-        AZStd::reverse_iterator<const iteratorType*> crend1 = testValue.rend();
-        AZStd::reverse_iterator<const iteratorType*> crend2 = testValue.crend();
+        auto rend = testValue.rend();
+        auto crend1 = testValue.rend();
+        auto crend2 = testValue.crend();
 
-        AZStd::reverse_iterator<iteratorType*> rbegin = testValue.rbegin();
-        AZStd::reverse_iterator<const iteratorType*> crbegin1 = testValue.rbegin();
-        AZStd::reverse_iterator<const iteratorType*> crbegin2 = testValue.crbegin();
+        auto rbegin = testValue.rbegin();
+        auto crbegin1 = testValue.rbegin();
+        auto crbegin2 = testValue.crbegin();
 
         AZ_TEST_ASSERT(rend == crend1);
         AZ_TEST_ASSERT(crend1 == crend2);
@@ -945,16 +945,16 @@ namespace UnitTest
         EXPECT_EQ(0, myArr.size());
         EXPECT_EQ(0, myArr.max_size());
         AZ_TEST_START_TRACE_SUPPRESSION;
-        myArr.front();
-        myArr.back();
-        myArr.at(0);
-        myArr[0];
+        (void)myArr.front();
+        (void)myArr.back();
+        (void)myArr.at(0);
+        (void)myArr[0];
         AZ_TEST_STOP_TRACE_SUPPRESSION(4);
 
         AZStd::array<int, 0> myArr2;
         EXPECT_EQ(myArr, myArr2);
 
-        myArr.data();
+        (void)myArr.data();
         myArr.fill(33);
         myArr.swap(myArr2);
         EXPECT_EQ(myArr.begin(), myArr.end());

@@ -224,13 +224,13 @@ namespace ScriptEventsTests
 
             EXPECT_TRUE(false);
         }
-        
+
         void OnAssetUnloaded(const AZ::Data::AssetId, const AZ::Data::AssetType) override
         {
             m_unloaded++;
             AZ::Data::AssetBus::Handler::BusDisconnect();
         }
-        
+
         void OnAssetError([[maybe_unused]] AZ::Data::Asset<AZ::Data::AssetData> assetData) override
         {
             EXPECT_TRUE(false);
@@ -296,7 +296,7 @@ namespace ScriptEventsTests
         Method& method0 = definition.NewMethod();
         method0.GetNameProperty().Set("Method");
 
-        // Necessary because when working in the Editor, a change to the property will trigger a backup of the property prior to 
+        // Necessary because when working in the Editor, a change to the property will trigger a backup of the property prior to
         // creating the new version, it's not really intuitive in the context of this test and API, but it's meant as an editor
         // side feature more so than a code feature
         method0.GetNameProperty().OnPropertyChange();
@@ -317,12 +317,12 @@ namespace ScriptEventsTests
         // Create an asset out of our Script Event
         const AZ::Data::AssetType type = AZ::AzTypeInfo<ScriptEvents::ScriptEventsAsset>::Uuid();
         AZ::Data::Asset<ScriptEvents::ScriptEventsAsset> assetData = AZ::Data::AssetManager::Instance().CreateAsset(assetId, type, AZ::Data::AssetLoadBehavior::Default);
-        
+
         ScriptEvents::ScriptEventsAsset* scriptAsset = assetData.Get();
         scriptAsset->m_definition = definition;
 
         EXPECT_TRUE(assetData.Save());
-        
+
         AssetEventHandler assetHandler(assetId);
         assetHandler.BusConnect(assetId);
 
@@ -368,7 +368,7 @@ namespace ScriptEventsTests
             }
 
             AZStd::array<AZ::BehaviorArgument, 2> params;
-            AZ::BehaviorArgument* paramFirst(params.begin());
+            AZ::BehaviorArgument* paramFirst(params.data());
             AZ::BehaviorArgument* paramIter = paramFirst;
 
             // Set the values
@@ -420,7 +420,7 @@ namespace ScriptEventsTests
 
     TEST_F(ScriptEventsTestFixture, ScriptEventRefactor_SerializationAndVersioning)
     {
-        // Tests serialization to file of the Script Event definition format and 
+        // Tests serialization to file of the Script Event definition format and
         // associated data types (i.e. VersionedProperty)
 
         using namespace AZ;
@@ -443,7 +443,7 @@ namespace ScriptEventsTests
         parameter0.GetTypeProperty().Set(azrtti_typeid<int>());
 
         const char* renamedParameter = "__RENAMED_PARAMETER__0__";
-        // Necessary because when working in the Editor, a change to the property will trigger a backup of the property prior to 
+        // Necessary because when working in the Editor, a change to the property will trigger a backup of the property prior to
         // creating the new version, it's not really intuitive in the context of this test and API, but it's meant as an editor
         // side feature moreso than a code feature
         method0.GetNameProperty().OnPropertyChange();

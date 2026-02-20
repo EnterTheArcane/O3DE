@@ -91,7 +91,7 @@ namespace EditorPythonBindingsUnitTests
             startupParameters.m_loadSettingsRegistry = false;
             m_app.Start(appDesc, startupParameters);
             // Without this, the user settings component would attempt to save on finalize/shutdown. Since the file is
-            // shared across the whole engine, if multiple tests are run in parallel, the saving could cause a crash 
+            // shared across the whole engine, if multiple tests are run in parallel, the saving could cause a crash
             // in the unit tests.
             AZ::UserSettingsComponentRequestBus::Broadcast(&AZ::UserSettingsComponentRequests::DisableSaveOnFinalize);
             m_app.RegisterComponentDescriptor(AzToolsFramework::PythonEditorFuncsHandler::CreateDescriptor());
@@ -220,7 +220,7 @@ namespace EditorPythonBindingsUnitTests
             args[0].Set(&testCvar);
             args[1].Set(&intArg);
 
-            context->m_methods.find("set_cvar_integer")->second->Call(args.begin(), static_cast<unsigned int>(args.size()));
+            context->m_methods.find("set_cvar_integer")->second->Call(args.data(), static_cast<unsigned int>(args.size()));
             EXPECT_EQ(1, testInt);
         });
     }
@@ -239,7 +239,7 @@ namespace EditorPythonBindingsUnitTests
             args[0].Set(&testCvar);
             args[1].Set(&input);
 
-            context->m_methods.find("set_cvar_float")->second->Call(args.begin(), static_cast<unsigned int>(args.size()));
+            context->m_methods.find("set_cvar_float")->second->Call(args.data(), static_cast<unsigned int>(args.size()));
             EXPECT_FLOAT_EQ(1.234f, testFloat);
         });
     }
@@ -258,7 +258,7 @@ namespace EditorPythonBindingsUnitTests
             args[0].Set(&testCvar);
             args[1].Set(&input);
 
-            context->m_methods.find("set_cvar_string")->second->Call(args.begin(), static_cast<unsigned int>(args.size()));
+            context->m_methods.find("set_cvar_string")->second->Call(args.data(), static_cast<unsigned int>(args.size()));
             EXPECT_STREQ("testvalue", testString.c_str());
         });
     }
@@ -278,11 +278,11 @@ namespace EditorPythonBindingsUnitTests
             AZ::BehaviorObject obj;
             obj.m_typeId = azrtti_typeid<const char*>();
             obj.m_address = &data;
-    
+
             AZ::BehaviorArgument result;
             result.Set(&obj);
 
-            context->m_methods.find("get_cvar")->second->Call(args.begin(), static_cast<unsigned int>(args.size()), &result);
+            context->m_methods.find("get_cvar")->second->Call(args.data(), static_cast<unsigned int>(args.size()), &result);
             EXPECT_STREQ("atestvalue", reinterpret_cast<const char*>(obj.m_address));
         });
     }
@@ -300,7 +300,7 @@ namespace EditorPythonBindingsUnitTests
             AZStd::array<AZ::BehaviorArgument, 1> args;
             args[0].Set(&testCvar);
 
-            context->m_methods.find("run_console")->second->Call(args.begin(), static_cast<unsigned int>(args.size()));
+            context->m_methods.find("run_console")->second->Call(args.data(), static_cast<unsigned int>(args.size()));
             EXPECT_STREQ(testCvar, data.c_str());
         });
     }
