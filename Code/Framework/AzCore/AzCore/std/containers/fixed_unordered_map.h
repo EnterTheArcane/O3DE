@@ -33,19 +33,6 @@ namespace AZStd
             static AZ_FORCE_INLINE const key_type& key_from_value(const value_type& value)  { return value.first;   }
         };
 
-        /**
-         * Used when we want to insert entry with a key only, default construct for the
-         * value. This rely on that AZStd::pair (map value type) can be constructed with a key only (first element).
-         */
-        template<class KeyType>
-        struct ConvertKeyTypeFixed
-        {
-            typedef KeyType             key_type;
-
-            AZ_FORCE_INLINE const KeyType&      to_key(const KeyType& key) const    { return key; }
-            // We return key as the value so the pair is constructed using Pair(first) ctor.
-            AZ_FORCE_INLINE const KeyType&      to_value(const KeyType& key) const  { return key; }
-        };
     }
 
     /**
@@ -172,7 +159,7 @@ namespace AZStd
         */
         AZ_FORCE_INLINE mapped_type& operator[](const key_type& key)
         {
-            pair_iter_bool iterBool = insert_key(key);
+            pair_iter_bool iterBool = try_emplace(key);
             return iterBool.first->second;
         }
         /**
@@ -191,21 +178,27 @@ namespace AZStd
             return iter->second;
         }
 
-        /*
-         * \anchor UMapExtensions
-         * \name Extensions
-         * @{
-         */
+        template <typename... Args>
+        pair_iter_bool try_emplace(const key_type& key, Args&&... arguments)
+        {
+            return base_type::try_emplace_transparent(key, AZStd::forward<Args>(arguments)...);
+        }
+
+        template <typename... Args>
+        pair_iter_bool try_emplace(key_type&& key, Args&&... arguments)
+        {
+            return base_type::try_emplace_transparent(AZStd::move(key), AZStd::forward<Args>(arguments)...);
+        }
+
         /**
-         * Insert a pair with default value base on a key only (AKA lazy insert). This can be a speed up when
-         * the object has complicated assignment function.
+         * Insert a pair with default value base on a key only (AKA lazy insert).
+         *
+         * @deprecated Use try_emplace(key) instead. This extension is kept for backward compatibility.
          */
         AZ_FORCE_INLINE pair_iter_bool insert_key(const key_type& key)
         {
-            Internal::ConvertKeyTypeFixed<key_type> converter;
-            return base_type::insert_from(key, converter, base_type::m_hasher, base_type::m_keyEqual);
+            return try_emplace(key);
         }
-        /// @}
     };
 
     template<class Key, class MappedType, AZStd::size_t FixedNumBuckets, AZStd::size_t FixedNumElements, class Hasher, class EqualKey >
@@ -337,8 +330,9 @@ namespace AZStd
         */
         AZ_FORCE_INLINE pair_iter_bool insert_key(const key_type& key)
         {
-            Internal::ConvertKeyTypeFixed<key_type> converter;
-            return base_type::insert_from(key, converter, base_type::m_hasher, base_type::m_keyEqual);
+            return base_type::emplace(AZStd::piecewise_construct,
+                AZStd::forward_as_tuple(key),
+                AZStd::tuple<>{});
         }
     };
 

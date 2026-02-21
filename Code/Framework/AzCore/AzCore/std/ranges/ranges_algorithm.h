@@ -2011,12 +2011,20 @@ namespace AZStd::ranges
     {
         struct reverse_fn
         {
+            // Note: The C++ standard requires permutable<I>, which includes
+            // indirectly_movable_storable (and thus indirectly_writable with a
+            // const-qualified assignment check). This check fails for C++20
+            // proxy reference types like pair<T&, U&> because std::pair lacks
+            // const-qualified operator= (added in C++23 P2321R2).
+            // Since this implementation only uses iter_swap (not move-assignment),
+            // we relax the constraint to indirectly_swappable to support proxy
+            // iterators while remaining safe for all practical use cases.
             template<class I, class S>
             constexpr auto operator()(I first, S last) const
                 ->enable_if_t<conjunction_v<
                 bool_constant<bidirectional_iterator<I>>,
                 bool_constant<sentinel_for<S, I>>,
-                bool_constant<permutable<I>>
+                bool_constant<indirectly_swappable<I, I>>
                 >, I>
             {
                 for (iter_difference_t<I> i{}; i < ranges::distance(first, last) / 2; ++i)
@@ -2031,7 +2039,7 @@ namespace AZStd::ranges
             constexpr auto operator()(R&& r) const
                 ->enable_if_t<conjunction_v<
                 bool_constant<bidirectional_range<R>>,
-                bool_constant<permutable<iterator_t<R>>>
+                bool_constant<indirectly_swappable<iterator_t<R>, iterator_t<R>>>
                 >, borrowed_iterator_t<R>>
             {
                 return operator()(AZStd::ranges::begin(r), AZStd::ranges::end(r));

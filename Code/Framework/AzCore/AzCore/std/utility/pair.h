@@ -17,111 +17,15 @@
 
 namespace AZStd
 {
-    // std::tuple_element_t is used for the std::get overloads
-    using std::tuple_element_t;
-
-    // std::index_sequence is being brought into the namespace
-    // for use with the piecewise constructor
+    using std::tuple_element;
     using std::index_sequence;
 }
 
- // The tuple_size and tuple_element classes need to be specialized in the std:: namespace since the AZStd:: namespace alias them
- // The tuple_size and tuple_element classes is to be specialized here for the AZStd::pair class
-namespace std
-{
-    // Suppressing clang warning error: 'tuple_size' defined as a class template here but previously declared as a struct template [-Werror,-Wmismatched-tags]
-    AZ_PUSH_DISABLE_WARNING(, "-Wmismatched-tags");
-    template<class T1, class T2>
-    struct tuple_size<AZStd::pair<T1, T2>>
-        : public AZStd::integral_constant<size_t, 2>
-    {};
-
-    template<class T1, class T2>
-    struct tuple_element<0, AZStd::pair<T1, T2>>
-    {
-        using type = T1;
-    };
-
-    template<class T1, class T2>
-    struct tuple_element<1, AZStd::pair<T1, T2>>
-    {
-        using type = T2;
-    };
-    AZ_POP_DISABLE_WARNING;
-} // namespace std
-
-
 namespace AZStd
 {
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods retrieves the tuple element at a particular index within the pair
-    template<size_t I, class T1, class T2>
-    constexpr tuple_element_t<I, pair<T1, T2>>& get(pair<T1, T2>& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods retrieves the tuple element at a particular index within the pair
-    template<size_t I, class T1, class T2>
-    constexpr const tuple_element_t<I, pair<T1, T2>>& get(const pair<T1, T2>& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods retrieves the tuple element at a particular index within the pair
-    template<size_t I, class T1, class T2>
-    constexpr tuple_element_t<I, pair<T1, T2>>&& get(pair<T1, T2>&& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods retrieves the tuple element at a particular index within the pair
-    template<size_t I, class T1, class T2>
-    constexpr const tuple_element_t<I, pair<T1, T2>>&& get(const pair<T1, T2>&& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr T& get(pair<T, U>& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr T& get(pair<U, T>& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr const T& get(const pair<T, U>& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr const T& get(const pair<U, T>& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr T&& get(pair<T, U>&& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr T&& get(pair<U, T>&& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr const T&& get(const pair<T, U>&& pairObj);
-
-    //! Wraps the std::get function in the AZStd namespace
-    //! This methods extracts an element from the pair with the specified type T
-    //! If there is more than one T in the pair, then this function fails to compile
-    template<class T, class U>
-    constexpr const T&& get(const pair<U, T>&& pairObj);
+    using std::tuple_element_t;
+    using std::get;
 } // namespace AZStd
-
 
 namespace AZStd::Internal
 {
@@ -167,192 +71,36 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
+    using std::pair;
+    using std::swap;
+    using std::make_pair;
+
+    // C++23-style swap for proxy reference pairs (P2321R2).
+    // When both elements of a pair are references, the pair is a proxy reference type
+    // (e.g., returned by proxy iterators like PairIterator). std::swap cannot bind
+    // prvalue proxy references to lvalue reference parameters. These overloads accept
+    // rvalue references, enabling swap through AZStd::iter_swap and standard algorithms.
     template<class T1, class T2>
-    struct pair
+    constexpr void swap(pair<T1&, T2&>&& a, pair<T1&, T2&>&& b)
+        noexcept(is_nothrow_swappable_v<T1> && is_nothrow_swappable_v<T2>)
     {
-        // store a pair of values
-        using first_type = T1;
-        using second_type = T2;
+        AZStd::swap(a.first, b.first);
+        AZStd::swap(a.second, b.second);
+    }
 
-        /// Construct from defaults
-        constexpr pair();
-        /// Constructs only the first element, default the second.
-        constexpr pair(const T1& value1);
-        /// Construct from specified values.
-        constexpr pair(const T1& value1, const T2& value2);
-        /// Copy constructor
-        constexpr pair(const pair& rhs);
-        // Move constructor
-        constexpr pair(pair&& rhs);
-
-        template<class U1 = T1, class U2 = T2, class = enable_if_t<is_constructible_v<T1, U1> && is_constructible_v<T2, U2>>>
-        constexpr pair(U1&& value1, U2&& value2);
-
-        // C++ 23 pair like constructor
-        template<
-            class P,
-            class = enable_if_t<conjunction_v<
-                bool_constant<pair_like<P>>
-                , bool_constant<!Internal::is_subrange<P>>
-                , bool_constant<Internal::is_pair_like_constructible_for_t<pair, P>>
-            >>>
-#if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
-        explicit(!is_convertible_v<decltype(get<0, P>), T1> || !is_convertible_v<decltype(get<1, P>), T2>)
-#endif
-        constexpr pair(P&& pairLike);
-
-        // construct from compatible pair
-        template<class U1, class U2, class = enable_if_t<is_constructible_v<T1, const U1&> && is_constructible_v<T2, const U2&>>>
-#if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
-        explicit(!is_convertible_v<U1, T1> || !is_convertible_v<U2, T2>)
-#endif
-        constexpr pair(const pair<U1, U2>& rhs);
-
-        // move constructor from rvalue pair
-        template<class U1, class U2, class = enable_if_t<is_constructible_v<T1, U1> && is_constructible_v<T2, U2>>>
-#if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
-        explicit(!is_convertible_v<U1, T1> || !is_convertible_v<U2, T2>)
-#endif
-        constexpr pair(pair<U1, U2>&& rhs);
-
-        // C++23 non-const lvalue constructor
-        template<class U1, class U2, class = enable_if_t<is_constructible_v<T1, U1&> && is_constructible_v<T2, U2&>>>
-#if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
-        explicit(!is_convertible_v<U1, T1> || !is_convertible_v<U2, T2>)
-#endif
-        constexpr pair(pair<U1, U2>& rhs);
-        // C++23 const rvalue constructor
-        template<class U1, class U2, class = enable_if_t<is_constructible_v<T1, U1> && is_constructible_v<T2, U2>>>
-#if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
-        explicit(!is_convertible_v<U1, T1> || !is_convertible_v<U2, T2>)
-#endif
-        constexpr pair(const pair<U1, U2>&& rhs);
-
-        template<template<class...> class TupleType, class... Args1, class... Args2>
-        constexpr pair(piecewise_construct_t, TupleType<Args1...> firstArgs, TupleType<Args2...> secondArgs);
-
-        template<template<class...> class TupleType, class... Args1, class... Args2, size_t... I1, size_t... I2>
-        constexpr pair(
-            piecewise_construct_t,
-            TupleType<Args1...>& firstArgs,
-            TupleType<Args2...>& secondArgs,
-            index_sequence<I1...>,
-            index_sequence<I2...>);
-
-        constexpr pair& operator=(const pair& rhs);
-        constexpr const pair& operator=(const pair& rhs) const;
-        constexpr pair& operator=(pair&& rhs);
-        constexpr const pair& operator=(pair&& rhs) const;
-
-        // copy conversion assignment
-        template<class U1, class U2>
-        constexpr auto operator=(const pair<U1, U2>& rhs)
-            -> enable_if_t<is_assignable_v<T1&, const U1&> && is_assignable_v<T2&, const U2&>, pair&>;
-        template<class U1, class U2>
-        constexpr auto operator=(const pair<U1, U2>& rhs) const
-            -> enable_if_t<is_assignable_v<const T1&, const U1&> && is_assignable_v<const T2&, const U2&>, const pair&>;
-
-        // move conversion assignment
-        template<class U1, class U2>
-        constexpr auto operator=(pair<U1, U2>&& rhs) -> enable_if_t<is_assignable_v<T1&, U1> && is_assignable_v<T2&, U2>, pair&>;
-        template<class U1, class U2>
-        constexpr auto operator=(pair<U1, U2>&& rhs) const
-            -> enable_if_t<is_assignable_v<const T1&, U1> && is_assignable_v<const T2&, U2>, const pair&>;
-
-        // pair-like conversion forward assignment
-        template<class P>
-        constexpr auto operator=(P&& pairLike) -> enable_if_t<
-            conjunction_v<
-                bool_constant<pair_like<P>>,
-                bool_constant<!AZStd::same_as<pair, remove_cvref_t<P>>>,
-                bool_constant<!Internal::is_subrange<P>>,
-                bool_constant<Internal::is_pair_like_assignable_for_t<pair, P>>>,
-            pair&>;
-
-        // This is an operator= overload that can change the values of the pair
-        // members if the pair itself is const, but the members are references to a mutable type
-        // i.e a `const pair<int&, bool&>` can still modify the int and bool elements, despite
-        // the pair itself being const
-        template<class P>
-        constexpr auto operator=(P&& pairLike) const -> enable_if_t<
-            conjunction_v<
-                bool_constant<pair_like<P>>,
-                bool_constant<!AZStd::same_as<pair, remove_cvref_t<P>>>,
-                bool_constant<!Internal::is_subrange<P>>,
-                bool_constant<Internal::is_pair_like_assignable_for_t<const pair, P>>>,
-            const pair&>;
-
-        constexpr auto swap(pair& rhs);
-        constexpr auto swap(const pair& rhs) const;
-
-        T1 first; // the first stored value
-        T2 second; // the second stored value
-    };
-
-    // AZStd::pair deduction guides
     template<class T1, class T2>
-    pair(T1, T2) -> pair<T1, T2>;
+    constexpr void swap(pair<T1&, T2&>&& a, pair<T1&, T2&>& b)
+        noexcept(is_nothrow_swappable_v<T1> && is_nothrow_swappable_v<T2>)
+    {
+        AZStd::swap(a.first, b.first);
+        AZStd::swap(a.second, b.second);
+    }
 
-    // pair
     template<class T1, class T2>
-    constexpr auto swap(AZStd::pair<T1, T2>& left, AZStd::pair<T1, T2>& right) -> enable_if_t<is_swappable_v<T1> && is_swappable_v<T2>>;
-
-    // Swappable overload for a const pair with reference members which are swappable
-    template<class T1, class T2>
-    constexpr auto swap(const AZStd::pair<T1, T2>& left, const AZStd::pair<T1, T2>& right)
-        -> enable_if_t<is_swappable_v<const T1> && is_swappable_v<const T2>>;
-
-    template<
-        class L1,
-        class L2,
-        class R1,
-        class R2,
-        class = AZStd::void_t<decltype(declval<L1>() == declval<R1>() && declval<L2>() == declval<R2>())>>
-    constexpr bool operator==(const pair<L1, L2>& left, const pair<R1, R2>& right);
-
-    template<
-        class L1,
-        class L2,
-        class R1,
-        class R2,
-        class = AZStd::void_t<decltype(declval<L1>() == declval<R1>() && declval<L2>() == declval<R2>())>>
-    constexpr bool operator!=(const pair<L1, L2>& left, const pair<R1, R2>& right);
-
-    template<
-        class L1,
-        class L2,
-        class R1,
-        class R2,
-        class =
-            AZStd::void_t<decltype(declval<L1>() < declval<R1>() || (!(declval<R1>() < declval<L1>()) && declval<L2>() < declval<R2>()))>>
-    constexpr bool operator<(const pair<L1, L2>& left, const pair<R1, R2>& right);
-
-    template<
-        class L1,
-        class L2,
-        class R1,
-        class R2,
-        class =
-            AZStd::void_t<decltype(declval<L1>() < declval<R1>() || (!(declval<R1>() < declval<L1>()) && declval<L2>() < declval<R2>()))>>
-    constexpr bool operator>(const pair<L1, L2>& left, const pair<R1, R2>& right);
-
-    template<
-        class L1,
-        class L2,
-        class R1,
-        class R2,
-        class =
-            AZStd::void_t<decltype(declval<L1>() < declval<R1>() || (!(declval<R1>() < declval<L1>()) && declval<L2>() < declval<R2>()))>>
-    constexpr bool operator<=(const pair<L1, L2>& left, const pair<R1, R2>& right);
-
-    template<
-        class L1,
-        class L2,
-        class R1,
-        class R2,
-        class =
-            AZStd::void_t<decltype(declval<L1>() < declval<R1>() || (!(declval<R1>() < declval<L1>()) && declval<L2>() < declval<R2>()))>>
-    constexpr bool operator>=(const pair<L1, L2>& left, const pair<R1, R2>& right);
+    constexpr void swap(pair<T1&, T2&>& a, pair<T1&, T2&>&& b)
+        noexcept(is_nothrow_swappable_v<T1> && is_nothrow_swappable_v<T2>)
+    {
+        AZStd::swap(a.first, b.first);
+        AZStd::swap(a.second, b.second);
+    }
 } // namespace AZStd
-
-#include <AzCore/std/utility/pair.inl>
