@@ -771,7 +771,41 @@ namespace AZStd
 
     //////////////////////////////////////////////////////////////////////////
     // Sort
-    using std::sort;
+
+    // For proxy iterators (where *it returns a prvalue rather than an lvalue reference),
+    // std::sort fails because std::swap requires lvalue references. In that case we fall
+    // back to our internal sort_recursive which uses AZStd::iter_swap.
+    template<class RandomAccessIterator>
+    constexpr void sort(RandomAccessIterator first, RandomAccessIterator last)
+    {
+        if constexpr (AZStd::is_lvalue_reference_v<decltype(*first)>)
+        {
+            std::sort(first, last);
+        }
+        else
+        {
+            if (first != last)
+            {
+                AZStd::Internal::sort_recursive(first, last, last - first);
+            }
+        }
+    }
+
+    template<class RandomAccessIterator, class Compare>
+    constexpr void sort(RandomAccessIterator first, RandomAccessIterator last, Compare comp)
+    {
+        if constexpr (AZStd::is_lvalue_reference_v<decltype(*first)>)
+        {
+            std::sort(first, last, comp);
+        }
+        else
+        {
+            if (first != last)
+            {
+                AZStd::Internal::sort_recursive(first, last, last - first, comp);
+            }
+        }
+    }
 
     //////////////////////////////////////////////////////////////////////////
     // Stable sort

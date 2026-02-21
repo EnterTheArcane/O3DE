@@ -299,7 +299,7 @@ namespace AZStd
     inline bool operator==(const set<Key, Compare, Allocator>& left, const set<Key, Compare, Allocator>& right)
     {
         return (left.size() == right.size()
-            && equal(left.begin(), left.end(), right.begin()));
+            && AZStd::equal(left.begin(), left.end(), right.begin()));
     }
 
     template<class Key, class Compare, class Allocator>
@@ -311,7 +311,7 @@ namespace AZStd
     template<class Key, class Compare, class Allocator>
     inline bool operator<(const set<Key, Compare, Allocator>& left, const set<Key, Compare, Allocator>& right)
     {
-        return (lexicographical_compare(left.begin(), left.end(), right.begin(), right.end()));
+        return (AZStd::lexicographical_compare(left.begin(), left.end(), right.begin(), right.end()));
     }
 
     template<class Key, class Compare, class Allocator>
@@ -495,8 +495,8 @@ namespace AZStd
         AZ_FORCE_INLINE void swap(this_type& rhs)           { m_tree.swap(rhs.m_tree); }
 
         // insert/erase
-        AZ_FORCE_INLINE pair<iterator, bool> insert(const value_type& value)             { return m_tree.insert_equal(value); }
-        AZ_FORCE_INLINE iterator insert(iterator insertPos, const value_type& value)    { return m_tree.insert_equal(insertPos, value); }
+        AZ_FORCE_INLINE iterator insert(const value_type& value) { return m_tree.insert_equal(value); }
+        AZ_FORCE_INLINE iterator insert(iterator insertPos, const value_type& value) { return m_tree.insert_equal(insertPos, value); }
         template<class InputIterator>
         void insert(InputIterator first, InputIterator last)
         {
@@ -650,7 +650,7 @@ namespace AZStd
     inline bool operator==(const multiset<Key, Compare, Allocator>& left, const multiset<Key, Compare, Allocator>& right)
     {
         return (left.size() == right.size()
-                && equal(left.begin(), left.end(), right.begin()));
+                && AZStd::equal(left.begin(), left.end(), right.begin()));
     }
 
     template<class Key, class Compare, class Allocator>
@@ -662,7 +662,7 @@ namespace AZStd
     template<class Key, class Compare, class Allocator>
     inline bool operator<(const multiset<Key, Compare, Allocator>& left, const multiset<Key, Compare, Allocator>& right)
     {
-        return (lexicographical_compare(left.begin(), left.end(), right.begin(), right.end()));
+        return AZStd::lexicographical_compare(left.begin(), left.end(), right.begin(), right.end());
     }
 
     template<class Key, class Compare, class Allocator>

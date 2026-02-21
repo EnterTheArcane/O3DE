@@ -2018,6 +2018,7 @@ namespace UnitTest
     {
         using ContainerType = Container;
     };
+
     template <typename ContainerType>
     class HashedContainerTransparentFixture
         : public LeakDetectionFixture
@@ -2050,17 +2051,32 @@ namespace UnitTest
         >
     >;
 
+    // Helper to emplace into both set and map containers in typed tests.
+    // For maps, appends a default-constructed mapped_type as the value argument.
+    template<typename Container, typename... Args>
+    void emplace_value(Container& container, Args&&... args)
+    {
+        if constexpr (requires { typename Container::mapped_type; })
+        {
+            container.emplace(AZStd::forward<Args>(args)..., typename Container::mapped_type{});
+        }
+        else
+        {
+            container.emplace(AZStd::forward<Args>(args)...);
+        }
+    }
+
     TYPED_TEST_SUITE(HashedContainerTransparentFixture, HashedContainerConfigs);
 
     TYPED_TEST(HashedContainerTransparentFixture, FindDoesNotConstructKeyForTransparentHashEqual_NoKeyConstructed_Succeeds)
     {
         typename TypeParam::ContainerType container;
-        container.emplace(1);
-        container.emplace(2);
-        container.emplace(3);
-        container.emplace(4);
-        container.emplace(5);
-        container.emplace(1);
+        emplace_value(container, 1);
+        emplace_value(container, 2);
+        emplace_value(container, 3);
+        emplace_value(container, 4);
+        emplace_value(container, 5);
+        emplace_value(container, 1);
 
         // Reset constructor count to zero
         HashedContainerTransparentTestInternal::s_allConstructorCount = 0;
@@ -2088,12 +2104,12 @@ namespace UnitTest
     TYPED_TEST(HashedContainerTransparentFixture, ContainsDoesNotConstructKeyForTransparentHashEqual_NoKeyConstructed_Succeeds)
     {
         typename TypeParam::ContainerType container;
-        container.emplace(1);
-        container.emplace(2);
-        container.emplace(3);
-        container.emplace(4);
-        container.emplace(5);
-        container.emplace(1);
+        emplace_value(container, 1);
+        emplace_value(container, 2);
+        emplace_value(container, 3);
+        emplace_value(container, 4);
+        emplace_value(container, 5);
+        emplace_value(container, 1);
 
         // Reset constructor count to zero
         HashedContainerTransparentTestInternal::s_allConstructorCount = 0;
@@ -2118,12 +2134,12 @@ namespace UnitTest
     TYPED_TEST(HashedContainerTransparentFixture, CountDoesNotConstructKeyForTransparentHashEqual_NoKeyConstructed_Succeeds)
     {
         typename TypeParam::ContainerType container;
-        container.emplace(1);
-        container.emplace(2);
-        container.emplace(3);
-        container.emplace(4);
-        container.emplace(5);
-        container.emplace(1);
+        emplace_value(container, 1);
+        emplace_value(container, 2);
+        emplace_value(container, 3);
+        emplace_value(container, 4);
+        emplace_value(container, 5);
+        emplace_value(container, 1);
 
         // Reset constructor count to zero
         HashedContainerTransparentTestInternal::s_allConstructorCount = 0;
@@ -2149,12 +2165,12 @@ namespace UnitTest
     TYPED_TEST(HashedContainerTransparentFixture, LowerBoundDoesNotConstructKeyForTransparentHashEqual_NoKeyConstructed_Succeeds)
     {
         typename TypeParam::ContainerType container;
-        container.emplace(21);
-        container.emplace(4);
-        container.emplace(3);
-        container.emplace(7);
-        container.emplace(15);
-        container.emplace(42);
+        emplace_value(container, 21);
+        emplace_value(container, 4);
+        emplace_value(container, 3);
+        emplace_value(container, 7);
+        emplace_value(container, 15);
+        emplace_value(container, 42);
 
         // Lower Bound and Upper Bound doesn't make any sense for an Unordered Container, because there is no ordering
         // So the values returned from those calls are non-nonsensical.
@@ -2179,12 +2195,12 @@ namespace UnitTest
     TYPED_TEST(HashedContainerTransparentFixture, UpperBoundDoesNotConstructKeyForTransparentHashEqual_NoKeyConstructed_Succeeds)
     {
         typename TypeParam::ContainerType container;
-        container.emplace(2);
-        container.emplace(4);
-        container.emplace(15);
-        container.emplace(332);
-        container.emplace(5);
-        container.emplace(1);
+        emplace_value(container, 2);
+        emplace_value(container, 4);
+        emplace_value(container, 15);
+        emplace_value(container, 332);
+        emplace_value(container, 5);
+        emplace_value(container, 1);
 
         // Lower Bound and Upper Bound doesn't make any sense for an Unordered Container, because there is no ordering
         // So the values returned from those calls are non-nonsensical.
@@ -2209,12 +2225,12 @@ namespace UnitTest
     TYPED_TEST(HashedContainerTransparentFixture, EqualRangeDoesNotConstructKeyForTransparentHashEqual_NoKeyConstructed_Succeeds)
     {
         typename TypeParam::ContainerType container;
-        container.emplace(-2352);
-        container.emplace(3534);
-        container.emplace(535408957);
-        container.emplace(1310556522);
-        container.emplace(55546193);
-        container.emplace(1582);
+        emplace_value(container, -2352);
+        emplace_value(container, 3534);
+        emplace_value(container, 535408957);
+        emplace_value(container, 1310556522);
+        emplace_value(container, 55546193);
+        emplace_value(container, 1582);
 
         // Reset constructor count to zero
         HashedContainerTransparentTestInternal::s_allConstructorCount = 0;
