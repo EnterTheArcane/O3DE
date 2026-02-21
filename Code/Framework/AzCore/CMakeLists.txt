@@ -75,6 +75,11 @@ ly_add_target(
             .
             ${pal_dir}
             ${common_dir}
+    PRECOMPILE_HEADERS
+        PUBLIC
+            AzCore/AzCore_pch.Public.h
+        PRIVATE
+            AzCore/AzCore_pch.Private.h
     BUILD_DEPENDENCIES
         PRIVATE
             ${AZ_CORE_PIX_BUILD_DEPENDENCIES}
@@ -93,6 +98,16 @@ ly_add_source_properties(
         AzCore/PlatformId/PlatformId.cpp
     PROPERTY COMPILE_DEFINITIONS
     VALUES ${LY_PAL_TOOLS_DEFINES}
+)
+
+# regex.cpp has an extern template + explicit specialization pattern that conflicts with
+# the comprehensive PCH (which transitively instantiates RegexTraits<char>).
+# Must also skip unity build since SKIP_PRECOMPILE_HEADERS only applies to individual TUs.
+set_source_files_properties(
+    AzCore/std/string/regex.cpp
+    PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+        SKIP_UNITY_BUILD_INCLUSION ON
 )
 
 ly_add_source_properties(

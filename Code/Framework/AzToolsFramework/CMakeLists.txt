@@ -49,6 +49,11 @@ ly_add_target(
             AZTF_EXPORTS
             $<$<CONFIG:debug>:ENABLE_UNDOCACHE_CONSISTENCY_CHECKS>
             O3DE_PYTHON_SITE_PACKAGE_SUBPATH="${LY_PYTHON_VENV_SITE_PACKAGES}"
+    PRECOMPILE_HEADERS
+        PUBLIC
+            AzToolsFramework/AzToolsFramework_pch.Public.h
+        PRIVATE
+            AzToolsFramework/AzToolsFramework_pch.Private.h
     BUILD_DEPENDENCIES
         PRIVATE
             3rdParty::SQLite

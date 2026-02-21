@@ -32,6 +32,11 @@ ly_add_target(
             ${pal_dir}
         PRIVATE
             ${common_dir}
+    PRECOMPILE_HEADERS
+        PUBLIC
+            AzFramework/AzFramework_pch.Public.h
+        PRIVATE
+            AzFramework/AzFramework_pch.Private.h
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore

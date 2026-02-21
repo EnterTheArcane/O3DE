@@ -22,6 +22,11 @@ ly_add_target(
             .
             ${common_dir}
             ${pal_dir}
+    PRECOMPILE_HEADERS
+        PUBLIC
+            AzNetworking/AzNetworking_pch.Public.h
+        PRIVATE
+            AzNetworking/AzNetworking_pch.Private.h
     BUILD_DEPENDENCIES
         PRIVATE
             AZ::AzCore

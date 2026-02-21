@@ -7,6 +7,7 @@
 #
 
 set(LY_UNITY_BUILD ON CACHE BOOL "UNITY builds")
+set(LY_PCH ON CACHE BOOL "Precompiled header (PCH) builds. When enabled, targets that specify PRECOMPILE_HEADERS will use PCH to accelerate compilation.")
 
 include(CMakeFindDependencyMacro)
 include(cmake/LyAutoGen.cmake)
@@ -43,6 +44,44 @@ define_property(TARGET PROPERTY RUNTIME_DEPENDENCIES_DEPENDS
         when the target gets built.
     ]]
 )
+
+#! ly_apply_precompile_headers: parses and applies precompiled headers to a target.
+#
+# Handles PRIVATE/PUBLIC/INTERFACE visibility keywords in the header list,
+# defaulting to PRIVATE if no visibility is specified.
+#
+# \arg:TARGET name of the target to apply PCH to
+# \arg:ARGN remaining arguments are parsed as [PRIVATE|PUBLIC|INTERFACE] <header1> <header2> ...
+function(ly_apply_precompile_headers TARGET)
+    set(visibility PRIVATE)
+    set(private_headers "")
+    set(public_headers "")
+    set(interface_headers "")
+
+    foreach(arg ${ARGN})
+        if(arg STREQUAL "PRIVATE" OR arg STREQUAL "PUBLIC" OR arg STREQUAL "INTERFACE")
+            set(visibility ${arg})
+        else()
+            if(visibility STREQUAL "PRIVATE")
+                list(APPEND private_headers ${arg})
+            elseif(visibility STREQUAL "PUBLIC")
+                list(APPEND public_headers ${arg})
+            elseif(visibility STREQUAL "INTERFACE")
+                list(APPEND interface_headers ${arg})
+            endif()
+        endif()
+    endforeach()
+
+    if(private_headers)
+        target_precompile_headers(${TARGET} PRIVATE ${private_headers})
+    endif()
+    if(public_headers)
+        target_precompile_headers(${TARGET} PUBLIC ${public_headers})
+    endif()
+    if(interface_headers)
+        target_precompile_headers(${TARGET} INTERFACE ${interface_headers})
+    endif()
+endfunction()
 
 #! ly_add_target: adds a target and provides parameters for the common configurations.
 #
@@ -88,11 +127,13 @@ define_property(TARGET PROPERTY RUNTIME_DEPENDENCIES_DEPENDS
 #                             for the list of variables that will be used by the target
 # \arg:TARGET_PROPERTIES additional properties to set to the target
 # \arg:AUTOGEN_RULES a set of AutoGeneration rules to be passed to the AzAutoGen expansion system
+# \arg:PRECOMPILE_HEADERS list of headers to precompile for this target. Supports PRIVATE/PUBLIC/INTERFACE visibility.
+#                        When LY_PCH is OFF (default ON), precompiled headers are disabled globally.
 function(ly_add_target)
 
     set(options STATIC SHARED MODULE GEM_STATIC GEM_MODULE OBJECT HEADERONLY EXECUTABLE APPLICATION IMPORTED AUTOMOC AUTOUIC AUTORCC NO_UNITY EXPORT_ALL_SYMBOLS)
     set(oneValueArgs NAME NAMESPACE OUTPUT_SUBDIRECTORY OUTPUT_NAME)
-    set(multiValueArgs FILES_CMAKE GENERATED_FILES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS BUILD_DEPENDENCIES RUNTIME_DEPENDENCIES PLATFORM_INCLUDE_FILES TARGET_PROPERTIES AUTOGEN_RULES)
+    set(multiValueArgs FILES_CMAKE GENERATED_FILES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS BUILD_DEPENDENCIES RUNTIME_DEPENDENCIES PLATFORM_INCLUDE_FILES TARGET_PROPERTIES AUTOGEN_RULES PRECOMPILE_HEADERS)
 
     cmake_parse_arguments(ly_add_target "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -295,6 +336,11 @@ function(ly_add_target)
     if(ly_add_target_TARGET_PROPERTIES)
         set_target_properties(${ly_add_target_NAME} PROPERTIES
             ${ly_add_target_TARGET_PROPERTIES})
+    endif()
+
+    # Precompiled headers
+    if(LY_PCH AND ly_add_target_PRECOMPILE_HEADERS)
+        ly_apply_precompile_headers(${ly_add_target_NAME} ${ly_add_target_PRECOMPILE_HEADERS})
     endif()
 
     set(unity_target_types SHARED MODULE EXECUTABLE APPLICATION STATIC OBJECT)
