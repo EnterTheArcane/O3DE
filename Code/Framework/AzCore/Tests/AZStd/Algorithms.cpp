@@ -221,7 +221,7 @@ namespace UnitTest
         {
             EXPECT_LT(elements1[i - 1], elements1[i]);
         }
-        insertion_sort(elements1.begin(), elements1.end(), AZStd::greater<int>());
+        AZStd::insertion_sort(elements1.begin(), elements1.end(), AZStd::greater<int>());
         for (size_t i = 1; i < elements1.size(); ++i)
         {
             EXPECT_GT(elements1[i - 1], elements1[i]);
@@ -231,7 +231,7 @@ namespace UnitTest
     TEST_F(Algorithms, InsertionSort_SharedPtr)
     {
         AZStd::array<AZStd::shared_ptr<int>, 10> elementsSrc = {
-        { 
+        {
             AZStd::make_shared<int>(10), AZStd::make_shared<int>(2), AZStd::make_shared<int>(6), AZStd::make_shared<int>(3),
             AZStd::make_shared<int>(5), AZStd::make_shared<int>(8), AZStd::make_shared<int>(7), AZStd::make_shared<int>(9),
             AZStd::make_shared<int>(1), AZStd::make_shared<int>(4) }
@@ -684,7 +684,7 @@ namespace UnitTest
         AZStd::array<int, 3> dest;
 
         AZStd::copy_backward(src.begin(), src.end(), dest.end());
-        
+
         EXPECT_EQ(1, dest[0]);
         EXPECT_EQ(2, dest[1]);
         EXPECT_EQ(3, dest[2]);

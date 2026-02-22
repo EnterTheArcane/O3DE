@@ -145,18 +145,18 @@ namespace AZStd
             return key->GetHash();
         }
     };
-
-    template<>
-    struct equal_to<AzToolsFramework::Thumbnailer::SharedThumbnailKey>
-    {
-        AZ_FORCE_INLINE bool operator()(
-            const AzToolsFramework::Thumbnailer::SharedThumbnailKey& left,
-            const AzToolsFramework::Thumbnailer::SharedThumbnailKey& right) const
-        {
-            return left->Equals(right.get());
-        }
-    };
 } // namespace AZStd
+
+template<>
+struct std::equal_to<AzToolsFramework::Thumbnailer::SharedThumbnailKey>
+{
+    AZ_FORCE_INLINE bool operator()(
+        const AzToolsFramework::Thumbnailer::SharedThumbnailKey& left,
+        const AzToolsFramework::Thumbnailer::SharedThumbnailKey& right) const
+    {
+        return left->Equals(right.get());
+    }
+};
 
 namespace AzToolsFramework
 {

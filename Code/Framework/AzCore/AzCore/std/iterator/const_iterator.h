@@ -54,7 +54,7 @@ namespace AZStd
     template<class It>
     /*concept*/ constexpr bool not_a_const_iterator = true;
     template<class It>
-    /*concept*/ constexpr bool not_a_const_iterator<basic_const_iterator<It>> = Internal::is_primary_template_v<basic_const_iterator<It>>;
+    /*concept*/ constexpr bool not_a_const_iterator<basic_const_iterator<It>> = false;
 
     template<class I>
     class basic_const_iterator
@@ -236,60 +236,52 @@ namespace AZStd
 
         // comparison against iterators that are not the exact type of this class
         template<class I2>
-        friend constexpr auto operator<(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I> && totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator<(const basic_const_iterator& x, const I2& y)
+            requires (Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x.base() < y;
         }
         template<class I2>
-        friend constexpr auto operator>(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator>(const basic_const_iterator& x, const I2& y)
+            requires (Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x.base() > y;
         }
         template<class I2>
-        friend constexpr auto operator<=(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator<=(const basic_const_iterator& x, const I2& y)
+            requires (Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x.base() <= y;
         }
         template<class I2>
-        friend constexpr auto operator>=(const basic_const_iterator& x, const I2& y)
-            -> enable_if_t<Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator>=(const basic_const_iterator& x, const I2& y)
+            requires (Internal::different_from<I2, basic_const_iterator> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x.base() >= y;
         }
 
         // compares a specialization of basic_const_iterator against this instance
         template<class I2>
-        friend constexpr auto operator<(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator<(const I2& x, const basic_const_iterator& y)
+            requires (not_a_const_iterator<I2> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x < y.base();
         }
         template<class I2>
-        friend constexpr auto operator>(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator>(const I2& x, const basic_const_iterator& y)
+            requires (not_a_const_iterator<I2> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x > y.base();
         }
         template<class I2>
-        friend constexpr auto operator<=(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator<=(const I2& x, const basic_const_iterator& y)
+            requires (not_a_const_iterator<I2> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x <= y.base();
         }
         template<class I2>
-        friend constexpr auto operator>=(const I2&x, const basic_const_iterator& y)
-            -> enable_if_t<not_a_const_iterator<I2> && random_access_iterator<I>&& totally_ordered_with<I, I2>,
-            bool>
+        friend constexpr bool operator>=(const I2& x, const basic_const_iterator& y)
+            requires (not_a_const_iterator<I2> && random_access_iterator<I> && totally_ordered_with<I, I2>)
         {
             return x >= y.base();
         }
@@ -345,22 +337,19 @@ namespace AZStd
     }
 }
 
-namespace std
+// As AZStd aliases std::common_type, the specializations need to be put in the std namespace
+template<class T, class U>
+struct std::common_type<AZStd::basic_const_iterator<T>, U>
 {
-    // As AZStd aliases std::common_type, the specializations need to be put in the std namespace
-    template<class T, class U>
-    struct common_type<AZStd::basic_const_iterator<T>, U>
-    {
-        using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
-    };
-    template<class T, class U>
-    struct common_type<U, AZStd::basic_const_iterator<T>>
-    {
-        using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
-    };
-    template<class T, class U>
-    struct common_type<AZStd::basic_const_iterator<T>, AZStd::basic_const_iterator<U>>
-    {
-        using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
-    };
-}
+    using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
+};
+template<class T, class U>
+struct std::common_type<U, AZStd::basic_const_iterator<T>>
+{
+    using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
+};
+template<class T, class U>
+struct std::common_type<AZStd::basic_const_iterator<T>, AZStd::basic_const_iterator<U>>
+{
+    using type = AZStd::enable_if_t<AZStd::common_with<U, T>, AZStd::basic_const_iterator<common_type_t<T, U>>>;
+};

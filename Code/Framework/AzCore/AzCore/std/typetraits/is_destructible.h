@@ -15,13 +15,14 @@ namespace AZStd
     using std::is_destructible;
     using std::is_trivially_destructible;
     using std::is_nothrow_destructible;
-    template<class T>
-    constexpr bool is_default_destructible_v = std::is_destructible<T>::value;
-    template<class T>
-    constexpr bool is_trivially_destructible_v = std::is_trivially_destructible<T>::value;
-    template<class T>
-    constexpr bool is_nothrow_destructible_v = std::is_nothrow_destructible<T>::value;
 
+    using std::is_destructible_v;
+    using std::is_trivially_destructible_v;
+    using std::is_nothrow_destructible_v;
+
+    using std::destructible;
+
+    // BACKWARDS COMPATIBILITY
     template<class T>
-    /*concept*/ constexpr bool destructible = is_nothrow_destructible_v<T>;
+    concept is_default_destructible_v = std::is_destructible_v<T>;
 }

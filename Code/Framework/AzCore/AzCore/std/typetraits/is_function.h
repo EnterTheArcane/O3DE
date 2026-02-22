@@ -18,10 +18,13 @@ namespace AZStd
 
     template<class T>
     struct is_function_pointer
-        : AZStd::conjunction<AZStd::is_pointer<T>, AZStd::is_function<AZStd::remove_pointer_t<T>>>
-    {};
+        : conjunction<is_pointer<T>, is_function<remove_pointer_t<T>>>
+    {
+    };
 
     template<class T>
     constexpr bool is_function_pointer_v = is_function_pointer<T>::value;
-}
 
+    template<class T>
+    concept function_pointer = is_pointer_v<T> && is_function_v<remove_pointer_t<T>>;
+}

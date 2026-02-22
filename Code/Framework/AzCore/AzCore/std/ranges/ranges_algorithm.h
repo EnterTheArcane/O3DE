@@ -2157,12 +2157,10 @@ namespace AZStd::ranges
                 bool_constant<sentinel_for<S1, I1>>,
                 bool_constant<input_iterator<I2>>,
                 bool_constant<sentinel_for<S2, I2>>,
-                bool_constant<indirectly_comparable<I1, I2, Pred, Proj1, Proj2>>
-                >>>
-            constexpr auto operator()(I1 first1, S1 last1, I2 first2, S2 last2,
+                bool_constant<indirectly_comparable<I1, I2, Pred, Proj1, Proj2>>>>>
+                requires (forward_iterator<I1> || sized_sentinel_for<S1, I1>) && (forward_iterator<I2> || sized_sentinel_for<S2, I2>)
+            constexpr bool operator()(I1 first1, S1 last1, I2 first2, S2 last2,
                     Pred pred = {}, Proj1 proj1 = {}, Proj2 proj2 = {}) const
-                -> enable_if_t<(forward_iterator<I1> || sized_sentinel_for<S1, I1>) &&
-                    (forward_iterator<I2> || sized_sentinel_for<S2, I2>), bool>
             {
                 const auto firstDist = ranges::distance(first1, last1);
                 const auto secondDist = ranges::distance(first2, last2);

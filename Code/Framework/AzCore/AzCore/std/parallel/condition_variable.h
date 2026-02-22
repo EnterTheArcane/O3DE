@@ -11,17 +11,11 @@
 #include <AzCore/std/parallel/lock.h>
 #include <AzCore/std/chrono/chrono.h>
 
+#include <condition_variable>
+
 namespace AZStd
 {
-    /**
-     * Condition variables provide synchronization primitives used to block a thread until notified by some other
-     * thread that some condition is met or until a system time is reached. \ref C++11
-     */
-    enum class cv_status // since C++11
-    {
-        no_timeout,
-        timeout,
-    };
+    using std::cv_status;
 
     class condition_variable
     {

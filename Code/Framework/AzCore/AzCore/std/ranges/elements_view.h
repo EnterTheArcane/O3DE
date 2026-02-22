@@ -399,7 +399,7 @@ namespace AZStd::ranges
             return iterCopy;
         }
 
-        template<class BaseIter = iterator_t<Base>, class = enable_if_t<sized_sentinel_for<BaseIter, BaseIter>>>
+        template<class BaseIter = iterator_t<Base>> requires sized_sentinel_for<BaseIter, BaseIter>
         friend constexpr difference_type operator-(const iterator& x, const iterator& y)
         {
             return x.m_current - y.m_current;
@@ -473,18 +473,14 @@ namespace AZStd::ranges
         }
 
         // difference operator
-        template<bool OtherConst, class = enable_if_t<
-            sized_sentinel_for<sentinel_t<Base>, iterator_t<Internal::maybe_const<OtherConst, Base>>>
-            >>
+        template<bool OtherConst> requires sized_sentinel_for<sentinel_t<Base>, iterator_t<Internal::maybe_const<OtherConst, Base>>>
         friend constexpr range_difference_t<Internal::maybe_const<OtherConst, Base >>
             operator-(const iterator<OtherConst>& x, const sentinel& y)
         {
             return iterator_accessor(x) - y.m_end;
         }
 
-        template<bool OtherConst, class = enable_if_t<
-            sized_sentinel_for<sentinel_t<Base>, iterator_t<Internal::maybe_const<OtherConst, Base>>>
-            >>
+        template<bool OtherConst> requires sized_sentinel_for<sentinel_t<Base>, iterator_t<Internal::maybe_const<OtherConst, Base>>>
         friend constexpr range_difference_t<Internal::maybe_const<OtherConst, Base>>
             operator-(const sentinel& x, const iterator<OtherConst>& y)
         {

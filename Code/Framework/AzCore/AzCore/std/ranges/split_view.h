@@ -15,13 +15,7 @@
 
 namespace AZStd::ranges
 {
-    template<class View, class Pattern, class = enable_if_t<conjunction_v<
-        bool_constant<forward_range<View>>,
-        bool_constant<forward_range<Pattern>>,
-        bool_constant<view<View>>,
-        bool_constant<view<Pattern>>,
-        bool_constant<indirectly_comparable<iterator_t<View>, iterator_t<Pattern>, ranges::equal_to>>
-        >>>
+    template<class View, class Pattern, class = void>
         class split_view;
 
     // views::split customization point
@@ -59,6 +53,12 @@ namespace AZStd::ranges
     class split_view
         : public view_interface<split_view<View, Pattern>>
     {
+        static_assert(forward_range<View>, "split_view requires View to be a forward_range");
+        static_assert(forward_range<Pattern>, "split_view requires Pattern to be a forward_range");
+        static_assert(view<View>, "split_view requires View to satisfy view");
+        static_assert(view<Pattern>, "split_view requires Pattern to satisfy view");
+        static_assert(indirectly_comparable<iterator_t<View>, iterator_t<Pattern>, ranges::equal_to>,
+            "split_view requires View and Pattern iterators to be indirectly comparable");
         struct iterator;
         struct sentinel;
     public:

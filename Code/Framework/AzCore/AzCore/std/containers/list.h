@@ -111,13 +111,6 @@ namespace AZStd
         base_node_ptr_type m_node{};
     };
 
-
-    // To allow incomplete types to be used with the const_iterator
-    // the list_iterator has specializations added for the basic_const_iterator
-    // constraints
-    template<class T>
-    inline constexpr bool input_or_output_iterator<list_iterator<T>> = true;
-
     /**
     * The list container (double linked list) is complaint with \ref CStd (23.2.2). In addition we introduce the following \ref ListExtensions "extensions".
     *
@@ -217,7 +210,7 @@ namespace AZStd
             insert_iter(begin(), first, last, is_integral<InputIterator>());
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         list(from_range_t, R&& rg, const allocator_type& alloc = Allocator())
             : m_allocator(alloc)
         {

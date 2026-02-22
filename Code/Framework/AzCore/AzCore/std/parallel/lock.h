@@ -12,18 +12,20 @@
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/parallel/thread.h>
 
+#include <mutex>
+
 namespace AZStd
 {
     template<class Mutex>
     class upgrade_lock;
 
-    struct defer_lock_t { };    // do not acquire ownership of the mutex
-    struct try_to_lock_t { };   // try to acquire ownership of the mutex without blocking
-    struct adopt_lock_t { };    // assume the calling thread has already
+    using std::defer_lock_t;
+    using std::try_to_lock_t;
+    using std::adopt_lock_t;
 
-    constexpr defer_lock_t defer_lock{};
-    constexpr try_to_lock_t try_to_lock{};
-    constexpr adopt_lock_t adopt_lock{};
+    using std::defer_lock;
+    using std::try_to_lock;
+    using std::adopt_lock;
 
     template <class Mutex>
     class lock_guard

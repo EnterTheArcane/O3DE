@@ -439,7 +439,7 @@ namespace AZStd
             rhs.clear();
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         fixed_vector(from_range_t, R&& rg)
         {
             assign_range(AZStd::forward<R>(rg));

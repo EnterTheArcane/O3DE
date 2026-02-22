@@ -20,6 +20,9 @@
 #include <AzCore/std/typetraits/remove_cv.h>
 #include <AzCore/std/typetraits/remove_all_extents.h>
 
+#include <iterator>
+#include <ranges>
+
 namespace AZStd
 {
     // alias std:: reverse_iterator names into AZStd::
@@ -363,13 +366,12 @@ namespace AZStd::ranges
                 return size(AZStd::forward<T>(t));
             }
 
-            template<class T>
+            template<class T> requires
+                has_end_subtract_begin<T>
+                && sized_sentinel_for<decltype(ranges::end(AZStd::forward<T>(declval<T>()))), decltype(ranges::begin(AZStd::forward<T>(declval<T>())))>
+                && forward_iterator<decltype(ranges::begin(AZStd::forward<T>(declval<T>())))>
             constexpr auto operator()(T&& t) const noexcept(noexcept(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)))) ->
-                enable_if_t<conjunction_v<
-                bool_constant<has_end_subtract_begin<T>>,
-                bool_constant<sized_sentinel_for<decltype(ranges::end(AZStd::forward<T>(t))), decltype(ranges::begin(AZStd::forward<T>(t)))>>,
-                bool_constant<forward_iterator<decltype(ranges::begin(AZStd::forward<T>(t)))>>>,
-                AZStd::make_unsigned_t<decltype(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)))>>
+                AZStd::make_unsigned_t<decltype(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)))>
             {
                 return to_unsigned_like(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t)));
             }
@@ -491,7 +493,7 @@ namespace AZStd::ranges
             template<class T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::to_address(ranges::begin(AZStd::forward<T>(t))))) ->
                 enable_if_t<conjunction_v<bool_constant<is_lvalue_or_borrowable<T>>, bool_constant<has_qualified_ranges_begin<T>>>,
-                decltype(AZStd::to_address(ranges::begin(AZStd::forward<T>(t))))>
+                add_pointer_t<iter_reference_t<iterator_t<T>>>>
             {
                 return AZStd::to_address(ranges::begin(AZStd::forward<T>(t)));
             }
@@ -707,297 +709,18 @@ namespace AZStd::ranges
 
 namespace AZStd::ranges
 {
-    // cbegin / cend can only be defined after possibly_const_range function is defined
-    namespace Internal
-    {
-        //! cbegin
-        struct cbegin_fn
-        {
-            template<class T, class = enable_if_t<is_lvalue_or_borrowable<T>>>
-            constexpr decltype(auto) operator()(T&& t) const noexcept(noexcept(ranges::begin(possibly_const_range(declval<T&>()))))
-            {
-                using iterator_type = decltype(ranges::begin(possibly_const_range(t)));
-                return const_iterator<iterator_type>(ranges::begin(possibly_const_range(t)));
-            }
-        };
-    }
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::cbegin_fn cbegin{};
-    }
-
-    namespace Internal
-    {
-        //! cend
-        struct cend_fn
-        {
-            template<class T, class = enable_if_t<is_lvalue_or_borrowable<T>>>
-            constexpr decltype(auto) operator()(T&& t) const noexcept(noexcept(ranges::end(possibly_const_range(declval<T&>()))))
-            {
-                using sentinel_type = decltype(ranges::end(possibly_const_range(t)));
-                return const_sentinel<sentinel_type>(ranges::end(possibly_const_range(t)));
-            }
-        };
-    }
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::cend_fn cend{};
-    }
-
-    namespace Internal
-    {
-        //! crbegin
-        struct crbegin_fn
-        {
-            template<class T, class = enable_if_t<is_lvalue_or_borrowable<T>>>
-            constexpr auto operator()(T&& t) const noexcept(noexcept(ranges::rbegin(possibly_const_range(declval<T&>()))))
-            {
-                using iterator_type = decltype(ranges::rbegin(possibly_const_range(t)));
-                return const_iterator<iterator_type>(ranges::rbegin(possibly_const_range(t)));
-            }
-        };
-    }
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::crbegin_fn crbegin{};
-    }
-
-    namespace Internal
-    {
-        //! crend
-        struct crend_fn
-        {
-            template<class T, class = enable_if_t<is_lvalue_or_borrowable<T>>>
-            constexpr auto operator()(T&& t) const noexcept(noexcept(ranges::rend(possibly_const_range(declval<T&>()))))
-            {
-                using sentinel_type = decltype(ranges::rend(possibly_const_range(t)));
-                return const_sentinel<sentinel_type>(ranges::rend(possibly_const_range(t)));
-            }
-        };
-    }
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::crend_fn crend{};
-    }
+    using std::ranges::cbegin;
+    using std::ranges::cend;
+    using std::ranges::crbegin;
+    using std::ranges::crend;
 }
 
 namespace AZStd::ranges
 {
-    // iterator operations
-    // ranges::advance
-    namespace Internal
-    {
-        struct advance_fn
-        {
-            template<class I>
-            constexpr auto operator()(I& i, iter_difference_t<I> n) const ->
-                enable_if_t<input_or_output_iterator<I>>
-            {
-                if constexpr (random_access_iterator<I>)
-                {
-                    i += n;
-                }
-                else
-                {
-                    for (; n > 0; ++i, --n) {}
-
-                    // The Precondition is that if I is not a bidirectional iterator, n must be positive
-                    if constexpr (bidirectional_iterator<I>)
-                    {
-                        for (; n < 0; --i, ++n) {}
-                    }
-                }
-            }
-
-            template<class I, class S>
-            constexpr auto operator()(I& i, S bound) const ->
-                enable_if_t<conjunction_v<bool_constant<input_or_output_iterator<I>>, bool_constant<sentinel_for<S, I>>>>
-            {
-                if constexpr (assignable_from<I&, S>)
-                {
-                    i = AZStd::move(bound);
-                }
-                else if constexpr (sized_sentinel_for<S, I>)
-                {
-                    operator()(i, bound - i);
-                }
-                else
-                {
-                    for (; i != bound; ++i) {}
-                }
-            }
-
-            template<class I, class S>
-            constexpr auto operator()(I& i, iter_difference_t<I> n, S bound) const ->
-                enable_if_t<conjunction_v<bool_constant<input_or_output_iterator<I>>, bool_constant<sentinel_for<S, I>>>,
-                iter_difference_t<I>>
-            {
-                if constexpr (sized_sentinel_for<S, I>)
-                {
-                    if (const auto dist = bound - i;
-                        (n > 0 && n > dist) || (n < 0 && n < dist))
-                    {
-                        // advance is limited to the i reach bound
-                        operator()(i, bound);
-                        return n - dist;
-                    }
-                    else if (n != 0)
-                    {
-                        // advance is limited by the value of n
-                        operator()(i, n);
-                        return 0;
-                    }
-
-                    return 0;
-                }
-                else
-                {
-                    for (; i != bound && n > 0; ++i, --n) {}
-                    if constexpr (bidirectional_iterator<I> && same_as<I, S>)
-                    {
-                        for (; i != bound && n < 0; --i, ++n) {}
-                    }
-
-                    return n;
-                }
-            }
-        };
-    }
-
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::advance_fn advance{};
-    }
-
-    // ranges::distance
-    namespace Internal
-    {
-        struct distance_fn
-        {
-            template<class I, class S>
-            constexpr auto operator()(I first, S last) const ->
-                enable_if_t<conjunction_v<bool_constant<input_or_output_iterator<I>>,
-                bool_constant<sentinel_for<S, I>>,
-                bool_constant<!sized_sentinel_for<S, I>>>,
-                iter_difference_t<I>>
-            {
-                // Since S is not a sized sentinel, can only increment from first to last
-                iter_difference_t<I> result{};
-                for (; first != last; ++first, ++result) {}
-
-                return result;
-            }
-
-            template<class I, class S>
-            constexpr auto operator()(const I& first, const S& last) const ->
-                enable_if_t<conjunction_v<bool_constant<input_or_output_iterator<I>>,
-                bool_constant<sentinel_for<S, I>>,
-                bool_constant<sized_sentinel_for<S, I>>>,
-                iter_difference_t<I>>
-            {
-                return last - first;
-            }
-
-            template<class R>
-            constexpr auto operator()(R&& r) const ->
-                enable_if_t<range<R>, range_difference_t<R>>
-            {
-                if constexpr (sized_range<R>)
-                {
-                    return ranges::size(r);
-                }
-                else
-                {
-                    return operator()(ranges::begin(r), ranges::end(r));
-                }
-            }
-        };
-    }
-
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::distance_fn distance{};
-    }
-
-    // ranges::next
-    namespace Internal
-    {
-        struct next_fn
-        {
-            template<class I>
-            constexpr auto operator()(I x) const ->
-                enable_if_t<input_or_output_iterator<I>, I>
-            {
-                ++x;
-                return x;
-            }
-
-            template<class I>
-            constexpr auto operator()(I x, iter_difference_t<I> n) const ->
-                enable_if_t<input_or_output_iterator<I>, I>
-            {
-                ranges::advance(x, n);
-                return x;
-            }
-
-            template<class I, class S>
-            constexpr auto operator()(I x, S bound) const ->
-                enable_if_t<conjunction_v<bool_constant<input_or_output_iterator<I>>, bool_constant<sentinel_for<S, I>>>, I>
-            {
-                ranges::advance(x, bound);
-                return x;
-            }
-
-            template<class I, class S>
-            constexpr auto operator()(I x, iter_difference_t<I> n, S bound) const ->
-                enable_if_t<conjunction_v<bool_constant<input_or_output_iterator<I>>, bool_constant<sentinel_for<S, I>>>, I>
-            {
-                ranges::advance(x, n, bound);
-                return x;
-            }
-        };
-    }
-
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::next_fn next{};
-    }
-
-    //ranges::prev
-    namespace Internal
-    {
-        struct prev_fn
-        {
-            template<class I>
-            constexpr auto operator()(I x) const ->
-                enable_if_t<bidirectional_iterator<I>, I>
-            {
-                --x;
-                return x;
-            }
-
-            template<class I>
-            constexpr auto operator()(I x, iter_difference_t<I> n) const ->
-                enable_if_t<bidirectional_iterator<I>, I>
-            {
-                ranges::advance(x, -n);
-                return x;
-            }
-
-            template<class I, class S>
-            constexpr auto operator()(I x, iter_difference_t<I> n, S bound) const ->
-                enable_if_t<conjunction_v<bool_constant<input_or_output_iterator<I>>, bool_constant<sentinel_for<S, I>>>, I>
-            {
-                ranges::advance(x, -n, bound);
-                return x;
-            }
-        };
-    }
-
-    inline namespace customization_point_object
-    {
-        inline constexpr Internal::prev_fn prev{};
-    }
+    using std::ranges::advance;
+    using std::ranges::distance;
+    using std::ranges::next;
+    using std::ranges::prev;
 }
 
 namespace AZStd::ranges
@@ -1082,31 +805,31 @@ namespace AZStd::ranges
 
         template <class Derived = D>
         constexpr auto data() ->
-            enable_if_t<contiguous_iterator<iterator_t<Derived>>, decltype(AZStd::to_address(ranges::begin(static_cast<Derived&>(*this))))>
+            enable_if_t<contiguous_iterator<iterator_t<Derived>>, add_pointer_t<range_reference_t<Derived>>>
         {
             return to_address(ranges::begin(derived()));
         }
         template <class Derived = D>
         constexpr auto data() const ->
             enable_if_t<range<const Derived> && contiguous_iterator<iterator_t<const Derived>>,
-            decltype(AZStd::to_address(ranges::begin(static_cast<const Derived&>(*this))))>
+            add_pointer_t<range_reference_t<const Derived>>>
         {
             return to_address(ranges::begin(derived()));
         }
 
-        template <class Derived = D>
+        template <class Derived = D> requires
+            forward_range<Derived>
+            && sized_sentinel_for<sentinel_t<Derived>, iterator_t<Derived>>
         constexpr auto size() ->
-            enable_if_t<conjunction_v<bool_constant<forward_range<Derived>>,
-            bool_constant<sized_sentinel_for<sentinel_t<Derived>, iterator_t<Derived>>>>,
-            decltype(ranges::end(static_cast<Derived&>(*this)) - ranges::begin(static_cast<Derived&>(*this)))>
+            decltype(ranges::end(static_cast<Derived&>(*this)) - ranges::begin(static_cast<Derived&>(*this)))
         {
             return ranges::end(derived()) - ranges::begin(derived());
         }
-        template <class Derived = D>
+        template <class Derived = D> requires
+            forward_range<const Derived>
+            && sized_sentinel_for<sentinel_t<const Derived>, iterator_t<const Derived>>
         constexpr auto size() const ->
-            enable_if_t<conjunction_v<bool_constant<forward_range<const Derived>>,
-            bool_constant<sized_sentinel_for<sentinel_t<const Derived>, iterator_t<const Derived>>>>,
-            decltype(ranges::end(static_cast<const Derived&>(*this)) - ranges::begin(static_cast<const Derived&>(*this)))>
+            decltype(ranges::end(static_cast<const Derived&>(*this)) - ranges::begin(static_cast<const Derived&>(*this)))
         {
             return ranges::end(derived()) - ranges::begin(derived());
         }

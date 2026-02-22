@@ -12,6 +12,5 @@
 namespace AZStd
 {
     using std::remove_cv;
-    template<class T>
-    using remove_cv_t = std::remove_cv_t<T>;
+    using std::remove_cv_t;
 }

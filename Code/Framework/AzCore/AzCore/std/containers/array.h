@@ -10,6 +10,8 @@
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/createdestroy.h>
 
+#include <tuple>
+
 // Until C++20 std::is_constant_evaluated type trait is supported
 // The following macro is used for Assert condition checking within a constexpr function
 // It works at compile time by evaluating the assert condition before
@@ -277,6 +279,21 @@ namespace AZStd
     {
         return Internal::to_array(AZStd::move(arr), make_index_sequence<N>{});
     }
+}
+
+namespace std
+{
+    template<class T, size_t N>
+    struct tuple_size<AZStd::array<T, N>>
+        : public integral_constant<size_t, N>
+    {};
+
+    template<size_t I, class T, size_t N>
+    struct tuple_element<I, AZStd::array<T, N>>
+    {
+        static_assert(I < N, "AZStd::array index out of bounds in tuple_element");
+        using type = T;
+    };
 }
 
 #undef AZSTD_CONTAINER_COMPILETIME_ASSERT

@@ -94,12 +94,6 @@ namespace AZStd
         base_node_ptr_type  m_node;
     };
 
-    // To allow incomplete types to be used with the const_iterator
-    // the forward list iterator has specializations added for the basic_const_iterator
-    // constraints
-    template<class I>
-    inline constexpr bool input_or_output_iterator<forward_list_iterator<I>> = true;
-
     /**
     * The list container (single linked list) is complaint with \ref CStd (23.2.2). In addition we introduce the following \ref ListExtensions "extensions".
     *
@@ -205,7 +199,7 @@ namespace AZStd
             insert_after_iter(before_begin(), first, last, is_integral<InputIterator>());
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R> requires Internal::container_compatible_range<R, value_type>
         forward_list(from_range_t, R&& rg, const allocator_type& alloc = allocator_type())
             : m_allocator(alloc)
         {

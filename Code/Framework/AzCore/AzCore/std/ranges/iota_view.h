@@ -459,13 +459,13 @@ namespace AZStd::ranges
             return !operator==(x, y);
         }
 
-        template<bool Enable = sized_sentinel_for<Bound, W>, class = enable_if_t<Enable>>
+        template<class W_ = W, class Bound_ = Bound> requires sized_sentinel_for<Bound_, W_>
         friend constexpr iter_difference_t<W> operator-(const iterator& x, const sentinel& y)
         {
             return iterator_accessor(x) - y.m_bound;
         }
 
-        template<bool Enable = sized_sentinel_for<Bound, W>, class = enable_if_t<Enable>>
+        template<class W_ = W, class Bound_ = Bound> requires sized_sentinel_for<Bound_, W_>
         friend constexpr iter_difference_t<W> operator-(const sentinel& x, const iterator& y)
         {
             return -(y - x);

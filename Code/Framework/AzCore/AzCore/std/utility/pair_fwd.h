@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <utility>
+
 // Forward declare the pair class to prevent a circular include with needing to know about the tuple type in order
 // to define the pair-like concept
 namespace AZStd
@@ -16,9 +18,6 @@ namespace AZStd
     template<class T1, class T2>
     struct pair;
 
-    // Define the piecewise_construct type to be used in piecewise constructors for pair and variant
-    struct piecewise_construct_t
-    {
-    };
-    static constexpr piecewise_construct_t piecewise_construct{};
+    using std::piecewise_construct_t;
+    using std::piecewise_construct;
 } // namespace AZStd

@@ -91,7 +91,7 @@ namespace AZStd::ranges::views::Internal
         template<class Range>
         constexpr decltype(auto) operator()(Range&& range) &
         {
-            auto ForwardRangeAndArgs = [&adpator = m_adaptor, &range](auto&... args)
+            auto ForwardRangeAndArgs = [&adaptor = m_adaptor, &range](auto&... args)
             {
                 return adaptor(AZStd::forward<Range>(range), args...);
             };
@@ -100,7 +100,7 @@ namespace AZStd::ranges::views::Internal
         template<class Range>
         constexpr decltype(auto) operator()(Range&& range) const&
         {
-            auto ForwardRangeAndArgs = [&adpator = m_adaptor, &range](const auto&... args)
+            auto ForwardRangeAndArgs = [&adaptor = m_adaptor, &range](const auto&... args)
             {
                 return adaptor(AZStd::forward<Range>(range), args...);
             };
@@ -138,30 +138,24 @@ namespace AZStd::ranges::views::Internal
     template<class T>
     struct range_adaptor_closure
     {
-        template<class View, class U>
-        friend constexpr auto operator|(View&& view, U&& closure) noexcept(is_nothrow_invocable_v<View, U>)
-            -> enable_if_t<conjunction_v<
-            bool_constant<viewable_range<View>>,
-            is_range_closure_t<U>,
-            bool_constant<same_as<T, remove_cvref_t<U>>>,
-            bool_constant<invocable<U, View>>>,
-            decltype(AZStd::invoke(AZStd::forward<U>(closure), AZStd::forward<View>(view)))>
+        template<class View, class U> requires
+            viewable_range<View>
+            && is_range_closure_t<U>::value
+            && same_as<T, remove_cvref_t<U>>
+            && invocable<U, View>
+        friend constexpr decltype(auto) operator|(View&& view, U&& closure) noexcept(is_nothrow_invocable_v<U, View>)
         {
             return AZStd::invoke(AZStd::forward<U>(closure), AZStd::forward<View>(view));
         }
 
-        template<class U, class Target>
+        template<class U, class Target> requires
+            is_range_closure_t<U>::value
+            && is_range_closure_t<Target>::value
+            && same_as<T, remove_cvref_t<U>>
+            && constructible_from<decay_t<U>, U>
+            && constructible_from<decay_t<Target>, Target>
         friend constexpr auto operator|(U&& closure, Target&& outerClosure)
             noexcept(is_nothrow_constructible_v<remove_cvref_t<U>> && is_nothrow_constructible_v<remove_cvref_t<Target>>)
-            ->enable_if_t<conjunction_v<
-            is_range_closure_t<U>,
-            is_range_closure_t<Target>,
-            bool_constant<same_as<T, remove_cvref_t<U>>>,
-            bool_constant<constructible_from<decay_t<U>, U>>,
-            bool_constant<constructible_from<decay_t<Target>, Target>>>,
-            decltype(range_adaptor_closure_forwarder{
-                perfect_forwarding_call_wrapper{AZStd::forward<Target>(outerClosure), AZStd::forward<U>(closure) }
-                })>
         {
             // Create a perfect_forwarding_wrapper that wraps the outer adaptor around the inner adaptor
             // and then pass that to the range_adaptor_closure_forward struct which inherits from

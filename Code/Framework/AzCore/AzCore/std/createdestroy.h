@@ -18,6 +18,8 @@
 #include <AzCore/std/typetraits/is_void.h>
 #include <AzCore/std/utils.h> // AZStd::addressof
 
+#include <memory>
+
 namespace AZStd
 {
     //! Bring the names of uninitialized_default_construct and
@@ -72,50 +74,9 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    //! Implements the C++20 version of destroy_at
-    //! If the element type T is not an array type it invokes the destructor on that object
-    //! Otherwise it recursively destructs the elements of the array as if by calling
-    //! AZStd::destroy(AZStd::begin(*ptr), AZStd::end(*ptr))
-    template <typename T>
-    constexpr void destroy_at(T* ptr)
-    {
-        if constexpr (AZStd::is_array_v<T>)
-        {
-            for (auto& element : *ptr)
-            {
-                AZStd::destroy_at(AZStd::addressof(element));
-            }
-        }
-        else
-        {
-            ptr->~T();
-        }
-    }
-    //! Implements the C++17 destroy function which works on a range of elements
-    //! The functions accepts a first and last iterator
-    //! and invokes the destructor on all element in the iterator range
-    template <typename ForwardIt>
-    constexpr void destroy(ForwardIt first, ForwardIt last)
-    {
-        for (; first != last; ++first)
-        {
-            AZStd::destroy_at(AZStd::addressof(*first));
-        }
-    }
-
-    //! Implements the C++17 destroy_n function
-    //! The function accepts a forward iterator and a number of elements
-    //! and invokes the destructor on all the elements in the range
-    //! Returns an iterator past the last element destructed
-    template <typename ForwardIt, size_t N>
-    constexpr ForwardIt destroy_n(ForwardIt first, size_t numElements)
-    {
-        for (; numElements > 0; ++first, --numElements)
-        {
-            AZStd::destroy_at(AZStd::addressof(*first));
-        }
-        return first;
-    }
+    using std::destroy_at;
+    using std::destroy;
+    using std::destroy_n;
 }
 
 namespace AZStd::Internal
@@ -185,18 +146,8 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    //! C++20 implementation of construct_at
-    //! Invokes placement new on the supplied address
-    //! Constraints: Only available when the expression
-    //! `new (declval<void*>()) T(declval<Args>()...)` is well-formed
-    template <typename T, typename... Args>
-    constexpr auto construct_at(T* ptr, Args&&... args)
-        -> decltype(new (AZStd::declval<void*>()) T(AZStd::forward<Args>(args)...), (T*)nullptr)
-    {
-        return ::new (ptr) T(AZStd::forward<Args>(args)...);
-    }
+    using std::construct_at;
 }
-
 
 namespace AZStd::Internal
 {
@@ -406,52 +357,6 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    //////////////////////////////////////////////////////////////////////////
-    // Sequence move
-    template <class InputIterator, class ForwardIterator>
-    constexpr ForwardIterator move(InputIterator first, InputIterator last, ForwardIterator result, bool)
-    {
-        // Specialized copy for contiguous iterators which are trivially copyable
-        if constexpr (is_fast_copy_v<InputIterator, ForwardIterator>)
-        {
-            size_t numElements = last - first;
-            if (numElements > 0)
-            {
-#if az_has_builtin_memmove
-                static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Size of value types must match for a trivial copy");
-                __builtin_memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
-#else
-                if (az_builtin_is_constant_evaluated())
-                {
-                    for (; first != last; ++result, ++first)
-                    {
-                        *result = ::AZStd::move(*first);
-                    }
-                    return result;
-                }
-                else
-                {
-                    static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Size of value types must match for a trivial copy");
-                    AZ_Assert((static_cast<const void*>(&*result) < static_cast<const void*>(&*first))
-                        || (static_cast<const void*>(&*result) >= static_cast<const void*>(&*first + numElements)),
-                        "AZStd::move memory overlaps use AZStd::move_backward!");
-                    ::memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
-                }
-#endif
-            }
-            return result + numElements;
-        }
-        else
-        {
-            for (; first != last; ++result, ++first)
-            {
-                *result = ::AZStd::move(*first);
-            }
-            return result;
-        }
-    }
-
-
     // For generic iterators, move is the same as copy.
     template <class BidirectionalIterator1, class BidirectionalIterator2>
     constexpr BidirectionalIterator2 move_backward(BidirectionalIterator1 first, BidirectionalIterator1 last, BidirectionalIterator2 result, bool)
@@ -554,18 +459,9 @@ namespace AZStd
     {
         return AZStd::Internal::uninitialized_move(first, last, result, {});
     }
-    // 25.3.2 Move
-    template<class InputIterator, class OutputIterator>
-    OutputIterator move(InputIterator first, InputIterator last, OutputIterator result)
-    {
-        return AZStd::Internal::move(first, last, result, {});
-    }
 
-    template<class BidirectionalIterator1, class BidirectionalIterator2>
-    BidirectionalIterator2 move_backward(BidirectionalIterator1 first, BidirectionalIterator1 last, BidirectionalIterator2 result)
-    {
-        return AZStd::Internal::move_backward(first, last, result, {});
-    }
+    using std::move;
+    using std::move_backward;
 }
 
 namespace AZStd::Internal

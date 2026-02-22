@@ -75,10 +75,16 @@ ly_append_configurations_options(
         -Wrange-loop-analysis
         -Wno-dllexport-explicit-instantiation-decl  # explicit instantiation declaration should not be 'dllexport'
         -Wno-parentheses
+        -Wno-pessimizing-move
         -Wno-reorder
         -Wno-switch
         -Wno-undefined-var-template
         -Wno-unknown-warning-option # used as a way to mark warnings that are MSVC only
+        -Wno-unqualified-std-cast-call
+        -Wno-self-move
+        
+        # Warnings (until migration is complete)
+        -Wno-error=unused-result
     COMPILATION_DEBUG
         -O0                         # No optimization
         -g                          # debug symbols

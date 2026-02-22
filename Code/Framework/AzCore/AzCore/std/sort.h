@@ -34,146 +34,7 @@ namespace AZStd
     * \li comb_sort
     */
 
-    namespace Internal
-    {
-        template<class T, class Allocator>
-        class TemporaryBuffer
-        {
-        public:
-            typedef T*                  pointer_type;
-            typedef AZStd::size_t       size_type;
-            typedef pointer_type        iterator;
-            typedef const pointer_type  const_iterator;
-
-            AZ_FORCE_INLINE TemporaryBuffer(size_type capacity)
-                : m_data(0)
-                , m_capacity(capacity)
-                , m_numConstructed(0)
-                , m_size(0)
-            {
-                m_data = reinterpret_cast<pointer_type>(static_cast<void*>(m_allocator.allocate(sizeof(T) * m_capacity, alignof(T))));
-            }
-
-            AZ_FORCE_INLINE TemporaryBuffer(size_type capacity, const Allocator& allocator)
-                : m_allocator(allocator)
-                , m_capacity(capacity)
-                , m_numConstructed(0)
-                , m_size(0)
-            {
-                m_data = reinterpret_cast<pointer_type>(static_cast<void*>(m_allocator.allocate(sizeof(T) * m_capacity, alignof(T))));
-            }
-
-            AZ_FORCE_INLINE ~TemporaryBuffer()
-            {
-                if constexpr (!AZStd::is_trivially_destructible_v<T>)
-                {
-                    if (m_numConstructed > 0)
-                    {
-                        iterator first = begin();
-                        iterator last = first + m_numConstructed;
-                        Internal::destroy<iterator>::range(first, last);
-                    }
-                }
-
-                m_allocator.deallocate(m_data, sizeof(T) * m_capacity, alignment_of<T>::value);
-            }
-
-            AZ_FORCE_INLINE size_type   capacity() const    { return m_capacity; }
-
-            template<class InputIterator>
-            AZ_FORCE_INLINE void    copy(InputIterator first, InputIterator last)
-            {
-                size_type newSize = AZStd::distance(first, last);
-                AZ_Assert(newSize <= m_capacity, "TemporaryBuffer::copy - new size is bigger than the buffer capacity!");
-                if (newSize > m_size)
-                {
-                    if constexpr (!AZStd::is_trivially_constructible_v<T>)
-                    {
-                        iterator bufferFirst = begin() + m_numConstructed;
-                        iterator bufferLast = begin() + newSize;
-                        Internal::construct<iterator>::range(bufferFirst, bufferLast);
-                    }
-                    m_numConstructed = newSize;
-                }
-
-                m_size = newSize;
-                Internal::copy(first, last, begin(), Internal::is_fast_copy<InputIterator, iterator>());
-            }
-
-            AZ_FORCE_INLINE void set_size(size_type newSize)
-            {
-                AZ_Assert(newSize <= m_capacity, "TemporaryBuffer::set_size - new size is bigger than the buffer capacity!");
-                if (newSize > m_size)
-                {
-                    if constexpr (!AZStd::is_trivially_constructible_v<T>)
-                    {
-                        iterator bufferFirst = begin() + m_numConstructed;
-                        iterator bufferLast = begin() + newSize;
-                        Internal::construct<iterator>::range(bufferFirst, bufferLast);
-                    }
-                    m_numConstructed = newSize;
-                }
-
-                m_size = newSize;
-            }
-
-            AZ_FORCE_INLINE iterator begin()        { return m_data; }
-            AZ_FORCE_INLINE iterator end()      { return m_data + m_size; }
-
-        private:
-            Allocator       m_allocator;
-            pointer_type    m_data;
-            size_type       m_capacity;
-            size_type       m_numConstructed;
-            size_type       m_size;
-        };
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Merge
-    template <class InputIterator1, class InputIterator2, class OutputIterator>
-    OutputIterator merge(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result)
-    {
-        // copy merging ranges, both using operator<
-        for (; first1 != last1 && first2 != last2; ++result)
-        {
-            if (*first2 < *first1)
-            {
-                *result = *first2;
-                ++first2;
-            }
-            else
-            {
-                *result = *first1;
-                ++first1;
-            }
-        }
-
-        result = Internal::copy(first1, last1, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());   // copy any tail
-        return Internal::copy(first2, last2, result, Internal::is_fast_copy<InputIterator2, OutputIterator>());
-    }
-
-    template <class InputIterator1, class InputIterator2, class OutputIterator, class Compare>
-    OutputIterator merge(InputIterator1 first1, InputIterator1 last1, InputIterator2 first2, InputIterator2 last2, OutputIterator result, Compare comp)
-    {
-        // copy merging ranges, both using operator<
-        for (; first1 != last1 && first2 != last2; ++result)
-        {
-            if (comp(*first2, *first1))
-            {
-                *result = *first2;
-                ++first2;
-            }
-            else
-            {
-                *result = *first1;
-                ++first1;
-            }
-        }
-
-        result = Internal::copy(first1, last1, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());   // copy any tail
-        return Internal::copy(first2, last2, result, Internal::is_fast_copy<InputIterator1, OutputIterator>());
-    }
+    using std::merge;
 
     template<class BidirectionalIterator1, class BidirectionalIterator2, class BidirectionalIterator3, class Compare>
     BidirectionalIterator3 merge_backward(BidirectionalIterator1 first1, BidirectionalIterator1 last1, BidirectionalIterator2 first2, BidirectionalIterator2 last2, BidirectionalIterator3 result, Compare comp)
@@ -249,6 +110,7 @@ namespace AZStd
             merge_buffered(midn, lastn, last, count1 - count1n, count2 - count2n, buffer, comp);
         }
     }
+
     // TEMPLATE FUNCTION inplace_merge
     template<class BidirectionalIterator, class Difference, class Buffer>
     BidirectionalIterator buffered_rotate(BidirectionalIterator first, BidirectionalIterator mid, BidirectionalIterator last, Difference count1, Difference count2, Buffer& buffer)
@@ -275,36 +137,7 @@ namespace AZStd
     }
     //////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////////////////////////////////////////////////
-    // Partial sort
-    template <class RandomAccessIterator, class Compare>
-    void partial_sort(RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last, Compare comp)
-    {
-        AZStd::make_heap(first, middle, comp);
-        for (RandomAccessIterator next = middle; next < last; ++next)
-        {
-            if (comp(*next, *first))
-            {
-                AZStd::pop_heap(first, middle, next, comp);
-            }
-        }
-        AZStd::sort_heap(first, middle, comp);
-    }
-
-    template <class RandomAccessIterator>
-    void partial_sort(RandomAccessIterator first, RandomAccessIterator middle, RandomAccessIterator last)
-    {
-        AZStd::make_heap(first, middle);
-        for (RandomAccessIterator next = middle; next < last; ++next)
-        {
-            if (*next < *first)
-            {
-                AZStd::pop_heap(first, middle, next);
-            }
-        }
-        AZStd::sort_heap(first, middle);
-    }
-    //////////////////////////////////////////////////////////////////////////
+    using std::partial_sort;
 
     //////////////////////////////////////////////////////////////////////////
     // Insertion sort

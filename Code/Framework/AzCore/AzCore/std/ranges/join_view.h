@@ -227,10 +227,11 @@ namespace AZStd::ranges
         {
             satisfy();
         }
-        template<bool Enable = convertible_to<iterator_t<View>, OuterIter> &&
-            convertible_to<iterator_t<InnerRange>, InnerIter>,
-            class = enable_if_t<Enable>>
-        iterator(iterator<!Const> i)
+        template<bool OtherConst> requires
+            Const && (!OtherConst)
+            && convertible_to<iterator_t<View>, OuterIter>
+            && convertible_to<iterator_t<range_reference_t<View>>, InnerIter>
+        iterator(iterator<OtherConst> i)
             : m_parent(i.m_parent)
             , m_outer(i.m_outer)
             , m_inner(i.m_inner)
@@ -319,14 +320,14 @@ namespace AZStd::ranges
         }
 
         template<class OtherBase = Base,
-            class = enable_if_t<ref_is_glvalue && equality_comparable<iterator_t<OtherBase>> &&
+            class = enable_if_t<equality_comparable<iterator_t<OtherBase>> &&
             equality_comparable<iterator_t<range_reference_t<OtherBase>>>>>
         friend constexpr bool operator==(const iterator& x, const iterator& y)
         {
             return x.m_outer == y.m_outer && x.m_inner == y.m_inner;
         }
         template<class OtherBase = Base,
-            class = enable_if_t<ref_is_glvalue && equality_comparable<iterator_t<OtherBase>>&&
+            class = enable_if_t<equality_comparable<iterator_t<OtherBase>>&&
             equality_comparable<iterator_t<range_reference_t<OtherBase>>>>>
         friend constexpr bool operator!=(const iterator& x, const iterator& y)
         {
@@ -421,9 +422,10 @@ namespace AZStd::ranges
         explicit constexpr sentinel(Parent& parent)
             : m_end(ranges::end(parent.m_base))
         {}
-        template<bool Enable = Const,
-            class = enable_if_t<Enable && convertible_to<sentinel_t<View>, sentinel_t<Base>>>>
-        constexpr sentinel(sentinel<!Const> s)
+        template<bool OtherConst> requires
+            (Const && !OtherConst)
+            && convertible_to<sentinel_t<Internal::maybe_const<OtherConst, View>>, sentinel_t<Base>>
+        constexpr sentinel(sentinel<OtherConst> s)
             : m_end(AZStd::move(s.m_end))
         {
         }
