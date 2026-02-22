@@ -76,7 +76,7 @@ namespace AZStd
 
     // https://eel.is/c++draft/strings#string.cons-18
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class R> requires Internal::container_compatible_range<R, Element>
+    template<class R, typename>
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(from_range_t, R&& rg)
     {
         assign_range(AZStd::forward<R>(rg));

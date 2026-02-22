@@ -95,9 +95,11 @@ ly_append_configurations_options(
         # Disabled warnings (please do not disable any others without first consulting sig-build)
         ###################
         /wd4201 # nonstandard extension used: nameless struct/union. This actually became part of the C++11 std, MS has an open issue: https://developercommunity.visualstudio.com/t/warning-level-4-generates-a-bogus-warning-c4201-no/103064
-        /wd4324 #  warning C4324: 'std::tuple<...>': structure was padded due to alignment specifier. This warning is triggered whenever a simd type is used with the MSVC std::optional or std::tuple types, which is namespaced into AZStd
         /wd4251 # Don't warn if a class with dllexport attribute has nonstatic members which don't have the dllexport attribute
         /wd4275 # non dll-interface class 'XXXXX' used as base for dll-interface class 'XXXXX'
+        /wd4324 # warning C4324: 'std::tuple<...>': structure was padded due to alignment specifier. This warning is triggered whenever a simd type is used with the MSVC std::optional or std::tuple types, which is namespaced into AZStd
+        /wd4834 # discarding return value of function with 'nodiscard' attribute (TEMPORARY)
+        /wd4858 # discarding return value (TEMPORARY)
         /wd4910 # '__declspec(dllexport)' and 'extern' are incompatible on an explicit instantiation
 
         ###################
@@ -118,9 +120,6 @@ ly_append_configurations_options(
         /we5031 # #pragma warning(pop): likely mismatch, popping warning state pushed in different file
         /we5032 # detected #pragma warning(push) with no corresponding #pragma warning(pop)
         /we5233 # explicit lambda capture 'identifier' is not used
-
-        # Temporarily disabled warnings during the STL migration
-        /wd4858 /w4858 # discarding return value
 
         /Zc:forScope    # Force conformance in for loop scope
         /diagnostics:caret # Compiler diagnostic options: includes the column where the issue was found and places a caret (^) under the location in the line of code where the issue was detected.

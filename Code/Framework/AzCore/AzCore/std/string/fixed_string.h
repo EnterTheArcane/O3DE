@@ -80,7 +80,7 @@ namespace AZStd
         constexpr basic_fixed_string(InputIt first, InputIt last);
 
         // https://eel.is/c++draft/strings#string.cons-18
-        template<class R> requires Internal::container_compatible_range<R, value_type>
+        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
         constexpr basic_fixed_string(from_range_t, R&& rg);
 
         // #7
