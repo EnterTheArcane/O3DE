@@ -119,6 +119,9 @@ ly_append_configurations_options(
         /we5032 # detected #pragma warning(push) with no corresponding #pragma warning(pop)
         /we5233 # explicit lambda capture 'identifier' is not used
 
+        # Temporarily disabled warnings during the STL migration
+        /wd4858 /w4858 # discarding return value
+
         /Zc:forScope    # Force conformance in for loop scope
         /diagnostics:caret # Compiler diagnostic options: includes the column where the issue was found and places a caret (^) under the location in the line of code where the issue was detected.
         /Zc:__cplusplus

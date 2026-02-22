@@ -72,6 +72,11 @@ ly_append_configurations_options(
         -Wno-unknown-warning-option
         -Wno-unnecessary-virtual-specifier
         -Wno-unused-parameter
+
+        # Temporarily disabled warnings during the STL migration
+        -Wno-error=pessimizing-move
+        -Wno-error=self-move
+        -Wno-error=unused-result
     COMPILATION_DEBUG
         /MDd            # defines _DEBUG, _MT, and _DLL and causes the application to use the debug multithread-specific and DLL-specific version of the run-time library.
                         # It also causes the compiler to place the library name MSVCRTD.lib into the .obj file.
