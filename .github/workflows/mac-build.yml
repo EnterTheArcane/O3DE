@@ -138,6 +138,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "Installing dependencies"
+          brew install --quiet xcbeautify
           echo "Getting python..."
           ./python/get_python.sh
           echo "Installing additional python dependencies..."
