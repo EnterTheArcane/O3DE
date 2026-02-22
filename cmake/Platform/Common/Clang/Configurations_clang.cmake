@@ -81,9 +81,10 @@ ly_append_configurations_options(
         -Wno-unknown-warning-option # used as a way to mark warnings that are MSVC only
 
         # Temporarily disabled warnings during the STL migration
-        -Wno-error=pessimizing-move
-        -Wno-error=self-move
-        -Wno-error=unused-result
+        -Wno-pessimizing-move
+        -Wno-self-move
+        -Wno-unqualified-std-cast-call
+        -Wno-unused-result
     COMPILATION_DEBUG
         -O0                         # No optimization
         -g                          # debug symbols
