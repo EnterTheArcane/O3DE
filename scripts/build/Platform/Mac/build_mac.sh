@@ -51,12 +51,20 @@ fi
 # Split the configuration on semi-colon and use the cmake --build wrapper to run the underlying build command for each
 for config in $(echo $CONFIGURATION | sed "s/;/ /g")
 do
+    build_cmd="cmake --build . --target ${CMAKE_TARGET} --config ${config} -j $(/usr/sbin/sysctl -n hw.ncpu) -- ${CMAKE_NATIVE_BUILD_ARGS}"
+
+    # Use xcbeautify to format the output if available
     if command -v xcbeautify &> /dev/null; then
-        $xcbeautify_args = "--is-ci --disable-logging --renderer github-actions"
-        xcodebuild -project O3DE.xcodeproj -scheme ALL_BUILD -configuration ${config} -jobs $(/usr/sbin/sysctl -n hw.ncpu) | xcbeautify ${xcbeautify_args}
-    else
-        cmake --build . --target ${CMAKE_TARGET} --config ${config} -j $(/usr/sbin/sysctl -n hw.ncpu) -- ${CMAKE_NATIVE_BUILD_ARGS}
+        xcbeautify_args="--is-ci --disable-logging"
+
+        if [[ "${GITHUB_ACTIONS}" == "true" ]]; then
+            xcbeautify_args="${xcbeautify_args} --renderer github-actions"
+        fi
+
+        build_cmd="${build_cmd} | xcbeautify ${xcbeautify_args}"
     fi
+
+    eval ${build_cmd}
 done
 
 popd
