@@ -5,7 +5,9 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
+
 #include <AzCore/std/typetraits/conjunction.h>
 #include <AzCore/std/typetraits/is_constructible.h>
 
@@ -13,22 +15,22 @@ namespace AZStd
 {
     template<class T, class Allocator>
     class vector;
-    
+
     template<class T, class Allocator>
     class list;
     template<class T, class Allocator>
     class forward_list;
-    
+
     template<class Key, class MappedType, class Compare, class Allocator>
     class map;
     template<class Key, class MappedType, class Compare, class Allocator>
     class multimap;
-    
+
     template<class Key, class MappedType, class Hasher, class EqualKey, class Allocator>
     class unordered_map;
     template<class Key, class MappedType, class Hasher, class EqualKey, class Allocator>
     class unordered_multimap;
-    
+
     template <class Key, class Compare, class Allocator>
     class set;
     template <class Key, class Compare, class Allocator>

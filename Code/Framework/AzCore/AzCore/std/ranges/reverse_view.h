@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/all_view.h>
@@ -19,7 +20,6 @@ namespace AZStd::ranges
         >
         >>
     class reverse_view;
-
 
     // views::reverse customization point
     namespace views

@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_TYPE_TRAITS_INTRINSICS_INCLUDED
-#define AZSTD_TYPE_TRAITS_INTRINSICS_INCLUDED
+
+#pragma once
 
 #include <AzCore/std/typetraits/config.h>
 
@@ -133,6 +133,3 @@
 #ifndef AZSTD_HAS_VIRTUAL_DESTRUCTOR
 #   define AZSTD_HAS_VIRTUAL_DESTRUCTOR(T) false
 #endif
-
-#endif // AZSTD_TYPE_TRAITS_INTRINSICS_INCLUDED
-#pragma once

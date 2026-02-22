@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/parallel/atomic.h>
@@ -202,4 +203,3 @@ namespace AZStd
         return (m_top.load(memory_order_acquire) == NULL);
     }
 }
-

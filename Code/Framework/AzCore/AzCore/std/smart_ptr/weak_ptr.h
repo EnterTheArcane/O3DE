@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_SMART_PTR_WEAK_PTR_H
-#define AZSTD_SMART_PTR_WEAK_PTR_H
+
+#pragma once
 
 //
 //  weak_ptr.hpp
@@ -35,7 +35,6 @@ namespace AZStd
             , pn()              // never throws in 1.30+
         {}
         //  generated copy constructor, assignment, destructor are fine
-
 
         //
         //  The "obvious" converting constructor implementation:
@@ -123,7 +122,6 @@ namespace AZStd
             return *this;
         }
 
-
         shared_ptr<T> lock() const // never throws
         {
             return shared_ptr<element_type>(*this, AZStd::Internal::sp_nothrow_tag());
@@ -191,6 +189,3 @@ namespace AZStd
         a.swap(b);
     }
 } // namespace AZStd
-
-#endif  // #ifndef AZSTD_SMART_PTR_WEAK_PTR_H
-#pragma once

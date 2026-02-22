@@ -5,11 +5,12 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <utility>
 
 namespace AZStd
 {
-    using std::declval; 
+    using std::declval;
 }

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/typetraits/config.h>
@@ -14,4 +15,3 @@ namespace AZStd
     using std::remove_extent;
     using std::remove_extent_t;
 }
-

@@ -94,7 +94,6 @@ namespace AZStd
     {
     }
 
-
     // pair code to inter operate with tuples
     template<class T1, class T2>
     template<template<class...> class TupleType, class... Args1, class... Args2, size_t... I1, size_t... I2>
@@ -302,7 +301,6 @@ namespace AZStd
         return pair_type(AZStd::forward<T1>(value1), AZStd::forward<T2>(value2));
     }
 } // namespace AZStd
-
 
 namespace AZStd::Internal
 {

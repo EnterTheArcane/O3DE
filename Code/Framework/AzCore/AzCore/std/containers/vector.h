@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/allocator.h>
@@ -312,7 +313,6 @@ namespace AZStd
         {
             return emplace(pos, AZStd::move(value));
         }
-
 
         template<class... Args>
         inline iterator emplace(AZStd::nullptr_t, Args&&... ) = delete;

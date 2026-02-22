@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#pragma once
 
+#pragma once
 
 #include <AzCore/std/typetraits/common_reference.h>
 #include <AzCore/std/typetraits/conjunction.h>

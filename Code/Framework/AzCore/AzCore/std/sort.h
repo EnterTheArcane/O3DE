@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_SORT_H
-#define AZSTD_SORT_H 1
+
+#pragma once
 
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/algorithm.h>
@@ -601,7 +601,6 @@ namespace AZStd
         }
     }
 
-
     //////////////////////////////////////////////////////////////////////////
     // Sort
     using std::sort;
@@ -824,7 +823,6 @@ namespace AZStd
     //  } while (swapped || gap > 1);
     //}
 
-
     //////////////////////////////////////////////////////////////////////////
 
     //////////////////////////////////////////////////////////////////////////
@@ -900,6 +898,3 @@ namespace AZStd
 
     //////////////////////////////////////////////////////////////////////////
 }
-
-#endif // AZSTD_SORT_H
-#pragma once

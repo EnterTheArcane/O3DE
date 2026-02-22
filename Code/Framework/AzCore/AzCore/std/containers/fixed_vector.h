@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/Casting/numeric_cast.h>
@@ -130,7 +131,6 @@ namespace AZStd::Internal
         using const_pointer = const T*;
         using reference = T&;
         using const_reference = const T&;
-
 
         //! Constructors
         fixed_trivial_storage() = default;
@@ -419,7 +419,6 @@ namespace AZStd
             resize_no_construct(AZStd::ranges::distance(first, last));
             AZStd::uninitialized_copy(first, last, data());
         }
-
 
         fixed_vector(const fixed_vector& rhs)
         {

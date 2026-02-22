@@ -41,20 +41,17 @@ namespace AZStd
             return ElementHasher(value, AZStd::make_index_sequence<sizeof...(Types)>{});
         }
     };
-} // namespace AZStd
 
-namespace AZStd::Internal
-{
-    template<class... Types, size_t... Indices>
-    auto swap_tuple_elements(const tuple<Types...>& left, const tuple<Types...>& right, AZStd::index_sequence<Indices...>)
+    namespace Internal
     {
-        using AZStd::swap;
-        (swap(AZStd::get<Indices>(left), AZStd::get<Indices>(right)), ...);
+        template<class... Types, size_t... Indices>
+        auto swap_tuple_elements(const tuple<Types...>& left, const tuple<Types...>& right, AZStd::index_sequence<Indices...>)
+        {
+            using AZStd::swap;
+            (swap(AZStd::get<Indices>(left), AZStd::get<Indices>(right)), ...);
+        }
     }
-} // namespace AZStd::Internal
 
-namespace AZStd
-{
     // C++23 overload which allows swapping an rvalue tuple or a const lvalue tuple
     // that stores only reference and pointer types.
     // For example a temporary `tuple<int&, int&>` can bind to this function
@@ -65,22 +62,19 @@ namespace AZStd
     {
         Internal::swap_tuple_elements(left, right, AZStd::index_sequence_for<Types...>{});
     }
-} // namespace AZStd
 
-// AZStd::apply implementation helper block
-namespace AZStd::Internal
-{
-    template<class Fn, class Tuple, size_t... Is>
-    constexpr auto apply_impl(Fn&& f, Tuple&& tupleObj, AZStd::index_sequence<Is...>)
-        -> decltype(AZStd::invoke(AZStd::declval<Fn>(), AZStd::get<Is>(AZStd::declval<Tuple>())...))
+    // AZStd::apply implementation helper block
+    namespace Internal
     {
-        (void)tupleObj;
-        return AZStd::invoke(AZStd::forward<Fn>(f), AZStd::get<Is>(AZStd::forward<Tuple>(tupleObj))...);
+        template<class Fn, class Tuple, size_t... Is>
+        constexpr auto apply_impl(Fn&& f, Tuple&& tupleObj, AZStd::index_sequence<Is...>)
+            -> decltype(AZStd::invoke(AZStd::declval<Fn>(), AZStd::get<Is>(AZStd::declval<Tuple>())...))
+        {
+            (void)tupleObj;
+            return AZStd::invoke(AZStd::forward<Fn>(f), AZStd::get<Is>(AZStd::forward<Tuple>(tupleObj))...);
+        }
     }
-} // namespace AZStd::Internal
 
-namespace AZStd
-{
     template<class Fn, class Tuple>
     constexpr auto apply(Fn&& f, Tuple&& tupleObj) -> decltype(Internal::apply_impl(
         AZStd::declval<Fn>(), AZStd::declval<Tuple>(), AZStd::make_index_sequence<AZStd::tuple_size<AZStd::decay_t<Tuple>>::value>{}))

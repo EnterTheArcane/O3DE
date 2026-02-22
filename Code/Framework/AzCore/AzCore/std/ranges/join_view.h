@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/all_view.h>
@@ -61,7 +62,6 @@ namespace AZStd::ranges
         explicit constexpr join_view(View base)
             : m_base(AZStd::move(base))
         {}
-
 
         template <bool Enable = copy_constructible<View>, class = enable_if_t<Enable>>
         constexpr View base() const&
@@ -169,7 +169,6 @@ namespace AZStd::ranges
     public:
         using iterator_category = decltype(get_iterator_category());
     };
-
 
     template<class R>
     join_view(R&&) -> join_view<views::all_t<R>>;
@@ -343,7 +342,6 @@ namespace AZStd::ranges
             return ranges::iter_move(i.m_inner);
         }
 
-
         friend constexpr void iter_swap(
             const iterator& x,
             const iterator& y)
@@ -396,7 +394,6 @@ namespace AZStd::ranges
         //! reference to parent join_view
         Parent* m_parent{};
     };
-
 
     // sentinel type for iterator
     namespace JoinViewInternal

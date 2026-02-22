@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/function/identity.h>
@@ -243,7 +244,6 @@ namespace AZStd::ranges
     {
         constexpr Internal::max_fn max{};
     }
-
 
     namespace Internal
     {
@@ -960,7 +960,6 @@ namespace AZStd::ranges
         constexpr Internal::find_last_if_not_fn find_last_if_not{};
     }
 
-
     // ranges::mismatch
     template<class I1, class I2>
     using mismatch_result = in_in_result<I1, I2>;
@@ -1333,7 +1332,6 @@ namespace AZStd::ranges
         constexpr Internal::all_of_fn all_of;
     } // namespace customization_point_object
 
-
     namespace Internal
     {
         struct any_of_fn
@@ -1400,7 +1398,6 @@ namespace AZStd::ranges
         inline constexpr Internal::none_of_fn none_of;
     } // namespace customization_point_object
 
-
     // ranges::for_each
     // ranges::for_each_n
     template<class I, class F>
@@ -1463,7 +1460,6 @@ namespace AZStd::ranges
         constexpr Internal::for_each_fn for_each{};
         constexpr Internal::for_each_n_fn for_each_n{};
     }
-
 
     // ranges::count
     // ranges::count_if

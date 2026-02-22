@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/all_view.h>
@@ -22,7 +23,6 @@ namespace AZStd::ranges
         >
         >>
     class transform_view;
-
 
     // views::transform customization point
     namespace views

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -17,7 +18,7 @@ namespace AZStd
     {
         // The second template parameter is to the template parameter of the operator function that called is_transparent to to trigger SFINAE
         // error instead of a hard error
-        // i.e 
+        // i.e
         // template<typename ComparableToKey>
         // node_ptr_type DoUpperBound(const ComparableToKey& key, Internal::is_transparent<Compare>::value) const
         // will not cause a substitution failure if ComparableToKey is not used as part of the is_transparent template and therefore will cause a hard error

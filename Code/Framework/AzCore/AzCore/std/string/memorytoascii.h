@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_MEMORYTOASCII_H
-#define AZSTD_MEMORYTOASCII_H
+
+#pragma once
 
 #include <AzCore/std/base.h>
 #include <AzCore/std/string/string.h>
@@ -19,12 +19,12 @@ namespace AZStd
         ** Handy method to make a memory like display of a buffer for console output. Usually 4 or 5 lines of binary and ascii data. Data width is a default
         ** of 16 bytes, can be any value but a min width of 3 to any value. Offsets are always in hex and 6 digits are displayed. The maxShowSize will limit
         ** output to a predetermined size.
-        ** 
+        **
         ** Output can be formatted using the predefined Options
         ** Example output:
         **
         ** Address: 0x00000296A8D300B0 Data Size:79 Max Size:256                    <----- Options::Info
-        ** Offset                      Data                            ASCII        <--+-- Options::Header 
+        ** Offset                      Data                            ASCII        <--+-- Options::Header
         ** ------ 00-01-02-03-04-05-06-07-08-09-0a-0b-0c-0d-0e-0f ----------------  <--+   (2 lines)
         ** 000000 29 23 be 84 e1 6c d6 ae 52 90 49 f1 f1 bb e9 eb )#   l  R I
         ** 000010 b3 a6 db 3c 87 0c 3e 99 24 5e 0d 1c 06 b7 47 de    <  > $^    G
@@ -57,5 +57,3 @@ namespace AZStd
         AZCORE_API AZStd::string ToString(const void* memoryAddrs, AZStd::size_t dataSize, AZStd::size_t maxShowSize, AZStd::size_t dataWidth = 16, Options format = Options::Default);
     }
 }
-
-#endif // AZSTD_MEMORYTOASCII_H

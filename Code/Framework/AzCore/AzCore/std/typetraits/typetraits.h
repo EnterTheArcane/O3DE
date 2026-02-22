@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/typetraits/config.h>
@@ -84,4 +85,3 @@
 #include <AzCore/std/typetraits/type_identity.h>
 #include <AzCore/std/typetraits/underlying_type.h>
 #include <AzCore/std/typetraits/void_t.h>
-

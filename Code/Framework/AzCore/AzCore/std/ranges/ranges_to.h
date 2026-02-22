@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/iterator.h>
@@ -85,12 +86,11 @@ namespace AZStd::ranges
             }
         }
 
-
         struct container_range_direct_constructible
         {
             template<template<class...> class C, class R, class... Args>
             constexpr false_type operator()(...);
-            
+
             template<template<class...> class C, class R, class... Args>
             constexpr auto operator()(int) -> enable_if_t<
                 sfinae_trigger_v<decltype(C(declval<R>(), declval<Args>()...))>,
@@ -112,7 +112,7 @@ namespace AZStd::ranges
         template<template<class...> class C, class R, class... Args>
         constexpr bool container_range_tag_type_constructible_v =
             decltype(container_range_tag_type_constructible{}.operator()<C, R, Args...>(0))::value;
-        
+
         struct container_range_common_iterator_constructible
         {
             template<template<class...> class C, class I, class... Args>
@@ -126,7 +126,6 @@ namespace AZStd::ranges
         template<template<class...> class C, class I, class... Args>
         constexpr bool container_range_common_iterator_constructible_v =
             decltype(container_range_common_iterator_constructible{}.operator()<C, I, Args...>(0))::value;
-        
 
         // Exposition only type for deducing the template argument for the container template C
         // https://eel.is/c++draft/range.utility.conv#to-2

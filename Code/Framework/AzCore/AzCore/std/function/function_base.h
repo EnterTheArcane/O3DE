@@ -5,10 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-// Based on boost 1.39.0
 
-#ifndef AZSTD_FUNCTION_BASE_HEADER
-#define AZSTD_FUNCTION_BASE_HEADER
+#pragma once
 
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/base.h>
@@ -24,8 +22,6 @@
 
 #define AZSTD_FUNCTION_TARGET_FIX(x)
 #define AZSTD_FUNCTION_ENABLE_IF_NOT_INTEGRAL(Functor, Type)  AZStd::enable_if_t<!std::is_integral_v<Functor> && !std::is_null_pointer_v<Functor>, Type>
-
-
 
 namespace AZStd
 {
@@ -790,6 +786,3 @@ namespace AZStd
 #undef AZSTD_FUNCTION_ENABLE_IF_NOT_INTEGRAL
 //#undef aztypeid
 //#undef aztypeid_cmp
-
-#endif // AZSTD_FUNCTION_BASE_HEADER
-#pragma once

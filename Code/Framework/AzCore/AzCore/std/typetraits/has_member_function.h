@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/function/invoke.h>
@@ -28,7 +29,6 @@
 */
 // Used to append options to the AZStd::is_invocable_r_v below
 #define AZ_PREFIX_ARG_WITH_COMMA(_Arg) , _Arg
-
 
 namespace AZStd::HasMemberInternal
 {
@@ -77,7 +77,6 @@ namespace AZStd::HasMemberInternal
 
 #define AZ_HAS_MEMBER(_HasName, _FunctionName, _ResultType, _ParamsSignature) \
     AZ_HAS_MEMBER_QUAL(_HasName, _FunctionName, _ResultType, _ParamsSignature,)
-
 
 /**
 * AZ_HAS_MEMBER_INCLUDE_BASE detects if the class or any of its base classes

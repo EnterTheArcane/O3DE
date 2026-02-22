@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/parallel/config.h>
@@ -68,4 +69,3 @@ namespace AZStd
 }
 
 #include <AzCore/std/parallel/internal/mutex_Platform.h>
-

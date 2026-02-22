@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/allocator_traits.h>
@@ -59,10 +60,10 @@ namespace AZStd
 
         private:
             using allocator_traits = AZStd::allocator_traits<allocator_type>;
-            
+
             template <class Traits> friend class AZStd::rbtree;
             template <class Traits> friend class AZStd::hash_table;
-            
+
             friend MapOrSetNodeHandleBase<node_handle<NodeTraits, MapOrSetNodeHandleBase>, NodeTraits>;
 
             using node_pointer_type = typename NodeTraits::node_type*;
@@ -127,7 +128,7 @@ namespace AZStd
                 }
             }
 
-            template <typename SwapNodeTraits, template <typename, typename> class SwapMapOrSetNodeHandleBase> 
+            template <typename SwapNodeTraits, template <typename, typename> class SwapMapOrSetNodeHandleBase>
                 friend void swap(node_handle<SwapNodeTraits, SwapMapOrSetNodeHandleBase>& lhs, node_handle<SwapNodeTraits, SwapMapOrSetNodeHandleBase>& rhs);
 
         private:

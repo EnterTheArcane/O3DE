@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_INTRUSIVE_SET_H
-#define AZSTD_INTRUSIVE_SET_H 1
+
+#pragma once
 
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/createdestroy.h>
@@ -195,7 +195,6 @@ namespace AZStd
             typedef const T*                    pointer;
             typedef const T&                    reference;
             typedef bidirectional_iterator_tag  iterator_category;
-
 
             AZ_FORCE_INLINE const_iterator_impl()
                 : m_node(nullptr) {}
@@ -1123,7 +1122,6 @@ namespace AZStd
         AZStd::size_t   m_numElements;
         KeyCompare      m_keyCompare;
 
-
         AZ_FORCE_INLINE node_ptr_type get_head() { return reinterpret_cast<node_ptr_type>(&m_head); }
         AZ_FORCE_INLINE node_ptr_type get_root() { return Hook::to_node_ptr(get_head())->m_children[AZSTD_RBTREE_LEFT]; }
 
@@ -1185,13 +1183,8 @@ namespace AZStd
      * TODO: Add intrusive_set container based on the container above (it's node should be -2 pointers for neighbours)
      */
 
-
-
     #undef AZSTD_RBTREE_RED
     #undef AZSTD_RBTREE_BLACK
     #undef AZSTD_RBTREE_LEFT
     #undef AZSTD_RBTREE_RIGHT
 }
-
-#endif // AZSTD_INTRUSIVE_SET_H
-#pragma once

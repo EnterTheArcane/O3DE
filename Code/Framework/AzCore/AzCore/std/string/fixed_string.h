@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <wchar.h>
@@ -100,7 +101,6 @@ namespace AZStd
         template<typename T, typename = AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
             && !is_convertible_v<const T&, const Element*>>>
         constexpr basic_fixed_string(const T& convertibleToView, size_type rhsOffset, size_type count);
-
 
         // #12
         constexpr basic_fixed_string(AZStd::nullptr_t) = delete;
@@ -358,7 +358,6 @@ namespace AZStd
             -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, bool>;
         constexpr auto ends_with(value_type suffix) const -> bool;
         constexpr auto ends_with(const_pointer suffix) const -> bool;
-
 
         /**
         * Resets the container without deallocating any memory or calling any destructor.

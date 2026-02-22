@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/node_handle.h>
@@ -125,7 +126,6 @@ namespace AZStd
             : base_type(rhs, alloc) {}
         unordered_set(unordered_set&& rhs, const type_identity_t<allocator_type>& alloc)
             : base_type(AZStd::move(rhs), alloc) {}
-
 
         unordered_set(const initializer_list<value_type>& list, size_type numBuckets = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),
@@ -432,7 +432,6 @@ namespace AZStd
             : base_type(rhs, alloc) {}
         unordered_multiset(unordered_multiset&& rhs, const type_identity_t<allocator_type>& alloc)
             : base_type(AZStd::move(rhs), alloc) {}
-
 
         unordered_multiset(const initializer_list<value_type>& list, size_type numBuckets = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),

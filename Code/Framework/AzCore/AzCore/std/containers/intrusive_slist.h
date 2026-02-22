@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_INTRUSIVE_SLIST_H
-#define AZSTD_INTRUSIVE_SLIST_H 1
+
+#pragma once
 
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/createdestroy.h>
@@ -204,7 +204,6 @@ namespace AZStd
                 return temp;
             }
         };
-
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         typedef Debug::checked_forward_iterator<iterator_impl, this_type>            iterator;
@@ -873,7 +872,6 @@ namespace AZStd
             }
         }
 
-
         // Validate container status.
         inline bool     validate() const
         {
@@ -1036,6 +1034,3 @@ namespace AZStd
         return !(&left == &right);
     }
 }
-
-#endif // AZSTD_INTRUSIVE_SLIST_H
-#pragma once

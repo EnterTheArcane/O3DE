@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 namespace AZStd
@@ -109,7 +110,6 @@ namespace AZStd
         this->m_hasValue = rhs.has_value();
     }
 
-
     //! expected<U, G> move conversion constructor
     template<class T, class E>
     template<class U, class G, class>
@@ -145,7 +145,6 @@ namespace AZStd
         : base_type{ unexpect, AZStd::forward<const G&>(rhs.error()) }
     {
     }
-
 
     //! error unexpected<G> move constructor
     template<class T, class E>
@@ -371,7 +370,6 @@ namespace AZStd
             }
         }
     }
-
 
     //! expected observer functions
     //! Returns whether the expected contains a value type(true) or error type(false)

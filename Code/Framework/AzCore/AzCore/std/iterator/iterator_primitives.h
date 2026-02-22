@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -54,10 +55,7 @@ namespace AZStd
 {
     // Bring in std utility functions into AZStd namespace
     using std::forward;
-
-    // forward declare iterator_traits to avoid circular include with iterator.h
-    template <class I, class = void>
-    struct iterator_traits;
+    using std::iterator_traits;
 }
 
 // C++20 range traits for iteratable types

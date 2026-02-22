@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/containers_concepts.h>
@@ -444,7 +445,6 @@ namespace AZStd
 
         return originalSize - container.size();
     }
-
 
     // deduction guides
     template<class InputIterator, class Compare = less<iter_key_type<InputIterator>>,

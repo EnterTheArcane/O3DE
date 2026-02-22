@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/array.h>
@@ -20,7 +21,6 @@
 #include <AzCore/std/typetraits/internal/type_sequence_traits.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
 #include <AzCore/std/typetraits/type_identity.h>
-
 
 namespace AZStd
 {
@@ -234,7 +234,6 @@ namespace AZStd
                     using VisitorReturnArray = array<common_type_t<remove_cvref_t<DispatchFuncs>...>, sizeof...(dispatchFuncs)>;
                     return VisitorReturnArray{ {AZStd::forward<DispatchFuncs>(dispatchFuncs)...} };
                 }
-
 
                 template <size_t... Indices>
                 struct dispatcher
@@ -527,7 +526,6 @@ namespace AZStd
             union_impl<SpecialFunctionTraits::Unavailable, Index + 1, Types...> m_tail;
             friend struct get_alternative::union_;
         };
-
 
         template <typename IndexType>
         constexpr size_t variant_index_t_npos = static_cast<IndexType>(-1);
@@ -827,7 +825,6 @@ namespace AZStd
         public:
             using base_type::base_type;
             using base_type::operator=;
-
 
             template <size_t Index, class... Args>
             constexpr auto& emplace(Args&&... args)

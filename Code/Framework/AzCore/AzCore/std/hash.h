@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_HASH_H
-#define AZSTD_HASH_H 1
+
+#pragma once
 
 #include <limits>
 #include <AzCore/std/function/invoke.h>
@@ -57,7 +57,7 @@ namespace AZStd
     {
         static constexpr bool value = std::numeric_limits<T>::is_specialized;
     };
-    
+
     template<typename KeyType>
     using HasherInvocable = AZStd::conjunction
         < AZStd::disjunction<AZStd::negation<HasDefaultHash<hash<KeyType>>>, IsNumber<KeyType>, AZStd::is_enum<KeyType>>
@@ -66,7 +66,7 @@ namespace AZStd
 
     template<typename KeyType>
     inline constexpr bool HasherInvocable_v = HasherInvocable<KeyType>::value;
-    
+
     template<typename... Types>
     using hash_enabled_concept = AZStd::bool_constant<AZStd::conjunction_v<HasherInvocable<Types>...>>;
 
@@ -219,6 +219,3 @@ namespace AZStd
     // Bucket size suitable to hold n elements.
     AZCORE_API AZStd::size_t hash_next_bucket_size(AZStd::size_t n);
 }
-
-#endif // AZSTD_HASH_H
-#pragma once

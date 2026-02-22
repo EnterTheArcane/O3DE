@@ -262,7 +262,6 @@ namespace AZStd
             assign_iter(first, last, is_integral<InputIterator>());
         }
 
-
         template<class R>
         auto assign_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>>
         {
@@ -590,7 +589,6 @@ namespace AZStd
                 }
             }
         }
-
 
         // 23.2.2.4 list operations:
         void splice(iterator splicePos, this_type& rhs)
@@ -965,7 +963,6 @@ namespace AZStd
                 }
             }
         }
-
 
         /**
         * \anchor ListExtensions

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <wchar.h>
@@ -1605,7 +1606,6 @@ namespace AZStd
         }
 #endif // AZ_COMPILER_CLANG || defined(_PREFAST_) || defined(_RELEASE)
 
-
         template<typename... Args>
         static basic_string<wchar_t, char_traits<wchar_t>, Allocator> format(const wchar_t* formatStr, Args... args)
         {
@@ -2093,7 +2093,6 @@ namespace AZStd
         container.erase(iter, container.end());
         return removedCount;
     }
-
 
 #if !defined(AZ_STRING_EXPLICIT_SPECIALIZATION) && defined(AZ_COMPILER_MSVC)
 

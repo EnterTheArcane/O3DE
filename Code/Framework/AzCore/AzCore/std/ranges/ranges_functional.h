@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/function/identity.h>
@@ -33,7 +34,7 @@ namespace AZStd::ranges
         }
         using is_transparent = void;
     };
-    
+
     struct less
     {
         template<class T, class U>
@@ -55,7 +56,7 @@ namespace AZStd::ranges
         }
         using is_transparent = void;
     };
-    
+
     struct greater_equal
     {
         template<class T, class U>
@@ -66,7 +67,7 @@ namespace AZStd::ranges
         }
         using is_transparent = void;
     };
-    
+
     struct less_equal
     {
         template<class T, class U>
@@ -78,7 +79,6 @@ namespace AZStd::ranges
         using is_transparent = void;
     };
 } // namespace AZStd::ranges
-
 
 // Iterator Common algorithm requirement concepts
 // https://eel.is/c++draft/alg.req

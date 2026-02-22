@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/parallel/config.h>
@@ -75,7 +76,6 @@ namespace AZStd
         //! If we can join the thread.
         bool            m_isJoinable{ true };
     };
-
 
     // 30.3.1
     class AZCORE_API thread
@@ -268,4 +268,3 @@ namespace AZStd
 }
 
 #include <AzCore/std/parallel/internal/thread_Platform.h>
-

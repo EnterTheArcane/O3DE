@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/iterator/move_sentinel.h>
@@ -118,7 +119,6 @@ namespace AZStd::ranges
                 return move_sentinel{ ranges::end(m_base) };
             }
         }
-
 
         template<bool Enable = sized_range<View>, class = enable_if_t<Enable>>
         constexpr auto size()

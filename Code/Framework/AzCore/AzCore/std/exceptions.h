@@ -5,10 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_EXCEPTIONS_H
-#define AZSTD_EXCEPTIONS_H 1
 
-#ifdef AZSTD_HAS_EXEPTIONS
+#pragma once
+
+#ifdef AZSTD_HAS_EXCEPTIONS
 
 #define AZSTD_TRY_BEGIN try {
 #define AZSTD_CATCH(x)  } catch (x) {
@@ -24,7 +24,7 @@
 #define AZSTD_THROW(x, y)   throw x(y)
 #define AZSTD_THROW_NCEE(x, y)  _THROW(x, y)
 
-#else // AZSTD_HAS_EXEPTIONS
+#else // AZSTD_HAS_EXCEPTIONS
 
 #define AZSTD_TRY_BEGIN { \
         {
@@ -41,10 +41,4 @@
 #define AZSTD_THROW(x, y)   x(y)._Raise()
 #define AZSTD_THROW_NCEE(x, y)  _THROW(x, y)
 
-#endif //
-
-#endif // AZSTD_EXCEPTIONS_H
-#pragma once
-
-
-
+#endif // AZSTD_HAS_EXCEPTIONS

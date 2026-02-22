@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -181,7 +182,6 @@ namespace AZStd
             m_current -= n;
             return *this;
         }
-
 
         // comparison operations
         template<class S>

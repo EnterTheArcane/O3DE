@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -75,31 +76,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    /**
-     * Default iterator traits struct.
-    */
-    template <class Iterator, class>
-    struct iterator_traits
-        : Internal::iterator_traits_type_aliases<Iterator, Internal::has_iterator_type_aliases_v<Iterator>>
-    {
-        // Internal type alias meant to indicate that this is the primary template
-        using _is_primary_template = iterator_traits;
-    };
-
-    /**
-     * Default STL pointer specializations use random_access_iterator as a category.
-     * We do refine this as being a continuous iterator.
-     */
-    template <class T>
-    struct iterator_traits<T*>
-    {
-        using difference_type = ptrdiff_t;
-        using value_type = remove_cv_t<T>;
-        using pointer = T*;
-        using reference = T&;
-        using iterator_category = random_access_iterator_tag;
-        using iterator_concept = contiguous_iterator_tag;
-    };
+    using std::iterator_traits;
 }
 
 namespace AZStd

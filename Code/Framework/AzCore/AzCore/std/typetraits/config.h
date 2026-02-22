@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_TYPE_TRAITS_CONFIG_INCLUDED
-#define AZSTD_TYPE_TRAITS_CONFIG_INCLUDED
+
+#pragma once
 
 #include <AzCore/std/base.h>
 
@@ -40,25 +40,20 @@ namespace AZStd
     using std::is_constructible;
     using std::is_default_constructible;
     using std::is_assignable;
-    //using std::is_trivially_constructible; still not implemented in GCC 4.9 Android
-    //using std::is_trivially_assignable; still not implemented in GCC 4.9 Android
+    using std::is_trivially_constructible;
+    using std::is_trivially_assignable;
 
     using std::is_copy_constructible;
     using std::is_copy_assignable;
-    //using std::is_trivially_copy_constructible; still not implemented in GCC 4.9 Android
-    //using std::is_trivially_copy_assignable; still not implemented in GCC 4.9 Android
+    using std::is_trivially_copy_constructible;
+    using std::is_trivially_copy_assignable;
 
     using std::is_move_constructible;
     using std::is_move_assignable;
-    //using std::is_trivially_move_constructible; still not implemented in GCC 4.9 Android
-    //using std::is_trivially_move_assignable; still not implemented in GCC 4.9 Android
+    using std::is_trivially_move_constructible;
+    using std::is_trivially_move_assignable;
 
     using std::is_destructible;
-    //using std::is_trivially_destructible; still not implemented in GCC 4.9 Android
+    using std::is_trivially_destructible;
 
 } // namespace AZStd
-
-
-#endif // AZSTD_TYPE_TRAITS_CONFIG_INCLUDED
-#pragma once
-

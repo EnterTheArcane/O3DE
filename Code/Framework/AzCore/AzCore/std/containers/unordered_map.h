@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/node_handle.h>
@@ -440,7 +441,6 @@ namespace AZStd
         Hash, Allocator)
         ->unordered_map<Key, T, Hash, equal_to<Key>, Allocator>;
 
-
     /**
      * Unordered multi map container is complaint with \ref CTR1 (6.2.4.6)
      * The only difference from the unordered_map is that we allow multiple entries with
@@ -753,4 +753,3 @@ namespace AZStd
         Hash, Allocator)
         ->unordered_multimap<Key, T, Hash, equal_to<Key>, Allocator>;
 }
-

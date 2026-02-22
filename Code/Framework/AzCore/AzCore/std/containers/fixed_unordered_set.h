@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/hash_table.h>
@@ -113,7 +114,6 @@ namespace AZStd
             : base_type(AZStd::move(rhs))
         {
         }
-
 
         fixed_unordered_set(const initializer_list<value_type>& list, size_type numBuckets = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal())

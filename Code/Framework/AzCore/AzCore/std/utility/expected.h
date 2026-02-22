@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/typetraits/is_swappable.h>
@@ -127,13 +128,11 @@ namespace AZStd
 #endif
         constexpr expected(const unexpected<G>& err);
 
-
         template<class G, class = enable_if_t<is_constructible_v<E, G> >>
 #if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
         explicit(!is_convertible_v<G, E>)
 #endif
         constexpr expected(unexpected<G>&& err);
-
 
         //! Direct non-list initialization for expected type with variadic arguments
         template<class... Args, class = enable_if_t<!is_void_v<T>&& is_constructible_v<T, Args...>, int>>
@@ -302,7 +301,6 @@ namespace AZStd
         template<class E2>
         constexpr bool compare_equal_internal(const unexpected<E2>&) const;
     };
-
 
 } // namespace AZStd
 

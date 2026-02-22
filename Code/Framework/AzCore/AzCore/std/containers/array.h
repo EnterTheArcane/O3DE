@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/algorithm.h>
@@ -104,7 +105,6 @@ namespace AZStd
         constexpr static size_type size() { return N; }
         constexpr static bool empty() { return false; }
         constexpr static size_type max_size() { return N; }
-
 
         // swap
         void swap(this_type& other) { AZStd::swap_ranges(m_elements, pointer(m_elements + N), other.m_elements); }
@@ -214,7 +214,6 @@ namespace AZStd
         constexpr static size_type size() { return 0; }
         constexpr static bool empty() { return true; }
         constexpr static size_type max_size() { return 0; }
-
 
         // swap
         constexpr void swap(this_type&) {}

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/subrange_fwd.h>
@@ -283,7 +284,6 @@ namespace AZStd::ranges
             return r.end();
         }
     }
-
 
     template<class I, class S, subrange_kind K>
     inline constexpr bool enable_borrowed_range<subrange<I, S, K>> = true;

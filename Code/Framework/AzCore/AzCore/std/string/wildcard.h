@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <cctype>
@@ -58,7 +59,7 @@ namespace AZStd
             //                                         ^                  ^                       ^
             //                                   findStartCharPos       findEndCharPos      findFilterPos
             // And than basically we will check whether the find filter character matches the EndCharPosition character and if so than see whether there is a match.
-            // This will result in checking whether ".3" matches ".pak.*", ".pak.3" matches ".pak.*" and so no untill either there is a match or we reach to the beginning of the name. 
+            // This will result in checking whether ".3" matches ".pak.*", ".pak.3" matches ".pak.*" and so no untill either there is a match or we reach to the beginning of the name.
 
             for (auto findEndCharPos = findCharPos.rbegin(); findEndCharPos != findCharPos.rend(); ++findEndCharPos)
             {
@@ -112,5 +113,3 @@ namespace AZStd
         });
     }
 } // namespace AZStd
-
-

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -17,7 +18,6 @@
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/std/limits.h>
 #include <AzCore/Memory/SystemAllocator.h>
-
 
 // used for std::pointer_traits \note do an AZStd version
 #include <memory>
@@ -306,8 +306,6 @@ namespace AZStd
         unsigned int m_length;
         int m_type;
     };
-
-    
 
     template<class Element>
     class RegexTraits
@@ -791,7 +789,6 @@ namespace AZStd
             output = Format(output, begin, end, flags);
             return output;
         }
-
 
         template<class OutputIterator, class _Traits1, class _Alloc1>
         OutputIterator format(OutputIterator output, const basic_string<char_type, _Traits1, _Alloc1>& format, regex_constants::match_flag_type flags = regex_constants::format_default) const

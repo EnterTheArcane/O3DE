@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -24,7 +25,6 @@
 #include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utility/move.h>
 #include <AzCore/std/utility/declval.h>
-
 
 namespace AZStd
 {

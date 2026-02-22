@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 namespace AZStd
@@ -147,7 +148,6 @@ namespace AZStd
         return { data() + offset, count != dynamic_extent ? count : size() - offset };
     }
 
-
     // observers
     template <class T, size_t Extent>
     inline constexpr auto span<T, Extent>::size() const noexcept -> size_type { return m_size; }
@@ -194,7 +194,6 @@ namespace AZStd
     template <class T, size_t Extent>
     inline constexpr auto span<T, Extent>::rend() const noexcept -> reverse_iterator { return AZStd::make_reverse_iterator(begin()); }
 
-
     template <class ElementType, size_t Extent>
     inline auto as_bytes(span<ElementType, Extent> s) noexcept
         -> span<const AZStd::byte, Extent == dynamic_extent ? dynamic_extent : sizeof(ElementType) * Extent>
@@ -202,7 +201,6 @@ namespace AZStd
         return span<const AZStd::byte, Extent == dynamic_extent ? dynamic_extent : sizeof(ElementType) * Extent>(
             reinterpret_cast<const AZStd::byte*>(s.data()), s.size_bytes());
     }
-
 
     template <class ElementType, size_t Extent>
     inline auto as_writable_bytes(span<ElementType, Extent> s) noexcept

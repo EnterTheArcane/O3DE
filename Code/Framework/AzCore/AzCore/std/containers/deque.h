@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#pragma once
 
+#pragma once
 
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/allocator_traits.h>
@@ -164,7 +164,6 @@ namespace AZStd
 
         typedef pointer                                 map_node_type;
         typedef map_node_type*                          map_node_ptr_type;
-
 
 #ifdef AZSTD_HAS_CHECKED_ITERATORS
         using iterator = Debug::checked_randomaccess_iterator<deque_iterator_impl<T, Allocator, NumElementsPerBlock, MinMapSize>, this_type>;
@@ -999,7 +998,6 @@ namespace AZStd
             m_map = newMap;
             m_mapSize += numElements;
         }
-
 
         template<class InputIterator>
         AZ_FORCE_INLINE void assign_iter(const InputIterator& first, const InputIterator& last, const true_type& /* is_intergral<InputIterator>()*/)

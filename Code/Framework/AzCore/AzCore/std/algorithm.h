@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/createdestroy.h>
@@ -26,13 +27,13 @@ namespace AZStd
     * Search algorithms
     */
 
-    //////////////////////////////////////////////////////////////////////////
-    // Min, max, clamp
+    // DEPRECATED: Use std::min instead
     template<class T>
     constexpr T GetMin(const T& left, const T& right) { return (left < right) ? left : right; }
 
     using std::min;
 
+    // DEPRECATED: Use std::max instead
     template<class T>
     constexpr T GetMax(const T& left, const T& right) { return (left > right) ? left : right; }
 

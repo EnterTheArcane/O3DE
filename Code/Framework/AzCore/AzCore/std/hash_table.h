@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/containers_concepts.h>
@@ -346,7 +347,6 @@ namespace AZStd
         };
     }
 
-
     template <class Allocator, class NodeType>
     class hash_node_destructor
     {
@@ -451,7 +451,6 @@ namespace AZStd
             , m_keyEqual(keyEqual)
             , m_hasher(hash)
         {}
-
 
         AZ_FORCE_INLINE hash_table(const value_type* first, const value_type* last, const hasher& hash, const key_equal& keyEqual, const allocator_type& alloc)
             : m_data(alloc)
@@ -633,7 +632,6 @@ namespace AZStd
                 insert(ranges::begin(rangeView), ranges::end(rangeView));
             }
         }
-
 
         //! Returns an insert_return_type with the members initialized as follows: if nh is empty, inserted is false, position is end(), and node is empty.
         //! Otherwise if the insertion took place, inserted is true, position points to the inserted element, and node is empty.
@@ -1154,7 +1152,6 @@ namespace AZStd
             static AZ_FORCE_INLINE const value_type&    to_value(const value_type& value)   { return value; }
         };
     };
-
 
     template <class Traits>
     template <class InsertReturnType, class NodeHandle>

@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_ALLOCATOR_CONCURRENT_STATIC_H
-#define AZSTD_ALLOCATOR_CONCURRENT_STATIC_H
+
+#pragma once
 
 #include <AzCore/std/base.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -20,9 +20,9 @@ namespace AZStd
      *  Declares a static buffer of Node[NumNodes], and them pools them. It provides concurrent
      *  safe access. This is a perfect allocator for pooling lists or hash table nodes.
      *  Internally the buffer is allocated using aligned_storage.
-     *  \note only allocate/deallocate are thread safe. 
+     *  \note only allocate/deallocate are thread safe.
      *  reset, leak_before_destroy and comparison operators are not thread safe.
-     *  get_allocated_size is thread safe but the returned value is not perfectly in 
+     *  get_allocated_size is thread safe but the returned value is not perfectly in
      *  sync on the actual number of allocations (the number of allocations is incremented before the
      *  allocation happens and decremented after the allocation happens, trying to give a conservative
      *  number)
@@ -122,7 +122,7 @@ namespace AZStd
 
             pool_node* firstPoolNode = reinterpret_cast<pool_node*>(&m_data);
             pool_node* curPoolNode = reinterpret_cast<pool_node*>(ptr);
-            do 
+            do
             {
                 curPoolNode->m_index = m_firstFreeNode.load(AZStd::memory_order_relaxed);
             } while (!m_firstFreeNode.compare_exchange_weak(
@@ -134,7 +134,7 @@ namespace AZStd
         }
 
         inline void  deallocate(pointer ptr, size_type byteSize, size_type alignment)
-        { 
+        {
             (void)byteSize;
             (void)alignment;
             AZ_Assert(alignment > 0 && (alignment & (alignment - 1)) == 0, "AZStd::static_pool_concurrent_allocator::deallocate - alignment must be > 0 and power of 2");
@@ -192,6 +192,3 @@ namespace AZStd
         return &a != &b;
     }
 }
-
-#endif // AZSTD_ALLOCATOR_CONCURRENT_STATIC_H
-#pragma once

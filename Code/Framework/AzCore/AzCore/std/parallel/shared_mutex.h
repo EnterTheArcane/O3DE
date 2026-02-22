@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/parallel/atomic.h>
@@ -24,7 +25,7 @@ namespace AZStd
         shared_mutex& operator=(const shared_mutex&) = delete;
     public:
         explicit shared_mutex()
-            : m_value(0) 
+            : m_value(0)
         {
         }
 

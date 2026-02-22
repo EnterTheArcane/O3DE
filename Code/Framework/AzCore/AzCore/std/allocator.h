@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_ALLOCATOR_H
-#define AZSTD_ALLOCATOR_H 1
+
+#pragma once
 
 #include <AzCore/std/base.h>
 #include <AzCore/std/typetraits/integral_constant.h>
@@ -145,26 +145,23 @@ namespace AZStd
         using size_type = AZStd::size_t;
         using difference_type = AZStd::ptrdiff_t;
 
-        AZ_FORCE_INLINE no_default_allocator(const char* name = "Invalid allocator") { (void)name; }
-        AZ_FORCE_INLINE no_default_allocator(const allocator&) {}
-        AZ_FORCE_INLINE no_default_allocator(const allocator&, const char*) {}
+        no_default_allocator(const char* name = "Invalid allocator") { (void)name; }
+        no_default_allocator(const allocator&) {}
+        no_default_allocator(const allocator&, const char*) {}
 
         // none of this functions are implemented we should get a link error if we use them!
-        AZ_FORCE_INLINE allocator& operator=(const allocator& rhs);
-        AZ_FORCE_INLINE pointer allocate(size_type byteSize, size_type alignment);
-        AZ_FORCE_INLINE void  deallocate(pointer ptr, size_type byteSize, size_type alignment);
-        AZ_FORCE_INLINE size_type    resize(pointer ptr, size_type newSize);
+        allocator& operator=(const allocator& rhs) = delete;
+        pointer allocate(size_type byteSize, size_type alignment) = delete;
+        void deallocate(pointer ptr, size_type byteSize, size_type alignment) = delete;
+        size_type resize(pointer ptr, size_type newSize) = delete;
 
-        AZ_FORCE_INLINE const char*  get_name() const;
-        AZ_FORCE_INLINE void         set_name(const char* name);
+        const char* get_name() const = delete;
+        void set_name(const char* name) = delete;
 
-        AZ_FORCE_INLINE size_type   max_size() const;
+        size_type max_size() const = delete;
 
-        AZ_FORCE_INLINE bool is_lock_free();
-        AZ_FORCE_INLINE bool is_stale_read_allowed();
-        AZ_FORCE_INLINE bool is_delayed_recycling();
+        bool is_lock_free() = delete;
+        bool is_stale_read_allowed() = delete;
+        bool is_delayed_recycling() = delete;
     };
 }
-
-#endif // AZSTD_ALLOCATOR_H
-#pragma once

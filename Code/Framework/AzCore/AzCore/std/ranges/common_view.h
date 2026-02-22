@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/iterator/common_iterator.h>
@@ -19,7 +20,6 @@ namespace AZStd::ranges
         >
         >>
     class common_view;
-
 
     // views::common customization point
     namespace views

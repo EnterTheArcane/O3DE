@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/concepts/concepts.h>
@@ -549,7 +550,6 @@ namespace AZStd::ranges
     template<class R>
     using sentinel_t = enable_if_t<range<R>, decltype(ranges::end(declval<R&>()))>;
 
-
     // const_iterator concept is now definable, with the range concept and iterator_t type alias available
     template<class R>
     using const_iterator_t = enable_if_t<range<R>, const_iterator<iterator_t<R>>>;
@@ -665,7 +665,6 @@ namespace AZStd::ranges
     using range_reference_t = enable_if_t<range<R>, iter_reference_t<iterator_t<R>>>;
     template<class R>
     using range_rvalue_reference_t = enable_if_t<range<R>, iter_rvalue_reference_t<iterator_t<R>>>;
-
 
     namespace Internal
     {

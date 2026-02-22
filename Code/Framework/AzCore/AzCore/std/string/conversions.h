@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/string/string.h>
@@ -19,8 +20,6 @@
 // utf8 cpp lib
 #include <AzCore/std/string/utf8/unchecked.h>
 //////////////////////////////////////////////////////////////////////////
-
-
 
 namespace AZStd
 {
@@ -483,7 +482,6 @@ namespace AZStd
         return true;
     }
 
-
     AZ_FORCE_INLINE size_t str_transform(char* destination, const char* source, size_t count)
     {
         return strxfrm(destination, source, count);
@@ -535,7 +533,6 @@ namespace AZStd
     {
         return std::toupper(ch , loc);
     }
-
 
     // Convert a range of chars to lower case
     template<class Iterator>

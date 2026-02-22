@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/ranges.h>
@@ -130,7 +131,6 @@ namespace AZStd::ranges::views::Internal
     range_adaptor_argument_forwarder(Adaptor&&, Args&&...)
         -> range_adaptor_argument_forwarder<AZStd::decay_t<Adaptor>, AZStd::decay_t<Args>...>;
 
-
     template<class RangeAdaptor>
     using is_range_closure_t = bool_constant<derived_from<remove_cvref_t<RangeAdaptor>,
         range_adaptor_closure<remove_cvref_t<RangeAdaptor>>>>;
@@ -176,7 +176,6 @@ namespace AZStd::ranges::Internal
     // to construct in place
     template<class T, class = void>
     class movable_box;
-
 
     template<class T>
     class movable_box<T, enable_if_t<move_constructible<T>&& is_object_v<T>>>

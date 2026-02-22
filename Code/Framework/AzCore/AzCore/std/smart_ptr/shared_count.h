@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_SMART_PTR_SHARED_COUNT_H
-#define AZSTD_SMART_PTR_SHARED_COUNT_H
+
+#pragma once
 
 //
 //  detail/shared_count.hpp
@@ -193,7 +193,6 @@ namespace AZStd
             }
         };
         //////////////////////////////////////////////////////////////////////////
-
 
         struct sp_nothrow_tag {};
 
@@ -527,6 +526,3 @@ namespace AZStd
         }
     } // namespace Internal
 } // namespace AZStd
-
-#endif  // #ifndef AZSTD_SMART_PTR_SHARED_COUNT_H
-#pragma once

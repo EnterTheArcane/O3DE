@@ -151,4 +151,3 @@ namespace AZStd
         return (m_top.load(memory_order_acquire).m_node == NULL);
     }
 }
-

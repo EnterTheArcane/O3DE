@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #include <AzCore/std/string/fixed_string.h>
 
 namespace AZStd

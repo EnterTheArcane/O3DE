@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/tuple.h>
@@ -25,7 +26,6 @@ namespace AZStd
     {
         (void)args;
     }
-
 
     template <typename T, size_t Index, bool CanBeEmptyBase>
     inline constexpr T& compressed_pair_element<T, Index, CanBeEmptyBase>::get()

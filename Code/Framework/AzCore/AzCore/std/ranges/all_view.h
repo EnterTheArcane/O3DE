@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/owning_view.h>
@@ -22,7 +23,7 @@ namespace AZStd::ranges::views
         struct all_fn
             : Internal::range_adaptor_closure<all_fn>
         {
-            template<class View> 
+            template<class View>
             constexpr auto operator()(View&& t) const noexcept(noexcept(static_cast<decay_t<View>>(AZStd::forward<View>(t))))
                 ->enable_if_t<ranges::view<decay_t<View>>, decltype(static_cast<decay_t<View>>(AZStd::forward<View>(t)))>
             {

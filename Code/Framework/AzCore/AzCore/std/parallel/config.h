@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -18,17 +19,16 @@
  * each platform. It has lot's of limitations, please refer to each primitive
  * for more information. We are conforming with \ref C++14 but of course have
  * have limited support.
- *                                    
- * \li \ref AZStd::mutex (a.k.a critical_section)                   
- * \li \ref AZStd::recursive_mutex (a.k.a critical_section)         
- * \li \ref AZStd::semaphore                                        
- * \li \ref AZStd::thread                                           
- * \li \ref AZStd::condition_variable                               
+ *
+ * \li \ref AZStd::mutex (a.k.a critical_section)
+ * \li \ref AZStd::recursive_mutex (a.k.a critical_section)
+ * \li \ref AZStd::semaphore
+ * \li \ref AZStd::thread
+ * \li \ref AZStd::condition_variable
  * \li \ref AZStd::lock
  * \li \ref ParallelContainers
  *
  */
-
 
 /**
  * Native synchronization types.

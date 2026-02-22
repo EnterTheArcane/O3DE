@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/variant.h>
@@ -425,7 +426,6 @@ namespace AZStd::ranges
             return visit<rvalue_reference>(ranges::iter_move, x.m_innerIter);
         }
 
-
         friend constexpr void iter_swap(const iterator& x, const iterator& y)
         {
             visit(ranges::iter_swap, x.m_innerIter, y.m_innerIter);
@@ -689,7 +689,6 @@ namespace AZStd::ranges
         //! reference to parent join_with_view
         Parent* m_parent{};
     };
-
 
     // sentinel type for iterator
     namespace JoinWithViewInternal

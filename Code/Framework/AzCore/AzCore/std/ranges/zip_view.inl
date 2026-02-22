@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/all_view.h>
@@ -90,7 +91,6 @@ namespace AZStd::ranges
         };
         return AZStd::apply(AZStd::move(GetSizeForViews), ZipViewInternal::tuple_transform(ranges::size, m_views));
     }
-
 
     // public zip_view::iterator functions
     template<class... Views>
@@ -297,7 +297,7 @@ namespace AZStd::ranges
 
         return minDistance;
     }
-    
+
     template<class... Views>
     template<bool Const>
     template<bool OtherConst>

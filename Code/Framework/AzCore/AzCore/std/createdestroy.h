@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/concepts/concepts.h>
@@ -174,7 +175,6 @@ namespace AZStd::Internal
     template<class InputIterator, class ResultIterator>
     constexpr bool is_fast_copy_v = is_fast_copy<InputIterator, ResultIterator>::value;
 
-
     // is_fast_copy argument is no longer used.
     template <class InputIterator, class ForwardIterator>
     constexpr ForwardIterator copy(InputIterator first, InputIterator last, ForwardIterator result, bool)
@@ -220,7 +220,6 @@ namespace AZStd::Internal
             return result;
         }
     }
-
 
     // Copy backward.
     template <class BidirectionalIterator1, class BidirectionalIterator2>
@@ -327,7 +326,6 @@ namespace AZStd
             return result;
         }
     }
-
 
     template <class InputIterator, class ForwardIterator>
     constexpr ForwardIterator uninitialized_copy(InputIterator first, InputIterator last, ForwardIterator result)

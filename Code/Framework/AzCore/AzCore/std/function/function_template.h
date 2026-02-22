@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/function/function_base.h>
@@ -191,7 +192,6 @@ namespace AZStd
                     return invoke_void_return_wrapper<R>::call(*f, AZStd::forward<Args>(args)...);
                 }
             };
-
 
             /**
             * vtable for a specific boost::function instance. This
@@ -572,7 +572,6 @@ namespace AZStd
             }
         }
 
-
         // Moves the value from the specified argument to *this. If the argument
         // has its function object allocated on the heap, move_assign will pass
         // its buffer to *this, and set the argument's buffer pointer to NULL.
@@ -613,7 +612,6 @@ namespace AZStd
     void operator==(const function_intermediate<R, Args...>&, const function_intermediate<R, Args...>&) = delete;
     template<typename R, typename... Args>
     void operator!=(const function_intermediate<R, Args...>&, const function_intermediate<R, Args...>&) = delete;
-
 
     template<typename R, typename... Args>
     class function<R(Args...)>

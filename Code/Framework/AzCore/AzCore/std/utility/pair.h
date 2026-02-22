@@ -50,7 +50,6 @@ namespace std
     AZ_POP_DISABLE_WARNING;
 } // namespace std
 
-
 namespace AZStd
 {
     //! Wraps the std::get function in the AZStd namespace
@@ -121,7 +120,6 @@ namespace AZStd
     template<class T, class U>
     constexpr const T&& get(const pair<U, T>&& pairObj);
 } // namespace AZStd
-
 
 namespace AZStd::Internal
 {

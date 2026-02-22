@@ -27,7 +27,6 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 
-
 #pragma once
 
 #include <AzCore/std/string/utf8/core.h>
@@ -300,7 +299,4 @@ namespace Utf8::Unchecked
         return bytesRequired;
     }
 
-
 } // namespace Utf8::Unchecked
-
-

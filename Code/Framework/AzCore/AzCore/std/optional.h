@@ -13,12 +13,10 @@
 
 namespace AZStd
 {
-
     using std::nullopt_t;
     using std::nullopt;
     using std::optional;
     using std::make_optional;
-
 
     // 23.6.10 Hash support
     template<class T>

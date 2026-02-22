@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_ALLOCATOR_STACK_H
-#define AZSTD_ALLOCATOR_STACK_H
+
+#pragma once
 
 #include <AzCore/std/base.h>
 #include <AzCore/std/typetraits/integral_constant.h>
@@ -127,6 +127,3 @@ namespace AZStd
         return false;
     }
 }
-
-#endif // AZSTD_ALLOCATOR_STACK_H
-#pragma once

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -58,7 +59,6 @@ namespace AZStd
     using std::make_index_sequence;
     using std::make_integer_sequence;
 
-
     //////////////////////////////////////////////////////////////////////////
     // Address of
     //////////////////////////////////////////////////////////////////////////
@@ -86,7 +86,6 @@ namespace AZStd
     //  return p.get();
     //}
     //////////////////////////////////////////////////////////////////////////
-
 
     template<class T, bool isEnum = AZStd::is_enum<T>::value>
     struct RemoveEnum

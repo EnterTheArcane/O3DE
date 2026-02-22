@@ -5,11 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/concepts/concepts.h>
 #include <AzCore/std/typetraits/type_identity.h>
-
 
 namespace AZStd::ranges::Internal
 {

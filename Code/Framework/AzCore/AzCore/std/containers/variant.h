@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/variant_impl.h>
@@ -276,7 +277,6 @@ namespace AZStd
 
     template <class... Types>
     constexpr bool operator>=(const variant<Types...>& lhs, const variant<Types...>& rhs);
-
 
     template <typename... Types>
     constexpr void swap(variant<Types...>& lhs, variant<Types...>& rhs);
