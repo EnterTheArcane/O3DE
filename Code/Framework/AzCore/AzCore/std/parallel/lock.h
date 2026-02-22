@@ -192,8 +192,8 @@ namespace AZStd
         AZ_FORCE_INLINE ~shared_lock() { m_mutex.unlock_shared(); }
 
     private:
-        AZ_FORCE_INLINE shared_lock(shared_lock const&);
-        AZ_FORCE_INLINE shared_lock& operator=(shared_lock const&);
+        shared_lock(shared_lock const&) = delete;
+        shared_lock& operator=(shared_lock const&) = delete;
         mutex_type& m_mutex; // exposition only
     };
 

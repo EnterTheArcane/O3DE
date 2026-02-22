@@ -1024,8 +1024,8 @@ namespace AZStd
     template<class R>
     basic_string_view(R&&)->basic_string_view<ranges::range_value_t<R>>;
 
-    using string_view = basic_string_view<char>;
-    using wstring_view = basic_string_view<wchar_t>;
+    AZ_EXPORT using string_view = basic_string_view<char>;
+    AZ_EXPORT using wstring_view = basic_string_view<wchar_t>;
 
     inline namespace literals
     {

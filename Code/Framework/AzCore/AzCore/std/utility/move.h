@@ -7,10 +7,13 @@
  */
 #pragma once
 
+#include <AzCore/PlatformDef.h>
+
 namespace AZStd
 {
     // rvalue
     // rvalue move
+    AZ_EXPORT
     template<class T>
     constexpr AZStd::remove_reference_t<T>&& move(T&& t)
     {

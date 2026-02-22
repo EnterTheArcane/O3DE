@@ -29,13 +29,13 @@
 namespace AZStd
 {
     //////////////////////////////////////////////////////////////////////////
-    using std::forward;
-    using std::exchange;
+    AZ_EXPORT using std::forward;
+    AZ_EXPORT using std::exchange;
 
     template <class T>
     struct default_delete
     {
-        template <class U, 
+        template <class U,
             class = typename enable_if<is_convertible<U*, T*>::value, void>::type>
         void operator()(U* ptr) const
         {
@@ -70,7 +70,7 @@ namespace AZStd
 
     //////////////////////////////////////////////////////////////////////////
     // Swap
-    using std::swap;
+    AZ_EXPORT using std::swap;
 
     template<class ForwardIterator1, class ForwardIterator2>
     AZ_FORCE_INLINE void                    iter_swap(ForwardIterator1 a, ForwardIterator2 b)

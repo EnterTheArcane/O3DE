@@ -149,20 +149,21 @@ namespace AZStd
         AZ_FORCE_INLINE no_default_allocator(const allocator&) {}
         AZ_FORCE_INLINE no_default_allocator(const allocator&, const char*) {}
 
-        // none of this functions are implemented we should get a link error if we use them!
-        AZ_FORCE_INLINE allocator& operator=(const allocator& rhs);
-        AZ_FORCE_INLINE pointer allocate(size_type byteSize, size_type alignment);
-        AZ_FORCE_INLINE void  deallocate(pointer ptr, size_type byteSize, size_type alignment);
-        AZ_FORCE_INLINE size_type    resize(pointer ptr, size_type newSize);
+        // These functions are intentionally deleted to produce a compile-time
+        // error if this allocator type is ever used.
+        allocator& operator=(const allocator& rhs) = delete;
+        pointer allocate(size_type byteSize, size_type alignment) = delete;
+        void deallocate(pointer ptr, size_type byteSize, size_type alignment) = delete;
+        size_type resize(pointer ptr, size_type newSize) = delete;
 
-        AZ_FORCE_INLINE const char*  get_name() const;
-        AZ_FORCE_INLINE void         set_name(const char* name);
+        const char* get_name() const = delete;
+        void set_name(const char* name) = delete;
 
-        AZ_FORCE_INLINE size_type   max_size() const;
+        size_type max_size() const = delete;
 
-        AZ_FORCE_INLINE bool is_lock_free();
-        AZ_FORCE_INLINE bool is_stale_read_allowed();
-        AZ_FORCE_INLINE bool is_delayed_recycling();
+        bool is_lock_free() = delete;
+        bool is_stale_read_allowed() = delete;
+        bool is_delayed_recycling() = delete;
     };
 }
 

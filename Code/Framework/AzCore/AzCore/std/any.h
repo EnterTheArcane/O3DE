@@ -40,7 +40,7 @@ namespace AZStd
      * See C++ Standard proposal n3804 (http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3804.html)
      * And docs (http://en.cppreference.com/w/cpp/utility/any)
      */
-    class any
+    AZ_EXPORT class any
     {
     public:
         AZ_TYPE_INFO(AZStd::any, "{03924488-C7F4-4D6D-948B-ABC2D1AE2FD3}");
@@ -462,7 +462,7 @@ namespace AZStd
     }
 
     // Overload 1 - Calls overload 4
-    template <typename ValueType>
+    AZ_EXPORT template <typename ValueType>
     ValueType any_cast(const any& operand)
     {
         Internal::assert_value_type_valid<ValueType, true>(operand);
@@ -470,7 +470,7 @@ namespace AZStd
     }
 
     // Overload 2 - Calls overload 5
-    template <typename ValueType>
+    AZ_EXPORT template <typename ValueType>
     ValueType any_cast(any& operand)
     {
         Internal::assert_value_type_valid<ValueType, false>(operand);
@@ -478,7 +478,7 @@ namespace AZStd
     }
 
     // Overload 3 - Calls overload 5
-    template <typename ValueType>
+    AZ_EXPORT template <typename ValueType>
     ValueType any_cast(any&& operand)
     {
         Internal::assert_value_type_valid<ValueType, false>(operand);
@@ -486,14 +486,14 @@ namespace AZStd
     }
 
     // Overload 4 - Calls overload 5
-    template <typename ValueType>
+    AZ_EXPORT template <typename ValueType>
     add_pointer_t<add_const_t<ValueType>> any_cast(const any* operand)
     {
         return any_cast<ValueType>(const_cast<any*>(operand));
     }
 
     // Overload 5 - Implementation
-    template <typename ValueType>
+    AZ_EXPORT template <typename ValueType>
     add_pointer_t<ValueType> any_cast(any* operand)
     {
         static_assert(!is_reference<ValueType>::value, "ValueType must not be a reference (cannot return pointer to reference).");

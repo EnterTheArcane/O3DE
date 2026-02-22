@@ -24,6 +24,13 @@ if(POLICY CMP0168)
     cmake_policy(SET CMP0168 NEW)
 endif()
 
+if(POLICY CMP0155)
+    # CMP0155 - Controls whether CMAKE_CXX_SCAN_FOR_MODULES defaults to ON for C++20+ targets.
+    # (OLD) Default to OFF
+    # (NEW) Default to ON for C++20+ targets
+    cmake_policy(SET CMP0155 NEW)
+endif()
+
 include(cmake/LySet.cmake)
 include(cmake/GeneralSettings.cmake)
 include(cmake/FileUtil.cmake)
@@ -76,6 +83,7 @@ include(cmake/3rdParty.cmake)
 include(cmake/LYPython.cmake)
 include(cmake/Install.cmake)
 include(cmake/LYWrappers.cmake)
+include(cmake/CxxModules.cmake)
 include(cmake/Gems.cmake)
 include(cmake/UnitTest.cmake)
 include(cmake/TestImpactFramework/TestImpactTestTargetConfig.cmake) # LYTestWrappers dependency

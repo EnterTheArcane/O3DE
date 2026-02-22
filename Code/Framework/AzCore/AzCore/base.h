@@ -41,7 +41,7 @@ namespace AZ::Internal
     #define AZ_SIZE_ALIGN(_size, _align)         AZ_SIZE_ALIGN_UP(_size, _align)
 #endif // AZ_SIZE_ALIGN
 
-#if defined(AZ_MONOLITHIC_BUILD)
+#if defined(AZ_MONOLITHIC_BUILD) || defined(AZ_BUILD_CXX_MODULE)
     #define AZCORE_API
     #define AZCORE_API_EXPORT
 #else
@@ -50,7 +50,7 @@ namespace AZ::Internal
         #define AZCORE_API_EXPORT       AZ_DLL_EXPORT
     #else
         #define AZCORE_API              AZ_DLL_IMPORT
-        #define AZCORE_API_EXPORT       
+        #define AZCORE_API_EXPORT
     #endif
 #endif
 
@@ -184,38 +184,38 @@ using std::ptrdiff_t;
 
 namespace AZ
 {
-    using s8 = int8_t;
-    using u8 = uint8_t;
-    using s16 = int16_t;
-    using u16 = uint16_t;
-    using s32 = int32_t;
-    using u32 = uint32_t;
+    AZ_EXPORT using s8 = int8_t;
+    AZ_EXPORT using u8 = uint8_t;
+    AZ_EXPORT using s16 = int16_t;
+    AZ_EXPORT using u16 = uint16_t;
+    AZ_EXPORT using s32 = int32_t;
+    AZ_EXPORT using u32 = uint32_t;
     // s64 and u64 are always long long and unsigned long long on all platforms
     // where it is 64-bits
     // The previous behavior with checking the AZ_TRAIT_COMPILER_INT64_T_IS_LONG define
     // was exactly the same as it is now.
-    using s64 = signed long long;
-    using u64 = unsigned long long;
+    AZ_EXPORT using s64 = signed long long;
+    AZ_EXPORT using u64 = unsigned long long;
 
-    struct s128
+    AZ_EXPORT struct s128
     {
         s64 a, b;
     };
-    struct u128
+    AZ_EXPORT struct u128
     {
         u64 a, b;
     };
 
-    template<typename T>
+    AZ_EXPORT template<typename T>
     inline T SizeAlignUp(T s, size_t a) { return static_cast<T>((s+(a-1)) & ~(a-1)); }
 
-    template<typename T>
+    AZ_EXPORT template<typename T>
     inline T SizeAlignDown(T s, size_t a) { return static_cast<T>((s) & ~(a-1)); }
 
-    template<typename T>
+    AZ_EXPORT template<typename T>
     inline T* PointerAlignUp(T* p, size_t a)    { return reinterpret_cast<T*>((reinterpret_cast<size_t>(p)+(a-1)) & ~(a-1));    }
 
-    template<typename T>
+    AZ_EXPORT template<typename T>
     inline T* PointerAlignDown(T* p, size_t a) { return reinterpret_cast<T*>((reinterpret_cast<size_t>(p)) & ~(a-1));   }
 
     //! Rounds up a value to next power of 2.
@@ -248,7 +248,7 @@ namespace AZ
     //! Finally since all the one bits are set in the value, adding one pushes it
     //! to next power of 2
     //! 0b1000'0000'0000'0000'0000'0000 = 16777216
-    inline constexpr size_t AlignUpToPowerOfTwo(size_t value)
+    AZ_EXPORT inline constexpr size_t AlignUpToPowerOfTwo(size_t value)
     {
         // If the value is <=2 it is already aligned
         if (value <= 2)
@@ -292,7 +292,7 @@ namespace AZ
     * Does an safe alias cast using a union. This will allow you to properly cast types that when
     * strict aliasing is enabled.
     */
-    template<typename T, typename S>
+    AZ_EXPORT template<typename T, typename S>
     T AliasCast(S source)
     {
         static_assert(sizeof(T) == sizeof(S), "Source and target should be the same size!");

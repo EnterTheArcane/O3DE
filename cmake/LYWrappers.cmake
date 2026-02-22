@@ -91,7 +91,7 @@ define_property(TARGET PROPERTY RUNTIME_DEPENDENCIES_DEPENDS
 function(ly_add_target)
 
     set(options STATIC SHARED MODULE GEM_STATIC GEM_MODULE OBJECT HEADERONLY EXECUTABLE APPLICATION IMPORTED AUTOMOC AUTOUIC AUTORCC NO_UNITY EXPORT_ALL_SYMBOLS)
-    set(oneValueArgs NAME NAMESPACE OUTPUT_SUBDIRECTORY OUTPUT_NAME)
+    set(oneValueArgs NAME NAMESPACE OUTPUT_SUBDIRECTORY OUTPUT_NAME INTERFACE_FILE)
     set(multiValueArgs FILES_CMAKE GENERATED_FILES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS BUILD_DEPENDENCIES RUNTIME_DEPENDENCIES PLATFORM_INCLUDE_FILES TARGET_PROPERTIES AUTOGEN_RULES)
 
     cmake_parse_arguments(ly_add_target "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -217,6 +217,123 @@ function(ly_add_target)
         set_source_files_properties(${ly_add_target_GENERATED_FILES}
             PROPERTIES GENERATED TRUE
         )
+    endif()
+
+    # C++20 module interface support (opt-in via -DO3DE_CXX_MODULES=ON)
+    # When an INTERFACE_FILE (.ixx) is provided and modules are enabled, the .ixx
+    # is compiled with FILE_SET CXX_MODULES so consumers can `import <ModuleName>;`
+    # instead of individual #include directives.
+    #
+    # For SHARED / MODULE libraries the .ixx is compiled in a separate STATIC
+    # helper target to avoid duplicate-symbol linker errors.  Inline function
+    # definitions from AzCore headers appear in both the .ixx object and the
+    # regular .cpp objects — a static lib allows COMDAT folding, but a DLL link
+    # treats them as hard errors.  The helper approach:
+    #   1. Compiles the .ixx → BMI (.pcm) + object with inline definitions
+    #   2. Is added as an INTERFACE dependency of the main target so that
+    #      consumers automatically receive the BMI and can `import` it
+    #   3. The helper's object is linked into the consumer (not the DLL),
+    #      providing fallback definitions for any inline functions that the
+    #      compiler chose not to inline from the BMI
+    #
+    # For STATIC / OBJECT targets the .ixx is embedded directly in the target
+    # (no DLL link step, so COMDAT folding resolves duplicates normally).
+    if(O3DE_CXX_MODULES AND ly_add_target_INTERFACE_FILE)
+        get_target_property(_o3de_target_type ${ly_add_target_NAME} TYPE)
+
+        if(_o3de_target_type STREQUAL "SHARED_LIBRARY" OR _o3de_target_type STREQUAL "MODULE_LIBRARY")
+            # ---- Shared / Module library path --------------------------------
+            # Extract PUBLIC and INTERFACE entries from the caller's arguments so
+            # the helper can compile the .ixx with the same environment, without
+            # creating a circular CMake dependency on the main target.
+            set(_pub_includes)
+            set(_pub_defs)
+            set(_pub_deps)
+            set(_scope "")
+            foreach(_item IN LISTS ly_add_target_INCLUDE_DIRECTORIES)
+                if(_item STREQUAL "PUBLIC" OR _item STREQUAL "PRIVATE" OR _item STREQUAL "INTERFACE")
+                    set(_scope ${_item})
+                elseif(_scope STREQUAL "PUBLIC" OR _scope STREQUAL "INTERFACE")
+                    list(APPEND _pub_includes ${_item})
+                endif()
+            endforeach()
+            set(_scope "")
+            foreach(_item IN LISTS ly_add_target_COMPILE_DEFINITIONS)
+                if(_item STREQUAL "PUBLIC" OR _item STREQUAL "PRIVATE" OR _item STREQUAL "INTERFACE")
+                    set(_scope ${_item})
+                elseif(_scope STREQUAL "PUBLIC" OR _scope STREQUAL "INTERFACE")
+                    list(APPEND _pub_defs ${_item})
+                endif()
+            endforeach()
+            set(_scope "")
+            foreach(_item IN LISTS ly_add_target_BUILD_DEPENDENCIES)
+                if(_item STREQUAL "PUBLIC" OR _item STREQUAL "PRIVATE" OR _item STREQUAL "INTERFACE")
+                    set(_scope ${_item})
+                elseif(_scope STREQUAL "PUBLIC" OR _scope STREQUAL "INTERFACE")
+                    list(APPEND _pub_deps ${_item})
+                endif()
+            endforeach()
+
+            set(_module_helper "${ly_add_target_NAME}_CxxModule")
+            add_library(${_module_helper} STATIC)
+
+            target_sources(${_module_helper}
+                PUBLIC
+                    FILE_SET CXX_MODULES
+                    FILES ${ly_add_target_INTERFACE_FILE}
+            )
+
+            if(_pub_includes)
+                target_include_directories(${_module_helper} PRIVATE ${_pub_includes})
+            endif()
+            target_compile_definitions(${_module_helper} PRIVATE
+                ${_pub_defs}
+                AZ_BUILD_CXX_MODULE
+            )
+            if(_pub_deps)
+                ly_target_link_libraries(${_module_helper} PRIVATE ${_pub_deps})
+            endif()
+
+            set_target_properties(${_module_helper} PROPERTIES
+                CXX_SCAN_FOR_MODULES ON
+            )
+
+            if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                set_source_files_properties(${ly_add_target_INTERFACE_FILE}
+                    TARGET_DIRECTORY ${_module_helper}
+                    PROPERTIES COMPILE_OPTIONS
+                        "-Wno-include-angled-in-module-purview;-Wno-undefined-inline"
+                )
+            endif()
+
+            # Consumers of the main target automatically receive the module BMI
+            target_link_libraries(${ly_add_target_NAME} INTERFACE ${_module_helper})
+
+            # IDE housekeeping
+            ly_get_vs_folder_directory(${CMAKE_CURRENT_SOURCE_DIR} _ide_path)
+            set_property(TARGET ${_module_helper} PROPERTY FOLDER ${_ide_path})
+
+            message(STATUS "  C++20 module helper ${_module_helper} for shared target ${ly_add_target_NAME}")
+        else()
+            # ---- Static / Object library path --------------------------------
+            target_sources(${ly_add_target_NAME}
+                PUBLIC
+                    FILE_SET CXX_MODULES
+                    FILES ${ly_add_target_INTERFACE_FILE}
+            )
+            set_target_properties(${ly_add_target_NAME} PROPERTIES
+                CXX_SCAN_FOR_MODULES ON
+            )
+
+            if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+                set_source_files_properties(${ly_add_target_INTERFACE_FILE}
+                    PROPERTIES COMPILE_OPTIONS
+                        "-Wno-include-angled-in-module-purview;-Wno-undefined-inline"
+                )
+            endif()
+
+            message(STATUS "  C++20 module interface attached to ${ly_add_target_NAME}: ${ly_add_target_INTERFACE_FILE}")
+        endif()
     endif()
 
     if(${ly_add_target_EXECUTABLE} OR ${ly_add_target_APPLICATION})

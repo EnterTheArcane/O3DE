@@ -14,7 +14,12 @@
 #include <AzCore/std/string/fixed_string.h>
 
 #if AZ_TRAIT_UUID_SUPPORTS_GUID_CONVERSION
+// When building as a C++20 module, _GUID is already fully defined via
+// <Windows.h> in the global module fragment — a redundant forward
+// declaration would conflict with the existing definition.
+#   if !defined(AZ_BUILD_CXX_MODULE)
 struct  _GUID;
+#   endif
 typedef _GUID GUID;
 #endif
 

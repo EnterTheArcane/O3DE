@@ -67,6 +67,8 @@ ly_add_target(
         ${pal_dir}/platform_${PAL_PLATFORM_NAME_LOWERCASE}_files.cmake
     PLATFORM_INCLUDE_FILES
         ${pal_dir}/platform_${PAL_PLATFORM_NAME_LOWERCASE}.cmake
+    INTERFACE_FILE
+        ${CMAKE_CURRENT_SOURCE_DIR}/AzCore/AzCore.ixx
     COMPILE_DEFINITIONS
         PRIVATE
             AZCORE_EXPORTS

@@ -359,3 +359,14 @@
 #else
     #define AZ_NO_UNIQUE_ADDRESS
 #endif
+
+// C++20 Module export macro
+// When building an AzCore C++20 module interface (.ixx), AZ_BUILD_CXX_MODULE is defined
+// so that AZ_EXPORT expands to 'export'. In normal (non-module) builds AZ_EXPORT is empty,
+// keeping full backwards compatibility.  This follows the same pattern used by the
+// Microsoft STL (_EXPORT_STD / _BUILD_STD_MODULE).
+#ifdef AZ_BUILD_CXX_MODULE
+    #define AZ_EXPORT export
+#else
+    #define AZ_EXPORT
+#endif

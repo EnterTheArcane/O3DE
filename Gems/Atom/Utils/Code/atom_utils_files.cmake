@@ -38,4 +38,5 @@ set(FILES
     Source/PpmFile.cpp
     Source/Utils.cpp
     Source/AssetCollectionAsyncLoader.cpp
+    Source/CxxModuleExample.cpp
 )

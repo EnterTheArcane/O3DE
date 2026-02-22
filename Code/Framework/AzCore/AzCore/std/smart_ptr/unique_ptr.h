@@ -29,7 +29,7 @@ namespace AZStd
     // This allows the exactly the name"AZStd::unique_ptr" to be an alias of the name "std::unique_ptr"
 
     /// 20.7.12.2 unique_ptr for single objects.
-    using std::unique_ptr;
+    AZ_EXPORT using std::unique_ptr;
 
     template<class T>
     struct hash;

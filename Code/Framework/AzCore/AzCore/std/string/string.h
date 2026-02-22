@@ -2103,8 +2103,8 @@ namespace AZStd
 
 #endif // defined(AZ_STRING_EXPLICIT_SPECIALIZATION) && defined(AZ_COMPILER_MSVC)
 
-    typedef basic_string<char >     string;
-    typedef basic_string<wchar_t >  wstring;
+    AZ_EXPORT typedef basic_string<char >     string;
+    AZ_EXPORT typedef basic_string<wchar_t >  wstring;
     //typedef basic_string<char16_t> u16string;
     //typedef basic_string<char32_t> u32string;
 
