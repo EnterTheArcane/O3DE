@@ -30,9 +30,11 @@ jobs:
         run: cmake -B Build
 
       - name: Annotate
-        uses: JetBrains/ReSharper-InspectCode@v0.11
+        uses: jetbrains/resharper-inspectcode@v0.11
         with:
           solution: Build/O3DE.sln
+          tool-version: "2025.3.3"
+          no-build: true
 
     permissions:
       security-events: write
