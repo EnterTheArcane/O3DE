@@ -31,7 +31,10 @@ jobs:
         env:
           CMAKE_BUILD_TYPE: Release
           CMAKE_GENERATOR: Visual Studio 17 2022
-        run: cmake -B Build
+        run: >-
+          cmake 
+          -B Build 
+          -DLY_UNITY_BUILD=OFF
 
       - name: Annotate
         uses: jetbrains/resharper-inspectcode@v0.11
@@ -40,7 +43,7 @@ jobs:
           tool-version: "2025.3.3"
           no-build: true
           build: false
-          toolset-path: ${{ steps.msbuild.outputs.msbuildPath }}
+          toolset-path: '"${{ steps.msbuild.outputs.msbuildPath }}"'
 
     permissions:
       security-events: write
