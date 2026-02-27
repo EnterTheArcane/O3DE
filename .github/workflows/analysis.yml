@@ -23,6 +23,10 @@ jobs:
           cmakeVersion: "4.2.3"
           ninjaVersion: "1.13.2"
 
+      - name: Setup MSBuild
+        id: msbuild
+        uses: microsoft/setup-msbuild@v2
+
       - name: Configure
         env:
           CMAKE_BUILD_TYPE: Release
@@ -36,6 +40,7 @@ jobs:
           tool-version: "2025.3.3"
           no-build: true
           build: false
+          toolset-path: ${{ steps.msbuild.outputs.msbuildPath }}
 
     permissions:
       security-events: write
