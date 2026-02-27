@@ -31,8 +31,7 @@ jobs:
       - name: Configure
         env:
           CMAKE_BUILD_TYPE: Release
-          CMAKE_GENERATOR: Visual Studio 18 2026
-        run: cmake -B Build
+        run: cmake -B Build -G "Visual Studio 18 2026"
 
       - name: Annotate
         uses: JetBrains/ReSharper-InspectCode@v0.11
