@@ -35,6 +35,7 @@ jobs:
           solution: Build/O3DE.sln
           tool-version: "2025.3.3"
           no-build: true
+          build: false
 
     permissions:
       security-events: write
