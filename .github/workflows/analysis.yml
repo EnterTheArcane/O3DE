@@ -40,6 +40,7 @@ jobs:
         uses: jetbrains/resharper-inspectcode@v0.11
         with:
           solution: Build/O3DE.slnx
+          project: AzCore
           tool-version: "2025.3.3"
           no-build: true
           build: false
