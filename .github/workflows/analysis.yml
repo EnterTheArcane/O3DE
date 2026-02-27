@@ -32,7 +32,7 @@ jobs:
       - name: Annotate
         uses: JetBrains/ReSharper-InspectCode@v0.11
         with:
-          solution: Build/O3DE.slnx
+          solution: Build/O3DE.sln
 
     permissions:
       security-events: write
