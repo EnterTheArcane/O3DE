@@ -81,7 +81,7 @@ namespace Terrain
             [this](const AZ::Name&, AZ::RPI::ShaderOptionValue) { m_rebuildDrawPackets = true; }
         };
         AZ::RPI::ShaderSystemInterface::Get()->Connect(m_handleGlobalShaderOptionUpdate);
-        
+
         m_meshMovedFlag = m_parentScene->GetViewTagBitRegistry().AcquireTag(AZ::Render::MeshCommon::MeshMovedName);
 
         m_meshfeatureProcessor = m_parentScene->GetFeatureProcessor<AZ::Render::MeshFeatureProcessorInterface>();
@@ -479,7 +479,7 @@ namespace Terrain
 
         const uint8_t lodCount = aznumeric_cast<uint8_t>(AZStd::ceilf(log2f(AZStd::GetMax(1.0f, m_config.m_renderDistance / m_config.m_firstLodDistance)) + 1.0f));
         m_sectorLods.reserve(lodCount);
-        
+
         // Create all the sectors with uninitialized SRGs. The SRGs will be updated later by CheckLodGridsForUpdate().
         m_indexBufferView =
         {
@@ -911,7 +911,7 @@ namespace Terrain
                     m_rayTracingFeatureProcessor->AddMesh(meshGroup.m_id, meshGroup.m_mesh, meshGroup.m_submeshVector);
                 }
             }
-            
+
         }
     }
 
@@ -1153,7 +1153,7 @@ namespace Terrain
                         }
 
                         // Create AABBs for each quadrant for cases where this LOD needs to fill in a gap in a lower LOD.
-                        CreateAabbQuadrants(sector->m_aabb, sector->m_quadrantAabbs);
+                        CreateAabbQuadrants(sector->m_aabb, AZStd::span<AZ::Aabb, 4>(sector->m_quadrantAabbs));
                     }
 
                     if (m_config.m_clodEnabled && sector->m_hasData)
@@ -1171,7 +1171,7 @@ namespace Terrain
                         GatherMeshData(request, meshLodHeightsNormals, dummyAabb, terrainExists);
                         if (!terrainExists)
                         {
-                            // It's unlikely but possible for the higher lod to have data and the lower lod to not. In that case 
+                            // It's unlikely but possible for the higher lod to have data and the lower lod to not. In that case
                             // meshLodHeights will be empty, so fill it with values that represent "no data".
                             HeightNormalVertex defaultValue = { NoTerrainVertexHeight, NormalXYDataType(NormalDataType(0), NormalDataType(0)) };
                             AZStd::fill(meshLodHeightsNormals.begin(), meshLodHeightsNormals.end(), defaultValue);

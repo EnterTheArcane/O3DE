@@ -222,7 +222,8 @@ namespace UnitTest
         {
             GradientSignal::PerlinGradientComponent::Activate();
 
-            m_perlinImprovedNoise.reset(aznew GradientSignal::PerlinImprovedNoise(m_testPermutationTable));
+            m_perlinImprovedNoise.reset(aznew GradientSignal::PerlinImprovedNoise(
+                AZStd::span<int, 512>(m_testPermutationTable.data(), m_testPermutationTable.size())));
         }
 
         void SetPerlinNoisePermutationTableForTest(const AZStd::array<int, 512>& permutationTable)

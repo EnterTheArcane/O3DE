@@ -517,7 +517,7 @@ namespace AZStd
     AZ_TYPE_INFO_INTERNAL_SPECIALIZED_TEMPLATE_BOTHFIX_UUID_DECL_API(AZCORE_API, AZStd::basic_fixed_string, AZ_TYPE_INFO_INTERNAL_TYPENAME, AZ_TYPE_INFO_INTERNAL_AUTO, AZ_TYPE_INFO_INTERNAL_TYPENAME);
 }
 
-namespace AZStd
+namespace std
 {
     // GetO3deTypeName/GetO3deTypeId overload for AZStd::span<T, Extent>
     // Note the type ID only takes the type T template parameter into account, not the Extent template parameter.
@@ -600,10 +600,7 @@ namespace AZStd
             return AZ::TemplateId{};
         }
     };
-}
 
-namespace std
-{
     // AZStd::optional is std::optional brought into the AZStd:: namespace
     AZ_TYPE_INFO_INTERNAL_SPECIALIZED_TEMPLATE_POSTFIX_UUID(AZStd::optional, "AZStd::optional", "{AB8C50C0-23A7-4333-81CD-46F648938B1C}", AZ_TYPE_INFO_INTERNAL_TYPENAME);
 

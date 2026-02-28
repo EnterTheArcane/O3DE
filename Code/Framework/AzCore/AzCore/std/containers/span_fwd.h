@@ -10,10 +10,10 @@
 #include <AzCore/std/limits.h>
 #include <stddef.h>
 
+#include <span>
+
 namespace AZStd
 {
-    inline constexpr size_t dynamic_extent = numeric_limits<size_t>::max();
-
-    template <class T, size_t Extent = dynamic_extent>
-    class span;
+    using std::dynamic_extent;
+    using std::span;
 }
