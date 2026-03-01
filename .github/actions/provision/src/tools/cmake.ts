@@ -60,7 +60,7 @@ async function install(version: string): Promise<void> {
 }
 
 export const cmake: Tool = {
-    name: "CMake",
+    name: "cmake",
     platforms: [],
     install,
 };

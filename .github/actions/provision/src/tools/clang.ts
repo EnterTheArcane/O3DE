@@ -37,7 +37,7 @@ async function install(version: string): Promise<void> {
 }
 
 export const clang: Tool = {
-    name: "Clang",
+    name: "clang",
     platforms: ["linux"],
     install,
 };

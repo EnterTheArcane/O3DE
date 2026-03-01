@@ -102,7 +102,7 @@ async function install(version: string): Promise<void> {
 }
 
 export const ninja: Tool = {
-    name: "Ninja",
+    name: "ninja",
     platforms: [],
     install,
 };

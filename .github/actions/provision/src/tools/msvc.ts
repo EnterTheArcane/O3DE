@@ -6,11 +6,10 @@
  *
  */
 
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import * as core from "@actions/core";
 import * as fs from "fs";
 import * as path from "path";
-import { run } from "../exec.js";
 import type { Tool } from "./tool.js";
 
 const PROGRAM_FILES_X86 = process.env["ProgramFiles(x86)"] ?? "";
@@ -144,14 +143,29 @@ async function installToolset(version: string): Promise<void> {
     }
 
     core.info(`Installing MSVC toolset component: ${component}`);
-    run(installerPath, [
+
+    const args = [
         "modify",
         "--installPath", installPath,
         "--add", component,
         "--quiet",
         "--norestart",
         "--wait",
-    ]);
+    ];
+    core.info(`> ${installerPath} ${args.join(" ")}`);
+
+    try {
+        execFileSync(installerPath, args, { stdio: "inherit" });
+    } catch (e: unknown) {
+        // vs_installer.exe returns 3010 for "success, reboot required" which is
+        // expected on CI runners. Any other non-zero code is a real failure.
+        const status = (e as { status?: number }).status;
+        if (status === 3010) {
+            core.info("VS Installer exited with 3010 (success, reboot required) — continuing");
+        } else {
+            throw e;
+        }
+    }
 }
 
 /**
@@ -227,7 +241,7 @@ function setupDevEnvironment(toolsetVersion: string): void {
 }
 
 export const msvc: Tool = {
-    name: "MSVC",
+    name: "msvc",
     platforms: ["win32"],
     install,
 };
