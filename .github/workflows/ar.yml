@@ -39,12 +39,12 @@ on:
         type: boolean
         default: true
   push:
-    branches:
-      - main
-      - development
-      - hotfix/**
-      - point-release/**
-      - stabilization/**
+    # branches:
+    #   - main
+    #   - development
+    #   - hotfix/**
+    #   - point-release/**
+    #   - stabilization/**
 
 env:
   CMAKE_VERSION: &cmake_version "4.2.3"
