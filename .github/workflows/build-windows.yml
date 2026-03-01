@@ -117,7 +117,7 @@ jobs:
       - name: Provision
         uses: ./.github/actions/provision
         with:
-          ccache: latest
+          ccache: "4.12.3"
           cmake: ${{ inputs.cmake_version }}
           msvc: ${{ inputs.msvc_toolset_version }}
 
