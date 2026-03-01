@@ -150,6 +150,7 @@ async function installToolset(version: string): Promise<void> {
         "--add", component,
         "--quiet",
         "--norestart",
+        "--wait",
     ]);
 }
 
@@ -194,15 +195,31 @@ function setupDevEnvironment(toolsetVersion: string): void {
     }
 
     // Export changed/new variables
+    // For PATH-like variables, only add new entries via core.addPath() rather
+    // than replacing the entire value, so we don't clobber GITHUB_PATH additions
+    // from earlier tools (cmake, ccache) provisioned in the same step.
     let exported = 0;
     for (const [name, newValue] of newEnv) {
         const oldValue = oldEnv.get(name);
         if (newValue !== oldValue) {
-            const value = PATH_LIKE.has(name.toUpperCase())
-                ? deduplicatePath(newValue)
-                : newValue;
-            core.exportVariable(name, value);
-            exported++;
+            if (name.toUpperCase() === "PATH") {
+                const oldPaths = new Set(
+                    (oldValue ?? "").split(";").map((p) => p.toLowerCase()),
+                );
+                const newEntries = newValue
+                    .split(";")
+                    .filter((p) => p && !oldPaths.has(p.toLowerCase()));
+                for (const entry of newEntries) {
+                    core.addPath(entry);
+                }
+                exported += newEntries.length;
+            } else {
+                const value = PATH_LIKE.has(name.toUpperCase())
+                    ? deduplicatePath(newValue)
+                    : newValue;
+                core.exportVariable(name, value);
+                exported++;
+            }
         }
     }
 

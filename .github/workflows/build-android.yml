@@ -52,8 +52,8 @@ run-name: ${{ inputs.platform }} - ${{ inputs.type }}
 
 # Activate compiler cache
 env:
-  CMAKE_C_COMPILER_LAUNCHER: C:\ProgramData\Chocolatey\bin\ccache.exe
-  CMAKE_CXX_COMPILER_LAUNCHER: C:\ProgramData\Chocolatey\bin\ccache.exe
+  CMAKE_C_COMPILER_LAUNCHER: ccache.exe
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache.exe
   NDK_VERSION: ${{ inputs.ndk_version }}
 
 # Note: All 3P Github Actions use the commit hash for security reasons 
