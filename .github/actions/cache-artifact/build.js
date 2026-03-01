@@ -7,6 +7,9 @@ const shared = {
     format: "esm",
     minify: true,
     legalComments: "none",
+    banner: {
+        js: 'import{createRequire}from"module";const require=createRequire(import.meta.url);',
+    },
 };
 
 await Promise.all([
