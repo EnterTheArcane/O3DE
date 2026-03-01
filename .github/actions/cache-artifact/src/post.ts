@@ -80,7 +80,7 @@ async function run(): Promise<void> {
             name,
             [tarFile],
             cacheParent,
-            { compressionLevel: 0 },
+            { skipArchive: true },
         );
 
         const sizeMB = ((size ?? 0) / (1024 * 1024)).toFixed(1);
