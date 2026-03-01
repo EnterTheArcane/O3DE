@@ -8,8 +8,7 @@
 
 import * as core from "@actions/core";
 import * as github from "@actions/github";
-import { DefaultArtifactClient, type Artifact } from "@actions/artifact";
-import { execSync } from "child_process";
+import {DefaultArtifactClient, type Artifact} from "@actions/artifact";
 import * as fs from "fs";
 import * as path from "path";
 import * as tar from "tar";
@@ -24,7 +23,7 @@ interface Inputs {
 
 function readInputs(): Inputs {
     const inputs: Inputs = {
-        name: core.getInput("name", { required: true }),
+        name: core.getInput("name", {required: true}),
         path: core.getInput("path") || "Cache",
         searchPrevious: core.getBooleanInput("search-previous"),
         save: core.getBooleanInput("save"),
@@ -57,10 +56,10 @@ async function findArtifact(
 ): Promise<{ found: Artifact; downloadOpts: Record<string, unknown> } | undefined> {
     // Try 1: Current workflow run (handles job chaining and reruns)
     try {
-        const { artifact: found } = await artifact.getArtifact(inputs.name);
+        const {artifact: found} = await artifact.getArtifact(inputs.name);
         if (found) {
             core.info(`Found artifact '${inputs.name}' in current run (id: ${found.id})`);
-            return { found, downloadOpts: {} };
+            return {found, downloadOpts: {}};
         }
     } catch {
         core.info(`No artifact '${inputs.name}' in current run`);
@@ -71,7 +70,7 @@ async function findArtifact(
         return undefined;
     }
 
-    const { owner, repo } = github.context.repo;
+    const {owner, repo} = github.context.repo;
     const octokit = github.getOctokit(inputs.token);
     const targetBranch =
         github.context.eventName === "pull_request"
@@ -81,7 +80,7 @@ async function findArtifact(
     core.info(`Searching previous runs on branch '${targetBranch}' for artifact '${inputs.name}'...`);
 
     try {
-        const { data: runs } = await octokit.rest.actions.listWorkflowRunsForRepo({
+        const {data: runs} = await octokit.rest.actions.listWorkflowRunsForRepo({
             owner,
             repo,
             branch: targetBranch,
@@ -98,10 +97,10 @@ async function findArtifact(
             };
 
             try {
-                const { artifact: found } = await artifact.getArtifact(inputs.name, { findBy });
+                const {artifact: found} = await artifact.getArtifact(inputs.name, {findBy});
                 if (found) {
                     core.info(`Found artifact from run #${run.id} on '${targetBranch}', downloading...`);
-                    return { found, downloadOpts: { findBy } };
+                    return {found, downloadOpts: {findBy}};
                 }
             } catch {
                 // Artifact not found in this run, continue
@@ -119,7 +118,7 @@ async function findArtifact(
 
 async function extractArchive(archiveFile: string, cacheParent: string): Promise<void> {
     core.info("Extracting cache artifact...");
-    await tar.extract({ file: archiveFile, cwd: cacheParent, gzip: true });
+    await tar.extract({file: archiveFile, cwd: cacheParent, gzip: true});
     fs.unlinkSync(archiveFile);
     core.info("Cache artifact restored successfully");
 }
@@ -132,7 +131,7 @@ async function run(): Promise<void> {
         const cacheParent = path.dirname(inputs.path);
         const archiveFile = path.join(cacheParent, inputs.name);
 
-        fs.mkdirSync(inputs.path, { recursive: true });
+        fs.mkdirSync(inputs.path, {recursive: true});
 
         if (!inputs.token) {
             core.warning("No token provided, cannot search for artifacts");

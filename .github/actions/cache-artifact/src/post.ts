@@ -7,7 +7,7 @@
  */
 
 import * as core from "@actions/core";
-import { DefaultArtifactClient } from "@actions/artifact";
+import {DefaultArtifactClient} from "@actions/artifact";
 import * as fs from "fs";
 import * as path from "path";
 import * as tar from "tar";
@@ -60,7 +60,7 @@ async function createArchive(dir: string, archiveFile: string): Promise<boolean>
     core.info(`Compressing cache: ${dir}`);
     try {
         await tar.create(
-            { file: archiveFile, cwd: cacheParent, gzip: true, portable: true },
+            {file: archiveFile, cwd: cacheParent, gzip: true, portable: true},
             [cacheDirName],
         );
     } catch (e: unknown) {
@@ -72,7 +72,7 @@ async function createArchive(dir: string, archiveFile: string): Promise<boolean>
         core.warning("Archive was not created, skipping upload");
         return false;
     }
-    
+
     return true;
 }
 
@@ -88,11 +88,11 @@ async function uploadArchive(name: string, archiveFile: string, cacheParent: str
     }
 
     core.info(`Uploading artifact '${name}'...`);
-    const { id, size } = await artifact.uploadArtifact(
+    const {id, size} = await artifact.uploadArtifact(
         name,
         [archiveFile],
         cacheParent,
-        { skipArchive: true },
+        {skipArchive: true},
     );
 
     const sizeMB = ((size ?? 0) / (1024 * 1024)).toFixed(1);
@@ -121,7 +121,11 @@ async function run(): Promise<void> {
             await uploadArchive(state.name, archiveFile, cacheParent);
         } finally {
             // Cleanup archive file regardless of upload success
-            try { fs.unlinkSync(archiveFile); } catch { /* ignore */ }
+            try {
+                fs.unlinkSync(archiveFile);
+            } catch {
+                /* ignore */
+            }
         }
     } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
