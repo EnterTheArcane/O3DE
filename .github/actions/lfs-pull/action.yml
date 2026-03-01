@@ -1,0 +1,42 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+#
+
+name: LFS Pull
+description: >
+  Pull LFS files with optional include/exclude filters.
+  Because this repo uses a custom .lfsconfig, checkout and LFS pull must be done in separate steps.
+  Use actions/checkout before this action, then this action handles LFS configuration and pull.
+
+inputs:
+  include:
+    description: >
+      Comma-separated list of patterns to include.
+    required: false
+    default: ''
+  exclude:
+    description: >
+      Comma-separated list of patterns to exclude.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Configure
+      shell: bash
+      run: |
+        git config lfs.fetchinclude "${{ inputs.include }}"
+        git config lfs.fetchexclude "${{ inputs.exclude }}"
+
+    - name: Install
+      shell: bash
+      run: git lfs install
+
+    - name: Pull
+      shell: bash
+      run: git lfs pull

@@ -58,7 +58,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: ./.github/actions/checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          show-progress: false
+
+      - name: LFS Pull
+        uses: ./.github/actions/lfs-pull
         with:
           include: ${{ inputs.type == 'profile' && '*.ico,*.bmp' || '' }}
 
