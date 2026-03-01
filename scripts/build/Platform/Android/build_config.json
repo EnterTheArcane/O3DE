@@ -38,7 +38,7 @@
       "OUTPUT_DIRECTORY":"build\\android",
       "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
-      "CMAKE_TARGET":"all",
+      "CMAKE_TARGET":"AzCore",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
     }
   },
@@ -53,7 +53,7 @@
       "OUTPUT_DIRECTORY":"build\\android",
       "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
-      "CMAKE_TARGET":"all",
+      "CMAKE_TARGET":"AzCore",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
     }
   },
@@ -69,7 +69,7 @@
       "OUTPUT_DIRECTORY":"build\\android",
       "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\" -DLY_UNITY_BUILD=FALSE",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
-      "CMAKE_TARGET":"all",
+      "CMAKE_TARGET":"AzCore",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
     }
   },
@@ -104,7 +104,7 @@
       "OUTPUT_DIRECTORY":"build\\android",
       "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\"",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
-      "CMAKE_TARGET":"all",
+      "CMAKE_TARGET":"AzCore",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
     }
   },
@@ -120,7 +120,7 @@
       "OUTPUT_DIRECTORY":"build\\mono_android",
       "CMAKE_OPTIONS":"-G \"Ninja Multi-Config\" -DCMAKE_TOOLCHAIN_FILE=cmake\\Platform\\Android\\Toolchain_android.cmake -DANDROID_NATIVE_API_LEVEL=24 -DLY_NDK_DIR=\"!LY_NDK_DIR!\" -DLY_MONOLITHIC_GAME=TRUE",
       "CMAKE_LY_PROJECTS":"AutomatedTesting",
-      "CMAKE_TARGET":"all",
+      "CMAKE_TARGET":"AzCore",
       "CMAKE_BUILD_ARGS":"-j!NUMBER_OF_PROCESSORS!"
     }
   },

@@ -111,7 +111,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "profile": {
@@ -127,7 +127,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4 -DLY_STRIP_DEBUG_SYMBOLS=ON",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "profile_gcc_nounity": {
@@ -141,7 +141,7 @@
       "OUTPUT_DIRECTORY": "build/linux_gcc",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_UNITY_BUILD=FALSE -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DLY_PARALLEL_LINK_JOBS=4 -DLY_GCC_BUILD_FOR_GCOV=OFF",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all",
+      "CMAKE_TARGET": "AzCore",
       "LY_MIN_MEMORY_PER_CORE": "2097152"
     }
   },
@@ -156,7 +156,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4" ,
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "profile_nounity": {
@@ -170,7 +170,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_UNITY_BUILD=FALSE -DLY_PARALLEL_LINK_JOBS=4",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "test_profile": {
@@ -184,7 +184,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4 -DLY_STRIP_DEBUG_SYMBOLS=ON",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all",
+      "CMAKE_TARGET": "AzCore",
       "CTEST_OPTIONS": "-E (o3de_repo|o3de_export_project|AZ::AssetProcessor.Tests) -L (SUITE_smoke|SUITE_main) -LE (REQUIRES_gpu) --no-tests=error -T Test",
       "TEST_METRICS": "True",
       "TEST_RESULTS": "True"
@@ -201,7 +201,7 @@
       "OUTPUT_DIRECTORY": "build/linux_gcc",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_UNITY_BUILD=FALSE -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DLY_PARALLEL_LINK_JOBS=4 -DLY_GCC_BUILD_FOR_GCOV=ON",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all",
+      "CMAKE_TARGET": "AzCore",
       "CTEST_OPTIONS": "-L (SUITE_smoke|SUITE_main) -LE (REQUIRES_gpu) --no-tests=error -T Test",
       "TEST_METRICS": "True",
       "TEST_RESULTS": "True",
@@ -216,7 +216,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_UNITY_BUILD=FALSE -DLY_PARALLEL_LINK_JOBS=4",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all",
+      "CMAKE_TARGET": "AzCore",
       "CTEST_OPTIONS": "-E (o3de_export_project) -L (SUITE_smoke|SUITE_main) -LE (REQUIRES_gpu) --no-tests=error -T Test",
       "TEST_METRICS": "True",
       "TEST_RESULTS": "True"
@@ -230,7 +230,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_UNITY_BUILD=TRUE -DLY_PARALLEL_LINK_JOBS=4",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all",
+      "CMAKE_TARGET": "AzCore",
       "CTEST_OPTIONS": "-E (Gem::EMotionFX.Tests|AZ::AssetProcessor.Tests|AZ::AzToolsFramework.Tests) -L (SUITE_smoke|SUITE_main) -LE (REQUIRES_gpu) --no-tests=error -T Test --timeout 2500",
       "TEST_METRICS": "True",
       "TEST_RESULTS": "True"
@@ -351,7 +351,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all",
+      "CMAKE_TARGET": "AzCore",
       "CTEST_OPTIONS": "-L (SUITE_sandbox) --no-tests=error -T Test",
       "TEST_METRICS": "True",
       "TEST_RESULTS": "True"
@@ -387,7 +387,7 @@
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "monolithic_release": {
@@ -402,7 +402,7 @@
       "OUTPUT_DIRECTORY": "build/mono_linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_MONOLITHIC_GAME=TRUE -DLY_PARALLEL_LINK_JOBS=4",
       "CMAKE_LY_PROJECTS": "AutomatedTesting",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "install_profile": {
@@ -478,7 +478,7 @@
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4 -DLY_DISABLE_TEST_MODULES=TRUE -DO3DE_INSTALL_ENGINE_NAME=o3de-sdk -DLY_STRIP_DEBUG_SYMBOLS=TRUE",
       "EXTRA_CMAKE_OPTIONS": "-DLY_INSTALLER_AUTO_GEN_TAG=TRUE -DLY_INSTALLER_DOWNLOAD_URL=${INSTALLER_DOWNLOAD_URL} -DLY_INSTALLER_LICENSE_URL=${INSTALLER_DOWNLOAD_URL}/license -DO3DE_INCLUDE_INSTALL_IN_PACKAGE=TRUE",
       "CPACK_OPTIONS": "-D CPACK_UPLOAD_URL=${CPACK_UPLOAD_URL}",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "install_profile_pipe": {
@@ -511,7 +511,7 @@
       "CONFIGURATION": "profile",
       "OUTPUT_DIRECTORY": "build/linux",
       "CMAKE_OPTIONS": "-G 'Ninja Multi-Config' -DLY_PARALLEL_LINK_JOBS=4 -DCMAKE_MODULE_PATH=${WORKSPACE}/o3de/install/cmake",
-      "CMAKE_TARGET": "all"
+      "CMAKE_TARGET": "AzCore"
     }
   },
   "awsi_deployment": {
