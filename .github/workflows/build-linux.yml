@@ -106,33 +106,18 @@ jobs:
           search-previous: ${{ inputs.last_artifact }}
           save: ${{ !contains(inputs.type, 'test') }}
 
-      - name: Setup ccache
-        uses: chocobo1/setup-ccache-action@37c3347f8a7738e82aab7a06f276f7a12e3008fb # v1.5.3
-        continue-on-error: true
-        if: always()
+      - name: Provision
+        uses: ./.github/actions/provision
         with:
-          prepend_symlinks_to_path: false
-          store_cache: false
-          restore_cache: false
-          ccache_options: |
-            cache_dir=${{ github.workspace }}/Cache/CCache
-            hash_dir=false
-            max_size=10G
+          ccache: latest
+          cmake: ${{ inputs.cmake_version }}
+          clang: ${{ inputs.compiler == 'clang' && inputs.clang_version || '' }}
 
-      - name: Setup cmake
-        # Pin the version of cmake
-        if: ${{ inputs.cmake_version }}
-        uses: lukka/get-cmake@f176ccd3f28bda569c43aae4894f06b2435a3375 # v4.2.3
-        with:
-          cmakeVersion: ${{ inputs.cmake_version }}
-
-      - name: Install specific clang version
-        if: ${{ inputs.compiler == 'clang' && inputs.clang_version }}
+      - name: Configure ccache
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y clang-${{ inputs.clang_version }} lld-${{ inputs.clang_version }}
-          echo "CC=$(which clang-${{ inputs.clang_version }})" >> $GITHUB_ENV
-          echo "CXX=$(which clang++-${{ inputs.clang_version }})" >> $GITHUB_ENV
+          ccache --set-config cache_dir=${{ github.workspace }}/Cache/CCache
+          ccache --set-config hash_dir=false
+          ccache --set-config max_size=10G
 
       - name: Configure environment
         # Install dependencies. The desktop packages are for tests and assetprocessor
