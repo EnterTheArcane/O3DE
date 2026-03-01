@@ -85,8 +85,7 @@ jobs:
         with:
           show-progress: false
 
-      - name: LFS Pull
-        uses: ./.github/actions/lfs-pull
+      - uses: ./.github/actions/lfs-pull
         with:
           include: ${{ inputs.type == 'profile' && '*.ico,*.bmp' || '' }}
 

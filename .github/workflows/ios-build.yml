@@ -45,8 +45,7 @@ jobs:
         with:
           show-progress: false
 
-      - name: LFS Pull
-        uses: ./.github/actions/lfs-pull
+      - uses: ./.github/actions/lfs-pull
 
       - name: Setup 3p, user, and build folders
         run: |
