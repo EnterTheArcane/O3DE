@@ -59,7 +59,7 @@ jobs:
           ln -sfn "$(pwd)/Cache/3rdPartyPackages" 3rdParty/downloaded_packages
           ln -sfn "$(pwd)/Cache/AutomatedTestingCache" AutomatedTesting/Cache
 
-      - name: Setup Cache
+      - name: Setup Cache Artifact
         uses: ./.github/actions/cache-artifact
         with:
           name: cache-ios-${{ inputs.config }}
@@ -106,5 +106,3 @@ jobs:
           LY_3RDPARTY_PATH: ${{ github.workspace }}/3rdParty
           LY_PACKAGE_SERVER_URLS: https://d1gg6ket0m44ly.cloudfront.net;https://d3t6xeg4fgfoum.cloudfront.net
         run: python/python.sh -u scripts/build/ci_build.py --platform iOS --type ${{ inputs.type }}
-
-

@@ -100,7 +100,7 @@ jobs:
           ln -sfn "$(pwd)/Cache/3rdPartyPackages" 3rdParty/downloaded_packages
           ln -sfn "$(pwd)/Cache/AutomatedTestingCache" AutomatedTesting/Cache
 
-      - name: Setup Cache
+      - name: Setup Cache Artifact
         uses: ./.github/actions/cache-artifact
         with:
           name: cache-linux-${{ inputs.config }}
@@ -173,5 +173,3 @@ jobs:
             Xvfb :0 -screen 0 1400x1050x16 & # Start X virtual framebuffer for tests
           fi
           python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
-
-

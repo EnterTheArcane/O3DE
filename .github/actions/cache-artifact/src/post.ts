@@ -72,6 +72,7 @@ async function createArchive(dir: string, archiveFile: string): Promise<boolean>
         core.warning("Archive was not created, skipping upload");
         return false;
     }
+    
     return true;
 }
 

@@ -114,7 +114,7 @@ jobs:
         run: |
           Get-PSDrive
 
-      - name: Setup Cache
+      - name: Setup Cache Artifact
         uses: ./.github/actions/cache-artifact
         with:
           name: cache-android-${{ inputs.config }}
@@ -222,5 +222,3 @@ jobs:
           $env:TMP = "${{ env.DEV_DRIVE }}\temp"
           scripts\o3de.bat register --this-engine # Resolves registration issue with gradle build
           python\python.cmd -u scripts\build\ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }} 
-
-

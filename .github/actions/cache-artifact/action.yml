@@ -24,7 +24,7 @@ inputs:
     default: Cache
   search-previous:
     description: >
-      Also search previous workflow runs on the target branch for the artifact.
+      Also search the target branch's previous workflow runs for the artifact.
       When false, only the current workflow run is checked (for job chaining).
       Maps to the last_artifact input in the calling workflow.
     required: false

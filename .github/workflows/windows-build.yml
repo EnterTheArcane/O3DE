@@ -107,7 +107,7 @@ jobs:
         run: |
           Get-PSDrive
 
-      - name: Setup Cache
+      - name: Setup Cache Artifact
         uses: ./.github/actions/cache-artifact
         with:
           name: cache-windows-${{ inputs.config }}
@@ -188,5 +188,3 @@ jobs:
           $env:TEMP = "${{ env.DEV_DRIVE }}\temp"
           $env:TMP = "${{ env.DEV_DRIVE }}\temp"
           python\python.cmd -u scripts\build\ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
-
-

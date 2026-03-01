@@ -60,7 +60,7 @@ jobs:
           ln -sfn "$(pwd)/Cache/3rdPartyPackages" 3rdParty/downloaded_packages
           ln -sfn "$(pwd)/Cache/AutomatedTestingCache" AutomatedTesting/Cache
 
-      - name: Setup Cache
+      - name: Setup Cache Artifact
         uses: ./.github/actions/cache-artifact
         with:
           name: cache-mac-${{ inputs.config }}

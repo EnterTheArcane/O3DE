@@ -117,20 +117,10 @@ async function findArtifact(
     return undefined;
 }
 
-/** Extract the downloaded archive and reset ccache stats. */
 async function extractArchive(archiveFile: string, cacheParent: string): Promise<void> {
     core.info("Extracting cache artifact...");
     await tar.extract({ file: archiveFile, cwd: cacheParent, gzip: true });
     fs.unlinkSync(archiveFile);
-
-    // Reset ccache stats if available
-    try {
-        execSync("ccache --zero-stats --cleanup", { stdio: "inherit" });
-        core.info("ccache stats reset");
-    } catch {
-        // ccache may not be installed yet
-    }
-
     core.info("Cache artifact restored successfully");
 }
 
