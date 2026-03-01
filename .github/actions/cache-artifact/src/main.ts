@@ -25,6 +25,7 @@ async function run(): Promise<void> {
         if (!path.isAbsolute(cachePath)) {
             cachePath = path.join(process.env.GITHUB_WORKSPACE!, cachePath);
         }
+        cachePath = path.resolve(cachePath);
 
         // Persist state for the post step
         core.saveState("name", name);
@@ -46,10 +47,9 @@ async function run(): Promise<void> {
         const archiveFile = path.join(cacheParent, name);
 
         const runAttempt = parseInt(process.env.GITHUB_RUN_ATTEMPT || "1", 10);
-        const isRerun = runAttempt > 1;
 
-        if (isRerun) {
-            core.info(`Rerun attempt #${runAttempt}, will only check current run for artifacts`);
+        if (runAttempt > 1) {
+            core.info(`Rerun attempt #${runAttempt}`);
         }
 
         let restored = false;
@@ -69,8 +69,7 @@ async function run(): Promise<void> {
         }
 
         // Try 2: Search previous workflow runs on the target branch.
-        // Only when search-previous is enabled and this is not a rerun.
-        if (!restored && searchPrevious && !isRerun) {
+        if (!restored && searchPrevious) {
             const targetBranch =
                 github.context.eventName === "pull_request"
                     ? github.context.payload.pull_request!.base.ref
