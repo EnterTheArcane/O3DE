@@ -9,10 +9,18 @@
 # this file allows you to specify download and find_package commands for 
 # packages which apply to all platforms (usually header-only)
 # individual platforms can enumerate packages in for example
-# cmake/3rdParty/Platform/Windows/BuiltInPackages_windows.cmake
+# cmake/3rdParty/Platform/Windows/Packages.cmake
 
 #include the platform-specific 3rd party packages.
 o3de_pal_dir(pal_dir ${CMAKE_CURRENT_LIST_DIR}/Platform/${PAL_PLATFORM_NAME} "${O3DE_ENGINE_RESTRICTED_PATH}" "${LY_ROOT_FOLDER}")
+
+# Include the authoritative package declarations for this platform.
+# Each platform's Packages.cmake is the single source of truth for 3rdParty package
+# names and hashes. Updating a package version or hash should only require editing
+# the relevant Packages.cmake file.
+include(${pal_dir}/Packages.cmake)
+
+# Include any additional platform/architecture-specific configuration
 set(LY_PAL_PACKAGE_FILE_NAME ${pal_dir}/BuiltInPackages_${PAL_PLATFORM_NAME_LOWERCASE}${LY_ARCHITECTURE_NAME_EXTENSION}.cmake)
 include(${LY_PAL_PACKAGE_FILE_NAME})
 

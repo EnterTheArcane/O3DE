@@ -658,6 +658,28 @@ function(ly_associate_package)
     set_property(GLOBAL PROPERTY LY_PACKAGE_TARGETS_${ly_associate_package_PACKAGE_NAME} ${ly_associate_package_TARGETS})
 endfunction()
 
+function(o3de_declare_package name)
+    cmake_parse_arguments(arg "" "PACKAGE;HASH" "TARGETS" ${ARGN})
+
+    if(NOT arg_PACKAGE)
+        message(FATAL_ERROR "PACKAGE argument is required")
+    endif()
+
+    if(NOT arg_HASH)
+        message(FATAL_ERROR "HASH argument is required")
+    endif()
+
+    if(NOT arg_TARGETS)
+        set(arg_TARGETS ${name})
+    endif()
+
+    ly_associate_package(
+        PACKAGE_NAME ${arg_PACKAGE}
+        TARGETS      ${arg_TARGETS}
+        PACKAGE_HASH ${arg_HASH}
+    )
+endfunction()
+
 #!  Given a package find_package name (eg, 'zlib' not the actual package name)
 # will set output_variable to the package id iff the package has a package
 # association declared, otherwise will unset it.

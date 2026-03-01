@@ -167,6 +167,14 @@ jobs:
             ccache --zero-stats --cleanup
           fi
 
+      - name: Cache 3rdParty packages
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: 3rdParty
+          key: 3rdparty-Linux-${{ hashFiles('cmake/3rdParty/Platform/Linux/Packages.cmake') }}
+          restore-keys: |
+            3rdparty-Linux-
+
       - name: Setup cmake
         # Pin the version of cmake
         if: ${{ inputs.cmake_version }}
@@ -231,7 +239,6 @@ jobs:
           tar --format=posix -cvpf ${{ github.workspace }}/cache.tar --ignore-failed-read \
             .ccache \
             .o3de/python/downloaded_packages \
-            3rdParty/downloaded_packages \
             AutomatedTesting/Cache
 
       - name: Save artifacts
