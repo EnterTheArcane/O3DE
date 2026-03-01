@@ -107,10 +107,10 @@ jobs:
         run: |
           Get-PSDrive
 
-      - name: Cache artifact
+      - name: Setup Cache
         uses: ./.github/actions/cache-artifact
         with:
-          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          name: cache-windows-${{ inputs.config }}
           path: ${{ env.DEV_DRIVE_WORKSPACE }}/Cache
           search-previous: ${{ inputs.last_artifact }}
           save: ${{ !contains(inputs.type, 'test') }}
@@ -177,7 +177,7 @@ jobs:
           echo "Installing additional python dependencies..."
           python\pip.sh install tempfile2 PyGithub
 
-      - name: Build ${{ inputs.type }}
+      - name: Build (${{ inputs.type }})
         # Builds with presets in ../scripts/build/Platform/Windows/build_config.json
         # Set temp folders to the workspace drive as the boot drive is slow
         working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}

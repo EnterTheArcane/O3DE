@@ -14,7 +14,7 @@ description: >
 
 inputs:
   name:
-    description: Name of the cache artifact (e.g. O3DE-Mac-profile-build)
+    description: Name of the cache artifact
     required: true
   path:
     description: >

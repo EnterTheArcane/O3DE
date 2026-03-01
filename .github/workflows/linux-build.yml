@@ -100,10 +100,10 @@ jobs:
           ln -sfn "$(pwd)/Cache/3rdPartyPackages" 3rdParty/downloaded_packages
           ln -sfn "$(pwd)/Cache/AutomatedTestingCache" AutomatedTesting/Cache
 
-      - name: Cache artifact
+      - name: Setup Cache
         uses: ./.github/actions/cache-artifact
         with:
-          name: O3DE-${{ inputs.platform }}-${{ inputs.config }}-build
+          name: cache-linux-${{ inputs.config }}
           search-previous: ${{ inputs.last_artifact }}
           save: ${{ !contains(inputs.type, 'test') }}
 
@@ -157,7 +157,7 @@ jobs:
           sudo apt clean
           df -h
 
-      - name: Build ${{ inputs.type }}
+      - name: Build (${{ inputs.type }})
         # Builds with presets in ../scripts/build/Platform/Linux/build_config.json
         timeout-minutes: 330
         env:

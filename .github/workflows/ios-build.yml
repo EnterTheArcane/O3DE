@@ -59,10 +59,10 @@ jobs:
           ln -sfn "$(pwd)/Cache/3rdPartyPackages" 3rdParty/downloaded_packages
           ln -sfn "$(pwd)/Cache/AutomatedTestingCache" AutomatedTesting/Cache
 
-      - name: Cache artifact
+      - name: Setup Cache
         uses: ./.github/actions/cache-artifact
         with:
-          name: O3DE-iOS-${{ inputs.config }}-build
+          name: cache-ios-${{ inputs.config }}
           search-previous: ${{ inputs.last_artifact }}
           save: ${{ !contains(inputs.type, 'test') }}
 
@@ -97,7 +97,7 @@ jobs:
           ./python/pip.sh install tempfile2 PyGithub
           df -h
 
-      - name: Build ${{ inputs.type }}
+      - name: Build (${{ inputs.type }})
         # Builds with presets in ../scripts/build/Platform/iOS/build_config.json
         timeout-minutes: 330
         env:

@@ -6,7 +6,7 @@
     "main": "dist/main/index.js",
     "scripts": {
         "build": "tsc",
-        "release": "ncc build src/main.ts -o dist/main && ncc build src/post.ts -o dist/post"
+        "release": "ncc build src/main.ts -o dist/main --no-source-map-register --target es2024 && ncc build src/post.ts -o dist/post --no-source-map-register --target es2024 && terser dist/main/index.js -o dist/main/index.js -c passes=2,ecma=2024 -m --module --comments false && terser dist/post/index.js -o dist/post/index.js -c passes=2,ecma=2024 -m --module --comments false"
     },
     "engines": {
         "node": ">=24"
@@ -19,6 +19,7 @@
     "devDependencies": {
         "@types/node": "^25.3.3",
         "@vercel/ncc": "^0.38.4",
+        "terser": "^5.46.0",
         "typescript": "^5.9.3"
     }
 }
