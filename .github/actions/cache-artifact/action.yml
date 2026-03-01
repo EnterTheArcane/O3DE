@@ -40,6 +40,10 @@ inputs:
     required: false
     default: ${{ github.token }}
 
+outputs:
+  cache-hit:
+    description: Whether a cache artifact was found and restored
+
 runs:
   using: node24
   main: dist/main/index.js
