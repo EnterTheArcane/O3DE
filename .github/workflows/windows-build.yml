@@ -173,13 +173,13 @@ jobs:
             ccache --zero-stats --cleanup
           }
 
-      - name: Cache 3rdParty packages
+      - name: 3rdParty Cache
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ env.DEV_DRIVE_WORKSPACE }}/3rdParty
-          key: 3rdparty-Windows-${{ hashFiles('cmake/3rdParty/Platform/Windows/Packages.cmake') }}
+          key: 3rdParty-Windows-${{ hashFiles('cmake/3rdParty/Platform/*/Packages.cmake') }}
           restore-keys: |
-            3rdparty-Windows-
+            3rdParty-Windows-
 
       - name: Setup cmake
         # Pin the version of cmake
