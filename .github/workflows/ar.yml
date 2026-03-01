@@ -69,7 +69,7 @@ jobs:
 #### Android Build ####
   Android-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.android_build }}
-    uses: ./.github/workflows/android-build.yml
+    uses: ./.github/workflows/build-android.yml
     with:
       compiler: clang
       config: profile
@@ -84,7 +84,7 @@ jobs:
 #### iOS Build ####
   iOS-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.ios_build }}
-    uses: ./.github/workflows/ios-build.yml
+    uses: ./.github/workflows/build-ios.yml
     with:
       config: profile
       type: profile
@@ -94,7 +94,7 @@ jobs:
 #### Linux Build ####
   Linux-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_build }}
-    uses: ./.github/workflows/linux-build.yml
+    uses: ./.github/workflows/build-linux.yml
     with:
       compiler: clang
       config: profile
@@ -108,7 +108,7 @@ jobs:
 #### Mac Build ####
   Mac-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_build }}
-    uses: ./.github/workflows/mac-build.yml
+    uses: ./.github/workflows/build-mac.yml
     with:
       config: profile
       type: profile
@@ -118,7 +118,7 @@ jobs:
 #### Windows Build ####
   Windows-Profile:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-    uses: ./.github/workflows/windows-build.yml
+    uses: ./.github/workflows/build-windows.yml
     with:
       compiler: msvc
       config: profile
@@ -132,7 +132,7 @@ jobs:
 
   Windows-Release:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_build }}
-    uses: ./.github/workflows/windows-build.yml
+    uses: ./.github/workflows/build-windows.yml
     with:
       compiler: msvc
       config: release
