@@ -12,6 +12,7 @@ import { DefaultArtifactClient } from "@actions/artifact";
 import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
+import * as tar from "tar";
 
 async function run(): Promise<void> {
     try {
@@ -42,7 +43,7 @@ async function run(): Promise<void> {
         const octokit = github.getOctokit(token);
         const { owner, repo } = github.context.repo;
         const cacheParent = path.dirname(cachePath);
-        const tarFile = path.join(cacheParent, "cache.tar");
+        const archiveFile = path.join(cacheParent, name);
 
         const runAttempt = parseInt(process.env.GITHUB_RUN_ATTEMPT || "1", 10);
         const isRerun = runAttempt > 1;
@@ -126,11 +127,11 @@ async function run(): Promise<void> {
             }
         }
 
-        // Extract tar if we downloaded something
-        if (restored && fs.existsSync(tarFile)) {
+        // Extract archive if we downloaded something
+        if (restored && fs.existsSync(archiveFile)) {
             core.info("Extracting cache artifact...");
-            execSync(`tar -xpf "${tarFile}" -C "${cacheParent}"`, { stdio: "inherit" });
-            fs.unlinkSync(tarFile);
+            await tar.extract({ file: archiveFile, cwd: cacheParent, gzip: true });
+            fs.unlinkSync(archiveFile);
 
             // Reset ccache stats if available
             try {
@@ -142,7 +143,7 @@ async function run(): Promise<void> {
 
             core.info("Cache artifact restored successfully");
         } else if (restored) {
-            core.warning("Artifact downloaded but cache.tar not found in expected location");
+            core.warning(`Artifact downloaded but '${name}' not found in expected location`);
         } else {
             core.info("No cache artifact to restore");
         }

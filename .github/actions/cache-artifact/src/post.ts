@@ -8,9 +8,9 @@
 
 import * as core from "@actions/core";
 import { DefaultArtifactClient } from "@actions/artifact";
-import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
+import * as tar from "tar";
 
 async function run(): Promise<void> {
     try {
@@ -46,20 +46,20 @@ async function run(): Promise<void> {
 
         const cacheParent = path.dirname(cachePath);
         const cacheDirName = path.basename(cachePath);
-        const tarFile = path.join(cacheParent, "cache.tar");
+        const archiveFile = path.join(cacheParent, name);
 
-        // Create tar archive of the cache directory
+        // Create gzipped tar archive of the cache directory using Node's native zlib
         core.info(`Compressing cache: ${cachePath}`);
         try {
-            execSync(
-                `tar --format=posix -cpf "${tarFile}" -C "${cacheParent}" "${cacheDirName}"`,
-                { stdio: "inherit" },
+            await tar.create(
+                { file: archiveFile, cwd: cacheParent, gzip: true, portable: true },
+                [cacheDirName],
             );
         } catch (e: unknown) {
             const msg = e instanceof Error ? e.message : String(e);
-            core.warning(`Tar compression issue: ${msg}`);
-            if (!fs.existsSync(tarFile)) {
-                core.warning("Tar file was not created, skipping upload");
+            core.warning(`Archive compression issue: ${msg}`);
+            if (!fs.existsSync(archiveFile)) {
+                core.warning("Archive was not created, skipping upload");
                 return;
             }
         }
@@ -74,11 +74,10 @@ async function run(): Promise<void> {
             // Artifact doesn't exist yet
         }
 
-        // Upload the tar as an artifact
         core.info(`Uploading artifact '${name}'...`);
         const { id, size } = await artifact.uploadArtifact(
             name,
-            [tarFile],
+            [archiveFile],
             cacheParent,
             { skipArchive: true },
         );
@@ -86,9 +85,9 @@ async function run(): Promise<void> {
         const sizeMB = ((size ?? 0) / (1024 * 1024)).toFixed(1);
         core.info(`Artifact '${name}' uploaded (id: ${id}, size: ${sizeMB} MB)`);
 
-        // Cleanup tar file
+        // Cleanup archive file
         try {
-            fs.unlinkSync(tarFile);
+            fs.unlinkSync(archiveFile);
         } catch {
             // Ignore cleanup errors
         }
