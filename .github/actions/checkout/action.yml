@@ -1,0 +1,50 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+#
+
+name: Checkout
+description: >
+  Checkout the repository with LFS support.
+  Because this repo uses a custom .lfsconfig, checkout and LFS pull must be
+  done in separate steps. This action consolidates both into a single reusable
+  composite action with optional include/exclude filters for LFS fetch.
+
+inputs:
+  include:
+    description: >
+      Comma-separated list of patterns for lfs.fetchinclude.
+      When set, only matching LFS files are fetched.
+    required: false
+    default: ''
+  exclude:
+    description: >
+      Comma-separated list of patterns for lfs.fetchexclude.
+      When set, matching LFS files are excluded from fetch.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        show-progress: false
+
+    - name: Configure
+      shell: bash
+      run: |
+        git config lfs.fetchinclude "${{ inputs.include }}"
+        git config lfs.fetchexclude "${{ inputs.exclude }}"
+
+    - name: LFS Install
+      shell: bash
+      run: git lfs install
+
+    - name: LFS Pull
+      shell: bash
+      run: git lfs pull
