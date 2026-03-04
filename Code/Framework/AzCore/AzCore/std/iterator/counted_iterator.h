@@ -283,20 +283,20 @@ namespace AZStd
         }
 
         friend constexpr auto iter_move(const counted_iterator& i)
-            noexcept(noexcept(ranges::iter_move(declval<const I&>())))
+            noexcept(noexcept(std::ranges::iter_move(declval<const I&>())))
             -> enable_if_t<input_iterator<I>, iter_rvalue_reference_t<I>>
         {
             AZ_Assert(i.count() > 0, "count value must be greater than 0 in order for iter_move to safely dereference the iterator");
-            return ranges::iter_move(i.base());
+            return std::ranges::iter_move(i.base());
         }
 
         template<class I2, enable_if_t<indirectly_swappable<I2, I>>>
         friend constexpr void iter_swap(const counted_iterator& x, const counted_iterator<I2>& y)
-            noexcept(noexcept(ranges::iter_swap(declval<const I&>(), declval<const I2&>())))
+            noexcept(noexcept(std::ranges::iter_swap(declval<const I&>(), declval<const I2&>())))
         {
             AZ_Assert(x.count() > 0 && y.count(),
                 "both iterators count must be greater than 0 in order for iter_swap to safely dereference the iterators");
-            return ranges::iter_swap(x.base(), y.base());
+            return std::ranges::iter_swap(x.base(), y.base());
         }
 
     private:

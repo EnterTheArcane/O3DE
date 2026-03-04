@@ -186,7 +186,7 @@ namespace AZStd
     using iter_difference_t = typename incrementable_traits<remove_cvref_t<T>>::difference_type;
 
     template <typename T>
-    using iter_rvalue_reference_t = decltype(ranges::iter_move(declval<T&>()));
+    using iter_rvalue_reference_t = decltype(std::ranges::iter_move(declval<T&>()));
 
     namespace Internal
     {
@@ -197,7 +197,7 @@ namespace AZStd
         template <class In>
         constexpr bool indirectly_readable_impl<In, enable_if_t<conjunction_v<
             bool_constant<same_as<decltype(*declval<In>()), iter_reference_t<In>>>,
-            bool_constant<same_as<decltype(AZStd::ranges::iter_move(declval<In>())), iter_rvalue_reference_t<In>>>,
+            bool_constant<same_as<decltype(std::ranges::iter_move(declval<In>())), iter_rvalue_reference_t<In>>>,
             bool_constant<common_reference_with<iter_reference_t<In>&&, iter_value_t<In>&>>,
             bool_constant<common_reference_with<iter_reference_t<In>&&, iter_rvalue_reference_t<In>&>>,
             bool_constant<common_reference_with<iter_rvalue_reference_t<In>&&, const iter_value_t<In>&>> >>> = true;

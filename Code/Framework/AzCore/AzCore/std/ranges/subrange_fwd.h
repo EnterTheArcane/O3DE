@@ -10,15 +10,10 @@
 
 #include <AzCore/std/concepts/concepts.h>
 
-// Forward declare the subrange class to prevent a circular include with needing to know about the tuple type in order
-// to define the pair-like concept
+#include <ranges>
+
 namespace AZStd::ranges
 {
-    enum class subrange_kind : bool
-    {
-        unsized,
-        sized
-    };
-    template<class I, class S = I, subrange_kind K = sized_sentinel_for<S, I> ? subrange_kind::sized : subrange_kind::unsized, class = void>
-    class subrange;
+    using std::ranges::subrange_kind;
+    using std::ranges::subrange;
 }

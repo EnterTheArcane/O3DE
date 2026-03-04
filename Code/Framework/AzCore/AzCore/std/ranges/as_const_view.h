@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/span.h>
@@ -15,7 +16,7 @@ namespace AZStd::ranges
 {
     //! presents a view of the underlying sequence as a constant.
     //! Elements of const_view cannot be modified
-    template<class View>
+    template<class View> requires input_range<View> && view<View>
     class as_const_view;
 }
 
@@ -24,24 +25,19 @@ namespace AZStd::ranges::views
 {
     namespace Internal
     {
-        template<class V, class = void>
-        constexpr bool is_all_t_constant_range = false;
         template<class V>
-        constexpr bool is_all_t_constant_range<V, enable_if_t<constant_range<all_t<V>>>> = true;
+        concept is_all_t_constant_range = constant_range<all_t<V>>;
 
         template<class V>
         constexpr bool is_view_span = false;
         template<class X, size_t Extent>
         constexpr bool is_view_span<span<X, Extent>> = true;
 
-        template<class V, class = void>
-        constexpr bool is_lvalue_constant_range_not_view = false;
         template<class V>
-        constexpr bool is_lvalue_constant_range_not_view<V, enable_if_t<
-            is_lvalue_reference_v<V>&&
-            constant_range<const remove_cvref_t<V>> &&
-            !view<remove_cvref_t<V>>
-            >> = true;
+        concept is_lvalue_constant_range_not_view =
+            is_lvalue_reference_v<V>
+            && constant_range<const remove_cvref_t<V>>
+            && !view<remove_cvref_t<V>>;
 
         template<class V>
         struct get_const_span_type {};
@@ -82,30 +78,21 @@ namespace AZStd::ranges::views
     }
 }
 
-namespace AZStd::ranges::Internal
-{
-    struct as_const_view_requirements_fulfilled {};
-}
-
 namespace AZStd::ranges
 {
-    template<class View>
+    template<class View> requires input_range<View> && view<View>
     class as_const_view
         : public view_interface<as_const_view<View>>
-        , private enable_if_t<input_range<View> && view<View>, Internal::as_const_view_requirements_fulfilled>
     {
     public:
-        template <bool Enable = default_initializable<View>,
-            class = enable_if_t<Enable>>
-        constexpr as_const_view() {}
+        constexpr as_const_view() requires default_initializable<View> {}
 
         explicit constexpr as_const_view(View base)
             : m_base(AZStd::move(base))
         {
         }
 
-        template <bool Enable = copy_constructible<View>, class = enable_if_t<Enable>>
-        constexpr View base() const&
+        constexpr View base() const& requires copy_constructible<View>
         {
             return m_base;
         }
@@ -114,36 +101,30 @@ namespace AZStd::ranges
             return AZStd::move(m_base);
         }
 
-        template<bool Enable = !Internal::simple_view<View>, class = enable_if_t<Enable>>
-        constexpr auto begin()
+        constexpr auto begin() requires (!Internal::simple_view<View>)
         {
             return ranges::cbegin(m_base);
         }
-        template<bool Enable = range<const View>, class = enable_if_t<Enable>>
-        constexpr auto begin() const
+        constexpr auto begin() const requires range<const View>
         {
             return ranges::cbegin(m_base);
         }
 
-        template<bool Enable = !Internal::simple_view<View>, class = enable_if_t<Enable>>
-        constexpr auto end()
+        constexpr auto end() requires (!Internal::simple_view<View>)
         {
             return ranges::cend(m_base);
         }
-        template<bool Enable = range<const View>, class = enable_if_t<Enable>>
-        constexpr auto end() const
+        constexpr auto end() const requires range<const View>
         {
             return ranges::cend(m_base);
         }
 
-        template<bool Enable = sized_range<View>, class = enable_if_t<Enable>>
-        constexpr auto size()
+        constexpr auto size() requires sized_range<View>
         {
             return ranges::size(m_base);
         }
 
-        template<bool Enable = sized_range<const View>, class = enable_if_t<Enable>>
-        constexpr auto size() const
+        constexpr auto size() const requires sized_range<const View>
         {
             return ranges::size(m_base);
         }
@@ -159,3 +140,6 @@ namespace AZStd::ranges
     template<class T>
     inline constexpr bool enable_borrowed_range<as_const_view<T>> = enable_borrowed_range<T>;
 }
+
+template<class T>
+inline constexpr bool std::ranges::enable_borrowed_range<AZStd::ranges::as_const_view<T>> = std::ranges::enable_borrowed_range<T>;

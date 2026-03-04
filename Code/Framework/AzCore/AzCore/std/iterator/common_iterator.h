@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -47,6 +48,9 @@ namespace AZStd
     >>
     {
     public:
+        // Expose difference_type as a member so std::incrementable_traits can find it
+        using difference_type = iter_difference_t<I>;
+
         template<bool Enable = default_initializable<I>, class = enable_if<Enable>>
         constexpr common_iterator() {}
         constexpr common_iterator(I i)
@@ -328,20 +332,20 @@ namespace AZStd
         }
 
         friend constexpr auto iter_move(const common_iterator& i)
-            noexcept(noexcept(ranges::iter_move(declval<const I&>())))
+            noexcept(noexcept(std::ranges::iter_move(declval<const I&>())))
             -> enable_if_t<input_iterator<I>, iter_rvalue_reference_t<I>>
         {
             AZ_Assert(holds_alternative<I>(i.m_iterSentinel), "iter_move cannot be invoked on sentinel value");
-            return ranges::iter_move(get<I>(i.m_iterSentinel));
+            return std::ranges::iter_move(get<I>(i.m_iterSentinel));
         }
 
         template<class I2, class S2, enable_if_t<indirectly_swappable<I2, I>>>
         friend constexpr void iter_swap(const common_iterator& x, const common_iterator<I2, S2>& y)
-            noexcept(noexcept(ranges::iter_swap(declval<const I&>(), declval<const I2&>())))
+            noexcept(noexcept(std::ranges::iter_swap(declval<const I&>(), declval<const I2&>())))
         {
             AZ_Assert(holds_alternative<I>(x.m_iterSentinel) && holds_alternative<I>(y.m_iterSentinel),
                 "iter_swap requires both common_iterators alternatives be set to a valid deferenceable iterator");
-            return ranges::iter_swap(get<I>(x.m_iterSentinel), get<I>(y.m_iterSentinel));
+            return std::ranges::iter_swap(get<I>(x.m_iterSentinel), get<I>(y.m_iterSentinel));
         }
 
     private:

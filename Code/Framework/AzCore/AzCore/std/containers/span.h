@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/containers/span_fwd.h>
@@ -37,10 +38,10 @@ namespace AZStd
 {
     /**
      * Full C++20 implementation of span done using the C++ draft at https://eel.is/c++draft/views.
-     * It does not maintain storage for the data, 
-     * but just hold a pointer to mark the beginning and the size for the elements. 
+     * It does not maintain storage for the data,
+     * but just hold a pointer to mark the beginning and the size for the elements.
      * It can be constructed any type that models the C++ contiguous_range concept
-     * such like array, vector, fixed_vector, raw-array, string_view, string, etc... . 
+     * such like array, vector, fixed_vector, raw-array, string_view, string, etc... .
      *
      * Example:
      *    Given "void Func(AZStd::span<int> a) {...}" you can call...
@@ -198,5 +199,11 @@ namespace AZStd::ranges
     template<class ElementType, size_t Extent>
     inline constexpr bool enable_borrowed_range<span<ElementType, Extent>> = true;
 }
+
+template<class ElementType, size_t Extent>
+inline constexpr bool std::ranges::enable_view<AZStd::span<ElementType, Extent>> = true;
+
+template<class ElementType, size_t Extent>
+inline constexpr bool std::ranges::enable_borrowed_range<AZStd::span<ElementType, Extent>> = true;
 
 #include <AzCore/std/containers/span.inl>

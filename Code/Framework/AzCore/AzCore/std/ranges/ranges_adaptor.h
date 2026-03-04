@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/ranges.h>
@@ -79,10 +80,9 @@ namespace AZStd::ranges::views::Internal
     struct range_adaptor_argument_forwarder
         : range_adaptor_closure<range_adaptor_argument_forwarder<Adaptor, Args...>>
     {
-        template<class UAdaptor, class... UArgs, class = enable_if_t<
-            convertible_to<UAdaptor, Adaptor>
-            && convertible_to<tuple<UArgs...>, tuple<Args...>>
-            >>
+        template<class UAdaptor, class... UArgs>
+            requires convertible_to<UAdaptor, Adaptor>
+                && convertible_to<tuple<UArgs...>, tuple<Args...>>
         constexpr explicit range_adaptor_argument_forwarder(UAdaptor adaptor, UArgs&&... args)
             : m_adaptor{ AZStd::forward<UAdaptor>(adaptor) }
             , m_forwardArgs{ AZStd::forward<UArgs>(args)... }
@@ -139,29 +139,23 @@ namespace AZStd::ranges::views::Internal
     struct range_adaptor_closure
     {
         template<class View, class U>
-        friend constexpr auto operator|(View&& view, U&& closure) noexcept(is_nothrow_invocable_v<View, U>)
-            -> enable_if_t<conjunction_v<
-            bool_constant<viewable_range<View>>,
-            is_range_closure_t<U>,
-            bool_constant<same_as<T, remove_cvref_t<U>>>,
-            bool_constant<invocable<U, View>>>,
-            decltype(AZStd::invoke(AZStd::forward<U>(closure), AZStd::forward<View>(view)))>
+            requires viewable_range<View>
+                && derived_from<remove_cvref_t<U>, range_adaptor_closure<remove_cvref_t<U>>>
+                && same_as<T, remove_cvref_t<U>>
+                && invocable<U, View>
+        friend constexpr decltype(auto) operator|(View&& view, U&& closure) noexcept(is_nothrow_invocable_v<View, U>)
         {
             return AZStd::invoke(AZStd::forward<U>(closure), AZStd::forward<View>(view));
         }
 
         template<class U, class Target>
+            requires derived_from<remove_cvref_t<U>, range_adaptor_closure<remove_cvref_t<U>>>
+                && derived_from<remove_cvref_t<Target>, range_adaptor_closure<remove_cvref_t<Target>>>
+                && same_as<T, remove_cvref_t<U>>
+                && constructible_from<decay_t<U>, U>
+                && constructible_from<decay_t<Target>, Target>
         friend constexpr auto operator|(U&& closure, Target&& outerClosure)
             noexcept(is_nothrow_constructible_v<remove_cvref_t<U>> && is_nothrow_constructible_v<remove_cvref_t<Target>>)
-            ->enable_if_t<conjunction_v<
-            is_range_closure_t<U>,
-            is_range_closure_t<Target>,
-            bool_constant<same_as<T, remove_cvref_t<U>>>,
-            bool_constant<constructible_from<decay_t<U>, U>>,
-            bool_constant<constructible_from<decay_t<Target>, Target>>>,
-            decltype(range_adaptor_closure_forwarder{
-                perfect_forwarding_call_wrapper{AZStd::forward<Target>(outerClosure), AZStd::forward<U>(closure) }
-                })>
         {
             // Create a perfect_forwarding_wrapper that wraps the outer adaptor around the inner adaptor
             // and then pass that to the range_adaptor_closure_forward struct which inherits from
@@ -180,16 +174,13 @@ namespace AZStd::ranges::Internal
     // but not necessarily copy assignable/move assignable
     // and implements the assignment operator using the optional emplace function
     // to construct in place
-    template<class T, class = void>
-    class movable_box;
-
-
     template<class T>
-    class movable_box<T, enable_if_t<move_constructible<T>&& is_object_v<T>>>
+        requires move_constructible<T> && is_object_v<T>
+    class movable_box
     {
     public:
-        template<class U = T, class = enable_if_t<default_initializable<U>>>
         constexpr movable_box() noexcept(is_nothrow_constructible_v<T>)
+            requires default_initializable<T>
             : movable_box{ in_place }
         {}
 
@@ -209,8 +200,8 @@ namespace AZStd::ranges::Internal
         constexpr movable_box(movable_box&&) = default;
 
         // requires that the T is copy_constructible to implement copy assignment
-        constexpr auto operator=(const movable_box& other) noexcept(is_nothrow_copy_constructible_v<T>)
-            -> enable_if_t<copy_constructible<T>, movable_box&>
+        constexpr movable_box& operator=(const movable_box& other) noexcept(is_nothrow_copy_constructible_v<T>)
+            requires copy_constructible<T>
         {
             if (this != addressof(other))
             {
@@ -309,15 +300,12 @@ namespace AZStd::ranges::Internal
     // On copy assignment, the current instance is reset
     // Onmove assignment, both the current and input are reset
 
-    template<class T, class = void>
-    class non_propagating_cache;
-
     template<class T>
-    class non_propagating_cache<T, enable_if_t<is_object_v<T>>>
+    class non_propagating_cache
     {
     public:
-        template<class U = T, class = enable_if_t<default_initializable<U>>>
         constexpr non_propagating_cache() noexcept(is_nothrow_constructible_v<T>)
+            requires default_initializable<T>
             : non_propagating_cache{ in_place }
         {}
 
@@ -388,7 +376,7 @@ namespace AZStd::ranges::Internal
             return m_cache.emplace(AZStd::forward<Args>(args)...);
         }
         template<class I>
-        constexpr auto emplace_deref(const I& i) -> enable_if_t<constructible_from<T, decltype(*i)>, T&>
+        constexpr T& emplace_deref(const I& i) requires constructible_from<T, decltype(*i)>
         {
             return m_cache.emplace(*i);
         }

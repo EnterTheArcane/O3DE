@@ -296,7 +296,7 @@ namespace AZ
                     return false;
                 }
 
-                AZStd::ranges::iter_swap(AZStd::next(arrayPtr->begin(), firstIndex), AZStd::next(arrayPtr->begin(), secondIndex));
+                std::ranges::iter_swap(AZStd::next(arrayPtr->begin(), firstIndex), AZStd::next(arrayPtr->begin(), secondIndex));
                 return true;
             }
 
@@ -910,7 +910,7 @@ namespace AZ
                 {
                     auto elementIterator = containerPtr->begin();
                     AZStd::advance(elementIterator, index);
-                    
+
                     return (elementIterator != containerPtr->end()) ? &(*elementIterator) : nullptr;
                 }
                 return nullptr;

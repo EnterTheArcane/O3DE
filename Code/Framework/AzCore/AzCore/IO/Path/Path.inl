@@ -1556,12 +1556,15 @@ namespace AZ::IO
         const PathIterator<const FixedMaxPath>& rhs);
 }
 
-namespace AZStd::ranges
-{
-    // A PathView is a borrowed range, it does not own the content of the Path it is viewing
-    template<>
-    inline constexpr bool enable_borrowed_range<AZ::IO::PathView> = true;
+// A PathView is a borrowed range, it does not own the content of the Path it is viewing
+template<>
+inline constexpr bool AZStd::ranges::enable_borrowed_range<AZ::IO::PathView> = true;
 
-    template<>
-    inline constexpr bool enable_view<AZ::IO::PathView> = true;
-}
+template<>
+inline constexpr bool AZStd::ranges::enable_view<AZ::IO::PathView> = true;
+
+template<>
+inline constexpr bool std::ranges::enable_borrowed_range<AZ::IO::PathView> = true;
+
+template<>
+inline constexpr bool std::ranges::enable_view<AZ::IO::PathView> = true;

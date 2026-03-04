@@ -390,17 +390,17 @@ namespace UnitTest
         auto joinViewIter1 = joinView1.begin();
         auto joinViewIter2 = joinView2.begin();
         // swaps the 'W' and 'V'
-        AZStd::ranges::iter_swap(joinViewIter1, joinViewIter2);
+        std::ranges::iter_swap(joinViewIter1, joinViewIter2);
 
         // swaps the 'H' and 'F' of the second string of each vector
 
-        /* Commented in out original AZStd::ranges::advanceand the second AZStd::ranges::iter_swap cll
+        /* Commented in out original AZStd::ranges::advanceand the second std::ranges::iter_swap cll
         AZStd::ranges::advance(joinViewIter1, 5, joinView1.end());
         AZStd::ranges::advance(joinViewIter2, 5, joinView2.end());
-        AZStd::ranges::iter_swap(joinViewIter1, joinViewIter2);
+        std::ranges::iter_swap(joinViewIter1, joinViewIter2);
         //
         // There is a bug in MSVC compiler when swapping a char& that occurs only in profile configuration
-        // The AZStd::ranges::iter_swap eventually calls AZStd::ranges::swap which should swap 5th characters
+        // The std::ranges::iter_swap eventually calls AZStd::ranges::swap which should swap 5th characters
         // of each vector.
         // But instead the testVector2[5] gets the correct character of testVector1[5] `H` swapped to it.
         // But the testVector1[5] seems to get the character from testVector2[0] which is now 'V' swapped to it
@@ -409,9 +409,9 @@ namespace UnitTest
         // of the *joinViewIter2(char&) iterator
         //
         // The workaround that is working is to use AZStd::ranges::next to create a new join_view::iterator
-        // and perform AZStd::ranges::iter_swap on those objects.
+        // and perform std::ranges::iter_swap on those objects.
         */
-        AZStd::ranges::iter_swap(AZStd::ranges::next(joinViewIter1, 5, joinView1.end()), AZStd::ranges::next(joinViewIter2, 5, joinView2.end()));
+        std::ranges::iter_swap(AZStd::ranges::next(joinViewIter1, 5, joinView1.end()), AZStd::ranges::next(joinViewIter2, 5, joinView2.end()));
         EXPECT_EQ("Vorld", testVector1[0]);
         EXPECT_EQ("Fello", testVector1[1]);
         EXPECT_EQ("Walue", testVector2[0]);
@@ -428,12 +428,12 @@ namespace UnitTest
         auto joinView2 = AZStd::ranges::views::join(testVector2);
         auto joinViewIter1 = joinView1.begin();
         auto joinViewIter2 = joinView2.begin();
-        AZStd::string value = AZStd::ranges::iter_move(joinViewIter1);
+        AZStd::string value = std::ranges::iter_move(joinViewIter1);
 
         EXPECT_EQ("5", value);
         EXPECT_TRUE((*joinViewIter1).empty());
         ++joinViewIter2;
-        value = AZStd::ranges::iter_move(joinViewIter2);
+        value = std::ranges::iter_move(joinViewIter2);
         EXPECT_EQ("20", value);
         EXPECT_TRUE((*joinViewIter2).empty());
     }
@@ -775,51 +775,64 @@ namespace UnitTest
 
     namespace RangesViewTestInternal
     {
+        // Container with a mutable iterator that satisfies std::indirectly_readable
+        // (operator*() const returns a non-const reference for mutable access).
+        // as_const_view wraps the iterator with basic_const_iterator to provide const access.
         struct ConstMutableContainer
         {
+            int data[5] = { 55, 56, 57, 58, 59 };
+
             struct iterator
             {
                 using value_type = int;
+                using difference_type = ptrdiff_t;
                 using iterator_concept = AZStd::bidirectional_iterator_tag;
                 using iterator_category = AZStd::bidirectional_iterator_tag;
 
-                const int& operator*() const { return m_charElement; }
-                int& operator*() { return m_intElement; }
-                const int* operator->() const { return &m_charElement; }
-                int* operator->() { return &m_intElement; }
-                iterator& operator++() { ++m_intElement; return *this; }
-                iterator operator++(int) { iterator tmp(*this); ++m_intElement; return tmp; }
-                iterator& operator--() { --m_intElement; return *this; }
-                iterator operator--(int) { iterator tmp(*this); --m_intElement; return tmp; }
-                bool operator==(const iterator& y) const { return m_intElement == y.m_intElement; }
+                // Single const-qualified operator* returning mutable reference
+                // (standard-compliant: consistent for const and non-const iterator)
+                int& operator*() const { return *m_ptr; }
+                int* operator->() const { return m_ptr; }
+                iterator& operator++() { ++m_ptr; return *this; }
+                iterator operator++(int) { iterator tmp(*this); ++m_ptr; return tmp; }
+                iterator& operator--() { --m_ptr; return *this; }
+                iterator operator--(int) { iterator tmp(*this); --m_ptr; return tmp; }
+                bool operator==(const iterator& y) const { return m_ptr == y.m_ptr; }
                 bool operator!=(const iterator& y) const { return !operator==(y); }
-                ptrdiff_t operator-(const iterator& y) const { return m_intElement - y.m_intElement; }
 
-                int m_charElement = 'A';
-                int m_intElement = 55;
+                int* m_ptr = nullptr;
             };
 
             using iterator = iterator;
             using const_iterator = const iterator;
 
-            iterator begin() { return iterator{}; }
-            iterator begin() const { return iterator{}; }
-            iterator end() { return iterator{ 'A', 60 }; }
-            iterator end() const { return iterator{ 'A', 60 }; }
+            iterator begin() { return iterator{ data }; }
+            iterator begin() const { return iterator{ const_cast<int*>(data) }; }
+            iterator end() { return iterator{ data + 5 }; }
+            iterator end() const { return iterator{ const_cast<int*>(data + 5) }; }
         };
     }
 
     TEST_F(RangesViewTestFixture, AsConstView_ActAsConstantViewOfContainerSucceeds)
     {
         RangesViewTestInternal::ConstMutableContainer testContainer;
-        AZStd::ranges::iterator_t<RangesViewTestInternal::ConstMutableContainer> foundIter = testContainer.begin();
-        EXPECT_EQ(55, *foundIter);
+        // Mutable iterator can modify elements
+        auto mutableIter = testContainer.begin();
+        EXPECT_EQ(55, *mutableIter);
+        *mutableIter = 100;
+        EXPECT_EQ(100, testContainer.data[0]);
+        *mutableIter = 55; // restore
 
+        // as_const_view wraps with basic_const_iterator, providing const access
         auto constView = testContainer | AZStd::views::as_const;
         ASSERT_NE(constView.end(), constView.begin());
+        // Verify const view produces const references (can't modify through it)
+        static_assert(AZStd::same_as<decltype(*constView.begin()), const int&>);
+        int idx = 0;
         for (auto elem : constView)
         {
-            EXPECT_EQ('A', elem);
+            EXPECT_EQ(testContainer.data[idx], elem);
+            ++idx;
         }
 
         AZStd::string_view testString;

@@ -122,6 +122,32 @@ namespace AZStd
     constexpr const T&& get(const pair<U, T>&& pairObj);
 } // namespace AZStd
 
+// Provide std::get overloads for AZStd::pair so that std::ranges::elements_view
+// and other std facilities that call std::get<N>() work with AZStd::pair
+namespace std
+{
+    template<size_t I, class T1, class T2>
+    constexpr tuple_element_t<I, AZStd::pair<T1, T2>>& get(AZStd::pair<T1, T2>& p) noexcept
+    {
+        return AZStd::get<I>(p);
+    }
+    template<size_t I, class T1, class T2>
+    constexpr const tuple_element_t<I, AZStd::pair<T1, T2>>& get(const AZStd::pair<T1, T2>& p) noexcept
+    {
+        return AZStd::get<I>(p);
+    }
+    template<size_t I, class T1, class T2>
+    constexpr tuple_element_t<I, AZStd::pair<T1, T2>>&& get(AZStd::pair<T1, T2>&& p) noexcept
+    {
+        return AZStd::get<I>(AZStd::move(p));
+    }
+    template<size_t I, class T1, class T2>
+    constexpr const tuple_element_t<I, AZStd::pair<T1, T2>>&& get(const AZStd::pair<T1, T2>&& p) noexcept
+    {
+        return AZStd::get<I>(AZStd::move(p));
+    }
+} // namespace std
+
 
 namespace AZStd::Internal
 {

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/ranges/ranges.h>
@@ -1091,6 +1092,12 @@ namespace AZStd::ranges
     template <class Element, class Traits>
     inline constexpr bool enable_view<basic_string_view<Element, Traits>> = true;
 }
+
+template <class Element, class Traits>
+inline constexpr bool std::ranges::enable_borrowed_range<AZStd::basic_string_view<Element, Traits>> = true;
+
+template <class Element, class Traits>
+inline constexpr bool std::ranges::enable_view<AZStd::basic_string_view<Element, Traits>> = true;
 
 //! Use this macro to simplify safe printing of a string_view which may not be null-terminated.
 //! Example: AZStd::string::format("Safely formatted: %.*s", AZ_STRING_ARG(myString));

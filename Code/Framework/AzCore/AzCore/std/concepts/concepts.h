@@ -118,7 +118,10 @@ namespace AZStd
                 }
                 else
                 {
+                    // Suppress C4996 for std::move_iterator::operator->() deprecation in C++20
+                    AZ_PUSH_DISABLE_WARNING(4996, "-Wdeprecated-declarations")
                     return ptr.operator->();
+                    AZ_POP_DISABLE_WARNING
                 }
             }
         };
