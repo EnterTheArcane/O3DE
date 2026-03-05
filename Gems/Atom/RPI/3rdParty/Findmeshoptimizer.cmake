@@ -15,11 +15,11 @@ set(MESHOPTIMIZER_GIT_REPO "https://github.com/zeux/meshoptimizer.git")
 set(MESHOPTIMIZER_GIT_TAG "6daea4695c48338363b08022d2fb15deaef6ac09")   # v0.25
 
 include(FetchContent)
-FetchContent_Declare(
-        ${MESHOPTIMIZER_TARGET}
-        GIT_REPOSITORY ${MESHOPTIMIZER_GIT_REPO}
-        GIT_TAG ${MESHOPTIMIZER_GIT_TAG}
-        GIT_SHALLOW TRUE
+o3de_fetchcontent(${MESHOPTIMIZER_TARGET}
+    URL "https://github.com/zeux/meshoptimizer/archive/refs/tags/v0.25.tar.gz"
+    URL_HASH "68b2fef4e4eaad98e00c657c1e7f8982a7176e61dd7efdeaec67a025b8519be9"
+    GIT_REPOSITORY ${MESHOPTIMIZER_GIT_REPO}
+    GIT_TAG ${MESHOPTIMIZER_GIT_TAG}
 )
 set(MESHOPT_INSTALL OFF)
 FetchContent_MakeAvailable(meshoptimizer)

@@ -28,12 +28,12 @@ function(Getvorbis)
     set(vorbis_GIT_REPO "https://github.com/xiph/vorbis.git")
     set(vorbis_GIT_TAG "v1.3.7")
     set(vorbis_GIT_HASH "0657aee69dec8508a0011f47f3b69d7538e9d262")  # better to use hashes for security
-    FetchContent_Declare(
-            vorbis
-            GIT_REPOSITORY ${vorbis_GIT_REPO}
-            GIT_TAG ${vorbis_GIT_HASH}
-            GIT_SHALLOW TRUE
-            EXCLUDE_FROM_ALL # this actually stops it from running its `install` commands, we need to handle the layout ourselves.
+    o3de_fetchcontent(vorbis
+        URL "https://github.com/xiph/vorbis/archive/refs/tags/v1.3.7.tar.gz"
+        URL_HASH "270c76933d0934e42c5ee0a54a36280e2d87af1de3cc3e584806357e237afd13"
+        GIT_REPOSITORY ${vorbis_GIT_REPO}
+        GIT_TAG ${vorbis_GIT_HASH}
+        EXCLUDE_FROM_ALL # this actually stops it from running its `install` commands, we need to handle the layout ourselves.
     )
 
     # please always be really clear about what third parties your gem uses.

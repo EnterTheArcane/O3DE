@@ -12,8 +12,9 @@ endif()
 
 include(FetchContent)
 
-FetchContent_Declare(
-    v-hacd
+o3de_fetchcontent(v-hacd
+    URL "https://github.com/kmammou/v-hacd/archive/refs/tags/v4.1.0.tar.gz"
+    URL_HASH "9fe895cd10ec995d2171b11bde97aaaa221b418a3aaed0f5d9a068ae057d626b"
     GIT_REPOSITORY https://github.com/kmammou/v-hacd.git
     GIT_TAG 22ec20a7f8ea221ab600df869369b9c6a258cb10
 )

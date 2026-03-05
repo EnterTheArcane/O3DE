@@ -52,12 +52,12 @@ function(GetOpenMesh)
     # As such, we add EXCLUDE_FROM_ALL to prevent it from trying to copy its outputs into the install layout.  If
     # we needed files from it, we would have still used EXCLUDE_FROM_ALL since its install locations would be incorrect
     # for O3De (we build multiple different flavors into different folders).
-    FetchContent_Declare(
-            OpenMesh
-            GIT_REPOSITORY ${OPENMESH_GIT_REPO}
-            GIT_TAG ${OPENMESH_GIT_TAG}
-            GIT_SHALLOW
-            EXCLUDE_FROM_ALL # Prevent it from executing 'install' ops, it doesn't need to be included in installer
+    o3de_fetchcontent(OpenMesh
+        URL "https://github.com/o3de/OpenMesh/archive/8078b5bd01b568e61c6b8dd84af8673e7d9e6cae.tar.gz"
+        URL_HASH "ASDASD"
+        GIT_REPOSITORY ${OPENMESH_GIT_REPO}
+        GIT_TAG ${OPENMESH_GIT_TAG}
+        EXCLUDE_FROM_ALL # Prevent it from executing 'install' ops, it doesn't need to be included in installer
     )
 
     # please always be really clear about what third parties your gem uses.

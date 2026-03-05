@@ -41,12 +41,12 @@ set(CMAKE_POLICY_DEFAULT_CMP0148 OLD)
 set(OLD_CMAKE_WARN_DEPRECATED ${CMAKE_WARN_DEPRECATED})
 set(CMAKE_WARN_DEPRECATED FALSE CACHE BOOL "" FORCE)
 include(FetchContent)
-FetchContent_Declare(
-    googletest
+o3de_fetchcontent(googletest
+    URL "https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz"
+    URL_HASH "7b42b4d6ed48810c5362c265a17faebe90dc2373c885e5216439d37927f02926"
     GIT_REPOSITORY ${GOOGLETEST_GIT_REPOSITORY}
     GIT_TAG ${GOOGLETEST_GIT_TAG}
     ${ADDITIONAL_FETCHCONTENT_FLAGS}
-    GIT_SHALLOW TRUE
 )
 
 # CMAKE_ARGS don't actually affect FetchContent (currently by design) https://gitlab.kitware.com/cmake/cmake/-/issues/20799

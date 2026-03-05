@@ -22,16 +22,14 @@ FetchContent_GetProperties(rga)
 if (NOT rga_POPULATED) 
     message(STATUS "Checking to see if Radeon(™) GPU Analyzer needs to be downloaded... ")
     if (WIN32)
-        FetchContent_Declare(
-            RGA
+        o3de_fetchcontent(RGA
             URL https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/2.6.2/rga-windows-x64-2.6.2.zip
-            URL_HASH SHA256=35247f29bc81cd86e935b29af26a72cb5f762d4faba2b6aad404f661e639faee
+            URL_HASH 35247f29bc81cd86e935b29af26a72cb5f762d4faba2b6aad404f661e639faee
         )
     else()
-        FetchContent_Declare(
-            RGA
+        o3de_fetchcontent(RGA
             URL https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/2.6.2/rga-linux-2.6.2.tgz
-            URL_HASH SHA256=e42e51a12de5ff908785603d9fc5bf88fb8f59dd98f7ed728e8346cae251f712
+            URL_HASH e42e51a12de5ff908785603d9fc5bf88fb8f59dd98f7ed728e8346cae251f712
         )
     endif()
 

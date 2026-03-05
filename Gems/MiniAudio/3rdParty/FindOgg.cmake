@@ -26,12 +26,12 @@ function(Getogg)
     set(ogg_GIT_TAG "v1.3.6")
     set(ogg_GIT_HASH "be05b13e98b048f0b5a0f5fa8ce514d56db5f822") # Better to use pinned hashes for security.
 
-    FetchContent_Declare(
-            ogg
-            GIT_REPOSITORY ${ogg_GIT_REPO}
-            GIT_TAG ${ogg_GIT_HASH}
-            GIT_SHALLOW TRUE
-            EXCLUDE_FROM_ALL # prevent it from executing its install commands.
+    o3de_fetchcontent(ogg
+        URL "https://github.com/xiph/ogg/archive/refs/tags/v1.3.6.tar.gz"
+        URL_HASH "95b643da661155d79db9de2fca55daed3a8d491039829def246aacb3d9201c81"
+        GIT_REPOSITORY ${ogg_GIT_REPO}
+        GIT_TAG ${ogg_GIT_HASH}
+        EXCLUDE_FROM_ALL # prevent it from executing its install commands.
     )
 
     # please always be really clear about what third parties your gem uses.

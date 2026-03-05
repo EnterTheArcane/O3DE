@@ -30,12 +30,12 @@ function(Getminiaudio)
     set(MINIAUDIO_GIT_REPO "https://github.com/mackron/miniaudio.git")
     set(MINIAUDIO_GIT_TAG "0.11.22")
     set(MINIAUDIO_GIT_HASH "350784a9467a79d0fa65802132668e5afbcf3777") # prefer to pin to hashes for security
-    FetchContent_Declare(
-            miniaudio
-            GIT_REPOSITORY ${MINIAUDIO_GIT_REPO}
-            GIT_TAG ${MINIAUDIO_GIT_HASH}
-            GIT_SHALLOW TRUE
-            # it is not necessary to EXCLUDE_FROM_ALL above because miniaudio does not try to force install anything.
+    o3de_fetchcontent(miniaudio
+        URL "https://github.com/mackron/miniaudio/archive/refs/tags/0.11.22.tar.gz"
+        URL_HASH "bcb07bfb27e6fa94d34da73ba2d5642d4940b208ec2a660dbf4e52e6b7cd492f"
+        GIT_REPOSITORY ${MINIAUDIO_GIT_REPO}
+        GIT_TAG ${MINIAUDIO_GIT_HASH}
+        # it is not necessary to EXCLUDE_FROM_ALL above because miniaudio does not try to force install anything.
     )
     message(STATUS "MiniAudio Gem uses ${MINIAUDIO_GIT_REPO} ${MINIAUDIO_GIT_TAG} (MIT No Attribution)")
 
