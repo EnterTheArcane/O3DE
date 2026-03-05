@@ -102,7 +102,7 @@ namespace UnitTest
         };
 
         using AZStdAllocatorTraits = AZStd::allocator_traits<AZStd::allocator>;
-        AZStd::allocator testAllocator("trait allocator");
+        AZStd::allocator testAllocator;
         typename AZStdAllocatorTraits::pointer data = AZStdAllocatorTraits::allocate(testAllocator, sizeof(TestAllocated), alignof(TestAllocated));
         EXPECT_NE(nullptr, data);
         auto testPtr = static_cast<TestAllocated*>(data);
@@ -124,7 +124,7 @@ namespace UnitTest
         };
 
         using AZStdAllocatorTraits = AZStd::allocator_traits<AllocatorWithGetMaxSize>;
-        AllocatorWithGetMaxSize testAllocator("trait allocator");
+        AllocatorWithGetMaxSize testAllocator;
         typename AZStdAllocatorTraits::size_type maxSize = AZStdAllocatorTraits::max_size(testAllocator);
         EXPECT_EQ(testAllocator.get_max_size(), maxSize);
     }
@@ -132,7 +132,7 @@ namespace UnitTest
     TEST_F(AllocatorDefaultTest, AllocatorTraitsSelectOnContainerCopyConstructionCompilesWithoutErrors)
     {
         using AZStdAllocatorTraits = AZStd::allocator_traits<AZStd::allocator>;
-        AZStd::allocator testAllocator("trait allocator");
+        AZStd::allocator testAllocator;
         AZStd::allocator copiedAllocator = AZStdAllocatorTraits::select_on_container_copy_construction(testAllocator);
         EXPECT_EQ(testAllocator, copiedAllocator);
     }
@@ -158,7 +158,7 @@ namespace UnitTest
         AZ_TEST_ASSERT(myalloc.get_allocated_size() == 0);
 
         data = myalloc.allocate(100, 1);
-        myalloc.allocate(3, 1);
+        AZ_UNUSED(myalloc.allocate(3, 1));
         myalloc.deallocate(data); // can't free allocation which is not the last.
         EXPECT_EQ(bufferSize - 103, myalloc.max_size() - myalloc.get_allocated_size());
         AZ_TEST_ASSERT(myalloc.get_allocated_size() == 103);

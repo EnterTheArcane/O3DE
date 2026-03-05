@@ -125,7 +125,13 @@ namespace AZ::IO
     constexpr auto PathView::PathIterable::emplace_back(Args&&... args) noexcept -> PartKindPair&
     {
         AZ_Assert(m_size < MaxPathParts, "PathIterable cannot be made out of a path with more than %zu parts", MaxPathParts);
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 160000
+        // Workaround: std::pair::operator= is not constexpr in older libc++ versions
+        AZStd::construct_at(&m_parts[m_size], AZStd::forward<Args>(args)...);
+        ++m_size;
+#else
         m_parts[m_size++] = PartKindPair{ AZStd::forward<Args>(args)... };
+#endif
         return back();
     }
     constexpr auto PathView::PathIterable::pop_back() noexcept -> void

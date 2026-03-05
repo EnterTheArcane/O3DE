@@ -27,7 +27,7 @@ namespace AZ
 
 namespace AZStd
 {
-    class allocator;
+    struct allocator;
     template <class T>
     struct less;
     template <class T>

@@ -114,27 +114,32 @@ namespace UnitTest
 
         AZ_TEST_ASSERT(pi1 == pi1);
         AZ_TEST_ASSERT(pr1 == pr1);
-        AZ_TEST_ASSERT(pi1 == pr1);
 
         AZ_TEST_ASSERT(pi1 != pi2);
         AZ_TEST_ASSERT(pr1 != pr2);
-        AZ_TEST_ASSERT(pi1 != pr2);
 
         AZ_TEST_ASSERT(pi1 <= pi2);
         AZ_TEST_ASSERT(pr1 <= pr2);
-        AZ_TEST_ASSERT(pi1 <= pr2);
 
         AZ_TEST_ASSERT(pi1 < pi2);
         AZ_TEST_ASSERT(pr1 < pr2);
-        AZ_TEST_ASSERT(pi1 < pr2);
 
         AZ_TEST_ASSERT(pi2 >= pi1);
         AZ_TEST_ASSERT(pr2 >= pr1);
-        AZ_TEST_ASSERT(pi2 >= pr1);
 
         AZ_TEST_ASSERT(pi2 > pi1);
         AZ_TEST_ASSERT(pr2 > pr1);
+
+        // Cross-type pair comparisons (pair<int,int> vs pair<int&,int&>)
+        // Skipped on older libc++ where implicit conversion in pair comparison operators isn't supported
+#if !defined(ANDROID) || !defined(NDK_REV_MAJOR) || NDK_REV_MAJOR >= 26
+        AZ_TEST_ASSERT(pi1 == pr1);
+        AZ_TEST_ASSERT(pi1 != pr2);
+        AZ_TEST_ASSERT(pi1 <= pr2);
+        AZ_TEST_ASSERT(pi1 < pr2);
+        AZ_TEST_ASSERT(pi2 >= pr1);
         AZ_TEST_ASSERT(pi2 > pr1);
+#endif
     }
 
     TEST_F(Arrays, PairConstructSucceeds)

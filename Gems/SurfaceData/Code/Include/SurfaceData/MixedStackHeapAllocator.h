@@ -17,7 +17,7 @@
 namespace SurfaceData
 {
     /* mixed_stack_heap_allocator
-    
+
        This allocator is a hybrid between a stack-based allocator and a heap-based allocator.
        It is intended for use with vector<> as a way to get the performance of fixed_vector<> when few nodes are needed, while still
        retaining the flexibility of general-purpose resizing when a large number of nodes are needed.
@@ -38,14 +38,11 @@ namespace SurfaceData
        - Once the memory is allocated from the heap, shrinking the allocation won't cause it to use the stack unless the vector<> is fully
          deallocated and reallocated.
     */
-
-    template<class Node, AZStd::size_t NumNodes>
-    class mixed_stack_heap_allocator
+    template<class Node, size_t NumNodes>
+    struct mixed_stack_heap_allocator
     {
         static_assert(NumNodes > 0, "Size of static buffer must be more than 0.");
-        typedef mixed_stack_heap_allocator<Node, NumNodes> this_type;
 
-    public:
         AZ_TYPE_INFO(mixed_stack_heap_allocator, "{49B6706B-716F-42F2-92CB-7FD1A57BE2F9}");
 
         AZ_ALLOCATOR_DEFAULT_TRAITS
@@ -84,11 +81,11 @@ namespace SurfaceData
             m_name = name;
         }
 
-        auto allocate(size_type byteSize, size_type alignment, int flags = 0) -> pointer
+        [[nodiscard]] pointer allocate(size_type byteSize, size_type alignment, int flags = 0)
         {
             // If the requested allocation will fit in our static buffer, and we aren't already using the static buffer,
             // then mark the static buffer as used and return a pointer to it.
-            if ((byteSize <= (sizeof(Node) * NumNodes)) && (alignment <= AZStd::alignment_of<Node>::value) &&
+            if ((byteSize <= (sizeof(Node) * NumNodes)) && (alignment <= AZStd::alignment_of_v<Node>) &&
                 (m_lastStaticAllocation == nullptr))
             {
                 m_lastStaticAllocation = &m_data;
@@ -112,7 +109,7 @@ namespace SurfaceData
             AZ::AllocatorInstance<AZ::SystemAllocator>::Get().DeAllocate(ptr, byteSize, alignment);
         }
 
-        auto reallocate(pointer ptr, size_type newSize, align_type newAlignment = 1) -> pointer
+        [[nodiscard]] pointer reallocate(pointer ptr, size_type newSize, align_type newAlignment = 1) const
         {
             // If we're trying to reallocate our static buffer, allow it to succeed as long as the new size is within the total size of the
             // static buffer. Otherwise, return 0 to fail the reallocate request.
@@ -129,13 +126,13 @@ namespace SurfaceData
             return AZ::AllocatorInstance<AZ::SystemAllocator>::Get().reallocate(ptr, newSize, newAlignment);
         }
 
-        auto max_size() const -> size_type
+        static size_type max_size()
         {
             // Since we allow both stack and heap allocations, the max allocation size for this container is the heap's maximum.
             return AZ::AllocatorInstance<AZ::SystemAllocator>::Get().GetMaxContiguousAllocationSize();
         }
 
-        auto NumAllocatedBytes() const -> size_type
+        static size_type NumAllocatedBytes()
         {
             // Always return the full size of our stack allocation, plus the total amount of heap allocations.
             // While this doesn't seem like an accurate result, it's consistent with how AZStd::allocator behaves.
@@ -144,17 +141,17 @@ namespace SurfaceData
             return (sizeof(Node) * NumNodes) + AZ::AllocatorInstance<AZ::SystemAllocator>::Get().NumAllocatedBytes();
         }
 
-        bool is_lock_free()
+        static constexpr bool is_lock_free()
         {
             return false;
         }
 
-        bool is_stale_read_allowed()
+        static constexpr bool is_stale_read_allowed()
         {
             return false;
         }
 
-        bool is_delayed_recycling()
+        static constexpr bool is_delayed_recycling()
         {
             return false;
         }
@@ -167,7 +164,7 @@ namespace SurfaceData
         void* m_lastStaticAllocation{ nullptr };
 
         // Stack-based storage that exists for the same lifetime as the data structure using this allocator.
-        typename AZStd::aligned_storage<sizeof(Node) * NumNodes, AZStd::alignment_of<Node>::value>::type m_data;
+        typename AZStd::aligned_storage<sizeof(Node) * NumNodes, AZStd::alignment_of_v<Node>>::type m_data;
     };
 
     template<class Node, AZStd::size_t NumNodes>
@@ -178,14 +175,6 @@ namespace SurfaceData
         // Allocators should compare as equal if they can interchangeably handle each other's allocations.
         // Since this allocator can allocate from a private static buffer, it can only process its own allocations.
         return (&a == &b);
-    }
-
-    template<class Node, AZStd::size_t NumNodes>
-    bool operator!=(
-        [[maybe_unused]] const mixed_stack_heap_allocator<Node, NumNodes>& a,
-        [[maybe_unused]] const mixed_stack_heap_allocator<Node, NumNodes>& b)
-    {
-        return (&a != &b);
     }
 
 } // namespace AZStd

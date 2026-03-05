@@ -94,7 +94,7 @@ namespace AZStd
         static constexpr auto get_action_handler_for_t();
 
         /// Constructs an empty object.
-        any(allocator alloc = allocator("AZStd::any"))
+        any(allocator alloc = allocator{})
             : m_allocator(alloc)
         {
             memset(m_buffer, 0, AZ_ARRAY_SIZE(m_buffer));
@@ -186,11 +186,11 @@ namespace AZStd
 
         /// Constructs an object with initial content an object of type decay_t<ValueType>, direct-initialized from forward<ValueType>(val)
         template <typename ValueType, typename = enable_if_t<!is_same<decay_t<ValueType>, any>::value>>
-        any(ValueType&& val, allocator alloc = allocator("AZStd::any"))
+        any(ValueType&& val, allocator alloc = allocator{})
             : any(alloc)
         {
             static_assert(std::is_copy_constructible<decay_t<ValueType>>::value
-                        ||  (std::is_rvalue_reference<ValueType&&>::value && std::is_move_constructible<decay_t<ValueType>>::value), "ValueType must be copy constructible or a movable rvalue ref.");
+                        || (std::is_rvalue_reference<ValueType&&>::value && std::is_move_constructible<decay_t<ValueType>>::value), "ValueType must be copy constructible or a movable rvalue ref.");
 
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();
@@ -206,7 +206,7 @@ namespace AZStd
         /// Constructs an object with initial content of type decay_t<ValueType>, direct-non-list-initialized from forward<Args>(args)...
         template <typename ValueType, typename... Args>
         explicit any(in_place_type_t<ValueType>, Args&&... args)
-            : any(allocator("AZStd::any"))
+            : any(allocator{})
         {
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();
@@ -221,7 +221,7 @@ namespace AZStd
         /// Constructs an object with initial content of type decay_t<ValueType>, direct-non-list-initialized from il, forward<Args>(args)...
         template <typename ValueType, typename U, typename... Args>
         explicit any(in_place_type_t<ValueType>, AZStd::initializer_list<U> il, Args&&... args)
-            : any(allocator("AZStd::any"))
+            : any(allocator{})
         {
             // Initialize typeinfo from the type given
             m_typeInfo = create_template_type_info<decay_t<ValueType>>();
@@ -452,7 +452,6 @@ namespace AZStd
         template <typename ValueType, bool isConst>
         void assert_value_type_valid(const any& operand)
         {
-            (void)operand;
             static_assert(!std::is_rvalue_reference<ValueType>::value, "Type requested from any_cast cannot be an rvalue reference (taking the value stored is not supported).");
             static_assert(is_reference<ValueType>::value || std::is_copy_constructible<ValueType>::value, "Type requested from any_cast must be a reference or copy constructable.");
             static_assert(!is_reference<ValueType>::value || (!isConst || is_const<remove_reference_t<ValueType>>::value), "Type requested must be const; const cannot be any_cast'ed away.");
