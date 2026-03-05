@@ -167,6 +167,16 @@ jobs:
             ccache --zero-stats --cleanup
           fi
 
+      - name: Restore 3rdParty Cache
+        id: cache-3rdparty
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          key: 3rdParty-Linux-${{ hashFiles('cmake/3rdParty/Platform/*/BuiltInPackages_*.cmake') }}
+          restore-keys: |
+            3rdParty-Linux-
+          path: |
+            3rdParty/downloaded_packages
+
       - name: Setup cmake
         # Pin the version of cmake
         if: ${{ inputs.cmake_version }}
@@ -221,6 +231,14 @@ jobs:
           fi
           python/python.sh -u scripts/build/ci_build.py --platform ${{ inputs.platform }} --type ${{ inputs.type }}
 
+      - name: Save 3rdParty Cache
+        if: always() && !steps.cache-3rdparty.outputs.cache-hit
+        uses: actions/cache/save@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          key: ${{ steps.cache-3rdparty.outputs.cache-primary-key }}
+          path: |
+            3rdParty/downloaded_packages
+
       - name: Compress artifacts
         # Compress with posix format to preserve permissions and timestamps at nanosecond precision
         # Skip compression and upload if the type is a test to reduce dirty build artifacts from previous runs
@@ -231,7 +249,6 @@ jobs:
           tar --format=posix -cvpf ${{ github.workspace }}/cache.tar --ignore-failed-read \
             .ccache \
             .o3de/python/downloaded_packages \
-            3rdParty/downloaded_packages \
             AutomatedTesting/Cache
 
       - name: Save artifacts
