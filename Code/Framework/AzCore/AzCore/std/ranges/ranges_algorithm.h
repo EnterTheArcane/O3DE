@@ -1594,7 +1594,7 @@ namespace AZStd::ranges
 #if az_has_builtin_memcpy
                         __builtin_memcpy(to_address(result), to_address(first), numElements * sizeof(iter_value_t<I>));
 #else
-                        if (az_builtin_is_constant_evaluated())
+                        if (std::is_constant_evaluated())
                         {
                             for (; first != last; ++first, ++result)
                             {
@@ -1688,7 +1688,7 @@ namespace AZStd::ranges
 #if az_has_builtin_memcpy
                     __builtin_memcpy(to_address(result), to_address(first), n * sizeof(iter_value_t<I>));
 #else
-                    if (az_builtin_is_constant_evaluated())
+                    if (std::is_constant_evaluated())
                     {
                         for (; n > 0; --n, ++first, ++result)
                         {
@@ -1737,7 +1737,7 @@ namespace AZStd::ranges
                         result -= numElements;
                         __builtin_memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<I1>));
 #else
-                        if (az_builtin_is_constant_evaluated())
+                        if (std::is_constant_evaluated())
                         {
                             for (I1 iter{ last }; iter != first;)
                             {
@@ -1814,7 +1814,7 @@ namespace AZStd::ranges
 #if az_has_builtin_memcpy
                         __builtin_memcpy(to_address(result), to_address(first), numElements * sizeof(iter_value_t<I>));
 #else
-                        if (az_builtin_is_constant_evaluated())
+                        if (std::is_constant_evaluated())
                         {
                             for (; first != last; ++first, ++result)
                             {
@@ -1874,7 +1874,7 @@ namespace AZStd::ranges
                         result -= numElements;
                         __builtin_memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<I1>));
 #else
-                        if (az_builtin_is_constant_evaluated())
+                        if (std::is_constant_evaluated())
                         {
                             for (I1 iter{ last }; iter != first;)
                             {

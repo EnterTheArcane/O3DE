@@ -810,7 +810,7 @@ namespace AZStd
         {
             // The code assumes that compile time evaluation will not need to deal with overlapping input
             size_type charsAfterCountToMove = m_size - count - offset;
-            if (az_builtin_is_constant_evaluated() || !((ptr >= data + offset && ptr < data + offset + count)
+            if (std::is_constant_evaluated() || !((ptr >= data + offset && ptr < data + offset + count)
                 || (ptr + ptrCount > data + offset && ptr + ptrCount <= data + offset + count)))
             {
                 // Ex1. this = "ABCDEFG", offset = 1, count = 4

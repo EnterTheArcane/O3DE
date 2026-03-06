@@ -215,7 +215,7 @@ namespace AZ::IO::Internal
         }
         else
         {
-            if (az_builtin_is_constant_evaluated())
+            if (std::is_constant_evaluated())
             {
                 // compile time implementation
                 auto ToLower = [](const char element) constexpr -> char
@@ -815,7 +815,7 @@ namespace AZ::IO::parser
         constexpr size_t fnvPrime = 1099511628211ULL;
         auto ToLower = [](const char element) constexpr -> char
         {
-            if (az_builtin_is_constant_evaluated())
+            if (std::is_constant_evaluated())
             {
                 // compile time implementation
                 return element >= 'A' && element <= 'Z' ? (element - 'A') + 'a' : element;

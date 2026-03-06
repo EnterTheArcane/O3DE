@@ -284,7 +284,7 @@ namespace AZStd
             if constexpr (AZStd::is_same_v<char_type, char>)
             {
                 // Use builtin_memset if available for char type
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (char_type* iter = dest; count; --count, ++iter)
                     {
@@ -323,7 +323,7 @@ namespace AZStd
             else
 #endif
             {
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; count; --count, ++s1, ++s2)
                     {
@@ -353,7 +353,7 @@ namespace AZStd
             if constexpr (AZStd::is_same_v<char_type, char>)
             {
 #if !az_has_builtin_strlen
-                if (!az_builtin_is_constant_evaluated())
+                if (!std::is_constant_evaluated())
                 {
                     return strlen(s);
                 }
@@ -373,7 +373,7 @@ namespace AZStd
             else if constexpr (AZStd::is_same_v<char_type, wchar_t>)
             {
 #if !az_has_builtin_wcslen
-                if (!az_builtin_is_constant_evaluated())
+                if (!std::is_constant_evaluated())
                 {
                     return wcslen(s);
                 }
@@ -410,7 +410,7 @@ namespace AZStd
             if constexpr (AZStd::is_same_v<char_type, char>)
             {
 #if !az_has_builtin_char_memchr
-                if (!az_builtin_is_constant_evaluated())
+                if (!std::is_constant_evaluated())
                 {
                     return static_cast<const char_type*>(__builtin_memchr(s, ch, count));
                 }
@@ -433,7 +433,7 @@ namespace AZStd
             else if constexpr (AZStd::is_same_v<char_type, wchar_t>)
             {
 #if !az_has_builtin_wmemchr
-                if (!az_builtin_is_constant_evaluated())
+                if (!std::is_constant_evaluated())
                 {
                     return wmemchr(s, ch, count);
                 }
@@ -480,7 +480,7 @@ namespace AZStd
             auto NonBuiltinMove = [](char_type* dest1, const char_type* src1, size_t count1) constexpr
                 -> char_type*
             {
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     // The less than(<), greater than(>) and other variants(<=, >=)
                     // Cannot be compare pointers within a constexpr due to the potential for undefined behavior
@@ -533,7 +533,7 @@ namespace AZStd
             auto NonBuiltinCopy = [](char_type* dest1, const char_type* src1, size_t count1) constexpr
                 -> char_type*
             {
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; count1; --count1, ++dest1, ++src1)
                     {
@@ -560,7 +560,7 @@ namespace AZStd
         #if az_has_builtin_memmove
             __builtin_memmove(dest, src, count * sizeof(char_type));
         #else
-            if (az_builtin_is_constant_evaluated())
+            if (std::is_constant_evaluated())
             {
                 dest += count;
                 src += count;

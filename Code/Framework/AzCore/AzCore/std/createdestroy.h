@@ -238,7 +238,7 @@ namespace AZStd::Internal
                 static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Size of value types must match for a trivial copy");
                 __builtin_memcpy(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
 #else
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; first != last; ++result, ++first)
                     {
@@ -287,7 +287,7 @@ namespace AZStd::Internal
                 result -= numElements;
                 __builtin_memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<BidirectionalIterator1>));
 #else
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     while (first != last)
                     {
@@ -348,7 +348,7 @@ namespace AZStd
                 static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Value type sizes must match for a trivial copy");
                 __builtin_memcpy(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
 #else
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; first != last; ++result, ++first)
                     {
@@ -421,7 +421,7 @@ namespace AZStd::Internal
                 static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Size of value types must match for a trivial copy");
                 __builtin_memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
 #else
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; first != last; ++result, ++first)
                     {
@@ -467,7 +467,7 @@ namespace AZStd::Internal
                 result -= numElements;
                 __builtin_memmove(to_address(result), to_address(first), numElements * sizeof(iter_value_t<BidirectionalIterator1>));
 #else
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     while (first != last)
                     {
@@ -511,7 +511,7 @@ namespace AZStd::Internal
                 static_assert(sizeof(iter_value_t<InputIterator>) == sizeof(iter_value_t<ForwardIterator>), "Value type sizes must match for a trivial copy");
                 __builtin_memcpy(to_address(result), to_address(first), numElements * sizeof(iter_value_t<InputIterator>));
 #else
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; first != last; ++result, ++first)
                     {
@@ -595,7 +595,7 @@ namespace AZStd::Internal
             size_t numElements = last - first;
             if (numElements > 0)
             {
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; first != last; ++first)
                     {
@@ -624,7 +624,7 @@ namespace AZStd::Internal
         {
             if (numElements)
             {
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; numElements--; ++first)
                     {
@@ -669,7 +669,7 @@ namespace AZStd
             size_t numElements = last - first;
             if (numElements > 0)
             {
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; first != last; ++first)
                     {
@@ -704,7 +704,7 @@ namespace AZStd
         {
             if (numElements > 0)
             {
-                if (az_builtin_is_constant_evaluated())
+                if (std::is_constant_evaluated())
                 {
                     for (; numElements--; ++first)
                     {
