@@ -21,8 +21,8 @@ namespace AZ::Platform
     {
     }
 
-    AZ::IO::FixedMaxPath CreateFrameworkModulePath(const AZ::IO::PathView&)
+    bool FindPlatformModule(const AZ::IO::PathView&, AZ::IO::FixedMaxPath&)
     {
-        return {};
+        return false;
     }
 } // namespace AZ::Platform

@@ -6,6 +6,7 @@
  *
  */
 
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/std/string/osstring.h>
 #include <AzCore/Utils/SystemUtilsApple_Platform.h>
 #include <AzCore/Utils/Utils.h>
@@ -28,7 +29,7 @@ namespace AZ::Platform
         fullPath /= fileName;
     }
 
-    AZ::IO::FixedMaxPath CreateFrameworkModulePath(const AZ::IO::PathView& moduleName)
+    bool FindPlatformModule(const AZ::IO::PathView& moduleName, AZ::IO::FixedMaxPath& outPath)
     {
         AZ::IO::FixedMaxPath frameworksPath;
         AZ::IO::FixedMaxPathString& frameworksPathString = frameworksPath.Native();
@@ -40,9 +41,13 @@ namespace AZ::Platform
         frameworksPathString.resize_and_overwrite(frameworksPathString.capacity(), GetBundleFrameworkPath);
         if (!frameworksPath.empty())
         {
-            frameworksPath /= moduleName;
+            outPath = frameworksPath / moduleName;
+            if (AZ::IO::SystemFile::Exists(outPath.c_str()))
+            {
+                return true;
+            }
         }
 
-        return frameworksPath;
+        return false;
     }
 } // namespace AZ::Platform

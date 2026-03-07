@@ -6,6 +6,7 @@
  *
  */
 
+#include <AzCore/IO/SystemFile.h>
 #include <AzCore/Utils/SystemUtilsApple_Platform.h>
 #include <AzCore/Utils/Utils.h>
 #include <dlfcn.h>
@@ -14,28 +15,6 @@ namespace AZ::Platform
 {
     AZ::IO::FixedMaxPath GetModulePath()
     {
-        // When running as an app bundle, return the directory containing the .app bundle
-        // (e.g., bin/profile/) rather than the Contents/MacOS/ directory inside the bundle.
-        // The build system places gem dylibs in the same directory as the .app bundle.
-        AZ::IO::FixedMaxPath bundlePath;
-        AZ::IO::FixedMaxPathString& bundlePathString = bundlePath.Native();
-        auto GetBundlePath = [](char* buffer, size_t size) -> size_t
-        {
-            auto bundlePathOutcome = AZ::SystemUtilsApple::GetPathToApplicationBundle(AZStd::span(buffer, size));
-            return bundlePathOutcome ? bundlePathOutcome.GetValue().size() : 0U;
-        };
-        bundlePathString.resize_and_overwrite(bundlePathString.capacity(), GetBundlePath);
-        if (!bundlePath.empty())
-        {
-            // bundlePath is e.g. /path/to/bin/profile/Editor.app
-            // ParentPath gives us /path/to/bin/profile/ where gem dylibs reside
-            AZ::IO::FixedMaxPath bundleParent = bundlePath.ParentPath();
-            if (!bundleParent.empty())
-            {
-                return bundleParent;
-            }
-        }
-
         return AZ::Utils::GetExecutableDirectory();
     }
 
@@ -43,8 +22,9 @@ namespace AZ::Platform
     {
     }
 
-    AZ::IO::FixedMaxPath CreateFrameworkModulePath(const AZ::IO::PathView& moduleName)
+    bool FindPlatformModule(const AZ::IO::PathView& moduleName, AZ::IO::FixedMaxPath& outPath)
     {
+        // Check the bundle's Frameworks directory
         AZ::IO::FixedMaxPath frameworksPath;
         AZ::IO::FixedMaxPathString& frameworksPathString = frameworksPath.Native();
         auto GetBundleFrameworkPath = [](char* buffer, size_t size) -> size_t
@@ -55,9 +35,35 @@ namespace AZ::Platform
         frameworksPathString.resize_and_overwrite(frameworksPathString.capacity(), GetBundleFrameworkPath);
         if (!frameworksPath.empty())
         {
-            frameworksPath /= moduleName;
+            outPath = frameworksPath / moduleName;
+            if (AZ::IO::SystemFile::Exists(outPath.c_str()))
+            {
+                return true;
+            }
         }
 
-        return frameworksPath;
+        // Check the directory containing the .app bundle, where gem dylibs are placed
+        AZ::IO::FixedMaxPath bundlePath;
+        AZ::IO::FixedMaxPathString& bundlePathString = bundlePath.Native();
+        auto GetBundlePath = [](char* buffer, size_t size) -> size_t
+        {
+            auto bundlePathOutcome = AZ::SystemUtilsApple::GetPathToApplicationBundle(AZStd::span(buffer, size));
+            return bundlePathOutcome ? bundlePathOutcome.GetValue().size() : 0U;
+        };
+        bundlePathString.resize_and_overwrite(bundlePathString.capacity(), GetBundlePath);
+        if (!bundlePath.empty())
+        {
+            AZ::IO::FixedMaxPath bundleParent = bundlePath.ParentPath();
+            if (!bundleParent.empty())
+            {
+                outPath = bundleParent / moduleName;
+                if (AZ::IO::SystemFile::Exists(outPath.c_str()))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 } // namespace AZ::Platform

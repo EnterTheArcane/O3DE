@@ -20,7 +20,7 @@ namespace AZ::Platform
 {
     AZ::IO::FixedMaxPath GetModulePath();
     void ConstructModuleFullFileName(AZ::IO::FixedMaxPath& fullPath);
-    AZ::IO::FixedMaxPath CreateFrameworkModulePath(const AZ::IO::PathView& moduleName);
+    bool FindPlatformModule(const AZ::IO::PathView& moduleName, AZ::IO::FixedMaxPath& outPath);
 }
 
 namespace AZ
@@ -69,10 +69,8 @@ namespace AZ
                     return;
                 }
 
-                // If the executable is bundle, such as on an Apple platform
-                // Check if the module is in the <bundle.app>/Frameworks directory
-                candidatePath = Platform::CreateFrameworkModulePath(fullFilePath);
-                if (AZ::IO::SystemFile::Exists(candidatePath.c_str()))
+                // Check platform-specific module locations
+                if (Platform::FindPlatformModule(fullFilePath, candidatePath))
                 {
                     m_fileName.assign(candidatePath.Native().c_str(), candidatePath.Native().size());
                     return;
@@ -138,7 +136,7 @@ namespace AZ
             m_handle = dlopen(m_fileName.c_str(), openFlags | RTLD_NOLOAD);
             bool alreadyOpen = (m_handle != nullptr);
             if (m_handle == nullptr && !CheckBitsAny(flags, LoadFlags::NoLoad))
-            {                
+            {
                 m_handle = dlopen(m_fileName.c_str(), openFlags);
             }
 

@@ -365,6 +365,9 @@ if(target_bundle_content_dir)
         get_property(fixup_bundle_ignore SOURCE "${CMAKE_CURRENT_LIST_FILE}" PROPERTY BUNDLE_IGNORE_FILES)
         list(REMOVE_DUPLICATES plugin_libs)
         list(REMOVE_DUPLICATES plugin_dirs)
+        # Include the bundle's Frameworks directory so fixup_bundle can resolve
+        # @rpath references between dylibs (the main executable may not have LC_RPATH entries)
+        list(APPEND plugin_dirs "${target_bundle_framework_dir}")
         fixup_bundle("${target_bundle_dir}" "${plugin_libs}" "${plugin_dirs}" IGNORE_ITEM ${fixup_bundle_ignore})
 
         # fix the rpath for the DirectXShaderCompiler `dxc-3.7` to point at
