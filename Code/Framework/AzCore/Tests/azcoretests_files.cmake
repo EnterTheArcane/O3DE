@@ -100,6 +100,7 @@ set(FILES
     EventTests.cpp
     FileIOBaseTestTypes.h
     Geometry2DUtils.cpp
+    Hash/FnvTests.cpp
     Interface.cpp
     IO/FileReaderTests.cpp
     IO/Path/PathReflectTests.cpp

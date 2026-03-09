@@ -1368,13 +1368,13 @@ namespace UnitTest
             switch (VectorType::ElementCount)
             {
             case 4:
-                EXPECT_NEAR(testStoreValues1[3], Constants::HalfPi, precision);
+                EXPECT_NEAR(testStoreValues1[3], AZ::Constants::HalfPi, precision);
             case 3:
-                EXPECT_NEAR(testStoreValues1[2], 2 * Constants::Pi / 3.0f, precision);
+                EXPECT_NEAR(testStoreValues1[2], 2 * AZ::Constants::Pi / 3.0f, precision);
             case 2:
-                EXPECT_NEAR(testStoreValues1[1], 5 * Constants::Pi / 6.0f, precision);
+                EXPECT_NEAR(testStoreValues1[1], 5 * AZ::Constants::Pi / 6.0f, precision);
             case 1:
-                EXPECT_NEAR(testStoreValues1[0], Constants::Pi, precision);
+                EXPECT_NEAR(testStoreValues1[0], AZ::Constants::Pi, precision);
             }
         }
 
@@ -1391,7 +1391,7 @@ namespace UnitTest
             case 2:
                 EXPECT_NEAR(testStoreValues2[1], 0.0f, precision);
             case 1:
-                EXPECT_NEAR(testStoreValues2[0], Constants::QuarterPi, precision);
+                EXPECT_NEAR(testStoreValues2[0], AZ::Constants::QuarterPi, precision);
             }
         }
     }
@@ -1417,9 +1417,9 @@ namespace UnitTest
             case 4:
                 EXPECT_NEAR(testStoreValues1[3], 1.569796f, precision);
             case 3:
-                EXPECT_NEAR(testStoreValues1[2], Constants::Pi / 4.0f, precision);
+                EXPECT_NEAR(testStoreValues1[2], AZ::Constants::Pi / 4.0f, precision);
             case 2:
-                EXPECT_NEAR(testStoreValues1[1], Constants::Pi / 6.0f, precision);
+                EXPECT_NEAR(testStoreValues1[1], AZ::Constants::Pi / 6.0f, precision);
             case 1:
                 EXPECT_NEAR(testStoreValues1[0], 0.0f, precision);
             }
@@ -1434,9 +1434,9 @@ namespace UnitTest
             case 4:
                 EXPECT_NEAR(testStoreValues2[3], -1.569796f, precision);
             case 3:
-                EXPECT_NEAR(testStoreValues2[2], -Constants::Pi / 4.0f, precision);
+                EXPECT_NEAR(testStoreValues2[2], -AZ::Constants::Pi / 4.0f, precision);
             case 2:
-                EXPECT_NEAR(testStoreValues2[1], -Constants::Pi / 6.0f, precision);
+                EXPECT_NEAR(testStoreValues2[1], -AZ::Constants::Pi / 6.0f, precision);
             case 1:
                 EXPECT_NEAR(testStoreValues2[0], 0.0f, precision);
             }
@@ -1451,7 +1451,7 @@ namespace UnitTest
         float testStoreValues1[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
         float testLoadValuesY2[4] = { 0.0f, 1.0f, -1.0f, 0.0f };
-        float testLoadValuesX2[4] = { -1.0f, -1.0f, -1.0f, 1.0f };   
+        float testLoadValuesX2[4] = { -1.0f, -1.0f, -1.0f, 1.0f };
         float testStoreValues2[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 
         float precision = 0.000002f;
@@ -1468,11 +1468,11 @@ namespace UnitTest
             switch (VectorType::ElementCount)
             {
             case 4:
-                EXPECT_NEAR(testStoreValues1[3], Constants::Pi / 4.0f, precision);
+                EXPECT_NEAR(testStoreValues1[3], AZ::Constants::Pi / 4.0f, precision);
             case 3:
-                EXPECT_NEAR(testStoreValues1[2], -Constants::HalfPi, precision);
+                EXPECT_NEAR(testStoreValues1[2], -AZ::Constants::HalfPi, precision);
             case 2:
-                EXPECT_NEAR(testStoreValues1[1], Constants::HalfPi, precision);
+                EXPECT_NEAR(testStoreValues1[1], AZ::Constants::HalfPi, precision);
             case 1:
                 EXPECT_NEAR(testStoreValues1[0], 0.0f, precision);
             }
@@ -1487,11 +1487,11 @@ namespace UnitTest
             case 4:
                 EXPECT_NEAR(testStoreValues2[3], 0.0f, precision);
             case 3:
-                EXPECT_NEAR(testStoreValues2[2], -3 * Constants::Pi / 4.0f, precision);
+                EXPECT_NEAR(testStoreValues2[2], -3 * AZ::Constants::Pi / 4.0f, precision);
             case 2:
-                EXPECT_NEAR(testStoreValues2[1], 3 * Constants::Pi / 4.0f, precision);
+                EXPECT_NEAR(testStoreValues2[1], 3 * AZ::Constants::Pi / 4.0f, precision);
             case 1:
-                EXPECT_NEAR(testStoreValues2[0], Constants::Pi, precision);
+                EXPECT_NEAR(testStoreValues2[0], AZ::Constants::Pi, precision);
             }
         }
     }
