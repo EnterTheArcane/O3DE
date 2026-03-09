@@ -32,81 +32,52 @@
  */
 namespace AZ::Hash
 {
-    inline constexpr u32 Fnv1a32_OffsetBasis = 0x811c9dc5u;
-    inline constexpr u32 Fnv1a32_Prime = 0x01000193u;
-
-    inline constexpr u64 Fnv1a64_OffsetBasis = 0xcbf29ce484222325ULL;
-    inline constexpr u64 Fnv1a64_Prime = 0x100000001b3ULL;
-
-    constexpr u32 Fnv1a_32(const AZStd::span<const AZStd::byte> data)
-    {
-        u32 hash = Fnv1a32_OffsetBasis;
-        for (const AZStd::byte b : data)
-        {
-            hash ^= static_cast<u32>(b);
-            hash *= Fnv1a32_Prime;
-        }
-        return hash;
-    }
-
-    constexpr u64 Fnv1a_64(const AZStd::span<const AZStd::byte> data)
-    {
-        u64 hash = Fnv1a64_OffsetBasis;
-        for (const AZStd::byte b : data)
-        {
-            hash ^= static_cast<u64>(b);
-            hash *= Fnv1a64_Prime;
-        }
-        return hash;
-    }
-
-    constexpr u32 Fnv1a_32(AZStd::string_view view)
-    {
-        u32 hash = Fnv1a32_OffsetBasis;
-        for (const char ch : view)
-        {
-            hash ^= static_cast<u32>(static_cast<u8>(ch));
-            hash *= Fnv1a32_Prime;
-        }
-        return hash;
-    }
-
-    constexpr u64 Fnv1a_64(AZStd::string_view view)
-    {
-        u64 hash = Fnv1a64_OffsetBasis;
-        for (const char ch : view)
-        {
-            hash ^= static_cast<u64>(static_cast<u8>(ch));
-            hash *= Fnv1a64_Prime;
-        }
-        return hash;
-    }
-
-    struct Fnv1a32 final
+    struct Fnv32 final
     {
         static constexpr u32 OffsetBasis = 0x811c9dc5u;
         static constexpr u32 Prime = 0x01000193u;
 
-        constexpr Fnv1a32() = default;
+        constexpr Fnv32() = default;
 
-        explicit constexpr Fnv1a32(const u32 value)
+        explicit constexpr Fnv32(const u32 value)
             : m_value{value}
         {
         }
 
-        explicit constexpr Fnv1a32(AZStd::string_view view)
+        template <size_t N>
+        constexpr Fnv32(const char (&str)[N])
+            : m_value(OffsetBasis)
         {
-            m_value = OffsetBasis;
+            for (size_t i = 0; i < N - 1; ++i)
+            {
+                m_value ^= static_cast<u32>(static_cast<u8>(str[i]));
+                m_value *= Prime;
+            }
+
+            if (!std::is_constant_evaluated())
+            {
+                DebugString(AZStd::string_view{str, N});
+            }
+        }
+
+        constexpr Fnv32(AZStd::string_view view)
+            : m_value(OffsetBasis)
+        {
             for (const char ch : view)
             {
                 m_value ^= static_cast<u32>(static_cast<u8>(ch));
                 m_value *= Prime;
             }
+
+            if (!std::is_constant_evaluated())
+            {
+                DebugString(view);
+            }
         }
 
-        explicit constexpr Fnv1a32(const AZStd::span<const AZStd::byte> data)
+        constexpr Fnv32(const AZStd::span<const AZStd::byte> data)
+            : m_value(OffsetBasis)
         {
-            m_value = OffsetBasis;
             for (const AZStd::byte b : data)
             {
                 m_value ^= static_cast<u32>(b);
@@ -119,29 +90,19 @@ namespace AZ::Hash
             return m_value;
         }
 
-        explicit constexpr operator u32() const
+        constexpr operator u32() const
         {
             return m_value;
         }
 
-        constexpr bool operator==(const Fnv1a32 rhs) const
+        constexpr bool operator==(const Fnv32 rhs) const
         {
             return m_value == rhs.m_value;
         }
 
-        constexpr bool operator==(const u32 rhs) const
-        {
-            return m_value == rhs;
-        }
-
-        constexpr std::strong_ordering operator<=>(const Fnv1a32 rhs) const
+        constexpr std::strong_ordering operator<=>(const Fnv32 rhs) const
         {
             return m_value <=> rhs.m_value;
-        }
-
-        constexpr std::strong_ordering operator<=>(const u32 rhs) const
-        {
-            return m_value <=> rhs;
         }
 
         explicit constexpr operator bool() const
@@ -149,27 +110,64 @@ namespace AZ::Hash
             return m_value != 0;
         }
 
+    protected:
+        AZCORE_API void DebugString(AZStd::string_view str) const;
+
     private:
         u32 m_value = 0;
     };
 
-    struct Fnv1a64 final
+    struct Fnv64 final
     {
-        constexpr Fnv1a64() = default;
+        static constexpr u64 OffsetBasis = 0xcbf29ce484222325ULL;
+        static constexpr u64 Prime = 0x100000001b3ULL;
 
-        explicit constexpr Fnv1a64(const u64 value)
+        constexpr Fnv64() = default;
+
+        explicit constexpr Fnv64(const u64 value)
             : m_value{value}
         {
         }
 
-        explicit constexpr Fnv1a64(AZStd::string_view view)
-            : m_value{Fnv1a_64(view)}
+        template <size_t N>
+        constexpr Fnv64(const char (&str)[N])
+            : m_value(OffsetBasis)
         {
+            for (size_t i = 0; i < N - 1; ++i)
+            {
+                m_value ^= static_cast<u64>(static_cast<u8>(str[i]));
+                m_value *= Prime;
+            }
+
+            if (!std::is_constant_evaluated())
+            {
+                DebugString(AZStd::string_view{str, N});
+            }
         }
 
-        explicit constexpr Fnv1a64(const AZStd::span<const AZStd::byte> data)
-            : m_value{Fnv1a_64(data)}
+        constexpr Fnv64(AZStd::string_view view)
+            : m_value(OffsetBasis)
         {
+            for (const char ch : view)
+            {
+                m_value ^= static_cast<u64>(static_cast<u8>(ch));
+                m_value *= Prime;
+            }
+
+            if (!std::is_constant_evaluated())
+            {
+                DebugString(view);
+            }
+        }
+
+        constexpr Fnv64(const AZStd::span<const AZStd::byte> data)
+            : m_value(OffsetBasis)
+        {
+            for (const AZStd::byte b : data)
+            {
+                m_value ^= static_cast<u64>(b);
+                m_value *= Prime;
+            }
         }
 
         [[nodiscard]] constexpr u64 GetValue() const
@@ -177,29 +175,19 @@ namespace AZ::Hash
             return m_value;
         }
 
-        explicit constexpr operator u64() const
+        constexpr operator u64() const
         {
             return m_value;
         }
 
-        constexpr bool operator==(const Fnv1a64 rhs) const
+        constexpr bool operator==(const Fnv64 rhs) const
         {
             return m_value == rhs.m_value;
         }
 
-        constexpr bool operator==(const u64 rhs) const
-        {
-            return m_value == rhs;
-        }
-
-        constexpr auto operator<=>(const Fnv1a64 rhs) const
+        constexpr auto operator<=>(const Fnv64 rhs) const
         {
             return m_value <=> rhs.m_value;
-        }
-
-        constexpr auto operator<=>(const u64 rhs) const
-        {
-            return m_value <=> rhs;
         }
 
         explicit constexpr operator bool() const
@@ -207,24 +195,30 @@ namespace AZ::Hash
             return m_value != 0;
         }
 
+    protected:
+        AZCORE_API void DebugString(AZStd::string_view str) const;
+
     private:
         u64 m_value = 0;
     };
+
+    using Fnv1a_32 = Fnv32;
+    using Fnv1a_64 = Fnv64;
 } // namespace AZ::Hash
 
 template <>
-struct AZStd::hash<AZ::Hash::Fnv1a32>
+struct AZStd::hash<AZ::Hash::Fnv32>
 {
-    constexpr size_t operator()(const AZ::Hash::Fnv1a32 input) const
+    constexpr size_t operator()(const AZ::Hash::Fnv32 input) const
     {
         return input.GetValue();
     }
 };
 
 template <>
-struct AZStd::hash<AZ::Hash::Fnv1a64>
+struct AZStd::hash<AZ::Hash::Fnv64>
 {
-    constexpr size_t operator()(const AZ::Hash::Fnv1a64 input) const
+    constexpr size_t operator()(const AZ::Hash::Fnv64 input) const
     {
         return input.GetValue();
     }
