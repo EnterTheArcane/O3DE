@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="AZ::Hash::Fnv32">
+        <DisplayString Condition="m_source.m_size != 0">
+            {m_source,s} ({m_value,X})
+        </DisplayString>
+        <DisplayString>
+            {m_value,X}
+        </DisplayString>
+        <Expand>
+            <Item Name="source" Condition="m_source.m_size != 0">m_source</Item>
+            <Item Name="value">m_value,X</Item>
+        </Expand>
+    </Type>
+
+    <Type Name="AZ::Hash::Fnv64">
+        <DisplayString Condition="m_source.m_size != 0">
+            {m_source,s} ({m_value,X})
+        </DisplayString>
+        <DisplayString>
+            {m_value,X}
+        </DisplayString>
+        <Expand>
+            <Item Name="source" Condition="m_source.m_size != 0">m_source</Item>
+            <Item Name="value">m_value,X</Item>
+        </Expand>
+    </Type>
+</AutoVisualizer>

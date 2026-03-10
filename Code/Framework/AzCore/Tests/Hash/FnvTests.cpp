@@ -7,12 +7,13 @@
  */
 
 #include <AzCore/Hash/Fnv.h>
-#include <AzCore/std/containers/array.h>
 #include <AzCore/std/containers/unordered_map.h>
 #include <AzCore/std/containers/vector.h>
 #include <AzCore/UnitTest/TestTypes.h>
 
 using namespace AZ;
+
+#define AS_BYTE(c) (static_cast<AZStd::byte>(c))
 
 namespace UnitTest
 {
@@ -20,472 +21,409 @@ namespace UnitTest
     {
     };
 
-    TEST_F(Hash_Fnv, Fnv1a_32_EmptyString_ReturnsOffsetBasis)
+    // ReSharper disable CppVariableCanBeMadeConstexpr
+    TEST_F(Hash_Fnv, EmptyStringReturnsOffsetBasis)
     {
         static_assert(
-            AZ::Hash::Fnv1a_32(AZStd::string_view{}) == AZ::Hash::Fnv32::OffsetBasis,
-            "FNV-1a-32 of empty string must equal the offset basis");
-        EXPECT_EQ(AZ::Hash::Fnv1a_32(AZStd::string_view{}), AZ::Hash::Fnv32::OffsetBasis);
-    }
+            AZ::Hash::Fnv32{AZStd::string_view{}} == AZ::Hash::Fnv32::OffsetBasis,
+            "Fnv32 of empty string must equal the offset basis");
+        EXPECT_EQ(AZ::Hash::Fnv32{AZStd::string_view{}}, AZ::Hash::Fnv32::OffsetBasis);
 
-    TEST_F(Hash_Fnv, Fnv1a_64_EmptyString_ReturnsOffsetBasis)
-    {
         static_assert(
-            AZ::Hash::Fnv1a_64(AZStd::string_view{}) == AZ::Hash::Fnv64::OffsetBasis,
-            "FNV-1a-64 of empty string must equal the offset basis");
-        EXPECT_EQ(AZ::Hash::Fnv1a_64(AZStd::string_view{}), AZ::Hash::Fnv64::OffsetBasis);
+            AZ::Hash::Fnv64{AZStd::string_view{}} == AZ::Hash::Fnv64::OffsetBasis,
+            "Fnv64 of empty string must equal the offset basis");
+        EXPECT_EQ(AZ::Hash::Fnv64{AZStd::string_view{}}, AZ::Hash::Fnv64::OffsetBasis);
     }
 
-    TEST_F(Hash_Fnv, Fnv1a_32_SingleChar)
+    TEST_F(Hash_Fnv, CompileTimeMatchesRuntime)
     {
-        static_assert(AZ::Hash::Fnv1a_32("a") == 0xe40c292cu);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("a"), 0xe40c292cu);
+        const AZStd::string str{"O3DE"};
+
+        {
+            constexpr u32 compileHash = AZ::Hash::Fnv32{"O3DE"};
+            const u32 runtimeHash = AZ::Hash::Fnv32{str};
+            EXPECT_EQ(compileHash, runtimeHash);
+        }
+
+        {
+            constexpr u64 compileHash = AZ::Hash::Fnv64{"O3DE"};
+            const u64 runtimeHash = AZ::Hash::Fnv64{str};
+            EXPECT_EQ(compileHash, runtimeHash);
+        }
     }
 
-    TEST_F(Hash_Fnv, Fnv1a_64_SingleChar)
+    TEST_F(Hash_Fnv, DifferentInputsProduceDifferentHashes)
     {
-        static_assert(AZ::Hash::Fnv1a_64("a") == 0xaf63dc4c8601ec8cULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("a"), 0xaf63dc4c8601ec8cULL);
+        EXPECT_NE(AZ::Hash::Fnv32{"ABCDEF"}, AZ::Hash::Fnv32{"AB"});
+        EXPECT_NE(AZ::Hash::Fnv32{"ABC"}, AZ::Hash::Fnv32{"ABD"});
+        EXPECT_NE(AZ::Hash::Fnv32{"ABC"}, AZ::Hash::Fnv32{"abc"});
+        EXPECT_NE(AZ::Hash::Fnv32{""}, AZ::Hash::Fnv32{"A"});
+
+        EXPECT_NE(AZ::Hash::Fnv64{"ABCDEF"}, AZ::Hash::Fnv64{"AB"});
+        EXPECT_NE(AZ::Hash::Fnv64{"ABC"}, AZ::Hash::Fnv64{"ABD"});
+        EXPECT_NE(AZ::Hash::Fnv64{"ABC"}, AZ::Hash::Fnv64{"abc"});
+        EXPECT_NE(AZ::Hash::Fnv64{""}, AZ::Hash::Fnv64{"A"});
     }
 
-    TEST_F(Hash_Fnv, Fnv1a_32_Foobar)
+    TEST_F(Hash_Fnv, ProduceDifferentSizedResults)
     {
-        static_assert(AZ::Hash::Fnv1a_32("foobar") == 0xbf9cf968u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("foobar"), 0xbf9cf968u);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_Foobar)
-    {
-        static_assert(AZ::Hash::Fnv1a_64("foobar") == 0x85944171f73967e8ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("foobar"), 0x85944171f73967e8ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_HelloWorld)
-    {
-        static_assert(AZ::Hash::Fnv1a_32("Hello, World!") == 0x5aecf734u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("Hello, World!"), 0x5aecf734u);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_HelloWorld)
-    {
-        static_assert(AZ::Hash::Fnv1a_64("Hello, World!") == 0x6ef05bd7cc857c54ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("Hello, World!"), 0x6ef05bd7cc857c54ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_CompileTimeMatchesRuntime)
-    {
-        constexpr u32 compileTime = AZ::Hash::Fnv1a_32("consistency");
-        const AZStd::string runtimeStr("consistency");
-        const u32 runTime = AZ::Hash::Fnv1a_32(AZStd::string_view{runtimeStr});
-        EXPECT_EQ(compileTime, runTime);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_CompileTimeMatchesRuntime)
-    {
-        constexpr u64 compileTime = AZ::Hash::Fnv1a_64("consistency");
-        const AZStd::string runtimeStr("consistency");
-        const u64 runTime = AZ::Hash::Fnv1a_64(AZStd::string_view{runtimeStr});
-        EXPECT_EQ(compileTime, runTime);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_DifferentInputs_ProduceDifferentHashes)
-    {
-        EXPECT_NE(AZ::Hash::Fnv1a_32("abc"), AZ::Hash::Fnv1a_32("abd"));
-        EXPECT_NE(AZ::Hash::Fnv1a_32("abc"), AZ::Hash::Fnv1a_32("ABC"));
-        EXPECT_NE(AZ::Hash::Fnv1a_32(""), AZ::Hash::Fnv1a_32("a"));
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_DifferentInputs_ProduceDifferentHashes)
-    {
-        EXPECT_NE(AZ::Hash::Fnv1a_64("abc"), AZ::Hash::Fnv1a_64("abd"));
-        EXPECT_NE(AZ::Hash::Fnv1a_64("abc"), AZ::Hash::Fnv1a_64("ABC"));
-        EXPECT_NE(AZ::Hash::Fnv1a_64(""), AZ::Hash::Fnv1a_64("a"));
-    }
-
-
-    TEST_F(Hash_Fnv, Fnv1a_32_ByteSpan_EmptyData_ReturnsOffsetBasis)
-    {
-        static_assert(
-            AZ::Hash::Fnv1a_32(AZStd::span<const AZStd::byte>{}) == AZ::Hash::Fnv32::OffsetBasis,
-            "FNV-1a 32 of empty byte span must equal offset basis");
-        EXPECT_EQ(AZ::Hash::Fnv1a_32(AZStd::span<const AZStd::byte>{}), AZ::Hash::Fnv32::OffsetBasis);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_ByteSpan_EmptyData_ReturnsOffsetBasis)
-    {
-        static_assert(
-            AZ::Hash::Fnv1a_64(AZStd::span<const AZStd::byte>{}) == AZ::Hash::Fnv64::OffsetBasis,
-            "FNV-1a 64 of empty byte span must equal offset basis");
-        EXPECT_EQ(AZ::Hash::Fnv1a_64(AZStd::span<const AZStd::byte>{}), AZ::Hash::Fnv64::OffsetBasis);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_ByteSpan_MatchesStringView_ForAsciiData)
-    {
-        constexpr AZStd::byte abcBytes[] = {
-            static_cast<AZStd::byte>('a'),
-            static_cast<AZStd::byte>('b'),
-            static_cast<AZStd::byte>('c'),
-        };
-        constexpr u32 byteHash = AZ::Hash::Fnv1a_32(abcBytes);
-        constexpr u32 stringHash = AZ::Hash::Fnv1a_32("abc");
-        static_assert(byteHash == stringHash, "Byte span hash of ASCII data should match string_view hash");
-        EXPECT_EQ(byteHash, stringHash);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_ByteSpan_MatchesStringView_ForAsciiData)
-    {
-        constexpr AZStd::byte abcBytes[] = {
-            static_cast<AZStd::byte>('a'),
-            static_cast<AZStd::byte>('b'),
-            static_cast<AZStd::byte>('c'),
-        };
-        constexpr u64 byteHash = AZ::Hash::Fnv1a_64(abcBytes);
-        constexpr u64 stringHash = AZ::Hash::Fnv1a_64("abc");
-        static_assert(byteHash == stringHash, "Byte span hash of ASCII data should match string_view hash");
-        EXPECT_EQ(byteHash, stringHash);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_ByteSpan_BinaryData)
-    {
-        // Hash data that contains null bytes — must not stop early
-        const AZStd::byte data[] = {
-            static_cast<AZStd::byte>(0x00),
-            static_cast<AZStd::byte>(0xFF),
-            static_cast<AZStd::byte>(0x42),
-            static_cast<AZStd::byte>(0x00),
-            static_cast<AZStd::byte>(0x13),
-        };
-        const u32 hash = AZ::Hash::Fnv1a_32(data);
-        // Just verify it doesn't return offset basis (which would mean the nulls truncated processing)
-        EXPECT_NE(hash, AZ::Hash::Fnv32::OffsetBasis);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_ByteSpan_BinaryData)
-    {
-        const AZStd::byte data[] = {
-            static_cast<AZStd::byte>(0x00),
-            static_cast<AZStd::byte>(0xFF),
-            static_cast<AZStd::byte>(0x42),
-            static_cast<AZStd::byte>(0x00),
-            static_cast<AZStd::byte>(0x13),
-        };
-        const u64 hash = AZ::Hash::Fnv1a_64(data);
-        EXPECT_NE(hash, AZ::Hash::Fnv64::OffsetBasis);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_ByteSpan_RuntimeVector)
-    {
-        // Verify the span overload works with runtime-constructed containers
-        AZStd::vector<AZStd::byte> data;
-        data.push_back(static_cast<AZStd::byte>('f'));
-        data.push_back(static_cast<AZStd::byte>('o'));
-        data.push_back(static_cast<AZStd::byte>('o'));
-        data.push_back(static_cast<AZStd::byte>('b'));
-        data.push_back(static_cast<AZStd::byte>('a'));
-        data.push_back(static_cast<AZStd::byte>('r'));
-        const u32 hash = AZ::Hash::Fnv1a_32(data);
-        EXPECT_EQ(hash, 0xbf9cf968u);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_ByteSpan_RuntimeVector)
-    {
-        AZStd::vector<AZStd::byte> data;
-        data.push_back(static_cast<AZStd::byte>('f'));
-        data.push_back(static_cast<AZStd::byte>('o'));
-        data.push_back(static_cast<AZStd::byte>('o'));
-        data.push_back(static_cast<AZStd::byte>('b'));
-        data.push_back(static_cast<AZStd::byte>('a'));
-        data.push_back(static_cast<AZStd::byte>('r'));
-        const u64 hash = AZ::Hash::Fnv1a_64(data);
-        EXPECT_EQ(hash, 0x85944171f73967e8ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_ByteSpan_ConstexprArray)
-    {
-        constexpr AZStd::array data = {
-            static_cast<AZStd::byte>('a'),
-            static_cast<AZStd::byte>('b'),
-            static_cast<AZStd::byte>('c'),
-        };
-        constexpr u32 hash = AZ::Hash::Fnv1a_32(data);
-        constexpr u32 expected = AZ::Hash::Fnv1a_32("abc");
-        static_assert(hash == expected, "Byte span from array should match string_view hash");
-        EXPECT_EQ(hash, expected);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_ByteSpan_ConstexprArray)
-    {
-        constexpr AZStd::array data = {
-            static_cast<AZStd::byte>('a'),
-            static_cast<AZStd::byte>('b'),
-            static_cast<AZStd::byte>('c'),
-        };
-        constexpr u64 hash = AZ::Hash::Fnv1a_64(data);
-        constexpr u64 expected = AZ::Hash::Fnv1a_64("abc");
-        static_assert(hash == expected, "Byte span from array should match string_view hash");
-        EXPECT_EQ(hash, expected);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32And64_ProduceDifferentSizedResults)
-    {
-        constexpr u32 hash32 = AZ::Hash::Fnv1a_32("test");
-        constexpr u64 hash64 = AZ::Hash::Fnv1a_64("test");
+        // The lower 32 bits of the 64-bit hash should not coincidentally equal the 32-bit hash
+        constexpr u32 hash32 = AZ::Hash::Fnv32{"Test"};
+        constexpr u64 hash64 = AZ::Hash::Fnv64{"Test"};
         EXPECT_NE(static_cast<u32>(hash64 & 0xFFFFFFFF), hash32);
     }
 
-    TEST_F(Hash_Fnv, Fnv1a_LongString_DoesNotCrashAndIsConsistent)
+    TEST_F(Hash_Fnv, LongStringDoesNotCrashAndIsConsistent)
     {
-        // Build a long string at runtime
         AZStd::string longStr;
-        for (int i = 0; i < 10000; ++i)
+        for (s32 i = 0; i < 10000; ++i)
         {
             longStr += static_cast<char>('A' + (i % 26));
         }
-        const u32 hash32a = AZ::Hash::Fnv1a_32(AZStd::string_view{longStr});
-        const u32 hash32b = AZ::Hash::Fnv1a_32(AZStd::string_view{longStr});
-        EXPECT_EQ(hash32a, hash32b);
 
-        const u64 hash64a = AZ::Hash::Fnv1a_64(AZStd::string_view{longStr});
-        const u64 hash64b = AZ::Hash::Fnv1a_64(AZStd::string_view{longStr});
-        EXPECT_EQ(hash64a, hash64b);
+        {
+            const u32 hashA = AZ::Hash::Fnv32{longStr};
+            const u32 hashB = AZ::Hash::Fnv32{longStr};
+            EXPECT_EQ(hashA, hashB);
+        }
+
+        {
+            const u64 hashA = AZ::Hash::Fnv64{longStr};
+            const u64 hashB = AZ::Hash::Fnv64{longStr};
+            EXPECT_EQ(hashA, hashB);
+        }
     }
 
-    TEST_F(Hash_Fnv, Fnv1a32Hash_DefaultConstructor_IsZero)
+    TEST_F(Hash_Fnv, EmptyDataReturnsOffsetBasis)
     {
-        constexpr AZ::Hash::Fnv32 h;
-        static_assert(h.GetValue() == 0u, "Default constructed Fnv1a32Hash should be 0");
-        EXPECT_EQ(h.GetValue(), 0u);
+        static_assert(
+            AZ::Hash::Fnv32{AZStd::span<const AZStd::byte>{}} == AZ::Hash::Fnv32::OffsetBasis,
+            "FNV-1a 32 of empty byte span must equal offset basis");
+        EXPECT_EQ(AZ::Hash::Fnv32{AZStd::span<const AZStd::byte>{}}, AZ::Hash::Fnv32::OffsetBasis);
+
+        static_assert(
+            AZ::Hash::Fnv64{AZStd::span<const AZStd::byte>{}} == AZ::Hash::Fnv64::OffsetBasis,
+            "FNV-1a 64 of empty byte span must equal offset basis");
+        EXPECT_EQ(AZ::Hash::Fnv64{AZStd::span<const AZStd::byte>{}}, AZ::Hash::Fnv64::OffsetBasis);
     }
 
-    TEST_F(Hash_Fnv, Fnv1a32Hash_RawValueConstructor)
-    {
-        constexpr AZ::Hash::Fnv32 h(0xbf9cf968u);
-        static_assert(h.GetValue() == 0xbf9cf968u);
-        static_assert(static_cast<u32>(h) == 0xbf9cf968u);
-        EXPECT_EQ(h.GetValue(), 0xbf9cf968u);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a32Hash_StringViewConstructor_MatchesFreeFunction)
-    {
-        constexpr AZ::Hash::Fnv32 h("foobar");
-        constexpr u32 expected = AZ::Hash::Fnv1a_32("foobar");
-        static_assert(h.GetValue() == expected);
-        static_assert(h == AZ::Hash::Fnv32(expected));
-
-        const AZStd::string runtimeStr("foobar");
-        const AZ::Hash::Fnv32 runtimeH(AZStd::string_view{runtimeStr});
-        EXPECT_EQ(runtimeH.GetValue(), 0xbf9cf968u);
-        EXPECT_EQ(runtimeH.GetValue(), h.GetValue());
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a32Hash_ByteSpanConstructor_MatchesFreeFunction)
+    TEST_F(Hash_Fnv, SpanMatchesStringViewForAsciiData)
     {
         constexpr AZStd::byte data[] = {
-            static_cast<AZStd::byte>('a'),
-            static_cast<AZStd::byte>('b'),
-            static_cast<AZStd::byte>('c'),
+            AS_BYTE('A'),
+            AS_BYTE('B'),
+            AS_BYTE('C'),
         };
-        constexpr AZ::Hash::Fnv32 h{data};
-        constexpr u32 expected = AZ::Hash::Fnv1a_32(data);
-        static_assert(h.GetValue() == expected);
-        EXPECT_EQ(h.GetValue(), expected);
+
+        {
+            constexpr u32 byteHash = AZ::Hash::Fnv32{data};
+            constexpr u32 stringHash = AZ::Hash::Fnv32{"ABC"};
+            static_assert(byteHash == stringHash, "Byte span hash of ASCII data should match string hash");
+            EXPECT_EQ(byteHash, stringHash);
+        }
+
+        {
+            constexpr u64 byteHash = AZ::Hash::Fnv64{data};
+            constexpr u64 stringHash = AZ::Hash::Fnv64{"ABC"};
+            static_assert(byteHash == stringHash, "Byte span hash of ASCII data should match string hash");
+            EXPECT_EQ(byteHash, stringHash);
+        }
     }
 
-    TEST_F(Hash_Fnv, Fnv1a32Hash_ComparisonOperators)
+    TEST_F(Hash_Fnv, BinaryDataWithNs)
     {
-        constexpr AZ::Hash::Fnv32 a("a");
-        constexpr AZ::Hash::Fnv32 b("b");
-        constexpr AZ::Hash::Fnv32 a2("a");
-
-        static_assert(a == a2);
-        static_assert(a != b);
-        static_assert((a < b) || (a > b));
-        static_assert(a <= a2);
-        static_assert(a >= a2);
-
-        EXPECT_EQ(a, a2);
-        EXPECT_NE(a, b);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a32Hash_BoolOperator)
-    {
-        constexpr AZ::Hash::Fnv32 zero;
-        constexpr AZ::Hash::Fnv32 nonZero("x");
-        static_assert(!zero, "Default (zero) hash should be falsy via operator!");
-        static_assert(!!nonZero, "Non-zero hash should be truthy");
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a32Hash_ExplicitConversion)
-    {
-        constexpr AZ::Hash::Fnv32 h(0x12345678u);
-        constexpr u32 v = static_cast<u32>(h);
-        static_assert(v == 0x12345678u);
-        EXPECT_EQ(v, 0x12345678u);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a64Hash_DefaultConstructor_IsZero)
-    {
-        constexpr AZ::Hash::Fnv64 h;
-        static_assert(h.GetValue() == 0ULL, "Default constructed Fnv1a64Hash should be 0");
-        EXPECT_EQ(h.GetValue(), 0ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a64Hash_RawValueConstructor)
-    {
-        constexpr AZ::Hash::Fnv64 h(0x85944171f73967e8ULL);
-        static_assert(h.GetValue() == 0x85944171f73967e8ULL);
-        static_assert(static_cast<u64>(h) == 0x85944171f73967e8ULL);
-        EXPECT_EQ(h.GetValue(), 0x85944171f73967e8ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a64Hash_StringViewConstructor_MatchesFreeFunction)
-    {
-        constexpr AZ::Hash::Fnv64 h("foobar");
-        constexpr u64 expected = AZ::Hash::Fnv1a_64("foobar");
-        static_assert(h.GetValue() == expected);
-        static_assert(h == AZ::Hash::Fnv64(expected));
-
-        const AZStd::string runtimeStr("foobar");
-        const AZ::Hash::Fnv64 runtimeH(AZStd::string_view{runtimeStr});
-        EXPECT_EQ(runtimeH.GetValue(), 0x85944171f73967e8ULL);
-        EXPECT_EQ(runtimeH.GetValue(), h.GetValue());
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a64Hash_ByteSpanConstructor_MatchesFreeFunction)
-    {
-        constexpr AZStd::byte data[] = {
-            static_cast<AZStd::byte>('a'),
-            static_cast<AZStd::byte>('b'),
-            static_cast<AZStd::byte>('c'),
+        // Hash data that contains n bytes must not stop early
+        const AZStd::byte data[] = {
+            AS_BYTE(0x00),
+            AS_BYTE(0xFF),
+            AS_BYTE(0x42),
+            AS_BYTE(0x00),
+            AS_BYTE(0x13),
         };
-        constexpr AZ::Hash::Fnv64 h{data};
-        constexpr u64 expected = AZ::Hash::Fnv1a_64(data);
-        static_assert(h.GetValue() == expected);
-        EXPECT_EQ(h.GetValue(), expected);
+
+        {
+            const u32 hash = AZ::Hash::Fnv32{data};
+            EXPECT_NE(hash, AZ::Hash::Fnv32::OffsetBasis);
+        }
+
+        {
+            const u64 hash = AZ::Hash::Fnv64{data};
+            EXPECT_NE(hash, AZ::Hash::Fnv64::OffsetBasis);
+        }
     }
 
-    TEST_F(Hash_Fnv, Fnv1a64Hash_ComparisonOperators)
+    TEST_F(Hash_Fnv, RuntimeVector)
     {
-        constexpr AZ::Hash::Fnv64 a("a");
-        constexpr AZ::Hash::Fnv64 b("b");
-        constexpr AZ::Hash::Fnv64 a2("a");
+        // Verify the span overload works with runtime-constructed containers
+        AZStd::vector<AZStd::byte> data;
+        data.push_back(AS_BYTE('H'));
+        data.push_back(AS_BYTE('e'));
+        data.push_back(AS_BYTE('l'));
+        data.push_back(AS_BYTE('l'));
+        data.push_back(AS_BYTE('o'));
+        data.push_back(AS_BYTE('!'));
 
-        static_assert(a == a2);
-        static_assert(a != b);
-        static_assert((a < b) || (a > b));
-        static_assert(a <= a2);
-        static_assert(a >= a2);
+        {
+            const u32 hash = AZ::Hash::Fnv32{data};
+            EXPECT_EQ(hash, AZ::Hash::Fnv32{"Hello!"});
+        }
 
-        EXPECT_EQ(a, a2);
-        EXPECT_NE(a, b);
+        {
+            const u64 hash = AZ::Hash::Fnv64{data};
+            EXPECT_EQ(hash, AZ::Hash::Fnv64{"Hello!"});
+        }
     }
 
-    TEST_F(Hash_Fnv, Fnv1a64Hash_BoolOperator)
+    TEST_F(Hash_Fnv, ConstexprArray)
     {
-        constexpr AZ::Hash::Fnv64 zero;
-        constexpr AZ::Hash::Fnv64 nonZero("x");
-        static_assert(!zero, "Default (zero) hash should be falsy via operator!");
-        static_assert(!!nonZero, "Non-zero hash should be truthy");
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a64Hash_ExplicitConversion)
-    {
-        constexpr AZ::Hash::Fnv64 h(0x123456789ABCDEF0ULL);
-        constexpr u64 v = static_cast<u64>(h);
-        static_assert(v == 0x123456789ABCDEF0ULL);
-        EXPECT_EQ(v, 0x123456789ABCDEF0ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a32Hash_AZStdHash_ReturnsExpectedValue)
-    {
-        constexpr AZ::Hash::Fnv32 h("foobar");
-        const AZStd::hash<AZ::Hash::Fnv32> hasher;
-        EXPECT_EQ(hasher(h), static_cast<size_t>(h.GetValue()));
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a64Hash_AZStdHash_ReturnsExpectedValue)
-    {
-        constexpr AZ::Hash::Fnv64 h("foobar");
-        const AZStd::hash<AZ::Hash::Fnv64> hasher;
-        EXPECT_EQ(hasher(h), h.GetValue());
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_CanonicalTestVectors)
-    {
-        EXPECT_EQ(AZ::Hash::Fnv1a_32(""), 0x811c9dc5u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("a"), 0xe40c292cu);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("b"), 0xe70c2de5u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("c"), 0xe60c2c52u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("d"), 0xe10c2473u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("e"), 0xe00c22e0u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("f"), 0xe30c2799u);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_CanonicalTestVectors)
-    {
-        EXPECT_EQ(AZ::Hash::Fnv1a_64(""), 0xcbf29ce484222325ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("a"), 0xaf63dc4c8601ec8cULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("b"), 0xaf63df4c8601f1a5ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("c"), 0xaf63de4c8601eff2ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("d"), 0xaf63d94c8601e773ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("e"), 0xaf63d84c8601e5c0ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("f"), 0xaf63db4c8601ead9ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_32_MultiCharCanonicalVectors)
-    {
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("fo"), 0x6f631072u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("foo"), 0xa9f37ed7u);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("foob"), 0x3f5076efu);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("fooba"), 0x39aaa18au);
-        EXPECT_EQ(AZ::Hash::Fnv1a_32("foobar"), 0xbf9cf968u);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a_64_MultiCharCanonicalVectors)
-    {
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("fo"), 0x08985907b541d342ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("foo"), 0xdcb27518fed9d577ULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("foob"), 0xdd120e790c2512afULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("fooba"), 0xcac165afa2fef40aULL);
-        EXPECT_EQ(AZ::Hash::Fnv1a_64("foobar"), 0x85944171f73967e8ULL);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a32Hash_UsableAsUnorderedMapKey)
-    {
-        AZStd::unordered_map<AZ::Hash::Fnv32, int> map;
-        const AZ::Hash::Fnv32 keyA("alpha");
-        const AZ::Hash::Fnv32 keyB("beta");
-
-        map[keyA] = 1;
-        map[keyB] = 2;
-
-        EXPECT_EQ(map.size(), 2u);
-        EXPECT_EQ(map[keyA], 1);
-        EXPECT_EQ(map[keyB], 2);
-
-        const AZ::Hash::Fnv32 keyA2("alpha");
-        map[keyA2] = 42;
-        EXPECT_EQ(map.size(), 2u);
-        EXPECT_EQ(map[keyA], 42);
-    }
-
-    TEST_F(Hash_Fnv, Fnv1a64Hash_UsableAsUnorderedMapKey)
-    {
-        AZStd::unordered_map<AZ::Hash::Fnv64, AZStd::string_view> map;
-        const AZ::Hash::Fnv64 keyA("alpha");
-        const AZ::Hash::Fnv64 keyB("beta");
-
-        map[keyA] = "first";
-        map[keyB] = "second";
-
-        EXPECT_EQ(map.size(), 2u);
-        EXPECT_EQ(map[keyA], "first");
-        EXPECT_EQ(map[keyB], "second");
-
-        std::vector<AZ::Hash::Fnv32> examples{
-            "Hello",
-            "Beautiful",
-            "World!",
+        constexpr AZStd::array data = {
+            AS_BYTE('A'),
+            AS_BYTE('B'),
+            AS_BYTE('C'),
         };
+
+        {
+            constexpr u32 hash = AZ::Hash::Fnv32{data};
+            constexpr u32 expected = AZ::Hash::Fnv32{"ABC"};
+            static_assert(hash == expected, "Byte span from array should match string hash");
+            EXPECT_EQ(hash, expected);
+        }
+
+        {
+            constexpr u64 hash = AZ::Hash::Fnv64{data};
+            constexpr u64 expected = AZ::Hash::Fnv64{"ABC"};
+            static_assert(hash == expected, "Byte span from array should match string hash");
+            EXPECT_EQ(hash, expected);
+        }
+    }
+
+    TEST_F(Hash_Fnv, DefaultConstructorIsZero)
+    {
+        {
+            constexpr AZ::Hash::Fnv32 hash;
+            static_assert(hash.GetValue() == 0, "Default constructed Fnv32 should be 0");
+            EXPECT_EQ(hash.GetValue(), 0);
+        }
+
+        {
+            constexpr AZ::Hash::Fnv64 hash;
+            static_assert(hash.GetValue() == 0, "Default constructed Fnv64 should be 0");
+            EXPECT_EQ(hash.GetValue(), 0);
+        }
+    }
+
+    TEST_F(Hash_Fnv, RawValueConstructor)
+    {
+        {
+            constexpr u32 raw = 0xDEADBEEF;
+            constexpr AZ::Hash::Fnv32 hash{raw};
+            static_assert(hash.GetValue() == raw);
+            static_assert(static_cast<u32>(hash) == raw);
+            EXPECT_EQ(hash.GetValue(), raw);
+            EXPECT_EQ(static_cast<u32>(hash), raw);
+        }
+
+        {
+            constexpr u64 raw = 0xDEADBEEF'DEADBEEF;
+            constexpr AZ::Hash::Fnv64 hash{raw};
+            static_assert(hash.GetValue() == raw);
+            static_assert(static_cast<u64>(hash) == raw);
+            EXPECT_EQ(hash.GetValue(), raw);
+            EXPECT_EQ(static_cast<u64>(hash), raw);
+        }
+    }
+
+    TEST_F(Hash_Fnv, StringConstructor)
+    {
+        {
+            // Compile-time from string literal
+            constexpr AZ::Hash::Fnv32 hash{"Hello!"};
+            static_assert(hash.GetValue() == 0xAA21C9DE);
+            EXPECT_EQ(hash.GetValue(), 0xAA21C9DE);
+
+            // Runtime from string view
+            const AZStd::string str{"Hello!"};
+            const AZ::Hash::Fnv32 runtimeHash{str};
+            EXPECT_EQ(runtimeHash.GetValue(), hash.GetValue());
+        }
+
+        {
+            constexpr AZ::Hash::Fnv64 hash{"Hello!"};
+            static_assert(hash.GetValue() == 0x9224FCE07C59FABE);
+            EXPECT_EQ(hash.GetValue(), 0x9224FCE07C59FABE);
+
+            const AZStd::string str{"Hello!"};
+            const AZ::Hash::Fnv64 runtimeHash{str};
+            EXPECT_EQ(runtimeHash.GetValue(), hash.GetValue());
+        }
+    }
+
+    TEST_F(Hash_Fnv, ComparisonOperators)
+    {
+        {
+            constexpr AZ::Hash::Fnv32 a{"A"};
+            constexpr AZ::Hash::Fnv32 b{"B"};
+            constexpr AZ::Hash::Fnv32 aDup{"A"};
+
+            static_assert(a == aDup);
+            static_assert(a != b);
+            static_assert((a < b) || (a > b));
+            static_assert(a <= aDup);
+            static_assert(a >= aDup);
+
+            EXPECT_EQ(a, aDup);
+            EXPECT_NE(a, b);
+            EXPECT_TRUE((a < b) || (a > b));
+            EXPECT_LE(a, aDup);
+            EXPECT_GE(a, aDup);
+        }
+
+        {
+            constexpr AZ::Hash::Fnv64 a{"A"};
+            constexpr AZ::Hash::Fnv64 b{"B"};
+            constexpr AZ::Hash::Fnv64 aDup{"A"};
+
+            static_assert(a == aDup);
+            static_assert(a != b);
+            static_assert((a < b) || (a > b));
+            static_assert(a <= aDup);
+            static_assert(a >= aDup);
+
+            EXPECT_EQ(a, aDup);
+            EXPECT_NE(a, b);
+            EXPECT_TRUE((a < b) || (a > b));
+            EXPECT_LE(a, aDup);
+            EXPECT_GE(a, aDup);
+        }
+    }
+
+    TEST_F(Hash_Fnv, BoolOperator)
+    {
+        {
+            constexpr AZ::Hash::Fnv32 zero;
+            constexpr AZ::Hash::Fnv32 nonZero{"X"};
+            static_assert(!zero, "Default (zero) hash should be falsy");
+            static_assert(!!nonZero, "Non-zero hash should be truthy");
+            EXPECT_FALSE(static_cast<bool>(zero));
+            EXPECT_TRUE(static_cast<bool>(nonZero));
+        }
+
+        {
+            constexpr AZ::Hash::Fnv64 zero;
+            constexpr AZ::Hash::Fnv64 nonZero{"X"};
+            static_assert(!zero, "Default (zero) hash should be falsy");
+            static_assert(!!nonZero, "Non-zero hash should be truthy");
+            EXPECT_FALSE(static_cast<bool>(zero));
+            EXPECT_TRUE(static_cast<bool>(nonZero));
+        }
+    }
+
+    // ReSharper disable CppRedundantCastExpression
+    TEST_F(Hash_Fnv, ExplicitIntegerConversion)
+    {
+        {
+            constexpr AZ::Hash::Fnv32 hash{0x12345678};
+            constexpr u32 value = static_cast<u32>(hash);
+            static_assert(value == 0x12345678);
+            EXPECT_EQ(value, 0x12345678);
+        }
+
+        {
+            constexpr AZ::Hash::Fnv64 hash{0x123456789ABCDEF0};
+            constexpr u64 value = static_cast<u64>(hash);
+            static_assert(value == 0x123456789ABCDEF0);
+            EXPECT_EQ(value, 0x123456789ABCDEF0);
+        }
+    }
+
+    TEST_F(Hash_Fnv, StdHashReturnsExpectedValue)
+    {
+        {
+            constexpr AZ::Hash::Fnv32 hash{"Hello!"};
+            const AZStd::hash<AZ::Hash::Fnv32> hasher;
+            EXPECT_EQ(hasher(hash), static_cast<size_t>(hash.GetValue()));
+        }
+
+        {
+            constexpr AZ::Hash::Fnv64 hash{"Hello!"};
+            const AZStd::hash<AZ::Hash::Fnv64> hasher;
+            EXPECT_EQ(hasher(hash), hash.GetValue());
+        }
+    }
+
+    TEST_F(Hash_Fnv, CanonicalTestVectors)
+    {
+        // Single-character vectors from the FNV reference
+        EXPECT_EQ(AZ::Hash::Fnv32{""}, 0x811C9DC5);
+        EXPECT_EQ(AZ::Hash::Fnv32{"A"}, 0xC40BF6CC);
+        EXPECT_EQ(AZ::Hash::Fnv32{"B"}, 0xC70BFB85);
+        EXPECT_EQ(AZ::Hash::Fnv32{"C"}, 0xC60BF9F2);
+        EXPECT_EQ(AZ::Hash::Fnv32{"D"}, 0xC10BF213);
+        EXPECT_EQ(AZ::Hash::Fnv32{"E"}, 0xC00BF080);
+        EXPECT_EQ(AZ::Hash::Fnv32{"F"}, 0xC30BF539);
+
+        EXPECT_EQ(AZ::Hash::Fnv64{""}, 0xCBF29CE484222325);
+        EXPECT_EQ(AZ::Hash::Fnv64{"A"}, 0xAF63FC4C860222EC);
+        EXPECT_EQ(AZ::Hash::Fnv64{"B"}, 0xAF63FF4C86022805);
+        EXPECT_EQ(AZ::Hash::Fnv64{"C"}, 0xAF63FE4C86022652);
+        EXPECT_EQ(AZ::Hash::Fnv64{"D"}, 0xAF63F94C86021DD3);
+        EXPECT_EQ(AZ::Hash::Fnv64{"E"}, 0xAF63F84C86021C20);
+        EXPECT_EQ(AZ::Hash::Fnv64{"F"}, 0xAF63FB4C86022139);
+
+        // Multi-character progressive vectors
+        EXPECT_EQ(AZ::Hash::Fnv32{"H"}, 0xCD0C04F7);
+        EXPECT_EQ(AZ::Hash::Fnv32{"Ho"}, 0x61EB3B48);
+        EXPECT_EQ(AZ::Hash::Fnv32{"How"}, 0x644E442D);
+        EXPECT_EQ(AZ::Hash::Fnv32{"Howd"}, 0x30357EEB);
+        EXPECT_EQ(AZ::Hash::Fnv32{"Howdy"}, 0x76363FD6);
+
+        EXPECT_EQ(AZ::Hash::Fnv64{"H"}, 0xAF64054C86023237);
+        EXPECT_EQ(AZ::Hash::Fnv64{"Ho"}, 0x9275907B5BB8B88);
+        EXPECT_EQ(AZ::Hash::Fnv64{"How"}, 0x49684719CDAEE24D);
+        EXPECT_EQ(AZ::Hash::Fnv64{"Howd"}, 0x6B12F9D8802A4BAB);
+        EXPECT_EQ(AZ::Hash::Fnv64{"Howdy"}, 0x1B8A5CE1C7DED5D6);
+    }
+
+    TEST_F(Hash_Fnv, UsableAsUnorderedMapKey)
+    {
+        {
+            AZStd::unordered_map<AZ::Hash::Fnv32, s32> map;
+            const AZ::Hash::Fnv32 keyA{"Alpha"};
+            const AZ::Hash::Fnv32 keyB{"Beta"};
+
+            map[keyA] = 1;
+            map[keyB] = 2;
+
+            EXPECT_EQ(map.size(), 2u);
+            EXPECT_EQ(map[keyA], 1);
+            EXPECT_EQ(map[keyB], 2);
+
+            // Inserting with an equivalent key overwrites, not duplicates
+            const AZ::Hash::Fnv32 duplicateKey{"Alpha"};
+            map[duplicateKey] = 42;
+            EXPECT_EQ(map.size(), 2u);
+            EXPECT_EQ(map[keyA], 42);
+        }
+
+        {
+            AZStd::unordered_map<AZ::Hash::Fnv64, s32> map;
+            const AZ::Hash::Fnv64 keyA{"Alpha"};
+            const AZ::Hash::Fnv64 keyB{"Beta"};
+
+            map[keyA] = 1;
+            map[keyB] = 2;
+
+            EXPECT_EQ(map.size(), 2u);
+            EXPECT_EQ(map[keyA], 1);
+            EXPECT_EQ(map[keyB], 2);
+
+            // Inserting with an equivalent key overwrites, not duplicates
+            const AZ::Hash::Fnv64 duplicateKey{"Alpha"};
+            map[duplicateKey] = 42;
+            EXPECT_EQ(map.size(), 2u);
+            EXPECT_EQ(map[keyA], 42);
+        }
     }
 } // namespace UnitTest
+
+#undef AS_BYTE

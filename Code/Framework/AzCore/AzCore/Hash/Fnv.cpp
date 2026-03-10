@@ -6,20 +6,26 @@
  *
  */
 
-#include "Fnv.h"
+#include <AzCore/Hash/Fnv.h>
 
-#include <AzCore/std/containers/map.h>
-#include <AzCore/std/string/string.h>
+#include <AzCore/Serialization/SerializeContext.h>
 
-static AZStd::map<AZ::u32, AZStd::string> s_debugStrings_Fnv32;
-static AZStd::map<AZ::u64, AZStd::string> s_debugStrings_Fnv64;
-
-void AZ::Hash::Fnv32::DebugString([[maybe_unused]] const AZStd::string_view str) const
+namespace AZ::Hash
 {
-    s_debugStrings_Fnv32[m_value] = str;
+    AZ_TYPE_INFO_WITH_NAME_IMPL(Fnv32, "Fnv32", "{AF2AE713-1B8B-428A-A976-3087CC3D2612}")
+    AZ_TYPE_INFO_WITH_NAME_IMPL(Fnv64, "Fnv64", "{6A691207-691F-4D94-B18C-216492A07E23}")
 }
 
-void AZ::Hash::Fnv64::DebugString([[maybe_unused]] const AZStd::string_view str) const
+void AZ::Hash::Fnv32::Reflect(AZ::SerializeContext& context)
 {
-    s_debugStrings_Fnv64[m_value] = str;
+    using Self = Fnv32;
+    context.Class<Self>()
+        ->Field("Value", &Self::m_value);
+}
+
+void AZ::Hash::Fnv64::Reflect(AZ::SerializeContext& context)
+{
+    using Self = Fnv64;
+    context.Class<Self>()
+        ->Field("Value", &Self::m_value);
 }

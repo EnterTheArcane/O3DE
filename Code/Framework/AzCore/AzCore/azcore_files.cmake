@@ -7,6 +7,7 @@
 #
 
 set(FILES
+    AzCore.natvis
     AzCoreModule.h
     AzCoreModule.cpp
     Asset/AssetCommon.cpp
