@@ -36,7 +36,7 @@ ARG CMAKE_BUILD_TYPE=Release
 ENV CMAKE_INSTALL_PREFIX=/usr/local
 
 # == BINARYEN == #
-FROM builder AS binaryen
+FROM builder AS build-binaryen
 
 ARG BINARYEN_VERSION="128"
 
@@ -48,8 +48,11 @@ cmake -G Ninja -S src -B build -DBUILD_TESTS=OFF
 cmake --build build --target install
 EOSH
 
+FROM scratch AS binaryen
+COPY --link --from=build-binaryen /usr/local /usr/local
+
 # == CMAKE == #
-FROM builder AS cmake
+FROM builder AS build-cmake
 
 ARG CMAKE_VERSION="4.2.3"
 
@@ -61,8 +64,11 @@ cmake -G Ninja -S src -B build
 cmake --build build --target install
 EOSH
 
+FROM scratch AS cmake
+COPY --link --from=build-cmake /usr/local /usr/local
+
 # == EMSCRIPTEN == #
-FROM builder AS emscripten
+FROM builder AS build-emscripten
 
 ARG EMSCRIPTEN_VERSION="4.0.23"
 
@@ -77,8 +83,11 @@ for f in /usr/local/share/emscripten/em*.py; do
 done
 EOSH
 
+FROM scratch AS emscripten
+COPY --link --from=build-emscripten /usr/local /usr/local
+
 # == LLVM == #
-FROM builder AS llvm
+FROM builder AS build-llvm
 
 ARG LLVM_VERSION="22.1.1"
 
@@ -98,8 +107,11 @@ cmake -G Ninja -S src/llvm -B build \
 cmake --build build --target install
 EOSH
 
+FROM scratch AS llvm
+COPY --link --from=build-llvm /usr/local /usr/local
+
 # == NINJA == #
-FROM builder AS ninja
+FROM builder AS build-ninja
 
 ARG NINJA_VERSION="1.13.2"
 
@@ -111,8 +123,11 @@ cmake -G Ninja -S src -B build -DBUILD_TESTING=OFF
 cmake --build build --target install
 EOSH
 
+FROM scratch AS ninja
+COPY --link --from=build-ninja /usr/local /usr/local
+
 # == NODEJS == #
-FROM builder AS nodejs
+FROM builder AS build-node
 
 ARG NODEJS_VERSION="24.14.0"
 
@@ -126,8 +141,11 @@ make -j$(nproc)
 make install
 EOSH
 
+FROM scratch AS node
+COPY --link --from=build-node /usr/local /usr/local
+
 # == PYTHON == #
-FROM builder AS python
+FROM builder AS build-python
 
 ARG PYTHON_VERSION="3.14.3"
 
@@ -140,6 +158,9 @@ make -j$(nproc)
 make install
 EOSH
 
+FROM scratch AS python
+COPY --link --from=build-python /usr/local /usr/local
+
 # == TOOLCHAIN == #
 FROM base AS toolchain
 
@@ -148,9 +169,5 @@ COPY --link --from=cmake /usr/local /usr/local
 COPY --link --from=emscripten /usr/local /usr/local
 COPY --link --from=llvm /usr/local /usr/local
 COPY --link --from=ninja /usr/local /usr/local
-COPY --link --from=nodejs /usr/local /usr/local
+COPY --link --from=node /usr/local /usr/local
 COPY --link --from=python /usr/local /usr/local
-
-RUN <<EOSH
-printf '%s\n' /lib /usr/lib /usr/local/lib /usr/local/lib64 > /etc/ld-musl-x86_64.path
-EOSH

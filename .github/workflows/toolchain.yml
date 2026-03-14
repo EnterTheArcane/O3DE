@@ -11,19 +11,19 @@ on:
   workflow_dispatch:
     inputs:
       alpine:
-        description: Alpine
+        description: Build Alpine
         type: boolean
         default: true
       fedora:
-        description: Fedora
+        description: Build Fedora
         type: boolean
         default: true
       ubuntu:
-        description: Ubuntu
+        description: Build Ubuntu
         type: boolean
         default: true
       windows:
-        description: Windows
+        description: Build Windows
         type: boolean
         default: true
 
