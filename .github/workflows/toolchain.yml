@@ -1,0 +1,132 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+
+name: Toolchain
+
+on:
+  workflow_dispatch:
+    inputs:
+      alpine:
+        description: Alpine
+        type: boolean
+        default: true
+      fedora:
+        description: Fedora
+        type: boolean
+        default: true
+      ubuntu:
+        description: Ubuntu
+        type: boolean
+        default: true
+      windows:
+        description: Windows
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ${{ github.repository_owner }}/toolchain
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-slim
+    outputs:
+      build-matrix: ${{ steps.matrix.outputs.build }}
+      merge-matrix: ${{ steps.matrix.outputs.merge }}
+    steps:
+      - name: Generate matrices
+        id: matrix
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const builds = [];
+            const variants = [];
+
+            for (const [variant, enabled] of [
+              ['alpine', ${{ inputs.alpine }}],
+              ['fedora', ${{ inputs.fedora }}],
+              ['ubuntu', ${{ inputs.ubuntu }}],
+            ]) {
+              if (!enabled) continue;
+              variants.push(variant);
+              const name = variant.charAt(0).toUpperCase() + variant.slice(1);
+              builds.push(
+                { variant, dockerfile: `Toolchain/${name}/Dockerfile`, runner: 'ubuntu-latest', arch: 'amd64' },
+                { variant, dockerfile: `Toolchain/${name}/Dockerfile`, runner: 'ubuntu-24.04-arm', arch: 'arm64' },
+              );
+            }
+
+            if (${{ inputs.windows }}) {
+              variants.push('windows');
+              builds.push(
+                { variant: 'windows', dockerfile: 'Toolchain/Windows/Dockerfile', runner: 'windows-latest', arch: 'amd64' },
+                { variant: 'windows', dockerfile: 'Toolchain/Windows/Dockerfile', runner: 'windows-11-arm', arch: 'arm64' },
+              );
+            }
+
+            core.setOutput('build', JSON.stringify({ include: builds }));
+            core.setOutput('merge', JSON.stringify({ variant: variants }));
+
+  build:
+    name: Build
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.build-matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Docker Login
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        uses: docker/build-push-action@v7
+        with:
+          file: Tools/Containers/${{ matrix.dockerfile }}
+          target: toolchain
+          provenance: false
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ matrix.variant }}-${{ matrix.arch }}
+          push: true
+
+  merge:
+    name: Merge
+    needs: [prepare, build]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.merge-matrix) }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker Login
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Create Manifest
+        run: >-
+          docker buildx imagetools create
+          --tag ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ matrix.variant }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ matrix.variant }}-amd64
+          ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ matrix.variant }}-arm64
