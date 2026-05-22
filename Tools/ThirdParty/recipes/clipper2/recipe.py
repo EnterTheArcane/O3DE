@@ -1,0 +1,103 @@
+from thirdparty import RecipeBase as ConanFile
+from thirdparty.tools.files import get, copy, rmdir, apply_conandata_patches, replace_in_file
+from thirdparty.tools.build import check_min_cppstd
+from thirdparty.tools.scm import Version
+from thirdparty.tools.cmake import CMake, CMakeToolchain
+import os
+
+class Recipe(ConanFile):
+    name = "clipper2"
+    version = "2.0.1"
+    license = "BSL-2.0"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "usingz": ["ON", "OFF", "ONLY"],
+        "with_max_precision": ["ANY"],
+        "with_hi_precision": [True, False],
+    }
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "usingz": "ON",
+        "with_max_precision": 8,
+        "with_hi_precision": False,
+    }
+
+    @property
+    def _min_cppstd(self):
+        return 17
+
+    @property
+    def _compilers_minimum_version(self):
+        return {
+            "gcc": "8",
+            "clang": "7",
+            "apple-clang": "12",
+            "Visual Studio": "16",
+            "msvc": "192",
+        }
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+        if Version(self.version) < "1.2.4":
+            del self.options.with_max_precision
+        if Version(self.version) < "1.4.0":
+            del self.options.with_hi_precision
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
+    def source(self):
+        get(self, url="https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz", sha256="2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e", destination=self.source_folder, strip_root = Version(self.version) >= "1.2.3")
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS"] = True
+        tc.variables["CLIPPER2_UTILS"] = False
+        tc.variables["CLIPPER2_EXAMPLES"] = False
+        tc.variables["CLIPPER2_TESTS"] = False
+        tc.variables["CLIPPER2_USINGZ"] = self.options.usingz
+        if "with_hi_precision" in self.options:
+            tc.variables["CLIPPER2_HI_PRECISION"] = self.options.with_hi_precision
+        if "with_max_precision" in self.options:
+            tc.variables["CLIPPER2_MAX_PRECISION"] = self.options.with_max_precision
+        tc.generate()
+    
+    def _patch_sources(self):
+        apply_conandata_patches(self)
+        replace_in_file(self, os.path.join(self.source_folder, "CPP", "CMakeLists.txt"), "-Werror", "")
+
+    def build(self):
+        self._patch_sources()
+        cmake = CMake(self)
+        cmake.configure(build_script_folder=os.path.join(self.source_folder, "CPP"))
+        cmake.build()
+
+    def package(self):
+        copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        cmake = CMake(self)
+        cmake.install()
+
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+
+    def package_info(self):
+        if self.options.usingz != "ONLY":
+            self.cpp_info.components["clipper2"].set_property("cmake_target_name", "Clipper2::clipper2")
+            self.cpp_info.components["clipper2"].set_property("pkg_config_name", "Clipper2")
+            self.cpp_info.components["clipper2"].libs = ["Clipper2"]
+            if self.settings.os in ["Linux", "FreeBSD"]:
+                self.cpp_info.components["clipper2"].system_libs.append("m")
+
+        if self.options.usingz != "OFF":
+            self.cpp_info.components["clipper2z"].set_property("cmake_target_name", "Clipper2::clipper2z")
+            self.cpp_info.components["clipper2z"].set_property("pkg_config_name", "Clipper2Z")
+            self.cpp_info.components["clipper2z"].libs = ["Clipper2Z"]
+            self.cpp_info.components["clipper2z"].defines.append("USINGZ")
+            if self.settings.os in ["Linux", "FreeBSD"]:
+                self.cpp_info.components["clipper2z"].system_libs.append("m")

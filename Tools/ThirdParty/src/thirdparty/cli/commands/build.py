@@ -2,9 +2,21 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import sys
 from collections import OrderedDict
 from pathlib import Path
+
+# Names that the porter may strip from imports but that recipes still use at runtime.
+# We inject them into each recipe module's namespace after loading.
+from thirdparty._conan.tools.env.virtualbuildenv import VirtualBuildEnv as _VirtualBuildEnv
+from thirdparty._conan.tools.env.virtualrunenv import VirtualRunEnv as _VirtualRunEnv
+from thirdparty._conan import conan_version as _conan_version
+_RECIPE_INJECT: dict[str, object] = {
+    "VirtualBuildEnv": _VirtualBuildEnv,
+    "VirtualRunEnv":   _VirtualRunEnv,
+    "conan_version":   _conan_version,
+}
 
 from thirdparty._conan.api.model.refs import RecipeReference
 from thirdparty._conan.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
@@ -100,6 +112,11 @@ def _load_recipe_class(recipes_root: Path, name: str) -> type[ConanFile]:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
+    # Inject names the porter may have stripped from imports (e.g. VirtualBuildEnv).
+    for attr_name, obj in _RECIPE_INJECT.items():
+        if not hasattr(module, attr_name):
+            setattr(module, attr_name, obj)
+
     cls = getattr(module, "Recipe", None)
     if cls is None or not (isinstance(cls, type) and issubclass(cls, ConanFile)):
         print(
@@ -154,16 +171,38 @@ def _instantiate(
     return recipe
 
 
-def _get_requires(recipe: ConanFile) -> list[str]:
-    try:
-        recipe.requirements()
-    except Exception:
-        pass
-    names: list[str] = []
+def _get_requires(recipe: ConanFile) -> tuple[list[str], list[str]]:
+    """Call requirements() and build_requirements() and return (host_dep_names, tool_dep_names).
+
+    host_dep_names  — regular library dependencies (build=False)
+    tool_dep_names  — tool_requires / build_requires (build=True)
+    """
+    # Wire up callable wrappers that conan's graph resolution normally sets before calling these
+    # methods. Without them, recipe.tool_requires("foo") raises TypeError (calls None).
+    from thirdparty._conan.internal.model.requires import (
+        BuildRequirements, TestRequirements, ToolRequirements,
+    )
+    recipe.build_requires = BuildRequirements(recipe.requires)
+    recipe.test_requires = TestRequirements(recipe.requires)
+    recipe.tool_requires = ToolRequirements(recipe.requires)
+
+    # config_options() / configure() must run before requirements() so that
+    # option guards like "if self.options.with_elf" reflect the correct value.
+    for method in ("config_options", "configure", "requirements", "build_requirements"):
+        if hasattr(recipe, method):
+            try:
+                getattr(recipe, method)()
+            except Exception:
+                pass
+    host_names: list[str] = []
+    tool_names: list[str] = []
     for req in recipe.requires.values():
-        ref = req.ref
-        names.append(str(ref.name))
-    return names
+        name = str(req.ref.name)
+        if req.build:
+            tool_names.append(name)
+        else:
+            host_names.append(name)
+    return host_names, tool_names
 
 
 def _build_dep_graph(
@@ -172,19 +211,24 @@ def _build_dep_graph(
     dep_names: list[str],
     build_type: str,
     jobs: int | None = None,
+    tool_names: list[str] | None = None,
 ) -> ConanFileDependencies:
     """Create a ConanFileDependencies from a list of already-built packages.
 
-    Loads each dep's recipe, sets its package_folder, calls package_info() to
-    populate cpp_info, then wraps everything in Requirement / ConanFileInterface
-    pairs so that CMakeDeps and CMakeToolchain can consume them.
+    dep_names  — host (non-build) deps (build=False)
+    tool_names — tool_requires (build=True); optional
     """
     deps_dict: OrderedDict = OrderedDict()
 
-    for dep_name in dep_names:
+    def _add_dep(dep_name: str, is_build: bool) -> None:
+        recipe_path = recipes_root / dep_name / "recipe.py"
+        if not recipe_path.exists():
+            print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
+            return
+
         dep_cls = _load_recipe_class(recipes_root, dep_name)
         dep_version = _resolve_version(dep_cls)
-        pkg_dir = str(build_root / dep_name / dep_version / "package")
+        pkg_dir = str((build_root / dep_name / dep_version / "package").resolve())
 
         dep = dep_cls(display_name=dep_name)
         dep.version = dep_version
@@ -201,35 +245,61 @@ def _build_dep_graph(
         dep._conan_buildenv = Environment()
         dep._conan_runenv = Environment()
 
-        # Provide ref / context / recipe via a lightweight fake node so that
-        # ConanFileInterface (and any property that delegates to _conan_node) works.
         dep._conan_node = _FakeNode(dep_name, dep_version)
 
-        # Populate cpp_info from package_info()
-        if hasattr(dep, "config_options"):
-            try:
-                dep.config_options()
-            except Exception:
-                pass
-        if hasattr(dep, "configure"):
-            try:
-                dep.configure()
-            except Exception:
-                pass
+        for method_name in ("config_options", "configure"):
+            if hasattr(dep, method_name):
+                try:
+                    getattr(dep, method_name)()
+                except Exception:
+                    pass
+
+        # Populate dep's own transitive dep graph so generators can resolve
+        # component dependencies (e.g. spirv-tools-core → spirv-headers).
+        try:
+            from thirdparty._conan.internal.model.requires import (
+                BuildRequirements, TestRequirements, ToolRequirements,
+            )
+            dep.build_requires = BuildRequirements(dep.requires)
+            dep.test_requires = TestRequirements(dep.requires)
+            dep.tool_requires = ToolRequirements(dep.requires)
+            for _meth in ("requirements", "build_requirements"):
+                if hasattr(dep, _meth):
+                    try:
+                        getattr(dep, _meth)()
+                    except Exception:
+                        pass
+            _sub_host = [str(r.ref.name) for r in dep.requires.values() if not r.build]
+            _sub_tools = [str(r.ref.name) for r in dep.requires.values() if r.build]
+            dep._conan_dependencies = _build_dep_graph(
+                recipes_root, build_root, _sub_host, build_type,
+                jobs=jobs, tool_names=_sub_tools,
+            )
+        except Exception:
+            dep._conan_dependencies = ConanFileDependencies(OrderedDict())
         if hasattr(dep, "package_info"):
             try:
                 dep.package_info()
             except Exception as exc:
                 print(f"[thirdparty] warn: package_info() failed for {dep_name}: {exc}")
 
-        # Build the Requirement key (host, direct host dep)
+        # Make all relative cpp_info paths absolute so generators don't assert.
+        dep.cpp_info.set_relative_base_folder(pkg_dir)
+
         ref = RecipeReference(dep_name, dep_version)
-        req = Requirement(ref, build=False, direct=True)
-
-        # Wrap in ConanFileInterface (consumer=None; only used for conditional flag evaluation)
+        if is_build:
+            # tool_require: build=True, run=True, headers=False, libs=False, visible=False
+            req = Requirement(ref, headers=False, libs=False, build=True, run=True,
+                              visible=False, direct=True)
+        else:
+            req = Requirement(ref, build=False, direct=True)
         iface = ConanFileInterface(dep, None)
-
         deps_dict[req] = iface
+
+    for dep_name in dep_names:
+        _add_dep(dep_name, is_build=False)
+    for dep_name in (tool_names or []):
+        _add_dep(dep_name, is_build=True)
 
     return ConanFileDependencies(deps_dict)
 
@@ -265,7 +335,7 @@ def _build_recipe(
     # Probe the recipe to discover its direct dependencies (even when pre-built,
     # so we can return the correct transitive dep list to our caller).
     probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
-    direct_deps = _get_requires(probe)
+    direct_deps, direct_tools = _get_requires(probe)
 
     # Recursively build deps and collect their full transitive dep lists.
     transitive: list[str] = []
@@ -285,7 +355,8 @@ def _build_recipe(
         return transitive
 
     # Build the dependency graph for this recipe from all transitive deps.
-    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type, jobs=jobs)
+    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type, jobs=jobs,
+                                 tool_names=direct_tools)
 
     print(f"\n[thirdparty] === Building {name}/{version} ({build_type}) ===\n")
 
@@ -310,7 +381,19 @@ def _build_recipe(
     if not generate_only and hasattr(recipe, "source"):
         recipe.source()
     if hasattr(recipe, "generate"):
-        recipe.generate()
+        # Conan generators write files with bare filenames and expect CWD == generators_folder
+        # (the comment in CMakeDeps says "# Current directory is the generators_folder").
+        # We must chdir there before calling generate() so files land in the build tree, not here.
+        gen_folder = recipe.generators_folder
+        if gen_folder:
+            Path(gen_folder).mkdir(parents=True, exist_ok=True)
+        _orig_cwd = os.getcwd()
+        try:
+            if gen_folder:
+                os.chdir(gen_folder)
+            recipe.generate()
+        finally:
+            os.chdir(_orig_cwd)
     generate_aggregated_env(recipe)
     if not generate_only:
         if hasattr(recipe, "build"):

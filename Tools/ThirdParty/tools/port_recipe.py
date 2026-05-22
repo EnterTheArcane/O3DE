@@ -66,7 +66,7 @@ _IMPORT_MAP: dict[str, str | None] = {
 _FILTER_SYMBOLS: dict[str, set[str]] = {
     "conan.tools.cmake": {"cmake_layout", "basic_layout"},
     "conan.tools.files": {"export_conandata_patches"},   # no-op; export_sources() removed
-    "conan.tools.env":   {"VirtualBuildEnv", "VirtualRunEnv"},  # driver handles this
+    "conan.tools.env":   set(),  # VirtualBuildEnv/VirtualRunEnv are re-exported from thirdparty.tools.env
 }
 
 # Class-level attribute assignments that carry only upstream metadata
@@ -369,6 +369,20 @@ def _copy_patches(conandata: dict, version: str, cci_dir: Path, out_dir: Path) -
         print(f"  [patch] {src.name}")
 
 
+_SKIP_NAMES = {"conanfile.py", "conandata.yml", "test_package", "patches", "__pycache__"}
+
+def _copy_data_files(cci_dir: Path, out_dir: Path) -> None:
+    """Copy auxiliary data files (e.g. *.conf, *.ini) that recipes reference
+    at runtime via self.recipe_folder, but are not conanfile.py/conandata.yml."""
+    for item in cci_dir.iterdir():
+        if item.name in _SKIP_NAMES or item.name.startswith("."):
+            continue
+        if item.is_file() and item.suffix not in {".py", ".yml", ".yaml"}:
+            dst = out_dir / item.name
+            shutil.copy2(item, dst)
+            print(f"  [data] {item.name}")
+
+
 # ===========================================================================
 # libcst helpers
 # ===========================================================================
@@ -554,6 +568,7 @@ def port_recipe(
     out_path.write_text(transformed, encoding="utf-8")
     print(f"[port] {name}/{version}")
     _copy_patches(conandata, version, cci_dir, out_root / name)
+    _copy_data_files(cci_dir, out_root / name)
     return True
 
 
