@@ -141,3 +141,8 @@ class Recipe(RecipeBase):
             "*.pdb",
         ]:
             rm(pattern_to_remove, os.path.join(self.package_folder, "bin"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "libjpeg-turbo")
+        self.cpp_info.set_property("cmake_target_name", "libjpeg-turbo::jpeg-static")
+        self.cpp_info.set_property("cmake_package_file", "lib/cmake/libjpeg-turbo/libjpeg-turboConfig.cmake")

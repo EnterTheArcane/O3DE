@@ -63,3 +63,8 @@ class Recipe(RecipeBase):
         cmake.install()
         rmdir(os.path.join(self.package_folder, "share"))
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "OpenEXR")
+        self.cpp_info.set_property("cmake_target_name", "OpenEXR::OpenEXR")
+        self.cpp_info.set_property("cmake_package_file", "lib/cmake/OpenEXR/OpenEXRConfig.cmake")

@@ -198,6 +198,24 @@ class Recipe(RecipeBase):
         copy("LICENSE.TXT", doc_folder, license_folder)
 
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+        # Generate a Freetype2Config.cmake shim so meson cmake-method dep lookup
+        # works: meson calls find_package(freetype2) but freetype installs as
+        # find_package(freetype).  The shim forwards to the real config.
+        freetype2_cmake_dir = os.path.join(
+            self.package_folder, "lib", "cmake", "Freetype2"
+        )
+        os.makedirs(freetype2_cmake_dir, exist_ok=True)
+        shim = os.path.join(freetype2_cmake_dir, "Freetype2Config.cmake")
+        with open(shim, "w") as _f:
+            _f.write(
+                '# Shim: forward find_package(freetype2) to freetype cmake package\n'
+                'include("${CMAKE_CURRENT_LIST_DIR}/../freetype/freetype-config.cmake")\n'
+                'if(TARGET Freetype::Freetype)\n'
+                '    set(freetype2_FOUND TRUE)\n'
+                '    set(Freetype2_FOUND TRUE)\n'
+                'endif()\n'
+            )
         self._create_cmake_module_variables(
             os.path.join(self.package_folder, self._module_vars_rel_path)
         )

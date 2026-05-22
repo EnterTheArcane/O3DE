@@ -109,7 +109,7 @@ def _collect_dep_paths(
 
 
 def _collect_dep_info(
-    recipes_root: Path, build_root: Path, deps: list[str]
+    recipes_root: Path, build_root: Path, deps: list[str], build_type: str = "Release"
 ) -> dict[str, DepInfo]:
     info: dict[str, DepInfo] = {}
     for dep in deps:
@@ -117,7 +117,14 @@ def _collect_dep_info(
         ver = _resolve_version(dep_cls)
         pkg = build_root / dep / ver / "package"
         if pkg.exists():
-            info[dep] = DepInfo(package_folder=str(pkg))
+            dep_recipe = _instantiate(dep_cls, recipes_root, build_root, dep, ver, build_type)
+            dep_recipe.package_info()
+            info[dep] = DepInfo(
+                package_folder=str(pkg),
+                name=dep,
+                version=ver,
+                cpp_info=dep_recipe.cpp_info,
+            )
     return info
 
 
@@ -153,7 +160,7 @@ def _build_recipe(
     Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
 
     recipe.dep_package_paths = _collect_dep_paths(recipes_root, build_root, deps)
-    recipe.dependencies = _collect_dep_info(recipes_root, build_root, deps)
+    recipe.dependencies = _collect_dep_info(recipes_root, build_root, deps, build_type)
 
     recipe.source()
     recipe.generate()

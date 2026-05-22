@@ -1,9 +1,9 @@
-# Simplified openimageio recipe — minimal deps, internal fmt/pugixml/robinmap
+# Simplified openimageio recipe — uses external fmt/pugixml/tsl-robin-map recipes
 import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 
 
 class Recipe(RecipeBase):
@@ -28,6 +28,13 @@ class Recipe(RecipeBase):
             "libjpeg-turbo",
             "libpng",
             "libwebp",
+            "opencolorio",
+            "libdeflate",
+            "xz_utils",
+            "zstd",
+            "fmt",
+            "pugixml",
+            "tsl-robin-map",
         ]
 
     def source(self):
@@ -37,11 +44,38 @@ class Recipe(RecipeBase):
             sha256="b0d81f4f041fd72f034bd2a6c5ad9db1880008f67af101233cf3992f9e59217f",
         )
         apply_patches(self)
+        # Guard the unconditional get_target_property call for OpenColorIO;
+        # when USE_OPENCOLORIO=False the target doesn't exist but cmake still tries
+        # to query it, causing a fatal error.
+        replace_in_file(
+            os.path.join(self.source_folder, "src", "cmake", "externalpackages.cmake"),
+            "if (NOT OPENCOLORIO_INCLUDES)\n    get_target_property(OPENCOLORIO_INCLUDES OpenColorIO::OpenColorIO INTERFACE_INCLUDE_DIRECTORIES)\nendif ()",
+            "if (NOT OPENCOLORIO_INCLUDES AND TARGET OpenColorIO::OpenColorIO)\n    get_target_property(OPENCOLORIO_INCLUDES OpenColorIO::OpenColorIO INTERFACE_INCLUDE_DIRECTORIES)\nendif ()",
+        )
+        # Guard unconditional OpenColorIO::OpenColorIO target use in libOpenImageIO
+        replace_in_file(
+            os.path.join(self.source_folder, "src", "libOpenImageIO", "CMakeLists.txt"),
+            "            OpenColorIO::OpenColorIO\n            $<TARGET_NAME_IF_EXISTS:OpenColorIO::OpenColorIOHeaders>",
+            "            $<TARGET_NAME_IF_EXISTS:OpenColorIO::OpenColorIO>\n            $<TARGET_NAME_IF_EXISTS:OpenColorIO::OpenColorIOHeaders>",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_DEBUG_POSTFIX"] = ""
         tc.variables["OIIO_BUILD_TOOLS"] = True
+        # Set IMATH_INCLUDES and OPENEXR_INCLUDES explicitly: these are expected
+        # by externalpackages.cmake's include_directories(BEFORE ...) call but
+        # are normally set by the FindOpenEXR module which we bypass (config mode).
+        imath_dep = self.dependencies.get("imath")
+        if imath_dep:
+            tc.cache_variables["IMATH_INCLUDES"] = os.path.join(
+                imath_dep.package_folder, "include"
+            ).replace("\\", "/")
+        openexr_dep = self.dependencies.get("openexr")
+        if openexr_dep:
+            tc.cache_variables["OPENEXR_INCLUDES"] = os.path.join(
+                openexr_dep.package_folder, "include"
+            ).replace("\\", "/")
         tc.variables["OIIO_BUILD_TESTS"] = False
         tc.variables["BUILD_DOCS"] = False
         tc.variables["INSTALL_DOCS"] = False
@@ -49,17 +83,17 @@ class Recipe(RecipeBase):
         tc.variables["INSTALL_CMAKE_HELPER"] = False
         tc.variables["EMBEDPLUGINS"] = True
         tc.variables["USE_PYTHON"] = False
-        # Use internal/bundled copies of fmt, pugixml, tsl-robin-map
-        tc.variables["USE_EXTERNAL_PUGIXML"] = False
-        tc.cache_variables["OIIO_INTERNALIZE_FMT"] = True
-        tc.cache_variables["BUILD_MISSING_ROBINMAP"] = True
+        # Use external recipes for fmt, pugixml, and tsl-robin-map
+        tc.variables["USE_EXTERNAL_PUGIXML"] = True
+        tc.cache_variables["OIIO_INTERNALIZE_FMT"] = False
+        tc.cache_variables["BUILD_MISSING_ROBINMAP"] = False
         tc.variables["BUILD_TESTING"] = False
         # Enable supported image formats
         tc.variables["USE_JPEGTURBO"] = True
         tc.variables["USE_JPEG"] = True
         tc.variables["USE_LIBPNG"] = True
         tc.variables["USE_LIBWEBP"] = True
-        tc.variables["USE_OPENCOLORIO"] = False
+        tc.variables["USE_OPENCOLORIO"] = True
         tc.variables["USE_OPENCV"] = False
         tc.variables["USE_TBB"] = False
         tc.variables["USE_DCMTK"] = False

@@ -97,5 +97,5 @@ class Recipe(RecipeBase):
             src=self.source_folder,
             dst=os.path.join(self.package_folder, "licenses"),
         )
-        rm(pattern="*.pdb", folder=os.path.join(self.package_folder, "lib"))
+        rm("*.pdb", os.path.join(self.package_folder, "lib"))
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
