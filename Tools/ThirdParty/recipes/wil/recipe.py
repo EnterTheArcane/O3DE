@@ -1,6 +1,3 @@
-# Ported from conan-center-index/wil by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.files import apply_patches, get, copy
 from thirdparty.tools.scm import Version
@@ -38,7 +35,6 @@ class Recipe(RecipeBase):
             src=self.source_folder,
         )
         copy(
-            self,
             pattern="*.h",
             dst=os.path.join(self.package_folder, "include"),
             src=os.path.join(self.source_folder, "include"),

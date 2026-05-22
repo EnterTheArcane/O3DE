@@ -1,6 +1,3 @@
-# Ported from conan-center-index/directx-headers by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.meson import Meson, MesonToolchain

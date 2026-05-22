@@ -1,6 +1,3 @@
-# Ported from conan-center-index/pybind11 by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import get, copy, replace_in_file, rm, rmdir
