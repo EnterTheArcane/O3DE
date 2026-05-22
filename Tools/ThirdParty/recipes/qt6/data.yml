@@ -1,0 +1,4 @@
+versions:
+  6.8.3:
+    url: https://download.qt.io/archive/qt/6.8/6.8.3/single/qt-everywhere-src-6.8.3.tar.xz
+    sha256: cdd3a69967208276bb01af7ace7dba0ba53e679f886a4cbe624225c60fb73f2c

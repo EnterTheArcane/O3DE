@@ -1,0 +1,4 @@
+versions:
+  1.4.321.0:
+    url: https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.321.0.tar.gz
+    sha256: 6037555620c27105bf1d4068a6eeb4b0d7953630d556a1ca9799dfe06fd2fb68

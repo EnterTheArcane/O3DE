@@ -1,0 +1,4 @@
+versions:
+  '1.0':
+    url: https://github.com/zeux/meshoptimizer/archive/refs/tags/v1.0.tar.gz
+    sha256: 30d1c3651986b2074e847b17223a7269c9612ab7f148b944250f81214fed4993

@@ -1,0 +1,4 @@
+versions:
+  '3.2.9':
+    url: https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.2.9/openexr-3.2.9.tar.gz
+    sha256: 926fe5fba3ebeceaf4e07b1940f330213a4d790092a42acff28f636911536c3d
