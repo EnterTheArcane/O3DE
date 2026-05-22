@@ -1,0 +1,17 @@
+{
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "strict",
+  "venvPath": ".",
+  "venv": ".venv",
+  "extraPaths": ["src"],
+  "include": [
+    "src",
+    "recipes"
+  ],
+  "exclude": [
+    ".venv",
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*"
+  ]
+}

@@ -1,0 +1,4 @@
+versions:
+  '1.12':
+    url: https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.12.tar.gz
+    sha256: f058117496097217d12e4ea86adbff8467adaf6f12af793925d243b86b0c4f57

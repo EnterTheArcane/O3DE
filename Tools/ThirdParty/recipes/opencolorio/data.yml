@@ -1,0 +1,7 @@
+versions:
+  2.5.1:
+    url: https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v2.5.1/OpenColorIO-2.5.1.tar.gz
+    sha256: 49ab04d023d7a7a7237e24f2cfead3171b0ff7f466ce20e6e32859ec8c7cc94b
+patches:
+  2.5.1:
+  - patches/2.5.1-0001-fix-cmake-source-dir-and-targets.patch
