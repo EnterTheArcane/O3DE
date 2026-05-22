@@ -1,14 +1,17 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
+from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "alembic"
     version = "1.8.8"
     license = "BSD-3-Clause"
+
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -20,15 +23,21 @@ class Recipe(RecipeBase):
         "with_hdf5": False,
     }
 
-    def requirements(self) -> list[str]:
-        return ["imath", "openexr"]
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
+    def requirements(self):
+        self.requires("imath/[>=3.1.9 <4]", transitive_headers=True)
+        if self.options.with_hdf5:
+            self.requires("hdf5/1.14.3")
 
     def source(self):
-        get(
-            url="https://github.com/alembic/alembic/archive/refs/tags/1.8.8.tar.gz",
-            dest=self.source_folder,
-            sha256="ba1f34544608ef7d3f68cafea946ec9cc84792ddf9cda3e8d5590821df71f6c6",
-        )
+        get(self, url="https://github.com/alembic/alembic/archive/refs/tags/1.8.8.tar.gz", sha256="ba1f34544608ef7d3f68cafea946ec9cc84792ddf9cda3e8d5590821df71f6c6", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -38,11 +47,13 @@ class Recipe(RecipeBase):
         tc.variables["USE_PYALEMBIC"] = False
         tc.variables["USE_BINARIES"] = False
         tc.variables["USE_EXAMPLES"] = False
-        tc.variables["USE_HDF5"] = False
+        tc.variables["USE_HDF5"] = self.options.with_hdf5
         tc.variables["USE_TESTS"] = False
         tc.variables["ALEMBIC_BUILD_LIBS"] = True
+        tc.variables["ALEMBIC_ILMBASE_LINK_STATIC"] = True # for -DOPENEXR_DLL, handled by OpenEXR package
         tc.variables["ALEMBIC_SHARED_LIBS"] = self.options.shared
-        tc.variables["ALEMBIC_USING_IMATH_3"] = True
+        tc.variables["ALEMBIC_USING_IMATH_3"] = False
+        tc.variables["ALEMBIC_ILMBASE_FOUND"] = 1
         if Version(self.version) >= "1.8.4":
             tc.variables["ALEMBIC_DEBUG_WARNINGS_AS_ERRORS"] = False
         tc.generate()
@@ -50,16 +61,24 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def build(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE.txt",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "Alembic")
+        self.cpp_info.set_property("cmake_target_name", "Alembic::Alembic")
+        self.cpp_info.libs = ["Alembic"]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.system_libs.extend(["m", "pthread"])
+
+        # TODO: to remove in conan v2 once cmake_find_package* generators removed
+        self.cpp_info.names["cmake_find_package"] = "Alembic"
+        self.cpp_info.names["cmake_find_package_multi"] = "Alembic"

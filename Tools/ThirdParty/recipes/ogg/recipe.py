@@ -1,14 +1,16 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "ogg"
     version = "1.3.5"
     license = "BSD-2-Clause"
+
+    package_type = "library"
+    settings = "os", "arch", "build_type", "compiler"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -18,13 +20,18 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        self.settings.rm_safe("compiler.libcxx")
+        self.settings.rm_safe("compiler.cppstd")
+
     def source(self):
-        get(
-            url="https://github.com/xiph/ogg/archive/refs/tags/v1.3.5.tar.gz",
-            sha256="f6f1b04cfa4e98b70ffe775d5e302d9c6b98541f05159af6de2d6617817ed7d6",
-            dest=self.source_folder,
-            strip_root=True,
-        )
+        get(self, url="https://github.com/xiph/ogg/archive/refs/tags/v1.3.5.tar.gz", sha256="f6f1b04cfa4e98b70ffe775d5e302d9c6b98541f05159af6de2d6617817ed7d6", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -33,28 +40,30 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         # Honor BUILD_SHARED_LIBS from conan_toolchain (see https://github.com/conan-io/conan/issues/11840)
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0077"] = "NEW"
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
-        if (
-            Version(self.version) > "1.3.5"
-        ):  # pylint: disable=conan-unreachable-upper-version
-            raise RuntimeError(
-                "CMAKE_POLICY_VERSION_MINIMUM hardcoded to 3.5, check if new version supports CMake 4"
-            )
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        if Version(self.version) > "1.3.5": # pylint: disable=conan-unreachable-upper-version
+            raise ConanException("CMAKE_POLICY_VERSION_MINIMUM hardcoded to 3.5, check if new version supports CMake 4")
         tc.generate()
 
     def build(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
 
     def package(self):
-        copy(
-            "COPYING",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "share"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "Ogg")
+        self.cpp_info.set_property("cmake_target_name", "Ogg::ogg")
+        self.cpp_info.set_property("pkg_config_name", "ogg")
+        # TODO: back to global scope in conan v2 once cmake_find_package_* generators removed
+        self.cpp_info.components["ogglib"].libs = ["ogg"]
+        self.cpp_info.components["ogglib"].set_property("cmake_target_name", "Ogg::ogg")
+        self.cpp_info.components["ogglib"].set_property("pkg_config_name", "ogg")

@@ -1,14 +1,15 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import get, load, save
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "sqlite3"
     version = "3.53.1"
     license = "Unlicense"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -66,9 +67,9 @@ class Recipe(RecipeBase):
         "enable_unlock_notify": True,
         "enable_default_secure_delete": False,
         "disable_gethostuuid": False,
-        "max_column": None,  # Uses default value from source
-        "max_variable_number": None,  # Uses default value from source
-        "max_blob_size": None,  # Uses default value from source
+        "max_column": None,             # Uses default value from source
+        "max_variable_number": None,    # Uses default value from source
+        "max_blob_size": None,          # Uses default value from source
         "build_executable": True,
         "enable_default_vfs": True,
         "enable_dbpage_vtab": False,
@@ -76,15 +77,22 @@ class Recipe(RecipeBase):
 
     exports_sources = "CMakeLists.txt"
 
-    def requirements(self) -> list[str]:
-        return []  # icu is optional (enable_icu defaults to False)
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
+
+    def requirements(self):
+        if self.options.enable_icu:
+            self.requires("icu/75.1")
 
     def source(self):
-        get(
-            url="https://sqlite.org/2026/sqlite-amalgamation-3530100.zip",
-            dest=self.source_folder,
-            sha256="36ad6e7f38540a3b21a2ac36340833f0a9e426bc1c752751c3ba669466827eae",
-        )
+        get(self, url="https://sqlite.org/2026/sqlite-amalgamation-3530100.zip", sha256="36ad6e7f38540a3b21a2ac36340833f0a9e426bc1c752751c3ba669466827eae", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -106,9 +114,7 @@ class Recipe(RecipeBase):
         tc.variables["ENABLE_SOUNDEX"] = self.options.enable_soundex
         tc.variables["ENABLE_RTREE"] = self.options.enable_rtree
         tc.variables["ENABLE_UNLOCK_NOTIFY"] = self.options.enable_unlock_notify
-        tc.variables["ENABLE_DEFAULT_SECURE_DELETE"] = (
-            self.options.enable_default_secure_delete
-        )
+        tc.variables["ENABLE_DEFAULT_SECURE_DELETE"] = self.options.enable_default_secure_delete
         tc.variables["USE_ALLOCA"] = self.options.use_alloca
         tc.variables["USE_URI"] = self.options.use_uri
         tc.variables["OMIT_LOAD_EXTENSION"] = self.options.omit_load_extension
@@ -116,8 +122,8 @@ class Recipe(RecipeBase):
         tc.variables["ENABLE_MATH_FUNCTIONS"] = self.options.enable_math_functions
         tc.variables["HAVE_FDATASYNC"] = True
         tc.variables["HAVE_GMTIME_R"] = True
-        tc.variables["HAVE_LOCALTIME_R"] = False  # Windows
-        tc.variables["HAVE_POSIX_FALLOCATE"] = False  # Windows
+        tc.variables["HAVE_LOCALTIME_R"] = self.settings.os != "Windows"
+        tc.variables["HAVE_POSIX_FALLOCATE"] = not (self.settings.os in ["Windows", "Android"] or is_apple_os(self))
         tc.variables["HAVE_STRERROR_R"] = True
         tc.variables["HAVE_USLEEP"] = True
         tc.variables["DISABLE_GETHOSTUUID"] = self.options.disable_gethostuuid
@@ -132,34 +138,42 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        import shutil
-
-        shutil.copy(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "CMakeLists.txt"),
-            os.path.normpath(
-                os.path.join(self.source_folder, os.pardir, "CMakeLists.txt")
-            ),
-        )
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
         cmake.build()
 
     def _extract_license(self):
-        header = load(os.path.join(self.source_folder, "sqlite3.h"))
-        license_content = header[3 : header.find("***", 1)]
+        header = load(self, os.path.join(self.source_folder, "sqlite3.h"))
+        license_content = header[3:header.find("***", 1)]
         return license_content
 
     def package(self):
-        save(
-            os.path.join(self.package_folder, "licenses", "LICENSE"),
-            self._extract_license(),
-        )
+        save(self, os.path.join(self.package_folder, "licenses", "LICENSE"), self._extract_license())
         cmake = CMake(self)
         cmake.install()
 
     def package_info(self):
-        # Qt 6 uses INPUT_sqlite="system" which calls find_package(SQLite3) and
-        # expects the SQLite::SQLite3 imported target.
-        self.cpp_info.libs = ["sqlite3"]
+        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "SQLite3")
         self.cpp_info.set_property("cmake_target_name", "SQLite::SQLite3")
+        self.cpp_info.set_property("pkg_config_name", "sqlite3")
+
+        # TODO: back to global scope in conan v2 once cmake_find_package_* generators removed
+        self.cpp_info.components["sqlite"].libs = ["sqlite3"]
+        if self.options.enable_icu:
+            self.cpp_info.components["sqlite"].requires = ["icu::icu"]
+        if self.options.omit_load_extension:
+            self.cpp_info.components["sqlite"].defines.append("SQLITE_OMIT_LOAD_EXTENSION")
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            if self.options.threadsafe:
+                self.cpp_info.components["sqlite"].system_libs.append("pthread")
+            if not self.options.omit_load_extension:
+                self.cpp_info.components["sqlite"].system_libs.append("dl")
+            if self.options.enable_fts5 or self.options.get_safe("enable_math_functions"):
+                self.cpp_info.components["sqlite"].system_libs.append("m")
+        elif self.settings.os == "Windows":
+            if self.options.shared:
+                self.cpp_info.components["sqlite"].defines.append("SQLITE_API=__declspec(dllimport)")
+
+        self.cpp_info.components["sqlite"].set_property("cmake_target_name", "SQLite::SQLite3")
+        self.cpp_info.components["sqlite"].set_property("pkg_config_name", "sqlite3")

@@ -1,15 +1,16 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, save
+from thirdparty.tools.files import apply_conandata_patches, copy, get, save
 from thirdparty.tools.scm import Version
 import os
 import textwrap
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "bzip2"
     version = "1.0.8"
-    license = "bzip2-1.0.6"  # SPDX license identifier for version 1.0.6 or newer
+    license = "bzip2-1.0.6" # SPDX license identifier for version 1.0.6 or newer
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -21,19 +22,18 @@ class Recipe(RecipeBase):
         "build_executable": True,
     }
 
-    def source(self):
-        get(
-            url="https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
-            dest=self.source_folder,
-            sha256="ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
-        )
-        # Copy the wrapper CMakeLists.txt (exported by the original CCI recipe) to the build root
-        import shutil
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
 
-        shutil.copy2(
-            os.path.join(self.recipe_folder, "CMakeLists.txt"),
-            os.path.join(self.source_folder, os.pardir, "CMakeLists.txt"),
-        )
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        self.settings.compiler.rm_safe("libcxx")
+        self.settings.compiler.rm_safe("cppstd")
+
+    def source(self):
+        get(self, url="https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz", sha256="ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -44,17 +44,13 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
         self._create_cmake_module_variables(
@@ -62,8 +58,7 @@ class Recipe(RecipeBase):
         )
 
     def _create_cmake_module_variables(self, module_file):
-        content = textwrap.dedent(
-            f"""\
+        content = textwrap.dedent(f"""\
             set(BZIP2_NEED_PREFIX TRUE)
             set(BZIP2_FOUND TRUE)
             if(NOT DEFINED BZIP2_INCLUDE_DIRS AND DEFINED BZip2_INCLUDE_DIRS)
@@ -76,12 +71,22 @@ class Recipe(RecipeBase):
                 set(BZIP2_LIBRARIES ${{BZip2_LIBRARIES}})
             endif()
             set(BZIP2_VERSION_STRING "{self.version}")
-        """
-        )
-        save(module_file, content)
+        """)
+        save(self, module_file, content)
 
     @property
     def _module_file_rel_path(self):
-        return os.path.join(
-            "lib", "cmake", f"conan-official-{self.name}-variables.cmake"
-        )
+        return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_find_mode", "both")
+        self.cpp_info.set_property("cmake_file_name", "BZip2")
+        self.cpp_info.set_property("cmake_target_name", "BZip2::BZip2")
+        self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.cpp_info.libs = ["bz2"]
+
+        self.cpp_info.names["cmake_find_package"] = "BZip2"
+        self.cpp_info.names["cmake_find_package_multi"] = "BZip2"
+        self.cpp_info.build_modules["cmake_find_package"] = [self._module_file_rel_path]
+        if self.options.build_executable:
+            self.env_info.PATH.append(os.path.join(self.package_folder, "bin"))

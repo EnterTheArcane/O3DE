@@ -1,14 +1,15 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "brotli"
     version = "1.2.0"
     license = "MIT"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -30,12 +31,18 @@ class Recipe(RecipeBase):
         "enable_log": False,
     }
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
+
     def source(self):
-        get(
-            url="https://github.com/google/brotli/archive/v1.2.0.tar.gz",
-            dest=self.source_folder,
-            sha256="816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
-        )
+        get(self, url="https://github.com/google/brotli/archive/v1.2.0.tar.gz", sha256="816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -43,15 +50,15 @@ class Recipe(RecipeBase):
         tc.variables["BROTLI_DISABLE_TESTS"] = True
         if Version(self.version) >= "1.2.0":
             tc.variables["BROTLI_BUILD_TOOLS"] = False
-        if self.options.get("target_bits") == 32:
+        if self.options.get_safe("target_bits") == 32:
             tc.preprocessor_definitions["BROTLI_BUILD_32_BIT"] = 1
-        elif self.options.get("target_bits") == 64:
+        elif self.options.get_safe("target_bits") == 64:
             tc.preprocessor_definitions["BROTLI_BUILD_64_BIT"] = 1
-        if self.options.get("endianness") == "big":
+        if self.options.get_safe("endianness") == "big":
             tc.preprocessor_definitions["BROTLI_BUILD_BIG_ENDIAN"] = 1
-        elif self.options.get("endianness") == "neutral":
+        elif self.options.get_safe("endianness") == "neutral":
             tc.preprocessor_definitions["BROTLI_BUILD_ENDIAN_NEUTRAL"] = 1
-        elif self.options.get("endianness") == "little":
+        elif self.options.get_safe("endianness") == "little":
             tc.preprocessor_definitions["BROTLI_BUILD_LITTLE_ENDIAN"] = 1
         if self.options.enable_portable:
             tc.preprocessor_definitions["BROTLI_BUILD_PORTABLE"] = 1
@@ -64,28 +71,40 @@ class Recipe(RecipeBase):
         if Version(self.version) < "1.1.0":
             # To install relocatable shared libs on Macos
             tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
-                "3.5"  # CMake 4 support
-            )
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         if Version(self.version) >= "1.2.0":
-            rmdir(os.path.join(self.package_folder, "share"))
+            rmdir(self, os.path.join(self.package_folder, "share"))
+
+    def package_info(self):
+
+        # brotlicommon
+        self.cpp_info.components["brotlicommon"].set_property("pkg_config_name", "libbrotlicommon")
+        self.cpp_info.components["brotlicommon"].libs = [self._get_decorated_lib("brotlicommon")]
+        if self.settings.os == "Windows" and self.options.shared:
+            self.cpp_info.components["brotlicommon"].defines.append("BROTLI_SHARED_COMPILATION")
+        # brotlidec
+        self.cpp_info.components["brotlidec"].set_property("pkg_config_name", "libbrotlidec")
+        self.cpp_info.components["brotlidec"].libs = [self._get_decorated_lib("brotlidec")]
+        self.cpp_info.components["brotlidec"].requires = ["brotlicommon"]
+        # brotlienc
+        self.cpp_info.components["brotlienc"].set_property("pkg_config_name", "libbrotlienc")
+        self.cpp_info.components["brotlienc"].libs = [self._get_decorated_lib("brotlienc")]
+        self.cpp_info.components["brotlienc"].requires = ["brotlicommon"]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.components["brotlienc"].system_libs = ["m"]
 
     def _get_decorated_lib(self, name):
         libname = name
