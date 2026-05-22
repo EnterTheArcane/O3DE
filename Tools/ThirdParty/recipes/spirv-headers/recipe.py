@@ -43,3 +43,8 @@ class Recipe(RecipeBase):
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib"))
         rmdir(os.path.join(self.package_folder, "share"))
+
+    def package_info(self):
+        # Header-only — no compiled library.
+        self.cpp_info.set_property("cmake_file_name", "SPIRV-Headers")
+        self.cpp_info.set_property("cmake_target_name", "SPIRV-Headers::SPIRV-Headers")

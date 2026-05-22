@@ -46,3 +46,8 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "libdeflate")
+        self.cpp_info.set_property("cmake_target_name", "libdeflate::libdeflate_static")
+        self.cpp_info.set_property("cmake_package_file", "lib/cmake/libdeflate/libdeflate-config.cmake")

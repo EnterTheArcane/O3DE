@@ -87,3 +87,8 @@ class Recipe(RecipeBase):
             for lib in glob.glob(os.path.join(self.package_folder, "lib", "*.a")):
                 if not lib.endswith(".dll.a"):
                     os.remove(lib)
+
+    def package_info(self):
+        self.cpp_info.libs = ["zstd_static"]
+        self.cpp_info.set_property("cmake_file_name", "ZSTD")
+        self.cpp_info.set_property("cmake_target_name", "ZSTD::ZSTD")

@@ -46,3 +46,8 @@ class Recipe(RecipeBase):
         rm("*.pdb", os.path.join(self.package_folder, "bin"))
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
         fix_apple_shared_install_name(self)
+
+    def package_info(self):
+        self.cpp_info.libs = ["lcms2"]
+        self.cpp_info.set_property("cmake_file_name", "lcms")
+        self.cpp_info.set_property("cmake_target_name", "lcms::lcms")

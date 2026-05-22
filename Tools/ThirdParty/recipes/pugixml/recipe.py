@@ -1,15 +1,13 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
 import os
 
 
 class Recipe(RecipeBase):
-    name = "imath"
-    version = "3.2.2"
-    license = "BSD-3-Clause"
+    name = "pugixml"
+    version = "1.15"
+    license = "MIT"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -21,18 +19,18 @@ class Recipe(RecipeBase):
 
     def source(self):
         get(
-            url="https://github.com/AcademySoftwareFoundation/Imath/releases/download/v3.2.2/Imath-3.2.2.tar.gz",
+            url="https://github.com/zeux/pugixml/releases/download/v1.15/pugixml-1.15.tar.gz",
             dest=self.source_folder,
-            sha256="0f5a783b424f374e6f27ec8b0c73130e89b08814ac8fa2e84fd7fe0b05862c53",
+            sha256="655ade57fa703fb421c2eb9a0113b5064bddb145d415dd1f88c79353d90d511a",
         )
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.cache_variables["BUILD_TESTING"] = False
-        tc.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
+        tc.variables["BUILD_TESTING"] = False
         if self.is_windows:
-            # msvc needs __cplusplus macro to reflect the actual C++ standard
-            tc.variables["CMAKE_CXX_FLAGS"] = "/Zc:__cplusplus"
+            # Avoid linking against MSVC's static CRT, which conflicts with
+            # the rest of the build that uses the dynamic CRT.
+            tc.variables["PUGIXML_STATIC_CRT"] = False
         tc.generate()
 
     def build(self):
@@ -49,8 +47,9 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(os.path.join(self.package_folder, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Imath")
-        self.cpp_info.set_property("cmake_target_name", "Imath::Imath")
-        self.cpp_info.set_property("cmake_package_file", "lib/cmake/Imath/ImathConfig.cmake")
+        self.cpp_info.libs = ["pugixml"]
+        self.cpp_info.set_property("cmake_file_name", "pugixml")
+        self.cpp_info.set_property("cmake_target_name", "pugixml::pugixml")
