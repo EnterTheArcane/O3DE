@@ -156,3 +156,10 @@ class Recipe(RecipeBase):
         )
         cmake = CMake(self)
         cmake.install()
+
+    def package_info(self):
+        # Qt 6 uses INPUT_sqlite="system" which calls find_package(SQLite3) and
+        # expects the SQLite::SQLite3 imported target.
+        self.cpp_info.libs = ["sqlite3"]
+        self.cpp_info.set_property("cmake_file_name", "SQLite3")
+        self.cpp_info.set_property("cmake_target_name", "SQLite::SQLite3")

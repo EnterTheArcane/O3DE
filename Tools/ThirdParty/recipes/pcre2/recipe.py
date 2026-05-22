@@ -150,3 +150,10 @@ class Recipe(RecipeBase):
             if False and self.options.shared:  # GCC-specific, not applicable on Windows
                 libname += ".dll"
         return libname
+
+    def package_info(self):
+        # Qt 6 uses INPUT_pcre="system" which calls find_package(PCRE2) and
+        # expects target PCRE2::PCRE2-16 (the 16-bit engine Qt uses internally).
+        self.cpp_info.libs = [self._lib_name("pcre2-16")]
+        self.cpp_info.set_property("cmake_file_name", "PCRE2")
+        self.cpp_info.set_property("cmake_target_name", "PCRE2::PCRE2-16")

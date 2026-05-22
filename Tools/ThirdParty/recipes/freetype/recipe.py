@@ -268,3 +268,15 @@ class Recipe(RecipeBase):
     def _chmod_plus_x(filename):
         if os.name == "posix" and (os.stat(filename).st_mode & 0o111) != 0o111:
             os.chmod(filename, os.stat(filename).st_mode | 0o111)
+
+    def package_info(self):
+        # The native freetype cmake config (freetype-config.cmake) exports a
+        # bare `freetype` STATIC IMPORTED target with the correct include path
+        # (include/freetype2/).  We wrap it as the standard `Freetype::Freetype`
+        # INTERFACE target so Qt's find_package(Freetype) resolves correctly.
+        # libs is intentionally empty so CMakeDeps generates an INTERFACE target
+        # that delegates to the native `freetype` target via requires.
+        self.cpp_info.requires = ["freetype"]
+        self.cpp_info.set_property("cmake_file_name", "Freetype")
+        self.cpp_info.set_property("cmake_target_name", "Freetype::Freetype")
+        self.cpp_info.set_property("cmake_package_file", "lib/cmake/freetype/freetype-config.cmake")
