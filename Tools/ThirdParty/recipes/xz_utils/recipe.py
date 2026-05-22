@@ -10,6 +10,7 @@ from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "xz_utils"
+    version = "5.8.3"
     license = "Unlicense", "LGPL-2.1-or-later", "GPL-2.0-or-later", "GPL-3.0-or-later"
     options = {
         "shared": [True, False],
@@ -23,9 +24,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://tukaani.org/xz/xz-5.8.3.tar.xz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="fff1ffcf2b0da84d308a14de513a1aa23d4e9aa3464d17e64b9714bfdd0bbfb6",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -48,7 +51,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "COPYING",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

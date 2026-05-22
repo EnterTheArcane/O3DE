@@ -8,6 +8,7 @@ from thirdparty.tools.files import apply_patches, copy, get, save
 
 class Recipe(RecipeBase):
     name = "vulkan-validationlayers"
+    version = "1.3.243.0"
     license = "Apache-2.0"
     options = {
         "fPIC": [True, False],
@@ -20,9 +21,11 @@ class Recipe(RecipeBase):
         return ["vulkan-headers", "spirv-headers", "spirv-tools", "robin-hood-hashing"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/sdk-1.3.243.0.tar.gz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="fd9f6c24027de177b2fb0eb6385542d62f4c21665a8d4cc7e1c118688e0836de",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -45,8 +48,10 @@ class Recipe(RecipeBase):
         deps.generate()
 
         # Stub SPIRV-Tools-opt config for the validation layers
-        save(os.path.join(self.build_folder, "SPIRV-Tools-optConfig.cmake"),
-             "include(CMakeFindDependencyMacro)\nfind_dependency(SPIRV-Tools)\n")
+        save(
+            os.path.join(self.build_folder, "SPIRV-Tools-optConfig.cmake"),
+            "include(CMakeFindDependencyMacro)\nfind_dependency(SPIRV-Tools)\n",
+        )
 
     def build(self):
         apply_patches(self)
@@ -55,6 +60,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.md",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()

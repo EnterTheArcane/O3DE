@@ -11,6 +11,7 @@ from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "openexr"
+    version = "3.2.9"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -25,7 +26,11 @@ class Recipe(RecipeBase):
         return ["zlib", "imath", "libdeflate"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.2.9/openexr-3.2.9.tar.gz",
+            dest=self.source_folder,
+            sha256="926fe5fba3ebeceaf4e07b1940f330213a4d790092a42acff28f636911536c3d",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -41,9 +46,9 @@ class Recipe(RecipeBase):
         apply_patches(self)
         # Suppress website example targets that appear in 3.2
         cml = os.path.join(self.source_folder, "CMakeLists.txt")
-        replace_in_file(cml,
-                        "add_subdirectory(website/src)",
-                        "#  add_subdirectory(website/src)")
+        replace_in_file(
+            cml, "add_subdirectory(website/src)", "#  add_subdirectory(website/src)"
+        )
 
     def build(self):
         self._patch_sources()
@@ -52,7 +57,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.md",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "share"))

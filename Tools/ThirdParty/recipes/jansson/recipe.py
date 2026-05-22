@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "jansson"
+    version = "2.14"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -25,7 +27,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/akheron/jansson/releases/download/v2.14/jansson-2.14.tar.bz2",
+            dest=self.source_folder,
+            sha256="fba956f27c6ae56ce6dfd52fbf9d20254aad42821f74fa52f83957625294afb9",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -37,8 +43,12 @@ class Recipe(RecipeBase):
         tc.variables["USE_WINDOWS_CRYPTOAPI"] = self.options.use_windows_cryptoapi
         if self.is_windows:
             tc.variables["JANSSON_STATIC_CRT"] = False
-        if Version(self.version) <= "2.14.1":  # pylint: disable=conan-condition-evals-to-constant
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        if (
+            Version(self.version) <= "2.14.1"
+        ):  # pylint: disable=conan-condition-evals-to-constant
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         tc.generate()
 
     def build(self):
@@ -47,7 +57,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

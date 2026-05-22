@@ -8,9 +8,11 @@ from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 import os
 
+
 class Recipe(RecipeBase):
     name = "rapidyaml"
-    license = "MIT",
+    version = "0.10.0"
+    license = ("MIT",)
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -36,7 +38,12 @@ class Recipe(RecipeBase):
         return []  # c4core is bundled in rapidyaml
 
     def source(self):
-        get(**self.thirdparty_data["versions"][self.version], dest=self.source_folder, strip_root=True)
+        get(
+            url="https://github.com/biojppm/rapidyaml/releases/download/v0.10.0/rapidyaml-0.10.0-src.tgz",
+            sha256="54eb1050789809a26c780f80857b7668a5b3123405d6514a65d733e4292c690b",
+            dest=self.source_folder,
+            strip_root=True,
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -44,7 +51,9 @@ class Recipe(RecipeBase):
         if Version(self.version) >= "0.4.0":
             tc.variables["RYML_WITH_TAB_TOKENS"] = self.options.with_tab_tokens
         if Version(self.version) >= "0.6.0":
-            tc.variables["RYML_DEFAULT_CALLBACK_USES_EXCEPTIONS"] = self.options.with_default_callback_uses_exceptions
+            tc.variables["RYML_DEFAULT_CALLBACK_USES_EXCEPTIONS"] = (
+                self.options.with_default_callback_uses_exceptions
+            )
             tc.variables["RYML_USE_ASSERT"] = self.options.with_assert
         tc.generate()
 
@@ -58,7 +67,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(pattern="LICENSE.txt", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(
+            pattern="LICENSE.txt",
+            dst=os.path.join(self.package_folder, "licenses"),
+            src=self.source_folder,
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "cmake"))

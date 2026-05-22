@@ -6,8 +6,10 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, get, rmdir, copy, rm
 import os
 
+
 class Recipe(RecipeBase):
     name = "zlib"
+    version = "1.3.2"
     license = "Zlib"
     options = {
         "shared": [True, False],
@@ -19,8 +21,12 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(**self.thirdparty_data["versions"][self.version],
-            dest=self.source_folder, strip_root=True)
+        get(
+            url="https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+            sha256="bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+            dest=self.source_folder,
+            strip_root=True,
+        )
         apply_patches(self)
 
     def generate(self):
@@ -36,7 +42,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "share"))

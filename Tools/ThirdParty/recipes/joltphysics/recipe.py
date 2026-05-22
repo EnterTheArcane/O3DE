@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "joltphysics"
+    version = "3.0.1"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -35,7 +37,7 @@ class Recipe(RecipeBase):
         return {
             "Visual Studio": "16",
             "msvc": "192",
-            "gcc": "9.2", # due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81429
+            "gcc": "9.2",  # due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81429
             "clang": "5",
             "apple-clang": "12",
         }
@@ -61,7 +63,11 @@ class Recipe(RecipeBase):
         return self.options.get("simd") == "avx512"
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v3.0.1.tar.gz",
+            dest=self.source_folder,
+            sha256="7ebb40bf2dddbcf0515984582aaa197ddd06e97581fd55b98cb64f91b243b8a6",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -92,6 +98,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()

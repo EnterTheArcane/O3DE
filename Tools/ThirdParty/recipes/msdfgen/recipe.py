@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "msdfgen"
+    version = "1.12"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -27,10 +29,19 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self) -> list[str]:
-        return ["freetype", "libpng", "tinyxml2", "zlib"]  # lodepng is bundled; zlib needed by libpng cmake
+        return [
+            "freetype",
+            "libpng",
+            "tinyxml2",
+            "zlib",
+        ]  # lodepng is bundled; zlib needed by libpng cmake
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.12.tar.gz",
+            dest=self.source_folder,
+            sha256="f058117496097217d12e4ea86adbff8467adaf6f12af793925d243b86b0c4f57",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -48,7 +59,11 @@ class Recipe(RecipeBase):
             tc.cache_variables["MSDFGEN_DYNAMIC_RUNTIME"] = not False
         if self.is_linux:
             # Workaround for https://github.com/conan-io/conan/issues/13560
-            libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.cpp_info.aggregated_components().libdirs]
+            libdirs_host = [
+                l
+                for dependency in self.dependencies.host.values()
+                for l in dependency.cpp_info.aggregated_components().libdirs
+            ]
             tc.variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
         tc.generate()
         deps = CMakeDeps(self)
@@ -78,7 +93,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.txt",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rm("*.pdb", os.path.join(self.package_folder, "bin"))

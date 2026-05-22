@@ -7,8 +7,10 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import get, load, save
 import os
 
+
 class Recipe(RecipeBase):
     name = "sqlite3"
+    version = "3.53.1"
     license = "Unlicense"
     options = {
         "shared": [True, False],
@@ -67,9 +69,9 @@ class Recipe(RecipeBase):
         "enable_unlock_notify": True,
         "enable_default_secure_delete": False,
         "disable_gethostuuid": False,
-        "max_column": None,             # Uses default value from source
-        "max_variable_number": None,    # Uses default value from source
-        "max_blob_size": None,          # Uses default value from source
+        "max_column": None,  # Uses default value from source
+        "max_variable_number": None,  # Uses default value from source
+        "max_blob_size": None,  # Uses default value from source
         "build_executable": True,
         "enable_default_vfs": True,
         "enable_dbpage_vtab": False,
@@ -81,7 +83,11 @@ class Recipe(RecipeBase):
         return []  # icu is optional (enable_icu defaults to False)
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://sqlite.org/2026/sqlite-amalgamation-3530100.zip",
+            dest=self.source_folder,
+            sha256="36ad6e7f38540a3b21a2ac36340833f0a9e426bc1c752751c3ba669466827eae",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -103,7 +109,9 @@ class Recipe(RecipeBase):
         tc.variables["ENABLE_SOUNDEX"] = self.options.enable_soundex
         tc.variables["ENABLE_RTREE"] = self.options.enable_rtree
         tc.variables["ENABLE_UNLOCK_NOTIFY"] = self.options.enable_unlock_notify
-        tc.variables["ENABLE_DEFAULT_SECURE_DELETE"] = self.options.enable_default_secure_delete
+        tc.variables["ENABLE_DEFAULT_SECURE_DELETE"] = (
+            self.options.enable_default_secure_delete
+        )
         tc.variables["USE_ALLOCA"] = self.options.use_alloca
         tc.variables["USE_URI"] = self.options.use_uri
         tc.variables["OMIT_LOAD_EXTENSION"] = self.options.omit_load_extension
@@ -128,9 +136,12 @@ class Recipe(RecipeBase):
 
     def build(self):
         import shutil
+
         shutil.copy(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "CMakeLists.txt"),
-            os.path.normpath(os.path.join(self.source_folder, os.pardir, "CMakeLists.txt"))
+            os.path.normpath(
+                os.path.join(self.source_folder, os.pardir, "CMakeLists.txt")
+            ),
         )
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
@@ -138,10 +149,13 @@ class Recipe(RecipeBase):
 
     def _extract_license(self):
         header = load(os.path.join(self.source_folder, "sqlite3.h"))
-        license_content = header[3:header.find("***", 1)]
+        license_content = header[3 : header.find("***", 1)]
         return license_content
 
     def package(self):
-        save(os.path.join(self.package_folder, "licenses", "LICENSE"), self._extract_license())
+        save(
+            os.path.join(self.package_folder, "licenses", "LICENSE"),
+            self._extract_license(),
+        )
         cmake = CMake(self)
         cmake.install()

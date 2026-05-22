@@ -7,8 +7,10 @@ from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 import os
 
+
 class Recipe(RecipeBase):
     name = "minizip-ng"
+    version = "4.2.1"
     license = "Zlib"
     options = {
         "shared": [True, False],
@@ -41,7 +43,11 @@ class Recipe(RecipeBase):
         return ["zlib", "bzip2", "xz_utils", "zstd", "openssl", "libiconv"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/zlib-ng/minizip-ng/archive/4.2.1.tar.gz",
+            dest=self.source_folder,
+            sha256="3cc35c2cb925dbe67cc801e3234b31b0f30197812a99377352fa1b551ab3d011",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -72,8 +78,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
-
