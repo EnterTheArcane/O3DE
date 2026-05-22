@@ -25,12 +25,17 @@ class Recipe(RecipeBase):
             dst=os.path.join(self.package_folder, "licenses"),
         )
         copy(
-            "*",
+            "**/*",
             src=os.path.join(self.source_folder, "include"),
             dst=os.path.join(self.package_folder, "include"),
         )
         copy(
-            "*",
+            "**/*",
             src=os.path.join(self.source_folder, "registry"),
             dst=os.path.join(self.package_folder, "res", "vulkan", "registry"),
         )
+
+    def package_info(self):
+        # Header-only — no compiled library, just the Vulkan include path.
+        self.cpp_info.set_property("cmake_file_name", "VulkanHeaders")
+        self.cpp_info.set_property("cmake_target_name", "Vulkan::Headers")

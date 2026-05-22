@@ -58,3 +58,8 @@ class Recipe(RecipeBase):
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(os.path.join(self.package_folder, "share"))
+
+    def package_info(self):
+        self.cpp_info.libs = ["lzma"]
+        self.cpp_info.set_property("cmake_file_name", "liblzma")
+        self.cpp_info.set_property("cmake_target_name", "liblzma::liblzma")

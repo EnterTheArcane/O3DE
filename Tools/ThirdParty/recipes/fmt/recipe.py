@@ -1,13 +1,13 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, get, rmdir, copy, rm
+from thirdparty.tools.files import copy, get, rmdir
 import os
 
 
 class Recipe(RecipeBase):
-    name = "zlib"
-    version = "1.3.2"
-    license = "Zlib"
+    name = "fmt"
+    version = "11.1.4"
+    license = "MIT"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -19,18 +19,15 @@ class Recipe(RecipeBase):
 
     def source(self):
         get(
-            url="https://zlib.net/fossils/zlib-1.3.2.tar.gz",
-            sha256="bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+            url="https://github.com/fmtlib/fmt/releases/download/11.1.4/fmt-11.1.4.zip",
             dest=self.source_folder,
-            strip_root=True,
+            sha256="49b039601196e1a765e81c5c9a05a61ed3d33f23b3961323d7322e4fe213d3e6",
         )
-        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.cache_variables["ZLIB_BUILD_TESTING"] = False
-        tc.cache_variables["ZLIB_BUILD_SHARED"] = self.options.shared
-        tc.cache_variables["ZLIB_BUILD_STATIC"] = not self.options.shared
+        tc.variables["FMT_TEST"] = False
+        tc.variables["FMT_INSTALL"] = True
         tc.generate()
 
     def build(self):
@@ -46,11 +43,10 @@ class Recipe(RecipeBase):
         )
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "share"))
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rm("*.pdb", os.path.join(self.package_folder, "bin"))
+        rmdir(os.path.join(self.package_folder, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.libs = ["zlib"]
-        self.cpp_info.set_property("cmake_file_name", "ZLIB")
-        self.cpp_info.set_property("cmake_target_name", "ZLIB::ZLIB")
+        self.cpp_info.libs = ["fmt"]
+        self.cpp_info.set_property("cmake_file_name", "fmt")
+        self.cpp_info.set_property("cmake_target_name", "fmt::fmt")

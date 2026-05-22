@@ -83,3 +83,17 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+    def package_info(self):
+        # minizip-ng installs its own cmake config (MINIZIP::minizip-ng).
+        # Generate a "minizip" alias config so consumers that find_package(minizip)
+        # get a MINIZIP::minizip target pointing to the underlying minizip-ng target.
+        self.cpp_info.set_property("cmake_file_name", "minizip")
+        self.cpp_info.set_property("cmake_target_name", "MINIZIP::minizip")
+        # Include minizip-ng's own config first so MINIZIP::minizip-ng exists.
+        self.cpp_info.set_property(
+            "cmake_package_file", "lib/cmake/minizip-ng/minizip-ng-config.cmake"
+        )
+        # MINIZIP::minizip is an INTERFACE target that wraps MINIZIP::minizip-ng;
+        # no need to re-declare libs — transitive deps flow through minizip-ng's config.
+        self.cpp_info.requires = ["MINIZIP::minizip-ng"]

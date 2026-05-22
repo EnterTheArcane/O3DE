@@ -31,6 +31,12 @@ class Recipe(RecipeBase):
             "yaml-cpp",
             "minizip-ng",
             "lcms",
+            # minizip-ng transitive deps (needed for CMAKE_PREFIX_PATH in cmake shims)
+            "zlib-ng",
+            "bzip2",
+            "xz_utils",
+            "zstd",
+            "openssl",
         ]
 
     def source(self):
@@ -57,7 +63,7 @@ class Recipe(RecipeBase):
         tc.variables["OCIO_USE_BOOST_PTR"] = False
 
         # avoid downloading dependencies
-        tc.variables["OCIO_INSTALL_EXT_PACKAGE"] = "NONE"
+        tc.variables["OCIO_INSTALL_EXT_PACKAGES"] = "NONE"
 
         if self.is_windows and not self.options.shared:
             # define any value because ifndef is used
@@ -70,7 +76,7 @@ class Recipe(RecipeBase):
             # Workaround for: https://github.com/conan-io/conan/issues/13560
             libdirs_host = [
                 l
-                for dependency in self.dependencies.host.values()
+                for dependency in self.dependencies.values()
                 for l in dependency.cpp_info.aggregated_components().libdirs
             ]
             tc.variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
@@ -118,4 +124,12 @@ class Recipe(RecipeBase):
             pattern="LICENSE",
             dst=os.path.join(self.package_folder, "licenses"),
             src=self.source_folder,
+        )
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "OpenColorIO")
+        self.cpp_info.set_property("cmake_target_name", "OpenColorIO::OpenColorIO")
+        self.cpp_info.set_property(
+            "cmake_package_file",
+            "lib/cmake/OpenColorIO/OpenColorIOConfig.cmake",
         )

@@ -3,6 +3,7 @@ from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
+import glob
 import os
 
 
@@ -122,3 +123,21 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+    def package_info(self):
+        self.cpp_info.libs = ["tiff"]
+        self.cpp_info.set_property("cmake_file_name", "TIFF")
+        self.cpp_info.set_property("cmake_target_name", "TIFF::tiff")
+        # tiff.lib was compiled with lzma and zstd support; add their libs as
+        # transitive link dependencies using absolute paths so cmake does not
+        # need those packages to be separately found by the consumer.
+        build_root = os.path.dirname(os.path.dirname(os.path.dirname(self.package_folder)))
+        extra_libs: list[str] = []
+        for pattern in [
+            os.path.join("xz_utils", "*", "package", "lib", "lzma.lib"),
+            os.path.join("zstd", "*", "package", "lib", "zstd_static.lib"),
+        ]:
+            matches = glob.glob(os.path.join(build_root, pattern))
+            if matches:
+                extra_libs.append(matches[0].replace("\\", "/"))
+        self.cpp_info.requires = extra_libs

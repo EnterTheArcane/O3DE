@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import platform
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -113,19 +113,45 @@ class _SettingsAccessor:
         pass  # no-op
 
 
-# ---------------------------------------------------------------------------
-# Dependency info
-# ---------------------------------------------------------------------------
+class CppInfo:
+    """Describes what a built package provides to consumers (Conan-compatible)."""
+
+    def __init__(self) -> None:
+        self.includedirs: list[str] = ["include"]
+        self.libdirs: list[str] = ["lib"]
+        self.bindirs: list[str] = ["bin"]
+        self.libs: list[str] = []
+        self.defines: list[str] = []
+        self.cflags: list[str] = []
+        self.cxxflags: list[str] = []
+        self.system_libs: list[str] = []
+        # cmake target names listed here become INTERFACE_LINK_LIBRARIES on the
+        # generated imported target (for deps that wrap another cmake target).
+        self.requires: list[str] = []
+        self._properties: dict[str, Any] = {}
+
+    def set_property(self, prop: str, value: Any) -> None:
+        """Set a named property (e.g. cmake_file_name, cmake_target_name)."""
+        self._properties[prop] = value
+
+    def get_property(self, prop: str) -> Any | None:
+        """Return the value of a named property, or None if not set."""
+        return self._properties.get(prop)
+
+    def aggregated_components(self) -> "CppInfo":
+        """Conan-compatible stub — returns self (no multi-component support)."""
+        return self
+
 
 @dataclass
 class DepInfo:
     """Information about a built dependency exposed via ``recipe.dependencies``."""
+
     package_folder: str
+    name: str = ""
+    version: str = ""
+    cpp_info: CppInfo = field(default_factory=CppInfo)
 
-
-# ---------------------------------------------------------------------------
-# RecipeBase
-# ---------------------------------------------------------------------------
 
 class RecipeBase:
     """Base class for all ThirdParty build recipes."""
@@ -152,6 +178,8 @@ class RecipeBase:
         self.options: _OptionsAccessor = _OptionsAccessor(dict(type(self).default_options))
         # Settings stub for ported recipes that still reference self.settings.*:
         self.settings: _SettingsAccessor = _SettingsAccessor(self)
+        # Populated by package_info() to declare what this package provides:
+        self.cpp_info: CppInfo = CppInfo()
 
     # --- Platform helpers ---
 
@@ -189,3 +217,6 @@ class RecipeBase:
 
     def package(self) -> None:
         """Install build artifacts to the package folder."""
+
+    def package_info(self) -> None:
+        """Declare what this package provides to consumers (cmake targets, libs, etc.)."""

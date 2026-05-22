@@ -124,3 +124,8 @@ class Recipe(RecipeBase):
         rmdir(os.path.join(self.package_folder, "lib", "libpng"))
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(os.path.join(self.package_folder, "share"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "PNG")
+        self.cpp_info.set_property("cmake_target_name", "PNG::png_static")
+        self.cpp_info.set_property("cmake_package_file", "lib/cmake/PNG/PNGConfig.cmake")

@@ -52,3 +52,8 @@ class Recipe(RecipeBase):
         )
         cmake = CMake(self)
         cmake.install()
+
+    def package_info(self):
+        self.cpp_info.libs = ["pystring"]
+        self.cpp_info.set_property("cmake_file_name", "pystring")
+        self.cpp_info.set_property("cmake_target_name", "pystring::pystring")
