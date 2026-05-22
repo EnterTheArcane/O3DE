@@ -209,9 +209,12 @@ class Recipe(RecipeBase):
         shim = os.path.join(freetype2_cmake_dir, "Freetype2Config.cmake")
         with open(shim, "w") as _f:
             _f.write(
-                '# Shim: forward find_package(freetype2) to freetype cmake package\n'
+                '# Shim: forward find_package(freetype2) to freetype cmake package.\n'
+                '# freetype-config.cmake creates target "freetype" (lowercase, no namespace).\n'
+                '# We add a Freetype2::Freetype2 alias so meson cmake dep detection works.\n'
                 'include("${CMAKE_CURRENT_LIST_DIR}/../freetype/freetype-config.cmake")\n'
-                'if(TARGET Freetype::Freetype)\n'
+                'if(TARGET freetype AND NOT TARGET Freetype2::Freetype2)\n'
+                '    add_library(Freetype2::Freetype2 ALIAS freetype)\n'
                 '    set(freetype2_FOUND TRUE)\n'
                 '    set(Freetype2_FOUND TRUE)\n'
                 'endif()\n'

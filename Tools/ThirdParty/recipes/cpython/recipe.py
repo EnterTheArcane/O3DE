@@ -42,6 +42,32 @@ class Recipe(RecipeBase):
         if result.returncode != 0:
             raise RuntimeError(f"Command failed (exit {result.returncode}): {cmd}")
 
+    def _platform_toolset(self) -> str:
+        """Detect the MSBuild PlatformToolset from the installed MSVC version.
+
+        CPython's PCbuild projects default to v140 (VS 2015).  We query
+        vswhere for the latest cl.exe path which encodes the MSVC version
+        number, then derive the toolset string (e.g. 14.51.x → 'v145').
+        """
+        vswhere = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+        result = subprocess.run(
+            [vswhere, "-latest", "-find", r"VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe"],
+            capture_output=True, text=True,
+        )
+        for line in reversed(result.stdout.strip().splitlines()):
+            path = line.strip().replace("\\", "/")
+            for part in path.split("/"):
+                if part.startswith("14.") and part.count(".") >= 1:
+                    nums = part.split(".")
+                    try:
+                        # MSVC 14.5x → v145, 14.4x → v144, 14.3x → v143
+                        major = int(nums[0])   # 14
+                        minor = int(nums[1])   # e.g. 51
+                        return f"v{major}{minor // 10}"
+                    except (ValueError, IndexError):
+                        continue
+        return "v143"  # VS 2022 fallback
+
     def build(self):
         build_bat = os.path.join(self.source_folder, "PCbuild", "build.bat")
         # build.bat flags: -c Release/Debug -p x64 --no-tkinter --no-ssl
@@ -61,7 +87,21 @@ class Recipe(RecipeBase):
             cmd += [f"--ssl={ssl_dir}"]
         if self.options.optimizations:
             cmd.append("--pgo")
-        self._run(cmd, cwd=self.source_folder)
+
+        # Write the PlatformToolset override into an MSBuild response file.
+        # Passing "/p:PlatformToolset=vXXX" directly on the command line fails
+        # because cmd.exe treats '=' as an argument delimiter in batch scripts,
+        # splitting the value and confusing MSBuild.  The CPbuild docs explicitly
+        # recommend msbuild.rsp for this purpose; MSBuild auto-loads it.
+        pcbuild_dir = os.path.join(self.source_folder, "PCbuild")
+        rsp_file = os.path.join(pcbuild_dir, "msbuild.rsp")
+        with open(rsp_file, "w") as _f:
+            _f.write(f"/p:PlatformToolset={self._platform_toolset()}\n")
+        try:
+            self._run(cmd, cwd=self.source_folder)
+        finally:
+            if os.path.exists(rsp_file):
+                os.remove(rsp_file)
 
     def package(self):
         build_type = "Debug" if self.build_type == "Debug" else "Release"
