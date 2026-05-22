@@ -1,7 +1,3 @@
-# Ported from conan-center-index/libiconv by port_recipe.py
-# On Windows: uses win-iconv (a Windows API-based iconv implementation).
-# On other platforms: uses the standard GNU libiconv with Autotools.
-
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, save

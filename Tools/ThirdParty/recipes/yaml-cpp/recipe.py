@@ -1,6 +1,3 @@
-# Ported from conan-center-index/yaml-cpp by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, collect_libs, copy, get, rmdir

@@ -1,5 +1,3 @@
-# Ported from conan-center-index/abseil by port_recipe.py
-
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir

@@ -1,6 +1,3 @@
-# Ported from conan-center-index/rapidyaml by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.microsoft import check_min_vs
 from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir

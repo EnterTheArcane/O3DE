@@ -1,6 +1,3 @@
-# Ported from conan-center-index/libjpeg-turbo by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.cmake import CMake, CMakeToolchain
