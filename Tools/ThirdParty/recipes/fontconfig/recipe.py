@@ -1,5 +1,4 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
@@ -8,11 +7,11 @@ from thirdparty.tools.scm import Version
 
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "fontconfig"
     version = "2.17.1"
     license = "MIT"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -21,16 +20,30 @@ class Recipe(RecipeBase):
         "shared": False,
         "fPIC": True,
     }
+    package_type = "library"
 
-    def requirements(self) -> list[str]:
-        return ["freetype", "expat"]
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        self.settings.rm_safe("compiler.libcxx")
+        self.settings.rm_safe("compiler.cppstd")
+
+    def requirements(self):
+        self.requires("freetype/[>=2.13.2 <3]")
+        self.requires("expat/[>=2.6.2 <3]")
+
+    def build_requirements(self):
+        self.tool_requires("gperf/3.1")
+        self.tool_requires("meson/[>=1.4.0 <2]")
+        if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
+            self.tool_requires("pkgconf/[>=2.1 <3]")
 
     def source(self):
-        get(
-            url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.17.1/fontconfig-2.17.1.tar.xz",
-            dest=self.source_folder,
-            sha256="9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541",
-        )
+        get(self, url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.17.1/fontconfig-2.17.1.tar.xz", sha256="9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -40,25 +53,14 @@ class Recipe(RecipeBase):
         deps.generate()
 
         tc = MesonToolchain(self)
-        tc.project_options.update(
-            {
-                "doc": "disabled",
-                "nls": "disabled",
-                "tests": "disabled",
-                "tools": "disabled",
-                "sysconfdir": os.path.join("res", "etc"),
-                "datadir": os.path.join("res", "share"),
-            }
-        )
-        # expat is built as a static lib; its headers use __declspec(dllimport)
-        # unless XML_STATIC is defined.
-        tc.c_args.append("-DXML_STATIC")
-        # freetype was built with libpng/zlib/bzip2 as static transitive deps;
-        # provide them explicitly on the link line since cmake FindFreetype
-        # does not propagate them.
-        for dep in self.dep_package_paths:
-            lib_dir = dep.replace("\\", "/") + "/lib"
-            tc.link_args.append(f"-LIBPATH:{lib_dir}")
+        tc.project_options.update({
+            "doc": "disabled",
+            "nls": "disabled",
+            "tests": "disabled",
+            "tools": "disabled",
+            "sysconfdir": os.path.join("res", "etc"),
+            "datadir": os.path.join("res", "share"),
+        })
         tc.generate()
 
     def build(self):
@@ -67,20 +69,29 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(
-            "COPYING", self.source_folder, os.path.join(self.package_folder, "licenses")
-        )
+        copy(self, "COPYING", self.source_folder, os.path.join(self.package_folder, "licenses"))
         meson = Meson(self)
         meson.install()
-        rm("*.pdb", self.package_folder, recursive=True)
-        rm("*.conf", os.path.join(self.package_folder, "res", "etc", "fonts", "conf.d"))
-        rm("*.def", os.path.join(self.package_folder, "lib"))
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rm(self, "*.pdb", self.package_folder, recursive=True)
+        rm(self, "*.conf", os.path.join(self.package_folder, "res", "etc", "fonts", "conf.d"))
+        rm(self, "*.def", os.path.join(self.package_folder, "lib"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         fix_apple_shared_install_name(self)
         if Version(self.version) <= "2.15.0":
             # TODO: Keep this for versions <= 2.15.0, remove in future versions
             fix_msvc_libname(self)
 
+    def package_info(self):
+        self.cpp_info.set_property("cmake_find_mode", "both")
+        self.cpp_info.set_property("cmake_file_name", "Fontconfig")
+        self.cpp_info.set_property("cmake_target_name", "Fontconfig::Fontconfig")
+        self.cpp_info.set_property("pkg_config_name", "fontconfig")
+        self.cpp_info.libs = ["fontconfig"]
+        if self.settings.os in ("Linux", "FreeBSD"):
+            self.cpp_info.system_libs.extend(["m", "pthread"])
+
+        fontconfig_path = os.path.join(self.package_folder, "res", "etc", "fonts")
+        self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
 
 def fix_msvc_libname(conanfile, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
@@ -88,17 +99,12 @@ def fix_msvc_libname(conanfile, remove_lib_prefix=True):
         return
     from thirdparty.tools.files import rename
     import glob
-
     libdirs = getattr(conanfile.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
             full_folder = os.path.join(conanfile.package_folder, libdir)
             for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
-                libname = os.path.basename(filepath)[0 : -len(ext)]
+                libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]
-                rename(
-                    conanfile,
-                    filepath,
-                    os.path.join(os.path.dirname(filepath), f"{libname}.lib"),
-                )
+                rename(conanfile, filepath, os.path.join(os.path.dirname(filepath), f"{libname}.lib"))

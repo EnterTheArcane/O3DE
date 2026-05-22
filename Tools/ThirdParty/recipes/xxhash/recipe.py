@@ -1,14 +1,15 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "xxhash"
     version = "0.8.3"
     license = "BSD-2-Clause"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -20,12 +21,18 @@ class Recipe(RecipeBase):
         "utility": True,
     }
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
+
     def source(self):
-        get(
-            url="https://github.com/Cyan4973/xxHash/archive/v0.8.3.tar.gz",
-            dest=self.source_folder,
-            sha256="aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80",
-        )
+        get(self, url="https://github.com/Cyan4973/xxHash/archive/v0.8.3.tar.gz", sha256="aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -36,26 +43,27 @@ class Recipe(RecipeBase):
         # Generate a relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         if Version(self.version) < "0.8.3":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
-                "3.5"  # CMake 4 support
-            )
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
         cmake = CMake(self)
-        cmake.configure(
-            build_script_folder=os.path.join(self.source_folder, "cmake_unofficial")
-        )
+        cmake.configure(build_script_folder=os.path.join(self.source_folder, "cmake_unofficial"))
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "share"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "xxHash")
+        self.cpp_info.set_property("cmake_target_name", "xxHash::xxhash")
+        self.cpp_info.set_property("pkg_config_name", "libxxhash")
+        # TODO: back to global scope in conan v2 once cmake_find_package_* generators removed
+        self.cpp_info.components["libxxhash"].libs = ["xxhash"]
+        self.cpp_info.components["libxxhash"].set_property("cmake_target_name", "xxHash::xxhash")

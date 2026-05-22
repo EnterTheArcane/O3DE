@@ -1,13 +1,14 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "pystring"
     version = "1.1.4"
     license = "BSD-3-Clause"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -19,12 +20,16 @@ class Recipe(RecipeBase):
 
     exports_sources = "CMakeLists.txt"
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
     def source(self):
-        get(
-            url="https://github.com/imageworks/pystring/archive/refs/tags/v1.1.4.tar.gz",
-            dest=self.source_folder,
-            sha256="49da0fe2a049340d3c45cce530df63a2278af936003642330287b68cefd788fb",
-        )
+        get(self, url="https://github.com/imageworks/pystring/archive/refs/tags/v1.1.4.tar.gz", sha256="49da0fe2a049340d3c45cce530df63a2278af936003642330287b68cefd788fb", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -32,28 +37,14 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        import shutil
-
-        shutil.copy(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "CMakeLists.txt"),
-            os.path.normpath(
-                os.path.join(self.source_folder, os.pardir, "CMakeLists.txt")
-            ),
-        )
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
     def package_info(self):
         self.cpp_info.libs = ["pystring"]
-        self.cpp_info.set_property("cmake_file_name", "pystring")
-        self.cpp_info.set_property("cmake_target_name", "pystring::pystring")

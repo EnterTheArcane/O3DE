@@ -3,136 +3,152 @@
 
 Usage::
 
-    python tools/port_recipe.py <recipe-name> [options]
+    python tools/port_recipe.py <name> [--overwrite] [--dry-run]
+    python tools/port_recipe.py --all [--overwrite]
 
-The script reads::
-
+Reads::
     <cci_root>/recipes/<name>/all/conanfile.py
+    <cci_root>/recipes/<name>/all/conandata.yml
 
-and writes::
-
+Writes::
     <thirdparty_root>/recipes/<name>/recipe.py
-
-It performs structural transforms using libcst (imports, class rename, method
-removal) and expression-level transforms using regular expressions.
-
-Options:
-  --cci-root PATH       Path to conan-center-index (default: auto-detect from workspace)
-  --out-root PATH       Path to ThirdParty recipes root (default: ./recipes)
-  --dry-run             Print result to stdout instead of writing file
-  --overwrite           Overwrite existing recipe.py (default: skip if present)
+    <thirdparty_root>/recipes/<name>/patches/<files>  (if any)
 """
 from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import sys
 from pathlib import Path
 from typing import Union
 
 try:
     import libcst as cst
-    from libcst import matchers as m
 except ImportError:
-    print("ERROR: libcst is required. Install with: pip install libcst", file=sys.stderr)
+    print("ERROR: libcst is required.  pip install libcst", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    import yaml
+except ImportError:
+    print("ERROR: PyYAML is required.  pip install PyYAML", file=sys.stderr)
+    sys.exit(1)
+
+try:
+    from packaging.version import Version as PkgVersion, InvalidVersion
+except ImportError:
+    print("ERROR: packaging is required.  pip install packaging", file=sys.stderr)
     sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
-# Import mapping: conan module → thirdparty module (None = remove entirely)
+# Import mapping  (conan module → thirdparty module, None = drop import)
 # ---------------------------------------------------------------------------
 
 _IMPORT_MAP: dict[str, str | None] = {
-    "conan.tools.cmake":      "thirdparty.tools.cmake",
-    "conan.tools.files":      "thirdparty.tools.files",
-    "conan.tools.scm":        "thirdparty.tools.scm",
-    "conan.tools.microsoft":  "thirdparty.tools.microsoft",
-    "conan.tools.apple":      "thirdparty.tools.apple",
-    "conan.tools.build":      "thirdparty.tools.build",   # check_min_cppstd stubs
-    "conan.tools.env":        None,   # VirtualBuildEnv etc. — no-op
-    "conan.tools.gnu":        "thirdparty.tools.gnu",     # PkgConfigDeps
-    "conan.tools.meson":      "thirdparty.tools.meson",   # MesonToolchain + Meson
-    "conan.tools.layout":     None,   # cmake_layout is a no-op
-    "conan.errors":           None,   # ConanInvalidConfiguration
-    "conan.tools.system":     None,
-    "conan.tools.cross_building": None,
+    "conan.tools.cmake":          "thirdparty.tools.cmake",
+    "conan.tools.files":          "thirdparty.tools.files",
+    "conan.tools.scm":            "thirdparty.tools.scm",
+    "conan.tools.microsoft":      "thirdparty.tools.microsoft",
+    "conan.tools.apple":          "thirdparty.tools.apple",
+    "conan.tools.build":          "thirdparty.tools.build",
+    "conan.tools.env":            "thirdparty.tools.env",
+    "conan.tools.gnu":            "thirdparty.tools.gnu",
+    "conan.tools.meson":          "thirdparty.tools.meson",
+    "conan.errors":               None,   # ConanInvalidConfiguration — validate() removed
+    "conan.tools.system":         None,   # system package installation — not supported
+    "conan.tools.cross_building": None,   # we don't cross-compile
+    "conan.tools.layout":         None,   # cmake_layout/basic_layout — layout() removed
 }
 
-# Names to remove from class-level attribute assignments
+# Symbols to drop from a specific module's import list
+_FILTER_SYMBOLS: dict[str, set[str]] = {
+    "conan.tools.cmake": {"cmake_layout", "basic_layout"},
+    "conan.tools.files": {"export_conandata_patches"},   # no-op; export_sources() removed
+    "conan.tools.env":   {"VirtualBuildEnv", "VirtualRunEnv"},  # driver handles this
+}
+
+# Class-level attribute assignments that carry only upstream metadata
 _REMOVE_CLASS_ATTRS: frozenset[str] = frozenset({
-    "url", "homepage", "topics", "description", "package_type",
-    "settings", "short_paths", "extension_properties", "generators",
-    "no_copy_source",
+    "url", "homepage", "topics", "description",
+    "short_paths", "extension_properties",
 })
 
-# Method names to remove entirely
+# Methods that don't apply in our build model
 _REMOVE_METHODS: frozenset[str] = frozenset({
-    "export_sources",
-    "export_conandata_patches",
-    "config_options",
-    "configure",
-    "layout",
-    "validate",
+    "export_sources",       # no conan export stage
+    "layout",               # driver owns folder layout
+    "validate",             # no validation step
     "validate_build",
-    "build_requirements",
-    "system_requirements",
-    "package_id",
-    "package_info",
+    "system_requirements",  # no system package management
+    "package_id",           # no package cache
     "deploy",
 })
 
 
 # ===========================================================================
-# libcst transformer
+# CST Transformer
 # ===========================================================================
 
 class _ConanTransformer(cst.CSTTransformer):
-    """Structural CST transformer: imports, class name, attribute/method removal."""
+    """One-pass CST rewriter for conan-center-index → ThirdParty recipes."""
 
-    def __init__(self) -> None:
+    def __init__(self, version: str, url: str, sha256: str) -> None:
         super().__init__()
-        # Stack of booleans: True = this class level is the ConanFile subclass
+        self._version = version
+        self._url = url
+        self._sha256 = sha256
         self._class_stack: list[bool] = []
-        # requires calls collected from requirements() body
-        self._requires_list: list[str] = []
-        self._in_requirements_method = False
+        self._version_injected = False
 
     @property
     def _in_conan_class(self) -> bool:
         return bool(self._class_stack) and self._class_stack[-1]
 
     # ------------------------------------------------------------------
-    # Module-level: remove `required_conan_version = ...`
+    # Module-level and class-level simple statements
     # ------------------------------------------------------------------
 
     def leave_SimpleStatementLine(
         self,
         original_node: cst.SimpleStatementLine,
         updated_node: cst.SimpleStatementLine,
-    ) -> Union[cst.SimpleStatementLine, cst.RemovalSentinel]:
+    ) -> Union[cst.SimpleStatementLine, cst.RemovalSentinel, "cst.FlattenSentinel[cst.SimpleStatementLine]"]:
+
         for stmt in updated_node.body:
-            if isinstance(stmt, cst.Assign):
-                for target in stmt.targets:
+
+            # Drop `required_conan_version = ...` at module level
+            if not self._in_conan_class and isinstance(stmt, cst.Assign):
+                for tgt in stmt.targets:
                     if (
-                        isinstance(target.target, cst.Name)
-                        and target.target.value == "required_conan_version"
+                        isinstance(tgt.target, cst.Name)
+                        and tgt.target.value == "required_conan_version"
                     ):
                         return cst.RemovalSentinel.REMOVE
-            # Remove removable class-level attributes when inside conan class
-            if self._in_conan_class:
-                if isinstance(stmt, cst.Assign):
-                    for target in stmt.targets:
-                        if (
-                            isinstance(target.target, cst.Name)
-                            and target.target.value in _REMOVE_CLASS_ATTRS
-                        ):
-                            return cst.RemovalSentinel.REMOVE
-                if isinstance(stmt, cst.AnnAssign):
-                    if (
-                        isinstance(stmt.target, cst.Name)
-                        and stmt.target.value in _REMOVE_CLASS_ATTRS
-                    ):
+
+            if self._in_conan_class and isinstance(stmt, cst.Assign):
+                for tgt in stmt.targets:
+                    if not isinstance(tgt.target, cst.Name):
+                        continue
+                    attr = tgt.target.value
+
+                    if attr in _REMOVE_CLASS_ATTRS:
                         return cst.RemovalSentinel.REMOVE
+
+                    # Inject `version = "X.Y.Z"` after the `name = ...` line
+                    if attr == "name" and not self._version_injected:
+                        self._version_injected = True
+                        ver_line = _make_version_line(self._version, updated_node)
+                        return cst.FlattenSentinel([updated_node, ver_line])
+
+            if self._in_conan_class and isinstance(stmt, cst.AnnAssign):
+                if (
+                    isinstance(stmt.target, cst.Name)
+                    and stmt.target.value in _REMOVE_CLASS_ATTRS
+                ):
+                    return cst.RemovalSentinel.REMOVE
+
         return updated_node
 
     # ------------------------------------------------------------------
@@ -147,47 +163,60 @@ class _ConanTransformer(cst.CSTTransformer):
         if updated_node.module is None:
             return updated_node
 
-        module_str = _module_to_str(updated_node.module)
+        mod = _module_str(updated_node.module)
 
-        # `from conan import ConanFile` → `from thirdparty import RecipeBase`
-        if module_str == "conan":
+        # Not a conan import at all — leave completely alone
+        if not mod.startswith("conan"):
+            return updated_node
+
+        # `from conan import ConanFile` → `from thirdparty import RecipeBase as ConanFile`
+        if mod == "conan":
             if isinstance(updated_node.names, (list, tuple)):
-                new_names: list[cst.ImportAlias] = []
+                kept = []
                 for alias in updated_node.names:
                     if isinstance(alias.name, cst.Name) and alias.name.value == "ConanFile":
-                        new_names.append(
-                            alias.with_changes(name=cst.Name("RecipeBase"))
+                        kept.append(
+                            alias.with_changes(
+                                name=cst.Name("RecipeBase"),
+                                asname=cst.AsName(
+                                    whitespace_before_as=cst.SimpleWhitespace(" "),
+                                    whitespace_after_as=cst.SimpleWhitespace(" "),
+                                    name=cst.Name("ConanFile"),
+                                ),
+                            )
                         )
-                if new_names:
-                    cleaned = _clean_import_commas(new_names)
+                if kept:
                     return updated_node.with_changes(
                         module=_str_to_module("thirdparty"),
-                        names=cleaned,
+                        names=_fix_commas(kept),
                     )
             return cst.RemovalSentinel.REMOVE
 
-        # Look up in import map
-        mapped = _IMPORT_MAP.get(module_str)
-        if mapped is None and module_str.startswith("conan."):
-            # Unknown conan module — remove it
+        # Unknown conan.* → drop
+        if mod.startswith("conan.") and mod not in _IMPORT_MAP:
             return cst.RemovalSentinel.REMOVE
 
-        if mapped is not None:
-            # Replace with thirdparty equivalent, filtering removed symbols
-            if isinstance(updated_node.names, (list, tuple)):
-                kept = _filter_import_names(module_str, list(updated_node.names))
-                if not kept:
-                    return cst.RemovalSentinel.REMOVE
-                cleaned = _clean_import_commas(kept)
-                return updated_node.with_changes(
-                    module=_str_to_module(mapped),
-                    names=cleaned,
-                )
+        mapped = _IMPORT_MAP.get(mod)
+        if mapped is None:
+            return cst.RemovalSentinel.REMOVE
 
-        return updated_node
+        if isinstance(updated_node.names, (list, tuple)):
+            drop = _FILTER_SYMBOLS.get(mod, set())
+            kept = [
+                a for a in updated_node.names
+                if not (isinstance(a.name, cst.Name) and a.name.value in drop)
+            ]
+            if not kept:
+                return cst.RemovalSentinel.REMOVE
+            return updated_node.with_changes(
+                module=_str_to_module(mapped),
+                names=_fix_commas(kept),
+            )
+
+        return updated_node.with_changes(module=_str_to_module(mapped))
 
     # ------------------------------------------------------------------
-    # Class definition: track stack, rename XxxConan → Recipe
+    # Class rename  (XxxConan → Recipe)
     # ------------------------------------------------------------------
 
     def visit_ClassDef(self, node: cst.ClassDef) -> bool:
@@ -204,197 +233,151 @@ class _ConanTransformer(cst.CSTTransformer):
         updated_node: cst.ClassDef,
     ) -> cst.ClassDef:
         is_conan = self._class_stack.pop() if self._class_stack else False
-
         if not is_conan:
             return updated_node
 
-        # Rename base class ConanFile → RecipeBase
-        new_bases = [
-            arg.with_changes(value=cst.Name("RecipeBase"))
-            if (isinstance(arg.value, cst.Name) and arg.value.value == "ConanFile")
-            else arg
-            for arg in updated_node.bases
-        ]
-
-        # Ensure body is non-empty (libcst requires at least one statement)
         body = updated_node.body
-        if isinstance(body, cst.IndentedBlock):
-            stmts = list(body.body)
-            if not stmts:
-                stmts = [cst.SimpleStatementLine(body=[cst.Pass()])]
-                body = body.with_changes(body=stmts)
+        if isinstance(body, cst.IndentedBlock) and not body.body:
+            body = body.with_changes(body=[cst.SimpleStatementLine(body=[cst.Pass()])])
 
-        return updated_node.with_changes(
-            name=cst.Name("Recipe"),
-            bases=new_bases,
-            body=body,
-        )
+        return updated_node.with_changes(name=cst.Name("Recipe"), body=body)
 
     # ------------------------------------------------------------------
-    # Method removal and requirements() rewrite
+    # Method removal
     # ------------------------------------------------------------------
-
-    def visit_FunctionDef(self, node: cst.FunctionDef) -> bool:
-        if node.name.value == "requirements":
-            self._in_requirements_method = True
-            self._requires_list = []
-        return True
-
-    def visit_Call(self, node: cst.Call) -> bool:
-        if self._in_requirements_method:
-            name = _call_name(node)
-            if name in ("self.requires", "self.tool_requires"):
-                for arg in node.args:
-                    if arg.keyword is None:
-                        pkg_ref = _string_value(arg.value)
-                        if pkg_ref:
-                            pkg_name = pkg_ref.split("/")[0].split("[")[0].strip()
-                            self._requires_list.append(pkg_name)
-                        break
-        return True
 
     def leave_FunctionDef(
         self,
         original_node: cst.FunctionDef,
         updated_node: cst.FunctionDef,
     ) -> Union[cst.FunctionDef, cst.RemovalSentinel]:
-        method_name = original_node.name.value
-
-        # Remove unwanted methods inside the conan class
-        if self._in_conan_class and method_name in _REMOVE_METHODS:
+        if self._in_conan_class and original_node.name.value in _REMOVE_METHODS:
             return cst.RemovalSentinel.REMOVE
-
-        # Rewrite requirements() to return list[str]
-        if method_name == "requirements" and self._in_requirements_method:
-            self._in_requirements_method = False
-            items = [
-                cst.Element(
-                    value=cst.SimpleString(f'"{name}"'),
-                    comma=cst.MaybeSentinel.DEFAULT,
-                )
-                for name in self._requires_list
-            ]
-            return_stmt = cst.SimpleStatementLine(
-                body=[cst.Return(value=cst.List(elements=items))]
-            )
-            new_returns = cst.Annotation(
-                annotation=cst.Subscript(
-                    value=cst.Name("list"),
-                    slice=[cst.SubscriptElement(cst.Index(cst.Name("str")))],
-                )
-            )
-            return updated_node.with_changes(
-                body=cst.IndentedBlock(body=[return_stmt]),
-                returns=new_returns,
-            )
-
-        if method_name == "requirements":
-            self._in_requirements_method = False
-
         return updated_node
 
+    # ------------------------------------------------------------------
+    # get(**self.conan_data["sources"][self.version], ...) → inline
+    # ------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Regex-based expression transforms (applied after CST pass)
-# ---------------------------------------------------------------------------
+    def leave_Call(
+        self,
+        original_node: cst.Call,
+        updated_node: cst.Call,
+    ) -> cst.Call:
+        if not (isinstance(updated_node.func, cst.Name) and updated_node.func.value == "get"):
+            return updated_node
 
-_EXPR_SUBS: list[tuple[str, str]] = [
-    # apply_conandata_patches(self) → apply_patches(self)
-    (r"\bapply_conandata_patches\s*\(\s*self\s*\)", "apply_patches(self)"),
-    # export_conandata_patches(self) → (remove line)
-    (r"^\s*export_conandata_patches\s*\(\s*self\s*\)\s*\n", ""),
-    # get(self, **self.conan_data[...], ...) — complex pattern handled separately
-    # Simpler: self.conan_data → self.thirdparty_data + sources → versions
-    (r"\bself\.conan_data\[.sources.\]\[", "self.thirdparty_data[\"versions\"]["),
-    (r"\bself\.conan_data\[\"sources\"\]\[", "self.thirdparty_data[\"versions\"]["),
-    (r"\bself\.conan_data\['sources'\]\[", "self.thirdparty_data[\"versions\"]["),
-    (r"\bself\.conan_data\b", "self.thirdparty_data"),
-    # Remove self as first positional arg to file utility functions
-    (r"\b(copy|rmdir|rm|load|save|replace_in_file|rename|collect_libs)\(self,\s*", r"\1("),
-    # get(self, ...) → get(...) — but careful not to eat kwargs  
-    (r"\bget\(self,\s*", "get("),
-    # settings.os checks
-    (r'\bself\.settings\.os\s*==\s*["\']Windows["\']', "self.is_windows"),
-    (r'\bself\.settings\.os\s*==\s*["\']Linux["\']', "self.is_linux"),
-    (r'\bself\.settings\.os\s*==\s*["\']Macos["\']', "self.is_macos"),
-    (r'\bself\.settings\.os\s*==\s*["\']Darwin["\']', "self.is_macos"),
-    (r'\bself\.settings\.os\s*in\s*\[.*?["\']Linux["\'].*?\]', "self.is_linux"),
-    (r'\bself\.settings\.get_safe\(["\']os["\']\)\s*==\s*["\']Windows["\']', "self.is_windows"),
-    # settings.build_type
-    (r'\bself\.settings\.build_type\b', "self.build_type"),
-    # is_msvc / is_apple_os helper functions
-    (r'\bis_msvc\s*\(\s*self\s*\)', "self.is_windows"),
-    (r'\bis_msvc_static_runtime\s*\(\s*self\s*\)', "False"),
-    (r'\bis_apple_os\s*\(\s*self\s*\)', "self.is_macos"),
-    # self.settings.arch
-    (r'\bself\.settings\.arch\s*==\s*["\']armv8["\']', 'self.arch == "arm64"'),
-    # cmake_layout() call — remove the whole line
-    (r"^\s*cmake_layout\s*\(.*?\)\s*\n", ""),
-    (r"\bcmake_layout\s*\([^)]*\)", ""),
-    # options.get_safe → options.get
-    (r'\bself\.options\.get_safe\(', "self.options.get("),
-    # options.rm_safe — keep as-is (supported by _OptionsAccessor)
-    # self.settings.rm_safe — remove the call line
-    (r"^\s*self\.settings\.rm_safe\s*\(.*?\)\s*\n", ""),
-    # Cross-build stubs
-    (r'\bcross_building\s*\(\s*self\s*\)', "False"),
-    (r'\bcheck_min_cppstd\s*\(\s*self\s*,', "# check_min_cppstd(self,"),
-    # stdcpp_library
-    (r'\bstdcpp_library\s*\(\s*self\s*\)', "None"),
-    # VirtualBuildEnv / VirtualRunEnv — remove generate() calls
-    (r"^\s*VirtualBuildEnv\s*\(.*?\)\.generate\s*\(\s*\)\s*\n", ""),
-    (r"^\s*VirtualRunEnv\s*\(.*?\)\.generate\s*\(\s*\)\s*\n", ""),
-    # PkgConfigDeps — remove
-    (r"^\s*pc\s*=\s*PkgConfigDeps\s*\(.*?\)\s*\n", ""),
-    (r"^\s*PkgConfigDeps\s*\(.*?\)\.generate\s*\(\s*\)\s*\n", ""),
+        args = list(updated_node.args)
+        unpack_idx = next(
+            (i for i, a in enumerate(args) if a.star == "**" and _is_conandata_sources(a.value)),
+            None,
+        )
+        if unpack_idx is None:
+            return updated_node
+
+        before = args[:unpack_idx]
+        after  = args[unpack_idx + 1:]
+
+        has_dest = any(
+            isinstance(a.keyword, cst.Name) and a.keyword.value == "destination"
+            for a in after
+        )
+
+        injected = [
+            _kwarg("url",    cst.SimpleString(f'"{self._url}"')),
+            _kwarg("sha256", cst.SimpleString(f'"{self._sha256}"')),
+        ]
+        if not has_dest:
+            injected.append(
+                _kwarg("destination", cst.Attribute(
+                    value=cst.Name("self"),
+                    attr=cst.Name("source_folder"),
+                    dot=cst.Dot(),
+                ))
+            )
+
+        new_args = before + injected + after
+        return updated_node.with_changes(args=_fix_arg_commas(new_args))
+
+
+# ===========================================================================
+# Regex post-processing
+# ===========================================================================
+
+_DROP_LINE_RE: list[re.Pattern] = [
+    re.compile(r"^\s*VirtualBuildEnv\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
+    re.compile(r"^\s*VirtualRunEnv\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
+    re.compile(r"^\s*PkgConfigDeps\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
+    re.compile(r"^\s*AutotoolsDeps\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
 ]
 
 
 def _apply_regex_transforms(code: str) -> str:
-    for pattern, replacement in _EXPR_SUBS:
-        code = re.sub(pattern, replacement, code, flags=re.MULTILINE)
-
-    # Special case: get(self, **self.thirdparty_data["versions"][self.version], ...)
-    # Transform to: data = self.thirdparty_data["versions"][self.version]; get(url=data["url"], dest=self.source_folder, sha256=data["sha256"])
-    code = _transform_get_conandata(code)
-
-    return code
-
-
-def _transform_get_conandata(code: str) -> str:
-    """Transform ``get(**self.thirdparty_data[...][self.version], ...)`` calls.
-
-    After the earlier regex pass, conan_data has been renamed to
-    thirdparty_data and sources → versions.  This pass rewrites the
-    double-star-unpack form into explicit keyword arguments.
-    """
-    pattern = re.compile(
-        r'get\s*\(\s*\*\*\s*self\.thirdparty_data\["versions"\]\[self\.version\]'
-        r'(?:\s*,\s*strip_root\s*=\s*(?:True|False))?\s*\)',
-        re.MULTILINE,
-    )
-
-    def _replace(m: re.Match[str]) -> str:
-        return (
-            "get("
-            "url=self.thirdparty_data[\"versions\"][self.version][\"url\"], "
-            "dest=self.source_folder, "
-            "sha256=self.thirdparty_data[\"versions\"][self.version][\"sha256\"]"
-            ")"
-        )
-
-    return pattern.sub(_replace, code)
+    lines = code.splitlines(keepends=True)
+    out = [ln for ln in lines if not any(p.match(ln.rstrip()) for p in _DROP_LINE_RE)]
+    code = "".join(out)
+    code = re.sub(r"\n{3,}", "\n\n", code)
+    return code.lstrip("\n")
 
 
 # ===========================================================================
-# Helpers
+# conandata.yml helpers
 # ===========================================================================
 
-def _module_to_str(node: cst.BaseExpression) -> str:
+def _pick_version(sources: dict) -> str:
+    def _key(v: str):
+        try:
+            return (1, PkgVersion(str(v)))
+        except InvalidVersion:
+            return (0, str(v))
+    return max(sources.keys(), key=_key)
+
+
+def _read_conandata(cci_dir: Path) -> dict:
+    p = cci_dir / "conandata.yml"
+    if not p.exists():
+        return {}
+    with p.open(encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def _get_source_info(conandata: dict, version: str) -> tuple[str, str]:
+    entry = (conandata.get("sources") or {}).get(str(version)) or {}
+    url = entry.get("url", "")
+    if isinstance(url, list):
+        url = url[0]
+    sha256 = entry.get("sha256", "") or entry.get("sha1", "") or ""
+    return str(url), str(sha256)
+
+
+def _copy_patches(conandata: dict, version: str, cci_dir: Path, out_dir: Path) -> None:
+    entries = (conandata.get("patches") or {}).get(str(version)) or []
+    if not entries:
+        return
+    out_patches = out_dir / "patches"
+    out_patches.mkdir(parents=True, exist_ok=True)
+    for entry in entries:
+        src_rel = entry.get("patch_file", "")
+        if not src_rel:
+            continue
+        src = cci_dir / src_rel
+        if not src.exists():
+            print(f"  [patch] WARNING: {src.name} not found — skipping")
+            continue
+        dst = out_patches / src.name
+        shutil.copy2(src, dst)
+        print(f"  [patch] {src.name}")
+
+
+# ===========================================================================
+# libcst helpers
+# ===========================================================================
+
+def _module_str(node: cst.BaseExpression) -> str:
     if isinstance(node, cst.Name):
         return node.value
     if isinstance(node, cst.Attribute):
-        return _module_to_str(node.value) + "." + node.attr.value
+        return _module_str(node.value) + "." + node.attr.value
     return ""
 
 
@@ -402,105 +385,123 @@ def _str_to_module(s: str) -> cst.BaseExpression:
     parts = s.split(".")
     result: cst.BaseExpression = cst.Name(parts[0])
     for part in parts[1:]:
-        result = cst.Attribute(value=result, attr=cst.Name(part))
+        result = cst.Attribute(value=result, attr=cst.Name(part), dot=cst.Dot())
     return result
 
 
-def _clean_import_commas(aliases: list[cst.ImportAlias]) -> list[cst.ImportAlias]:
-    """Ensure no trailing comma on the last import alias."""
+def _fix_commas(aliases: list[cst.ImportAlias]) -> list[cst.ImportAlias]:
     if not aliases:
         return aliases
-    last = aliases[-1]
-    aliases[-1] = last.with_changes(comma=cst.MaybeSentinel.DEFAULT)
-    return aliases
+    out = list(aliases)
+    for i in range(len(out) - 1):
+        if out[i].comma is cst.MaybeSentinel.DEFAULT:
+            out[i] = out[i].with_changes(
+                comma=cst.Comma(whitespace_after=cst.SimpleWhitespace(" "))
+            )
+    out[-1] = out[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)
+    return out
 
 
-def _filter_import_names(
-    original_module: str,
-    names: list[cst.ImportAlias],
-) -> list[cst.ImportAlias]:
-    """Remove/rename symbols from a module as needed."""
-    _REMOVE_SYMBOLS: dict[str, set[str]] = {
-        "conan.tools.cmake": {"cmake_layout", "basic_layout"},
-        "conan.tools.build": {"check_min_cppstd", "cross_building", "stdcpp_library",
-                               "valid_min_cppstd", "check_max_cppstd"},
-        "conan.tools.files": {"export_conandata_patches"},
-    }
-    # Rename symbols: old_name → new_name
-    _RENAME_SYMBOLS: dict[str, dict[str, str]] = {
-        "conan.tools.files": {"apply_conandata_patches": "apply_patches"},
-    }
-    drop = _REMOVE_SYMBOLS.get(original_module, set())
-    rename = _RENAME_SYMBOLS.get(original_module, {})
-    kept: list[cst.ImportAlias] = []
-    for alias in names:
-        sym = alias.name.value if isinstance(alias.name, cst.Name) else ""
-        if sym in drop:
-            continue
-        if sym in rename:
-            alias = alias.with_changes(name=cst.Name(rename[sym]))
-        kept.append(alias)
-    return kept
+def _make_version_line(version: str, template: cst.SimpleStatementLine) -> cst.SimpleStatementLine:
+    """Build a `    version = "X.Y.Z"` statement matching the indentation of template."""
+    return template.with_changes(
+        body=[
+            cst.Assign(
+                targets=[cst.AssignTarget(target=cst.Name("version"))],
+                value=cst.SimpleString(f'"{version}"'),
+            )
+        ],
+        leading_lines=[],
+    )
 
 
-def _call_name(node: cst.Call) -> str:
-    func = node.func
-    if isinstance(func, cst.Name):
-        return func.value
-    if isinstance(func, cst.Attribute):
-        return _module_to_str(func.value) + "." + func.attr.value
-    return ""
+def _is_conandata_sources(node: cst.BaseExpression) -> bool:
+    """Return True if node is self.conan_data["sources"][self.version]."""
+    if not isinstance(node, cst.Subscript):
+        return False
+    # Inner: self.conan_data["sources"]
+    inner = node.value
+    if not isinstance(inner, cst.Subscript):
+        return False
+    if len(inner.slice) != 1:
+        return False
+    idx = inner.slice[0].slice
+    if not isinstance(idx, cst.Index):
+        return False
+    val = idx.value
+    if not isinstance(val, cst.SimpleString):
+        return False
+    try:
+        key = val.evaluated_value
+    except Exception:
+        return False
+    if key != "sources":
+        return False
+    if not isinstance(inner.value, cst.Attribute):
+        return False
+    attr = inner.value
+    return (
+        isinstance(attr.value, cst.Name)
+        and attr.value.value == "self"
+        and attr.attr.value == "conan_data"
+    )
 
 
-def _string_value(node: cst.BaseExpression) -> str | None:
-    """Extract plain string value, or the initial literal prefix for f-strings."""
-    if isinstance(node, cst.SimpleString):
-        try:
-            return node.evaluated_value  # type: ignore[attr-defined]
-        except Exception:
-            return None
-    if isinstance(node, cst.FormattedString):
-        # For f"name/{version}" patterns, extract the part before the first `{`
-        for part in node.parts:
-            if isinstance(part, cst.FormattedStringText):
-                text = part.value
-                if "/" in text:
-                    return text.split("/")[0].strip()
-                if text.strip():
-                    return text.strip()
-        return None
-    if isinstance(node, cst.ConcatenatedString):
-        return None
-    return None
+def _kwarg(name: str, value: cst.BaseExpression) -> cst.Arg:
+    return cst.Arg(
+        keyword=cst.Name(name),
+        value=value,
+        equal=cst.AssignEqual(
+            whitespace_before=cst.SimpleWhitespace(""),
+            whitespace_after=cst.SimpleWhitespace(""),
+        ),
+    )
+
+
+def _fix_arg_commas(args: list[cst.Arg]) -> list[cst.Arg]:
+    if not args:
+        return args
+    out = list(args)
+    for i in range(len(out) - 1):
+        if out[i].comma is cst.MaybeSentinel.DEFAULT:
+            out[i] = out[i].with_changes(
+                comma=cst.Comma(whitespace_after=cst.SimpleWhitespace(" "))
+            )
+    out[-1] = out[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)
+    return out
 
 
 # ===========================================================================
-# Post-processing: clean up empty lines, add header comment
-# ===========================================================================
-
-def _post_process(code: str, recipe_name: str) -> str:
-    # Collapse 3+ blank lines → 2
-    code = re.sub(r"\n{3,}", "\n\n", code)
-    return code.lstrip("\n")
-
-
-# ===========================================================================
-# Entry point
+# Core porter
 # ===========================================================================
 
 def _find_cci_root() -> Path:
-    """Attempt to locate conan-center-index relative to common workspace layout."""
     candidates = [
         Path(r"D:\OpenSource\conan-center-index"),
-        Path(__file__).parent.parent.parent.parent.parent / "OpenSource" / "conan-center-index",
+        Path(__file__).resolve().parents[4] / "OpenSource" / "conan-center-index",
     ]
     for c in candidates:
         if c.is_dir():
             return c
-    raise RuntimeError(
-        "Cannot auto-detect conan-center-index root. "
-        "Pass --cci-root explicitly."
-    )
+    raise RuntimeError("Cannot auto-detect CCI root — pass --cci-root")
+
+
+def _find_cci_dir(cci_root: Path, name: str, subdir: str | None = None) -> Path | None:
+    base = cci_root / "recipes" / name
+    if not base.is_dir():
+        return None
+    if subdir:
+        explicit = base / subdir
+        if (explicit / "conanfile.py").exists():
+            return explicit
+    all_dir = base / "all"
+    if (all_dir / "conanfile.py").exists():
+        return all_dir
+    # Pick the highest-sorted version subfolder (reverse alpha == latest)
+    for child in sorted(base.iterdir(), reverse=True):
+        if child.is_dir() and (child / "conanfile.py").exists():
+            return child
+    return None
 
 
 def port_recipe(
@@ -509,88 +510,98 @@ def port_recipe(
     out_root: Path,
     dry_run: bool = False,
     overwrite: bool = False,
-) -> None:
-    # Locate source
-    src_path = cci_root / "recipes" / name / "all" / "conanfile.py"
-    if not src_path.exists():
-        # Some recipes have a single version folder instead of "all"
-        candidates = sorted((cci_root / "recipes" / name).glob("*/conanfile.py"))
-        if not candidates:
-            print(f"ERROR: conanfile.py not found for {name!r} in {cci_root}", file=sys.stderr)
-            sys.exit(1)
-        src_path = candidates[0]
-        print(f"[port] Using {src_path.relative_to(cci_root)}")
+    cci_subdir: str | None = None,
+    cci_name: str | None = None,
+) -> bool:
+    cci_dir = _find_cci_dir(cci_root, cci_name or name, cci_subdir)
+    if cci_dir is None:
+        print(f"[port] SKIP {name} — not found in CCI")
+        return False
 
     out_path = out_root / name / "recipe.py"
-
     if not overwrite and out_path.exists() and not dry_run:
-        print(f"[port] SKIP {name} — {out_path} already exists (use --overwrite)")
-        return
+        print(f"[port] SKIP {name} — exists (--overwrite to replace)")
+        return False
 
-    source_code = src_path.read_text(encoding="utf-8")
+    conandata = _read_conandata(cci_dir)
+    sources   = conandata.get("sources") or {}
 
-    # --- CST transforms ---
+    if sources:
+        version     = _pick_version(sources)
+        url, sha256 = _get_source_info(conandata, version)
+    else:
+        version, url, sha256 = "0.0.0", "", ""
+        print(f"[port] WARNING {name} — no sources in conandata.yml")
+
+    source_code = (cci_dir / "conanfile.py").read_text(encoding="utf-8")
+
     try:
-        tree = cst.parse_module(source_code)
-        transformer = _ConanTransformer()
-        new_tree = tree.visit(transformer)
-        transformed = new_tree.code
+        tree        = cst.parse_module(source_code)
+        transformer = _ConanTransformer(version=version, url=url, sha256=sha256)
+        transformed = tree.visit(transformer).code
     except cst.ParserSyntaxError as exc:
-        print(f"[port] WARNING: libcst parse error for {name}: {exc}", file=sys.stderr)
-        print("[port] Falling back to regex-only transforms")
+        print(f"[port] WARNING {name} — libcst parse error: {exc}; CST skipped")
         transformed = source_code
 
-    # --- Regex transforms ---
     transformed = _apply_regex_transforms(transformed)
 
-    # --- Post-processing ---
-    transformed = _post_process(transformed, name)
-
     if dry_run:
+        print(f"# === {name} / {version} ===")
         print(transformed)
-        return
+        return True
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(transformed, encoding="utf-8")
-    print(f"[port] Wrote {out_path}")
+    print(f"[port] {name}/{version}")
+    _copy_patches(conandata, version, cci_dir, out_root / name)
+    return True
 
+
+# ===========================================================================
+# CLI
+# ===========================================================================
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Convert a conan-center-index recipe to ThirdParty format."
+        description="Port conan-center-index recipes to ThirdParty format."
     )
-    parser.add_argument("name", help="Recipe name (e.g. zlib-ng)")
-    parser.add_argument(
-        "--cci-root",
-        default=None,
-        metavar="PATH",
-        help="Path to conan-center-index root",
-    )
-    parser.add_argument(
-        "--out-root",
-        default=None,
-        metavar="PATH",
-        help="Path to ThirdParty recipes/ directory (default: ./recipes)",
-    )
-    parser.add_argument("--dry-run", action="store_true", help="Print to stdout only")
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite existing recipe.py")
+    parser.add_argument("name", nargs="?", metavar="<name>", help="Single recipe name")
+    parser.add_argument("--all",       action="store_true", help="Port all dirs under --out-root")
+    parser.add_argument("--cci-root",  default=None, metavar="PATH")
+    parser.add_argument("--out-root",  default=None, metavar="PATH")
+    parser.add_argument("--cci-subdir", default=None, metavar="SUBDIR",
+                        help="Force a specific CCI recipe subdir (e.g. 6.x.x)")
+    parser.add_argument("--cci-name",   default=None, metavar="NAME",
+                        help="CCI recipe name when it differs from the output name")
+    parser.add_argument("--dry-run",   action="store_true")
+    parser.add_argument("--overwrite", action="store_true")
 
     args = parser.parse_args(argv)
 
     cci_root = Path(args.cci_root) if args.cci_root else _find_cci_root()
-    if args.out_root:
-        out_root = Path(args.out_root)
-    else:
-        # Default: <script-dir>/../recipes
-        out_root = Path(__file__).parent.parent / "recipes"
-
-    port_recipe(
-        name=args.name,
-        cci_root=cci_root,
-        out_root=out_root,
-        dry_run=args.dry_run,
-        overwrite=args.overwrite,
+    out_root = (
+        Path(args.out_root) if args.out_root
+        else Path(__file__).resolve().parent.parent / "recipes"
     )
+
+    if args.all:
+        names = sorted(d.name for d in out_root.iterdir() if d.is_dir())
+    elif args.name:
+        names = [args.name]
+    else:
+        parser.error("Provide a recipe name or --all")
+
+    ok = skipped = 0
+    for name in names:
+        cci_subdir = getattr(args, 'cci_subdir', None)
+        cci_name   = getattr(args, 'cci_name',   None)
+        if port_recipe(name, cci_root, out_root, args.dry_run, args.overwrite, cci_subdir, cci_name):
+            ok += 1
+        else:
+            skipped += 1
+
+    if len(names) > 1:
+        print(f"\n[port] {ok} ported, {skipped} skipped")
 
 
 if __name__ == "__main__":
