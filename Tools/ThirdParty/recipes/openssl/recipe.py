@@ -99,3 +99,11 @@ class Recipe(RecipeBase):
         )
         rm("*.pdb", os.path.join(self.package_folder, "lib"))
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+    def package_info(self):
+        # OpenSSL installs its own cmake config at lib/cmake/OpenSSL/OpenSSLConfig.cmake
+        # which exports OpenSSL::SSL and OpenSSL::Crypto.  We forward through it
+        # so consumers (and Qt) find those targets via cmake_package_file.
+        self.cpp_info.set_property("cmake_file_name", "OpenSSL")
+        self.cpp_info.set_property("cmake_target_name", "OpenSSL::SSL")
+        self.cpp_info.set_property("cmake_package_file", "lib/cmake/OpenSSL/OpenSSLConfig.cmake")
