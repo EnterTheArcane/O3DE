@@ -1,13 +1,18 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.files import apply_patches, get, copy
+from thirdparty import RecipeBase as ConanFile
+from thirdparty.tools.build import check_min_cppstd
+from thirdparty.tools.files import apply_conandata_patches, get, copy
 from thirdparty.tools.scm import Version
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "wil"
-    version = "1.0.250325.1"
+    version = "1.0.260126.7"
     license = "MIT"
+    package_type = "header-library"
+    # only arch is aplicable, windows library
+    settings = "os", "arch", "compiler", "build_type" 
+    
+    no_copy_source = True
 
     @property
     def _min_cppstd(self):
@@ -15,27 +20,38 @@ class Recipe(RecipeBase):
 
     @property
     def _compilers_minimum_version(self):
-        # About compiler version: https://github.com/microsoft/wil/issues/207#issuecomment-991722592
-        return {"Visual Studio": "15", "msvc": "191"}
+        # About compiler version: https://github.com/microsoft/wil/issues/207#issuecomment-991722592 
+        return {
+            "Visual Studio": "15",
+            "msvc": "191"
+        }
 
     def source(self):
-        get(
-            url="https://github.com/microsoft/wil/archive/refs/tags/v1.0.250325.1.tar.gz",
-            dest=self.source_folder,
-            sha256="c9e667d5f86ded43d17b5669d243e95ca7b437e3a167c170805ffd4aa8a9a786",
-        )
+        get(self, url="https://github.com/microsoft/wil/archive/refs/tags/v1.0.260126.7.tar.gz", sha256="de9e03b38ff0ff8d22048f00b111cb631d21c550328f12530ccba71c05c9e361", destination=self.source_folder, strip_root=True)
 
     def build(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
 
     def package(self):
+        copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
         copy(
-            pattern="LICENSE",
-            dst=os.path.join(self.package_folder, "licenses"),
-            src=self.source_folder,
-        )
-        copy(
+            self,
             pattern="*.h",
             dst=os.path.join(self.package_folder, "include"),
             src=os.path.join(self.source_folder, "include"),
         )
+
+    def package_info(self):
+        # Folders not used for header-only
+        self.cpp_info.bindirs = []
+        self.cpp_info.libdirs = []
+
+        # https://github.com/microsoft/wil/blob/56e3e5aa79234f8de3ceeeaf05b715b823bc2cca/CMakeLists.txt#L53
+        self.cpp_info.set_property("cmake_file_name", "wil")
+        self.cpp_info.set_property("cmake_target_name", "WIL::WIL")
+
+        # TODO: to remove in conan v2 once cmake_find_package_* generators removed
+        self.cpp_info.filenames["cmake_find_package"] = "wil"
+        self.cpp_info.filenames["cmake_find_package_multi"] = "wil"
+        self.cpp_info.names["cmake_find_package"] = "WIL"
+        self.cpp_info.names["cmake_find_package_multi"] = "WIL"

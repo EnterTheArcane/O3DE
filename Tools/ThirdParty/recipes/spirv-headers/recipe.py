@@ -1,21 +1,18 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "spirv-headers"
-    version = "1.4.313.0"
+    version = "1.4.350.0"
     license = "MIT-KhronosGroup"
+    package_type = "header-library"
+    settings = "os", "arch", "compiler", "build_type"
 
     def source(self):
-        get(
-            url="https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.313.0.tar.gz",
-            dest=self.source_folder,
-            sha256="f68be549d74afb61600a1e3a7d1da1e6b7437758c8e77d664909f88f302c5ac1",
-        )
+        get(self, url="https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="9905d9341f20388adb852c77dd982f2c4d539fd68e6c1f1bcebf034715f2d1d5", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -23,9 +20,7 @@ class Recipe(RecipeBase):
         if Version(self.version) > "1.3.275.0":
             tc.variables["SPIRV_HEADERS_ENABLE_TESTS"] = False
         if Version(self.version) <= "1.3.243.0":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
-                "3.5"  # CMake 4 support
-            )
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
         tc.generate()
 
     def build(self):
@@ -34,17 +29,15 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE*",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib"))
-        rmdir(os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.package_folder, "lib"))
+        rmdir(self, os.path.join(self.package_folder, "share"))
 
     def package_info(self):
-        # Header-only — no compiled library.
         self.cpp_info.set_property("cmake_file_name", "SPIRV-Headers")
         self.cpp_info.set_property("cmake_target_name", "SPIRV-Headers::SPIRV-Headers")
+        self.cpp_info.set_property("pkg_config_name", "SPIRV-Headers")
+        self.cpp_info.bindirs = []
+        self.cpp_info.libdirs = []

@@ -1,52 +1,132 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get, rmdir
 import os
 
+from thirdparty import RecipeBase as ConanFile
+from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
+from thirdparty.tools.build import check_min_cppstd
+from thirdparty.tools.scm import Version
+from thirdparty.tools.microsoft import is_msvc
 
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "fmt"
-    version = "11.1.4"
+    version = "12.1.0"
     license = "MIT"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
+        "header_only": [True, False],
         "shared": [True, False],
         "fPIC": [True, False],
+        "with_fmt_alias": [True, False],
+        "with_os_api": [True, False],
+        "with_unicode": [True, False],
     }
     default_options = {
+        "header_only": False,
         "shared": False,
         "fPIC": True,
+        "with_fmt_alias": False,
+        "with_os_api": True,
+        "with_unicode": True,
     }
 
+    @property
+    def _has_with_os_api_option(self):
+        return Version(self.version) >= "7.0.0"
+
+    @property
+    def _has_with_unicode_option(self):
+        return Version(self.version) >= "11.0.0"
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+        if not self._has_with_os_api_option:
+            del self.options.with_os_api
+        elif str(self.settings.os) == "baremetal":
+            self.options.with_os_api = False
+        if not self._has_with_unicode_option:
+            del self.options.with_unicode
+
+    def configure(self):
+        if self.options.header_only:
+            self.options.rm_safe("fPIC")
+            self.options.rm_safe("shared")
+            self.options.rm_safe("with_os_api")
+        elif self.options.shared:
+            self.options.rm_safe("fPIC")
+
     def source(self):
-        get(
-            url="https://github.com/fmtlib/fmt/releases/download/11.1.4/fmt-11.1.4.zip",
-            dest=self.source_folder,
-            sha256="49b039601196e1a765e81c5c9a05a61ed3d33f23b3961323d7322e4fe213d3e6",
-        )
+        get(self, url="https://github.com/fmtlib/fmt/releases/download/12.1.0/fmt-12.1.0.zip", sha256="695fd197fa5aff8fc67b5f2bbc110490a875cdf7a41686ac8512fb480fa8ada7", destination=self.source_folder, strip_root=True)
 
     def generate(self):
-        tc = CMakeToolchain(self)
-        tc.variables["FMT_TEST"] = False
-        tc.variables["FMT_INSTALL"] = True
-        tc.generate()
+        if not self.options.header_only:
+            tc = CMakeToolchain(self)
+            tc.cache_variables["FMT_DOC"] = False
+            tc.cache_variables["FMT_TEST"] = False
+            tc.cache_variables["FMT_INSTALL"] = True
+            tc.cache_variables["FMT_LIB_DIR"] = "lib"
+            if self._has_with_os_api_option:
+                tc.cache_variables["FMT_OS"] = bool(self.options.with_os_api)
+            if self._has_with_unicode_option:
+                tc.cache_variables["FMT_UNICODE"] = bool(self.options.with_unicode)
+            tc.generate()
 
     def build(self):
-        cmake = CMake(self)
-        cmake.configure()
-        cmake.build()
+        apply_conandata_patches(self)
+        if not self.options.header_only:
+            cmake = CMake(self)
+            cmake.configure()
+            cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
-        cmake = CMake(self)
-        cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(os.path.join(self.package_folder, "lib", "cmake"))
+        if Version(self.version) < "10.2.0":
+            copy(self, pattern="*LICENSE.rst", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        else:
+            copy(self, pattern="LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        if self.options.header_only:
+            copy(self, pattern="*.h", src=os.path.join(self.source_folder, "include"), dst=os.path.join(self.package_folder, "include"))
+        else:
+            cmake = CMake(self)
+            cmake.install()
+            rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+            rmdir(self, os.path.join(self.package_folder, "res"))
+            rmdir(self, os.path.join(self.package_folder, "share"))
 
     def package_info(self):
-        self.cpp_info.libs = ["fmt"]
+        target = "fmt-header-only" if self.options.header_only else "fmt"
         self.cpp_info.set_property("cmake_file_name", "fmt")
-        self.cpp_info.set_property("cmake_target_name", "fmt::fmt")
+        self.cpp_info.set_property("cmake_target_name", f"fmt::{target}")
+
+        # Mirror upstream find package version policy:
+        # https://github.com/fmtlib/fmt/blob/11.1.1/CMakeLists.txt#L403-L407
+        self.cpp_info.set_property("cmake_config_version_compat", "AnyNewerVersion")
+        self.cpp_info.set_property("pkg_config_name",  "fmt")
+
+        if is_msvc(self):
+            if self.options.get_safe("with_unicode"):
+                self.cpp_info.components["_fmt"].cxxflags.append("/utf-8")
+            else:
+                # Set the FMT_UNICODE=0, as defined publicly upstream
+                # https://github.com/fmtlib/fmt/blob/11.1.1/CMakeLists.txt#L371
+                self.cpp_info.components["_fmt"].defines.append("FMT_UNICODE=0")
+
+        # TODO: back to global scope in conan v2 once cmake_find_package* generators removed
+        if self.options.with_fmt_alias:
+            self.cpp_info.components["_fmt"].defines.append("FMT_STRING_ALIAS=1")
+
+        if self.options.header_only:
+            self.cpp_info.components["_fmt"].defines.append("FMT_HEADER_ONLY=1")
+            self.cpp_info.components["_fmt"].libdirs = []
+            self.cpp_info.components["_fmt"].bindirs = []
+        else:
+            postfix = "d" if self.settings.build_type == "Debug" else ""
+            libname = "fmt" + postfix
+            self.cpp_info.components["_fmt"].libs = [libname]
+            if self.settings.os == "Linux":
+                self.cpp_info.components["_fmt"].system_libs.extend(["m"])
+            if self.options.shared:
+                self.cpp_info.components["_fmt"].defines.append("FMT_SHARED")
+
+        self.cpp_info.components["_fmt"].set_property("cmake_target_name", f"fmt::{target}")

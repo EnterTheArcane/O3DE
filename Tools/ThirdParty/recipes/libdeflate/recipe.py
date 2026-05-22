@@ -1,13 +1,14 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, rmdir
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "libdeflate"
     version = "1.25"
     license = "MIT"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -17,12 +18,18 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
+
     def source(self):
-        get(
-            url="https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.25.tar.gz",
-            dest=self.source_folder,
-            sha256="d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d",
-        )
+        get(self, url="https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.25.tar.gz", sha256="d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -38,16 +45,25 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(
-            "COPYING",
-            self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "COPYING", self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "libdeflate")
-        self.cpp_info.set_property("cmake_target_name", "libdeflate::libdeflate_static")
-        self.cpp_info.set_property("cmake_package_file", "lib/cmake/libdeflate/libdeflate-config.cmake")
+        target_suffix = "_shared" if self.options.shared else "_static"
+        self.cpp_info.set_property("cmake_target_name", f"libdeflate::libdeflate{target_suffix}")
+        self.cpp_info.set_property("cmake_target_aliases", ["libdeflate::libdeflate"]) # not official, avoid to break users
+        self.cpp_info.set_property("pkg_config_name", "libdeflate")
+        # TODO: back to global scope in conan v2
+        self.cpp_info.components["_libdeflate"].libs = collect_libs(self)
+        if self.settings.os == "Windows" and self.options.shared:
+            self.cpp_info.components["_libdeflate"].defines.append("LIBDEFLATE_DLL")
+
+        # TODO: to remove in conan v2
+        self.cpp_info.components["_libdeflate"].names["cmake_find_package"] = f"libdeflate{target_suffix}"
+        self.cpp_info.components["_libdeflate"].names["cmake_find_package_multi"] = f"libdeflate{target_suffix}"
+        self.cpp_info.components["_libdeflate"].set_property("cmake_target_name", f"libdeflate::libdeflate{target_suffix}")
+        self.cpp_info.components["_libdeflate"].set_property("pkg_config_name", "libdeflate")
