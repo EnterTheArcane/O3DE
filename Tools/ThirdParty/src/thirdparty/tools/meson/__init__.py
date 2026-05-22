@@ -98,8 +98,7 @@ class MesonToolchain:
         lines.append(f"buildtype = '{meson_buildtype}'\n")
         if meson_buildtype == "release":
             lines.append("b_ndebug = 'true'\n")
-        if self._backend != "ninja":
-            lines.append(f"backend = '{self._backend}'\n")
+        lines.append(f"backend = '{self._backend}'\n")
         # Mirror the recipe's shared option as default_library
         _shared = recipe.options.get_safe("shared", True)
         _default_library = "shared" if _shared else "static"
@@ -115,6 +114,7 @@ class MesonToolchain:
             lines.append(f"c_link_args = {link_args_repr}\n")
             lines.append(f"cpp_link_args = {link_args_repr}\n")
         lines.append("\n")
+
 
         # ------------------------------------------------------------------ #
         # [project options] — per-recipe -D flags                            #
