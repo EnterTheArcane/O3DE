@@ -1,6 +1,3 @@
-# Ported from conan-center-index/assimp by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from pathlib import Path
 
 from thirdparty import RecipeBase

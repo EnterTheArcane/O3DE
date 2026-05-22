@@ -1,5 +1,3 @@
-# Ported from conan-center-index/xz_utils -- simplified for Windows CMake builds (>= 5.8.1)
-
 import os
 
 from thirdparty import RecipeBase

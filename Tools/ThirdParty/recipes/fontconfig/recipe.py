@@ -1,6 +1,3 @@
-# Ported from conan-center-index/fontconfig by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.apple import fix_apple_shared_install_name

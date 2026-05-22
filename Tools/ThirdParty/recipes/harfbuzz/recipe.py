@@ -1,6 +1,3 @@
-# Ported from conan-center-index/harfbuzz by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv

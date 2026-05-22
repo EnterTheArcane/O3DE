@@ -1,6 +1,3 @@
-# Ported from conan-center-index/opencolorio by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.apple import is_apple_os

@@ -1,6 +1,3 @@
-# Ported from conan-center-index/re2c by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 import os
 
 from thirdparty import RecipeBase

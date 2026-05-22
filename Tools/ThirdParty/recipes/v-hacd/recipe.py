@@ -1,6 +1,3 @@
-# Ported from conan-center-index/v-hacd by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get
 from thirdparty.tools.scm import Version
