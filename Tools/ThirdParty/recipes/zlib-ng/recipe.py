@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "zlib_compat": False,
+        "zlib_compat": True,
         "with_gzfileop": True,
         "with_optim": True,
         "with_new_strategies": True,
@@ -73,3 +73,14 @@ class Recipe(RecipeBase):
         # upstream CMakeLists intentionally hardcodes install_name with full
         # install path (to match autootools behavior), instead of @rpath
         fix_apple_shared_install_name(self)
+
+    def package_info(self):
+        # Expose as ZLIB::ZLIB for full drop-in zlib compatibility.
+        # With zlib_compat=True the static lib is named zlibstatic (not zlibstatic-ng)
+        # and exports standard zlib symbols (crc32, deflate, inflate, etc.).
+        if self.options.zlib_compat:
+            self.cpp_info.libs = ["zlibstatic"]
+        else:
+            self.cpp_info.libs = ["zlibstatic-ng"]
+        self.cpp_info.set_property("cmake_file_name", "ZLIB")
+        self.cpp_info.set_property("cmake_target_name", "ZLIB::ZLIB")

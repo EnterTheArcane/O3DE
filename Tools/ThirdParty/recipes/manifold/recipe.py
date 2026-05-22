@@ -40,6 +40,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["MANIFOLD_PYBIND"] = False
         tc.cache_variables["MANIFOLD_STRICT"] = False  # no -Werror
         tc.cache_variables["MANIFOLD_PAR"] = self.options.with_parallel_acceleration
+        tc.cache_variables["MANIFOLD_CROSS_SECTION"] = False  # requires Clipper2
         tc.generate()
 
     def build(self):

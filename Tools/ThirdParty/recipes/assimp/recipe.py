@@ -127,7 +127,12 @@ class Recipe(RecipeBase):
         return self.options.with_opengex
 
     def requirements(self) -> list[str]:
-        return ["zlib"]  # All other deps are bundled in assimp's contrib/
+        return [
+            "zlib",
+            "minizip-ng",  # ASSIMP_BUILD_MINIZIP=False — use our recipe instead of contrib/minizip
+            # poly2tri and rapidjson remain in assimp's contrib/ because assimp ships
+            # patched/modified copies that differ from the upstream packages.
+        ]
 
     def source(self):
         get(
@@ -146,7 +151,7 @@ class Recipe(RecipeBase):
         tc.variables["ASSIMP_BUILD_DOCS"] = False
         tc.variables["ASSIMP_BUILD_DRACO"] = False
         tc.variables["ASSIMP_BUILD_FRAMEWORK"] = False
-        tc.variables["ASSIMP_BUILD_MINIZIP"] = True  # use bundled minizip from contrib/
+        tc.variables["ASSIMP_BUILD_MINIZIP"] = False  # use external minizip-ng recipe
         tc.variables["ASSIMP_BUILD_SAMPLES"] = False
         tc.variables["ASSIMP_BUILD_TESTS"] = False
         tc.variables["ASSIMP_BUILD_ZLIB"] = False
@@ -209,7 +214,13 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure()
+        # ASSIMP_BUILD_USE_CCACHE must be OFF on the cmake command line (not just
+        # the toolchain file) because assimp's ccache check at lines 85-91 of
+        # its CMakeLists.txt runs BEFORE project(), i.e. before the toolchain
+        # is loaded.  A cmake -D flag is injected into the cache before any
+        # CMakeLists.txt processing, so option() at line 85 sees the cached
+        # OFF value and skips the ccache detection block entirely.
+        cmake.configure(variables={"ASSIMP_BUILD_USE_CCACHE": False})
         cmake.build()
 
     def package(self):
