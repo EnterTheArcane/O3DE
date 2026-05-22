@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "libpng"
+    version = "1.6.58"
     license = "libpng-2.0"
     options = {
         "shared": [True, False],
@@ -32,8 +34,11 @@ class Recipe(RecipeBase):
 
     @property
     def _is_clang_cl(self):
-        return self.is_windows and self.settings.compiler == "clang" and \
-               self.settings.compiler.get_safe("runtime")
+        return (
+            self.is_windows
+            and self.settings.compiler == "clang"
+            and self.settings.compiler.get_safe("runtime")
+        )
 
     @property
     def _has_neon_support(self):
@@ -63,7 +68,11 @@ class Recipe(RecipeBase):
         return ["zlib"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz",
+            dest=self.source_folder,
+            sha256="28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -72,18 +81,28 @@ class Recipe(RecipeBase):
         tc.cache_variables["PNG_STATIC"] = not self.options.shared
         tc.cache_variables["PNG_DEBUG"] = self.build_type == "Debug"
         tc.cache_variables["PNG_PREFIX"] = self.options.api_prefix
-        tc.cache_variables["PNG_FRAMEWORK"] = False  # changed from False to True by default in PNG 1.6.41
+        tc.cache_variables["PNG_FRAMEWORK"] = (
+            False  # changed from False to True by default in PNG 1.6.41
+        )
         tc.cache_variables["PNG_TOOLS"] = False
         tc.cache_variables["CMAKE_MACOSX_BUNDLE"] = False
         if self._has_neon_support:
-            tc.cache_variables["PNG_ARM_NEON"] = self._neon_msa_sse_vsx_mapping[str(self.options.neon)]
+            tc.cache_variables["PNG_ARM_NEON"] = self._neon_msa_sse_vsx_mapping[
+                str(self.options.neon)
+            ]
         if self._has_msa_support:
-            tc.cache_variables["PNG_MIPS_MSA"] = self._neon_msa_sse_vsx_mapping[str(self.options.msa)]
+            tc.cache_variables["PNG_MIPS_MSA"] = self._neon_msa_sse_vsx_mapping[
+                str(self.options.msa)
+            ]
         if self._has_sse_support:
-            tc.cache_variables["PNG_INTEL_SSE"] = self._neon_msa_sse_vsx_mapping[str(self.options.sse)]
+            tc.cache_variables["PNG_INTEL_SSE"] = self._neon_msa_sse_vsx_mapping[
+                str(self.options.sse)
+            ]
         if self._has_vsx_support:
-            tc.cache_variables["PNG_POWERPC_VSX"] = self._neon_msa_sse_vsx_mapping[str(self.options.vsx)]
-        
+            tc.cache_variables["PNG_POWERPC_VSX"] = self._neon_msa_sse_vsx_mapping[
+                str(self.options.vsx)
+            ]
+
         tc.generate()
         tc = CMakeDeps(self)
         tc.generate()
@@ -94,7 +113,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         if self.options.shared:

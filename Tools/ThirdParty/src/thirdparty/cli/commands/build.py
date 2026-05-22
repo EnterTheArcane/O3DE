@@ -4,9 +4,6 @@ import argparse
 import importlib.util
 import sys
 from pathlib import Path
-from typing import Any, cast
-
-import yaml  # type: ignore[import-untyped]
 
 from thirdparty.cli.command import command
 from thirdparty.internal.model.recipe import DepInfo, RecipeBase
@@ -21,12 +18,6 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
         dest="build_type",
         metavar="<type>",
     )
-    p.add_argument(
-        "--version",
-        default=None,
-        metavar="<version>",
-        help="Version to build (defaults to the canonical version in data.yml)",
-    )
 
 
 @command
@@ -34,7 +25,6 @@ def build(args: argparse.Namespace) -> None:
     """Build a recipe (and its dependencies) from source."""
     name: str = args.recipe
     build_type: str = args.build_type
-    version_override: str | None = args.version
 
     cwd = Path.cwd()
     recipes_root = cwd / "recipes"
@@ -44,7 +34,7 @@ def build(args: argparse.Namespace) -> None:
         print(f"[thirdparty] error: no 'recipes/' directory in {cwd}", file=sys.stderr)
         sys.exit(1)
 
-    _build_recipe(recipes_root, build_root, name, build_type, version_override, set())
+    _build_recipe(recipes_root, build_root, name, build_type, set())
 
 
 # ---------------------------------------------------------------------------
@@ -77,24 +67,9 @@ def _load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase]:
     return cls
 
 
-def _load_data(recipes_root: Path, name: str) -> dict[str, Any]:
-    data_path = recipes_root / name / "data.yml"
-    if not data_path.exists():
-        return {}
-    with open(data_path, encoding="utf-8") as f:
-        parsed: Any = yaml.safe_load(f)
-    if not isinstance(parsed, dict):
-        return {}
-    return cast("dict[str, Any]", parsed)
-
-
-def _resolve_version(data: dict[str, Any], override: str | None) -> str:
-    if override is not None:
-        return override
-    versions: Any = data.get("versions")
-    if isinstance(versions, dict) and versions:
-        return str(next(iter(cast("dict[str, Any]", versions))))
-    return "latest"
+def _resolve_version(recipe_cls: type[RecipeBase]) -> str:
+    v = getattr(recipe_cls, "version", None)
+    return str(v) if v else "latest"
 
 
 def _instantiate(
@@ -103,16 +78,14 @@ def _instantiate(
     build_root: Path,
     name: str,
     version: str,
-    data: dict[str, Any],
     build_type: str,
 ) -> RecipeBase:
     recipe = recipe_cls()
     recipe.version = version
     recipe.recipe_folder = str(recipes_root / name)
-    recipe.source_folder = str(build_root / name / version / "src")
+    recipe.source_folder = str(build_root / name / version / "source")
     recipe.build_folder = str(build_root / name / version / "build")
     recipe.package_folder = str(build_root / name / version / "package")
-    recipe.thirdparty_data = data
     recipe.build_type = build_type
     return recipe
 
@@ -127,8 +100,8 @@ def _collect_dep_paths(
 ) -> list[str]:
     paths: list[str] = []
     for dep in deps:
-        data = _load_data(recipes_root, dep)
-        ver = _resolve_version(data, None)
+        dep_cls = _load_recipe_class(recipes_root, dep)
+        ver = _resolve_version(dep_cls)
         pkg = build_root / dep / ver / "package"
         if pkg.exists():
             paths.append(str(pkg))
@@ -140,8 +113,8 @@ def _collect_dep_info(
 ) -> dict[str, DepInfo]:
     info: dict[str, DepInfo] = {}
     for dep in deps:
-        data = _load_data(recipes_root, dep)
-        ver = _resolve_version(data, None)
+        dep_cls = _load_recipe_class(recipes_root, dep)
+        ver = _resolve_version(dep_cls)
         pkg = build_root / dep / ver / "package"
         if pkg.exists():
             info[dep] = DepInfo(package_folder=str(pkg))
@@ -153,7 +126,6 @@ def _build_recipe(
     build_root: Path,
     name: str,
     build_type: str,
-    version_override: str | None,
     visited: set[str],
 ) -> None:
     if name in visited:
@@ -161,22 +133,21 @@ def _build_recipe(
     visited.add(name)
 
     recipe_cls = _load_recipe_class(recipes_root, name)
-    data = _load_data(recipes_root, name)
-    version = _resolve_version(data, version_override)
+    version = _resolve_version(recipe_cls)
 
     if _is_built(build_root, name, version):
         print(f"[thirdparty] {name}/{version} already built — skipping")
         return
 
     # Probe requirements without setting up build folders
-    probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, data, build_type)
+    probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type)
     deps = probe.requirements()
     for dep in deps:
-        _build_recipe(recipes_root, build_root, dep, build_type, None, visited)
+        _build_recipe(recipes_root, build_root, dep, build_type, visited)
 
     print(f"\n[thirdparty] === Building {name}/{version} ({build_type}) ===\n")
 
-    recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, data, build_type)
+    recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type)
     Path(recipe.source_folder).mkdir(parents=True, exist_ok=True)
     Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
     Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)

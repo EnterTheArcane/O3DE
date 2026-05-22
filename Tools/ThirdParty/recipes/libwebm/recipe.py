@@ -6,8 +6,10 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
 import os
 
+
 class Recipe(RecipeBase):
     name = "libwebm"
+    version = "1.0.0.31"
     license = "BSD-3-Clause"
 
     options = {
@@ -25,7 +27,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/webmproject/libwebm/archive/refs/tags/libwebm-1.0.0.31.tar.gz",
+            dest=self.source_folder,
+            sha256="616cfdca1c869222dc60d5a49d112c1464040390e3876afca4d385347c6ce55e",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -43,4 +49,8 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy("LICENSE.TXT", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.TXT",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )

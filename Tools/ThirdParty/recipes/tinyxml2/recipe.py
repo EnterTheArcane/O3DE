@@ -7,8 +7,10 @@ from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "tinyxml2"
+    version = "11.0.0"
     license = "Zlib"
     options = {
         "shared": [True, False],
@@ -20,7 +22,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/leethomason/tinyxml2/archive/refs/tags/11.0.0.tar.gz",
+            dest=self.source_folder,
+            sha256="5556deb5081fb246ee92afae73efd943c889cef0cafea92b0b82422d6a18f289",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -37,7 +43,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.txt",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

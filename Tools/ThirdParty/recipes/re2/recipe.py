@@ -7,8 +7,10 @@ from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "re2"
+    version = "20251105"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -27,7 +29,11 @@ class Recipe(RecipeBase):
         return ["abseil"]  # icu is optional (with_icu defaults to False)
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/google/re2/releases/download/2025-11-05/re2-2025-11-05.tar.gz",
+            dest=self.source_folder,
+            sha256="87f6029d2f6de8aa023654240a03ada90e876ce9a4676e258dd01ea4c26ffd67",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -43,7 +49,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

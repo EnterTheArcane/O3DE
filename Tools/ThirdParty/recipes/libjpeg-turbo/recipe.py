@@ -9,8 +9,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "libjpeg-turbo"
+    version = "3.1.4.1"
     license = ("IJG", "BSD-3-Clause", "Zlib")
     provides = "libjpeg"
     options = {
@@ -41,18 +43,28 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.4.1/libjpeg-turbo-3.1.4.1.tar.gz",
+            dest=self.source_folder,
+            sha256="ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022",
+        )
         apply_patches(self)
 
     @property
     def _is_arithmetic_encoding_enabled(self):
-        return self.options.get("arithmetic_encoder", False) or \
-               self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
+        return (
+            self.options.get("arithmetic_encoder", False)
+            or self.options.libjpeg7_compatibility
+            or self.options.libjpeg8_compatibility
+        )
 
     @property
     def _is_arithmetic_decoding_enabled(self):
-        return self.options.get("arithmetic_decoder", False) or \
-               self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
+        return (
+            self.options.get("arithmetic_decoder", False)
+            or self.options.libjpeg7_compatibility
+            or self.options.libjpeg8_compatibility
+        )
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -73,20 +85,30 @@ class Recipe(RecipeBase):
             tc.variables["WITH_MEM_SRCDST"] = self.options.get("mem_src_dst", False)
             tc.variables["WITH_12BIT"] = self.options.enable12bit
         if self.is_windows:
-            tc.variables["WITH_CRT_DLL"] = True # avoid replacing /MD by /MT in compiler flags
+            tc.variables["WITH_CRT_DLL"] = (
+                True  # avoid replacing /MD by /MT in compiler flags
+            )
         if Version(self.version) <= "2.1.0":
-            tc.variables["CMAKE_MACOSX_BUNDLE"] = False # avoid configuration error if building for iOS/tvOS/watchOS
+            tc.variables["CMAKE_MACOSX_BUNDLE"] = (
+                False  # avoid configuration error if building for iOS/tvOS/watchOS
+            )
         if Version(self.version) < "3.0.2":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         if self.options.get("java", False):
-            tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = os.path.join(self.package_folder, "lib", "java")
+            tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = os.path.join(
+                self.package_folder, "lib", "java"
+            )
         tc.generate()
 
     def _patch_sources(self):
         # do not override /MT by /MD if shared
-        replace_in_file(os.path.join(self.source_folder, "sharedlib", "CMakeLists.txt"),
-                              """string(REGEX REPLACE "/MT" "/MD" ${var} "${${var}}")""",
-                              "")
+        replace_in_file(
+            os.path.join(self.source_folder, "sharedlib", "CMakeLists.txt"),
+            """string(REGEX REPLACE "/MT" "/MD" ${var} "${${var}}")""",
+            "",
+        )
 
     def build(self):
         self._patch_sources()
@@ -95,8 +117,16 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy("README.ijg", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.md",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
+        copy(
+            "README.ijg",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         # remove unneeded directories
@@ -104,5 +134,13 @@ class Recipe(RecipeBase):
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(os.path.join(self.package_folder, "doc"))
         # remove binaries and pdb files
-        for pattern_to_remove in ["cjpeg*", "djpeg*", "jpegtran*", "tjbench*", "wrjpgcom*", "rdjpgcom*", "*.pdb"]:
+        for pattern_to_remove in [
+            "cjpeg*",
+            "djpeg*",
+            "jpegtran*",
+            "tjbench*",
+            "wrjpgcom*",
+            "rdjpgcom*",
+            "*.pdb",
+        ]:
             rm(pattern_to_remove, os.path.join(self.package_folder, "bin"))

@@ -7,8 +7,10 @@ from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "directx-headers"
+    version = "1.618.2"
     license = "MIT"
 
     @property
@@ -26,7 +28,11 @@ class Recipe(RecipeBase):
         }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v1.618.2.tar.gz",
+            dest=self.source_folder,
+            sha256="62004f45e2ab00cbb5c7f03c47262632c22fbce0a237383fc458d9324c44cf36",
+        )
 
     def generate(self):
         tc = MesonToolchain(self)
@@ -39,7 +45,9 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy("LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses")
+        )
         meson = Meson(self)
         meson.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

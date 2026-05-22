@@ -8,6 +8,7 @@ from thirdparty.tools.files import copy, get, rmdir
 
 class Recipe(RecipeBase):
     name = "libcurl"
+    version = "8.20.0"
     license = "curl"
     options = {
         "shared": [True, False],
@@ -22,9 +23,11 @@ class Recipe(RecipeBase):
         return ["zlib", "zstd"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://curl.se/download/curl-8.20.0.tar.xz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -39,7 +42,9 @@ class Recipe(RecipeBase):
         tc.variables["CURL_ZLIB"] = True
         tc.variables["CURL_BROTLI"] = False
         tc.variables["CURL_ZSTD"] = True
-        tc.variables["ZSTD_USE_STATIC_LIBS"] = True  # our zstd package only has zstd_static.lib
+        tc.variables["ZSTD_USE_STATIC_LIBS"] = (
+            True  # our zstd package only has zstd_static.lib
+        )
         tc.variables["CURL_DISABLE_LDAP"] = True
         tc.variables["ENABLE_ARES"] = False
         tc.variables["USE_LIBIDN2"] = False
@@ -57,7 +62,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "COPYING",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

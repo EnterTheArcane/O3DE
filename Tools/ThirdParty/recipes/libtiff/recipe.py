@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "libtiff"
+    version = "4.7.1"
     license = "libtiff"
     options = {
         "shared": [True, False],
@@ -21,7 +23,7 @@ class Recipe(RecipeBase):
         "zstd": [True, False],
         "jbig": [True, False],
         "webp": [True, False],
-        "cxx":  [True, False],
+        "cxx": [True, False],
     }
     default_options = {
         "shared": False,
@@ -33,14 +35,18 @@ class Recipe(RecipeBase):
         "zstd": True,
         "jbig": False,
         "webp": True,
-        "cxx":  True,
+        "cxx": True,
     }
 
     def requirements(self) -> list[str]:
         return ["zlib", "libdeflate", "xz_utils", "libjpeg-turbo", "zstd", "libwebp"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz",
+            dest=self.source_folder,
+            sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba",
+        )
         self._patch_sources()
 
     def generate(self):
@@ -53,7 +59,9 @@ class Recipe(RecipeBase):
         tc.variables["libdeflate"] = self.options.libdeflate
         tc.variables["zstd"] = self.options.zstd
         tc.variables["webp"] = self.options.webp
-        tc.variables["lerc"] = False # TODO: add lerc support for libtiff versions >= 4.3.0
+        tc.variables["lerc"] = (
+            False  # TODO: add lerc support for libtiff versions >= 4.3.0
+        )
 
         # Disable tools, test, contrib, man & html generation
         tc.variables["tiff-tools"] = False
@@ -65,7 +73,9 @@ class Recipe(RecipeBase):
         # BUILD_SHARED_LIBS must be set in command line because defined upstream before project()
         tc.cache_variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.cache_variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
-        tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = self.options.jpeg == "libjpeg-turbo"
+        tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = (
+            self.options.jpeg == "libjpeg-turbo"
+        )
         tc.generate()
         deps = CMakeDeps(self)
         deps.set_property("jbig", "cmake_file_name", "JBIG")
@@ -81,13 +91,24 @@ class Recipe(RecipeBase):
         apply_patches(self)
 
         # remove FindXXXX for conan dependencies
-        for module in ["Deflate", "JBIG", "JPEG", "LERC", "WebP", "ZSTD", "liblzma", "LibLZMA"]:
+        for module in [
+            "Deflate",
+            "JBIG",
+            "JPEG",
+            "LERC",
+            "WebP",
+            "ZSTD",
+            "liblzma",
+            "LibLZMA",
+        ]:
             rm(f"Find{module}.cmake", os.path.join(self.source_folder, "cmake"))
 
         # Export symbols of tiffxx for msvc shared
-        replace_in_file(os.path.join(self.source_folder, "libtiff", "CMakeLists.txt"),
-                              "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
-                              "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")
+        replace_in_file(
+            os.path.join(self.source_folder, "libtiff", "CMakeLists.txt"),
+            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
+            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)",
+        )
 
     def build(self):
         cmake = CMake(self)
@@ -95,7 +116,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"), keep_path=False)
+        copy(
+            "LICENSE.md",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+            keep_path=False,
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

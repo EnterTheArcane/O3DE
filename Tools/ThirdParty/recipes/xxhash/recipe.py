@@ -7,8 +7,10 @@ from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "xxhash"
+    version = "0.8.3"
     license = "BSD-2-Clause"
     options = {
         "shared": [True, False],
@@ -22,7 +24,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/Cyan4973/xxHash/archive/v0.8.3.tar.gz",
+            dest=self.source_folder,
+            sha256="aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -33,17 +39,25 @@ class Recipe(RecipeBase):
         # Generate a relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         if Version(self.version) < "0.8.3":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         tc.generate()
 
     def build(self):
         apply_patches(self)
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, "cmake_unofficial"))
+        cmake.configure(
+            build_script_folder=os.path.join(self.source_folder, "cmake_unofficial")
+        )
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

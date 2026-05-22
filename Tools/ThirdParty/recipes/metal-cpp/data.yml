@@ -1,4 +1,0 @@
-versions:
-  '26':
-    url: https://developer.apple.com/metal/cpp/files/metal-cpp_26.zip
-    sha256: 4df3c078b9aadcb516212e9cb03004cbc5ce9a3e9c068fa3144d021db585a3a4

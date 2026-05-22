@@ -10,7 +10,7 @@ import tempfile
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Protocol
 
 
 class _RecipeLike(Protocol):
@@ -19,7 +19,6 @@ class _RecipeLike(Protocol):
     recipe_folder: str
     source_folder: str
     package_folder: str
-    thirdparty_data: dict[str, Any]
 
 
 def get(
@@ -179,33 +178,19 @@ def rename(src: str, dst: str) -> None:
 
 
 def apply_patches(recipe: "_RecipeLike") -> None:
-    """Apply patches listed in ``data.yml`` ``patches`` section to ``source_folder``.
+    """Apply all .patch files found in ``<recipe_folder>/patches/`` to ``source_folder``.
 
-    The data.yml patches section is expected in the form::
-
-        patches:
-          "1.2.3":
-            - patches/fix-something.patch
+    Patch files are applied in sorted (alphabetical) order.
     """
     import patch_ng  # type: ignore[import-untyped]
 
-    patches_raw: Any = recipe.thirdparty_data.get("patches", {})
-    if not isinstance(patches_raw, dict):
+    patches_dir = Path(recipe.recipe_folder) / "patches"
+    if not patches_dir.exists():
         return
-    patches_by_ver = cast("dict[str, Any]", patches_raw)
 
-    ver_patches_raw: Any = patches_by_ver.get(recipe.version, [])
-    if not isinstance(ver_patches_raw, list):
-        return
-    version_patches = cast("list[Any]", ver_patches_raw)
-
-    recipe_dir = Path(recipe.recipe_folder)
     src_dir = Path(recipe.source_folder)
 
-    for entry in version_patches:
-        patch_path = recipe_dir / str(entry)
-        if not patch_path.exists():
-            raise RuntimeError(f"Patch file not found: {patch_path}")
+    for patch_path in sorted(patches_dir.glob("*.patch")):
         print(f"[thirdparty] Applying patch: {patch_path.name}")
         pset = patch_ng.fromfile(str(patch_path))  # type: ignore[no-untyped-call]
         if not pset:

@@ -7,8 +7,10 @@ from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "vorbis"
+    version = "1.3.7"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -23,15 +25,23 @@ class Recipe(RecipeBase):
         return ["ogg"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/xiph/vorbis/archive/v1.3.7.tar.gz",
+            dest=self.source_folder,
+            sha256="270c76933d0934e42c5ee0a54a36280e2d87af1de3cc3e584806357e237afd13",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
         # Relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
-        if Version(self.version) > "1.3.7": # pylint: disable=conan-unreachable-upper-version
-            raise RuntimeError("CMAKE_POLICY_VERSION_MINIMUM hardcoded to 3.5, check if new version supports CMake 4")
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
+        if (
+            Version(self.version) > "1.3.7"
+        ):  # pylint: disable=conan-unreachable-upper-version
+            raise RuntimeError(
+                "CMAKE_POLICY_VERSION_MINIMUM hardcoded to 3.5, check if new version supports CMake 4"
+            )
         tc.generate()
         cd = CMakeDeps(self)
         cd.generate()
@@ -43,7 +53,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "COPYING",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

@@ -8,9 +8,11 @@ from thirdparty.tools.scm import Version
 import os
 import textwrap
 
+
 class Recipe(RecipeBase):
     name = "bzip2"
-    license = "bzip2-1.0.6" # SPDX license identifier for version 1.0.6 or newer
+    version = "1.0.8"
+    license = "bzip2-1.0.6"  # SPDX license identifier for version 1.0.6 or newer
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -23,9 +25,14 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
+            dest=self.source_folder,
+            sha256="ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+        )
         # Copy the wrapper CMakeLists.txt (exported by the original CCI recipe) to the build root
         import shutil
+
         shutil.copy2(
             os.path.join(self.recipe_folder, "CMakeLists.txt"),
             os.path.join(self.source_folder, os.pardir, "CMakeLists.txt"),
@@ -46,7 +53,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         self._create_cmake_module_variables(
@@ -54,7 +65,8 @@ class Recipe(RecipeBase):
         )
 
     def _create_cmake_module_variables(self, module_file):
-        content = textwrap.dedent(f"""\
+        content = textwrap.dedent(
+            f"""\
             set(BZIP2_NEED_PREFIX TRUE)
             set(BZIP2_FOUND TRUE)
             if(NOT DEFINED BZIP2_INCLUDE_DIRS AND DEFINED BZip2_INCLUDE_DIRS)
@@ -67,9 +79,12 @@ class Recipe(RecipeBase):
                 set(BZIP2_LIBRARIES ${{BZip2_LIBRARIES}})
             endif()
             set(BZIP2_VERSION_STRING "{self.version}")
-        """)
+        """
+        )
         save(module_file, content)
 
     @property
     def _module_file_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
+        return os.path.join(
+            "lib", "cmake", f"conan-official-{self.name}-variables.cmake"
+        )

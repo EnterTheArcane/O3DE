@@ -7,8 +7,10 @@ from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "opensubdiv"
+    version = "3.7.0"
     license = "LicenseRef-LICENSE.txt"
     options = {
         "shared": [True, False],
@@ -32,7 +34,7 @@ class Recipe(RecipeBase):
         "with_clew": False,
         "with_opencl": False,
         "with_dx": False,
-        "with_metal": False
+        "with_metal": False,
     }
 
     @property
@@ -52,10 +54,16 @@ class Recipe(RecipeBase):
         }
 
     def requirements(self) -> list[str]:
-        return []  # onetbb/opengl/glfw not in recipe set; opengl is system lib; metal-cpp only on macOS
+        return (
+            []
+        )  # onetbb/opengl/glfw not in recipe set; opengl is system lib; metal-cpp only on macOS
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/PixarAnimationStudios/OpenSubdiv/archive/refs/tags/v3_7_0.tar.gz",
+            dest=self.source_folder,
+            sha256="f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9",
+        )
 
     @property
     def _osd_gpu_enabled(self):
@@ -82,7 +90,9 @@ class Recipe(RecipeBase):
         tc.variables["NO_METAL"] = not self.options.get("with_metal")
         tc.variables["NO_CLEW"] = not self.options.with_clew
         tc.variables["NO_OPENCL"] = not self.options.with_opencl
-        tc.variables["NO_PTEX"] = True  # Note: PTEX is for examples only, but we skip them..
+        tc.variables["NO_PTEX"] = (
+            True  # Note: PTEX is for examples only, but we skip them..
+        )
         tc.variables["NO_DOC"] = True
         tc.variables["NO_EXAMPLES"] = True
         tc.variables["NO_TUTORIALS"] = True
@@ -110,7 +120,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.txt",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         if self.options.shared:

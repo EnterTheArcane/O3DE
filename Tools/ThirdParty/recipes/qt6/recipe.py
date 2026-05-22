@@ -8,30 +8,65 @@ from thirdparty.tools.files import copy, get, rmdir
 
 # Modules we want to build (everything else is OFF)
 _DEFAULT_MODULES = [
-    "qtbase",       # Core, Gui, Widgets, Network, OpenGL, etc.
-    "qtsvg",        # SVG support
+    "qtbase",  # Core, Gui, Widgets, Network, OpenGL, etc.
+    "qtsvg",  # SVG support
     "qtimageformats",  # Extra image formats
-    "qttools",      # Designer, linguist, etc.
-    "qtshadertools",   # Shader tools (required by qtquick3d)
-    "qtdeclarative",   # QML / Quick
-    "qt3d",          # 3D rendering
+    "qttools",  # Designer, linguist, etc.
+    "qtshadertools",  # Shader tools (required by qtquick3d)
+    "qtdeclarative",  # QML / Quick
+    "qt3d",  # 3D rendering
 ]
 
 _ALL_MODULES = [
-    "qtactiveqt", "qtcharts", "qtcoap", "qtconnectivity", "qtdatavis3d",
-    "qtdeclarative", "qtdeviceutils", "qtdoc", "qtgrpc", "qthttpserver",
-    "qtimageformats", "qtlanguageserver", "qtlocation", "qtlottie",
-    "qtmqtt", "qtmultimedia", "qtnetworkauth", "qtopcua", "qtpositioning",
-    "qtquick3d", "qtquick3dphysics", "qtquicktimeline", "qtremoteobjects",
-    "qtscxml", "qtsensors", "qtserialbus", "qtserialport", "qtshadertools",
-    "qtspeech", "qtsvg", "qttools", "qttranslations", "qtvirtualkeyboard",
-    "qtwayland", "qtwebchannel", "qtwebengine", "qtwebsockets", "qtwebview",
-    "qt3d", "qtactiveqt", "qtgraphs", "qt5compat", "qtquickeffectmaker",
+    "qtactiveqt",
+    "qtcharts",
+    "qtcoap",
+    "qtconnectivity",
+    "qtdatavis3d",
+    "qtdeclarative",
+    "qtdeviceutils",
+    "qtdoc",
+    "qtgrpc",
+    "qthttpserver",
+    "qtimageformats",
+    "qtlanguageserver",
+    "qtlocation",
+    "qtlottie",
+    "qtmqtt",
+    "qtmultimedia",
+    "qtnetworkauth",
+    "qtopcua",
+    "qtpositioning",
+    "qtquick3d",
+    "qtquick3dphysics",
+    "qtquicktimeline",
+    "qtremoteobjects",
+    "qtscxml",
+    "qtsensors",
+    "qtserialbus",
+    "qtserialport",
+    "qtshadertools",
+    "qtspeech",
+    "qtsvg",
+    "qttools",
+    "qttranslations",
+    "qtvirtualkeyboard",
+    "qtwayland",
+    "qtwebchannel",
+    "qtwebengine",
+    "qtwebsockets",
+    "qtwebview",
+    "qt3d",
+    "qtactiveqt",
+    "qtgraphs",
+    "qt5compat",
+    "qtquickeffectmaker",
 ]
 
 
 class Recipe(RecipeBase):
     name = "qt6"
+    version = "6.8.3"
     license = "LGPL-3.0"
     options = {
         "shared": [True, False],
@@ -76,16 +111,20 @@ class Recipe(RecipeBase):
 
     def source(self):
         from pathlib import Path
+
         src = Path(self.source_folder)
         if src.exists() and any(src.iterdir()):
             print("[thirdparty] Qt6 source already present — skipping download")
             return
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://download.qt.io/archive/qt/6.8/6.8.3/single/qt-everywhere-src-6.8.3.tar.xz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="cdd3a69967208276bb01af7ace7dba0ba53e679f886a4cbe624225c60fb73f2c",
+        )
 
     def generate(self):
         import glob
+
         # Qt6 requires a single-config generator; Ninja is the default.
         # Explicitly set MSVC cl.exe so LLVM clang (earlier on PATH) is not
         # picked up.  CMake's MSVC variable is only set for cl.exe / clang-cl,
@@ -95,11 +134,15 @@ class Recipe(RecipeBase):
         cl_paths = glob.glob(
             r"C:\Program Files\Microsoft Visual Studio\*\*\VC\Tools\MSVC\*\bin\Hostx64\x64\cl.exe"
         )
+
         def _msvc_ver(p):
             try:
-                return tuple(int(x) for x in p.split("MSVC\\")[1].split("\\")[0].split("."))
+                return tuple(
+                    int(x) for x in p.split("MSVC\\")[1].split("\\")[0].split(".")
+                )
             except Exception:
                 return (0,)
+
         cl_paths.sort(key=_msvc_ver)
         cl_exe = cl_paths[-1].replace("\\", "/") if cl_paths else None
 
@@ -153,5 +196,8 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy("LICENSES/*", src=self.source_folder,
-             dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSES/*",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )

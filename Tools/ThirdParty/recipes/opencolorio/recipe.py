@@ -9,8 +9,10 @@ from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 import os
 
+
 class Recipe(RecipeBase):
     name = "opencolorio"
+    version = "2.5.1"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -24,10 +26,22 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self) -> list[str]:
-        return ["expat", "openexr", "imath", "pystring", "yaml-cpp", "minizip-ng", "lcms"]
+        return [
+            "expat",
+            "openexr",
+            "imath",
+            "pystring",
+            "yaml-cpp",
+            "minizip-ng",
+            "lcms",
+        ]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v2.5.1/OpenColorIO-2.5.1.tar.gz",
+            dest=self.source_folder,
+            sha256="49ab04d023d7a7a7237e24f2cfead3171b0ff7f466ce20e6e32859ec8c7cc94b",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -57,7 +71,11 @@ class Recipe(RecipeBase):
 
         if self.is_linux:
             # Workaround for: https://github.com/conan-io/conan/issues/13560
-            libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.cpp_info.aggregated_components().libdirs]
+            libdirs_host = [
+                l
+                for dependency in self.dependencies.host.values()
+                for l in dependency.cpp_info.aggregated_components().libdirs
+            ]
             tc.variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
 
         tc.generate()
@@ -69,7 +87,10 @@ class Recipe(RecipeBase):
         apply_patches(self)
 
         for module in ("expat", "lcms2", "pystring", "yaml-cpp", "Imath", "minizip-ng"):
-            rm("Find"+module+".cmake", os.path.join(self.source_folder, "share", "cmake", "modules"))
+            rm(
+                "Find" + module + ".cmake",
+                os.path.join(self.source_folder, "share", "cmake", "modules"),
+            )
 
     def build(self):
         self._patch_sources()
@@ -83,9 +104,11 @@ class Recipe(RecipeBase):
         cm.install()
 
         if not self.options.shared:
-            copy("*",
+            copy(
+                "*",
                 src=os.path.join(self.package_folder, "lib", "static"),
-                dst=os.path.join(self.package_folder, "lib"))
+                dst=os.path.join(self.package_folder, "lib"),
+            )
             rmdir(os.path.join(self.package_folder, "lib", "static"))
 
         rmdir(os.path.join(self.package_folder, "cmake"))
@@ -94,4 +117,8 @@ class Recipe(RecipeBase):
         # nop for 2.x
         rm("OpenColorIOConfig*.cmake", self.package_folder)
         rm("*.pdb", os.path.join(self.package_folder, "bin"))
-        copy(pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(
+            pattern="LICENSE",
+            dst=os.path.join(self.package_folder, "licenses"),
+            src=self.source_folder,
+        )

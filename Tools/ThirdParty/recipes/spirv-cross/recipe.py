@@ -7,8 +7,10 @@ from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir, save
 import os
 import textwrap
 
+
 class Recipe(RecipeBase):
     name = "spirv-cross"
+    version = "1.4.321.0"
     license = "Apache-2.0"
     options = {
         "shared": [True, False],
@@ -40,13 +42,21 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.321.0.tar.gz",
+            dest=self.source_folder,
+            sha256="6037555620c27105bf1d4068a6eeb4b0d7953630d556a1ca9799dfe06fd2fb68",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS"] = not self.options.exceptions
+        tc.variables["SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS"] = (
+            not self.options.exceptions
+        )
         tc.variables["SPIRV_CROSS_SHARED"] = self.options.shared
-        tc.variables["SPIRV_CROSS_STATIC"] = not self.options.shared or self.options.build_executable
+        tc.variables["SPIRV_CROSS_STATIC"] = (
+            not self.options.shared or self.options.build_executable
+        )
         tc.variables["SPIRV_CROSS_CLI"] = self.options.build_executable
         tc.variables["SPIRV_CROSS_ENABLE_TESTS"] = False
         tc.variables["SPIRV_CROSS_ENABLE_GLSL"] = self.options.glsl
@@ -55,7 +65,9 @@ class Recipe(RecipeBase):
         tc.variables["SPIRV_CROSS_ENABLE_CPP"] = self.options.cpp
         tc.variables["SPIRV_CROSS_ENABLE_REFLECT"] = self.options.reflect
         tc.variables["SPIRV_CROSS_ENABLE_C_API"] = self.options.get("c_api", True)
-        tc.variables["SPIRV_CROSS_ENABLE_UTIL"] = self.options.get("util", False) or self.options.build_executable
+        tc.variables["SPIRV_CROSS_ENABLE_UTIL"] = (
+            self.options.get("util", False) or self.options.build_executable
+        )
         tc.variables["SPIRV_CROSS_SKIP_INSTALL"] = False
         tc.variables["SPIRV_CROSS_FORCE_PIC"] = self.options.get("fPIC", True)
         tc.variables["SPIRV_CROSS_NAMESPACE_OVERRIDE"] = self.options.namespace
@@ -68,7 +80,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
@@ -77,26 +93,37 @@ class Recipe(RecipeBase):
         rm("*.pdb", os.path.join(self.package_folder, "bin"))
         if self.options.shared and self.options.build_executable:
             for static_lib in [
-                "spirv-cross-core", "spirv-cross-glsl", "spirv-cross-hlsl", "spirv-cross-msl",
-                "spirv-cross-cpp", "spirv-cross-reflect", "spirv-cross-c", "spirv-cross-util",
+                "spirv-cross-core",
+                "spirv-cross-glsl",
+                "spirv-cross-hlsl",
+                "spirv-cross-msl",
+                "spirv-cross-cpp",
+                "spirv-cross-reflect",
+                "spirv-cross-c",
+                "spirv-cross-util",
             ]:
                 rm(f"*{static_lib}.*", os.path.join(self.package_folder, "lib"))
 
         # TODO: to remove in conan v2 once legacy generators removed
         self._create_cmake_module_alias_targets(
             os.path.join(self.package_folder, self._module_file_rel_path),
-            {target: f"spirv-cross::{target}" for target in self._spirv_cross_components.keys()},
+            {
+                target: f"spirv-cross::{target}"
+                for target in self._spirv_cross_components.keys()
+            },
         )
 
     def _create_cmake_module_alias_targets(self, module_file, targets):
         content = ""
         for alias, aliased in targets.items():
-            content += textwrap.dedent(f"""\
+            content += textwrap.dedent(
+                f"""\
                 if(TARGET {aliased} AND NOT TARGET {alias})
                     add_library({alias} INTERFACE IMPORTED)
                     set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
                 endif()
-            """)
+            """
+            )
         save(module_file, content)
 
     @property

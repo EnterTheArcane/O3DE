@@ -8,8 +8,10 @@ from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "zlib-ng"
+    version = "2.3.3"
     license = "Zlib"
     options = {
         "shared": [True, False],
@@ -35,7 +37,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+            dest=self.source_folder,
+            sha256="f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -51,7 +57,9 @@ class Recipe(RecipeBase):
         tc.variables["WITH_NEW_STRATEGIES"] = self.options.with_new_strategies
         tc.variables["WITH_NATIVE_INSTRUCTIONS"] = self.options.with_native_instructions
         tc.variables["WITH_REDUCED_MEM"] = self.options.with_reduced_mem
-        tc.variables["WITH_RUNTIME_CPU_DETECTION"] = self.options.with_runtime_cpu_detection
+        tc.variables["WITH_RUNTIME_CPU_DETECTION"] = (
+            self.options.with_runtime_cpu_detection
+        )
         tc.generate()
 
     def build(self):
