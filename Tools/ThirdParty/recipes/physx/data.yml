@@ -1,9 +1,0 @@
-versions:
-  4.1.2:
-    url: https://github.com/NVIDIAGameWorks/PhysX/archive/a2c0428acab643e60618c681b501e86f7fd558cc.zip
-    sha256: d9c1939490a990277f8c773f288294cecb10e6fad8c820acad90fd4168b8ace3
-patches:
-  4.1.2:
-  - patches/0003-PsWindowsInlineAoS-msvc142-bug-workaround.patch
-  - patches/0004-Conan-PhysXGpu-name-workaround.patch
-  - patches/0005-CMake-macos-ios-android-install-targets.patch

@@ -5,8 +5,10 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 import os
 
+
 class Recipe(RecipeBase):
     name = "abseil"
+    version = "20260107.1"
     license = "Apache-2.0"
     options = {
         "shared": [True, False],
@@ -18,7 +20,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/abseil/abseil-cpp/archive/20260107.1.tar.gz",
+            dest=self.source_folder,
+            sha256="4314e2a7cbac89cac25a2f2322870f343d81579756ceff7f431803c2c9090195",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -36,7 +42,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

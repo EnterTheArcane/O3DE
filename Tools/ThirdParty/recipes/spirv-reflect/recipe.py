@@ -7,8 +7,10 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
 
+
 class Recipe(RecipeBase):
     name = "spirv-reflect"
+    version = "1.4.313.0"
     license = "Apache-2.0"
     options = {
         "fPIC": [True, False],
@@ -21,7 +23,11 @@ class Recipe(RecipeBase):
         return ["spirv-headers"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-1.4.313.0.tar.gz",
+            dest=self.source_folder,
+            sha256="a72129e23ffdf98978b0e60fcf24a14039503383cb077462677a1c59ffd168f0",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -36,6 +42,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE*",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()

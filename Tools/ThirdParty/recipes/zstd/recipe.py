@@ -3,13 +3,23 @@
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, collect_libs, copy, get, replace_in_file, rmdir, rm
+from thirdparty.tools.files import (
+    apply_patches,
+    collect_libs,
+    copy,
+    get,
+    replace_in_file,
+    rmdir,
+    rm,
+)
 from thirdparty.tools.scm import Version
 import glob
 import os
 
+
 class Recipe(RecipeBase):
     name = "zstd"
+    version = "1.5.7"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -25,32 +35,49 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz",
+            dest=self.source_folder,
+            sha256="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["ZSTD_BUILD_PROGRAMS"] = self.options.build_programs
-        tc.variables["ZSTD_BUILD_STATIC"] = not self.options.shared or self.options.build_programs
+        tc.variables["ZSTD_BUILD_STATIC"] = (
+            not self.options.shared or self.options.build_programs
+        )
         tc.variables["ZSTD_BUILD_SHARED"] = self.options.shared
         tc.variables["ZSTD_MULTITHREAD_SUPPORT"] = self.options.threading
         if Version(self.version) < "1.5.6":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         tc.generate()
 
     def _patch_sources(self):
         apply_patches(self)
         # Don't force PIC
-        replace_in_file(os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
-                              "POSITION_INDEPENDENT_CODE On", "")
+        replace_in_file(
+            os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
+            "POSITION_INDEPENDENT_CODE On",
+            "",
+        )
 
     def build(self):
         self._patch_sources()
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, "build", "cmake"))
+        cmake.configure(
+            build_script_folder=os.path.join(self.source_folder, "build", "cmake")
+        )
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

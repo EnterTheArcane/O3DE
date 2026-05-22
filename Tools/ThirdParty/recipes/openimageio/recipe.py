@@ -8,6 +8,7 @@ from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
 
 class Recipe(RecipeBase):
     name = "openimageio"
+    version = "3.1.13.1"
     license = "Apache-2.0"
     options = {
         "shared": [True, False],
@@ -19,12 +20,22 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self) -> list[str]:
-        return ["zlib", "libtiff", "imath", "openexr", "libjpeg-turbo", "libpng", "libwebp"]
+        return [
+            "zlib",
+            "libtiff",
+            "imath",
+            "openexr",
+            "libjpeg-turbo",
+            "libpng",
+            "libwebp",
+        ]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v3.1.13.1/OpenImageIO-3.1.13.1.tar.gz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="b0d81f4f041fd72f034bd2a6c5ad9db1880008f67af101233cf3992f9e59217f",
+        )
         apply_patches(self)
 
     def generate(self):
@@ -77,7 +88,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.md",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

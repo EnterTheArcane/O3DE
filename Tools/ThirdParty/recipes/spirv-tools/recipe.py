@@ -7,8 +7,10 @@ from thirdparty.tools.files import copy, get, replace_in_file, rmdir, apply_patc
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "spirv-tools"
+    version = "1.4.313.0"
     license = "Apache-2.0"
     options = {
         "shared": [True, False],
@@ -25,14 +27,18 @@ class Recipe(RecipeBase):
         return ["spirv-headers"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.313.0.tar.gz",
+            dest=self.source_folder,
+            sha256="6b60f723345ceed5291cceebbcfacf7fea9361a69332261fa08ae57e2a562005",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
 
-        #====================
+        # ====================
         # Shared libs mess in Spirv-Tools (see https://github.com/KhronosGroup/SPIRV-Tools/issues/3909)
-        #====================
+        # ====================
         # We have 2 solutions if shared True:
         #  - Only package SPIRV-Tools-shared lib (private symbols properly hidden), and wait resolution
         #    of above issue before allowing to build shared for all Spirv-Tools libs.
@@ -43,10 +49,12 @@ class Recipe(RecipeBase):
         # Static and shared libs are controlled by a weird combination
         # of SPIRV_TOOLS_BUILD_STATIC and BUILD_SHARED_LIBS.
         tc.variables["SPIRV_TOOLS_BUILD_STATIC"] = True
-        #============
+        # ============
 
         # Required by the project's CMakeLists.txt
-        tc.variables["SPIRV-Headers_SOURCE_DIR"] = self.dependencies["spirv-headers"].package_folder.replace("\\", "/")
+        tc.variables["SPIRV-Headers_SOURCE_DIR"] = self.dependencies[
+            "spirv-headers"
+        ].package_folder.replace("\\", "/")
 
         # There are some switch( ) statements that are causing errors
         # need to turn this off
@@ -61,7 +69,9 @@ class Recipe(RecipeBase):
         # To install relocatable shared libs on Macos
         if Version(self.version) < "1.3.239":
             tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         # For iOS/tvOS/watchOS
         tc.variables["CMAKE_MACOSX_BUNDLE"] = False
 
@@ -71,8 +81,11 @@ class Recipe(RecipeBase):
         apply_patches(self)
         # CMAKE_POSITION_INDEPENDENT_CODE was set ON for the entire
         # project in the lists file.
-        replace_in_file(os.path.join(self.source_folder, "CMakeLists.txt"),
-                              "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
+        replace_in_file(
+            os.path.join(self.source_folder, "CMakeLists.txt"),
+            "set(CMAKE_POSITION_INDEPENDENT_CODE ON)",
+            "",
+        )
 
     def build(self):
         self._patch_sources()
@@ -81,7 +94,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE*",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
 
@@ -95,8 +112,11 @@ class Recipe(RecipeBase):
         rmdir(os.path.join(self.package_folder, "SPIRV-Tools-tools"))
         if self.options.shared:
             for file_name in [
-                "*SPIRV-Tools", "*SPIRV-Tools-opt", "*SPIRV-Tools-link",
-                "*SPIRV-Tools-reduce", "*SPIRV-Tools-lint",
+                "*SPIRV-Tools",
+                "*SPIRV-Tools-opt",
+                "*SPIRV-Tools-link",
+                "*SPIRV-Tools-reduce",
+                "*SPIRV-Tools-lint",
             ]:
                 for ext in [".a", ".lib"]:
                     rm(f"{file_name}{ext}", os.path.join(self.package_folder, "lib"))

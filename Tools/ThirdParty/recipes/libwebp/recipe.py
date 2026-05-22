@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "libwebp"
+    version = "1.6.0"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -27,7 +29,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+            dest=self.source_folder,
+            sha256="e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
+        )
         apply_patches(self)
 
     def generate(self):
@@ -65,7 +71,10 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy("COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "COPYING",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(os.path.join(self.package_folder, "share"))
-

@@ -132,6 +132,7 @@ class RecipeBase:
 
     # Override in subclasses using class body:
     name: str | None = None
+    version: str = ""
     license: str | None = None
     default_options: dict[str, Any] = {}
 
@@ -142,7 +143,6 @@ class RecipeBase:
         self.source_folder: str = ""
         self.build_folder: str = ""
         self.package_folder: str = ""
-        self.thirdparty_data: dict[str, Any] = {}
         self.build_type: str = "Release"
         # Package folder paths for resolved dependencies (set by runner):
         self.dep_package_paths: list[str] = []

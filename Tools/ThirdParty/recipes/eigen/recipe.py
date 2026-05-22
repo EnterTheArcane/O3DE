@@ -7,9 +7,14 @@ from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "eigen"
-    license = ("MPL-2.0", "LGPL-3.0-or-later")  # Taking into account the default value of MPL2_only option
+    version = "5.0.1"
+    license = (
+        "MPL-2.0",
+        "LGPL-3.0-or-later",
+    )  # Taking into account the default value of MPL2_only option
     options = {
         "MPL2_only": [True, False],
     }
@@ -18,8 +23,12 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(**self.thirdparty_data["versions"][self.version],
-            dest=self.source_folder, strip_root=True)
+        get(
+            url="https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.bz2",
+            sha256="e4de6b08f33fd8b8985d2f204381408c660bffa6170ac65b68ae1bd3cd575c0a",
+            dest=self.source_folder,
+            strip_root=True,
+        )
         apply_patches(self)
 
     def generate(self):
@@ -32,7 +41,9 @@ class Recipe(RecipeBase):
             tc.cache_variables["EIGEN_BUILD_DEMOS"] = False
             tc.cache_variables["EIGEN_BUILD_DOC"] = False
             tc.cache_variables["EIGEN_BUILD_PKGCONFIG"] = False
-            tc.cache_variables["EIGEN_BUILD_TESTING"] = tc.cache_variables["BUILD_TESTING"]
+            tc.cache_variables["EIGEN_BUILD_TESTING"] = tc.cache_variables[
+                "BUILD_TESTING"
+            ]
         else:
             tc.cache_variables["EIGEN_TEST_NOQT"] = True
         tc.generate()
@@ -46,5 +57,9 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
 
-        copy("COPYING.*", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(
+            "COPYING.*",
+            self.source_folder,
+            os.path.join(self.package_folder, "licenses"),
+        )
         rmdir(os.path.join(self.package_folder, "share"))

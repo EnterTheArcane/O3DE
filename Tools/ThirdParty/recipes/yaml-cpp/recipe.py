@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "yaml-cpp"
+    version = "0.9.0"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -21,7 +23,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.9.0.tar.gz",
+            dest=self.source_folder,
+            sha256="25cb043240f828a8c51beb830569634bc7ac603978e0f69d6b63558dadefd49a",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -30,8 +36,12 @@ class Recipe(RecipeBase):
         tc.variables["YAML_CPP_BUILD_TOOLS"] = False
         tc.variables["YAML_CPP_INSTALL"] = True
         tc.variables["YAML_BUILD_SHARED_LIBS"] = self.options.shared
-        if Version(self.version) <= "0.8.0": # pylint: disable=conan-condition-evals-to-constant
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        if (
+            Version(self.version) <= "0.8.0"
+        ):  # pylint: disable=conan-condition-evals-to-constant
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         if self.is_windows:
             tc.variables["YAML_MSVC_SHARED_RT"] = not False
             tc.preprocessor_definitions["_NOEXCEPT"] = "noexcept"
@@ -46,7 +56,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "CMake"))

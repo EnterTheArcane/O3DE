@@ -6,8 +6,10 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, rmdir
 import os
 
+
 class Recipe(RecipeBase):
     name = "libdeflate"
+    version = "1.25"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -19,7 +21,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.25.tar.gz",
+            dest=self.source_folder,
+            sha256="d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -35,7 +41,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("COPYING", self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "COPYING",
+            self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

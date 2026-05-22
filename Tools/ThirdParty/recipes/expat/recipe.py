@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "expat"
+    version = "2.8.1"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -25,7 +27,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/libexpat/libexpat/releases/download/R_2_8_1/expat-2.8.1.tar.xz",
+            dest=self.source_folder,
+            sha256="10b195ee78160a908388180a8fe3603d4e9a12f4755fbf5f3816b23a9d750da0",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -47,7 +53,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "COPYING",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

@@ -1,7 +1,0 @@
-versions:
-  3.7.0:
-    url: https://github.com/PixarAnimationStudios/OpenSubdiv/archive/refs/tags/v3_7_0.tar.gz
-    sha256: f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9
-patches:
-  3.7.0:
-  - patches/3.7.0-0001-cmake-no-rpath.patch

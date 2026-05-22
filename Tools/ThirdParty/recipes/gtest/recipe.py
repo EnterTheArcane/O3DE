@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc_static_runtime, msvc_runtime_flag
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "gtest"
+    version = "1.17.0"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -30,9 +32,15 @@ class Recipe(RecipeBase):
     implements = ["auto_shared_fpic"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/google/googletest/archive/v1.17.0.tar.gz",
+            dest=self.source_folder,
+            sha256="65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c",
+        )
 
-        internal_utils = os.path.join(self.source_folder, "googletest", "cmake", "internal_utils.cmake")
+        internal_utils = os.path.join(
+            self.source_folder, "googletest", "cmake", "internal_utils.cmake"
+        )
         replace_in_file(internal_utils, "-WX", "")
 
     def generate(self):
@@ -51,7 +59,9 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses")
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

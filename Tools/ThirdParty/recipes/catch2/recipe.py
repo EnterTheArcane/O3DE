@@ -7,8 +7,10 @@ from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "catch2"
+    version = "2.13.10"
     license = "BSL-1.0"
     options = {
         "fPIC": [True, False],
@@ -30,14 +32,24 @@ class Recipe(RecipeBase):
         return str(self.options.default_reporter).strip('"')
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/catchorg/Catch2/archive/v2.13.10.tar.gz",
+            dest=self.source_folder,
+            sha256="d54a712b7b1d7708bc7a819a8e6e47b2fde9536f487b89ccbca295072a7d9943",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTING"] = False
-        tc.cache_variables["CATCH_INSTALL_DOCS"] = False    # these are cmake options, so use cache_variables
-        tc.cache_variables["CATCH_INSTALL_HELPERS"] = "ON"  # these are cmake options, so use cache_variables
-        tc.cache_variables["CATCH_BUILD_STATIC_LIBRARY"] = str(self.options.with_main)   # these are cmake options, so use cache_variables (str() is required for conan 1.52)
+        tc.cache_variables["CATCH_INSTALL_DOCS"] = (
+            False  # these are cmake options, so use cache_variables
+        )
+        tc.cache_variables["CATCH_INSTALL_HELPERS"] = (
+            "ON"  # these are cmake options, so use cache_variables
+        )
+        tc.cache_variables["CATCH_BUILD_STATIC_LIBRARY"] = str(
+            self.options.with_main
+        )  # these are cmake options, so use cache_variables (str() is required for conan 1.52)
         if self.options.with_prefix:
             tc.preprocessor_definitions["CATCH_CONFIG_PREFIX_ALL"] = 1
         if self.options.get("with_benchmark", False):
@@ -53,12 +65,21 @@ class Recipe(RecipeBase):
             cmake.build()
 
     def package(self):
-        copy(pattern="LICENSE.txt", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(
+            pattern="LICENSE.txt",
+            dst=os.path.join(self.package_folder, "licenses"),
+            src=self.source_folder,
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "share"))
-        for cmake_file in ["ParseAndAddCatchTests.cmake", "Catch.cmake", "CatchAddTests.cmake"]:
-            copy(cmake_file,
+        for cmake_file in [
+            "ParseAndAddCatchTests.cmake",
+            "Catch.cmake",
+            "CatchAddTests.cmake",
+        ]:
+            copy(
+                cmake_file,
                 src=os.path.join(self.source_folder, "contrib"),
                 dst=os.path.join(self.package_folder, "lib", "cmake", "Catch2"),
             )
