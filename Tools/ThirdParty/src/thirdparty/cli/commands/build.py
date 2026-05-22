@@ -6,8 +6,12 @@ import sys
 from collections import OrderedDict
 from pathlib import Path
 
+from thirdparty._conan.api.model.refs import RecipeReference
+from thirdparty._conan.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
 from thirdparty._conan.internal.model.conan_file import ConanFile
+from thirdparty._conan.internal.model.conanfile_interface import ConanFileInterface
 from thirdparty._conan.internal.model.dependencies import ConanFileDependencies
+from thirdparty._conan.internal.model.requires import Requirement
 from thirdparty._conan.tools.env import Environment
 from thirdparty._conan.tools.env.environment import generate_aggregated_env
 from thirdparty._host.detect import detect_settings, make_conf
@@ -29,6 +33,15 @@ class _ConanHelpers:
         self.conan_api = None
 
 
+class _FakeNode:
+    """Minimal stand-in for conan's graph Node, giving dep conanfiles a ref/context/recipe."""
+
+    def __init__(self, name: str, version: str) -> None:
+        self.ref = RecipeReference(name, version)
+        self.context = CONTEXT_HOST  # "host"
+        self.recipe = RECIPE_INCACHE  # any non-RECIPE_PLATFORM value
+
+
 def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument("recipe", metavar="<recipe>", help="Recipe name to build")
     p.add_argument(
@@ -46,6 +59,12 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
         metavar="<N>",
         help="Parallel build jobs (default: cpu count)",
     )
+    p.add_argument(
+        "--generate-only",
+        action="store_true",
+        dest="generate_only",
+        help="Run only through generate() (no source download, build, or package)",
+    )
 
 
 @command
@@ -53,6 +72,7 @@ def build(args: argparse.Namespace) -> None:
     """Build a recipe (and its dependencies) from source."""
     name: str = args.recipe
     build_type: str = args.build_type
+    generate_only: bool = getattr(args, "generate_only", False)
 
     cwd = Path.cwd()
     recipes_root = cwd / "recipes"
@@ -62,7 +82,8 @@ def build(args: argparse.Namespace) -> None:
         print(f"[thirdparty] error: no 'recipes/' directory in {cwd}", file=sys.stderr)
         sys.exit(1)
 
-    _build_recipe(recipes_root, build_root, name, build_type, set(), jobs=args.jobs)
+    _build_recipe(recipes_root, build_root, name, build_type, set(),
+                  jobs=args.jobs, generate_only=generate_only)
 
 
 def _load_recipe_class(recipes_root: Path, name: str) -> type[ConanFile]:
@@ -145,6 +166,76 @@ def _get_requires(recipe: ConanFile) -> list[str]:
     return names
 
 
+def _build_dep_graph(
+    recipes_root: Path,
+    build_root: Path,
+    dep_names: list[str],
+    build_type: str,
+    jobs: int | None = None,
+) -> ConanFileDependencies:
+    """Create a ConanFileDependencies from a list of already-built packages.
+
+    Loads each dep's recipe, sets its package_folder, calls package_info() to
+    populate cpp_info, then wraps everything in Requirement / ConanFileInterface
+    pairs so that CMakeDeps and CMakeToolchain can consume them.
+    """
+    deps_dict: OrderedDict = OrderedDict()
+
+    for dep_name in dep_names:
+        dep_cls = _load_recipe_class(recipes_root, dep_name)
+        dep_version = _resolve_version(dep_cls)
+        pkg_dir = str(build_root / dep_name / dep_version / "package")
+
+        dep = dep_cls(display_name=dep_name)
+        dep.version = dep_version
+        dep.recipe_folder = str(recipes_root / dep_name)
+        dep.folders.set_base_package(pkg_dir)
+
+        dep.settings = detect_settings(build_type)
+        dep.settings_build = dep.settings
+        dep.settings_target = None
+        conf = make_conf(jobs=jobs)
+        dep.conf = conf
+        dep._conan_helpers = _ConanHelpers(conf)
+        dep._conan_dependencies = ConanFileDependencies(OrderedDict())
+        dep._conan_buildenv = Environment()
+        dep._conan_runenv = Environment()
+
+        # Provide ref / context / recipe via a lightweight fake node so that
+        # ConanFileInterface (and any property that delegates to _conan_node) works.
+        dep._conan_node = _FakeNode(dep_name, dep_version)
+
+        # Populate cpp_info from package_info()
+        if hasattr(dep, "config_options"):
+            try:
+                dep.config_options()
+            except Exception:
+                pass
+        if hasattr(dep, "configure"):
+            try:
+                dep.configure()
+            except Exception:
+                pass
+        if hasattr(dep, "package_info"):
+            try:
+                dep.package_info()
+            except Exception as exc:
+                print(f"[thirdparty] warn: package_info() failed for {dep_name}: {exc}")
+
+        # Build the Requirement key (host, direct host dep)
+        ref = RecipeReference(dep_name, dep_version)
+        req = Requirement(ref, build=False, direct=True)
+
+        # Wrap in ConanFileInterface (consumer=None; only used for conditional flag evaluation)
+        iface = ConanFileInterface(dep, None)
+
+        deps_dict[req] = iface
+
+    return ConanFileDependencies(deps_dict)
+
+
+
+
 def _is_built(build_root: Path, name: str, version: str) -> bool:
     pkg = build_root / name / version / "package"
     return pkg.exists() and any(pkg.iterdir())
@@ -157,26 +248,50 @@ def _build_recipe(
     build_type: str,
     visited: set[str],
     jobs: int | None = None,
-) -> None:
+    generate_only: bool = False,
+) -> list[str]:
+    """Build *name* and all its transitive dependencies.
+
+    Returns the ordered list of all transitive dep names for *name* (deepest
+    first) so that the caller can populate its own dep graph.
+    """
     if name in visited:
-        return
+        return []
     visited.add(name)
 
     recipe_cls = _load_recipe_class(recipes_root, name)
     version = _resolve_version(recipe_cls)
 
-    if _is_built(build_root, name, version):
-        print(f"[thirdparty] {name}/{version} already built — skipping")
-        return
-
+    # Probe the recipe to discover its direct dependencies (even when pre-built,
+    # so we can return the correct transitive dep list to our caller).
     probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
-    deps = _get_requires(probe)
-    for dep in deps:
-        _build_recipe(recipes_root, build_root, dep, build_type, visited, jobs=jobs)
+    direct_deps = _get_requires(probe)
+
+    # Recursively build deps and collect their full transitive dep lists.
+    transitive: list[str] = []
+    for dep_name in direct_deps:
+        sub = _build_recipe(recipes_root, build_root, dep_name, build_type, visited,
+                            jobs=jobs, generate_only=generate_only)
+        for d in sub:
+            if d not in transitive:
+                transitive.append(d)
+        # dep_name itself is in visited after the recursive call (either it was
+        # already there or it was just built).  Add it to our list if not yet present.
+        if dep_name not in transitive:
+            transitive.append(dep_name)
+
+    if not generate_only and _is_built(build_root, name, version):
+        print(f"[thirdparty] {name}/{version} already built — skipping")
+        return transitive
+
+    # Build the dependency graph for this recipe from all transitive deps.
+    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type, jobs=jobs)
 
     print(f"\n[thirdparty] === Building {name}/{version} ({build_type}) ===\n")
 
     recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
+    recipe._conan_dependencies = dep_graph
+
     Path(recipe.source_folder).mkdir(parents=True, exist_ok=True)
     Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
     Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
@@ -192,14 +307,16 @@ def _build_recipe(
         except Exception:
             pass
 
-    if hasattr(recipe, "source"):
+    if not generate_only and hasattr(recipe, "source"):
         recipe.source()
     if hasattr(recipe, "generate"):
         recipe.generate()
     generate_aggregated_env(recipe)
-    if hasattr(recipe, "build"):
-        recipe.build()
-    if hasattr(recipe, "package"):
-        recipe.package()
+    if not generate_only:
+        if hasattr(recipe, "build"):
+            recipe.build()
+        if hasattr(recipe, "package"):
+            recipe.package()
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
+    return transitive
