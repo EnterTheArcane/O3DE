@@ -9,6 +9,7 @@ from thirdparty.tools.files import copy, get, rmdir
 
 class Recipe(RecipeBase):
     name = "cpython"
+    version = "3.12.7"
     license = "PSF-2.0"
     options = {
         "shared": [True, False],
@@ -27,9 +28,11 @@ class Recipe(RecipeBase):
         return ["openssl"] if self.options.with_ssl else []
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="73ac8fe780227bf371add8373c3079f42a0dc62deff8d612cd15a618082ab623",
+        )
 
     def _run(self, cmd, cwd: str) -> None:
         if isinstance(cmd, str):
@@ -45,8 +48,10 @@ class Recipe(RecipeBase):
         build_type = "Debug" if self.build_type == "Debug" else "Release"
         cmd = [
             build_bat,
-            "-c", build_type,
-            "-p", "x64",
+            "-c",
+            build_type,
+            "-p",
+            "x64",
             "--no-tkinter",
         ]
         if not self.options.with_ssl:
@@ -89,5 +94,8 @@ class Recipe(RecipeBase):
         lib_dst = os.path.join(self.package_folder, "lib", "python")
         copy("*", src=lib_src, dst=lib_dst)
 
-        copy("LICENSE", src=self.source_folder,
-             dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )

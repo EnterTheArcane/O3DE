@@ -7,8 +7,10 @@ from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "miniz"
+    version = "3.1.1"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -20,8 +22,12 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(**self.thirdparty_data["versions"][self.version],
-            dest=self.source_folder, strip_root=True)
+        get(
+            url="https://github.com/richgel999/miniz/archive/refs/tags/3.1.1.tar.gz",
+            sha256="8bb29c7bd6f22356e5583e794bed4a0b3e6dfcbcadb49974fc9270ccca1e5557",
+            dest=self.source_folder,
+            strip_root=True,
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -34,7 +40,9 @@ class Recipe(RecipeBase):
         # Honor BUILD_SHARED_LIBS from conan_toolchain (see https://github.com/conan-io/conan/issues/11840)
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0077"] = "NEW"
         if Version(self.version) <= "3.0.2":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         tc.generate()
 
     def build(self):
@@ -43,7 +51,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

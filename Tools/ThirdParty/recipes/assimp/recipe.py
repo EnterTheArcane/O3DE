@@ -10,8 +10,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "assimp"
+    version = "6.0.2"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -117,8 +119,11 @@ class Recipe(RecipeBase):
 
     @property
     def _depends_on_stb(self):
-        return self.options.with_m3d or self.options.with_m3d_exporter or \
-            self.options.with_pbrt_exporter
+        return (
+            self.options.with_m3d
+            or self.options.with_m3d_exporter
+            or self.options.with_pbrt_exporter
+        )
 
     @property
     def _depends_on_openddlparser(self):
@@ -128,7 +133,11 @@ class Recipe(RecipeBase):
         return ["zlib"]  # All other deps are bundled in assimp's contrib/
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.2.tar.gz",
+            dest=self.source_folder,
+            sha256="d1822d9a19c9205d6e8bc533bf897174ddb360ce504680f294170cc1d6319751",
+        )
         self._patch_sources()
 
     def generate(self):
@@ -186,11 +195,17 @@ class Recipe(RecipeBase):
             'SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_DEBUG /Zi /Od")',
             'SET(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG:FULL /PDBALTPATH:%_PDB% /OPT:REF /OPT:ICF")',
         ]:
-            replace_in_file(os.path.join(self.source_folder, "CMakeLists.txt"), pattern, "")
+            replace_in_file(
+                os.path.join(self.source_folder, "CMakeLists.txt"), pattern, ""
+            )
 
         for pattern in ["-Werror", "/WX"]:
-            replace_in_file(os.path.join(self.source_folder, "CMakeLists.txt"), pattern, "")
-            replace_in_file(os.path.join(self.source_folder, "code", "CMakeLists.txt"), pattern, "")
+            replace_in_file(
+                os.path.join(self.source_folder, "CMakeLists.txt"), pattern, ""
+            )
+            replace_in_file(
+                os.path.join(self.source_folder, "code", "CMakeLists.txt"), pattern, ""
+            )
 
         # All other contrib libs (clipper, poly2tri, rapidjson, pugixml, etc.) remain bundled.
         # ASSIMP_BUILD_MINIZIP=True uses the bundled minizip from contrib/.
@@ -201,7 +216,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

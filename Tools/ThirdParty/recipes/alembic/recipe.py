@@ -7,8 +7,10 @@ from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "alembic"
+    version = "1.8.8"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -25,7 +27,11 @@ class Recipe(RecipeBase):
         return ["imath", "openexr"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/alembic/alembic/archive/refs/tags/1.8.8.tar.gz",
+            dest=self.source_folder,
+            sha256="ba1f34544608ef7d3f68cafea946ec9cc84792ddf9cda3e8d5590821df71f6c6",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -53,6 +59,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.txt",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()

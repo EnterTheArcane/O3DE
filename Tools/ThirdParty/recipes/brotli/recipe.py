@@ -7,8 +7,10 @@ from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "brotli"
+    version = "1.2.0"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -32,7 +34,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/google/brotli/archive/v1.2.0.tar.gz",
+            dest=self.source_folder,
+            sha256="816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -61,7 +67,9 @@ class Recipe(RecipeBase):
         if Version(self.version) < "1.1.0":
             # To install relocatable shared libs on Macos
             tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         tc.generate()
 
     def build(self):
@@ -71,7 +79,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

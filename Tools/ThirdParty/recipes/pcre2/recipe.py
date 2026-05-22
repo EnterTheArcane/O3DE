@@ -8,8 +8,10 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "pcre2"
+    version = "10.44"
     license = "BSD-3-Clause"
     options = {
         "shared": [True, False],
@@ -42,7 +44,11 @@ class Recipe(RecipeBase):
         return ["zlib", "bzip2"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.44/pcre2-10.44.tar.bz2",
+            dest=self.source_folder,
+            sha256="d34f02e113cf7193a1ebf2770d3ac527088d485d4e047ed10e5d217c6ef5de96",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -63,12 +69,16 @@ class Recipe(RecipeBase):
         tc.variables["PCRE2_BUILD_PCRE2_32"] = self.options.build_pcre2_32
         tc.variables["PCRE2_SUPPORT_JIT"] = self.options.support_jit
         tc.variables["PCRE2_LINK_SIZE"] = self.options.link_size
-        tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.get("grep_support_callout_fork", False)
+        tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.get(
+            "grep_support_callout_fork", False
+        )
         if Version(self.version) < "10.38":
             # relocatable shared libs on Macos
             tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         if Version(self.version) < "10.43":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = (
+                "3.5"  # CMake 4 support
+            )
         tc.generate()
 
         cd = CMakeDeps(self)
@@ -80,13 +90,21 @@ class Recipe(RecipeBase):
         # Do not add ${PROJECT_SOURCE_DIR}/cmake because it contains a custom
         # FindPackageHandleStandardArgs.cmake which can break conan generators
         if Version(self.version) < "10.34":
-            replace_in_file(cmakelists, "SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)", "")
+            replace_in_file(
+                cmakelists, "SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)", ""
+            )
         else:
-            replace_in_file(cmakelists, "LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)", "")
+            replace_in_file(
+                cmakelists,
+                "LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)",
+                "",
+            )
         # Avoid CMP0006 error (macos bundle)
-        replace_in_file(cmakelists,
-                              "RUNTIME DESTINATION bin",
-                              "RUNTIME DESTINATION bin BUNDLE DESTINATION bin")
+        replace_in_file(
+            cmakelists,
+            "RUNTIME DESTINATION bin",
+            "RUNTIME DESTINATION bin BUNDLE DESTINATION bin",
+        )
         # pcre2-config does not correctly include '-static' in static library names
         if self.is_windows:
             replace = None
@@ -98,7 +116,9 @@ class Recipe(RecipeBase):
             if replace:
                 if self.build_type == "Debug":
                     postfix += "d"
-                replace_in_file(cmakelists, replace, f'set(LIB_POSTFIX "{postfix}")\n{replace}')
+                replace_in_file(
+                    cmakelists, replace, f'set(LIB_POSTFIX "{postfix}")\n{replace}'
+                )
 
     def build(self):
         self._patch_sources()
@@ -107,7 +127,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENCE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENCE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "cmake"))
@@ -117,7 +141,11 @@ class Recipe(RecipeBase):
 
     def _lib_name(self, name):
         libname = name
-        if Version(self.version) >= "10.38" and self.is_windows and not self.options.shared:
+        if (
+            Version(self.version) >= "10.38"
+            and self.is_windows
+            and not self.options.shared
+        ):
             libname += "-static"
         if self.is_windows:
             if self.build_type == "Debug":

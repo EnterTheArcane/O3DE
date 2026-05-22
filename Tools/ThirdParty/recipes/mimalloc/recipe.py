@@ -3,14 +3,24 @@
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
+from thirdparty.tools.files import (
+    apply_patches,
+    get,
+    copy,
+    rm,
+    rmdir,
+    replace_in_file,
+    collect_libs,
+)
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, VCVars
 from thirdparty.tools.scm import Version
 import os
 import shutil
 
+
 class Recipe(RecipeBase):
     name = "mimalloc"
+    version = "3.3.2"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -34,7 +44,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/microsoft/mimalloc/archive/v3.3.2.tar.gz",
+            dest=self.source_folder,
+            sha256="ca02384e007f46950598500dfaebde5ff9948c1d231f5a81b058799afa64bbbb",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -44,7 +58,9 @@ class Recipe(RecipeBase):
         tc.variables["MI_BUILD_OBJECT"] = self.options.get("single_object", False)
         tc.variables["MI_OVERRIDE"] = "ON" if self.options.override else "OFF"
         tc.variables["MI_SECURE"] = "ON" if self.options.secure else "OFF"
-        tc.variables["MI_WIN_REDIRECT"] = "ON" if self.options.get("win_redirect") else "OFF"
+        tc.variables["MI_WIN_REDIRECT"] = (
+            "ON" if self.options.get("win_redirect") else "OFF"
+        )
         tc.variables["MI_INSTALL_TOPLEVEL"] = "ON"
         tc.variables["MI_GUARDED"] = self.options.get("guarded", False)
         tc.generate()
@@ -60,19 +76,27 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(
+            pattern="LICENSE",
+            dst=os.path.join(self.package_folder, "licenses"),
+            src=self.source_folder,
+        )
         cmake = CMake(self)
         cmake.install()
 
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
 
         if self.is_windows and self.options.shared:
-            copy("mimalloc-redirect.dll",
+            copy(
+                "mimalloc-redirect.dll",
                 src=os.path.join(self.source_folder, "bin"),
-                dst=os.path.join(self.package_folder, "bin"))
-            copy("minject.exe",
+                dst=os.path.join(self.package_folder, "bin"),
+            )
+            copy(
+                "minject.exe",
                 src=os.path.join(self.source_folder, "bin"),
-                dst=os.path.join(self.package_folder, "bin"))
+                dst=os.path.join(self.package_folder, "bin"),
+            )
 
         rmdir(os.path.join(self.package_folder, "share"))
 

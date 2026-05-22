@@ -8,6 +8,7 @@ from thirdparty.tools.files import copy, get, rmdir
 
 class Recipe(RecipeBase):
     name = "libxml2"
+    version = "2.14.5"
     license = "MIT"
     options = {
         "shared": [True, False],
@@ -22,9 +23,11 @@ class Recipe(RecipeBase):
         return ["zlib", "libiconv"]
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://download.gnome.org/sources/libxml2/2.14/libxml2-2.14.5.tar.xz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="03d006f3537616833c16c53addcdc32a0eb20e55443cba4038307e3fa7d8d44b",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -46,7 +49,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("Copyright", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "Copyright",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

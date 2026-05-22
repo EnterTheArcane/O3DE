@@ -6,8 +6,10 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, rm
 import os
 
+
 class Recipe(RecipeBase):
     name = "recastnavigation"
+    version = "1.6.0"
     license = "Zlib"
     options = {
         "shared": [True, False],
@@ -19,7 +21,11 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/recastnavigation/recastnavigation/archive/refs/tags/v1.6.0.tar.gz",
+            dest=self.source_folder,
+            sha256="d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074",
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -28,7 +34,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["RECASTNAVIGATION_EXAMPLES"] = False
         tc.cache_variables["RECASTNAVIGATION_STATIC"] = not self.options.shared
         tc.cache_variables["CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS"] = self.options.shared
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
         tc.generate()
 
     def build(self):
@@ -37,7 +43,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("License.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "License.txt",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         cmake = CMake(self)
         cmake.install()
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

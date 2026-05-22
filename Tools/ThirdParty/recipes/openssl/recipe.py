@@ -9,6 +9,7 @@ from thirdparty.tools.files import copy, get, rm, rmdir
 
 class Recipe(RecipeBase):
     name = "openssl"
+    version = "3.5.6"
     license = "Apache-2.0"
     options = {
         "shared": [True, False],
@@ -29,16 +30,21 @@ class Recipe(RecipeBase):
         return []  # zlib opt-in not needed for our usage
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"],
+        get(
+            url="https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz",
             dest=self.source_folder,
-            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+            sha256="deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736",
+        )
 
     def _find_vcvarsall(self) -> str:
         """Locate vcvarsall.bat via vswhere.exe."""
-        vswhere = r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+        vswhere = (
+            r"C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+        )
         result = subprocess.run(
             [vswhere, "-latest", "-property", "installationPath"],
-            capture_output=True, text=True
+            capture_output=True,
+            text=True,
         )
         vs_path = result.stdout.strip()
         vcvarsall = os.path.join(vs_path, "VC", "Auxiliary", "Build", "vcvarsall.bat")
@@ -77,14 +83,19 @@ class Recipe(RecipeBase):
     def build(self):
         Path(self.build_folder).mkdir(parents=True, exist_ok=True)
         args = self._configure_args()
-        src_rel = os.path.relpath(self.source_folder, self.build_folder).replace("\\", "/")
+        src_rel = os.path.relpath(self.source_folder, self.build_folder).replace(
+            "\\", "/"
+        )
         configure_cmd = ["perl", f"{src_rel}/Configure"] + args
         self._run(configure_cmd, cwd=self.build_folder)
         self._run(["nmake"], cwd=self.build_folder)
 
     def package(self):
         self._run(["nmake", "install_sw"], cwd=self.build_folder)
-        copy("LICENSE.txt", src=self.source_folder,
-             dst=os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE.txt",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+        )
         rm(pattern="*.pdb", folder=os.path.join(self.package_folder, "lib"))
         rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))

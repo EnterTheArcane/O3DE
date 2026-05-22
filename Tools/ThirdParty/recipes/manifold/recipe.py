@@ -7,8 +7,10 @@ from thirdparty.tools.files import copy, get, rmdir, apply_patches
 from thirdparty.tools.scm import Version
 import os
 
+
 class Recipe(RecipeBase):
     name = "manifold"
+    version = "3.2.1"
     license = "Apache-2.0"
     options = {
         "shared": [True, False],
@@ -26,7 +28,11 @@ class Recipe(RecipeBase):
         return []  # clipper2 and onetbb not in recipe set; PAR is disabled by default
 
     def source(self):
-        get(url=self.thirdparty_data["versions"][self.version]["url"], dest=self.source_folder, sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+        get(
+            url="https://github.com/elalish/manifold/archive/refs/tags/v3.2.1.tar.gz",
+            dest=self.source_folder,
+            sha256="c2fddb0f4b2289caff660b29677883f0324415a9901f8f2aed4c83851f994c13",
+        )
         apply_patches(self)
 
     def generate(self):
@@ -35,7 +41,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["MANIFOLD_TEST"] = False
         tc.cache_variables["MANIFOLD_CBIND"] = False
         tc.cache_variables["MANIFOLD_PYBIND"] = False
-        tc.cache_variables["MANIFOLD_STRICT"] = False # no -Werror
+        tc.cache_variables["MANIFOLD_STRICT"] = False  # no -Werror
         tc.cache_variables["MANIFOLD_PAR"] = self.options.with_parallel_acceleration
         tc.generate()
 
@@ -45,7 +51,9 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy("LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(
+            "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses")
+        )
         cmake = CMake(self)
         cmake.install()
 
