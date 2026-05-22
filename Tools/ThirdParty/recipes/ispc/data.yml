@@ -1,0 +1,19 @@
+source:
+  mac:
+    arm:
+      url: https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-macOS.arm64.tar.gz
+      hash: sha256:01b05547ee3bed3a428c1ba2e72ec98743c8ad848c7db11c725bcd1e77889626
+    x64:
+      url: https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-macOS.x86_64.tar.gz
+      hash: sha256:e415277f5c3fa238f040135085630436bc1a1b87c14cc6f507b7c47c1c25cfd9
+  linux:
+    arm:
+      url: https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-linux.aarch64.tar.gz
+      hash: sha256:509399c399ec162d746889458a10cc13797a1aed1c0164b2bd3faddf7d023f13
+    x64:
+      url: https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-linux.tar.gz
+      hash: sha256:63e7d61037849fa1ed644f0398d21740ee9f880b9bf81f017c65eebe1d42c02b
+  windows:
+    x64:
+      url: https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-windows.zip
+      hash: sha256:e126a78fd15f12475bac6204f2536b3986e07973127e4f8e7336c3d304c4a69f

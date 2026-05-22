@@ -1,0 +1,60 @@
+# Simplified vulkan-validationlayers for Windows
+import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.files import apply_patches, copy, get, save
+
+
+class Recipe(RecipeBase):
+    name = "vulkan-validationlayers"
+    license = "Apache-2.0"
+    options = {
+        "fPIC": [True, False],
+    }
+    default_options = {
+        "fPIC": True,
+    }
+
+    def requirements(self) -> list[str]:
+        return ["vulkan-headers", "spirv-headers", "spirv-tools", "robin-hood-hashing"]
+
+    def source(self):
+        get(url=self.thirdparty_data["versions"][self.version]["url"],
+            dest=self.source_folder,
+            sha256=self.thirdparty_data["versions"][self.version]["sha256"])
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["USE_CCACHE"] = False
+        tc.variables["BUILD_WERROR"] = False
+        tc.variables["BUILD_TESTS"] = False
+        tc.variables["INSTALL_TESTS"] = False
+        tc.variables["BUILD_LAYERS"] = True
+        tc.variables["BUILD_LAYER_SUPPORT_FILES"] = True
+        tc.variables["BUILD_WSI_XCB_SUPPORT"] = False
+        tc.variables["BUILD_WSI_XLIB_SUPPORT"] = False
+        tc.variables["BUILD_WSI_WAYLAND_SUPPORT"] = False
+        if self.version >= "1.3.239":
+            tc.cache_variables["VVL_CLANG_TIDY"] = False
+        # Point to spirv-tools-opt cmake config
+        tc.cache_variables["SPIRV-Tools-opt_DIR"] = self.build_folder.replace("\\", "/")
+        tc.generate()
+
+        deps = CMakeDeps(self)
+        deps.generate()
+
+        # Stub SPIRV-Tools-opt config for the validation layers
+        save(os.path.join(self.build_folder, "SPIRV-Tools-optConfig.cmake"),
+             "include(CMakeFindDependencyMacro)\nfind_dependency(SPIRV-Tools)\n")
+
+    def build(self):
+        apply_patches(self)
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        copy("LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        cmake = CMake(self)
+        cmake.install()
