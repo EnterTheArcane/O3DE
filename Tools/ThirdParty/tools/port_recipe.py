@@ -479,14 +479,9 @@ def _string_value(node: cst.BaseExpression) -> str | None:
 # ===========================================================================
 
 def _post_process(code: str, recipe_name: str) -> str:
-    # Add file header
-    header = (
-        f"# Ported from conan-center-index/{recipe_name} by port_recipe.py\n"
-        "# REVIEW: verify all transforms are correct before building\n\n"
-    )
     # Collapse 3+ blank lines → 2
     code = re.sub(r"\n{3,}", "\n\n", code)
-    return header + code.lstrip("\n")
+    return code.lstrip("\n")
 
 
 # ===========================================================================

@@ -1,6 +1,3 @@
-# Ported from conan-center-index/openexr/3.x by port_recipe.py (manual adjust)
-# REVIEW: verify all transforms are correct before building
-
 import os
 
 from thirdparty import RecipeBase

@@ -1,6 +1,3 @@
-# Ported from conan-center-index/zlib-ng by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain

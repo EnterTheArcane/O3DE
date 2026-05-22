@@ -1,6 +1,3 @@
-# Ported from conan-center-index/icu by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 import glob
 import hashlib
 import os

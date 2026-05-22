@@ -1,6 +1,3 @@
-# Ported from conan-center-index/libpng by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.files import copy, get, rm, rmdir

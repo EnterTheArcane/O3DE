@@ -1,6 +1,3 @@
-# Ported from conan-center-index/physx by port_recipe.py
-# REVIEW: verify all transforms are correct before building
-
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMakeToolchain, CMake
 from thirdparty.tools.files import (
