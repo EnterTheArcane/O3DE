@@ -1,16 +1,17 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir
+from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
-import glob
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "libtiff"
     version = "4.7.1"
     license = "libtiff"
+
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -21,30 +22,57 @@ class Recipe(RecipeBase):
         "zstd": [True, False],
         "jbig": [True, False],
         "webp": [True, False],
-        "cxx": [True, False],
+        "cxx":  [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
         "lzma": True,
-        "jpeg": "libjpeg-turbo",
+        "jpeg": "libjpeg",
         "zlib": True,
-        "libdeflate": True,
-        "zstd": True,
+        "libdeflate": False,
+        "zstd": False,
         "jbig": False,
-        "webp": True,
-        "cxx": True,
+        "webp": False,
+        "cxx":  True,
     }
 
-    def requirements(self) -> list[str]:
-        return ["zlib", "libdeflate", "xz_utils", "libjpeg-turbo", "zstd", "libwebp"]
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+        if not self.options.cxx:
+            self.settings.rm_safe("compiler.cppstd")
+            self.settings.rm_safe("compiler.libcxx")
+
+    def requirements(self):
+        if self.options.zlib:
+            self.requires("zlib/[>=1.2.11 <2]")
+        if self.options.libdeflate:
+            self.requires("libdeflate/[>=1.19 <2]")
+        if self.options.lzma:
+            self.requires("xz_utils/[>=5.4.5 <6]")
+        if self.options.jpeg == "libjpeg":
+            self.requires("libjpeg/[>=9e]")
+        elif self.options.jpeg == "libjpeg-turbo":
+            self.requires("libjpeg-turbo/[>=3.0.2 <4]")
+        elif self.options.jpeg == "mozjpeg":
+            self.requires("mozjpeg/[>=4.1.5 <5]")
+        if self.options.jbig:
+            self.requires("jbig/20160605")
+        if self.options.zstd:
+            self.requires("zstd/[~1.5]")
+        if self.options.webp:
+            self.requires("libwebp/[>=1.3.2 <2]")
+
+    def build_requirements(self):
+        self.tool_requires("cmake/[>=3.18]")
 
     def source(self):
-        get(
-            url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz",
-            dest=self.source_folder,
-            sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba",
-        )
+        get(self, url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz", sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba", destination=self.source_folder, strip_root=True)
         self._patch_sources()
 
     def generate(self):
@@ -57,9 +85,7 @@ class Recipe(RecipeBase):
         tc.variables["libdeflate"] = self.options.libdeflate
         tc.variables["zstd"] = self.options.zstd
         tc.variables["webp"] = self.options.webp
-        tc.variables["lerc"] = (
-            False  # TODO: add lerc support for libtiff versions >= 4.3.0
-        )
+        tc.variables["lerc"] = False # TODO: add lerc support for libtiff versions >= 4.3.0
 
         # Disable tools, test, contrib, man & html generation
         tc.variables["tiff-tools"] = False
@@ -71,9 +97,7 @@ class Recipe(RecipeBase):
         # BUILD_SHARED_LIBS must be set in command line because defined upstream before project()
         tc.cache_variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.cache_variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
-        tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = (
-            self.options.jpeg == "libjpeg-turbo"
-        )
+        tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = self.options.jpeg == "libjpeg-turbo"
         tc.generate()
         deps = CMakeDeps(self)
         deps.set_property("jbig", "cmake_file_name", "JBIG")
@@ -86,27 +110,16 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def _patch_sources(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
 
         # remove FindXXXX for conan dependencies
-        for module in [
-            "Deflate",
-            "JBIG",
-            "JPEG",
-            "LERC",
-            "WebP",
-            "ZSTD",
-            "liblzma",
-            "LibLZMA",
-        ]:
-            rm(f"Find{module}.cmake", os.path.join(self.source_folder, "cmake"))
+        for module in ["Deflate", "JBIG", "JPEG", "LERC", "WebP", "ZSTD", "liblzma", "LibLZMA"]:
+            rm(self, f"Find{module}.cmake", os.path.join(self.source_folder, "cmake"))
 
         # Export symbols of tiffxx for msvc shared
-        replace_in_file(
-            os.path.join(self.source_folder, "libtiff", "CMakeLists.txt"),
-            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
-            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)",
-        )
+        replace_in_file(self, os.path.join(self.source_folder, "libtiff", "CMakeLists.txt"),
+                              "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
+                              "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")
 
     def build(self):
         cmake = CMake(self)
@@ -114,30 +127,40 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE.md",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-            keep_path=False,
-        )
+        copy(self, "LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"), ignore_case=True, keep_path=False)
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.libs = ["tiff"]
+        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "TIFF")
-        self.cpp_info.set_property("cmake_target_name", "TIFF::tiff")
-        # tiff.lib was compiled with lzma and zstd support; add their libs as
-        # transitive link dependencies using absolute paths so cmake does not
-        # need those packages to be separately found by the consumer.
-        build_root = os.path.dirname(os.path.dirname(os.path.dirname(self.package_folder)))
-        extra_libs: list[str] = []
-        for pattern in [
-            os.path.join("xz_utils", "*", "package", "lib", "lzma.lib"),
-            os.path.join("zstd", "*", "package", "lib", "zstd_static.lib"),
-        ]:
-            matches = glob.glob(os.path.join(build_root, pattern))
-            if matches:
-                extra_libs.append(matches[0].replace("\\", "/"))
-        self.cpp_info.requires = extra_libs
+        self.cpp_info.set_property("cmake_target_name", "TIFF::TIFF")
+        self.cpp_info.set_property("pkg_config_name", f"libtiff-{Version(self.version).major}")
+        suffix = "d" if is_msvc(self) and self.settings.build_type == "Debug" else ""
+        if self.options.cxx:
+            self.cpp_info.libs.append(f"tiffxx{suffix}")
+        self.cpp_info.libs.append(f"tiff{suffix}")
+        if self.settings.os in ["Linux", "Android", "FreeBSD", "SunOS", "AIX"]:
+            self.cpp_info.system_libs.append("m")
+
+        self.cpp_info.requires = []
+        if self.options.zlib:
+            self.cpp_info.requires.append("zlib::zlib")
+        if self.options.libdeflate:
+            self.cpp_info.requires.append("libdeflate::libdeflate")
+        if self.options.lzma:
+            self.cpp_info.requires.append("xz_utils::xz_utils")
+        if self.options.jpeg == "libjpeg":
+            self.cpp_info.requires.append("libjpeg::libjpeg")
+        elif self.options.jpeg == "libjpeg-turbo":
+            self.cpp_info.requires.append("libjpeg-turbo::jpeg")
+        elif self.options.jpeg == "mozjpeg":
+            self.cpp_info.requires.append("mozjpeg::libjpeg")
+        if self.options.jbig:
+            self.cpp_info.requires.append("jbig::jbig")
+        if self.options.zstd:
+            self.cpp_info.requires.append("zstd::zstd")
+        if self.options.webp:
+            self.cpp_info.requires.append("libwebp::webp")

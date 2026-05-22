@@ -1,17 +1,19 @@
 from pathlib import Path
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
+from thirdparty.tools.build import stdcpp_library, check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import collect_libs, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import collect_libs, copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "assimp"
     version = "6.0.2"
     license = "BSD-3-Clause"
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -94,6 +96,18 @@ class Recipe(RecipeBase):
     options.update(dict.fromkeys(_format_option_map, [True, False]))
     default_options.update(dict.fromkeys(_format_option_map, True))
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+        for option, (_, min_version) in self._format_option_map.items():
+            if Version(self.version) < Version(min_version):
+                delattr(self.options, option)
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
     @property
     def _depends_on_kuba_zip(self):
         return self.options.with_3mf_exporter
@@ -116,30 +130,40 @@ class Recipe(RecipeBase):
 
     @property
     def _depends_on_stb(self):
-        return (
-            self.options.with_m3d
-            or self.options.with_m3d_exporter
-            or self.options.with_pbrt_exporter
-        )
+        return self.options.with_m3d or self.options.with_m3d_exporter or \
+            self.options.with_pbrt_exporter
 
     @property
     def _depends_on_openddlparser(self):
         return self.options.with_opengex
 
-    def requirements(self) -> list[str]:
-        return [
-            "zlib",
-            "minizip-ng",  # ASSIMP_BUILD_MINIZIP=False — use our recipe instead of contrib/minizip
-            # poly2tri and rapidjson remain in assimp's contrib/ because assimp ships
-            # patched/modified copies that differ from the upstream packages.
-        ]
+    def requirements(self):
+        # TODO: unvendor others libs:
+        # - Open3DGC
+        self.requires("minizip/1.2.13")
+        self.requires("pugixml/1.14")
+        self.requires("utfcpp/4.0.1")
+        self.requires("zlib/[>=1.2.11 <2]")
+        if self._depends_on_kuba_zip:
+            self.requires("kuba-zip/0.3.0")
+        if self._depends_on_poly2tri:
+            self.requires("poly2tri/cci.20130502")
+        if self._depends_on_rapidjson:
+            self.requires("rapidjson/cci.20230929")
+        if self._depends_on_draco:
+            self.requires("draco/1.5.6")
+        if self._depends_on_clipper:
+            self.requires("clipper/6.4.2")
+        if self._depends_on_stb:
+            self.requires("stb/cci.20230920")
+        if self._depends_on_openddlparser:
+            self.requires("openddl-parser/0.5.1")
+
+    def build_requirements(self):
+        self.tool_requires("cmake/[>=3.22]")
 
     def source(self):
-        get(
-            url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.2.tar.gz",
-            dest=self.source_folder,
-            sha256="d1822d9a19c9205d6e8bc533bf897174ddb360ce504680f294170cc1d6319751",
-        )
+        get(self, url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.2.tar.gz", sha256="d1822d9a19c9205d6e8bc533bf897174ddb360ce504680f294170cc1d6319751", destination=self.source_folder, strip_root=True)
         self._patch_sources()
 
     def generate(self):
@@ -151,7 +175,7 @@ class Recipe(RecipeBase):
         tc.variables["ASSIMP_BUILD_DOCS"] = False
         tc.variables["ASSIMP_BUILD_DRACO"] = False
         tc.variables["ASSIMP_BUILD_FRAMEWORK"] = False
-        tc.variables["ASSIMP_BUILD_MINIZIP"] = False  # use external minizip-ng recipe
+        tc.variables["ASSIMP_BUILD_MINIZIP"] = False
         tc.variables["ASSIMP_BUILD_SAMPLES"] = False
         tc.variables["ASSIMP_BUILD_TESTS"] = False
         tc.variables["ASSIMP_BUILD_ZLIB"] = False
@@ -166,16 +190,17 @@ class Recipe(RecipeBase):
         tc.variables["ASSIMP_RAPIDJSON_NO_MEMBER_ITERATOR"] = False
         tc.variables["ASSIMP_UBSAN"] = False
         tc.variables["ASSIMP_WARNINGS_AS_ERRORS"] = False
-        tc.variables["USE_STATIC_CRT"] = False
+        tc.variables["USE_STATIC_CRT"] = is_msvc_static_runtime(self)
         tc.cache_variables["ASSIMP_BUILD_USE_CCACHE"] = False
 
         for option, (definition, _) in self._format_option_map.items():
-            value = self.options.get(option)
+            value = self.options.get_safe(option)
             if value is not None:
                 tc.variables[definition] = value
-        if self.is_windows:
+        if self.settings.os == "Windows":
             tc.preprocessor_definitions["NOMINMAX"] = 1
 
+        tc.cache_variables["CMAKE_PROJECT_Assimp_INCLUDE"] = "conan_deps.cmake"
         tc.cache_variables["WITH_CLIPPER"] = self._depends_on_clipper
         tc.cache_variables["WITH_DRACO"] = self._depends_on_draco
         tc.cache_variables["WITH_KUBAZIP"] = self._depends_on_kuba_zip
@@ -186,10 +211,12 @@ class Recipe(RecipeBase):
         tc.generate()
 
         cd = CMakeDeps(self)
+        cd.set_property("rapidjson", "cmake_target_name", "rapidjson::rapidjson")
+        cd.set_property("utfcpp", "cmake_target_name", "utf8cpp::utf8cpp")
         cd.generate()
 
     def _patch_sources(self):
-        # Remove forced compiler/linker flags that conflict with our build settings
+        # Don't force several compiler and linker flags
         for pattern in [
             "-fPIC",
             "-g ",
@@ -197,38 +224,84 @@ class Recipe(RecipeBase):
             'SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_DEBUG /Zi /Od")',
             'SET(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG:FULL /PDBALTPATH:%_PDB% /OPT:REF /OPT:ICF")',
         ]:
-            replace_in_file(
-                os.path.join(self.source_folder, "CMakeLists.txt"), pattern, ""
-            )
+            replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), pattern, "")
 
         for pattern in ["-Werror", "/WX"]:
-            replace_in_file(
-                os.path.join(self.source_folder, "CMakeLists.txt"), pattern, ""
-            )
-            replace_in_file(
-                os.path.join(self.source_folder, "code", "CMakeLists.txt"), pattern, ""
-            )
+            replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), pattern, "")
+            replace_in_file(self, os.path.join(self.source_folder, "code", "CMakeLists.txt"), pattern, "")
 
-        # All other contrib libs (clipper, poly2tri, rapidjson, pugixml, etc.) remain bundled.
-        # ASSIMP_BUILD_MINIZIP=True uses the bundled minizip from contrib/.
+        # Make sure vendored libs are not used by accident by removing their subdirs
+        allow_vendored = ["Open3DGC", "earcut-hpp"]
+        for contrib_dir in Path(self.source_folder).joinpath("contrib").iterdir():
+            if contrib_dir.is_dir() and contrib_dir.name not in allow_vendored:
+                rmdir(self, contrib_dir)
+
+        # Do not include add vendored library sources to the build
+        # https://github.com/assimp/assimp/blob/v5.3.1/code/CMakeLists.txt#L1151-L1159
+        code_cmakelists = Path(self.source_folder).joinpath("code", "CMakeLists.txt")
+        content = code_cmakelists.read_text(encoding="utf-8")
+        for vendored_lib in [
+            "unzip_compile",
+            "Poly2Tri",
+            "Clipper",
+            "openddl_parser",
+            # "open3dgc",
+            "ziplib",
+            "Pugixml",
+            "stb",
+        ]:
+            content = content.replace("${%s_SRCS}" % vendored_lib, "")
+        code_cmakelists.write_text(content, encoding="utf-8")
+
+        # Make vendored headers redirect to external ones.
+        for contrib_header, include in [
+            (os.path.join("clipper", "clipper.hpp"), "polyclipping/clipper.hpp"),
+            (os.path.join("poly2tri", "poly2tri", "poly2tri.h"), "poly2tri/poly2tri.h"),
+            (os.path.join("stb", "stb_image.h"), "stb_image.h"),
+            (os.path.join("utf8cpp", "source", "utf8.h"), "utf8.h"),
+            (os.path.join("zip", "src", "zip.h"), "zip/zip.h"),
+        ]:
+            save(self, os.path.join(self.source_folder, "contrib", contrib_header),
+                 f"#include <{include}>\n")
+        rmdir(self, os.path.join(self.source_folder, "contrib", "utf8cpp"))
+
+        # minizip is provided via conan_deps.cmake, no need to use pkgconfig
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
+                        "use_pkgconfig(UNZIP minizip)", "set(UNZIP_FOUND TRUE)")
+
+        # ZLIB is unvendored, no need to install it
+        # https://github.com/assimp/assimp/blob/v5.3.1/CMakeLists.txt#L483-L487
+        # https://github.com/assimp/assimp/blob/v5.1.6/CMakeLists.txt#L463-L466
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
+                        "INSTALL( TARGETS zlib", "set(_ #")
 
     def build(self):
         cmake = CMake(self)
-        # ASSIMP_BUILD_USE_CCACHE must be OFF on the cmake command line (not just
-        # the toolchain file) because assimp's ccache check at lines 85-91 of
-        # its CMakeLists.txt runs BEFORE project(), i.e. before the toolchain
-        # is loaded.  A cmake -D flag is injected into the cache before any
-        # CMakeLists.txt processing, so option() at line 85 sees the cached
-        # OFF value and skips the ccache detection block entirely.
-        cmake.configure(variables={"ASSIMP_BUILD_USE_CCACHE": False})
+        cmake.configure()
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "assimp")
+        self.cpp_info.set_property("cmake_target_name", "assimp::assimp")
+        self.cpp_info.set_property("pkg_config_name", "assimp")
+        # Always ever just 1 library, but with some suffix variations
+        # that make it hard to map manually
+        self.cpp_info.libs = collect_libs(self)
+        if is_msvc(self) and self.options.shared:
+            self.cpp_info.defines.append("ASSIMP_DLL")
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.system_libs = ["rt", "m", "pthread"]
+        elif self.settings.os == "WindowsStore":
+            self.cpp_info.system_libs.append("advapi32")
+            self.cpp_info.defines.append("WindowsStore")
+        if not self.options.shared:
+            libcxx = stdcpp_library(self)
+            if libcxx:
+                self.cpp_info.system_libs.append(libcxx)

@@ -1,14 +1,16 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.files import get, copy
+from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 
 import os
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "luau"
     version = "0.700"
     license = "MIT"
+    package_type = "static-library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "with_cli": [True, False],
         "with_web": [True, False],
@@ -21,11 +23,7 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(
-            url="https://github.com/Roblox/luau/archive/0.700.tar.gz",
-            dest=self.source_folder,
-            sha256="e0dffe07a4b27c568b9688916e1d97ba7204b7a4d487d0a03648c99b88fc8df8",
-        )
+        get(self, url="https://github.com/Roblox/luau/archive/0.700.tar.gz", sha256="e0dffe07a4b27c568b9688916e1d97ba7204b7a4d487d0a03648c99b88fc8df8", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -39,23 +37,54 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        import shutil
-
-        shutil.copy(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "CMakeLists.txt"),
-            os.path.normpath(
-                os.path.join(self.source_folder, os.pardir, "CMakeLists.txt")
-            ),
-        )
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(
-            "lua_LICENSE*",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "lua_LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "Luau")
+        self.cpp_info.set_property("cmake_target_name", "Luau::Luau")
+        # Common
+        self.cpp_info.components["Common"].libs = ["Luau.Common"]
+        self.cpp_info.components["Common"].set_property("cmake_target_name", "Luau::Common")
+        # Ast
+        self.cpp_info.components["Ast"].libs = ["Luau.Ast"]
+        self.cpp_info.components["Ast"].set_property("cmake_target_name", "Luau::Ast")
+        self.cpp_info.components["Ast"].requires = ["Common"]
+        # VM
+        self.cpp_info.components["VM"].libs = ["Luau.VM"]
+        self.cpp_info.components["VM"].set_property("cmake_target_name", "Luau::VM")
+        self.cpp_info.components["VM"].requires = ["Common"]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.components["VM"].system_libs = ["m"]
+        # Analysis
+        self.cpp_info.components["Analysis"].libs = ["Luau.Analysis"]
+        self.cpp_info.components["Analysis"].set_property("cmake_target_name", "Luau::Analysis")
+        self.cpp_info.components["Analysis"].requires = ["Ast", "Config", "Compiler", "VM"]
+        # Config
+        self.cpp_info.components["Config"].libs = ["Luau.Config"]
+        self.cpp_info.components["Config"].set_property("cmake_target_name", "Luau::Config")
+        self.cpp_info.components["Config"].requires = ["Ast", "Compiler", "VM"]
+        # Compiler
+        self.cpp_info.components["Compiler"].libs = ["Luau.Compiler"]
+        self.cpp_info.components["Compiler"].set_property("cmake_target_name", "Luau::Compiler")
+        self.cpp_info.components["Compiler"].requires = ["Ast"]
+        # CodeGen
+        self.cpp_info.components["CodeGen"].libs = ["Luau.CodeGen"]
+        self.cpp_info.components["CodeGen"].set_property("cmake_target_name", "Luau::CodeGen")
+        self.cpp_info.components["CodeGen"].requires = ["VM", "Common"]
+        # Require
+        self.cpp_info.components["Require"].libs = ["Luau.Require"]
+        self.cpp_info.components["Require"].set_property("cmake_target_name", "Luau::Require")
+        self.cpp_info.components["Require"].requires = ["Config", "VM"]
+        # Web
+        if self.options.with_web:
+            self.cpp_info.components["Web"].libs = ["Luau.Web"]
+            self.cpp_info.components["Web"].set_property("cmake_target_name", "Luau::Web")
+            self.cpp_info.components["Web"].requires = ["Compiler", "VM", "Analysis"]
+

@@ -1,14 +1,17 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase as ConanFile
+from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir, save
+from thirdparty.tools.files import apply_conandata_patches, copy, get, rm, rmdir, save
 import os
 import textwrap
 
-
-class Recipe(RecipeBase):
+class Recipe(ConanFile):
     name = "spirv-cross"
-    version = "1.4.321.0"
+    version = "1.4.350.0"
     license = "Apache-2.0"
+
+    package_type = "library"
+    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -38,22 +41,25 @@ class Recipe(RecipeBase):
         "namespace": "spirv_cross",
     }
 
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+            # these options don't contribute to shared binary
+            del self.options.c_api
+            del self.options.util
+
     def source(self):
-        get(
-            url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.321.0.tar.gz",
-            dest=self.source_folder,
-            sha256="6037555620c27105bf1d4068a6eeb4b0d7953630d556a1ca9799dfe06fd2fb68",
-        )
+        get(self, url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="fbf9bee521545557357679173d39787a954bd8187e4b2fcaa09044c70201b434", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS"] = (
-            not self.options.exceptions
-        )
+        tc.variables["SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS"] = not self.options.exceptions
         tc.variables["SPIRV_CROSS_SHARED"] = self.options.shared
-        tc.variables["SPIRV_CROSS_STATIC"] = (
-            not self.options.shared or self.options.build_executable
-        )
+        tc.variables["SPIRV_CROSS_STATIC"] = not self.options.shared or self.options.build_executable
         tc.variables["SPIRV_CROSS_CLI"] = self.options.build_executable
         tc.variables["SPIRV_CROSS_ENABLE_TESTS"] = False
         tc.variables["SPIRV_CROSS_ENABLE_GLSL"] = self.options.glsl
@@ -61,67 +67,50 @@ class Recipe(RecipeBase):
         tc.variables["SPIRV_CROSS_ENABLE_MSL"] = self.options.msl
         tc.variables["SPIRV_CROSS_ENABLE_CPP"] = self.options.cpp
         tc.variables["SPIRV_CROSS_ENABLE_REFLECT"] = self.options.reflect
-        tc.variables["SPIRV_CROSS_ENABLE_C_API"] = self.options.get("c_api", True)
-        tc.variables["SPIRV_CROSS_ENABLE_UTIL"] = (
-            self.options.get("util", False) or self.options.build_executable
-        )
+        tc.variables["SPIRV_CROSS_ENABLE_C_API"] = self.options.get_safe("c_api", True)
+        tc.variables["SPIRV_CROSS_ENABLE_UTIL"] = self.options.get_safe("util", False) or self.options.build_executable
         tc.variables["SPIRV_CROSS_SKIP_INSTALL"] = False
-        tc.variables["SPIRV_CROSS_FORCE_PIC"] = self.options.get("fPIC", True)
+        tc.variables["SPIRV_CROSS_FORCE_PIC"] = self.options.get_safe("fPIC", True)
         tc.variables["SPIRV_CROSS_NAMESPACE_OVERRIDE"] = self.options.namespace
         tc.generate()
 
     def build(self):
-        apply_patches(self)
+        apply_conandata_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
 
     def package(self):
-        copy(
-            "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
-        )
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(os.path.join(self.package_folder, "share"))
-        rm("*.ilk", os.path.join(self.package_folder, "bin"))
-        rm("*.pdb", os.path.join(self.package_folder, "bin"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "share"))
+        rm(self, "*.ilk", os.path.join(self.package_folder, "bin"))
+        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
         if self.options.shared and self.options.build_executable:
             for static_lib in [
-                "spirv-cross-core",
-                "spirv-cross-glsl",
-                "spirv-cross-hlsl",
-                "spirv-cross-msl",
-                "spirv-cross-cpp",
-                "spirv-cross-reflect",
-                "spirv-cross-c",
-                "spirv-cross-util",
+                "spirv-cross-core", "spirv-cross-glsl", "spirv-cross-hlsl", "spirv-cross-msl",
+                "spirv-cross-cpp", "spirv-cross-reflect", "spirv-cross-c", "spirv-cross-util",
             ]:
-                rm(f"*{static_lib}.*", os.path.join(self.package_folder, "lib"))
+                rm(self, f"*{static_lib}.*", os.path.join(self.package_folder, "lib"))
 
         # TODO: to remove in conan v2 once legacy generators removed
         self._create_cmake_module_alias_targets(
             os.path.join(self.package_folder, self._module_file_rel_path),
-            {
-                target: f"spirv-cross::{target}"
-                for target in self._spirv_cross_components.keys()
-            },
+            {target: f"spirv-cross::{target}" for target in self._spirv_cross_components.keys()},
         )
 
     def _create_cmake_module_alias_targets(self, module_file, targets):
         content = ""
         for alias, aliased in targets.items():
-            content += textwrap.dedent(
-                f"""\
+            content += textwrap.dedent(f"""\
                 if(TARGET {aliased} AND NOT TARGET {alias})
                     add_library({alias} INTERFACE IMPORTED)
                     set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
                 endif()
-            """
-            )
-        save(module_file, content)
+            """)
+        save(self, module_file, content)
 
     @property
     def _module_file_rel_path(self):
@@ -160,3 +149,34 @@ class Recipe(RecipeBase):
             if self.options.util:
                 components.update({"spirv-cross-util": ["spirv-cross-core"]})
         return components
+
+    def package_info(self):
+        # FIXME: we should provide one CMake config file per target (waiting for an implementation of https://github.com/conan-io/conan/issues/9000)
+        def _register_component(target_lib, requires):
+            self.cpp_info.components[target_lib].set_property("cmake_target_name", target_lib)
+            if self.options.shared:
+                self.cpp_info.components[target_lib].set_property("pkg_config_name", target_lib)
+            prefix = "d" if self.settings.os == "Windows" and self.settings.build_type == "Debug" else ""
+            self.cpp_info.components[target_lib].libs = [f"{target_lib}{prefix}"]
+            self.cpp_info.components[target_lib].includedirs.append(os.path.join("include", "spirv_cross"))
+            self.cpp_info.components[target_lib].defines.append(f"SPIRV_CROSS_NAMESPACE_OVERRIDE={self.options.namespace}")
+            self.cpp_info.components[target_lib].requires = requires
+            if self.settings.os in ["Linux", "FreeBSD"] and self.options.glsl:
+                self.cpp_info.components[target_lib].system_libs.append("m")
+            if not self.options.shared and self.options.c_api:
+                libcxx = stdcpp_library(self)
+                if libcxx:
+                    self.cpp_info.components[target_lib].system_libs.append(libcxx)
+
+            # TODO: to remove in conan v2 once legacy generators removed
+            self.cpp_info.components[target_lib].names["cmake_find_package"] = target_lib
+            self.cpp_info.components[target_lib].names["cmake_find_package_multi"] = target_lib
+            self.cpp_info.components[target_lib].build_modules["cmake_find_package"] = [self._module_file_rel_path]
+            self.cpp_info.components[target_lib].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
+
+        for target_lib, requires in self._spirv_cross_components.items():
+            _register_component(target_lib, requires)
+
+        # TODO: to remove in conan v2 once legacy generators removed
+        if self.options.build_executable:
+            self.env_info.PATH.append(os.path.join(self.package_folder, "bin"))

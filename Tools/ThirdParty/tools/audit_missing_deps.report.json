@@ -1,0 +1,799 @@
+{
+  "boost": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "Version(self.version) < '3.0'"
+        ]
+      }
+    ]
+  },
+  "c-ares": {
+    "tags": [
+      "opt=with_c_ares"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "self.options.with_c_ares"
+        ]
+      }
+    ]
+  },
+  "c4core": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "rapidyaml",
+        "context": "host",
+        "conditions": [
+          "Version(self.version) < '0.6.0'"
+        ]
+      },
+      {
+        "from": "rapidyaml",
+        "context": "host",
+        "conditions": [
+          "not (Version(self.version) < '0.6.0')"
+        ]
+      }
+    ]
+  },
+  "clipper": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "assimp",
+        "context": "host",
+        "conditions": [
+          "self._depends_on_clipper"
+        ]
+      }
+    ]
+  },
+  "clipper2": {
+    "tags": [
+      "unconditional"
+    ],
+    "edges": [
+      {
+        "from": "manifold",
+        "context": "host",
+        "conditions": []
+      }
+    ]
+  },
+  "dcmtk": {
+    "tags": [
+      "opt=with_dicom"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_dicom"
+        ]
+      }
+    ]
+  },
+  "draco": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "assimp",
+        "context": "host",
+        "conditions": [
+          "self._depends_on_draco"
+        ]
+      }
+    ]
+  },
+  "ffmpeg": {
+    "tags": [
+      "opt=with_ffmpeg"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_ffmpeg"
+        ]
+      }
+    ]
+  },
+  "gdbm": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_gdbm', False)"
+        ]
+      }
+    ]
+  },
+  "giflib": {
+    "tags": [
+      "opt=with_giflib"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_giflib"
+        ]
+      }
+    ]
+  },
+  "glfw": {
+    "tags": [
+      "opt=with_opengl"
+    ],
+    "edges": [
+      {
+        "from": "opensubdiv",
+        "context": "host",
+        "conditions": [
+          "self.options.with_opengl"
+        ]
+      }
+    ]
+  },
+  "glib": {
+    "tags": [
+      "opt=with_glib"
+    ],
+    "edges": [
+      {
+        "from": "harfbuzz",
+        "context": "host",
+        "conditions": [
+          "self.options.with_glib"
+        ]
+      },
+      {
+        "from": "harfbuzz",
+        "context": "build",
+        "conditions": [
+          "self.options.with_glib"
+        ]
+      }
+    ]
+  },
+  "hdf5": {
+    "tags": [
+      "opt=with_hdf5"
+    ],
+    "edges": [
+      {
+        "from": "alembic",
+        "context": "host",
+        "conditions": [
+          "self.options.with_hdf5"
+        ]
+      }
+    ]
+  },
+  "jbig": {
+    "tags": [
+      "opt=jbig"
+    ],
+    "edges": [
+      {
+        "from": "libtiff",
+        "context": "host",
+        "conditions": [
+          "self.options.jbig"
+        ]
+      }
+    ]
+  },
+  "kuba-zip": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "assimp",
+        "context": "host",
+        "conditions": [
+          "self._depends_on_kuba_zip"
+        ]
+      }
+    ]
+  },
+  "libffi": {
+    "tags": [
+      "opt=enable_libraries"
+    ],
+    "edges": [
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self._supports_modules"
+        ]
+      },
+      {
+        "from": "wayland",
+        "context": "host",
+        "conditions": [
+          "self.options.enable_libraries"
+        ]
+      }
+    ]
+  },
+  "libheif": {
+    "tags": [
+      "opt=with_libheif"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_libheif"
+        ]
+      }
+    ]
+  },
+  "libidn2": {
+    "tags": [
+      "opt=with_libidn"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "self.options.with_libidn"
+        ]
+      }
+    ]
+  },
+  "libjpeg": {
+    "tags": [
+      "opt=jpeg,with_libjpeg"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_libjpeg == 'libjpeg'"
+        ]
+      },
+      {
+        "from": "libtiff",
+        "context": "host",
+        "conditions": [
+          "self.options.jpeg == 'libjpeg'"
+        ]
+      }
+    ]
+  },
+  "libjxl": {
+    "tags": [
+      "opt=with_libjxl"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_libjxl')"
+        ]
+      }
+    ]
+  },
+  "libnghttp2": {
+    "tags": [
+      "opt=with_nghttp2"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "self.options.with_nghttp2"
+        ]
+      }
+    ]
+  },
+  "libpsl": {
+    "tags": [
+      "opt=with_libpsl"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_libpsl')"
+        ]
+      }
+    ]
+  },
+  "libraw": {
+    "tags": [
+      "opt=with_raw"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_raw"
+        ]
+      }
+    ]
+  },
+  "libressl": {
+    "tags": [
+      "opt=with_ssl"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "not (self.options.with_ssl == 'openssl')",
+          "self.options.with_ssl == 'libressl'"
+        ]
+      }
+    ]
+  },
+  "libsquish": {
+    "tags": [
+      "unconditional"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": []
+      }
+    ]
+  },
+  "libssh2": {
+    "tags": [
+      "opt=with_libssh2"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "self.options.with_libssh2"
+        ]
+      }
+    ]
+  },
+  "libudev": {
+    "tags": [
+      "os=Linux"
+    ],
+    "edges": [
+      {
+        "from": "hidapi",
+        "context": "host",
+        "conditions": [
+          "self.settings.os == 'Linux'"
+        ]
+      }
+    ]
+  },
+  "libultrahdr": {
+    "tags": [
+      "opt=with_libultrahdr"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_libultrahdr')"
+        ]
+      }
+    ]
+  },
+  "libusb": {
+    "tags": [
+      "os=FreeBSD|Linux"
+    ],
+    "edges": [
+      {
+        "from": "hidapi",
+        "context": "host",
+        "conditions": [
+          "self.settings.os in ['Linux', 'FreeBSD']"
+        ]
+      }
+    ]
+  },
+  "libxcrypt": {
+    "tags": [
+      "os=Windows"
+    ],
+    "edges": [
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self.settings.os != 'Windows'"
+        ]
+      }
+    ]
+  },
+  "lodepng": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "msdfgen",
+        "context": "host",
+        "conditions": [
+          "Version(self.version) < '1.10'"
+        ]
+      }
+    ]
+  },
+  "mbedtls": {
+    "tags": [
+      "opt=with_ssl"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "not (self.options.with_ssl == 'openssl')",
+          "not (self.options.with_ssl == 'libressl')",
+          "not (self.options.with_ssl == 'wolfssl')",
+          "self.options.with_ssl == 'mbedtls'"
+        ]
+      }
+    ]
+  },
+  "minizip": {
+    "tags": [
+      "unconditional"
+    ],
+    "edges": [
+      {
+        "from": "assimp",
+        "context": "host",
+        "conditions": []
+      }
+    ]
+  },
+  "mozjpeg": {
+    "tags": [
+      "opt=jpeg"
+    ],
+    "edges": [
+      {
+        "from": "libtiff",
+        "context": "host",
+        "conditions": [
+          "not (self.options.jpeg == 'libjpeg')",
+          "not (self.options.jpeg == 'libjpeg-turbo')",
+          "self.options.jpeg == 'mozjpeg'"
+        ]
+      }
+    ]
+  },
+  "mpdecimal": {
+    "tags": [
+      "os=Apple"
+    ],
+    "edges": [
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self._supports_modules",
+          "Version(self.version) < '3.10' or is_apple_os(self)"
+        ]
+      },
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self._supports_modules",
+          "not (Version(self.version) < '3.10' or is_apple_os(self))"
+        ]
+      }
+    ]
+  },
+  "ncurses": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_curses', False)"
+        ]
+      }
+    ]
+  },
+  "onetbb": {
+    "tags": [
+      "opt=with_parallel_acceleration,with_tbb"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_tbb"
+        ]
+      },
+      {
+        "from": "manifold",
+        "context": "host",
+        "conditions": [
+          "self.options.with_parallel_acceleration"
+        ]
+      },
+      {
+        "from": "opensubdiv",
+        "context": "host",
+        "conditions": [
+          "self.options.with_tbb",
+          "Version(self.version) < '3.6.0'"
+        ]
+      },
+      {
+        "from": "opensubdiv",
+        "context": "host",
+        "conditions": [
+          "self.options.with_tbb",
+          "not (Version(self.version) < '3.6.0')"
+        ]
+      }
+    ]
+  },
+  "opencv": {
+    "tags": [
+      "opt=with_opencv"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_opencv"
+        ]
+      }
+    ]
+  },
+  "openddl-parser": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "assimp",
+        "context": "host",
+        "conditions": [
+          "self._depends_on_openddlparser"
+        ]
+      }
+    ]
+  },
+  "opengl": {
+    "tags": [
+      "opt=with_opengl"
+    ],
+    "edges": [
+      {
+        "from": "opensubdiv",
+        "context": "host",
+        "conditions": [
+          "self.options.with_opengl"
+        ]
+      }
+    ]
+  },
+  "openjpeg": {
+    "tags": [
+      "opt=with_openjpeg"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_openjpeg"
+        ]
+      }
+    ]
+  },
+  "openjph": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_openjph', False)"
+        ]
+      },
+      {
+        "from": "openexr",
+        "context": "host",
+        "conditions": [
+          "Version(self.version) >= '3.4'"
+        ]
+      }
+    ]
+  },
+  "openldap": {
+    "tags": [
+      "os=Linux",
+      "opt=with_ldap"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "self.settings.os == 'Linux' and self.options.with_ldap"
+        ]
+      }
+    ]
+  },
+  "openvdb": {
+    "tags": [
+      "opt=with_openvdb"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_openvdb"
+        ]
+      }
+    ]
+  },
+  "ptex": {
+    "tags": [
+      "opt=with_ptex"
+    ],
+    "edges": [
+      {
+        "from": "openimageio",
+        "context": "host",
+        "conditions": [
+          "self.options.with_ptex"
+        ]
+      }
+    ]
+  },
+  "readline": {
+    "tags": [
+      "opt=with_readline,with_tools"
+    ],
+    "edges": [
+      {
+        "from": "lua",
+        "context": "host",
+        "conditions": [
+          "self.options.with_tools and self.options.with_readline"
+        ]
+      }
+    ]
+  },
+  "stb": {
+    "tags": [
+      "conditional"
+    ],
+    "edges": [
+      {
+        "from": "assimp",
+        "context": "host",
+        "conditions": [
+          "self._depends_on_stb"
+        ]
+      }
+    ]
+  },
+  "tk": {
+    "tags": [
+      "opt=with_tkinter"
+    ],
+    "edges": [
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_tkinter')"
+        ]
+      }
+    ]
+  },
+  "utfcpp": {
+    "tags": [
+      "unconditional"
+    ],
+    "edges": [
+      {
+        "from": "assimp",
+        "context": "host",
+        "conditions": []
+      }
+    ]
+  },
+  "util-linux-libuuid": {
+    "tags": [
+      "os=Apple|Windows"
+    ],
+    "edges": [
+      {
+        "from": "cpython",
+        "context": "host",
+        "conditions": [
+          "self.settings.os != 'Windows'",
+          "not is_apple_os(self)"
+        ]
+      }
+    ]
+  },
+  "wolfssl": {
+    "tags": [
+      "opt=with_ssl"
+    ],
+    "edges": [
+      {
+        "from": "libcurl",
+        "context": "host",
+        "conditions": [
+          "not (self.options.with_ssl == 'openssl')",
+          "not (self.options.with_ssl == 'libressl')",
+          "self.options.with_ssl == 'wolfssl'"
+        ]
+      }
+    ]
+  },
+  "xorg": {
+    "tags": [
+      "opt=with_wsi_xcb,with_wsi_xlib"
+    ],
+    "edges": [
+      {
+        "from": "vulkan-validationlayers",
+        "context": "host",
+        "conditions": [
+          "self.options.get_safe('with_wsi_xcb') or self.options.get_safe('with_wsi_xlib')"
+        ]
+      }
+    ]
+  }
+}

@@ -1,3 +1,4 @@
-from thirdparty.internal.model.recipe import DepInfo, RecipeBase
+from thirdparty._conan.internal.model.conan_file import ConanFile as RecipeBase
+from thirdparty._conan.internal.model.cpp_info import CppInfo
 
-__all__ = ["DepInfo", "RecipeBase"]
+__all__ = ["RecipeBase", "CppInfo"]
