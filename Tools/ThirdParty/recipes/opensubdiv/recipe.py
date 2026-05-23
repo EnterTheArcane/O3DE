@@ -29,7 +29,7 @@ class Recipe(RecipeBase):
         "shared": False,
         "fPIC": True,
         "with_tbb": False,
-        "with_opengl": True,
+        "with_opengl": False,
         "with_omp": False,
         "with_cuda": False,
         "with_clew": False,
