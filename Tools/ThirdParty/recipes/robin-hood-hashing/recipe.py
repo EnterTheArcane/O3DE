@@ -1,9 +1,10 @@
+import os
+
 from thirdparty import RecipeBase
-from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import apply_patches, copy, get
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "robin-hood-hashing"

@@ -1,8 +1,10 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get
 from thirdparty.tools.microsoft import is_msvc
-import os
+
 
 class Recipe(RecipeBase):
     name = "giflib"

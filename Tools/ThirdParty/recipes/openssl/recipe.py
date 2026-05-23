@@ -1,3 +1,7 @@
+import fnmatch
+import os
+import textwrap
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.tools.build import build_jobs
@@ -7,9 +11,6 @@ from thirdparty.tools.gnu import AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path
 from thirdparty.tools.scm import Version
 
-import fnmatch
-import os
-import textwrap
 
 class Recipe(RecipeBase):
     name = "openssl"

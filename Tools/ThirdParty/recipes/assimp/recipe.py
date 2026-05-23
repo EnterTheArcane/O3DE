@@ -1,13 +1,14 @@
+import os
 from pathlib import Path
 
 from thirdparty import RecipeBase
-from thirdparty.tools.build import stdcpp_library, check_min_cppstd
+from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "assimp"

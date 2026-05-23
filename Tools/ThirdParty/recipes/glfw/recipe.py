@@ -1,3 +1,6 @@
+import os
+import textwrap
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
@@ -6,8 +9,7 @@ from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
-import os
-import textwrap
+
 
 class Recipe(RecipeBase):
     name = "glfw"

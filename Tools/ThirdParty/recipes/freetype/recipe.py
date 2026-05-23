@@ -1,3 +1,7 @@
+import os
+import re
+import textwrap
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.files import (
@@ -6,9 +10,7 @@ from thirdparty.tools.files import (
 )
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
-import re
-import textwrap
+
 
 class Recipe(RecipeBase):
     name = "freetype"

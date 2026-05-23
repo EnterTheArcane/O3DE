@@ -1,13 +1,15 @@
+import glob
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import apply_patches, chdir, copy, get, replace_in_file, rm, rmdir
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
+from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path, VCVars
 from thirdparty.tools.scm import Version
-import glob
-import os
+
 
 class Recipe(RecipeBase):
     name = "libpq"

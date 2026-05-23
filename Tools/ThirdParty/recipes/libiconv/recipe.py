@@ -1,3 +1,5 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
@@ -14,7 +16,7 @@ from thirdparty.tools.files import (
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, GnuFtp
 from thirdparty.tools.microsoft import is_msvc, unix_path
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "libiconv"

@@ -1,7 +1,9 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
-import os
+
 
 class Recipe(RecipeBase):
     name = "poly2tri"

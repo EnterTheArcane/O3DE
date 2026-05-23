@@ -6,6 +6,7 @@ from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 
+
 class Recipe(RecipeBase):
     name = "vulkan-headers"
     version = "1.4.350.0"
