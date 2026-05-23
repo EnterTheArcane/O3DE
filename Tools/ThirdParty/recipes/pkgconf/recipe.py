@@ -3,10 +3,10 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

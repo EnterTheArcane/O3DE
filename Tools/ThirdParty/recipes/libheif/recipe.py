@@ -4,8 +4,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

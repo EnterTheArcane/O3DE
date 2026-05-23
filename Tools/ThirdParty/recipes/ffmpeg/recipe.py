@@ -11,10 +11,10 @@ from thirdparty.tools.files import (
     chdir, copy, get, rename,
     replace_in_file, rm, rmdir, save, load
 )
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, PkgConfigDeps
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, unix_path
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
+
 
 class Recipe(RecipeBase):
     name = "ispc"
