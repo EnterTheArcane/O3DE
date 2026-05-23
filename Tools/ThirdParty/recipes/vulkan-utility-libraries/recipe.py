@@ -27,7 +27,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="19a215e9469df0749d7c1b389fc667a3f7e160f0b6da71000fadc30140494563", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
+            sha256="19a215e9469df0749d7c1b389fc667a3f7e160f0b6da71000fadc30140494563",
+            destination=self.source_folder,
+            strip_root=True)
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)",
                      "set(CMAKE_POSITION_INDEPENDENT_CODE ON)"]:
             replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),

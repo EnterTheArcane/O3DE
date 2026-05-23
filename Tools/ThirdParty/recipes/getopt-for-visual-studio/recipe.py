@@ -9,7 +9,12 @@ class Recipe(RecipeBase):
     license = "MIT", "BSD-2-Clause"
 
     def source(self):
-        get(self, url="https://github.com/skandhurkat/Getopt-for-Visual-Studio/archive/6708172892a4d89042b743315e8a52e2d9d5defc.zip", sha256="9b50026b3f10c3f6a7340e0074a898d6d1105eef068bf98d90af99770375a465", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/skandhurkat/Getopt-for-Visual-Studio/archive/6708172892a4d89042b743315e8a52e2d9d5defc.zip",
+            sha256="9b50026b3f10c3f6a7340e0074a898d6d1105eef068bf98d90af99770375a465",
+            destination=self.source_folder,
+            strip_root=True)
 
     def build(self):
         apply_conandata_patches(self)

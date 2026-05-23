@@ -42,7 +42,12 @@ class Recipe(RecipeBase):
             self.tool_requires("automake")
 
     def source(self):
-        get(self, url="https://github.com/libffi/libffi/releases/download/v3.4.8/libffi-3.4.8.tar.gz", sha256="bc9842a18898bfacb0ed1252c4febcc7e78fa139fd27fdc7a3e30d9d9356119b", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/libffi/libffi/releases/download/v3.4.8/libffi-3.4.8.tar.gz",
+            sha256="bc9842a18898bfacb0ed1252c4febcc7e78fa139fd27fdc7a3e30d9d9356119b",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         virtual_build_env = VirtualBuildEnv(self)

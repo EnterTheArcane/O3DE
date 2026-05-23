@@ -37,7 +37,12 @@ class Recipe(RecipeBase):
             self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/google/re2/releases/download/2025-11-05/re2-2025-11-05.tar.gz", sha256="87f6029d2f6de8aa023654240a03ada90e876ce9a4676e258dd01ea4c26ffd67", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/google/re2/releases/download/2025-11-05/re2-2025-11-05.tar.gz",
+            sha256="87f6029d2f6de8aa023654240a03ada90e876ce9a4676e258dd01ea4c26ffd67",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

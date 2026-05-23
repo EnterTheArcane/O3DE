@@ -43,7 +43,12 @@ class Recipe(RecipeBase):
         self.requires("tinyxml2")
 
     def source(self):
-        get(self, url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.12.tar.gz", sha256="f058117496097217d12e4ea86adbff8467adaf6f12af793925d243b86b0c4f57", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.12.tar.gz",
+            sha256="f058117496097217d12e4ea86adbff8467adaf6f12af793925d243b86b0c4f57",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

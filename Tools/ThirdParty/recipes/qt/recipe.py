@@ -586,7 +586,12 @@ class Recipe(RecipeBase):
         if platform.system() == "Windows":
             # Don't use os.path.join, or it removes the \\?\ prefix, which enables long paths
             destination = rf"\\?\{self.source_folder}"
-        get(self, url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz", sha256="252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03", strip_root=True, destination=destination)
+        get(
+            self,
+            url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
+            sha256="252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03",
+            strip_root=True,
+            destination=destination)
 
         # patching in source method because of no_copy_source attribute
         apply_conandata_patches(self)

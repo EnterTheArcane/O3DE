@@ -43,7 +43,12 @@ class Recipe(RecipeBase):
             del self.options.enable_predictive_edgebreaker
 
     def source(self):
-        get(self, url="https://github.com/google/draco/archive/refs/tags/1.5.7.tar.gz", sha256="bf6b105b79223eab2b86795363dfe5e5356050006a96521477973aba8f036fe1", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/google/draco/archive/refs/tags/1.5.7.tar.gz",
+            sha256="bf6b105b79223eab2b86795363dfe5e5356050006a96521477973aba8f036fe1",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

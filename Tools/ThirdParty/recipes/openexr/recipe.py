@@ -37,7 +37,12 @@ class Recipe(RecipeBase):
             self.requires("openjph")
 
     def source(self):
-        get(self, url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.11/openexr-3.4.11.tar.gz", sha256="25f6a008e4060441a9e9d805bceda58fb811e0adef64b39807dfd73b94e12c91", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.11/openexr-3.4.11.tar.gz",
+            sha256="25f6a008e4060441a9e9d805bceda58fb811e0adef64b39807dfd73b94e12c91",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -91,7 +91,12 @@ class Recipe(RecipeBase):
             self.requires("icu")
 
     def source(self):
-        get(self, url="https://sqlite.org/2026/sqlite-amalgamation-3530100.zip", sha256="36ad6e7f38540a3b21a2ac36340833f0a9e426bc1c752751c3ba669466827eae", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://sqlite.org/2026/sqlite-amalgamation-3530100.zip",
+            sha256="36ad6e7f38540a3b21a2ac36340833f0a9e426bc1c752751c3ba669466827eae",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

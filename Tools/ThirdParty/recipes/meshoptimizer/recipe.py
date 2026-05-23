@@ -27,7 +27,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/zeux/meshoptimizer/archive/refs/tags/v1.0.tar.gz", sha256="30d1c3651986b2074e847b17223a7269c9612ab7f148b944250f81214fed4993", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/zeux/meshoptimizer/archive/refs/tags/v1.0.tar.gz",
+            sha256="30d1c3651986b2074e847b17223a7269c9612ab7f148b944250f81214fed4993",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

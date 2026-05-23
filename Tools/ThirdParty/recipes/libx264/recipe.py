@@ -50,7 +50,12 @@ class Recipe(RecipeBase):
                 self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://code.videolan.org/videolan/x264/-/archive/0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee/x264-0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee.tar.bz2", sha256="f05c59f2e83d494c36307025dca2d3afc6b4d185f3a3453d06cc4fecd7094057", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://code.videolan.org/videolan/x264/-/archive/0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee/x264-0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee.tar.bz2",
+            sha256="f05c59f2e83d494c36307025dca2d3afc6b4d185f3a3453d06cc4fecd7094057",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = AutotoolsToolchain(self)

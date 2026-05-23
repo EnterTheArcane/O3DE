@@ -34,7 +34,12 @@ class Recipe(RecipeBase):
             del self.options.shared
 
     def source(self):
-        get(self, url="https://github.com/zeux/pugixml/releases/download/v1.15/pugixml-1.15.tar.gz", sha256="655ade57fa703fb421c2eb9a0113b5064bddb145d415dd1f88c79353d90d511a", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/zeux/pugixml/releases/download/v1.15/pugixml-1.15.tar.gz",
+            sha256="655ade57fa703fb421c2eb9a0113b5064bddb145d415dd1f88c79353d90d511a",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         if not self.options.header_only:

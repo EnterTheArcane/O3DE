@@ -27,7 +27,12 @@ class Recipe(ConanFile):
         else:  # macOS
             url = "https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-macos-universal.tar.gz"
             sha256 = "5221a13450c7a0219a2a0d1b6c9085eb06489721fafd8488ccebc1584175d2fb"
-        get(self, url=url, sha256=sha256, destination=self.build_folder, strip_root=True)
+        get(
+            self,
+            url=url,
+            sha256=sha256,
+            destination=self.build_folder,
+            strip_root=True)
 
     def package(self):
         for subdir in ("bin", "share", "lib"):

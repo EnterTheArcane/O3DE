@@ -39,7 +39,12 @@ class Recipe(RecipeBase):
                     self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://www.nasm.us/pub/nasm/releasebuilds/3.01/nasm-3.01.tar.xz", sha256="b7324cbe86e767b65f26f467ed8b12ad80e124e3ccb89076855c98e43a9eddd4", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://www.nasm.us/pub/nasm/releasebuilds/3.01/nasm-3.01.tar.xz",
+            sha256="b7324cbe86e767b65f26f467ed8b12ad80e124e3ccb89076855c98e43a9eddd4",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)

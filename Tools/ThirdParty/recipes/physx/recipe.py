@@ -40,7 +40,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/NVIDIAGameWorks/PhysX/archive/a2c0428acab643e60618c681b501e86f7fd558cc.zip", sha256="d9c1939490a990277f8c773f288294cecb10e6fad8c820acad90fd4168b8ace3", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/NVIDIAGameWorks/PhysX/archive/a2c0428acab643e60618c681b501e86f7fd558cc.zip",
+            sha256="d9c1939490a990277f8c773f288294cecb10e6fad8c820acad90fd4168b8ace3",
+            destination=self.source_folder,
+            strip_root=True)
         self._patch_sources()
 
     def generate(self):

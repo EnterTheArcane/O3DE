@@ -13,7 +13,12 @@ class Recipe(RecipeBase):
     license = "Apache-2.0"
 
     def source(self):
-        get(self, url="https://developer.apple.com/metal/cpp/files/metal-cpp_26.zip", sha256="4df3c078b9aadcb516212e9cb03004cbc5ce9a3e9c068fa3144d021db585a3a4", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://developer.apple.com/metal/cpp/files/metal-cpp_26.zip",
+            sha256="4df3c078b9aadcb516212e9cb03004cbc5ce9a3e9c068fa3144d021db585a3a4",
+            destination=self.source_folder,
+            strip_root=True)
 
     def package(self):
         copy(

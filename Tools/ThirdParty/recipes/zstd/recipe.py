@@ -34,7 +34,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz", sha256="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz",
+            sha256="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

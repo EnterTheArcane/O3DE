@@ -24,7 +24,12 @@ class Recipe(RecipeBase):
         self.requires(f"spirv-headers/{self.version}", transitive_headers=True)
 
     def source(self):
-        get(self, url="https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="c81ea49449d77189574ce0ff1374350533c283f41a9dd1b59f351c26961302b9", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
+            sha256="c81ea49449d77189574ce0ff1374350533c283f41a9dd1b59f351c26961302b9",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

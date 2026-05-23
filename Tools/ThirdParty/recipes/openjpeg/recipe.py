@@ -32,7 +32,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.4.tar.gz", sha256="a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.4.tar.gz",
+            sha256="a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

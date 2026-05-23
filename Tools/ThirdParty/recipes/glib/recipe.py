@@ -70,7 +70,12 @@ class Recipe(RecipeBase):
             self.tool_requires("pkgconf")
 
     def source(self):
-        get(self, url="https://download.gnome.org/sources/glib/2.85/glib-2.85.3.tar.xz", sha256="af229e1de191d66aebcdb03c7493c724fd4d0a6628b1ca4ea1f35739259b311d", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://download.gnome.org/sources/glib/2.85/glib-2.85.3.tar.xz",
+            sha256="af229e1de191d66aebcdb03c7493c724fd4d0a6628b1ca4ea1f35739259b311d",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         virtual_build_env = VirtualBuildEnv(self)

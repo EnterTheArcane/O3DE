@@ -58,7 +58,12 @@ class Recipe(RecipeBase):
                 self.tool_requires("nasm")
 
     def source(self):
-        get(self, url="https://downloads.videolan.org/videolan/x265/x265_4.2.tar.gz", sha256="40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://downloads.videolan.org/videolan/x265/x265_4.2.tar.gz",
+            sha256="40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)

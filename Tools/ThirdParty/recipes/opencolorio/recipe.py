@@ -49,7 +49,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v2.5.2/OpenColorIO-2.5.2.tar.gz", sha256="cb8b0ae38fa523be8f899a0b2d6b8ca8cbcda7bc4322c91d1ac2b6b2a0082474", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v2.5.2/OpenColorIO-2.5.2.tar.gz",
+            sha256="cb8b0ae38fa523be8f899a0b2d6b8ca8cbcda7bc4322c91d1ac2b6b2a0082474",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

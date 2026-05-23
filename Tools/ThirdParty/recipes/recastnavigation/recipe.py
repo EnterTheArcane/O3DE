@@ -26,7 +26,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/recastnavigation/recastnavigation/archive/refs/tags/v1.6.0.tar.gz", sha256="d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/recastnavigation/recastnavigation/archive/refs/tags/v1.6.0.tar.gz",
+            sha256="d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

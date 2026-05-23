@@ -22,7 +22,12 @@ class Recipe(RecipeBase):
     }
 
     def source(self):
-        get(self, url="https://github.com/Roblox/luau/archive/0.700.tar.gz", sha256="e0dffe07a4b27c568b9688916e1d97ba7204b7a4d487d0a03648c99b88fc8df8", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/Roblox/luau/archive/0.700.tar.gz",
+            sha256="e0dffe07a4b27c568b9688916e1d97ba7204b7a4d487d0a03648c99b88fc8df8",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

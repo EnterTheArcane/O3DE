@@ -8,7 +8,12 @@ class Recipe(RecipeBase):
     license = ["BSL-1.0", "MIT"]
 
     def source(self):
-        get(self, url="https://sourceforge.net/projects/rapidxml/files/rapidxml/rapidxml%201.13/rapidxml-1.13.zip/download", sha256="c3f0b886374981bb20fabcf323d755db4be6dba42064599481da64a85f5b3571", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://sourceforge.net/projects/rapidxml/files/rapidxml/rapidxml%201.13/rapidxml-1.13.zip/download",
+            sha256="c3f0b886374981bb20fabcf323d755db4be6dba42064599481da64a85f5b3571",
+            destination=self.source_folder,
+            strip_root=True)
 
     def build(self):
         apply_conandata_patches(self)

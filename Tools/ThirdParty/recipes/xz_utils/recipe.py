@@ -64,7 +64,12 @@ class Recipe(RecipeBase):
             self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://tukaani.org/xz/xz-5.8.3.tar.xz", sha256="fff1ffcf2b0da84d308a14de513a1aa23d4e9aa3464d17e64b9714bfdd0bbfb6", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://tukaani.org/xz/xz-5.8.3.tar.xz",
+            sha256="fff1ffcf2b0da84d308a14de513a1aa23d4e9aa3464d17e64b9714bfdd0bbfb6",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         if self._use_msbuild:

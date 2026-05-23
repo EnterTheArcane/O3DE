@@ -28,7 +28,12 @@ class Recipe(RecipeBase):
             self.package_type = 'header-library'
 
     def source(self):
-        get(self, url="https://github.com/kulp/naive-tsearch/releases/download/v0.1.1/naive-tsearch-0.1.1.tar.xz", sha256="cb779326a8748fb527ab2f4d199923c92dc7d120988b45400d4b31fd77288a1b", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/kulp/naive-tsearch/releases/download/v0.1.1/naive-tsearch-0.1.1.tar.xz",
+            sha256="cb779326a8748fb527ab2f4d199923c92dc7d120988b45400d4b31fd77288a1b",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

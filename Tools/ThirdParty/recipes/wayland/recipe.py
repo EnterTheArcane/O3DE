@@ -53,7 +53,12 @@ class Recipe(RecipeBase):
             self.tool_requires(str(self.ref))
 
     def source(self):
-        get(self, url="https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/wayland-1.24.0.tar.xz", sha256="82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/wayland-1.24.0.tar.xz",
+            sha256="82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
+            destination=self.source_folder,
+            strip_root=True)
         apply_conandata_patches(self)
 
     def generate(self):

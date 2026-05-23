@@ -27,7 +27,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/leethomason/tinyxml2/archive/refs/tags/11.0.0.tar.gz", sha256="5556deb5081fb246ee92afae73efd943c889cef0cafea92b0b82422d6a18f289", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/leethomason/tinyxml2/archive/refs/tags/11.0.0.tar.gz",
+            sha256="5556deb5081fb246ee92afae73efd943c889cef0cafea92b0b82422d6a18f289",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
