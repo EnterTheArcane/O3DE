@@ -119,15 +119,10 @@ class Recipe(RecipeBase):
     def _is_win_x_android(self):
         return self.settings.os == "Android" and self.settings_build.os == "Windows"
 
-    @property
-    def _is_using_cmake_build(self):
-        return is_msvc(self) or self._is_win_x_android
-
     def config_options(self):
+        del self.options.with_libgsasl
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if self._is_using_cmake_build:
-            del self.options.with_libgsasl
         if not is_apple_os(self):
             del self.options.with_apple_sectrust
 
@@ -139,7 +134,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_ssl == "openssl":
-            self.requires(f"openssl/[>=3 <4]")
+            self.requires("openssl")
         elif self.options.with_ssl == "libressl":
             self.requires("libressl")
         elif self.options.with_ssl == "wolfssl":
@@ -201,26 +196,13 @@ class Recipe(RecipeBase):
     def generate(self):
         env = VirtualBuildEnv(self)
         env.generate()
-        if self._is_using_cmake_build:
-            self._generate_with_cmake()
-        else:
-            self._generate_with_autotools()
+        self._generate_with_cmake()
 
     def build(self):
         self._patch_sources()
-        if self._is_using_cmake_build:
-            cmake = CMake(self)
-            cmake.configure()
-            cmake.build()
-        else:
-            autotools = Autotools(self)
-            autotools.autoreconf()
-            # autoreconf is caalled with "--force" which regenerate all files.
-            # Because we want to use a patched config.sub for tvOS/watchOS, we
-            # need to call this patch after autoreconf.
-            self._patch_autoreconf()
-            autotools.configure()
-            autotools.make()
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
 
     def _patch_autoreconf(self):
         # Fix config.sub for tvOS/watchOS
@@ -241,52 +223,6 @@ class Recipe(RecipeBase):
             replace_in_file(self, os.path.join(self.source_folder, "include", "curl", "curl.h"),
                                   "define CURL_MAX_WRITE_SIZE 16384",
                                   "define CURL_MAX_WRITE_SIZE 10485760")
-
-    def _patch_autotools(self):
-        if self._is_using_cmake_build:
-            return
-
-        # Disable the executable build if requested
-        top_makefile = os.path.join(self.source_folder, "Makefile.am")
-
-        subdirs_to_build = "lib src" if self.options.build_executable else "lib"
-        replace_in_file(self, top_makefile, "SUBDIRS = lib docs src scripts", f"SUBDIRS = {subdirs_to_build}")
-
-        # zlib naming is not always very consistent
-        if self.options.with_zlib:
-            configure_ac = os.path.join(self.source_folder, "configure.ac")
-            zlib_name = self.dependencies["zlib"].cpp_info.aggregated_components().libs[0]
-            replace_in_file(self, configure_ac,
-                                  "AC_CHECK_LIB(z,",
-                                  f"AC_CHECK_LIB({zlib_name},")
-            replace_in_file(self, configure_ac,
-                                  "-lz",
-                                  f"-l{zlib_name} ")
-
-        if self._is_mingw and self.options.shared:
-            # patch for shared mingw build
-            lib_makefile = os.path.join(self.source_folder, "lib", "Makefile.am")
-            replace_in_file(self, lib_makefile,
-                                  "noinst_LTLIBRARIES = libcurlu.la",
-                                  "")
-            replace_in_file(self, lib_makefile,
-                                  "noinst_LTLIBRARIES =",
-                                  "")
-            replace_in_file(self, lib_makefile,
-                                  "lib_LTLIBRARIES = libcurl.la",
-                                  "noinst_LTLIBRARIES = libcurl.la")
-
-            if self.options.build_executable:
-                # Link libcurl.dll.a to curl.exe
-                replace_in_file(self, os.path.join(self.source_folder, "src", "Makefile.am"),
-                                        "curl_LDADD = $(top_builddir)/lib/libcurl.la",
-                                        "curl_LDADD = $(top_builddir)/lib/libcurl.la $(top_builddir)/lib/libcurl.dll.a")
-            # add directives to build dll
-            # used only for native mingw-make
-            if not cross_building(self) or self._is_mingw:
-                # The patch file is located in the base src folder
-                added_content = load(self, os.path.join(self.folders.base_source, "lib_Makefile_add.am"))
-                save(self, lib_makefile, added_content, append=True)
 
     def _yes_no(self, value):
         return "yes" if value else "no"
@@ -602,21 +538,9 @@ class Recipe(RecipeBase):
     def package(self):
         copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         copy(self, "cacert.pem", src=self.source_folder, dst=os.path.join(self.package_folder, "res"))
-        if self._is_using_cmake_build:
-            cmake = CMake(self)
-            cmake.install()
-            rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        else:
-            autotools = Autotools(self)
-            autotools.install()
-            rmdir(self, os.path.join(self.package_folder, "share"))
-            rm(self, "*.la", os.path.join(self.package_folder, "lib"))
-            if self._is_mingw and self.options.shared:
-                # Handle only mingw libs
-                copy(self, pattern="*.dll", src=self.build_folder, dst=os.path.join(self.package_folder, "bin"), keep_path=False)
-                copy(self, pattern="*.dll.a", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
-                copy(self, pattern="*.lib", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
-            fix_apple_shared_install_name(self)
+        cmake = CMake(self)
+        cmake.install()
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
 
     def package_info(self):

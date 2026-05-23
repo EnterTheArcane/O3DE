@@ -4,7 +4,6 @@ from thirdparty.tools.build import cross_building, build_jobs
 from thirdparty.tools.files import copy, get, rename, rm, rmdir, replace_in_file, save, chdir, mkdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path, NMakeDeps, NMakeToolchain
-from thirdparty.tools.scm import Version
 import os
 
 import itertools
@@ -66,12 +65,9 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if Version(self.version) >= "2.10.3":
-            del self.options.docbook
-        if Version(self.version) >= "2.11.0":
-            self.options.rm_safe("run-debug")
-        if Version(self.version) >= "2.13.0":
-            self.options.rm_safe("mem-debug")
+        del self.options.docbook
+        self.options.rm_safe("run-debug")
+        self.options.rm_safe("mem-debug")
 
     def configure(self):
         if self.options.shared:
@@ -388,8 +384,7 @@ class Recipe(RecipeBase):
         elif self.settings.os == "Windows":
             if self.options.ftp or self.options.http:
                 self.cpp_info.system_libs.extend(["ws2_32", "wsock32"])
-            if Version(self.version) >= "2.13.4":
-                # https://gitlab.gnome.org/GNOME/libxml2/-/issues/791
-                # https://gitlab.gnome.org/GNOME/libxml2/-/blob/2.13/win32/Makefile.msvc?ref_type=heads#L84
-                self.cpp_info.system_libs.append("bcrypt")
+            # https://gitlab.gnome.org/GNOME/libxml2/-/issues/791
+            # https://gitlab.gnome.org/GNOME/libxml2/-/blob/2.13/win32/Makefile.msvc?ref_type=heads#L84
+            self.cpp_info.system_libs.append("bcrypt")
 

@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -58,8 +57,7 @@ class Recipe(RecipeBase):
         tc.variables["ALEMBIC_SHARED_LIBS"] = self.options.shared
         tc.variables["ALEMBIC_USING_IMATH_3"] = False
         tc.variables["ALEMBIC_ILMBASE_FOUND"] = 1
-        if Version(self.version) >= "1.8.4":
-            tc.variables["ALEMBIC_DEBUG_WARNINGS_AS_ERRORS"] = False
+        tc.variables["ALEMBIC_DEBUG_WARNINGS_AS_ERRORS"] = False
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

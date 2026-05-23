@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -51,8 +50,7 @@ class Recipe(RecipeBase):
         tc.variables["USE_WINDOWS_CRYPTOAPI"] = self.options.use_windows_cryptoapi
         if is_msvc(self):
             tc.variables["JANSSON_STATIC_CRT"] = is_msvc_static_runtime(self)
-        if Version(self.version) <= "2.14.1":  # pylint: disable=conan-condition-evals-to-constant
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):

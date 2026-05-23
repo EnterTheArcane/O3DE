@@ -3,7 +3,6 @@ from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc_static_runtime, msvc_runtime_flag
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -51,8 +50,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build_requirements(self):
-        if Version(self.version) >= "1.17.0":
-            self.tool_requires("cmake")
+        self.tool_requires("cmake")
 
     def build(self):
         cmake = CMake(self)

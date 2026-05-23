@@ -4,7 +4,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
-from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "highway"
@@ -82,10 +81,7 @@ class Recipe(RecipeBase):
         self.cpp_info.components["hwy_contrib"].set_property("pkg_config_name", "libhwy-contrib")
         self.cpp_info.components["hwy_contrib"].libs = ["hwy_contrib"]
         self.cpp_info.components["hwy_contrib"].requires = ["hwy"]
-        if Version(self.version) >= "1.3.0" and self.settings.os in ["Linux", "FreeBSD"]:
-            # From 1.3.0 Highway does a FindPackage(Threads) and if not found
-            # but not requested to build without contrib, it fails.
-            self.cpp_info.components["hwy_contrib"].system_libs.append("pthread")
+        self.cpp_info.components["hwy_contrib"].system_libs.append("pthread")
         if self.options.with_test:
             self.cpp_info.components["hwy_test"].set_property("pkg_config_name", "libhwy-test")
             self.cpp_info.components["hwy_test"].libs = ["hwy_test"]

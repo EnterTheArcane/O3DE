@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -46,8 +45,6 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_MACOSX_BUNDLE"] = False
         # Generate a relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-        if Version(self.version) < "0.8.3":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):

@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -19,10 +18,7 @@ class Recipe(RecipeBase):
 
     def configure(self):
         self.license = "MPL-2.0"  # MPL-2 only
-        if Version(self.version) >= "5.0.0":
-            del self.options.MPL2_only
-        elif not self.options.MPL2_only:  # < 5.0.0
-            self.license = ("MPL-2.0", "LGPL-3.0-or-later")
+        del self.options.MPL2_only
 
     def source(self):
         get(
@@ -36,16 +32,12 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_TESTING"] = not self.conf.get("tools.build:skip_test", default=True, check_type=bool)
-        if Version(self.version) >= "5.0.0":
-            # TODO consider making EIGEN_BUILD_{BLAS,LAPACK} tunable
-            tc.cache_variables["EIGEN_BUILD_BLAS"] = False
-            tc.cache_variables["EIGEN_BUILD_LAPACK"] = False
-            tc.cache_variables["EIGEN_BUILD_DEMOS"] = False
-            tc.cache_variables["EIGEN_BUILD_DOC"] = False
-            tc.cache_variables["EIGEN_BUILD_PKGCONFIG"] = False
-            tc.cache_variables["EIGEN_BUILD_TESTING"] = tc.cache_variables["BUILD_TESTING"]
-        else:
-            tc.cache_variables["EIGEN_TEST_NOQT"] = True
+        tc.cache_variables["EIGEN_BUILD_BLAS"] = False
+        tc.cache_variables["EIGEN_BUILD_LAPACK"] = False
+        tc.cache_variables["EIGEN_BUILD_DEMOS"] = False
+        tc.cache_variables["EIGEN_BUILD_DOC"] = False
+        tc.cache_variables["EIGEN_BUILD_PKGCONFIG"] = False
+        tc.cache_variables["EIGEN_BUILD_TESTING"] = tc.cache_variables["BUILD_TESTING"]
         tc.generate()
 
     def build(self):

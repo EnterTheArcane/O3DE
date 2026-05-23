@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd, valid_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rm, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -58,8 +57,7 @@ class Recipe(RecipeBase):
             del self.options.with_dx
         if self.settings.os != "Macos":
             del self.options.with_metal
-        if Version(self.version) >= "3.7.0":
-            self.license = "DocumentRef-LICENSE.txt:LicenseRef-Tomorrow-Open-Source-Technology"
+        self.license = "DocumentRef-LICENSE.txt:LicenseRef-Tomorrow-Open-Source-Technology"
 
     def configure(self):
         if self.options.shared:
@@ -67,12 +65,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_tbb:
-            # OpenSubdiv < 3.6.0 support only onettbb/2020.x.x
-            # https://github.com/PixarAnimationStudios/OpenSubdiv/pull/1317
-            if Version(self.version) < "3.6.0":
-                self.requires("onetbb", transitive_headers=True)
-            else:
-                self.requires("onetbb", transitive_headers=True)
+            self.requires("onetbb", transitive_headers=True)
         if self.options.with_opengl:
             self.requires("opengl")
             self.requires("glfw")

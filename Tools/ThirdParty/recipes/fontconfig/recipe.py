@@ -3,7 +3,6 @@ from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
-from thirdparty.tools.scm import Version
 
 import os
 
@@ -81,9 +80,6 @@ class Recipe(RecipeBase):
         rm(self, "*.def", os.path.join(self.package_folder, "lib"))
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         fix_apple_shared_install_name(self)
-        if Version(self.version) <= "2.15.0":
-            # TODO: Keep this for versions <= 2.15.0, remove in future versions
-            fix_msvc_libname(self)
 
     def package_info(self):
         self.cpp_info.set_property("cmake_find_mode", "both")

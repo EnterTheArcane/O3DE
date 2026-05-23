@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, rm
 from thirdparty.tools.microsoft import check_min_vs
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -38,8 +37,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS"] = True
-        if Version(self.version) <= "3.3.0": # pylint: disable=conan-condition-evals-to-constant
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):

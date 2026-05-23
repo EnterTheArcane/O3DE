@@ -8,7 +8,6 @@ from thirdparty.tools.files import (
 )
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, PkgConfigDeps
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, unix_path
-from thirdparty.tools.scm import Version
 import os
 import glob
 import shutil
@@ -254,11 +253,7 @@ class Recipe(RecipeBase):
             if is_msvc(self) and self.settings.arch == "armv8":
                 self.options.with_libsvtav1 = False
 
-        if Version(self.version) >= "8.0":
-            del self.options.postproc
-        else:
-            del self.options.with_whisper
-            del self.options.with_openapv
+        del self.options.postproc
 
         if self.settings.os not in ["Linux", "FreeBSD"]:
             del self.options.with_vaapi
@@ -415,16 +410,10 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         if self.options.with_ssl == "openssl":
                 # https://trac.ffmpeg.org/ticket/5675
-            if Version(self.version) >= "8.1":
                 openssl_libs = load(self, os.path.join(self.build_folder, "openssl_libs.list"))
                 replace_in_file(self, os.path.join(self.source_folder, "configure"),
                                     "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto -lws2_32 -lgdi32 ||",
                                     f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} || ")
-            else:
-                openssl_libs = load(self, os.path.join(self.build_folder, "openssl_libs.list"))
-                replace_in_file(self, os.path.join(self.source_folder, "configure"),
-                                    "check_lib openssl openssl/ssl.h SSL_library_init -lssl -lcrypto -lws2_32 -lgdi32 ||",
-                                    f"check_lib openssl openssl/ssl.h OPENSSL_init_ssl {openssl_libs} || ")
 
         replace_in_file(self, os.path.join(self.source_folder, "configure"), "echo libx264.lib", "echo x264.lib")
 
@@ -543,10 +532,6 @@ class Recipe(RecipeBase):
                 self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc")))),
             opt_enable_disable("gpl", self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc"))
         ]
-
-        # Version specific options
-        if Version(self.version) < "8.0":
-            args.append(opt_enable_disable("postproc", self.options.get_safe("postproc")))
 
         # Individual Component Options
         opt_append_disable_if_set(args, "everything", self.options.disable_everything)

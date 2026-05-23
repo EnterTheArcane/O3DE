@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -36,8 +35,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def build_requirements(self):
-        if Version(self.version) >= "1.3.0":
-            self.tool_requires("cmake")
+        self.tool_requires("cmake")
 
     def source(self):
         get(
@@ -67,9 +65,8 @@ class Recipe(RecipeBase):
         tc.variables["WEBP_BUILD_VWEBP"] = False
         tc.variables["WEBP_BUILD_EXTRAS"] = False
         tc.variables["WEBP_BUILD_WEBPINFO"] = False
-        if Version(self.version) >= "1.2.1":
-            tc.variables["WEBP_BUILD_LIBWEBPMUX"] = True
         tc.variables["WEBP_BUILD_WEBPMUX"] = False
+        tc.variables["WEBP_BUILD_LIBWEBPMUX"] = True
         if self.options.shared and is_msvc(self):
             # Building a dll (see fix-dll-export patch)
             tc.preprocessor_definitions["WEBP_DLL"] = 1
@@ -110,17 +107,16 @@ class Recipe(RecipeBase):
         if self.settings.os == "Android":
             self.cpp_info.components["webp"].system_libs = ["m"]
 
-        if Version(self.version) >= "1.3.0":
-            # sharpyuv
-            self.cpp_info.components["sharpyuv"].set_property("cmake_target_name", "WebP::sharpyuv")
-            self.cpp_info.components["sharpyuv"].set_property("pkg_config_name", "libsharpyuv")
-            self.cpp_info.components["sharpyuv"].libs = ["sharpyuv"]
-            if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["sharpyuv"].system_libs = ["m", "pthread"]
-            if self.settings.os == "Android":
-                self.cpp_info.components["sharpyuv"].system_libs = ["m"]
-            # note: webp now depends on sharpyuv
-            self.cpp_info.components["webp"].requires = ["sharpyuv"]
+        self.cpp_info.components["webp"].requires = ["sharpyuv"]
+
+        # sharpyuv
+        self.cpp_info.components["sharpyuv"].set_property("cmake_target_name", "WebP::sharpyuv")
+        self.cpp_info.components["sharpyuv"].set_property("pkg_config_name", "libsharpyuv")
+        self.cpp_info.components["sharpyuv"].libs = ["sharpyuv"]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.components["sharpyuv"].system_libs = ["m", "pthread"]
+        if self.settings.os == "Android":
+            self.cpp_info.components["sharpyuv"].system_libs = ["m"]
 
         # webpdemux
         self.cpp_info.components["webpdemux"].set_property("cmake_target_name", "WebP::webpdemux")

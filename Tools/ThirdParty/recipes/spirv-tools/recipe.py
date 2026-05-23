@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, save, apply_conandata_patches
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -30,11 +29,10 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires(f"spirv-headers/{self.version}")
+        self.requires(f"spirv-headers")
 
     def build_requirements(self):
-        if Version(self.version) >= "1.3.239":
-            self.tool_requires("cmake")
+        self.tool_requires("cmake")
 
     def source(self):
         get(
@@ -78,10 +76,6 @@ class Recipe(RecipeBase):
         tc.variables["SPIRV_CHECK_CONTEXT"] = False
         tc.variables["SPIRV_BUILD_FUZZER"] = False
         tc.variables["SPIRV_SKIP_EXECUTABLES"] = not self.options.build_executables
-        # To install relocatable shared libs on Macos
-        if Version(self.version) < "1.3.239":
-            tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         # For iOS/tvOS/watchOS
         tc.variables["CMAKE_MACOSX_BUNDLE"] = False
 

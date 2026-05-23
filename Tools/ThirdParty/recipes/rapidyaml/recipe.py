@@ -35,11 +35,6 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if Version(self.version) < "0.4.0":
-            del self.options.with_tab_tokens
-        if Version(self.version) < "0.6.0":
-            del self.options.with_default_callback_uses_exceptions
-            del self.options.with_assert
 
     def configure(self):
         if self.options.shared:
@@ -49,10 +44,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("with_default_callback_uses_exceptions")
 
     def requirements(self):
-        if Version(self.version) < "0.6.0":
-            self.requires("c4core", transitive_headers=True)
-        else:
-            self.requires("c4core", transitive_headers=True)
+        self.requires("c4core", transitive_headers=True)
 
     def source(self):
         get(
@@ -65,11 +57,9 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["RYML_DEFAULT_CALLBACKS"] = self.options.with_default_callbacks
-        if Version(self.version) >= "0.4.0":
-            tc.variables["RYML_WITH_TAB_TOKENS"] = self.options.with_tab_tokens
-        if Version(self.version) >= "0.6.0":
-            tc.variables["RYML_DEFAULT_CALLBACK_USES_EXCEPTIONS"] = self.options.with_default_callback_uses_exceptions
-            tc.variables["RYML_USE_ASSERT"] = self.options.with_assert
+        tc.variables["RYML_WITH_TAB_TOKENS"] = self.options.with_tab_tokens
+        tc.variables["RYML_DEFAULT_CALLBACK_USES_EXCEPTIONS"] = self.options.with_default_callback_uses_exceptions
+        tc.variables["RYML_USE_ASSERT"] = self.options.with_assert
         tc.generate()
 
         deps = CMakeDeps(self)

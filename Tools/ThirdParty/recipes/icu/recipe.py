@@ -63,8 +63,7 @@ class Recipe(RecipeBase):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
-        if Version(self.version) >= "74.1":
-            self.license = "Unicode-3.0"
+        self.license = "Unicode-3.0"
 
     @staticmethod
     def _sha256sum(file_path):
@@ -99,7 +98,7 @@ class Recipe(RecipeBase):
         if check_min_vs(self, "180", raise_invalid=False):
             tc.extra_cflags.append("-FS")
             tc.extra_cxxflags.append("-FS")
-        if Version(self.version) >= "75.1" and not self.settings.compiler.cppstd and is_msvc(self):
+        if not self.settings.compiler.cppstd and is_msvc(self):
             tc.extra_cxxflags.append(f"-std:c++{self._min_cppstd}")
         if not self.options.shared:
             tc.extra_defines.append("U_STATIC_IMPLEMENTATION")

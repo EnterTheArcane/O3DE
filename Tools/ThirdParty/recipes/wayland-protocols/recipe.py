@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.meson import Meson, MesonToolchain
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -28,10 +27,11 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        if Version(self.version) >= "1.42":
-            replace_in_file(self, os.path.join(self.source_folder, "meson.build"),
-                            "dep_scanner = dependency('wayland-scanner',",
-                            "dep_scanner = dependency('wayland-scanner', required: false, disabler: true,")
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "meson.build"),
+            "dep_scanner = dependency('wayland-scanner',",
+            "dep_scanner = dependency('wayland-scanner', required: false, disabler: true,")
 
     def build(self):
         self._patch_sources()
