@@ -222,6 +222,7 @@ class CMakeDeps:
                             undefined=jinja2.StrictUndefined)
         conandeps = template.render({"configs": configs})
         save(self._conanfile, "conandeps_legacy.cmake", conandeps)
+        save(self._conanfile, "conan_deps.cmake", conandeps)
 
     def get_transitive_requires(self, conanfile):
         # Prepared to filter transitive tool-requires with visible=True
