@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "c4core"
     version = "0.2.5"
     license = "MIT",
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

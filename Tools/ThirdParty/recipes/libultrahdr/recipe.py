@@ -8,9 +8,8 @@ import os
 class Recipe(RecipeBase):
     name = "libultrahdr"
     version = "1.4.0"
-    package_type = "library"
     license = "Apache-2.0"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

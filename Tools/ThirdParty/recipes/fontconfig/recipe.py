@@ -11,7 +11,7 @@ class Recipe(RecipeBase):
     name = "fontconfig"
     version = "2.17.1"
     license = "MIT"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
@@ -20,7 +20,6 @@ class Recipe(RecipeBase):
         "shared": False,
         "fPIC": True,
     }
-    package_type = "library"
 
     def config_options(self):
         if self.settings.os == "Windows":

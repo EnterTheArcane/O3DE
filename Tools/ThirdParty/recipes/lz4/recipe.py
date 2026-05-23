@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "lz4"
     version = "1.10.0"
     license = "BSD-2-Clause"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

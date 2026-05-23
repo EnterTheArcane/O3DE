@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "opus"
     version = "1.5.2"
     license = "BSD-3-Clause"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

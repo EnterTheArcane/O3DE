@@ -8,8 +8,6 @@ class Recipe(RecipeBase):
     name = "pybind11"
     version = "3.0.1"
     license = "BSD-3-Clause"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):

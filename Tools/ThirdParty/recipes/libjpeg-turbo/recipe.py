@@ -10,8 +10,6 @@ class Recipe(RecipeBase):
     version = "3.1.4.1"
     license = ("IJG", "BSD-3-Clause", "Zlib")
     provides = "libjpeg"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

@@ -8,8 +8,6 @@ class Recipe(RecipeBase):
     name = "v-hacd"
     version = "4.1.0"
     license = "BSD-3-Clause"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     @property

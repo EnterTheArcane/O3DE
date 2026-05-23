@@ -7,8 +7,6 @@ class Recipe(RecipeBase):
     name = "stb"
     version = "20240531"
     license = ("Unlicense", "MIT")
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
     options = {
         "with_deprecated": [True, False],

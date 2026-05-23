@@ -11,9 +11,6 @@ class Recipe(RecipeBase):
     version = "1.16.5"
     license = ("GPL-2.0-or-later", "GPL-3.0-or-later")
 
-    package_type = "application"
-    settings = "os", "arch", "compiler", "build_type"
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")

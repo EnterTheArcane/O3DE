@@ -2,13 +2,10 @@ from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.files import copy, get
 import os
 
-
 class Recipe(ConanFile):
     name = "cmake"
     version = "4.3.3"
     license = "BSD-3-Clause"
-    package_type = "application"
-    settings = "os", "arch"
 
     def source(self):
         pass

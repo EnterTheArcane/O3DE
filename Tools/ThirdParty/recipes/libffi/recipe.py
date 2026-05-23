@@ -13,8 +13,7 @@ class Recipe(RecipeBase):
     name = "libffi"
     version = "3.4.8"
     license = "MIT"
-    settings = "os", "arch", "compiler", "build_type"
-    package_type = "library"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

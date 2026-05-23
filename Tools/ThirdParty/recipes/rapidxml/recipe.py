@@ -6,7 +6,6 @@ class Recipe(RecipeBase):
     name = "rapidxml"
     version = "1.13"
     license = ["BSL-1.0", "MIT"]
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):

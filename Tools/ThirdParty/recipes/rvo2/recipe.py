@@ -10,8 +10,6 @@ class Recipe(RecipeBase):
     version = "2.0.2"
     license = "Apache-2.0"
 
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

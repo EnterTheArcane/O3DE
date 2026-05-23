@@ -8,9 +8,6 @@ class Recipe(RecipeBase):
     name = "vulkan-headers"
     version = "1.4.350.0"
     license = "Apache-2.0"
-    package_type = "header-library"
-    package_id_embed_mode = "patch_mode"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):

@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "libheif"
     version = "1.20.1"
     license = ("LGPL-3.0-only", "GPL-3.0-or-later", "MIT")
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

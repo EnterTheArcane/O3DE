@@ -12,8 +12,7 @@ class Recipe(RecipeBase):
     name = "tcl"
     version = "8.6.13"
     license = "TCL"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

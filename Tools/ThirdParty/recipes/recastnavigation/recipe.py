@@ -7,8 +7,7 @@ class Recipe(RecipeBase):
     name = "recastnavigation"
     version = "1.6.0"
     license = "Zlib"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
