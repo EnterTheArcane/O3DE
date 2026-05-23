@@ -5,7 +5,7 @@ import os
 
 class Recipe(RecipeBase):
     name = "stb"
-    version = "cci.20240531"
+    version = "20240531"
     license = ("Unlicense", "MIT")
     package_type = "header-library"
     settings = "os", "arch", "compiler", "build_type"
@@ -20,8 +20,6 @@ class Recipe(RecipeBase):
 
     @property
     def _version(self):
-        # HACK: Used to circumvent the incompatibility
-        #       of the format cci.YYYYMMDD in tools.Version
         return str(self.version)[4:]
 
     def config_options(self):

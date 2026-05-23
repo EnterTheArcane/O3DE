@@ -59,7 +59,7 @@ class Recipe(RecipeBase):
                 and not self.conf.get("tools.microsoft.bash:path")
                 and not self.conf.get("tools.microsoft.bash:subsystem")
             ):
-                self.build_requires("msys2/cci.latest")
+                self.build_requires("msys2/latest")
 
     def source(self):
         get(

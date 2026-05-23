@@ -56,7 +56,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("cpuinfo/[>=cci.20231129]")
+        self.requires("cpuinfo/[>=20231129]")
 
     def build_requirements(self):
         self.tool_requires("cmake/[>=3.16]")

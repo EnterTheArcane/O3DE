@@ -8,7 +8,7 @@ import os
 
 class Recipe(RecipeBase):
     name = "libx264"
-    version = "cci.20250910"
+    version = "20250910"
     license = "GPL-2.0"
 
     settings = "os", "arch", "compiler", "build_type"
@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/cci.latest")
+                self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://code.videolan.org/videolan/x264/-/archive/0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee/x264-0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee.tar.bz2", sha256="f05c59f2e83d494c36307025dca2d3afc6b4d185f3a3453d06cc4fecd7094057", destination=self.source_folder, strip_root=True)

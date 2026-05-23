@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
             if not is_msvc(self):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/cci.latest")
+                    self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://www.nasm.us/pub/nasm/releasebuilds/3.01/nasm-3.01.tar.xz", sha256="b7324cbe86e767b65f26f467ed8b12ad80e124e3ccb89076855c98e43a9eddd4", destination=self.source_folder, strip_root=True)

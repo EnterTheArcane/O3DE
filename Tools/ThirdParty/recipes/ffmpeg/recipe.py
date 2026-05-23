@@ -327,7 +327,7 @@ class Recipe(RecipeBase):
         if self.options.with_sdl:
             self.requires("sdl/[^2.28]")
         if self.options.with_libx264:
-            self.requires("libx264/[>=cci.20240224]")
+            self.requires("libx264/[>=20240224]")
         if self.options.with_libx265:
             self.requires("libx265/[>=3.4 <4]")
         if self.options.with_libvpx:
@@ -377,7 +377,7 @@ class Recipe(RecipeBase):
         if self._settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/cci.latest")
+                self.tool_requires("msys2/latest")
             if self.settings.arch == "armv8" and is_msvc(self):
                 self.tool_requires("gas-preprocessor/[*]")
 

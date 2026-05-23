@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         self.tool_requires("bison/3.8.2")
         self.tool_requires("flex/2.6.4")
-        self.tool_requires("gnu-config/cci.20210814")
+        self.tool_requires("gnu-config/20210814")
 
     def source(self):
         get(self, url="https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz", sha256="74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd", destination=self.source_folder, strip_root=True)

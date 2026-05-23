@@ -5,7 +5,7 @@ import os
 
 class Recipe(RecipeBase):
     name = "poly2tri"
-    version = "cci.20130502"
+    version = "20130502"
     license = "BSD-3-Clause"
 
     package_type = "library"

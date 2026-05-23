@@ -7,7 +7,7 @@ import os
 
 class Recipe(RecipeBase):
     name = "cpuinfo"
-    version = "cci.20251210"
+    version = "20251210"
     license = "BSD-2-Clause"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
@@ -38,7 +38,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def build_requirements(self):
-        if Version(self.version) >= "cci.20251210":
+        if Version(self.version) >= "20251210":
             self.tool_requires("cmake/[>=3.18]")
 
     def source(self):
@@ -71,7 +71,7 @@ class Recipe(RecipeBase):
             "LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}",
         )
 
-        if self.version < "cci.20230118":
+        if self.version < "20230118":
             # Honor fPIC option
             replace_in_file(self, cmakelists, "SET_PROPERTY(TARGET clog PROPERTY POSITION_INDEPENDENT_CODE ON)", "")
 
@@ -92,14 +92,14 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "cpuinfo")
         self.cpp_info.set_property("pkg_config_name", "libcpuinfo")
 
-        if self.version < "cci.20230118":
+        if self.version < "20230118":
             self.cpp_info.components["clog"].libs = ["clog"]
-            cpuinfo_clog_target = "clog" if self.version < "cci.20220618" else "cpuinfo::clog"
+            cpuinfo_clog_target = "clog" if self.version < "20220618" else "cpuinfo::clog"
             self.cpp_info.components["clog"].set_property("cmake_target_name", cpuinfo_clog_target)
 
         self.cpp_info.components["cpuinfo"].set_property("cmake_target_name", "cpuinfo::cpuinfo")
         self.cpp_info.components["cpuinfo"].libs = ["cpuinfo"]
-        if self.version < "cci.20230118":
+        if self.version < "20230118":
             self.cpp_info.components["cpuinfo"].requires = ["clog"]
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.components["cpuinfo"].system_libs.append("pthread")
