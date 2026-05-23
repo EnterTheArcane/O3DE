@@ -1,24 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import importlib.util
 import os
 import shutil
 import sys
+import time
 import yaml
 from collections import OrderedDict
 from pathlib import Path
-
-# Names that the porter may strip from imports but that recipes still use at runtime.
-# We inject them into each recipe module's namespace after loading.
-from thirdparty._conan.tools.env.virtualbuildenv import VirtualBuildEnv as _VirtualBuildEnv
-from thirdparty._conan.tools.env.virtualrunenv import VirtualRunEnv as _VirtualRunEnv
-from thirdparty._conan import conan_version as _conan_version
-_RECIPE_INJECT: dict[str, object] = {
-    "VirtualBuildEnv": _VirtualBuildEnv,
-    "VirtualRunEnv":   _VirtualRunEnv,
-    "conan_version":   _conan_version,
-}
 
 from thirdparty._conan.api.model.refs import RecipeReference
 from thirdparty._conan.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
@@ -57,7 +48,8 @@ class _FakeNode:
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
-    p.add_argument("recipe", metavar="<recipe>", help="Recipe name to build")
+    p.add_argument("recipe", metavar="<recipe>", nargs="+",
+                   help="Recipe name(s) or glob pattern(s) to build (e.g. 'abseil' or '*')")
     p.add_argument(
         "--build-type",
         default="Release",
@@ -79,14 +71,23 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
         dest="generate_only",
         help="Run only through generate() (no source download, build, or package)",
     )
+    p.add_argument("--resume", metavar="NAME", default=None,
+                   help="Skip all recipes before NAME in build order (multi-recipe builds)")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Print build plan without building")
+    p.add_argument("--force", action="store_true",
+                   help="Rebuild even if already built")
 
 
 @command
 def build(args: argparse.Namespace) -> None:
     """Build a recipe (and its dependencies) from source."""
-    name: str = args.recipe
+    patterns: list[str] = args.recipe
     build_type: str = args.build_type
     generate_only: bool = getattr(args, "generate_only", False)
+    force: bool = getattr(args, "force", False)
+    resume: str | None = getattr(args, "resume", None)
+    dry_run: bool = getattr(args, "dry_run", False)
 
     cwd = Path.cwd()
     recipes_root = cwd / "recipes"
@@ -96,8 +97,38 @@ def build(args: argparse.Namespace) -> None:
         print(f"[thirdparty] error: no 'recipes/' directory in {cwd}", file=sys.stderr)
         sys.exit(1)
 
-    _build_recipe(recipes_root, build_root, name, build_type, set(),
-                  jobs=args.jobs, generate_only=generate_only)
+    all_names = sorted(d.name for d in recipes_root.iterdir() if d.is_dir())
+    all_names_set = set(all_names)
+    names: list[str] = []
+    is_multi = len(patterns) > 1 or any(c in pat for pat in patterns for c in ('*', '?', '['))
+    for pat in patterns:
+        if any(c in pat for c in ('*', '?', '[')):
+            matched = fnmatch.filter(all_names, pat)
+            if not matched:
+                print(f"[thirdparty] warn: no recipes match '{pat}'")
+            for m in matched:
+                if m not in names:
+                    names.append(m)
+        else:
+            if pat not in all_names_set:
+                print(f"[thirdparty] error: recipe not found: {pat}", file=sys.stderr)
+                sys.exit(1)
+            if pat not in names:
+                names.append(pat)
+
+    if not names:
+        print("[thirdparty] error: no recipes matched", file=sys.stderr)
+        sys.exit(1)
+
+    if is_multi or resume or dry_run:
+        _build_ordered(
+            recipes_root, build_root, names, build_type,
+            jobs=args.jobs, resume=resume, dry_run=dry_run,
+            force=force, generate_only=generate_only,
+        )
+    else:
+        _build_recipe(recipes_root, build_root, names[0], build_type, set(),
+                      jobs=args.jobs, generate_only=generate_only, force=force)
 
 
 def _load_recipe_class(recipes_root: Path, name: str) -> type[ConanFile]:
@@ -113,11 +144,6 @@ def _load_recipe_class(recipes_root: Path, name: str) -> type[ConanFile]:
 
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-
-    # Inject names the porter may have stripped from imports (e.g. VirtualBuildEnv).
-    for attr_name, obj in _RECIPE_INJECT.items():
-        if not hasattr(module, attr_name):
-            setattr(module, attr_name, obj)
 
     cls = getattr(module, "Recipe", None)
     if cls is None or not (isinstance(cls, type) and issubclass(cls, ConanFile)):
@@ -405,6 +431,136 @@ def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
             shutil.copytree(item, dst, dirs_exist_ok=True)
 
 
+def _try_load_recipe_class(recipes_root: Path, name: str) -> type[ConanFile] | None:
+    recipe_path = recipes_root / name / "recipe.py"
+    if not recipe_path.exists():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location(f"_recipe_{name}", recipe_path)
+        if spec is None or spec.loader is None:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        cls = getattr(module, "Recipe", None)
+        return cls if (cls and isinstance(cls, type) and issubclass(cls, ConanFile)) else None
+    except Exception:
+        return None
+
+
+def _topo_sort(graph: dict[str, list[str]]) -> list[str]:
+    in_degree = {n: len([d for d in deps if d in graph]) for n, deps in graph.items()}
+    queue = sorted(n for n, d in in_degree.items() if d == 0)
+    order: list[str] = []
+    while queue:
+        node = queue.pop(0)
+        order.append(node)
+        for n, deps in graph.items():
+            if n not in order and node in deps:
+                in_degree[n] -= 1
+                if in_degree[n] == 0:
+                    queue.append(n)
+                    queue.sort()
+    for n in graph:
+        if n not in order:
+            order.append(n)
+    return order
+
+
+def _build_ordered(
+    recipes_root: Path,
+    build_root: Path,
+    names: list[str],
+    build_type: str,
+    jobs: int | None,
+    resume: str | None,
+    dry_run: bool,
+    force: bool,
+    generate_only: bool,
+) -> None:
+    known = set(names)
+    graph: dict[str, list[str]] = {}
+    for name in names:
+        cls = _try_load_recipe_class(recipes_root, name)
+        if cls is None:
+            graph[name] = []
+            continue
+        version = _resolve_version(cls)
+        try:
+            probe = _instantiate(cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
+            host_deps, tool_deps = _get_requires(probe)
+        except Exception:
+            host_deps, tool_deps = [], []
+        graph[name] = [d for d in host_deps + tool_deps if d in known]
+
+    order = _topo_sort(graph)
+
+    if resume:
+        if resume not in order:
+            print(f"[thirdparty] error: --resume '{resume}' not found in build order",
+                  file=sys.stderr)
+            sys.exit(1)
+        order = order[order.index(resume):]
+
+    print(f"\n=== Build Plan: {len(order)} recipes ({build_type}) ===")
+    for i, name in enumerate(order, 1):
+        cls = _try_load_recipe_class(recipes_root, name)
+        version = _resolve_version(cls) if cls else "?"
+        built = _is_built(build_root, name, version)
+        status = "[force]" if force else ("[built]" if built else "[pending]")
+        print(f"  {i:3d}. {name}/{version}  {status}")
+
+    if dry_run:
+        return
+
+    print()
+
+    visited: set[str] = set()
+    results: list[tuple[str, str, float, str | None]] = []
+    skipped: list[str] = []
+
+    for name in order:
+        cls = _try_load_recipe_class(recipes_root, name)
+        if cls is None:
+            print(f"[thirdparty] SKIP {name} — cannot load recipe", file=sys.stderr)
+            skipped.append(name)
+            continue
+        version = _resolve_version(cls)
+        if not force and _is_built(build_root, name, version):
+            skipped.append(name)
+            visited.add(name)
+            continue
+        t0 = time.time()
+        try:
+            _build_recipe(recipes_root, build_root, name, build_type, visited,
+                          jobs=jobs, generate_only=generate_only, force=force)
+            elapsed = time.time() - t0
+            results.append((name, version, elapsed, None))
+        except Exception as exc:
+            elapsed = time.time() - t0
+            results.append((name, version, elapsed, str(exc)))
+            print(f"[thirdparty] FAIL {name}/{version}: {exc}")
+
+    ok   = [(n, v, t) for n, v, t, e in results if e is None]
+    fail = [(n, v, e) for n, v, t, e in results if e is not None]
+
+    print(f"\n{'='*70}")
+    print(f"=== Summary: {len(ok)} built, {len(fail)} failed, {len(skipped)} skipped ===")
+    print(f"{'='*70}")
+    if ok:
+        print(f"\nBuilt ({len(ok)}):")
+        for n, v, t in ok:
+            print(f"  OK   {n}/{v}  ({t:.1f}s)")
+    if skipped:
+        print(f"\nSkipped ({len(skipped)}):")
+        for n in skipped:
+            print(f"  SKIP {n}")
+    if fail:
+        print(f"\nFailed ({len(fail)}):")
+        for n, v, e in fail:
+            print(f"  FAIL {n}/{v}: {e}")
+        sys.exit(1)
+
+
 def _build_recipe(
     recipes_root: Path,
     build_root: Path,
@@ -413,6 +569,7 @@ def _build_recipe(
     visited: set[str],
     jobs: int | None = None,
     generate_only: bool = False,
+    force: bool = False,
 ) -> list[str]:
     """Build *name* and all its transitive dependencies.
 
@@ -440,7 +597,7 @@ def _build_recipe(
     for tool_name in direct_tools:
         if (recipes_root / tool_name / "recipe.py").exists():
             _build_recipe(recipes_root, build_root, tool_name, build_type, visited,
-                          jobs=jobs, generate_only=generate_only)
+                          jobs=jobs, generate_only=generate_only, force=force)
 
     # Recursively build deps and collect their full transitive dep lists.
     transitive: list[str] = []
@@ -449,7 +606,7 @@ def _build_recipe(
             print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
             continue
         sub = _build_recipe(recipes_root, build_root, dep_name, build_type, visited,
-                            jobs=jobs, generate_only=generate_only)
+                            jobs=jobs, generate_only=generate_only, force=force)
         for d in sub:
             if d not in transitive:
                 transitive.append(d)
@@ -458,7 +615,7 @@ def _build_recipe(
         if dep_name not in transitive:
             transitive.append(dep_name)
 
-    if not generate_only and _is_built(build_root, name, version):
+    if not generate_only and not force and _is_built(build_root, name, version):
         print(f"[thirdparty] {name}/{version} already built — skipping")
         return transitive
 
