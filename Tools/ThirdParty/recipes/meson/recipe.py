@@ -1,11 +1,17 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, download, save
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "meson"
     version = "1.11.1"
     license = "Apache-2.0"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "mesonbuild/meson")
+        return Version(repo.latest_release)
 
     def build(self):
         download(self,

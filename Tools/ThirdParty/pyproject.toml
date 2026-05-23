@@ -7,14 +7,15 @@ name = "thirdparty"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "packaging>=24.0",
-    "patch-ng>=1.17.4",
     "colorama>=0.4",
     "jinja2>=3.0",
+    "packaging>=24.0",
+    "patch-ng>=1.17.4",
+    "PyGithub>=2.0",
     "pygments>=2.0",
+    "python-dateutil>=2.8",
     "PyYAML>=6.0",
     "requests>=2.28",
-    "python-dateutil>=2.8",
 ]
 
 [project.optional-dependencies]

@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, load, replace_in_file, rmdir, save
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -32,6 +34,10 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         if self.options.header_only:
             del self.options.shared
+
+    def latest_version(self):
+        repo = GithubRepository(self, "zeux/pugixml")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

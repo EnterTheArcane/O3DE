@@ -4,8 +4,10 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import cross_building, stdcpp_library, check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, save, rm, replace_in_file
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "libjxl"
@@ -52,6 +54,10 @@ class Recipe(RecipeBase):
         # Require newer CMake, which allows INCLUDE_DIRECTORIES to be set on INTERFACE targets
         # Also, v0.9+ require CMake 3.16
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "libjxl/libjxl")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

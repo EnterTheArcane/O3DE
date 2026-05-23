@@ -8,6 +8,7 @@ from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, stdcpp_library, check_min_cppstd
 from thirdparty.tools.env import Environment
 from thirdparty.tools.files import apply_patches, copy, get, mkdir, rename, replace_in_file, rm, rmdir, save
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, unix_path
 from thirdparty.tools.scm import Version
@@ -81,6 +82,10 @@ class Recipe(RecipeBase):
 
         if cross_building(self) and hasattr(self, "settings_build"):
             self.tool_requires(str(self.ref))
+
+    def latest_version(self):
+        repo = GithubRepository(self, "unicode-org/icu")
+        return Version(repo.latest_release.removeprefix("release-"))
 
     def source(self):
         get(

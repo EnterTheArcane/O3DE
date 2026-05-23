@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -29,6 +31,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("ogg", transitive_headers=True, transitive_libs=True)
+
+    def latest_version(self):
+        repo = GithubRepository(self, "xiph/vorbis")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

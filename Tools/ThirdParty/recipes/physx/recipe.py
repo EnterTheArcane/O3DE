@@ -2,7 +2,9 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMakeToolchain, CMake
 from thirdparty.tools.files import load, get, apply_patches, rmdir, copy, replace_in_file, save
 from thirdparty.tools.build import valid_min_cppstd
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import msvc_runtime_flag, is_msvc
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -38,6 +40,10 @@ class Recipe(RecipeBase):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "NVIDIAGameWorks/PhysX")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

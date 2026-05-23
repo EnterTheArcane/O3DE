@@ -1,11 +1,17 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "cmake"
     version = "4.3.3"
     license = "BSD-3-Clause"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "Kitware/CMake")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def build(self):
         os_name = str(self.settings.os)

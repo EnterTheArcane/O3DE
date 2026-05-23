@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 import os
 
@@ -36,6 +37,10 @@ class Recipe(RecipeBase):
         if not self.options.with_main:
             self.options.rm_safe("fPIC")
             self.options.rm_safe("with_benchmark")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "catchorg/Catch2")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 import os
 
@@ -8,6 +9,10 @@ class Recipe(RecipeBase):
     name = "tsl-robin-map"
     version = "1.4.0"
     license = "MIT"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "Tessil/robin-map")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

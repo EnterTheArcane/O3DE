@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir, save, replace_in_file
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 import os
 import textwrap
@@ -30,6 +31,10 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "uclouvain/openjpeg")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(
