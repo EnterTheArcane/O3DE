@@ -4,7 +4,6 @@ from thirdparty.tools.files import (
     collect_libs, copy, load,
     get, rename, replace_in_file, rmdir, save
 )
-from thirdparty.tools.scm import Version
 import os
 import re
 import textwrap
@@ -66,35 +65,26 @@ class Recipe(RecipeBase):
         deps.generate()
 
         tc = CMakeToolchain(self)
-        if Version(self.version) >= "2.11.0":
-            tc.variables["FT_REQUIRE_ZLIB"] = self.options.with_zlib
-            tc.variables["FT_DISABLE_ZLIB"] = not self.options.with_zlib
-            tc.variables["FT_REQUIRE_PNG"] = self.options.with_png
-            tc.variables["FT_DISABLE_PNG"] = not self.options.with_png
-            tc.variables["FT_REQUIRE_BZIP2"] = self.options.with_bzip2
-            tc.variables["FT_DISABLE_BZIP2"] = not self.options.with_bzip2
-            # TODO: Harfbuzz can be added as an option as soon as it is available.
-            tc.variables["FT_REQUIRE_HARFBUZZ"] = False
-            tc.variables["FT_DISABLE_HARFBUZZ"] = True
-            tc.variables["FT_REQUIRE_BROTLI"] = self.options.with_brotli
-            tc.variables["FT_DISABLE_BROTLI"] = not self.options.with_brotli
-        else:
-            tc.variables["FT_WITH_ZLIB"] = self.options.with_zlib
-            tc.variables["FT_WITH_PNG"] = self.options.with_png
-            tc.variables["FT_WITH_BZIP2"] = self.options.with_bzip2
-            # TODO: Harfbuzz can be added as an option as soon as it is available.
-            tc.variables["FT_WITH_HARFBUZZ"] = False
-            tc.variables["FT_WITH_BROTLI"] = self.options.with_brotli
+        tc.variables["FT_REQUIRE_ZLIB"] = self.options.with_zlib
+        tc.variables["FT_DISABLE_ZLIB"] = not self.options.with_zlib
+        tc.variables["FT_REQUIRE_PNG"] = self.options.with_png
+        tc.variables["FT_DISABLE_PNG"] = not self.options.with_png
+        tc.variables["FT_REQUIRE_BZIP2"] = self.options.with_bzip2
+        tc.variables["FT_DISABLE_BZIP2"] = not self.options.with_bzip2
+        # TODO: Harfbuzz can be added as an option as soon as it is available.
+        tc.variables["FT_REQUIRE_HARFBUZZ"] = False
+        tc.variables["FT_DISABLE_HARFBUZZ"] = True
+        tc.variables["FT_REQUIRE_BROTLI"] = self.options.with_brotli
+        tc.variables["FT_DISABLE_BROTLI"] = not self.options.with_brotli
         # Generate a relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-        if Version(self.version) < "2.13.3":  # pylint: disable=conan-condition-evals-to-constant
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def _patch_sources(self):
         # Do not accidentally enable dependencies we have disabled
         cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
-        if_harfbuzz_found = "if ({})".format("HARFBUZZ_FOUND" if Version(self.version) < "2.11.0" else "HarfBuzz_FOUND")
+        if_harfbuzz_found = "if (HarfBuzz_FOUND)"
         replace_in_file(self, cmakelists, "find_package(HarfBuzz ${HARFBUZZ_MIN_VERSION})", "")
         replace_in_file(self, cmakelists, if_harfbuzz_found, "if(0)")
         if not self.options.with_png:

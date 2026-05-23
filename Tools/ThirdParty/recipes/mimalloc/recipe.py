@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, VCVars
-from thirdparty.tools.scm import Version
 import os
 import shutil
 
@@ -43,8 +42,6 @@ class Recipe(RecipeBase):
         if is_msvc(self):
             del self.options.single_object
             del self.options.inject
-        if Version(self.version) < "2.1.9":
-            del self.options.guarded
 
     def configure(self):
         if self.options.shared:

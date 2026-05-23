@@ -33,8 +33,7 @@ class Recipe(RecipeBase):
         self.requires("imath", transitive_headers=True)
         self.requires("libdeflate")
 
-        if Version(self.version) >= "3.4":
-            self.requires("openjph")
+        self.requires("openjph")
 
     def source(self):
         get(
@@ -131,8 +130,7 @@ class Recipe(RecipeBase):
         OpenEXRCore.libs = [f"OpenEXRCore{lib_suffix}"]
         OpenEXRCore.requires = [self._conan_comp("OpenEXRConfig"), "zlib::zlib"]
         OpenEXRCore.requires.append("libdeflate::libdeflate")
-        if Version(self.version) >= "3.4":
-            OpenEXRCore.requires.append("openjph::openjph")
+        OpenEXRCore.requires.append("openjph::openjph")
         if self.settings.os in ["Linux", "FreeBSD"]:
             OpenEXRCore.system_libs = ["m"]
 

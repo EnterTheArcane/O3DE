@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import get, copy, replace_in_file, rm, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -23,8 +22,6 @@ class Recipe(RecipeBase):
         tc.variables["PYBIND11_INSTALL"] = True
         tc.variables["PYBIND11_TEST"] = False
         tc.variables["PYBIND11_CMAKECONFIG_INSTALL_DIR"] = "lib/cmake/pybind11"
-        if Version(self.version) < "2.11.0":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):
@@ -41,11 +38,7 @@ class Recipe(RecipeBase):
 
         rmdir(self, os.path.join(self.package_folder, "share"))
 
-        checked_target = "lto" if self.version < Version("2.11.0") else "pybind11"
-        if self.version < Version("3.0.0"):
-            replace_in_file(self, os.path.join(self.package_folder, "lib", "cmake", "pybind11", "pybind11Common.cmake"),
-                                  f"if(TARGET pybind11::{checked_target})",
-                                  "if(FALSE)")
+        checked_target = "pybind11"
         replace_in_file(self, os.path.join(self.package_folder, "lib", "cmake", "pybind11", "pybind11Common.cmake"),
                               "add_library(",
                               "# add_library(")

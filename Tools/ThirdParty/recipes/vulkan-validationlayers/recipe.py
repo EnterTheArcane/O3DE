@@ -41,10 +41,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("robin-hood-hashing")
-        self.requires(f"spirv-headers/{self.version}")
-        self.requires(f"spirv-tools/{self.version}")
-        self.requires(f"vulkan-headers/{self.version}", transitive_headers=True)
-        self.requires(f"vulkan-utility-libraries/{self.version}")
+        self.requires("spirv-headers")
+        self.requires("spirv-tools")
+        self.requires("vulkan-headers", transitive_headers=True)
+        self.requires("vulkan-utility-libraries")
 
         if self.options.get_safe("with_wsi_xcb") or self.options.get_safe("with_wsi_xlib"):
             self.requires("xorg")

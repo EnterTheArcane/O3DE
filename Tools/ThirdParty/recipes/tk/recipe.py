@@ -40,9 +40,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
-        self.requires(
-            f"tcl/{self.version}", transitive_headers=True, transitive_libs=True
-        )
+        self.requires(f"tcl", transitive_headers=True, transitive_libs=True)
         if self.settings.os == "Linux":
             self.requires("fontconfig")
             self.requires("xorg")
