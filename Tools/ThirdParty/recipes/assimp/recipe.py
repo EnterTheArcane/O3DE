@@ -251,6 +251,17 @@ class Recipe(RecipeBase):
             "stb",
         ]:
             content = content.replace("${%s_SRCS}" % vendored_lib, "")
+        # Link conan-provided targets in non-hunter mode so their include dirs propagate
+        content = content.replace(
+            "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\nENDIF()",
+            "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\n"
+            "  foreach(_conan_target rapidjson::rapidjson utf8cpp::utf8cpp stb::stb openddlparser::openddlparser minizip::minizip poly2tri::poly2tri clipper::clipper zip::zip)\n"
+            "    if(TARGET ${_conan_target})\n"
+            "      target_link_libraries(assimp ${_conan_target})\n"
+            "    endif()\n"
+            "  endforeach()\n"
+            "ENDIF()"
+        )
         code_cmakelists.write_text(content, encoding="utf-8")
 
         # Make vendored headers redirect to external ones.
