@@ -447,6 +447,7 @@ def unzip(conanfile, filename, destination=".", keep_permissions=False, pattern=
 def untargz(filename, destination=".", pattern=None, strip_root=False, extract_filter=None,
             excludes=None):
     # NOT EXPOSED at `conan.tools.files` but used in tests
+    import stat
     import tarfile
     with tarfile.TarFile.open(filename, mode='r:*') as tarredgzippedFile:
         f = getattr(tarfile, f"{extract_filter}_filter", None) if extract_filter else None
@@ -455,6 +456,19 @@ def untargz(filename, destination=".", pattern=None, strip_root=False, extract_f
         # File I/O functions in the Windows API convert "/" to "\" as part of converting
         # the name to an NT-style name, except when using the "\\?\" prefix
         using_long_path_prefix = destination.startswith("\\\\?\\")
+        # If the destination already contains files from a previous (partial) extraction they
+        # may be read-only (e.g. .svn metadata, MSYS2 system files).  chmod them writable so
+        # that extractall() can overwrite without PermissionError.
+        if os.path.isdir(destination):
+            for _root, _dirs, _files in os.walk(destination):
+                for _fname in _files:
+                    _fpath = os.path.join(_root, _fname)
+                    try:
+                        _mode = os.stat(_fpath).st_mode
+                        if not (_mode & stat.S_IWRITE):
+                            os.chmod(_fpath, _mode | stat.S_IWRITE)
+                    except OSError:
+                        pass
         if not pattern and not excludes and not strip_root and not using_long_path_prefix:
             tarredgzippedFile.extractall(destination)
         else:

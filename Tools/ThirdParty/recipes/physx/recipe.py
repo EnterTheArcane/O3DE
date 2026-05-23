@@ -146,6 +146,31 @@ class Recipe(RecipeBase):
             replace_in_file(self, os.path.join(physx_source_cmake_dir, cmake_os, "CMakeLists.txt"),
                                   "-Werror", "")
 
+        if self.settings.os == "Macos":
+            mac_cmake = os.path.join(physx_source_cmake_dir, "mac", "CMakeLists.txt")
+            # Remove hardcoded deployment target so the conan toolchain value is used
+            replace_in_file(self, mac_cmake,
+                            'SET(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")', "")
+            # Fix hardcoded x86_64 arch — use the target arch from conan settings
+            _conan_to_osx_arch = {"armv8": "arm64", "x86_64": "x86_64", "x86": "i386"}
+            _osx_arch = _conan_to_osx_arch.get(str(self.settings.arch), str(self.settings.arch))
+            replace_in_file(self, mac_cmake,
+                            'SET(OSX_BITNESS "-arch x86_64")',
+                            'SET(OSX_BITNESS "-arch {}")'.format(_osx_arch))
+            replace_in_file(self, mac_cmake,
+                            'SET(CMAKE_OSX_ARCHITECTURES "x86_64")',
+                            'SET(CMAKE_OSX_ARCHITECTURES "{}")'.format(_osx_arch))
+            # -msse2 is x86-only; remove it for arm64
+            if _osx_arch != "x86_64":
+                replace_in_file(self, mac_cmake, " -msse2", "")
+                # Newer Clang enforces NEON lane indices as compile-time constants even in dead
+                # code branches — use if constexpr so out-of-range instantiations are discarded.
+                neon_file = os.path.join(self.source_folder, "physx", "source", "foundation",
+                                         "include", "unix", "neon", "PsUnixNeonInlineAoS.h")
+                neon_content = load(self, neon_file)
+                neon_content = neon_content.replace("if(index < 2)", "if constexpr(index < 2)")
+                save(self, neon_file, neon_content)
+
     def _get_physx_build_type(self):
         if self.settings.build_type == "Debug":
             return "debug"
