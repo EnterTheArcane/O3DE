@@ -176,7 +176,6 @@ def _gh_request(path: str, token: Optional[str]) -> Optional[object]:
     req = Request(f"https://api.github.com{path}")
     req.add_header("Accept", "application/vnd.github+json")
     req.add_header("X-GitHub-Api-Version", "2022-11-28")
-    req.add_header("User-Agent", "O3DE-ThirdParty-check-updates/1.0")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     try:
