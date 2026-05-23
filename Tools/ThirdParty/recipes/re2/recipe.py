@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -26,15 +25,10 @@ class Recipe(RecipeBase):
     def requirements(self):
         if self.options.get_safe("with_icu"):
             self.requires("icu")
-        if Version(self.version) >= "20251105":
-            self.requires("abseil", transitive_headers=True)
-        elif Version(self.version) >= "20230601":
-            # 20250127.0 is the most recent abseil version that supports C++14
-            self.requires("abseil", transitive_headers=True)
+        self.requires("abseil", transitive_headers=True)
 
     def build_requirements(self):
-        if Version(self.version) >= "20250805":
-            self.tool_requires("cmake")
+        self.tool_requires("cmake")
 
     def source(self):
         get(

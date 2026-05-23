@@ -352,7 +352,7 @@ class Recipe(RecipeBase):
         if self.options.qtwayland:
             self.tool_requires("wayland")
         if cross_building(self):
-            self.tool_requires(f"qt/{self.version}")
+            self.tool_requires(f"qt")
 
     def generate(self):
         ms = VirtualBuildEnv(self)
@@ -800,8 +800,7 @@ class Recipe(RecipeBase):
             targets.extend(["macdeployqt"])
         if self.settings.os == "Windows":
             targets.extend(["windeployqt"])
-        if Version(self.version) >= "6.11.0":
-            targets.extend(["wasmdeployqt"])
+        targets.extend(["wasmdeployqt"])
         if self.options.qttools:
             if "qtattributionsscanner" not in disabled_features:
                 targets.extend(["qtattributionsscanner"])
@@ -816,8 +815,7 @@ class Recipe(RecipeBase):
         if self.options.qtdeclarative:
             targets.extend(["qmltyperegistrar", "qmlcachegen", "qmllint", "qmlimportscanner"])
             targets.extend(["qmlformat", "qml", "qmlprofiler", "qmlpreview", "qmltc"])
-            if Version(self.version) >= "6.8.3":
-                targets.extend(["qmlaotstats"])
+            targets.extend(["qmlaotstats"])
 
             # Note: consider "qmltestrunner", see https://github.com/conan-io/conan-center-index/issues/24276
         if self.options.get_safe("qtremoteobjects"):
@@ -1272,7 +1270,7 @@ class Recipe(RecipeBase):
 
         if self.options.get_safe("qtcharts"):
             _create_module("Charts", ["Gui", "Widgets"])
-        if self.options.get_safe("qtgraphs") and Version(self.version) >= "6.8.0":
+        if self.options.get_safe("qtgraphs"):
             _create_module("Graphs", ["Gui", "Widgets", "Quick", "Quick3D"])
 
         if self.options.get_safe("qtdatavis3d") and qt_quick_enabled:
@@ -1464,11 +1462,10 @@ class Recipe(RecipeBase):
                 self.cpp_info.components["qtCore"].system_libs.append("ws2_32")
                 self.cpp_info.components["qtCore"].system_libs.append("mpr")
                 self.cpp_info.components["qtCore"].system_libs.append("userenv")
-                if Version(self.version) >= "6.10":
-                    # https://github.com/qt/qtbase/blob/90b845d15ffb97693dba527385db83510ebd121a/src/corelib/CMakeLists.txt#L891-L895
-                    self.cpp_info.components["qtCore"].system_libs.extend(["icuuc", "icuin"])
-                    # https://github.com/qt/qtbase/commit/09991b51a48aab7a5f7c5cbf2577ba5450d4cbb4
-                    self.cpp_info.components["qtCore"].system_libs.append("ntdll")
+                # https://github.com/qt/qtbase/blob/90b845d15ffb97693dba527385db83510ebd121a/src/corelib/CMakeLists.txt#L891-L895
+                self.cpp_info.components["qtCore"].system_libs.extend(["icuuc", "icuin"])
+                # https://github.com/qt/qtbase/commit/09991b51a48aab7a5f7c5cbf2577ba5450d4cbb4
+                self.cpp_info.components["qtCore"].system_libs.append("ntdll")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L196-L200
                 self.cpp_info.components["qtNetwork"].system_libs.append("advapi32")
                 self.cpp_info.components["qtNetwork"].system_libs.append("dnsapi")
@@ -1488,9 +1485,8 @@ class Recipe(RecipeBase):
                 self.cpp_info.components["qtCore"].frameworks.append("IOKit")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L205-L214
                 self.cpp_info.components["qtNetwork"].frameworks.append("CFNetwork")
-                if Version(self.version) >= "6.10":
-                    # https://github.com/qt/qtbase/commit/1299aaa231b1ce989c8aedcfed372bde0e1e3a0e
-                    self.cpp_info.components["qtNetwork"].frameworks.append("Network")
+                # https://github.com/qt/qtbase/commit/1299aaa231b1ce989c8aedcfed372bde0e1e3a0e
+                self.cpp_info.components["qtNetwork"].frameworks.append("Network")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L216-L221
                 # qtcore requires "_OBJC_CLASS_$_NSApplication" and more, which are in "Cocoa" framework
                 self.cpp_info.components["qtCore"].frameworks.append("Cocoa")

@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -52,8 +51,7 @@ class Recipe(RecipeBase):
         tc = CMakeToolchain(self)
         tc.variables["BROTLI_BUNDLED_MODE"] = False
         tc.variables["BROTLI_DISABLE_TESTS"] = True
-        if Version(self.version) >= "1.2.0":
-            tc.variables["BROTLI_BUILD_TOOLS"] = False
+        tc.variables["BROTLI_BUILD_TOOLS"] = False
         if self.options.get_safe("target_bits") == 32:
             tc.preprocessor_definitions["BROTLI_BUILD_32_BIT"] = 1
         elif self.options.get_safe("target_bits") == 64:
@@ -72,10 +70,6 @@ class Recipe(RecipeBase):
             tc.preprocessor_definitions["BROTLI_DEBUG"] = 1
         if self.options.enable_log:
             tc.preprocessor_definitions["BROTLI_ENABLE_LOG"] = 1
-        if Version(self.version) < "1.1.0":
-            # To install relocatable shared libs on Macos
-            tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):
@@ -89,8 +83,7 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        if Version(self.version) >= "1.2.0":
-            rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.package_folder, "share"))
 
     def package_info(self):
 
@@ -111,7 +104,4 @@ class Recipe(RecipeBase):
             self.cpp_info.components["brotlienc"].system_libs = ["m"]
 
     def _get_decorated_lib(self, name):
-        libname = name
-        if Version(self.version) < "1.1.0" and not self.options.shared:
-            libname += "-static"
-        return libname
+        return name

@@ -47,8 +47,6 @@ class Recipe(RecipeBase):
         tc.variables["ZSTD_BUILD_STATIC"] = not self.options.shared or self.options.build_programs
         tc.variables["ZSTD_BUILD_SHARED"] = self.options.shared
         tc.variables["ZSTD_MULTITHREAD_SUPPORT"] = self.options.threading
-        if Version(self.version) < "1.5.6":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def _patch_sources(self):

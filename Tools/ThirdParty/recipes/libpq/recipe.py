@@ -128,7 +128,7 @@ class Recipe(RecipeBase):
                 zlib_link_lib = os.path.join(zlib_cpp_info.libdirs[0], f"{zlib_cpp_info.libs[0]}.lib")
                 linked_libs += f",'{zlib_link_lib}'"
 
-            libraries_pattern = "libraries             => []," if Version(self.version) < '16' else "libraries => [],"
+            libraries_pattern = "libraries => [],"
             replace_in_file(self,os.path.join(self.source_folder, "src", "tools", "msvc", "Project.pm"),
                                   libraries_pattern,
                                   "libraries             => [{}],".format(linked_libs))
@@ -151,8 +151,6 @@ class Recipe(RecipeBase):
                 # Interim solution - recipes should move to using meson-based newer libpq
                 replace_in_file(self, solution_pm, "($output =~ /^\/favor:<.+AMD64/m) ? 'x64' : 'Win32';", "'ARM64';")
                 replace_in_file(self, msbuild_project_pm, "$self->{platform} eq 'Win32' ? 'MachineX86' : 'MachineX64';", "'MachineARM64';")
-                if Version(self.version) < '16':
-                    replace_in_file(self, msbuild_project_pm, "<RandomizedBaseAddress>false", "<RandomizedBaseAddress>true")
                 replace_in_file(self, os.path.join(self.source_folder, "src/port/pg_crc32c_sse42.c"), "nmmintrin.h", "intrin.h")
             if self.options.with_openssl:
                 openssl = self.dependencies["openssl"]
@@ -164,7 +162,7 @@ class Recipe(RecipeBase):
                     replace_in_file(self,solution_pm,
                                           "%s.lib" % crypto,
                                           "%s.lib" % openssl.cpp_info.components["crypto"].libs[0])
-                openssl_entry = "openssl => undef" if Version(self.version) >= "16.0" else "openssl   => undef"
+                openssl_entry = "openssl => undef"
                 replace_in_file(self,config_default_pl,
                                       openssl_entry,
                                       "openssl   => '%s'" % openssl.package_folder.replace("\\", "/"))
@@ -172,7 +170,7 @@ class Recipe(RecipeBase):
                 libicu = self.dependencies["icu"]
                 iculibdir = libicu.cpp_info.components["icu"].libdirs[0]
                 replace_in_file(self, solution_pm, "\\lib64\\icu", f"\\{iculibdir}\\icu")
-                icu_undef = "icu => undef" if Version(self.version) >= "16.0" else "icu       => undef"
+                icu_undef = "icu => undef"
                 replace_in_file(self,config_default_pl,
                                         icu_undef,
                                        "icu => '%s'" % libicu.package_folder.replace("\\", "/"))
@@ -185,8 +183,7 @@ class Recipe(RecipeBase):
         # When linking to static openssl, it comes with static pthread library too, failing with:
         # libpq.so.5.15: U pthread_exit@GLIBC_2.2.5: libpq must not be calling any function which invokes exit
         # https://www.postgresql.org/message-id/20210703001639.GB2374652%40rfd.leadboat.com
-        if Version(self.version) >= "15":
-            replace_in_file(self, os.path.join(self.source_folder, "src", "interfaces", "libpq", "Makefile"),
+        replace_in_file(self, os.path.join(self.source_folder, "src", "interfaces", "libpq", "Makefile"),
                 "-v __cxa_atexit",
                 "-v __cxa_atexit -e pthread_exit")
 
@@ -212,8 +209,7 @@ class Recipe(RecipeBase):
                 autotools.make()
             with chdir(self, os.path.join(self.build_folder, "src", "interfaces", "libpq")):
                 autotools.make()
-            if Version(self.version) >= 12:
-                with chdir(self, os.path.join(self.build_folder, "src", "port")):
+            with chdir(self, os.path.join(self.build_folder, "src", "port")):
                     autotools.make()
 
     def _remove_unused_libraries_from_package(self):
@@ -256,8 +252,7 @@ class Recipe(RecipeBase):
                 autotools.install()
             with chdir(self, os.path.join(self.build_folder, "src", "interfaces", "libpq")):
                 autotools.install()
-            if Version(self.version) >= 12:
-                with chdir(self, os.path.join(self.build_folder, "src", "port")):
+            with chdir(self, os.path.join(self.build_folder, "src", "port")):
                     autotools.install()
             with chdir(self, os.path.join(self.build_folder, "src", "bin", "pg_config")):
                 autotools.install()

@@ -3,7 +3,6 @@ from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -99,8 +98,7 @@ class Recipe(RecipeBase):
             tc.variables["USE_STATIC_MSVC_RUNTIME_LIBRARY"] = is_msvc_static_runtime(self)
         tc.variables["JPH_DEBUG_RENDERER"] = self.options.debug_renderer
         tc.variables["JPH_PROFILE_ENABLED"] = self.options.profile
-        if Version(self.version) >= "3.0.0":
-            tc.variables["ENABLE_ALL_WARNINGS"] = False
+        tc.variables["ENABLE_ALL_WARNINGS"] = False
         tc.generate()
 
     def build(self):

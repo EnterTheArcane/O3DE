@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -34,8 +33,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def build_requirements(self):
-        if Version(self.version) >= "2.7.4":
-            self.tool_requires("cmake")
+        self.tool_requires("cmake")
 
     def source(self):
         get(

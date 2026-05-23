@@ -4,7 +4,6 @@ from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import os
 import textwrap
 
@@ -37,10 +36,9 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         if self.settings.os != "Linux":
             self.options.rm_safe("with_wayland")
-        if self.settings.os not in ["Linux", "FreeBSD"] or Version(self.version) <= "3.3.8":
+        if self.settings.os not in ["Linux", "FreeBSD"]:
             self.options.rm_safe("with_x11")
-        if Version(self.version) >= "3.4":
-            self.options.rm_safe("vulkan_static")
+        self.options.rm_safe("vulkan_static")
 
     def configure(self):
         if self.options.shared:
@@ -94,13 +92,8 @@ class Recipe(RecipeBase):
         tc.cache_variables["GLFW_BUILD_EXAMPLES"] = False
         tc.cache_variables["GLFW_BUILD_TESTS"] = False
         tc.cache_variables["GLFW_INSTALL"] = True
-        if Version(self.version) > "3.3.8":
-            tc.cache_variables["GLFW_BUILD_X11"] = self.options.get_safe("with_x11", False)
-            tc.cache_variables["GLFW_BUILD_WAYLAND"] = self.options.get_safe("with_wayland", False)
-        else:
-            tc.cache_variables["GLFW_USE_WAYLAND"] = self.options.get_safe("with_wayland", False)
-        if Version(self.version) < "3.4":
-            tc.cache_variables["GLFW_VULKAN_STATIC"] = self.options.get_safe("vulkan_static", False)
+        tc.cache_variables["GLFW_BUILD_X11"] = self.options.get_safe("with_x11", False)
+        tc.cache_variables["GLFW_BUILD_WAYLAND"] = self.options.get_safe("with_wayland", False)
         if is_msvc(self):
             tc.cache_variables["USE_MSVC_RUNTIME_LIBRARY_DLL"] = not is_msvc_static_runtime(self)
         tc.generate()
@@ -232,12 +225,3 @@ class Recipe(RecipeBase):
         # Starting with version 3.4, glfw loads the platform libraries at runtime
         # and hence does not need to link with them.
         self.cpp_info.requires = []
-        if Version(self.version) < "3.4":
-            self.cpp_info.requires.append("opengl::opengl")
-            if self.options.get_safe("vulkan_static"):
-                self.cpp_info.requires.append("vulkan-loader::vulkan-loader")
-            if self.settings.os in ["Linux", "FreeBSD"]:
-                if self.options.get_safe("with_x11", True):
-                    self.cpp_info.requires.append("xorg::x11")
-            if self.options.get_safe("with_wayland"):
-                self.cpp_info.requires.extend(["wayland::wayland", "xkbcommon::xkbcommon"])

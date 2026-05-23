@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_conandata_patches
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -40,9 +39,8 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if Version(self.version) >= "3.0.0":
-            del self.options.enable12bit
-            del self.options.mem_src_dst
+        del self.options.enable12bit
+        del self.options.mem_src_dst
 
     def configure(self):
         if self.options.shared:
@@ -99,15 +97,8 @@ class Recipe(RecipeBase):
         tc.variables["WITH_TURBOJPEG"] = self.options.get_safe("turbojpeg", False)
         tc.variables["WITH_JAVA"] = self.options.get_safe("java", False)
         tc.cache_variables["WITH_TOOLS"] = False
-        if Version(self.version) < "3.0.0":
-            tc.variables["WITH_MEM_SRCDST"] = self.options.get_safe("mem_src_dst", False)
-            tc.variables["WITH_12BIT"] = self.options.enable12bit
         if is_msvc(self):
             tc.variables["WITH_CRT_DLL"] = True # avoid replacing /MD by /MT in compiler flags
-        if Version(self.version) <= "2.1.0":
-            tc.variables["CMAKE_MACOSX_BUNDLE"] = False # avoid configuration error if building for iOS/tvOS/watchOS
-        if Version(self.version) < "3.0.2":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         if self.options.get_safe("java", False):
             tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = os.path.join(self.package_folder, "lib", "java")
         tc.generate()

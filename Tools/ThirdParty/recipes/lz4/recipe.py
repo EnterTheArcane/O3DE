@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -41,16 +40,12 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["LZ4_BUILD_CLI"] = False
-        if Version(self.version) < "1.10.0":
-            tc.variables["LZ4_BUILD_LEGACY_LZ4C"] = False
         tc.variables["LZ4_BUNDLED_MODE"] = False
         tc.variables["LZ4_POSITION_INDEPENDENT_LIB"] = self.options.get_safe("fPIC", True)
         # Generate a relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         # Honor BUILD_SHARED_LIBS (see https://github.com/conan-io/conan/issues/11840)
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0077"] = "NEW"
-        if Version(self.version) < "1.10.0":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     @property
@@ -67,8 +62,7 @@ class Recipe(RecipeBase):
         copy(self, "LICENSE", src=os.path.join(self.source_folder, "lib"), dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        if Version(self.version) >= "1.9.4":
-            rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(self, os.path.join(self.package_folder, "share"))
 

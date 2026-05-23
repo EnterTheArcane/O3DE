@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import apply_conandata_patches, copy, get
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -11,7 +10,7 @@ class Recipe(RecipeBase):
 
     @property
     def _min_cppstd(self):
-        return "11" if Version(self.version) < "3.0.0" else "14"
+        return "14"
 
     def requirements(self):
         self.requires("vulkan-headers")
@@ -29,10 +28,7 @@ class Recipe(RecipeBase):
 
     def package(self):
         copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        if Version(self.version) < "3.0.0":
-            include_dir = os.path.join(self.source_folder, "src")
-        else:
-            include_dir = os.path.join(self.source_folder, "include")
+        include_dir = os.path.join(self.source_folder, "include")
         copy(self, "vk_mem_alloc.h", src=include_dir, dst=os.path.join(self.package_folder, "include"))
 
     def package_info(self):

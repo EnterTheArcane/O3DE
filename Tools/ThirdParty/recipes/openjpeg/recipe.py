@@ -46,10 +46,6 @@ class Recipe(RecipeBase):
         tc.variables["BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["BUILD_LUTS_GENERATOR"] = False
         tc.variables["BUILD_CODEC"] = False
-        if Version(self.version) < "2.5.0":
-            tc.variables["BUILD_MJ2"] = False
-            tc.variables["BUILD_JPWL"] = False
-            tc.variables["BUILD_JP3D"] = False
         tc.variables["BUILD_JPIP"] = False
         tc.variables["BUILD_VIEWER"] = False
         tc.variables["BUILD_JAVA"] = False
