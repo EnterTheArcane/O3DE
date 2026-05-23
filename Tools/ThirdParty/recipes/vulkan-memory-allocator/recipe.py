@@ -8,8 +8,6 @@ class Recipe(RecipeBase):
     name = "vulkan-memory-allocator"
     version = "3.3.0"
     license = "MIT"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
 
     @property
     def _min_cppstd(self):

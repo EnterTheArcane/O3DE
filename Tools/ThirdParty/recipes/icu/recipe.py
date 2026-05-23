@@ -16,8 +16,7 @@ class Recipe(RecipeBase):
     name = "icu"
     version = "78.2"
     license = "ICU"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

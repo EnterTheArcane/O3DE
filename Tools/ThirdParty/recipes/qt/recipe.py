@@ -30,7 +30,6 @@ class Recipe(RecipeBase):
     name = "qt"
     version = "6.11.1"
     license = "LGPL-3.0-only"
-    settings = "os", "arch", "compiler", "build_type"
 
     options = {
         "shared": [True, False],

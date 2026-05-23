@@ -8,10 +8,8 @@ import os
 class Recipe(RecipeBase):
     name = "hidapi"
     version = "0.15.0"
-    package_type = "library"
     license = "GPL-3.0-or-later", "BSD-3-Clause"
 
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "fPIC": [True, False],
         "shared": [True, False],

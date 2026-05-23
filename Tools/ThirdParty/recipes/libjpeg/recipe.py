@@ -12,7 +12,6 @@ class Recipe(RecipeBase):
     version = "9f"
     license = "IJG"
 
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

@@ -14,8 +14,6 @@ class Recipe(RecipeBase):
     version = "6.5"
     license = "X11"
 
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

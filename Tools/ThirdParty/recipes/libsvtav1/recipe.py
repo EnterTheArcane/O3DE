@@ -8,8 +8,7 @@ class Recipe(RecipeBase):
     name = "libsvtav1"
     version = "2.2.1"
     license = "BSD-3-Clause"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

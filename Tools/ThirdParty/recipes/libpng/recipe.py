@@ -8,9 +8,8 @@ import os
 class Recipe(RecipeBase):
     name = "libpng"
     version = "1.6.58"
-    package_type = "library"
     license = "libpng-2.0"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

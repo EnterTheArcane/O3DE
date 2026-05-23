@@ -13,8 +13,7 @@ class Recipe(RecipeBase):
     name = "libcurl"
     version = "8.20.0"
     license = "curl"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

@@ -12,8 +12,7 @@ class Recipe(RecipeBase):
     name = "glfw"
     version = "3.4"
     license = "Zlib"
-    package_type = "library"
-    settings = "os", "arch", "build_type", "compiler"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

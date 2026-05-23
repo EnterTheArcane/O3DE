@@ -11,7 +11,6 @@ class Recipe(RecipeBase):
     version = "20250910"
     license = "GPL-2.0"
 
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

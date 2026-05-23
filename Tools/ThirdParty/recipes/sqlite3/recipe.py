@@ -8,8 +8,7 @@ class Recipe(RecipeBase):
     name = "sqlite3"
     version = "3.53.1"
     license = "Unlicense"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

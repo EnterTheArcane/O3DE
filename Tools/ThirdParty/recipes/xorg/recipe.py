@@ -5,9 +5,7 @@ from thirdparty.tools.scm import Version
 class Recipe(RecipeBase):
     name = "xorg"
     version = "0.0.0"
-    package_type = "shared-library"
     license = "MIT"
-    settings = "os", "arch", "compiler", "build_type"
 
     def package_info(self):
         if Version(conan_version) >= 2:

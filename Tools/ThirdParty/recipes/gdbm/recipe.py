@@ -10,8 +10,7 @@ class Recipe(RecipeBase):
     name = "gdbm"
     version = "1.23"
     license = "GPL-3.0-or-later"
-    package_type = "library"
-    settings = "os", "compiler", "build_type", "arch"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

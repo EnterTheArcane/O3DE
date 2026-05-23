@@ -2,13 +2,10 @@ from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.files import copy, get
 import os
 
-
 class Recipe(ConanFile):
     name = "ninja"
     version = "1.13.2"
     license = "Apache-2.0"
-    package_type = "application"
-    settings = "os", "arch"
 
     def source(self):
         pass

@@ -8,10 +8,8 @@ import os
 class Recipe(RecipeBase):
     name = "eigen"
     version = "5.0.1"
-    package_type = "header-library"
     license = ("MPL-2.0", "LGPL-3.0-or-later")  # Taking into account the default value of MPL2_only option
 
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "MPL2_only": [True, False],
     }

@@ -8,8 +8,6 @@ class Recipe(RecipeBase):
     name = "spirv-headers"
     version = "1.4.350.0"
     license = "MIT-KhronosGroup"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
 
     def source(self):
         get(self, url="https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="9905d9341f20388adb852c77dd982f2c4d539fd68e6c1f1bcebf034715f2d1d5", destination=self.source_folder, strip_root=True)

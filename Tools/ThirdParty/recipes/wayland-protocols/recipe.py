@@ -8,7 +8,6 @@ class Recipe(RecipeBase):
     name = "wayland-protocols"
     version = "1.45"
     license = "MIT"
-    settings = "os", "arch", "compiler", "build_type"
 
     def build_requirements(self):
         self.tool_requires("meson/[>=1.3.1 <2]")

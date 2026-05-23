@@ -13,8 +13,7 @@ class Recipe(RecipeBase):
     name = "xz_utils"
     version = "5.8.3"
     license = "Unlicense", "LGPL-2.1-or-later",  "GPL-2.0-or-later", "GPL-3.0-or-later"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

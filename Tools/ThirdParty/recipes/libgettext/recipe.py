@@ -19,8 +19,6 @@ class Recipe(RecipeBase):
     # The licensing of the project is documented here: https://www.gnu.org/software/gettext/manual/gettext.html#Licenses
     license = "LGPL-2.1-or-later"
 
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

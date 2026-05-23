@@ -9,8 +9,6 @@ class Recipe(RecipeBase):
     version = "11.0.0"
     license = "Zlib"
 
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
