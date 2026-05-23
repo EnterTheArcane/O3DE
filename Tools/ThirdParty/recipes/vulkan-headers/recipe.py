@@ -3,11 +3,17 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "vulkan-headers"
     version = "1.4.350.0"
     license = "Apache-2.0"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/Vulkan-Headers")
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
 
     def source(self):
         get(

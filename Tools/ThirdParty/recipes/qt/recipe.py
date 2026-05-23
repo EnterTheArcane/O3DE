@@ -8,7 +8,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, check_min_cppstd, default_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.env import Environment
+from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import msvc_runtime_flag, is_msvc

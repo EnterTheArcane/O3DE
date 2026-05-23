@@ -1,8 +1,11 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
+from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
+from thirdparty.tools.gitlab import GitlabRepository
+from thirdparty.tools.scm import Version
 
 import os
 
@@ -39,6 +42,10 @@ class Recipe(RecipeBase):
         self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.tool_requires("pkgconf")
+
+    def latest_version(self):
+        repo = GitlabRepository(self, "fontconfig/fontconfig", host="gitlab.freedesktop.org")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

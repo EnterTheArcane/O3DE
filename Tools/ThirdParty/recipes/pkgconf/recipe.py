@@ -6,6 +6,7 @@ from thirdparty.tools.files import apply_patches, copy, get, rename, rm, rmdir, 
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
+from thirdparty.tools.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "pkgconf"
@@ -39,6 +40,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("meson")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "pkgconf/pkgconf")
+        return Version(repo.latest_release.removeprefix("pkgconf-"))
 
     def source(self):
         get(

@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir, save
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 import textwrap
 
@@ -49,6 +51,10 @@ class Recipe(RecipeBase):
             # these options don't contribute to shared binary
             del self.options.c_api
             del self.options.util
+
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/SPIRV-Cross")
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
 
     def source(self):
         get(

@@ -1,5 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, VCVars
@@ -100,9 +101,11 @@ class Recipe(RecipeBase):
     def build(self):
         apply_patches(self)
         if is_msvc(self) and self.settings.arch == "x86" and self.options.shared:
-            replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                            "mimalloc-redirect.lib",
-                            "mimalloc-redirect32.lib")
+            replace_in_file(
+                self,
+                os.path.join(self.source_folder, "CMakeLists.txt"),
+                "mimalloc-redirect.lib",
+                "mimalloc-redirect32.lib")
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
@@ -118,8 +121,9 @@ class Recipe(RecipeBase):
 
         if self.options.get_safe("single_object"):
             rm(self, "*.a", os.path.join(self.package_folder, "lib"))
-            shutil.copy(os.path.join(self.package_folder, "lib", self._obj_name + ".o"),
-                        os.path.join(self.package_folder, "lib", self._obj_name))
+            shutil.copy(
+                os.path.join(self.package_folder, "lib", self._obj_name + ".o"),
+                os.path.join(self.package_folder, "lib", self._obj_name))
 
         if self.settings.os == "Windows" and self.options.shared:
             if self.settings.arch == "x86_64":

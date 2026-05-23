@@ -6,6 +6,7 @@ from thirdparty.tools.files import apply_patches, chdir, collect_libs, copy, get
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag, NMakeToolchain, NMakeDeps
 from thirdparty.tools.scm import Version
+from thirdparty.tools.github import GithubRepository
 import os
 
 class Recipe(RecipeBase):
@@ -41,6 +42,11 @@ class Recipe(RecipeBase):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "tcltk/tcl")
+        tag = repo.latest_tag("core-")
+        return Version(tag.removeprefix("core-").replace("-", "."))
 
     def source(self):
         get(

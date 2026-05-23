@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.meson import Meson, MesonToolchain
+from thirdparty.tools.gitlab import GitlabRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -10,6 +12,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("meson")
+
+    def latest_version(self):
+        repo = GitlabRepository(self, "wayland/wayland-protocols", host="gitlab.freedesktop.org")
+        return Version(repo.latest_release)
 
     def source(self):
         get(
@@ -46,14 +52,6 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "res", "pkgconfig"))
 
     def package_info(self):
-        pkgconfig_variables = {
-            'datarootdir': '${prefix}/res',
-            'pkgdatadir': '${datarootdir}/wayland-protocols',
-        }
-        # TODO: Remove when Conan 1.x not supported
-        pkgconfig_variables = pkgconfig_variables if conan_version.major >= 2 \
-            else "\n".join(f"{key}={value}" for key, value in pkgconfig_variables.items())
-        self.cpp_info.set_property("pkg_config_custom_content", pkgconfig_variables)
         self.cpp_info.libdirs = []
         self.cpp_info.includedirs = []
         self.cpp_info.bindirs = []

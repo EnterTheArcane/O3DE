@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, save
 from thirdparty.tools.scm import Version
+from thirdparty.tools.gitlab import GitlabRepository
 import os
 import textwrap
 
@@ -30,6 +31,10 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         self.settings.compiler.rm_safe("libcxx")
         self.settings.compiler.rm_safe("cppstd")
+
+    def latest_version(self):
+        repo = GitlabRepository(self, "bzip2/bzip2")
+        return Version(repo.latest_release.removeprefix("bzip2-"))
 
     def source(self):
         get(

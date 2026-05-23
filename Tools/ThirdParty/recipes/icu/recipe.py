@@ -6,7 +6,7 @@ import shutil
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, stdcpp_library, check_min_cppstd
-from thirdparty.tools.env import Environment
+from thirdparty.tools.env import Environment, VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, mkdir, rename, replace_in_file, rm, rmdir, save
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain

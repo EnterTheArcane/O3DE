@@ -4,6 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rename, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
@@ -25,6 +26,10 @@ class Recipe(RecipeBase):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "autotools-mirror/automake")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

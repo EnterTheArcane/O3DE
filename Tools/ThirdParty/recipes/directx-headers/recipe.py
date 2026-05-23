@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.build import check_min_cppstd
+from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.meson import Meson, MesonToolchain

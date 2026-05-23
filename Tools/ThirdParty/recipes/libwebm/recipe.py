@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -29,6 +31,10 @@ class Recipe(RecipeBase):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "webmproject/libwebm")
+        return Version(repo.latest_release.removeprefix("libwebm-"))
 
     def source(self):
         get(

@@ -4,6 +4,8 @@ from thirdparty.tools.files import (
     collect_libs, copy, load,
     get, rename, replace_in_file, rmdir, save
 )
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 import re
 import textwrap
@@ -51,6 +53,10 @@ class Recipe(RecipeBase):
             self.requires("bzip2")
         if self.options.with_brotli:
             self.requires("brotli")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "freetype/freetype")
+        return Version(repo.latest_release.removeprefix("VER-").replace("-", "."))
 
     def source(self):
         get(

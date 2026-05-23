@@ -5,6 +5,8 @@ from thirdparty.tools.files import apply_patches, copy, get, rmdir, save
 import os
 
 from thirdparty.tools.gnu import PkgConfigDeps
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "ptex"
@@ -30,6 +32,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("zlib")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "wdas/ptex")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

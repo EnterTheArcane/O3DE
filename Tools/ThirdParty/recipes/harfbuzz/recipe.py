@@ -55,8 +55,7 @@ class Recipe(RecipeBase):
         if self.options.shared:
             self.options.rm_safe("fPIC")
         if self.options.shared and self.options.with_glib:
-            wildcard = "" if Version(conan_version) < "2.0.0" else "/*"
-            self.options[f"glib{wildcard}"].shared = True
+            self.options["glib"].shared = True
 
     def requirements(self):
         if self.options.with_freetype:

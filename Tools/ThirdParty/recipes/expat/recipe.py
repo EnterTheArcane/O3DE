@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -34,6 +36,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "libexpat/libexpat")
+        return Version(repo.latest_release.removeprefix("R_").replace("_", "."))
 
     def source(self):
         get(

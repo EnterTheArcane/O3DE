@@ -4,6 +4,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.meson import Meson, MesonToolchain
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "lcms"
@@ -31,6 +33,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("meson")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "mm2/Little-CMS")
+        return Version(repo.latest_release.removeprefix("lcms"))
 
     def source(self):
         get(

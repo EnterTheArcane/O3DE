@@ -14,6 +14,7 @@ from thirdparty.tools.files import (
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import NMakeDeps, NMakeToolchain, is_msvc
 from thirdparty.tools.scm import Version
+from thirdparty.tools.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "tk"
@@ -54,6 +55,11 @@ class Recipe(RecipeBase):
                 and not self.conf.get("tools.microsoft.bash:subsystem")
             ):
                 self.build_requires("msys2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "tcltk/tk")
+        tag = repo.latest_tag("core-")
+        return Version(tag.removeprefix("core-").replace("-", "."))
 
     def source(self):
         get(

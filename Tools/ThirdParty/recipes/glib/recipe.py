@@ -5,6 +5,8 @@ from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 import shutil
 
@@ -68,6 +70,10 @@ class Recipe(RecipeBase):
         self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.tool_requires("pkgconf")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "GNOME/glib")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

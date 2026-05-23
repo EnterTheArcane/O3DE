@@ -49,6 +49,29 @@ class GithubRepository:
                 raise
             return self._highest_tag()
 
+    def latest_tag(self, prefix: str) -> str:
+        """Return the raw tag name with the highest version among tags starting with `prefix`.
+
+        The suffix after `prefix` is normalised (hyphens → dots) before version comparison.
+        """
+        best_tag: str | None = None
+        best_version: Version | None = None
+        for tag in self._repo.get_tags():
+            if not tag.name.startswith(prefix):
+                continue
+            try:
+                v = Version(tag.name[len(prefix):].replace("-", "."))
+            except Exception:
+                continue
+            if not v.main or not all(isinstance(item.value, int) for item in v.main):
+                continue
+            if best_version is None or v > best_version:
+                best_version = v
+                best_tag = tag.name
+        if best_tag is None:
+            raise RuntimeError(f"no tag with prefix {prefix!r} found in {self._slug}")
+        return best_tag
+
     def _highest_tag(self) -> str:
         """Walk tags and return the one with the highest all-numeric Version."""
         best_tag: str | None = None

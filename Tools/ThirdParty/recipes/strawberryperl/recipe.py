@@ -1,7 +1,9 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 import os
+import re
 
 class Recipe(RecipeBase):
     name = "strawberryperl"
@@ -10,6 +12,15 @@ class Recipe(RecipeBase):
     def compatibility(self):
         if self.settings.arch == "armv8":
             return [{"settings": [("arch", "x86_64")]}]
+
+    def latest_version(self):
+        repo = GithubRepository(self, "StrawberryPerl/Perl-Dist-Strawberry")
+        tag = repo.latest_release
+        m = re.match(r"SP_(\d+)_", tag)
+        if not m:
+            raise RuntimeError(f"unexpected tag: {tag}")
+        digits = m.group(1)
+        return Version(".".join([digits[0], digits[1:3]] + list(digits[3:])))
 
     def build(self):
         get(
@@ -32,8 +43,3 @@ class Recipe(RecipeBase):
 
         perl_path = os.path.join(self.package_folder, "bin", "perl.exe").replace("\\", "/")
         self.conf_info.define("user.strawberryperl:perl", perl_path)
-
-        # TODO remove once conan v2 is the only support and recipes have been migrated
-        if Version(conan_version).major < 2:
-            bin_path = os.path.join(self.package_folder, "bin")
-            self.user_info.perl = perl_path
