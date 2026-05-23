@@ -18,7 +18,7 @@ from pathlib import Path
 
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
 
 # config.h for liblzma built inside CPython's PCbuild on Windows (MSVC).

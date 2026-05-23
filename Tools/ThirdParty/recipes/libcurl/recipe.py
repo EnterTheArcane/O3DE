@@ -182,7 +182,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GithubRepository(self, "curl/curl")
-        return Version(repo.latest_release.removeprefix("curl-").replace("_", "."))
+        return Version(repo.latest_tag("curl-").removeprefix("curl-").replace("_", "."))
 
     def source(self):
         get(
@@ -204,227 +204,6 @@ class Recipe(RecipeBase):
     def generate(self):
         env = VirtualBuildEnv(self)
         env.generate()
-        self._generate_with_cmake()
-
-    def build(self):
-        self._patch_sources()
-        cmake = CMake(self)
-        cmake.configure()
-        cmake.build()
-
-    def _patch_autoreconf(self):
-        # Fix config.sub for tvOS/watchOS
-        if self.settings.os in [ "tvOS", "watchOS" ]:
-            for gnu_config in [
-                    self.conf.get("user.gnu-config:config_guess", check_type=str),
-                    self.conf.get("user.gnu-config:config_sub", check_type=str),
-            ]:
-                if gnu_config:
-                    copy(self, os.path.basename(gnu_config), src=os.path.dirname(gnu_config), dst=self.source_folder)
-
-    def _patch_sources(self):
-        self._patch_misc_files()
-        self._patch_autotools()
-
-    def _patch_misc_files(self):
-        if self.options.with_largemaxwritesize:
-            replace_in_file(self, os.path.join(self.source_folder, "include", "curl", "curl.h"),
-                                  "define CURL_MAX_WRITE_SIZE 16384",
-                                  "define CURL_MAX_WRITE_SIZE 10485760")
-
-    def _yes_no(self, value):
-        return "yes" if value else "no"
-
-    def _generate_with_autotools(self):
-        if not cross_building(self):
-            env = VirtualRunEnv(self)
-            env.generate(scope="build")
-
-        tc = AutotoolsToolchain(self)
-        tc.configure_args.extend([
-            f"--with-libidn2={self._yes_no(self.options.with_libidn)}",
-            f"--with-libpsl={self._yes_no(self.options.with_libpsl)}",
-            f"--with-libgsasl={self._yes_no(self.options.with_libgsasl)}",
-            f"--with-schannel={self._yes_no(self.options.with_ssl == 'schannel')}",
-            f"--with-brotli={self._yes_no(self.options.with_brotli)}",
-            f"--enable-shared={self._yes_no(self.options.shared)}",
-            f"--enable-static={self._yes_no(not self.options.shared)}",
-            f"--enable-dict={self._yes_no(self.options.with_dict)}",
-            f"--enable-file={self._yes_no(self.options.with_file)}",
-            f"--enable-ftp={self._yes_no(self.options.with_ftp)}",
-            f"--enable-gopher={self._yes_no(self.options.with_gopher)}",
-            f"--enable-http={self._yes_no(self.options.with_http)}",
-            f"--enable-imap={self._yes_no(self.options.with_imap)}",
-            f"--enable-ldap={self._yes_no(self.options.with_ldap)}",
-            f"--enable-mqtt={self._yes_no(self.options.with_mqtt)}",
-            f"--enable-pop3={self._yes_no(self.options.with_pop3)}",
-            f"--enable-rtsp={self._yes_no(self.options.with_rtsp)}",
-            f"--enable-smb={self._yes_no(self.options.with_smb)}",
-            f"--enable-smtp={self._yes_no(self.options.with_smtp)}",
-            f"--enable-telnet={self._yes_no(self.options.with_telnet)}",
-            f"--enable-tftp={self._yes_no(self.options.with_tftp)}",
-            f"--enable-debug={self._yes_no(self.settings.build_type == 'Debug')}",
-            f"--enable-ares={self._yes_no(self.options.with_c_ares)}",
-            f"--enable-threaded-resolver={self._yes_no(self.options.with_threaded_resolver)}",
-            f"--enable-cookies={self._yes_no(self.options.with_cookies)}",
-            f"--enable-ipv6={self._yes_no(self.options.with_ipv6)}",
-            f"--enable-manual={self._yes_no(self.options.with_docs)}",
-            f"--enable-verbose={self._yes_no(self.options.with_verbose_debug)}",
-            f"--enable-symbol-hiding={self._yes_no(self.options.with_symbol_hiding)}",
-            f"--enable-unix-sockets={self._yes_no(self.options.get_safe('with_unix_sockets'))}",
-            f"--enable-ntlm={self._yes_no(self.options.with_ntlm)}",
-            f"--with-zstd={self._yes_no(self.options.with_zstd)}",
-        ])
-
-        # Since 7.77.0, disabling TLS must be explicitly requested otherwise it fails
-        if not self.options.with_ssl:
-            tc.configure_args.append("--without-ssl")
-
-        if self.options.with_ssl == "openssl":
-            path = unix_path(self, self.dependencies["openssl"].package_folder)
-            tc.configure_args.append(f"--with-openssl={path}")
-        elif self.options.with_ssl == "libressl":
-            path = unix_path(self, self.dependencies["libressl"].package_folder)
-            tc.configure_args.append(f"--with-openssl={path}")
-        else:
-            tc.configure_args.append("--without-openssl")
-
-        if self.options.with_ssl == "wolfssl":
-            path = unix_path(self, self.dependencies["wolfssl"].package_folder)
-            tc.configure_args.append(f"--with-wolfssl={path}")
-        else:
-            tc.configure_args.append("--without-wolfssl")
-
-        if self.options.with_ssl == "mbedtls":
-            path = unix_path(self, self.dependencies["mbedtls"].package_folder)
-            tc.configure_args.append(f"--with-mbedtls={path}")
-        else:
-            tc.configure_args.append("--without-mbedtls")
-
-        if self.options.with_libssh2:
-            path = unix_path(self, self.dependencies["libssh2"].package_folder)
-            tc.configure_args.append(f"--with-libssh2={path}")
-        else:
-            tc.configure_args.append("--without-libssh2")
-
-        if self.options.with_nghttp2:
-            path = unix_path(self, self.dependencies["libnghttp2"].package_folder)
-            tc.configure_args.append(f"--with-nghttp2={path}")
-        else:
-            tc.configure_args.append("--without-nghttp2")
-
-        if self.options.with_zlib:
-            path = unix_path(self, self.dependencies["zlib"].package_folder)
-            tc.configure_args.append(f"--with-zlib={path}")
-        else:
-            tc.configure_args.append("--without-zlib")
-
-        if not self.options.with_proxy:
-            tc.configure_args.append("--disable-proxy")
-
-        if not self.options.with_rtsp:
-            tc.configure_args.append("--disable-rtsp")
-
-        if not self.options.with_crypto_auth:
-            tc.configure_args.append("--disable-crypto-auth") # also disables NTLM in versions of curl prior to 7.78.0
-
-        if not self.options.with_ca_bundle:
-            tc.configure_args.append("--without-ca-bundle")
-        elif self.options.with_ca_bundle != "auto":
-            tc.configure_args.append(f"--with-ca-bundle={str(self.options.with_ca_bundle)}")
-
-        if not self.options.with_ca_path:
-            tc.configure_args.append("--without-ca-path")
-        elif self.options.with_ca_path != "auto":
-            tc.configure_args.append(f"--with-ca-path={str(self.options.with_ca_path)}")
-
-        tc.configure_args.append(f"--with-ca-fallback={self._yes_no(self.options.with_ca_fallback)}")
-
-        if "with_misc_docs" in self.options:
-            if self.options.with_misc_docs:
-                tc.configure_args.append("--enable-docs")
-            else:
-                tc.configure_args.append("--disable-docs")
-        if "with_form_api" in self.options:
-            if self.options.with_form_api:
-                tc.configure_args.append("--enable-form-api")
-            else:
-                tc.configure_args.append("--disable-form-api")
-        if "with_websockets" in self.options:
-            if self.options.with_websockets:
-                tc.configure_args.append("--enable-websockets")
-            else:
-                tc.configure_args.append("--disable-websockets")
-
-        if self.options.with_libidn:
-            path = unix_path(self, self.dependencies["libidn2"].package_folder)
-            tc.configure_args.append(f"--with-libidn2={path}")
-        else:
-            tc.configure_args.append("--without-libidn2")
-
-        if self.options.get_safe("with_apple_sectrust"):
-            tc.configure_args.append("--with-apple-sectrust")
-
-        # Cross building flags
-        if cross_building(self):
-            if self.settings.os == "Linux" and "arm" in self.settings.arch:
-                tc.configure_args.append(f"--host={self._get_linux_arm_host()}")
-            elif is_apple_os(self) and not self.settings.os == "Macos":
-                tc.configure_args.append("--enable-threaded-resolver")
-                tc.configure_args.append("--disable-verbose")
-                if self.options.build_executable:
-                    # INFO: Need to propage required frameworks to the executable build. Otherwise it will fail to link.
-                    tc.extra_ldflags.extend(["-Wl,-framework,CoreFoundation", "-Wl,-framework,Security"])
-            elif self.settings.os == "Android":
-                pass # this just works, conan is great!
-
-        env = tc.environment()
-
-        # tweaks for mingw
-        if self._is_mingw:
-            rcflags = "-O COFF"
-            if self.settings.arch == "x86":
-                rcflags += " --target=pe-i386"
-            elif self.settings.arch == "x86_64":
-                rcflags += " --target=pe-x86-64"
-                tc.extra_defines.append("_AMD64_")
-            env.define("RCFLAGS", rcflags)
-
-        if self.settings.os != "Windows":
-            tc.fpic = self.options.get_safe("fPIC", True)
-
-        if cross_building(self) and is_apple_os(self):
-            tc.extra_defines.extend(['HAVE_SOCKET', 'HAVE_FCNTL_O_NONBLOCK'])
-
-        tc.generate(env)
-        tc = PkgConfigDeps(self)
-        tc.generate()
-        tc = AutotoolsDeps(self)
-        tc.generate()
-
-    def _get_linux_arm_host(self):
-        arch = None
-        if self.settings.os == "Linux":
-            arch = "arm-linux-gnu"
-            # aarch64 could be added by user
-            if "aarch64" in self.settings.arch:
-                arch = "aarch64-linux-gnu"
-            elif "arm" in self.settings.arch and "hf" in self.settings.arch:
-                arch = "arm-linux-gnueabihf"
-            elif "arm" in self.settings.arch and self._arm_version(str(self.settings.arch)) > 4:
-                arch = "arm-linux-gnueabi"
-        return arch
-
-    # TODO, this should be a inner fuction of _get_linux_arm_host since it is only used from there
-    # it should not polute the class namespace, since there are iOS and Android arm aritectures also
-    def _arm_version(self, arch):
-        version = None
-        match = re.match(r"arm\w*(\d)", arch)
-        if match:
-            version = int(match.group(1))
-        return version
-
-    def _generate_with_cmake(self):
         if self._is_win_x_android:
             tc = CMakeToolchain(self, generator="Ninja")
         else:
@@ -542,6 +321,20 @@ class Recipe(RecipeBase):
             deps.set_property("mbedtls", "cmake_target_name", "CURL::mbedtls")
 
         deps.generate()
+
+    def build(self):
+        self._patch_sources()
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def _patch_sources(self):
+        if self.options.with_largemaxwritesize:
+            replace_in_file(
+                self,
+                os.path.join(self.source_folder, "include", "curl", "curl.h"),
+                "define CURL_MAX_WRITE_SIZE 16384",
+                "define CURL_MAX_WRITE_SIZE 10485760")
 
     def package(self):
         copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

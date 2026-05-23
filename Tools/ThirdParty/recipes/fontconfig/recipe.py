@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rm, rmdir
-from thirdparty.tools.gitlab import GitlabRepository
+from thirdparty.tools.scm.gitlab import GitlabRepository
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.scm import Version
@@ -46,7 +46,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GitlabRepository(self, "fontconfig/fontconfig", host="gitlab.freedesktop.org")
-        return Version(repo.latest_release.removeprefix("v"))
+        return Version(repo.latest_formal_release.removeprefix("v"))
 
     def source(self):
         get(

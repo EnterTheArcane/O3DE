@@ -5,7 +5,7 @@ from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_patches
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
 
 
@@ -41,7 +41,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/SPIRV-Tools")
-        return Version(repo.latest_release.removeprefix("v"))
+        return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
 
     def source(self):
         get(

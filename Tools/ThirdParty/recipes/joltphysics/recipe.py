@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 
@@ -29,21 +29,7 @@ class Recipe(RecipeBase):
     }
 
     @property
-    def _min_cppstd(self):
-        return "17"
-
-    @property
-    def _compilers_minimum_version(self):
-        return {
-            "Visual Studio": "16",
-            "msvc": "192",
-            "gcc": "9.2", # due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81429
-            "clang": "5",
-            "apple-clang": "12",
-        }
-
-    @property
-    def _has_sse41(self):
+    def _has_sse41(self) -> bool:
         return self.options.get_safe("simd") in ("sse41", "sse42", "avx", "avx2", "avx512")
 
     @property
@@ -51,15 +37,15 @@ class Recipe(RecipeBase):
         return self.options.get_safe("simd") in ("sse42", "avx", "avx2", "avx512")
 
     @property
-    def _has_avx(self):
+    def _has_avx(self) -> bool:
         return self.options.get_safe("simd") in ("avx", "avx2", "avx512")
 
     @property
-    def _has_avx2(self):
+    def _has_avx2(self) -> bool:
         return self.options.get_safe("simd") in ("avx2", "avx512")
 
     @property
-    def _has_avx512(self):
+    def _has_avx512(self) -> bool:
         return self.options.get_safe("simd") == "avx512"
 
     def config_options(self):
