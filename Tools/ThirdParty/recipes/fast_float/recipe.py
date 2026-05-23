@@ -1,12 +1,18 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "fast_float"
     version = "8.1.0"
     license = ("Apache-2.0", "MIT", "BSL-1.0")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "fastfloat/fast_float")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

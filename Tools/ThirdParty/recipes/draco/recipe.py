@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -40,6 +42,10 @@ class Recipe(RecipeBase):
         if not self.options.enable_mesh_compression:
             del self.options.enable_standard_edgebreaker
             del self.options.enable_predictive_edgebreaker
+
+    def latest_version(self):
+        repo = GithubRepository(self, "google/draco")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

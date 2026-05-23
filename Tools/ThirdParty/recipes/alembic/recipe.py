@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -32,6 +34,10 @@ class Recipe(RecipeBase):
         self.requires("imath", transitive_headers=True)
         if self.options.with_hdf5:
             self.requires("hdf5")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "alembic/alembic")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

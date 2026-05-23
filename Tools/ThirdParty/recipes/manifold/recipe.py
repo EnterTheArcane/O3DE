@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, apply_patches
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 import os
 
@@ -30,6 +31,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "elalish/manifold")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

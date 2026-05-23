@@ -1,7 +1,9 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_patches
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -62,6 +64,10 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         if self.options.get_safe("SIMD") and self.settings.arch in ["x86", "x86_64"]:
             self.tool_requires("nasm")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "libjpeg-turbo/libjpeg-turbo")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

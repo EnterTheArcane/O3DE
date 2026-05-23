@@ -1,4 +1,5 @@
 from thirdparty import RecipeBase
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import check_min_vs
 from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir
 from thirdparty.tools.build import check_min_cppstd
@@ -45,6 +46,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("c4core", transitive_headers=True)
+
+    def latest_version(self):
+        repo = GithubRepository(self, "biojppm/rapidyaml")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

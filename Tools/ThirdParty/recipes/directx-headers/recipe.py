@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.scm import Version
 import os
@@ -26,6 +27,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("meson")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "microsoft/DirectX-Headers")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

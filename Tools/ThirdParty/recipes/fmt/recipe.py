@@ -4,7 +4,9 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.build import check_min_cppstd
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "fmt"
@@ -41,6 +43,10 @@ class Recipe(RecipeBase):
             self.options.rm_safe("with_os_api")
         elif self.options.shared:
             self.options.rm_safe("fPIC")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "fmtlib/fmt")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

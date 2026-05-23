@@ -4,6 +4,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "rvo2"
@@ -26,6 +28,10 @@ class Recipe(RecipeBase):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "snape/RVO2")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

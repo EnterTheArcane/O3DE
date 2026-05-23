@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
 
@@ -33,6 +34,10 @@ class Recipe(RecipeBase):
     def requirements(self):
         if self.options.with_executables and self.options.with_tiff:
             self.requires("libtiff")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "aous72/OpenJPH")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

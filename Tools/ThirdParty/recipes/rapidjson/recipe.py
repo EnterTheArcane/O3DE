@@ -1,11 +1,17 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "rapidjson"
     version = "1.1.0"
     license = "MIT"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "Tencent/rapidjson")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

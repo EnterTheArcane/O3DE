@@ -1,12 +1,18 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "spirv-headers"
     version = "1.4.350.0"
     license = "MIT-KhronosGroup"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/SPIRV-Headers")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

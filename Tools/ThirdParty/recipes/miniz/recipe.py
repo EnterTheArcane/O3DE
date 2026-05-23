@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -26,6 +28,10 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "richgel999/miniz")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -24,6 +26,10 @@ class Recipe(RecipeBase):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "leethomason/tinyxml2")
+        return Version(repo.latest_release)
 
     def source(self):
         get(
