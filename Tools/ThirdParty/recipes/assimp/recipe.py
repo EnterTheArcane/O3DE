@@ -5,7 +5,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, replace_in_file, rmdir, save
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 
@@ -287,14 +287,16 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.source_folder, "contrib", "utf8cpp"))
 
         # minizip is provided via conan_deps.cmake, no need to use pkgconfig
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                        "use_pkgconfig(UNZIP minizip)", "set(UNZIP_FOUND TRUE)")
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "CMakeLists.txt"),
+            "use_pkgconfig(UNZIP minizip)",
+            "set(UNZIP_FOUND TRUE)")
 
         # ZLIB is unvendored, no need to install it
         # https://github.com/assimp/assimp/blob/v5.3.1/CMakeLists.txt#L483-L487
         # https://github.com/assimp/assimp/blob/v5.1.6/CMakeLists.txt#L463-L466
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                        "INSTALL( TARGETS zlib", "set(_ #")
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "INSTALL( TARGETS zlib", "set(_ #")
 
     def build(self):
         cmake = CMake(self)

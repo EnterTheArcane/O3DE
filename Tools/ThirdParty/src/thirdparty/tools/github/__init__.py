@@ -1,3 +1,3 @@
-from thirdparty.tools.github.repository import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 
 __all__ = ["GithubRepository"]

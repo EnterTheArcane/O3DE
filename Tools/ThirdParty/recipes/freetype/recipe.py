@@ -8,7 +8,7 @@ from thirdparty.tools.files import (
     collect_libs, copy, load,
     get, rename, replace_in_file, rmdir, save
 )
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
 
 

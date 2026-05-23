@@ -1,3 +1,3 @@
-from thirdparty.tools.bitbucket.repository import BitbucketRepository
+from thirdparty.tools.scm.bitbucket import BitbucketRepository
 
 __all__ = ["BitbucketRepository"]
