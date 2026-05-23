@@ -1,4 +1,4 @@
-from thirdparty.cli.cli import main
+from thirdparty.cli import main
 
 if __name__ == "__main__":
     main()
