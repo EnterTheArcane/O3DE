@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, collect_libs, copy, get, rmdir
+from thirdparty.tools.files import apply_patches, collect_libs, copy, get, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 import os
 
@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 import os
@@ -122,7 +122,7 @@ class Recipe(RecipeBase):
             pkg_config_deps.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         # don't force PIC
         replace_in_file(self, os.path.join(self.source_folder, "src", "CMakeLists.txt"),
                         "POSITION_INDEPENDENT_CODE ON", "")

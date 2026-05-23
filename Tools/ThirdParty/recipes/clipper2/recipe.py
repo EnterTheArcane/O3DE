@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.files import get, copy, rmdir, apply_conandata_patches, replace_in_file
+from thirdparty.tools.files import get, copy, rmdir, apply_patches, replace_in_file
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 import os
@@ -68,7 +68,7 @@ class Recipe(RecipeBase):
         tc.generate()
     
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         replace_in_file(self, os.path.join(self.source_folder, "CPP", "CMakeLists.txt"), "-Werror", "")
 
     def build(self):

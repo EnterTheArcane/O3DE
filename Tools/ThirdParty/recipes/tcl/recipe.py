@@ -2,7 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import apply_conandata_patches, chdir, collect_libs, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, chdir, collect_libs, copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag, NMakeToolchain, NMakeDeps
 from thirdparty.tools.scm import Version
@@ -81,7 +81,7 @@ class Recipe(RecipeBase):
             deps.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
         if is_apple_os(self) and self.settings.arch not in ("x86", "x86_64"):
             macos_configure = os.path.join(self.source_folder, "macosx", "configure")

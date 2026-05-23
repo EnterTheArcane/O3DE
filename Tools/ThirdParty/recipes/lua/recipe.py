@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import get, copy, load, save, apply_conandata_patches, collect_libs
+from thirdparty.tools.files import get, copy, load, save, apply_patches, collect_libs
 from thirdparty.tools.apple import fix_apple_shared_install_name
 
 class Recipe(RecipeBase):
@@ -59,7 +59,7 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
         cmake.build()

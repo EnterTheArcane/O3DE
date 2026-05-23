@@ -2,7 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rm, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 import os
 
@@ -101,7 +101,7 @@ class Recipe(RecipeBase):
         autotools_deps.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         for gnu_config in [
             self.conf.get("user.gnu-config:config_guess", check_type=str),
             self.conf.get("user.gnu-config:config_sub", check_type=str),

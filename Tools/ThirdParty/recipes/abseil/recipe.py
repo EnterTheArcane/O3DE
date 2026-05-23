@@ -2,7 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get, load, rmdir, save
+from thirdparty.tools.files import apply_patches, copy, get, load, rmdir, save
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 import json
 import os
@@ -40,7 +40,7 @@ class Recipe(RecipeBase):
             sha256="4314e2a7cbac89cac25a2f2322870f343d81579756ceff7f431803c2c9090195",
             destination=self.source_folder,
             strip_root=True)
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

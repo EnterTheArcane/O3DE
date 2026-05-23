@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.tools.scm import Version
 
 import os
@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         # Honor encoding option
         replace_in_file(
             self,

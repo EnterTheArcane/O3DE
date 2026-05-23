@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.microsoft import is_msvc
 import os
 
@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
             sha256="e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
             destination=self.source_folder,
             strip_root=True)
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
