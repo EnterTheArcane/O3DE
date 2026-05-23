@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "luau"
     version = "0.700"
     license = "MIT"

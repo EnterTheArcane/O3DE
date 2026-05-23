@@ -1,10 +1,10 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "tinyxml2"
     version = "11.0.0"
     license = "Zlib"

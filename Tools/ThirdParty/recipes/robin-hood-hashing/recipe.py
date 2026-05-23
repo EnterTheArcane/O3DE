@@ -1,9 +1,9 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import apply_conandata_patches, copy, get
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "robin-hood-hashing"
     version = "3.11.5"
     license = "MIT"

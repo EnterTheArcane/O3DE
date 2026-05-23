@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_conandata_patches, chdir, copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
@@ -6,7 +6,7 @@ from thirdparty.tools.microsoft import NMakeToolchain, is_msvc
 import os
 import shutil
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "nasm"
     version = "3.01"
     package_type = "application"

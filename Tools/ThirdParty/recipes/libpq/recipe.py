@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
@@ -9,7 +9,7 @@ from thirdparty.tools.scm import Version
 import glob
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libpq"
     version = "16.13"
     license = "PostgreSQL"

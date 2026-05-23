@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import cross_building, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
@@ -6,7 +6,7 @@ from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_i
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libx265"
     version = "4.2"
     license = ("GPL-2.0-only", "commercial")  # https://bitbucket.org/multicoreware/x265/src/default/COPYING

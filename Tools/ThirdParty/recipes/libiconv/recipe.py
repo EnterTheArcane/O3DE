@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.files import (
@@ -14,7 +14,7 @@ from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, unix_path
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libiconv"
     version = "1.18"
     license = "LGPL-2.1-or-later"

@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import can_run
 from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "wayland"
     version = "1.24.0"
     license = "MIT"

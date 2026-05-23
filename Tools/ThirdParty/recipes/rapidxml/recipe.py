@@ -1,8 +1,8 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, apply_conandata_patches
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "rapidxml"
     version = "1.13"
     license = ["BSL-1.0", "MIT"]

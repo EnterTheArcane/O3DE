@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, XCRun, fix_apple_shared_install_name
 from thirdparty.tools.env import Environment
 from thirdparty.tools.files import copy, rename, get, rmdir, chdir
@@ -6,7 +6,7 @@ from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, unix_path
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libx264"
     version = "cci.20250910"
     license = "GPL-2.0"

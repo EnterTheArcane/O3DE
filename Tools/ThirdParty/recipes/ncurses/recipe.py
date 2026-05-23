@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building, stdcpp_library
 from thirdparty.tools.env import Environment
@@ -9,7 +9,7 @@ from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, unix_path
 from thirdparty.tools.scm import Version
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "ncurses"
     version = "6.5"
     license = "X11"

@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
@@ -9,7 +9,7 @@ from thirdparty.tools.build import cross_building
 from thirdparty.tools.scm import Version
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libfdk_aac"
     version = "2.0.3"
     license = "https://github.com/mstorsjo/fdk-aac/blob/master/NOTICE"

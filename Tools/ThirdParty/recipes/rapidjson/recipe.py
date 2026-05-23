@@ -1,8 +1,8 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "rapidjson"
     version = "1.1.0"
     license = "MIT"
