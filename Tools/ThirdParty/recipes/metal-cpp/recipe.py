@@ -1,11 +1,8 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.apple import XCRun
-from thirdparty.tools.build import check_min_cppstd
-from thirdparty.tools.files import get, copy
-from thirdparty.tools.scm import Version
-
 import os
-import platform
+
+from thirdparty import RecipeBase
+from thirdparty.tools.files import get, copy
+
 
 class Recipe(RecipeBase):
     name = "metal-cpp"

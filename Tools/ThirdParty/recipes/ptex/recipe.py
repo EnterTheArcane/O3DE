@@ -1,12 +1,11 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_patches, copy, get, rmdir, save
 import os
 
-from thirdparty.tools.gnu import PkgConfigDeps
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.files import apply_patches, copy, get, rmdir, save
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "ptex"

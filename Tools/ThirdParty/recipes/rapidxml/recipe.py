@@ -1,6 +1,8 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, apply_patches
-import os
+
 
 class Recipe(RecipeBase):
     name = "rapidxml"

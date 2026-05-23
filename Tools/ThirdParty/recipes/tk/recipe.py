@@ -11,10 +11,11 @@ from thirdparty.tools.files import (
     get,
     replace_in_file,
     rmdir)
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import NMakeDeps, NMakeToolchain, is_msvc
 from thirdparty.tools.scm import Version
-from thirdparty.tools.github import GithubRepository
+
 
 class Recipe(RecipeBase):
     name = "tk"

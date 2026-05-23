@@ -1,10 +1,12 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "directx-headers"

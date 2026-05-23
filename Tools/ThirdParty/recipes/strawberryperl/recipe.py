@@ -1,9 +1,11 @@
+import os
+import re
+
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
-import re
+
 
 class Recipe(RecipeBase):
     name = "strawberryperl"

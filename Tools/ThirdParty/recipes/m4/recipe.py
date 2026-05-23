@@ -1,13 +1,15 @@
+import os
+import shutil
+
 from thirdparty import RecipeBase
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, rmdir, save
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, unix_path
 from thirdparty.tools.scm import Version
-from thirdparty.tools.github import GithubRepository
-import os
-import shutil
+
 
 class Recipe(RecipeBase):
     name = "m4"

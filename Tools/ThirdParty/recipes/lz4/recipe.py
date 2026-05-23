@@ -1,10 +1,12 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "lz4"

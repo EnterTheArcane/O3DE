@@ -1,9 +1,10 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import get, copy, load, save, apply_patches, collect_libs
 from thirdparty.tools.apple import fix_apple_shared_install_name
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.files import get, load, save, apply_patches, collect_libs
+
 
 class Recipe(RecipeBase):
     name = "lua"

@@ -1,16 +1,15 @@
+import os
+
 from thirdparty import RecipeBase
-from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import apply_patches, get, copy
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "wil"
     version = "1.0.260126.7"
     license = "MIT"
-    # only arch is aplicable, windows library
-    
 
     @property
     def _min_cppstd(self):
