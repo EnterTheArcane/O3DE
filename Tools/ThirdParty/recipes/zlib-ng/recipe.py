@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
 
     @property
     def _zlib_compat_version(self):
-        return self.conan_data["zlib_compat"][self.version]
+        return "1.3.1"
 
     def config_options(self):
         if self._is_windows:
