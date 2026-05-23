@@ -22,12 +22,23 @@ class Recipe(ConanFile):
     def package(self):
         dst = os.path.join(self.package_folder, "bin")
         if str(self.settings.os) == "Windows":
-            # meson.pyz is a Python zipapp with a #!/usr/bin/env python3 shebang.
-            # py.exe (Python Launcher, always at C:\Windows\py.exe) reads the shebang
-            # and picks the correct Python — no hardcoded interpreter path needed.
+            # meson.pyz is a Python zipapp. We must NOT invoke it directly: meson's
+            # set_meson_command() checks whether sys.argv[0] ends with '.py' to decide
+            # whether to prepend `python.exe` to the regenerate rule in build.ninja.
+            # If we pass meson.pyz directly, ninja's REGENERATE_BUILD rule becomes
+            # just ["meson.pyz", ...] which CreateProcess cannot execute.
+            #
+            # Instead we create a thin meson.py launcher that adds meson.pyz to
+            # sys.path and calls mesonmain.  sys.argv[0] then ends with '.py', so
+            # meson stores [python.exe, meson.py] as the command — executable by ninja.
             copy(self, "meson.pyz", src=self.build_folder, dst=dst)
+            save(self, os.path.join(dst, "meson.py"),
+                 'import sys, os\n'
+                 'sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "meson.pyz"))\n'
+                 'from mesonbuild import mesonmain\n'
+                 'sys.exit(mesonmain.main())\n')
             save(self, os.path.join(dst, "meson.cmd"),
-                 '@py "%~dp0meson.pyz" %*\n')
+                 '@python "%~dp0meson.py" %*\n')
         else:
             # On Unix the shebang is honoured directly. Copy as "meson" (no extension),
             # make executable, and it runs without any wrapper script.
