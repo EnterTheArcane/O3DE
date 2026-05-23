@@ -93,7 +93,6 @@ class Recipe(RecipeBase):
             ]:
                 rm(self, f"*{static_lib}.*", os.path.join(self.package_folder, "lib"))
 
-        # TODO: to remove in conan v2 once legacy generators removed
         self._create_cmake_module_alias_targets(
             os.path.join(self.package_folder, self._module_file_rel_path),
             {target: f"spirv-cross::{target}" for target in self._spirv_cross_components.keys()},
@@ -166,15 +165,5 @@ class Recipe(RecipeBase):
                 if libcxx:
                     self.cpp_info.components[target_lib].system_libs.append(libcxx)
 
-            # TODO: to remove in conan v2 once legacy generators removed
-            self.cpp_info.components[target_lib].names["cmake_find_package"] = target_lib
-            self.cpp_info.components[target_lib].names["cmake_find_package_multi"] = target_lib
-            self.cpp_info.components[target_lib].build_modules["cmake_find_package"] = [self._module_file_rel_path]
-            self.cpp_info.components[target_lib].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
-
         for target_lib, requires in self._spirv_cross_components.items():
             _register_component(target_lib, requires)
-
-        # TODO: to remove in conan v2 once legacy generators removed
-        if self.options.build_executable:
-            self.env_info.PATH.append(os.path.join(self.package_folder, "bin"))

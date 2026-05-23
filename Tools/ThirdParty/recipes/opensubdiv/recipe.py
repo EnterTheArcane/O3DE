@@ -163,10 +163,3 @@ class Recipe(RecipeBase):
             if self.settings.os in ["Linux", "FreeBSD"] and dl_required:
                 self.cpp_info.components["osdgpu"].system_libs = ["dl"]
 
-        # TODO: to remove in conan v2
-        self.cpp_info.names["cmake_find_package"] = "OpenSubdiv"
-        self.cpp_info.names["cmake_find_package_multi"] = "OpenSubdiv"
-        self.cpp_info.components["osdcpu"].names["cmake_find_package"] = f"osdcpu{target_suffix}"
-        self.cpp_info.components["osdcpu"].names["cmake_find_package_multi"] = f"osdcpu{target_suffix}"
-        self.cpp_info.components["osdgpu"].names["cmake_find_package"] = f"osdgpu{target_suffix}"
-        self.cpp_info.components["osdgpu"].names["cmake_find_package_multi"] = f"osdgpu{target_suffix}"

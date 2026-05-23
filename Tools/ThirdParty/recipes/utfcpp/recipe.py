@@ -7,7 +7,6 @@ class Recipe(RecipeBase):
     name = "utfcpp"
     version = "4.0.9"
     license = "BSL-1.0"
-    no_copy_source = True
 
     def source(self):
         get(self, url="https://github.com/nemtrif/utfcpp/archive/v4.0.9.tar.gz", sha256="397a9a2a6ed5238f854f490b0177b840abc6b62571ec3e07baa0bb94d3f14d5a", destination=self.source_folder, strip_root=True)

@@ -19,7 +19,6 @@ from pathlib import Path
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get
 
-
 # config.h for liblzma built inside CPython's PCbuild on Windows (MSVC).
 # Originally shipped as xz-5.2.x/windows/vs2019/config.h; XZ 5.4+ dropped the
 # native MSBuild solution but the header is still valid for any 5.x release.
@@ -79,7 +78,6 @@ _XZ_WIN_CONFIG_H = """\
 #endif
 #define TUKLIB_FAST_UNALIGNED_ACCESS 1
 """
-
 
 class Recipe(RecipeBase):
     name = "cpython"

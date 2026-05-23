@@ -8,7 +8,6 @@ class Recipe(RecipeBase):
     name = "pybind11"
     version = "3.0.1"
     license = "BSD-3-Clause"
-    no_copy_source = True
 
     def source(self):
         get(self, url="https://github.com/pybind/pybind11/archive/v3.0.1.tar.gz", sha256="741633da746b7c738bb71f1854f957b9da660bcd2dce68d71949037f0969d0ca", destination=self.source_folder, strip_root=True)

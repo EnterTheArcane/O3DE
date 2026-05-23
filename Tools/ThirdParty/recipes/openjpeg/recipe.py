@@ -77,7 +77,6 @@ class Recipe(RecipeBase):
         self._create_cmake_module_variables(
             os.path.join(self.package_folder, self._module_vars_rel_path)
         )
-        # TODO: to remove in conan v2 once cmake_find_package* & pkg_config generators removed
         self._create_cmake_module_alias_targets(
             os.path.join(self.package_folder, self._module_target_rel_path),
             {"openjp2": "OpenJPEG::OpenJPEG"}
@@ -138,9 +137,3 @@ class Recipe(RecipeBase):
         elif self.settings.os == "Android":
             self.cpp_info.system_libs = ["m"]
 
-        # TODO: to remove in conan v2 once cmake_find_package* & pkg_config generators removed
-        self.cpp_info.names["cmake_find_package"] = "OpenJPEG"
-        self.cpp_info.names["cmake_find_package_multi"] = "OpenJPEG"
-        self.cpp_info.build_modules["cmake_find_package"] = [self._module_target_rel_path]
-        self.cpp_info.build_modules["cmake_find_package_multi"] = [self._module_target_rel_path]
-        self.cpp_info.names["pkg_config"] = "libopenjp2"

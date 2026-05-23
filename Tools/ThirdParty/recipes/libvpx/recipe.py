@@ -28,10 +28,7 @@ class Recipe(RecipeBase):
     options.update({name: [True, False] for name in _arch_options})
     default_options.update({name: 'avx' not in name for name in _arch_options})
 
-    @property
-    def _settings_build(self):
-        return getattr(self, "settings_build", self.settings)
-
+ 
     def config_options(self):
         if self.settings.os == 'Windows':
             del self.options.fPIC
@@ -52,7 +49,7 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         if self.settings.arch in ["x86", "x86_64"]:
             self.tool_requires("yasm")
-        if self._settings_build.os == "Windows":
+        if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
