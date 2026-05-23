@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if Version(self.version) >= "1.3.239":
-            self.tool_requires("cmake/[>=3.17.2 <4]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="446b288fe76d3f31bbf9a405d62b97020ac0f135edb0ed5dbdf1136c488138f5", destination=self.source_folder, strip_root=True)

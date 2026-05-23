@@ -73,60 +73,60 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         # Required libraries
-        self.requires("zlib/[>=1.2.11 <2]")
+        self.requires("zlib")
         if Version(self.version) < "3.0":
-            self.requires("boost/1.84.0")
-        self.requires("libtiff/[>=4.6.0 <5]")
-        self.requires("imath/[>3.1.9 <4]", transitive_headers=True)
-        self.requires("openexr/[>=3.2.3 <4]")
+            self.requires("boost")
+        self.requires("libtiff")
+        self.requires("imath", transitive_headers=True)
+        self.requires("openexr")
         if self.options.with_libjpeg == "libjpeg":
-            self.requires("libjpeg/[>=9f]")
+            self.requires("libjpeg")
         elif self.options.with_libjpeg == "libjpeg-turbo":
-            self.requires("libjpeg-turbo/[>=3.0.2 <4]")
+            self.requires("libjpeg-turbo")
         if self.options.get_safe("with_libjxl"):
-            self.requires("libjxl/0.11.1")
-        self.requires("pugixml/1.14")
-        self.requires("libsquish/1.15")
-        self.requires("tsl-robin-map/1.2.1")
-        self.requires("fmt/[>=10.2.1 <13]", transitive_headers=True)
+            self.requires("libjxl")
+        self.requires("pugixml")
+        self.requires("libsquish")
+        self.requires("tsl-robin-map")
+        self.requires("fmt", transitive_headers=True)
 
         # Optional libraries
         if self.options.with_libpng:
-            self.requires("libpng/[>=1.6 <2]")
+            self.requires("libpng")
         if self.options.with_freetype:
-            self.requires("freetype/2.13.2")
+            self.requires("freetype")
         if self.options.get_safe("with_opencolorio", True):
-            self.requires("opencolorio/[>=2.3.1 <4]")
+            self.requires("opencolorio")
         if self.options.with_opencv:
-            self.requires("opencv/[>=4.8.1 <5]")
+            self.requires("opencv")
         if self.options.with_tbb:
-            self.requires("onetbb/2021.10.0")
+            self.requires("onetbb")
         if self.options.with_dicom:
-            self.requires("dcmtk/3.6.7")
+            self.requires("dcmtk")
         if self.options.with_ffmpeg:
-            self.requires("ffmpeg/[>=6.1 <8.0]")
+            self.requires("ffmpeg")
         # TODO: Field3D dependency
         if self.options.with_giflib:
-            self.requires("giflib/5.2.1")
+            self.requires("giflib")
         if self.options.with_libheif:
-            self.requires("libheif/[>=1.16.2 <2]")
+            self.requires("libheif")
         if self.options.with_raw:
-            self.requires("libraw/0.21.2")
+            self.requires("libraw")
         if self.options.with_openjpeg:
-            self.requires("openjpeg/[>=2.5.2 <3]")
+            self.requires("openjpeg")
         if self.options.get_safe("with_openjph", False):
-            self.requires("openjph/[>=0.16.0 <1]")
+            self.requires("openjph")
         if self.options.with_openvdb:
-            self.requires("openvdb/8.0.1")
+            self.requires("openvdb")
         if self.options.with_ptex:
-            self.requires("ptex/2.4.2")
+            self.requires("ptex")
         if self.options.with_libwebp:
-            self.requires("libwebp/[>=1.3.2 <2]")
+            self.requires("libwebp")
         if self.options.get_safe("with_libultrahdr"):
-            self.requires("libultrahdr/1.4.0")
+            self.requires("libultrahdr")
         # TODO: R3DSDK dependency
         # TODO: Nuke dependency
-        self.tool_requires("cmake/[>=3.18]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v3.1.13.1/OpenImageIO-3.1.13.1.tar.gz", sha256="b0d81f4f041fd72f034bd2a6c5ad9db1880008f67af101233cf3992f9e59217f", destination=self.source_folder, strip_root=True)

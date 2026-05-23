@@ -32,7 +32,7 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         if is_apple_os(self) and self.options.shared and Version(self.version) >= "0.2.2":
             # see https://github.com/libsndfile/libsamplerate/blob/0.2.2/src/CMakeLists.txt#L110-L119
-            self.tool_requires("cmake/[>=3.17]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/libsndfile/libsamplerate/releases/download/0.2.2/libsamplerate-0.2.2.tar.xz", sha256="3258da280511d24b49d6b08615bbe824d0cacc9842b0e4caf11c52cf2b043893", destination=self.source_folder, strip_root=True)

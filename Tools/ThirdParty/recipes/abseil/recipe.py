@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         # https://github.com/abseil/abseil-cpp/blob/20240722.0/CMakeLists.txt#L19
         if Version(self.version) >= "20240722.0":
-            self.tool_requires("cmake/[>=3.16]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/abseil/abseil-cpp/archive/20260107.1.tar.gz", sha256="4314e2a7cbac89cac25a2f2322870f343d81579756ceff7f431803c2c9090195", destination=self.source_folder, strip_root=True)

@@ -70,14 +70,14 @@ class Recipe(RecipeBase):
             # OpenSubdiv < 3.6.0 support only onettbb/2020.x.x
             # https://github.com/PixarAnimationStudios/OpenSubdiv/pull/1317
             if Version(self.version) < "3.6.0":
-                self.requires("onetbb/2020.3.3", transitive_headers=True)
+                self.requires("onetbb", transitive_headers=True)
             else:
-                self.requires("onetbb/2021.12.0", transitive_headers=True)
+                self.requires("onetbb", transitive_headers=True)
         if self.options.with_opengl:
-            self.requires("opengl/system")
-            self.requires("glfw/3.4")
+            self.requires("opengl")
+            self.requires("glfw")
         if self.options.get_safe("with_metal"):
-            self.requires("metal-cpp/14.2")
+            self.requires("metal-cpp")
 
     def source(self):
         get(self, url="https://github.com/PixarAnimationStudios/OpenSubdiv/archive/refs/tags/v3_7_0.tar.gz", sha256="f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9", destination=self.source_folder, strip_root=True)

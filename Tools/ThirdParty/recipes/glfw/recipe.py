@@ -56,23 +56,23 @@ class Recipe(RecipeBase):
     def requirements(self):
         # libs=False because glfw does not link to opengl, it
         # loads it via dlopen or equivalent
-        self.requires("opengl/system", libs=False, transitive_headers=True)
+        self.requires("opengl", libs=False, transitive_headers=True)
         if self.options.get_safe("vulkan_static"):
-            self.requires("vulkan-loader/1.3.268.0")
+            self.requires("vulkan-loader")
         if self.settings.os in ["Linux", "FreeBSD"]:
             if self.options.get_safe("with_x11", True):
-                self.requires("xorg/system")
+                self.requires("xorg")
         if self.options.get_safe("with_wayland"):
-            self.requires("wayland/1.22.0")
-            self.requires("xkbcommon/1.6.0")
+            self.requires("wayland")
+            self.requires("xkbcommon")
 
     def build_requirements(self):
         if self.options.get_safe("with_wayland"):
-            self.tool_requires("wayland-protocols/1.33")
+            self.tool_requires("wayland-protocols")
             if self._has_build_profile:
-                self.tool_requires("wayland/<host_version>")
+                self.tool_requires("wayland")
             if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-                self.tool_requires("pkgconf/[>=2.2 <3]")
+                self.tool_requires("pkgconf")
 
     def source(self):
         get(self, url="https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.zip", sha256="b5ec004b2712fd08e8861dc271428f048775200a2df719ccf575143ba749a3e9", destination=self.source_folder, strip_root=True)

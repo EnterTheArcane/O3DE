@@ -55,12 +55,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("cpuinfo/[>=20231129]")
+        self.requires("cpuinfo")
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.16]")
+        self.tool_requires("cmake")
         if self.settings.arch in ("x86", "x86_64"):
-            self.tool_requires("nasm/2.16.01")
+            self.tool_requires("nasm")
 
     def source(self):
         get(self, url="https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v2.2.1/SVT-AV1-v2.2.1.tar.gz", sha256="d02b54685542de0236bce4be1b50912aba68aff997c43b350d84a518df0cf4e5", destination=self.source_folder, strip_root=True)

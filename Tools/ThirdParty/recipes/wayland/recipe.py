@@ -40,15 +40,15 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.enable_libraries:
-            self.requires("libffi/[>=3.4.4 <4]")
+            self.requires("libffi")
         if self.options.enable_dtd_validation:
-            self.requires("libxml2/[>=2.12.5 <3]")
-        self.requires("expat/[>=2.6.2 <3]")
+            self.requires("libxml2")
+        self.requires("expat")
 
     def build_requirements(self):
-        self.tool_requires("meson/[>=1.4.0 <2]")
+        self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
-            self.tool_requires("pkgconf/[>=2.2 <3]")
+            self.tool_requires("pkgconf")
         if not can_run(self):
             self.tool_requires(str(self.ref))
 

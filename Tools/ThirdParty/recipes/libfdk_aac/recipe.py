@@ -41,11 +41,11 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if not self._use_cmake and not is_msvc(self):
-            self.tool_requires("libtool/2.4.7")
+            self.tool_requires("libtool")
             if self._settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/latest")
+                    self.tool_requires("msys2")
 
     def source(self):
         get(self, url="https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.3.tar.gz", sha256="829b6b89eef382409cda6857fd82af84fabb63417b08ede9ea7a553f811cb79e", destination=self.source_folder, strip_root=True)

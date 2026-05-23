@@ -30,9 +30,9 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("imath/[>=3.1.9 <4]", transitive_headers=True)
+        self.requires("imath", transitive_headers=True)
         if self.options.with_hdf5:
-            self.requires("hdf5/1.14.3")
+            self.requires("hdf5")
 
     def source(self):
         get(self, url="https://github.com/alembic/alembic/archive/refs/tags/1.8.8.tar.gz", sha256="ba1f34544608ef7d3f68cafea946ec9cc84792ddf9cda3e8d5590821df71f6c6", destination=self.source_folder, strip_root=True)

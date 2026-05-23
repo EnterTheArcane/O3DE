@@ -314,11 +314,18 @@ _DROP_LINE_RE: list[re.Pattern] = [
     re.compile(r"^\s*AutotoolsDeps\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
 ]
 
+# Strip version specifiers from dependency declarations.  All packages must use
+# the single version built in this repo; versioned requires are never resolved.
+_STRIP_DEP_VERSION_RE = re.compile(
+    r"""(self\.(?:requires?|tool_requires?|build_requires?)\s*\(\s*["'])([^/"']+)/[^"']*(["'])"""
+)
+
 
 def _apply_regex_transforms(code: str) -> str:
     lines = code.splitlines(keepends=True)
     out = [ln for ln in lines if not any(p.match(ln.rstrip()) for p in _DROP_LINE_RE)]
     code = "".join(out)
+    code = _STRIP_DEP_VERSION_RE.sub(r"\1\2\3", code)
     code = re.sub(r"\n{3,}", "\n\n", code)
     return code.lstrip("\n")
 

@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if Version(self.version) >= "1.17.0":
-            self.tool_requires("cmake/[>=3.16]")
+            self.tool_requires("cmake")
 
     def build(self):
         cmake = CMake(self)

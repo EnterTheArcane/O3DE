@@ -48,26 +48,26 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.zlib:
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib")
         if self.options.libdeflate:
-            self.requires("libdeflate/[>=1.19 <2]")
+            self.requires("libdeflate")
         if self.options.lzma:
-            self.requires("xz_utils/[>=5.4.5 <6]")
+            self.requires("xz_utils")
         if self.options.jpeg == "libjpeg":
-            self.requires("libjpeg/[>=9e]")
+            self.requires("libjpeg")
         elif self.options.jpeg == "libjpeg-turbo":
-            self.requires("libjpeg-turbo/[>=3.0.2 <4]")
+            self.requires("libjpeg-turbo")
         elif self.options.jpeg == "mozjpeg":
-            self.requires("mozjpeg/[>=4.1.5 <5]")
+            self.requires("mozjpeg")
         if self.options.jbig:
-            self.requires("jbig/20160605")
+            self.requires("jbig")
         if self.options.zstd:
-            self.requires("zstd/[~1.5]")
+            self.requires("zstd")
         if self.options.webp:
-            self.requires("libwebp/[>=1.3.2 <2]")
+            self.requires("libwebp")
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.18]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz", sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba", destination=self.source_folder, strip_root=True)

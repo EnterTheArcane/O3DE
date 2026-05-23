@@ -54,21 +54,21 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.get_safe("with_zlib"):
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib")
         if self.options.with_bzip2:
-            self.requires("bzip2/[>=1.0.8 <2]")
+            self.requires("bzip2")
         if self.options.with_lzma:
-            self.requires("xz_utils/[>=5.4.5 <6]")
+            self.requires("xz_utils")
         if self.options.with_zstd:
-            self.requires("zstd/[>=1.5.5 <2]")
+            self.requires("zstd")
         if self.options.with_openssl:
-            self.requires("openssl/[>=1.1 <4]")
+            self.requires("openssl")
         if self.settings.os != "Windows":
             if self.options.get_safe("with_iconv"):
-                self.requires("libiconv/1.17")
+                self.requires("libiconv")
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.19]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/zlib-ng/minizip-ng/archive/4.2.1.tar.gz", sha256="3cc35c2cb925dbe67cc801e3234b31b0f30197812a99377352fa1b551ab3d011", destination=self.source_folder, strip_root=True)
