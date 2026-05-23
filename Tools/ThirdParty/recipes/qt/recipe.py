@@ -47,8 +47,6 @@ class Recipe(RecipeBase):
         "with_libjpeg": ["libjpeg", "libjpeg-turbo", False],
         "with_libpng": [True, False],
         "with_sqlite3": [True, False],
-        "with_mysql": [True, False],
-        "with_pq": [True, False],
         "with_odbc": [True, False],
         "with_zstd": [True, False],
         "with_brotli": [True, False],
@@ -89,7 +87,6 @@ class Recipe(RecipeBase):
         "with_libjpeg": False,
         "with_libpng": True,
         "with_sqlite3": True,
-        "with_mysql": False,
         "with_pq": False,
         "with_odbc": False,
         "with_zstd": False,
@@ -290,10 +287,6 @@ class Recipe(RecipeBase):
             self.requires("libpng")
         if self.options.with_sqlite3 and not self.options.multiconfiguration:
             self.requires("sqlite3")
-        if self.options.get_safe("with_mysql", False):
-            self.requires("libmysqlclient")
-        if self.options.with_pq:
-            self.requires("libpq")
         if self.options.with_odbc:
             if self.settings.os != "Windows":
                 self.requires("odbc")
@@ -1165,12 +1158,8 @@ class Recipe(RecipeBase):
                     jpeg_reqs.append("libjpeg::libjpeg")
                 _create_plugin("QJpegPlugin", "qjpeg", "imageformats", jpeg_reqs)
 
-        if self.options.with_mysql:
-            _create_plugin("QMYSQLDriverPlugin", "qsqlmysql", "sqldrivers", ["libmysqlclient::libmysqlclient"])
         if self.options.with_sqlite3:
             _create_plugin("QSQLiteDriverPlugin", "qsqlite", "sqldrivers", ["sqlite3::sqlite3"])
-        if self.options.with_pq:
-            _create_plugin("QPSQLDriverPlugin", "qsqlpsql", "sqldrivers", ["libpq::libpq"])
         if self.options.with_odbc:
             _create_plugin("QODBCDriverPlugin", "qsqlodbc", "sqldrivers", [])
             if self.settings.os != "Windows":
