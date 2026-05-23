@@ -3,7 +3,6 @@ from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, load
 from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
 import os
 import re
 
@@ -65,11 +64,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        if Version(self.version) >= "2.3.1":
-            tc.cache_variables["BUILD_TESTING"] = False
-        else:
-            tc.cache_variables["ZLIB_ENABLE_TESTS"] = False
-            tc.cache_variables["ZLIBNG_ENABLE_TESTS"] = False
+        tc.cache_variables["BUILD_TESTING"] = False
 
         tc.variables["ZLIB_COMPAT"] = self.options.zlib_compat
         tc.variables["WITH_GZFILEOP"] = self.options.with_gzfileop

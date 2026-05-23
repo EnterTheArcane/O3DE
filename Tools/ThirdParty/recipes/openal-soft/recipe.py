@@ -3,7 +3,6 @@ from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, collect_libs, copy, get, rmdir, save
-from thirdparty.tools.scm import Version
 import os
 import textwrap
 
@@ -64,8 +63,7 @@ class Recipe(RecipeBase):
         tc.variables["ALSOFT_EXAMPLES"] = False
         tc.variables["ALSOFT_TESTS"] = False
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_SoundIO"] = True
-        if Version(self.version) < "1.24.0": # pylint: disable=conan-condition-evals-to-constant
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):

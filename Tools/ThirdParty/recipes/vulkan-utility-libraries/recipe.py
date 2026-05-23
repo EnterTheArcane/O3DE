@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
             del self.options.fPIC
 
     def requirements(self):
-        self.requires(f"vulkan-headers/{self.version}", transitive_headers=True)
+        self.requires(f"vulkan-headers", transitive_headers=True)
 
     def build_requirements(self):
         self.tool_requires("cmake")

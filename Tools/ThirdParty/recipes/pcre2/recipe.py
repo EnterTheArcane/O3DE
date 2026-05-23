@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -70,8 +69,7 @@ class Recipe(RecipeBase):
         # Mandatory because upstream CMakeLists overrides BUILD_SHARED_LIBS as a CACHE variable
         # (see https://github.com/conan-io/conan/issues/11840)
         tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
-        if Version(self.version) >= "10.38":
-            tc.variables["BUILD_STATIC_LIBS"] = not self.options.shared
+        tc.variables["BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["PCRE2_BUILD_PCRE2GREP"] = self.options.build_pcre2grep
         tc.variables["PCRE2_SUPPORT_LIBZ"] = self.options.get_safe("with_zlib", False)
         tc.variables["PCRE2_SUPPORT_LIBBZ2"] = self.options.get_safe("with_bzip2", False)
@@ -85,11 +83,6 @@ class Recipe(RecipeBase):
         tc.variables["PCRE2_SUPPORT_JIT"] = self.options.support_jit
         tc.variables["PCRE2_LINK_SIZE"] = self.options.link_size
         tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.get_safe("grep_support_callout_fork", False)
-        if Version(self.version) < "10.38":
-            # relocatable shared libs on Macos
-            tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-        if Version(self.version) < "10.43":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
         cd = CMakeDeps(self)
@@ -100,26 +93,17 @@ class Recipe(RecipeBase):
         cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
         # Do not add ${PROJECT_SOURCE_DIR}/cmake because it contains a custom
         # FindPackageHandleStandardArgs.cmake which can break conan generators
-        if Version(self.version) < "10.34":
-            replace_in_file(self, cmakelists, "SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)", "")
-        else:
-            replace_in_file(self, cmakelists, "LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)", "")
+        replace_in_file(self, cmakelists, "LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)", "")
         # Avoid CMP0006 error (macos bundle)
         replace_in_file(self, cmakelists,
                               "RUNTIME DESTINATION bin",
                               "RUNTIME DESTINATION bin BUNDLE DESTINATION bin")
         # pcre2-config does not correctly include '-static' in static library names
         if is_msvc(self):
-            replace = None
-            if Version(self.version) > "10.42":
-                replace = "configure_file(pcre2-config.in"
-            elif Version(self.version) >= "10.38":
-                replace = "CONFIGURE_FILE(pcre2-config.in"
             postfix = "-static" if not self.options.shared else ""
-            if replace:
-                if self.settings.build_type == "Debug":
-                    postfix += "d"
-                replace_in_file(self, cmakelists, replace, f'set(LIB_POSTFIX "{postfix}")\n{replace}')
+            if self.settings.build_type == "Debug":
+                postfix += "d"
+            replace_in_file(self, cmakelists, "configure_file(pcre2-config.in", f'set(LIB_POSTFIX "{postfix}")\nconfigure_file(pcre2-config.in')
 
     def build(self):
         self._patch_sources()
@@ -151,7 +135,7 @@ class Recipe(RecipeBase):
             self.cpp_info.components["pcre2-posix"].set_property("pkg_config_name", "libpcre2-posix")
             self.cpp_info.components["pcre2-posix"].libs = [self._lib_name("pcre2-posix")]
             self.cpp_info.components["pcre2-posix"].requires = ["pcre2-8"]
-            if Version(self.version) >= "10.43" and is_msvc(self) and self.options.shared:
+            if is_msvc(self) and self.options.shared:
                 self.cpp_info.components["pcre2-posix"].defines.append("PCRE2POSIX_SHARED=1")
 
         # pcre2-16
@@ -179,7 +163,7 @@ class Recipe(RecipeBase):
 
     def _lib_name(self, name):
         libname = name
-        if Version(self.version) >= "10.38" and is_msvc(self) and not self.options.shared:
+        if is_msvc(self) and not self.options.shared:
             libname += "-static"
         if self.settings.os == "Windows":
             if self.settings.build_type == "Debug":

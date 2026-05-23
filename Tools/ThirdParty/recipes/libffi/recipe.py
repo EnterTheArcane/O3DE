@@ -4,7 +4,6 @@ from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_conandata_patches, copy, get, mkdir, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, unix_path
-from thirdparty.tools.scm import Version
 import glob
 import os
 import shutil
@@ -68,9 +67,7 @@ class Recipe(RecipeBase):
 
         if self.options.shared:
             tc.extra_defines.append("FFI_BUILDING_DLL")
-        if Version(self.version) < "3.4.6":
-            tc.extra_defines.append("FFI_BUILDING")
-        elif not self.options.shared:
+        if not self.options.shared:
             tc.extra_defines.append("FFI_STATIC_BUILD")
 
         env = tc.environment()
@@ -152,5 +149,5 @@ class Recipe(RecipeBase):
         self.cpp_info.libs = ["{}ffi".format("lib" if is_msvc(self) else "")]
         self.cpp_info.set_property("pkg_config_name", "libffi")
         if not self.options.shared:
-            static_define = "FFI_STATIC_BUILD" if Version(self.version) >= "3.4.6" else "FFI_BUILDING"
+            static_define = "FFI_STATIC_BUILD"
             self.cpp_info.defines = [static_define]

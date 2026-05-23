@@ -72,13 +72,6 @@ class Recipe(RecipeBase):
 
                 # GCC9 - "pure" attribute on function returning "void"
                 replace_in_file(self, "Makefile", "-Werror=attributes", "")
-
-                # Need "-arch" flag for the linker when cross-compiling.
-                # FIXME: Revisit after https://github.com/conan-io/conan/issues/9069, using new Autotools integration
-                # TODO it is time to revisit, not sure what to do here though...
-                if str(self.version).startswith("2.13"):
-                    replace_in_file(self, "Makefile", "$(CC) $(LDFLAGS) -o", "$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o")
-                    replace_in_file(self, "Makefile", "$(INSTALLROOT)", "$(DESTDIR)")
                 autotools.make()
 
     def package(self):

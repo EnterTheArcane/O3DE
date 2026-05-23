@@ -95,7 +95,7 @@ class Recipe(RecipeBase):
         tc.variables["tiff-tests"] = False
         tc.variables["tiff-contrib"] = False
         tc.variables["tiff-docs"] = False
-        cxx_option_name = "cxx" if Version(self.version) < "4.7.1" else "tiff-cxx"
+        cxx_option_name = "tiff-cxx"
         tc.variables[cxx_option_name] = self.options.cxx
         # BUILD_SHARED_LIBS must be set in command line because defined upstream before project()
         tc.cache_variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)

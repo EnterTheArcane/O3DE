@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -30,7 +29,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def build_requirements(self):
-        if is_apple_os(self) and self.options.shared and Version(self.version) >= "0.2.2":
+        if is_apple_os(self) and self.options.shared:
             # see https://github.com/libsndfile/libsamplerate/blob/0.2.2/src/CMakeLists.txt#L110-L119
             self.tool_requires("cmake")
 

@@ -39,10 +39,8 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             self.options.rm_safe("fPIC")
-        if Version(self.version) >= "2.1.1":
-            # https://gitlab.com/AOMediaCodec/SVT-AV1/-/blob/c949fe4f14fe288a9b2b47aa3e61335422a83645/CHANGELOG.md#211---2024-06-25
-            del self.options.build_decoder
-        if Version(self.version) < "2.2.1" or self.settings.arch not in ("armv8", "armv8.3"):
+        del self.options.build_decoder
+        if self.settings.arch not in ("armv8", "armv8.3"):
             del self.options.with_neon
             del self.options.with_arm_crc32
             del self.options.with_neon_dotprod
@@ -73,8 +71,6 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_APPS"] = False
-        if Version(self.version) < "2.1.1":
-            tc.cache_variables["BUILD_DEC"] = self.options.build_decoder
         tc.cache_variables["BUILD_ENC"] = self.options.build_encoder
         tc.cache_variables["USE_EXTERNAL_CPUINFO"] = True
         if self.settings.arch in ("x86", "x86_64"):

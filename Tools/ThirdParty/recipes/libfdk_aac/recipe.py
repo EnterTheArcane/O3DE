@@ -1,12 +1,6 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import chdir, copy, get, rename, replace_in_file, rm, rmdir
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
-from thirdparty.tools.microsoft import is_msvc, NMakeToolchain
-from thirdparty.tools.build import cross_building
-from thirdparty.tools.scm import Version
+from thirdparty.tools.files import copy, get
 import os
 
 class Recipe(RecipeBase):
@@ -23,11 +17,6 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
- 
-    @property
-    def _use_cmake(self):
-        return Version(self.version) >= "2.0.2"
-
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -35,14 +24,6 @@ class Recipe(RecipeBase):
     def configure(self):
         if self.options.shared:
             self.options.rm_safe("fPIC")
-
-    def build_requirements(self):
-        if not self._use_cmake and not is_msvc(self):
-            self.tool_requires("libtool")
-            if self.settings.os == "Windows":
-                self.win_bash = True
-                if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2")
 
     def source(self):
         get(
@@ -53,20 +34,11 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        if self._use_cmake:
-            tc = CMakeToolchain(self)
-            tc.variables["BUILD_PROGRAMS"] = False
-            tc.variables["FDK_AAC_INSTALL_CMAKE_CONFIG_MODULE"] = False
-            tc.variables["FDK_AAC_INSTALL_PKGCONFIG_MODULE"] = False
-            tc.generate()
-        elif is_msvc(self):
-            tc = NMakeToolchain(self)
-            tc.generate()
-        else:
-            env = VirtualBuildEnv(self)
-            env.generate()
-            tc = AutotoolsToolchain(self)
-            tc.generate()
+        tc = CMakeToolchain(self)
+        tc.variables["BUILD_PROGRAMS"] = False
+        tc.variables["FDK_AAC_INSTALL_CMAKE_CONFIG_MODULE"] = False
+        tc.variables["FDK_AAC_INSTALL_PKGCONFIG_MODULE"] = False
+        tc.generate()
 
     def build(self):
         if self._use_cmake:
@@ -111,21 +83,8 @@ class Recipe(RecipeBase):
 
     def package(self):
         copy(self, "NOTICE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        if self._use_cmake:
-            cmake = CMake(self)
-            cmake.install()
-        elif is_msvc(self):
-            with chdir(self, self.source_folder):
-                self.run(f"nmake -f Makefile.vc prefix=\"{self.package_folder}\" install")
-            if self.options.shared:
-                rename(self, os.path.join(self.package_folder, "lib", "fdk-aac.dll.lib"),
-                             os.path.join(self.package_folder, "lib", "fdk-aac.lib"))
-        else:
-            autotools = Autotools(self)
-            autotools.install()
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-            rm(self, "*.la", os.path.join(self.package_folder, "lib"))
-            fix_apple_shared_install_name(self)
+        cmake = CMake(self)
+        cmake.install()
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "fdk-aac")

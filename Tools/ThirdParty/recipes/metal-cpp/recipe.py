@@ -45,5 +45,4 @@ class Recipe(RecipeBase):
         self.cpp_info.resdirs = []
 
         self.cpp_info.frameworks = ["Foundation", "Metal", "MetalKit", "QuartzCore"]
-        if self.version >= Version('14'):
-            self.cpp_info.frameworks.append("MetalFX")
+        self.cpp_info.frameworks.append("MetalFX")

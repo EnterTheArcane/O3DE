@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -45,8 +44,7 @@ class Recipe(RecipeBase):
         tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.get_safe("fPIC", True)
         tc.variables["ENABLE_SDL"] = False
         tc.variables["DISABLE_SSE"] = not self.options.get_safe("sse", False)
-        if Version(self.version) < "1.0.16":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
+        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
         tc.generate()
 
     def _patch_sources(self):

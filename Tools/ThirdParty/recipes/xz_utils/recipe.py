@@ -34,17 +34,6 @@ class Recipe(RecipeBase):
             "MT" if is_msvc_static_runtime(self) and self.settings.build_type != "Debug" else "",
         )
 
-    @property
-    def _use_msbuild(self):
-        assume_clang_cl = (self.settings.os == "Windows"
-                           and self.settings.compiler == "clang"
-                           and self.settings.get_safe("compiler.runtime") is not None)
-        return (is_msvc(self) or assume_clang_cl) and Version(self.version) < "5.8.1"
-
-    @property
-    def _use_cmake(self):
-        return self.settings.os == "Windows" and Version(self.version) >= "5.8.1"
-
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -56,12 +45,11 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def build_requirements(self):
-        if self.settings_build.os == "Windows" and not self._use_msbuild and (Version(self.version) < "5.8.1" or self.settings.os == "Android"):
+        if self.settings_build.os == "Windows" and self.settings.os == "Android":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
-        if self._use_cmake:
-            self.tool_requires("cmake")
+        self.tool_requires("cmake")
 
     def source(self):
         get(
@@ -72,44 +60,24 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        if self._use_msbuild:
-            tc = MSBuildToolchain(self)
-            tc.configuration = self._effective_msbuild_type
-            tc.generate()
-        elif self._use_cmake:
-            tc = CMakeToolchain(self)
-            tc.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
-            if not self.options.with_tools:
-                tc.cache_variables["XZ_TOOL_XZ"] = False
-                tc.cache_variables["XZ_TOOL_XZDEC"] = False
-                tc.cache_variables["XZ_TOOL_LZMADEC"] = False
-                tc.cache_variables["XZ_TOOL_LZMAINFO"] = False
-                tc.cache_variables["ENABLE_SCRIPTS"] = False
-                tc.cache_variables["XZ_TOOL_SYMLINKS"] = False
-                tc.cache_variables["XZ_TOOL_SYMLINKS_LZMA"] = False
-                tc.cache_variables["XZ_DOC"] = False
-                # sandbox should only apply to the tools, so if the tools are enabled
-                # the sandboxing features will be enabled.
-                tc.cache_variables["XZ_SANDBOX"] = "no"
-            tc.generate()
-        else:
-            tc = AutotoolsToolchain(self)
-            if not self.options.with_tools:
-                tc.configure_args.extend([
-                    "--disable-xz",
-                    "--disable-xzdec",
-                    "--disable-lzmadec",
-                    "--disable-lzmainfo",
-                    "--disable-scripts",
-                    "--disable-doc",
-                    "--disable-lzma-links",
-                    # sandbox should only apply to the tools, so if the tools are enabled
-                    # the sandboxing features will be enabled.
-                    "--disable-sandbox"
-                    ])
-            if self.settings.build_type == "Debug":
-                tc.configure_args.append("--enable-debug")
-            tc.generate()
+        tc = CMakeToolchain(self)
+        tc.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
+        if not self.options.with_tools:
+            tc.cache_variables["XZ_TOOL_XZ"] = False
+            tc.cache_variables["XZ_TOOL_XZDEC"] = False
+            tc.cache_variables["XZ_TOOL_LZMADEC"] = False
+            tc.cache_variables["XZ_TOOL_LZMAINFO"] = False
+            tc.cache_variables["ENABLE_SCRIPTS"] = False
+            tc.cache_variables["XZ_TOOL_SYMLINKS"] = False
+            tc.cache_variables["XZ_TOOL_SYMLINKS_LZMA"] = False
+            tc.cache_variables["XZ_DOC"] = False
+            # sandbox should only apply to the tools, so if the tools are enabled
+            # the sandboxing features will be enabled.
+            tc.cache_variables["XZ_SANDBOX"] = "no"
+        tc.generate()
+        if self.settings.build_type == "Debug":
+            tc.configure_args.append("--enable-debug")
+        tc.generate()
 
     def _build_msvc(self):
         is_msvc_modern = check_min_vs(self, 191)
@@ -151,44 +119,19 @@ class Recipe(RecipeBase):
         msbuild.build(os.path.join(build_script_folder, solution_file), targets=["liblzma_dll" if self.options.shared else "liblzma"])
 
     def build(self):
-        if self._use_msbuild:
-            self._build_msvc()
-        elif self._use_cmake:
-            cmake = CMake(self)
-            rmdir(self, os.path.join(self.source_folder, "tests")) # optionally included
-            cmake.configure()
-            cmake.build()
-        else:
-            autotools = Autotools(self)
-            autotools.configure()
-            autotools.make()
+        cmake = CMake(self)
+        rmdir(self, os.path.join(self.source_folder, "tests")) # optionally included
+        cmake.configure()
+        cmake.build()
 
     def package(self):
         copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        if self._use_msbuild:
-            inc_dir = os.path.join(self.source_folder, "src", "liblzma", "api")
-            copy(self, "*.h", src=inc_dir, dst=os.path.join(self.package_folder, "include"))
-            output_dir = os.path.join(self.source_folder, "windows")
-            copy(self, "*.lib", src=output_dir, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
-            copy(self, "*.dll", src=output_dir, dst=os.path.join(self.package_folder, "bin"), keep_path=False)
-            rename(self, os.path.join(self.package_folder, "lib", "liblzma.lib"),
-                         os.path.join(self.package_folder, "lib", "lzma.lib"))
-        elif self._use_cmake:
-            cmake = CMake(self)
-            cmake.install()
-            rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.package_folder, "share"))
-        else:
-            autotools = Autotools(self)
-            autotools.install()
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.package_folder, "share"))
-            rm(self, "*.la", os.path.join(self.package_folder, "lib"))
-            fix_apple_shared_install_name(self)
-        self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_file_rel_path),
-        )
+        cmake = CMake(self)
+        cmake.install()
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "share"))
+        self._create_cmake_module_variables(os.path.join(self.package_folder, self._module_file_rel_path))
 
     def _create_cmake_module_variables(self, module_file):
         # TODO: also add LIBLZMA_HAS_AUTO_DECODER, LIBLZMA_HAS_EASY_ENCODER & LIBLZMA_HAS_LZMA_PRESET

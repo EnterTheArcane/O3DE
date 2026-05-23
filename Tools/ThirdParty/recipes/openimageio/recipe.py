@@ -3,7 +3,6 @@ from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -59,13 +58,7 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if Version(self.version) < "3.0":
-            del self.options.with_libultrahdr
-            del self.options.with_libjxl
-            del self.options.with_openjph
-        if Version(self.version) >= "3.0":
-            # OpenColorIO became mandatory with OpenImageIO 3.0 so is no longer an option
-            del self.options.with_opencolorio
+        del self.options.with_opencolorio
 
     def configure(self):
         if self.options.shared:
@@ -74,8 +67,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         # Required libraries
         self.requires("zlib")
-        if Version(self.version) < "3.0":
-            self.requires("boost")
         self.requires("libtiff")
         self.requires("imath", transitive_headers=True)
         self.requires("openexr")
@@ -189,16 +180,11 @@ class Recipe(RecipeBase):
             tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_FFmpeg"] = True
             tc.cache_variables["FFMPEG_VERSION"] = f'"{str(self.dependencies["ffmpeg"].ref.version)}"'
 
-        if Version(self.version) < "3.0":
-            tc.cache_variables["Boost_USE_STATIC_LIBS"] = not self.dependencies["boost"].options.shared
 
         tc.cache_variables["BUILD_MISSING_ROBINMAP"] = False
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Robinmap"] = True
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_pugixml"] = True
-        if Version(self.version) < "3.0":
-            tc.cache_variables["INTERNALIZE_FMT"] = False
-        else: # Variable renamed with 3.0
-            tc.cache_variables["OIIO_INTERNALIZE_FMT"] = False
+        tc.cache_variables["OIIO_INTERNALIZE_FMT"] = False
         tc.cache_variables["ROBINMAP_INCLUDES"] = self.dependencies["tsl-robin-map"].cpp_info.includedirs[0].replace("\\", "/")
         tc.cache_variables["IMATH_INCLUDES"] = self.dependencies["imath"].cpp_info.includedirs[0].replace("\\", "/")
         tc.cache_variables["OPENEXR_INCLUDES"] = self.dependencies["openexr"].cpp_info.includedirs[0].replace("\\", "/")
@@ -235,15 +221,12 @@ class Recipe(RecipeBase):
         deps.set_property("libheif", "cmake_additional_variables_prefixes", ["LIBHEIF"])
         deps.set_property("tsl-robin-map", "cmake_file_name", "Robinmap")
         deps.set_property("tsl-robin-map", "cmake_additional_variables_prefixes", ["ROBINMAP"])
-        if Version(self.version) >= "3.0":
-            deps.set_property("openexr", "cmake_target_name", "OpenEXR::OpenEXR")
-            deps.set_property("libultrahdr", "cmake_file_name", "libuhdr")
-            deps.set_property("libultrahdr", "cmake_target_name", "libuhdr::libuhdr")
-            deps.set_property("libjxl", "cmake_file_name", "JXL")
-            deps.set_property("openjph", "cmake_target_name", "openjph")
-        # Version 3.1.10.0 expects a differently named heif target imported.
-        if Version(self.version) >= "3.1.10.0":
-            deps.set_property("libheif", "cmake_target_name", "heif")
+        deps.set_property("openexr", "cmake_target_name", "OpenEXR::OpenEXR")
+        deps.set_property("libultrahdr", "cmake_file_name", "libuhdr")
+        deps.set_property("libultrahdr", "cmake_target_name", "libuhdr::libuhdr")
+        deps.set_property("libjxl", "cmake_file_name", "JXL")
+        deps.set_property("openjph", "cmake_target_name", "openjph")
+        deps.set_property("libheif", "cmake_target_name", "heif")
         deps.generate()
 
     def build(self):
@@ -278,9 +261,7 @@ class Recipe(RecipeBase):
         # OpenImageIO::OpenImageIO_Util
         open_image_io_util = self._add_component("OpenImageIO_Util")
         open_image_io_util.libs = ["OpenImageIO_Util"]
-        boost_deps = ["boost::filesystem", "boost::thread", "boost::system", "boost::regex"]
         open_image_io_util.requires = [
-            *(boost_deps if Version(self.version) < "3.0" else []),
             "imath::imath",
             "openexr::openexr",
         ]
@@ -297,7 +278,6 @@ class Recipe(RecipeBase):
         open_image_io.requires = [
             "openimageio_openimageio_util",
             "zlib::zlib",
-            *(boost_deps if Version(self.version) < "3.0" else []),
             "libtiff::libtiff",
             "pugixml::pugixml",
             "tsl-robin-map::tsl-robin-map",

@@ -4,7 +4,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.build import check_min_cppstd
-from thirdparty.tools.scm import Version
 from thirdparty.tools.microsoft import is_msvc
 
 class Recipe(RecipeBase):
@@ -29,23 +28,11 @@ class Recipe(RecipeBase):
         "with_unicode": True,
     }
 
-    @property
-    def _has_with_os_api_option(self):
-        return Version(self.version) >= "7.0.0"
-
-    @property
-    def _has_with_unicode_option(self):
-        return Version(self.version) >= "11.0.0"
-
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if not self._has_with_os_api_option:
-            del self.options.with_os_api
-        elif str(self.settings.os) == "baremetal":
+        if str(self.settings.os) == "baremetal":
             self.options.with_os_api = False
-        if not self._has_with_unicode_option:
-            del self.options.with_unicode
 
     def configure(self):
         if self.options.header_only:
@@ -70,10 +57,8 @@ class Recipe(RecipeBase):
             tc.cache_variables["FMT_TEST"] = False
             tc.cache_variables["FMT_INSTALL"] = True
             tc.cache_variables["FMT_LIB_DIR"] = "lib"
-            if self._has_with_os_api_option:
-                tc.cache_variables["FMT_OS"] = bool(self.options.with_os_api)
-            if self._has_with_unicode_option:
-                tc.cache_variables["FMT_UNICODE"] = bool(self.options.with_unicode)
+            tc.cache_variables["FMT_OS"] = bool(self.options.with_os_api)
+            tc.cache_variables["FMT_UNICODE"] = bool(self.options.with_unicode)
             tc.generate()
 
     def build(self):
@@ -84,10 +69,7 @@ class Recipe(RecipeBase):
             cmake.build()
 
     def package(self):
-        if Version(self.version) < "10.2.0":
-            copy(self, pattern="*LICENSE.rst", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        else:
-            copy(self, pattern="LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, pattern="LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         if self.options.header_only:
             copy(self, pattern="*.h", src=os.path.join(self.source_folder, "include"), dst=os.path.join(self.package_folder, "include"))
         else:

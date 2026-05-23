@@ -2,7 +2,6 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -38,13 +37,6 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if Version(self.version) < "1.17.0":
-            del self.options.with_jpeg
-            del self.options.with_openjpeg
-        if Version(self.version) < "1.18.0":
-            del self.options.with_openjph
-        if Version(self.version) < "1.19.0":
-            del self.options.with_openh264
 
     def configure(self):
         if self.options.shared:
@@ -69,8 +61,7 @@ class Recipe(RecipeBase):
             self.requires("openh264")
 
     def build_requirements(self):
-        if Version(self.version) >= "1.18.0":
-            self.tool_requires("cmake")
+        self.tool_requires("cmake")
 
     def source(self):
         get(
@@ -105,8 +96,6 @@ class Recipe(RecipeBase):
         tc.cache_variables["WITH_OPENJPH_ENCODER"] = self.options.get_safe("with_openjph", False)
         tc.cache_variables["WITH_OPENH264_DECODER"] = self.options.get_safe("with_openh264", False)
         
-        if Version(self.version) == "1.16.2":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"
         # Disable finding possible Doxygen in system, so no docs are built
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_Doxygen"] = True
         tc.cache_variables["CMAKE_COMPILE_WARNING_AS_ERROR"] = False
@@ -114,10 +103,8 @@ class Recipe(RecipeBase):
         deps = CMakeDeps(self)
         deps.set_property("dav1d", "cmake_additional_variables_prefixes", ["DAV1D"])
         deps.set_property("libde265", "cmake_file_name", "LIBDE265")
-        if Version(self.version) >= "1.18.0":
-            deps.set_property("openjph", "cmake_file_name", "OPENJPH")
-        if Version(self.version) >= "1.19.0":
-            deps.set_property("openh264", "cmake_file_name", "OpenH264")
+        deps.set_property("openjph", "cmake_file_name", "OPENJPH")
+        deps.set_property("openh264", "cmake_file_name", "OpenH264")
         deps.generate()
 
     def build(self):
@@ -142,8 +129,7 @@ class Recipe(RecipeBase):
             self.cpp_info.defines = ["LIBHEIF_STATIC_BUILD"]
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.system_libs.extend(["m", "pthread"])
-            if Version(self.version) >= "1.18.0":
-                self.cpp_info.system_libs.append("dl")
+            self.cpp_info.system_libs.append("dl")
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:

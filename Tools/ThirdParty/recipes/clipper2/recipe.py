@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy, rmdir, apply_conandata_patches, replace_in_file
 from thirdparty.tools.build import check_min_cppstd
-from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 import os
 
@@ -42,10 +41,6 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if Version(self.version) < "1.2.4":
-            del self.options.with_max_precision
-        if Version(self.version) < "1.4.0":
-            del self.options.with_hi_precision
 
     def configure(self):
         if self.options.shared:
@@ -57,7 +52,7 @@ class Recipe(RecipeBase):
             url="https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz",
             sha256="2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e",
             destination=self.source_folder,
-            strip_root = Version(self.version) >= "1.2.3")
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

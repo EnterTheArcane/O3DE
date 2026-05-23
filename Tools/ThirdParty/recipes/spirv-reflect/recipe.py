@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
             del self.options.fPIC
 
     def requirements(self):
-        self.requires(f"spirv-headers/{self.version}", transitive_headers=True)
+        self.requires(f"spirv-headers", transitive_headers=True)
 
     def source(self):
         get(

@@ -91,7 +91,7 @@ class Recipe(RecipeBase):
             f"--with-libiconv-prefix={unix_path(self, self.dependencies['libiconv'].package_folder)}",
         ]
 
-        if is_apple_os(self) and Version(self.version) >= "0.26":
+        if is_apple_os(self):
             # not guessed properly when cross-building
             tc.configure_args.append("gl_cv_func_access_slash_works=yes")
 

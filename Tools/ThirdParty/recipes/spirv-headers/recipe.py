@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -20,10 +19,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["SPIRV_HEADERS_SKIP_EXAMPLES"] = True
-        if Version(self.version) > "1.3.275.0":
-            tc.variables["SPIRV_HEADERS_ENABLE_TESTS"] = False
-        if Version(self.version) <= "1.3.243.0":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
+        tc.variables["SPIRV_HEADERS_ENABLE_TESTS"] = False
         tc.generate()
 
     def build(self):

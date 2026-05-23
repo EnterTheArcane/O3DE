@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
-from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -37,9 +36,6 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTING"] = False
-        if Version(self.version) < "8.1.0":
-            # Relocatable shared lib on Macos
-            tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         tc.generate()
 
     def build(self):
@@ -59,7 +55,7 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "tinyxml2")
         self.cpp_info.set_property("cmake_target_name", "tinyxml2::tinyxml2")
         self.cpp_info.set_property("pkg_config_name", "tinyxml2")
-        postfix = "d" if self.settings.build_type == "Debug" and Version(self.version) < "8.1.0" else ""
+        postfix = ""
         self.cpp_info.libs = [f"tinyxml2{postfix}"]
         if self.settings.os == "Windows" and self.options.shared:
             self.cpp_info.defines.append("TINYXML2_IMPORT")
