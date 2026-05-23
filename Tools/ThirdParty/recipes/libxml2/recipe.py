@@ -102,7 +102,7 @@ class Recipe(RecipeBase):
             if self._settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/cci.latest")
+                    self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.8.tar.xz", sha256="277294cb33119ab71b2bc81f2f445e9bc9435b893ad15bb2cd2b0e859a0ee84a", destination=self.source_folder, strip_root=True)

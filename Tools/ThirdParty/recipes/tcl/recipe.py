@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
         if self._settings_build.os == "Windows" and not is_msvc(self):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/cci.latest")
+                self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://downloads.sourceforge.net/project/tcl/Tcl/8.6.13/tcl8.6.13-src.tar.gz", sha256="43a1fae7412f61ff11de2cfd05d28cfc3a73762f354a417c62370a54e2caf066", destination=self.source_folder, strip_root=True)
