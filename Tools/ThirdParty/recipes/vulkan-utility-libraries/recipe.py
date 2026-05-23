@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import copy, get, rmdir, replace_in_file
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -25,6 +27,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/Vulkan-Utility-Libraries")
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
 
     def source(self):
         get(

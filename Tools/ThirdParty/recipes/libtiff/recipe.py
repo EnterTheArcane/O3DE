@@ -3,6 +3,7 @@ from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
+from thirdparty.tools.gitlab import GitlabRepository
 import os
 
 class Recipe(RecipeBase):
@@ -69,6 +70,10 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         self.tool_requires("cmake")
 
+    def latest_version(self):
+        repo = GitlabRepository(self, "libtiff/libtiff")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def source(self):
         get(
             self,
@@ -120,9 +125,11 @@ class Recipe(RecipeBase):
             rm(self, f"Find{module}.cmake", os.path.join(self.source_folder, "cmake"))
 
         # Export symbols of tiffxx for msvc shared
-        replace_in_file(self, os.path.join(self.source_folder, "libtiff", "CMakeLists.txt"),
-                              "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
-                              "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "libtiff", "CMakeLists.txt"),
+            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
+            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")
 
     def build(self):
         cmake = CMake(self)

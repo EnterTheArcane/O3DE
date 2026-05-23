@@ -3,6 +3,7 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
+from thirdparty.tools.github import GithubRepository
 import os
 
 class Recipe(RecipeBase):
@@ -78,6 +79,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("zlib")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "pnggroup/libpng")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

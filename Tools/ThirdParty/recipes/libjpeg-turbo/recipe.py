@@ -1,5 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_patches
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime

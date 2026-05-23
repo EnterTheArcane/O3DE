@@ -6,6 +6,8 @@ from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rename, rm, replace_in_file, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "vulkan-validationlayers"
@@ -56,6 +58,10 @@ class Recipe(RecipeBase):
             self.tool_requires("pkgconf")
         self.tool_requires("cmake")
 
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/Vulkan-ValidationLayers")
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
+
     def source(self):
         get(
             self,
@@ -64,8 +70,11 @@ class Recipe(RecipeBase):
             destination=self.source_folder,
             strip_root=True)
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)"]:
-            replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                            text, "")
+            replace_in_file(
+                self,
+                os.path.join(self.source_folder, "CMakeLists.txt"),
+                text,
+                "")
 
     def generate(self):
         tc = CMakeToolchain(self)

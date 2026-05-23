@@ -1,9 +1,12 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building, build_jobs
+from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import copy, get, rename, rm, rmdir, replace_in_file, save, chdir, mkdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path, NMakeDeps, NMakeToolchain
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 import itertools
@@ -94,6 +97,10 @@ class Recipe(RecipeBase):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.tool_requires("msys2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "GNOME/libxml2")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(
