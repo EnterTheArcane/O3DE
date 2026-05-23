@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
-    name = "vulkan-validationlayers"
+    name = "vulkan-validation-layers"
     version = "1.4.350.0"
     license = "Apache-2.0"
 
