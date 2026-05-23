@@ -129,7 +129,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v3.1.13.1/OpenImageIO-3.1.13.1.tar.gz", sha256="b0d81f4f041fd72f034bd2a6c5ad9db1880008f67af101233cf3992f9e59217f", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v3.1.13.1/OpenImageIO-3.1.13.1.tar.gz",
+            sha256="b0d81f4f041fd72f034bd2a6c5ad9db1880008f67af101233cf3992f9e59217f",
+            destination=self.source_folder,
+            strip_root=True)
         apply_conandata_patches(self)
 
     def generate(self):

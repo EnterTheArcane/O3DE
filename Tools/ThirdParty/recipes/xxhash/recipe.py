@@ -31,7 +31,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/Cyan4973/xxHash/archive/v0.8.3.tar.gz", sha256="aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/Cyan4973/xxHash/archive/v0.8.3.tar.gz",
+            sha256="aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -75,7 +75,12 @@ class Recipe(RecipeBase):
                 self.tool_requires("pkgconf")
 
     def source(self):
-        get(self, url="https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.zip", sha256="b5ec004b2712fd08e8861dc271428f048775200a2df719ccf575143ba749a3e9", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.zip",
+            sha256="b5ec004b2712fd08e8861dc271428f048775200a2df719ccf575143ba749a3e9",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)

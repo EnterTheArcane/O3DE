@@ -29,7 +29,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.9.0.tar.gz", sha256="25cb043240f828a8c51beb830569634bc7ac603978e0f69d6b63558dadefd49a", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.9.0.tar.gz",
+            sha256="25cb043240f828a8c51beb830569634bc7ac603978e0f69d6b63558dadefd49a",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

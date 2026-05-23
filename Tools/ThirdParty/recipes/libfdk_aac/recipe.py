@@ -45,7 +45,12 @@ class Recipe(RecipeBase):
                     self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.3.tar.gz", sha256="829b6b89eef382409cda6857fd82af84fabb63417b08ede9ea7a553f811cb79e", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.3.tar.gz",
+            sha256="829b6b89eef382409cda6857fd82af84fabb63417b08ede9ea7a553f811cb79e",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         if self._use_cmake:

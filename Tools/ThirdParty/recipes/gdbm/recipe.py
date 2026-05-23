@@ -55,7 +55,12 @@ class Recipe(RecipeBase):
         self.tool_requires("gnu-config")
 
     def source(self):
-        get(self, url="https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz", sha256="74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz",
+            sha256="74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         virtual_build_env = VirtualBuildEnv(self)

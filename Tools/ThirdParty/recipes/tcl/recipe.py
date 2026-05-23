@@ -43,7 +43,12 @@ class Recipe(RecipeBase):
                 self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://downloads.sourceforge.net/project/tcl/Tcl/8.6.13/tcl8.6.13-src.tar.gz", sha256="43a1fae7412f61ff11de2cfd05d28cfc3a73762f354a417c62370a54e2caf066", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://downloads.sourceforge.net/project/tcl/Tcl/8.6.13/tcl8.6.13-src.tar.gz",
+            sha256="43a1fae7412f61ff11de2cfd05d28cfc3a73762f354a417c62370a54e2caf066",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         if is_msvc(self):

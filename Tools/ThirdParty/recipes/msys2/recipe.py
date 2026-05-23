@@ -70,7 +70,12 @@ class Recipe(RecipeBase):
             return [{"settings": [("arch", "x86_64")]}]
 
     def source(self):
-        get(self, url="https://github.com/msys2/msys2-installer/releases/download/2025-12-13/msys2-base-x86_64-20251213.tar.xz", sha256="999f63c2fc7525af5cd41b55e9ea704471a4f9d0278a257fff3b0d1183c441b9", destination=self.source_folder, strip_root=False) # Preserve tarball root dir (msys64/)
+        get(
+            self,
+            url="https://github.com/msys2/msys2-installer/releases/download/2025-12-13/msys2-base-x86_64-20251213.tar.xz",
+            sha256="999f63c2fc7525af5cd41b55e9ea704471a4f9d0278a257fff3b0d1183c441b9",
+            destination=self.source_folder,
+            strip_root=False) # Preserve tarball root dir (msys64/)
 
     def _update_pacman(self):
         with chdir(self, os.path.join(self._msys_dir, "usr", "bin")):

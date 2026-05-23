@@ -28,7 +28,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.25.tar.gz", sha256="d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.25.tar.gz",
+            sha256="d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

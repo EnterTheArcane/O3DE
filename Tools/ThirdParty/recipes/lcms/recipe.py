@@ -33,7 +33,12 @@ class Recipe(RecipeBase):
         self.tool_requires("meson")
 
     def source(self):
-        get(self, url="https://github.com/mm2/Little-CMS/releases/download/lcms2.17/lcms2-2.17.tar.gz", sha256="d11af569e42a1baa1650d20ad61d12e41af4fead4aa7964a01f93b08b53ab074", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/mm2/Little-CMS/releases/download/lcms2.17/lcms2-2.17.tar.gz",
+            sha256="d11af569e42a1baa1650d20ad61d12e41af4fead4aa7964a01f93b08b53ab074",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = MesonToolchain(self)

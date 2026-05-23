@@ -28,7 +28,12 @@ class Recipe(RecipeBase):
         self.tool_requires("meson")
 
     def source(self):
-        get(self, url="https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v1.618.2.tar.gz", sha256="62004f45e2ab00cbb5c7f03c47262632c22fbce0a237383fc458d9324c44cf36", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v1.618.2.tar.gz",
+            sha256="62004f45e2ab00cbb5c7f03c47262632c22fbce0a237383fc458d9324c44cf36",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = MesonToolchain(self)

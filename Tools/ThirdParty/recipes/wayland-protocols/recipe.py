@@ -13,7 +13,12 @@ class Recipe(RecipeBase):
         self.tool_requires("meson")
 
     def source(self):
-        get(self, url="https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.45/downloads/wayland-protocols-1.45.tar.xz", sha256="4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.45/downloads/wayland-protocols-1.45.tar.xz",
+            sha256="4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = MesonToolchain(self)

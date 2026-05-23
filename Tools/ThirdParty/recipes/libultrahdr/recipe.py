@@ -43,7 +43,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/google/libultrahdr/archive/refs/tags/v1.4.0.tar.gz", sha256="e7e1252e2c44d8ed6b99ee0f67a3caf2d8a61c43834b13b1c3cd485574c03ab9", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/google/libultrahdr/archive/refs/tags/v1.4.0.tar.gz",
+            sha256="e7e1252e2c44d8ed6b99ee0f67a3caf2d8a61c43834b13b1c3cd485574c03ab9",
+            destination=self.source_folder,
+            strip_root=True)
         apply_conandata_patches(self)
 
     def generate(self):

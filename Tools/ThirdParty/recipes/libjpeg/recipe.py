@@ -43,7 +43,12 @@ class Recipe(RecipeBase):
                 self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://ijg.org/files/jpegsrc.v9f.tar.gz", sha256="04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://ijg.org/files/jpegsrc.v9f.tar.gz",
+            sha256="04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         if self._is_cl_like:

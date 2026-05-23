@@ -35,7 +35,12 @@ class Recipe(RecipeBase):
             self.requires("getopt-for-visual-studio")
 
     def source(self):
-        get(self, url="https://downloads.sourceforge.net/project/giflib/giflib-5.x/giflib-5.2.2.tar.gz", sha256="be7ffbd057cadebe2aa144542fd90c6838c6a083b5e8a9048b8ee3b66b29d5fb", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://downloads.sourceforge.net/project/giflib/giflib-5.x/giflib-5.2.2.tar.gz",
+            sha256="be7ffbd057cadebe2aa144542fd90c6838c6a083b5e8a9048b8ee3b66b29d5fb",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

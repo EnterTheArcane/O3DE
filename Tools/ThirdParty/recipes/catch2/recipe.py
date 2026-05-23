@@ -38,7 +38,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("with_benchmark")
 
     def source(self):
-        get(self, url="https://github.com/catchorg/Catch2/archive/v2.13.10.tar.gz", sha256="d54a712b7b1d7708bc7a819a8e6e47b2fde9536f487b89ccbca295072a7d9943", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/catchorg/Catch2/archive/v2.13.10.tar.gz",
+            sha256="d54a712b7b1d7708bc7a819a8e6e47b2fde9536f487b89ccbca295072a7d9943",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

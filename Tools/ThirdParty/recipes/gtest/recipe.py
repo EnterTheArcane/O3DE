@@ -30,7 +30,12 @@ class Recipe(RecipeBase):
     implements = ["auto_shared_fpic"]
 
     def source(self):
-        get(self, url="https://github.com/google/googletest/archive/v1.17.0.tar.gz", sha256="65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/google/googletest/archive/v1.17.0.tar.gz",
+            sha256="65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c",
+            destination=self.source_folder,
+            strip_root=True)
 
         internal_utils = os.path.join(self.source_folder, "googletest", "cmake", "internal_utils.cmake")
         replace_in_file(self, internal_utils, "-WX", "")

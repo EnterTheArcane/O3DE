@@ -9,7 +9,12 @@ class Recipe(RecipeBase):
     license = ("Apache-2.0", "MIT", "BSL-1.0")
 
     def source(self):
-        get(self, url="https://github.com/fastfloat/fast_float/archive/refs/tags/v8.1.0.tar.gz", sha256="4bfabb5979716995090ce68dce83f88f99629bc17ae280eae79311c5340143e1", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/fastfloat/fast_float/archive/refs/tags/v8.1.0.tar.gz",
+            sha256="4bfabb5979716995090ce68dce83f88f99629bc17ae280eae79311c5340143e1",
+            destination=self.source_folder,
+            strip_root=True)
 
     def package(self):
         copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

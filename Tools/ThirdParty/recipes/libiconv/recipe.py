@@ -56,7 +56,12 @@ class Recipe(RecipeBase):
             self.win_bash = True
 
     def source(self):
-        get(self, url="https://ftpmirror.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz", sha256="3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://ftpmirror.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz",
+            sha256="3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)

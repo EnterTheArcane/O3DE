@@ -50,7 +50,12 @@ class Recipe(RecipeBase):
                     self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://github.com/libusb/hidapi/archive/hidapi-0.15.0.tar.gz", sha256="5d84dec684c27b97b921d2f3b73218cb773cf4ea915caee317ac8fc73cef8136", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/libusb/hidapi/archive/hidapi-0.15.0.tar.gz",
+            sha256="5d84dec684c27b97b921d2f3b73218cb773cf4ea915caee317ac8fc73cef8136",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

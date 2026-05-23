@@ -378,7 +378,12 @@ class Recipe(RecipeBase):
                 self.tool_requires("gas-preprocessor")
 
     def source(self):
-        get(self, url="https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz", sha256="b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz",
+            sha256="b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3",
+            destination=self.source_folder,
+            strip_root=True)
 
     @property
     def _target_arch(self):

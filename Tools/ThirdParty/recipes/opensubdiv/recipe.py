@@ -80,7 +80,12 @@ class Recipe(RecipeBase):
             self.requires("metal-cpp")
 
     def source(self):
-        get(self, url="https://github.com/PixarAnimationStudios/OpenSubdiv/archive/refs/tags/v3_7_0.tar.gz", sha256="f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/PixarAnimationStudios/OpenSubdiv/archive/refs/tags/v3_7_0.tar.gz",
+            sha256="f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9",
+            destination=self.source_folder,
+            strip_root=True)
 
     @property
     def _osd_gpu_enabled(self):

@@ -10,7 +10,12 @@ class Recipe(RecipeBase):
     license = "MIT"
 
     def source(self):
-        get(self, url="https://github.com/Tessil/robin-map/archive/v1.4.0.tar.gz", sha256="7930dbf9634acfc02686d87f615c0f4f33135948130b8922331c16d90a03250c", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/Tessil/robin-map/archive/v1.4.0.tar.gz",
+            sha256="7930dbf9634acfc02686d87f615c0f4f33135948130b8922331c16d90a03250c",
+            destination=self.source_folder,
+            strip_root=True)
 
     def package(self):
         copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

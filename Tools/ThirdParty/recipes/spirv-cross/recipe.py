@@ -51,7 +51,12 @@ class Recipe(RecipeBase):
             del self.options.util
 
     def source(self):
-        get(self, url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="fbf9bee521545557357679173d39787a954bd8187e4b2fcaa09044c70201b434", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
+            sha256="fbf9bee521545557357679173d39787a954bd8187e4b2fcaa09044c70201b434",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

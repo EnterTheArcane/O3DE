@@ -29,7 +29,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def source(self):
-        get(self, url="https://github.com/xiph/ogg/archive/refs/tags/v1.3.5.tar.gz", sha256="f6f1b04cfa4e98b70ffe775d5e302d9c6b98541f05159af6de2d6617817ed7d6", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/xiph/ogg/archive/refs/tags/v1.3.5.tar.gz",
+            sha256="f6f1b04cfa4e98b70ffe775d5e302d9c6b98541f05159af6de2d6617817ed7d6",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
