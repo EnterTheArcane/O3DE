@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
@@ -9,7 +9,7 @@ from thirdparty.tools.microsoft import is_msvc, unix_path
 import os
 import re
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libcurl"
     version = "8.20.0"
     license = "curl"

@@ -1,11 +1,11 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import get, copy, load, save, apply_conandata_patches, collect_libs
 from thirdparty.tools.apple import fix_apple_shared_install_name
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "lua"
     version = "5.5.0"
     license = "MIT"

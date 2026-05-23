@@ -1,10 +1,10 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get
 from thirdparty.tools.microsoft import is_msvc
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "giflib"
     version = "5.2.2"
     license = "MIT"

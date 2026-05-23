@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
@@ -14,7 +14,7 @@ import glob
 import shutil
 import re
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "ffmpeg"
     version = "8.1.1"
     # https://github.com/FFmpeg/FFmpeg/blob/master/LICENSE.md

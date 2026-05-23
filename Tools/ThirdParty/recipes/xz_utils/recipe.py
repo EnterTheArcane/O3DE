@@ -1,7 +1,7 @@
 import os
 import textwrap
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rename, replace_in_file, rm, rmdir, save
@@ -9,7 +9,7 @@ from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, check_min_vs, is_msvc_static_runtime, MSBuild, MSBuildToolchain
 from thirdparty.tools.scm import Version
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "xz_utils"
     version = "5.8.3"
     license = "Unlicense", "LGPL-2.1-or-later",  "GPL-2.0-or-later", "GPL-3.0-or-later"

@@ -1,9 +1,9 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy, rm, rmdir
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "naive-tsearch"
     version = "0.1.1"
     license = "MIT"

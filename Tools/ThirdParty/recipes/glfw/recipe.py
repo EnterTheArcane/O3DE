@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir, save
@@ -8,7 +8,7 @@ from thirdparty.tools.scm import Version
 import os
 import textwrap
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "glfw"
     version = "3.4"
     license = "Zlib"

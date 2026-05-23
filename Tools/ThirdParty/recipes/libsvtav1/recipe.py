@@ -1,10 +1,10 @@
 import os
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libsvtav1"
     version = "2.2.1"
     license = "BSD-3-Clause"

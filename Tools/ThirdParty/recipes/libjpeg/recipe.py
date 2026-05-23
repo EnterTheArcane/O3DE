@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_conandata_patches, chdir, copy, get, load, replace_in_file, rm, rmdir, save
@@ -7,7 +7,7 @@ from thirdparty.tools.microsoft import MSBuild, MSBuildToolchain
 import os
 import re
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libjpeg"
     version = "9f"
     license = "IJG"

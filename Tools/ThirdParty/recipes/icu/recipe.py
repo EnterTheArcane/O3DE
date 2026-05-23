@@ -3,7 +3,7 @@ import hashlib
 import os
 import shutil
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, stdcpp_library, check_min_cppstd
 from thirdparty.tools.env import Environment
@@ -12,7 +12,7 @@ from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, unix_path
 from thirdparty.tools.scm import Version
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "icu"
     version = "78.2"
     license = "ICU"

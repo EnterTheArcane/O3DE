@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, save
 from thirdparty.tools.scm import Version
 import os
 import textwrap
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "bzip2"
     version = "1.0.8"
     license = "bzip2-1.0.6" # SPDX license identifier for version 1.0.6 or newer

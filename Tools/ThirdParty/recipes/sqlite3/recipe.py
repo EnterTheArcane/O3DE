@@ -1,10 +1,10 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import get, load, save
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "sqlite3"
     version = "3.53.1"
     license = "Unlicense"

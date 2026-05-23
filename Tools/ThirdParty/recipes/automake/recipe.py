@@ -1,12 +1,12 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rename, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.scm import Version
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "automake"
     version = "1.16.5"
     license = ("GPL-2.0-or-later", "GPL-3.0-or-later")

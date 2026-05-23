@@ -1,9 +1,9 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.cmake import CMakeToolchain, CMake
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "utfcpp"
     version = "4.0.9"
     license = "BSL-1.0"

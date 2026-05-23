@@ -4,7 +4,7 @@ import os
 import platform
 import textwrap
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, check_min_cppstd, default_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -14,7 +14,7 @@ from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import msvc_runtime_flag, is_msvc
 from thirdparty.tools.scm import Version
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     _submodules = ["qtsvg", "qtdeclarative", "qttools", "qttranslations", "qtdoc",
                    "qtwayland", "qtquickcontrols2", "qtquicktimeline", "qtquick3d", "qtshadertools", "qt5compat",
                    "qtactiveqt", "qtcharts", "qtdatavis3d", "qtlottie", "qtscxml", "qtvirtualkeyboard",

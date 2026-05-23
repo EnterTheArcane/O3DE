@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir, save
@@ -8,7 +8,7 @@ from thirdparty.tools.scm import Version
 import os
 import shutil
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "m4"
     version = "1.4.20"
     package_type = "application"

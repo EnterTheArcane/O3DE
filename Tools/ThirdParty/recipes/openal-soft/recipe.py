@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
@@ -7,7 +7,7 @@ from thirdparty.tools.scm import Version
 import os
 import textwrap
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "openal-soft"
     version = "1.23.1"
     license = "LGPL-2.0-or-later"
