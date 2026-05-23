@@ -34,19 +34,19 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("expat/[>=2.6.2 <3]")
-        self.requires("openexr/[>=3.3.2 <4]")
-        self.requires("imath/[>=3.1.9 <4]")
-        self.requires("pystring/1.1.4")
-        self.requires("yaml-cpp/0.8.0")
-        self.requires("minizip-ng/[>=4.0.3 <5]")
+        self.requires("expat")
+        self.requires("openexr")
+        self.requires("imath")
+        self.requires("pystring")
+        self.requires("yaml-cpp")
+        self.requires("minizip-ng")
 
         # for tools only
-        self.requires("lcms/[>=2.16 <3]")
+        self.requires("lcms")
         # TODO: add GLUT (needed for ociodisplay tool)
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.16]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v2.5.2/OpenColorIO-2.5.2.tar.gz", sha256="cb8b0ae38fa523be8f899a0b2d6b8ca8cbcda7bc4322c91d1ac2b6b2a0082474", destination=self.source_folder, strip_root=True)

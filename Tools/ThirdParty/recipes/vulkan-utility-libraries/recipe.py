@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
         self.requires(f"vulkan-headers/{self.version}", transitive_headers=True)
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.22.1]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="19a215e9469df0749d7c1b389fc667a3f7e160f0b6da71000fadc30140494563", destination=self.source_folder, strip_root=True)

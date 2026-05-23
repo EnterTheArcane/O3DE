@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.settings.os == "Linux":
-            self.requires("libalsa/1.2.10")
+            self.requires("libalsa")
 
     def source(self):
         get(self, url="https://github.com/kcat/openal-soft/releases/download/1.23.1/openal-soft-1.23.1.tar.bz2", sha256="796f4b89134c4e57270b7f0d755f0fa3435b90da437b745160a49bd41c845b21", destination=self.source_folder, strip_root=True)

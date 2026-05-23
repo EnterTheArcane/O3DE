@@ -37,9 +37,9 @@ class Recipe(RecipeBase):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", default=False, check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
         if self.settings_build.os == "Windows" and self.settings.get_safe("compiler.runtime"):
-            self.tool_requires("automake/1.16.5")
+            self.tool_requires("automake")
 
     def source(self):
         get(self, url="https://github.com/libffi/libffi/releases/download/v3.4.8/libffi-3.4.8.tar.gz", sha256="bc9842a18898bfacb0ed1252c4febcc7e78fa139fd27fdc7a3e30d9d9356119b", destination=self.source_folder, strip_root=True)

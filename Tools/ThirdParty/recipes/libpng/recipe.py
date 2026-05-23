@@ -77,7 +77,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
-        self.requires("zlib/[>=1.2.11 <2]")
+        self.requires("zlib")
 
     def source(self):
         get(self, url="https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz", sha256="28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775", destination=self.source_folder, strip_root=True)

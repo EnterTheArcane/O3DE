@@ -16,15 +16,15 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        self.requires("autoconf/2.71")
+        self.requires("autoconf")
         # automake requires perl-Thread-Queue package
 
     def build_requirements(self):
-        self.tool_requires("autoconf/2.71")
+        self.tool_requires("autoconf")
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
 
     def source(self):
         get(self, url="https://ftpmirror.gnu.org/gnu/automake/automake-1.16.5.tar.gz", sha256="07bd24ad08a64bc17250ce09ec56e921d6343903943e99ccf63bbf0705e34605", destination=self.source_folder, strip_root=True)

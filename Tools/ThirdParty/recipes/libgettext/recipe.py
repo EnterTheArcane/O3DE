@@ -52,15 +52,15 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
-        self.requires("libiconv/1.17")
+        self.requires("libiconv")
 
     def build_requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", default=False, check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
         if is_msvc(self) or self._is_clang_cl:
-            self.tool_requires("automake/1.16.5")
+            self.tool_requires("automake")
 
     def source(self):
         get(self, url="https://ftpmirror.gnu.org/gnu/gettext/gettext-0.26.tar.gz", sha256="39acf4b0371e9b110b60005562aace5b3631fed9b1bb9ecccfc7f56e58bb1d7f", destination=self.source_folder, strip_root=True)

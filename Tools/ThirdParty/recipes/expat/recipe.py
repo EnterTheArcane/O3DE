@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if Version(self.version) >= "2.7.4":
-            self.tool_requires("cmake/[>=3.17]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/libexpat/libexpat/releases/download/R_2_8_1/expat-2.8.1.tar.xz", sha256="10b195ee78160a908388180a8fe3603d4e9a12f4755fbf5f3816b23a9d750da0", destination=self.source_folder, strip_root=True)

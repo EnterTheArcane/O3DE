@@ -61,20 +61,20 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_pcre2:
-            self.requires("pcre2/10.42")
+            self.requires("pcre2")
         if is_msvc(self):
-            self.requires("getopt-for-visual-studio/20200201")
-            self.requires("dirent/1.24")
+            self.requires("getopt-for-visual-studio")
+            self.requires("dirent")
             if self.options.get_safe("with_extended_colors"):
-                self.requires("naive-tsearch/0.1.1")
+                self.requires("naive-tsearch")
 
     def build_requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
-            self.tool_requires("pkgconf/2.0.3")
+            self.tool_requires("pkgconf")
 
     def source(self):
         get(self, url="https://ftpmirror.gnu.org/gnu/ncurses/ncurses-6.5.tar.gz", sha256="136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6", destination=self.source_folder, strip_root=True)

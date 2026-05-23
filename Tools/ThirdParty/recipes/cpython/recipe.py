@@ -99,12 +99,12 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self) -> None:
-        self.requires("bzip2/1.0.8")
-        self.requires("zlib/1.3.2")
-        self.requires("xz_utils/5.8.3")
-        self.requires("sqlite3/3.53.1")
+        self.requires("bzip2")
+        self.requires("zlib")
+        self.requires("xz_utils")
+        self.requires("sqlite3")
         if self.options.with_ssl:
-            self.requires("openssl/[>=1.1 <4]")
+            self.requires("openssl")
 
     def source(self):
         get(

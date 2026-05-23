@@ -48,26 +48,26 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        self.requires("zlib/[>=1.2.11 <2]")
-        self.requires("libffi/[>=3.4.4 <4]")
-        self.requires("pcre2/10.42")
+        self.requires("zlib")
+        self.requires("libffi")
+        self.requires("pcre2")
         if self.options.get_safe("with_elf"):
-            self.requires("elfutils/0.190")
+            self.requires("elfutils")
         if self.options.get_safe("with_mount"):
-            self.requires("libmount/2.39.2")
+            self.requires("libmount")
         if self.options.get_safe("with_selinux"):
-            self.requires("libselinux/3.6")
+            self.requires("libselinux")
         if self.settings.os != "Linux":
             # for Linux, gettext is provided by libc
-            self.requires("libgettext/0.22", transitive_headers=True, transitive_libs=True)
+            self.requires("libgettext", transitive_headers=True, transitive_libs=True)
 
         if is_apple_os(self):
-            self.requires("libiconv/1.17")
+            self.requires("libiconv")
 
     def build_requirements(self):
-        self.tool_requires("meson/[>=1.2.3 <2]")
+        self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf/[>=2.2 <3]")
+            self.tool_requires("pkgconf")
 
     def source(self):
         get(self, url="https://download.gnome.org/sources/glib/2.85/glib-2.85.3.tar.xz", sha256="af229e1de191d66aebcdb03c7493c724fd4d0a6628b1ca4ea1f35739259b311d", destination=self.source_folder, strip_root=True)

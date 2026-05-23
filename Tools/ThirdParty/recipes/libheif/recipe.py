@@ -52,25 +52,25 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_libde265:
-            self.requires("libde265/[>=1.0.12 <2]")
+            self.requires("libde265")
         if self.options.with_x265:
-            self.requires("libx265/[>=3.4 <4]")
+            self.requires("libx265")
         if self.options.with_libaomav1:
-            self.requires("libaom-av1/[>=3.6.1 <4]")
+            self.requires("libaom-av1")
         if self.options.with_dav1d:
-            self.requires("dav1d/[>=1.4 <2]")
+            self.requires("dav1d")
         if self.options.get_safe("with_jpeg"):
-            self.requires("libjpeg/[>=9f]")
+            self.requires("libjpeg")
         if self.options.get_safe("with_openjpeg"):
-            self.requires("openjpeg/[>=2.5.2 <3]")
+            self.requires("openjpeg")
         if self.options.get_safe("with_openjph"):
-            self.requires("openjph/[>=0.16.0 <1]", transitive_headers=False)
+            self.requires("openjph", transitive_headers=False)
         if self.options.get_safe("with_openh264"):
-            self.requires("openh264/[>=2.4.1 <3]")
+            self.requires("openh264")
 
     def build_requirements(self):
         if Version(self.version) >= "1.18.0":
-            self.tool_requires("cmake/[>=3.16]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/strukturag/libheif/releases/download/v1.20.1/libheif-1.20.1.tar.gz", sha256="55cc76b77c533151fc78ba58ef5ad18562e84da403ed749c3ae017abaf1e2090", destination=self.source_folder, strip_root=True)

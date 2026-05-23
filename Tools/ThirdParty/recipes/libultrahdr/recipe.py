@@ -31,16 +31,16 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_jpeg == "libjpeg":
-            self.requires("libjpeg/[>=9e]")
+            self.requires("libjpeg")
         elif self.options.with_jpeg == "libjpeg-turbo":
-            self.requires("libjpeg-turbo/[>=3.0.0 <4]")
+            self.requires("libjpeg-turbo")
         elif self.options.with_jpeg == "mozjpeg":
-            self.requires("mozjpeg/[>=4.1.3 <5]")
+            self.requires("mozjpeg")
 
     def build_requirements(self):
         # The project requires cmake 3.15 but the use of CMAKE_REQUIRE_FIND_PACKAGE_JPEG below
         # requires 3.22.
-        self.tool_requires("cmake/[>=3.22 <5]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/google/libultrahdr/archive/refs/tags/v1.4.0.tar.gz", sha256="e7e1252e2c44d8ed6b99ee0f67a3caf2d8a61c43834b13b1c3cd485574c03ab9", destination=self.source_folder, strip_root=True)

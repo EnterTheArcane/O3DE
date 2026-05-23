@@ -42,16 +42,16 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("brotli/1.1.0")
-        self.requires("highway/1.1.0")
-        self.requires("lcms/[>=2.16 <3]")
+        self.requires("brotli")
+        self.requires("highway")
+        self.requires("lcms")
         if self.options.with_tcmalloc:
-            self.requires("gperftools/[>=2.15 <3]")
+            self.requires("gperftools")
 
     def build_requirements(self):
         # Require newer CMake, which allows INCLUDE_DIRECTORIES to be set on INTERFACE targets
         # Also, v0.9+ require CMake 3.16
-        self.tool_requires("cmake/[>=3.19]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/libjxl/libjxl/archive/v0.11.2.tar.gz", sha256="ab38928f7f6248e2a98cc184956021acb927b16a0dee71b4d260dc040a4320ea", destination=self.source_folder, strip_root=True)
