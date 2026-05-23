@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import shutil
 import sys
+import yaml
 from collections import OrderedDict
 from pathlib import Path
 
@@ -157,6 +159,9 @@ def _instantiate(
     recipe.folders.set_base_package(pkg_dir)
     recipe.folders.set_base_generators(gen_dir)
     recipe.folders.set_base_recipe_metadata(str(build_root / name / version / ".metadata"))
+    # export_sources_folder = parent of source_dir; recipes place auxiliary files here
+    # (CMakeLists.txt, patches, etc.) via export_sources() in real Conan
+    recipe.folders.set_base_export_sources(str(build_root / name / version))
 
     recipe.settings = detect_settings(build_type)
     recipe.settings_build = recipe.settings
@@ -212,15 +217,36 @@ def _build_dep_graph(
     build_type: str,
     jobs: int | None = None,
     tool_names: list[str] | None = None,
+    _iface_cache: dict | None = None,
 ) -> ConanFileDependencies:
     """Create a ConanFileDependencies from a list of already-built packages.
 
     dep_names  — host (non-build) deps (build=False)
     tool_names — tool_requires (build=True); optional
+
+    _iface_cache is a shared dict[dep_name → (Requirement, ConanFileInterface)] passed through
+    recursive calls so that the *same* ConanFileInterface object is reused whenever the same
+    package appears at multiple levels of the dep tree.  This is required for
+    get_transitive_requires() (used by CMakeDeps) to correctly resolve header-transitive deps:
+    it compares ConanFileInterface objects by identity, so the object for e.g. fast_float must
+    be the same instance whether it appears in c4core's dep graph or in rapidyaml's.
     """
     deps_dict: OrderedDict = OrderedDict()
 
-    def _add_dep(dep_name: str, is_build: bool) -> None:
+    if _iface_cache is None:
+        _iface_cache = {}
+
+    def _add_dep(dep_name: str, is_build: bool, direct: bool = True) -> None:
+        # If we already created a ConanFileInterface for this dep in this tree, reuse it.
+        # This ensures object identity holds across all levels (needed by transitive_requires).
+        if dep_name in _iface_cache:
+            cached_req, cached_iface = _iface_cache[dep_name]
+            # Add to the current level's deps_dict with the appropriate directness flag.
+            new_req = Requirement(cached_req.ref, build=is_build, direct=direct)
+            if not any(str(r.ref.name) == dep_name for r in deps_dict.keys()):
+                deps_dict[new_req] = cached_iface
+            return
+
         recipe_path = recipes_root / dep_name / "recipe.py"
         if not recipe_path.exists():
             print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
@@ -254,6 +280,17 @@ def _build_dep_graph(
                 except Exception:
                     pass
 
+        # Register in cache BEFORE recursing to handle diamond/cycle deps.
+        ref = RecipeReference(dep_name, dep_version)
+        if is_build:
+            req = Requirement(ref, headers=False, libs=False, build=True, run=True,
+                              visible=False, direct=direct)
+        else:
+            req = Requirement(ref, build=False, direct=direct)
+        iface = ConanFileInterface(dep, None)
+        _iface_cache[dep_name] = (req, iface)
+        deps_dict[req] = iface
+
         # Populate dep's own transitive dep graph so generators can resolve
         # component dependencies (e.g. spirv-tools-core → spirv-headers).
         try:
@@ -274,9 +311,21 @@ def _build_dep_graph(
             dep._conan_dependencies = _build_dep_graph(
                 recipes_root, build_root, _sub_host, build_type,
                 jobs=jobs, tool_names=_sub_tools,
+                _iface_cache=_iface_cache,
             )
         except Exception:
             dep._conan_dependencies = ConanFileDependencies(OrderedDict())
+
+        # Also propagate all transitive (non-direct) deps of this dep up to the current
+        # deps_dict.  This ensures that when CMakeDeps calls get_transitive_requires() to
+        # resolve header-transitive dependencies (transitive_headers=True), the transitive
+        # packages are present in the consumer's dep graph with the same interface objects.
+        for trans_req, trans_iface in dep._conan_dependencies._data.items():
+            trans_name = str(trans_req.ref.name)
+            if not any(str(r.ref.name) == trans_name for r in deps_dict.keys()):
+                non_direct_req = Requirement(trans_req.ref, build=trans_req.build, direct=False)
+                deps_dict[non_direct_req] = trans_iface
+
         if hasattr(dep, "package_info"):
             try:
                 dep.package_info()
@@ -286,20 +335,10 @@ def _build_dep_graph(
         # Make all relative cpp_info paths absolute so generators don't assert.
         dep.cpp_info.set_relative_base_folder(pkg_dir)
 
-        ref = RecipeReference(dep_name, dep_version)
-        if is_build:
-            # tool_require: build=True, run=True, headers=False, libs=False, visible=False
-            req = Requirement(ref, headers=False, libs=False, build=True, run=True,
-                              visible=False, direct=True)
-        else:
-            req = Requirement(ref, build=False, direct=True)
-        iface = ConanFileInterface(dep, None)
-        deps_dict[req] = iface
-
     for dep_name in dep_names:
-        _add_dep(dep_name, is_build=False)
+        _add_dep(dep_name, is_build=False, direct=True)
     for dep_name in (tool_names or []):
-        _add_dep(dep_name, is_build=True)
+        _add_dep(dep_name, is_build=True, direct=True)
 
     return ConanFileDependencies(deps_dict)
 
@@ -309,6 +348,34 @@ def _build_dep_graph(
 def _is_built(build_root: Path, name: str, version: str) -> bool:
     pkg = build_root / name / version / "package"
     return pkg.exists() and any(pkg.iterdir())
+
+
+def _load_conandata(recipe) -> None:
+    """If the recipe directory contains a conandata.yml, load it and expose it via
+    recipe.conan_data so that recipes can access custom version-keyed data beyond
+    sources/patches (e.g. zlib-ng's ``zlib_compat`` field)."""
+    conandata_path = Path(recipe.recipe_folder) / "conandata.yml"
+    if conandata_path.is_file():
+        with open(conandata_path, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+        recipe.conan_data = data
+
+
+_RECIPE_SKIP_NAMES = {"recipe.py", "__pycache__"}
+
+def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
+    """Copy auxiliary files (CMakeLists.txt, patches/, etc.) from the recipe directory
+    to export_dir (the build-time export_sources_folder).  This mirrors what Conan's
+    export_sources() / cache layer does before calling source() and build()."""
+    export_dir.mkdir(parents=True, exist_ok=True)
+    for item in recipe_dir.iterdir():
+        if item.name in _RECIPE_SKIP_NAMES or item.name.startswith("."):
+            continue
+        dst = export_dir / item.name
+        if item.is_file():
+            shutil.copy2(item, dst)
+        elif item.is_dir():
+            shutil.copytree(item, dst, dirs_exist_ok=True)
 
 
 def _build_recipe(
@@ -363,9 +430,42 @@ def _build_recipe(
     recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
     recipe._conan_dependencies = dep_graph
 
+    # Propagate conf_info from tool dependencies into recipe.conf so that, e.g.,
+    # msys2's conf_info (bash:subsystem, bash:path) is visible when generate()/build() run.
+    for _req, _dep_iface in dep_graph._data.items():
+        if _req.build:
+            _dep_conf_info = _dep_iface.conf_info
+            if _dep_conf_info:
+                recipe.conf.compose_conf(_dep_conf_info)
+
+    # Wire up build_requires/tool_requires wrappers then call build_requirements() so
+    # recipes can set win_bash=True and add further tool_requires.
+    from thirdparty._conan.internal.model.requires import (
+        BuildRequirements, TestRequirements, ToolRequirements,
+    )
+    recipe.build_requires = BuildRequirements(recipe.requires)
+    recipe.test_requires = TestRequirements(recipe.requires)
+    recipe.tool_requires = ToolRequirements(recipe.requires)
+    if hasattr(recipe, "build_requirements"):
+        try:
+            recipe.build_requirements()
+        except Exception:
+            pass
+
+    # Load conandata.yml from the recipe folder if present.  Some recipes access
+    # self.conan_data for custom version data (e.g. zlib-ng's "zlib_compat" field).
+    _load_conandata(recipe)
+
     Path(recipe.source_folder).mkdir(parents=True, exist_ok=True)
     Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
     Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
+
+    # Mirror what Conan's export_sources phase does: copy auxiliary recipe files
+    # (CMakeLists.txt, patches/, etc.) to export_sources_folder so that:
+    #   - cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+    #     can find a CMakeLists.txt one level above source_folder
+    #   - apply_patches() / patch tools can locate patch files
+    _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.export_sources_folder))
 
     if hasattr(recipe, "config_options"):
         try:
@@ -377,6 +477,15 @@ def _build_recipe(
             recipe.configure()
         except Exception:
             pass
+    if hasattr(recipe, "validate"):
+        try:
+            recipe.validate()
+        except Exception as _val_exc:
+            from thirdparty._conan.errors import ConanInvalidConfiguration
+            if isinstance(_val_exc, ConanInvalidConfiguration):
+                print(f"[thirdparty] {name}/{version} not supported on this platform: {_val_exc} — skipping")
+                return transitive
+            raise
 
     if not generate_only and hasattr(recipe, "source"):
         recipe.source()
@@ -397,9 +506,19 @@ def _build_recipe(
     generate_aggregated_env(recipe)
     if not generate_only:
         if hasattr(recipe, "build"):
-            recipe.build()
+            _orig_cwd_build = os.getcwd()
+            try:
+                os.chdir(recipe.build_folder)
+                recipe.build()
+            finally:
+                os.chdir(_orig_cwd_build)
         if hasattr(recipe, "package"):
-            recipe.package()
+            _orig_cwd_pkg = os.getcwd()
+            try:
+                os.chdir(recipe.build_folder)
+                recipe.package()
+            finally:
+                os.chdir(_orig_cwd_pkg)
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive

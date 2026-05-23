@@ -1,14 +1,13 @@
 from thirdparty import RecipeBase as ConanFile
-from thirdparty.tools.build import cross_building, stdcpp_library
+from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir, replace_in_file
 from thirdparty.tools.scm import Version
 import os
-import textwrap
 
 class Recipe(ConanFile):
     name = "openexr"
-    version = "2.5.9"
+    version = "3.4.11"
     license = "BSD-3-Clause"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
@@ -31,49 +30,35 @@ class Recipe(ConanFile):
 
     def requirements(self):
         self.requires("zlib/[>=1.2.11 <2]")
+        # Note: OpenEXR and Imath are versioned independently.
+        self.requires("imath/[>=3.1.9 <4]", transitive_headers=True)
+        self.requires("libdeflate/[>=1.19 <2]")
+
+        if Version(self.version) >= "3.4":
+            self.requires("openjph/[>=0.23.1 <1]")
 
     def source(self):
-        get(self, url="https://github.com/AcademySoftwareFoundation/openexr/archive/refs/tags/v2.5.9.tar.gz", sha256="05bb9c2da3ff3508eee51c30f59c7f2c59bf068f3b636d12d5991e8bbaf13e01", destination=self.source_folder, strip_root=True)
+        get(self, url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.11/openexr-3.4.11.tar.gz", sha256="25f6a008e4060441a9e9d805bceda58fb811e0adef64b39807dfd73b94e12c91", destination=self.source_folder, strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["OPENEXR_BUILD_BOTH_STATIC_SHARED"] = False
-        tc.variables["ILMBASE_BUILD_BOTH_STATIC_SHARED"] = False
-        tc.variables["PYILMBASE_ENABLE"] = False
-        if Version(self.version) < "2.5.0":
-            tc.variables["OPENEXR_VIEWERS_ENABLE"] = False
-        else:
-            tc.variables["INSTALL_OPENEXR_EXAMPLES"] = False
-            tc.variables["INSTALL_OPENEXR_DOCS"] = False
-        tc.variables["OPENEXR_BUILD_UTILS"] = False
+        tc.variables["OPENEXR_INSTALL_EXAMPLES"] = False
         tc.variables["BUILD_TESTING"] = False
-        tc.variables["CMAKE_SKIP_INSTALL_RPATH"] = True
+        tc.variables["BUILD_WEBSITE"] = False
+        tc.variables["DOCS"] = False
         tc.generate()
+
         cd = CMakeDeps(self)
+        cd.set_property("openjph", "cmake_target_name", "openjph")
         cd.generate()
 
     def _patch_sources(self):
         apply_conandata_patches(self)
 
-        pkg_version = Version(self.version)
-        if pkg_version < "2.5.2" and self.settings.os == "Windows":
-            # This fixes symlink creation on Windows.
-            # OpenEXR's build system no longer creates symlinks on windows, starting with commit
-            # 7f9e1b410de92de244329b614cf551b30bc30421 (included in 2.5.2).
-            for lib in ("OpenEXR", "IlmBase"):
-                replace_in_file(self, os.path.join(self.source_folder,  lib, "config", "LibraryDefine.cmake"),
-                                      "${CMAKE_COMMAND} -E chdir ${CMAKE_INSTALL_FULL_LIBDIR}",
-                                      "${CMAKE_COMMAND} -E chdir ${CMAKE_INSTALL_FULL_BINDIR}")
-
-        # Add  "_d" suffix to lib file names.
-        if pkg_version < "2.5.7" and self.settings.build_type == "Debug":
-            for lib in ("OpenEXR", "IlmBase"):
-                replace_in_file(self, os.path.join(self.source_folder,  lib, "config", "LibraryDefine.cmake"),
-                                      "set(verlibname ${CMAKE_SHARED_LIBRARY_PREFIX}${libname}${@LIB@_LIB_SUFFIX}${CMAKE_SHARED_LIBRARY_SUFFIX})".replace("@LIB@", lib.upper()),
-                                      "set(verlibname ${CMAKE_SHARED_LIBRARY_PREFIX}${libname}${@LIB@_LIB_SUFFIX}_d${CMAKE_SHARED_LIBRARY_SUFFIX})".replace("@LIB@", lib.upper()))
-                replace_in_file(self, os.path.join(self.source_folder,  lib, "config", "LibraryDefine.cmake"),
-                                      "set(baselibname ${CMAKE_SHARED_LIBRARY_PREFIX}${libname}${CMAKE_SHARED_LIBRARY_SUFFIX})",
-                                      "set(baselibname ${CMAKE_SHARED_LIBRARY_PREFIX}${libname}_d${CMAKE_SHARED_LIBRARY_SUFFIX})")
+        # Even with BUILD_WEBSITE = False, Website examples target is compiled in 3.2
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
+                        "add_subdirectory(website/src)",
+                        "#  add_subdirectory(website/src)")
 
     def build(self):
         self._patch_sources()
@@ -89,41 +74,18 @@ class Recipe(ConanFile):
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
 
-        # TODO: to remove in conan v2 once cmake_find_package* generators removed
-        self._create_cmake_module_alias_targets(
-            os.path.join(self.package_folder, self._module_file_rel_path),
-            {
-                "IlmBase::IlmBaseConfig": "OpenEXR::IlmBaseConfig",
-                "IlmBase::Half": "OpenEXR::Half",
-                "IlmBase::Iex": "OpenEXR::Iex",
-                "IlmBase::IexMath": "OpenEXR::IexMath",
-                "IlmBase::IMath": "OpenEXR::IMath",
-                "IlmBase::IlmThread": "OpenEXR::IlmThread",
-            }
-        )
+    @staticmethod
+    def _conan_comp(name):
+        return f"openexr_{name.lower()}"
 
-    def _create_cmake_module_alias_targets(self, module_file, targets):
-        content = ""
-        for alias, aliased in targets.items():
-            content += textwrap.dedent(f"""\
-                if(TARGET {aliased} AND NOT TARGET {alias})
-                    add_library({alias} INTERFACE IMPORTED)
-                    set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
-                endif()
-            """)
-        save(self, module_file, content)
-
-    @property
-    def _module_file_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-targets.cmake")
+    def _add_component(self, name):
+        component = self.cpp_info.components[self._conan_comp(name)]
+        component.set_property("cmake_target_name", f"OpenEXR::{name}")
+        return component
 
     def package_info(self):
-        # FIXME: we should generate 2 CMake config files: OpenEXRConfig.cmake and IlmBaseConfig.cmake
-        #        waiting an implementation of https://github.com/conan-io/conan/issues/9000
         self.cpp_info.set_property("cmake_file_name", "OpenEXR")
-
-        # Avoid conflict in PkgConfigDeps with OpenEXR.pc file coming from openexr_ilmimf component
-        self.cpp_info.set_property("pkg_config_name", "openexr_conan_full_package")
+        self.cpp_info.set_property("pkg_config_name", "OpenEXR")
 
         lib_suffix = ""
         if not self.options.shared or self.settings.os == "Windows":
@@ -132,111 +94,60 @@ class Recipe(ConanFile):
         if self.settings.build_type == "Debug":
             lib_suffix += "_d"
 
-        include_dir = os.path.join("include", "OpenEXR")
+        # OpenEXR::OpenEXRConfig
+        OpenEXRConfig = self._add_component("OpenEXRConfig")
+        OpenEXRConfig.includedirs.append(os.path.join("include", "OpenEXR"))
 
-        # IlmImfConfig
-        self.cpp_info.components["openexr_ilmimfconfig"].set_property("cmake_target_name", "OpenEXR::IlmImfConfig")
-        self.cpp_info.components["openexr_ilmimfconfig"].includedirs.append(include_dir)
+        # OpenEXR::IexConfig
+        IexConfig = self._add_component("IexConfig")
+        IexConfig.includedirs = OpenEXRConfig.includedirs
 
-        # IlmImf
-        self.cpp_info.components["openexr_ilmimf"].set_property("cmake_target_name", "OpenEXR::IlmImf")
-        self.cpp_info.components["openexr_ilmimf"].set_property("pkg_config_name", "OpenEXR")
-        self.cpp_info.components["openexr_ilmimf"].includedirs.append(include_dir)
-        self.cpp_info.components["openexr_ilmimf"].libs = [f"IlmImf{lib_suffix}"]
-        self.cpp_info.components["openexr_ilmimf"].requires = [
-            "openexr_ilmimfconfig", "ilmbase_iex", "ilmbase_half",
-            "ilmbase_imath", "ilmbase_ilmthread", "zlib::zlib",
-        ]
+        # OpenEXR::IlmThreadConfig
+        IlmThreadConfig = self._add_component("IlmThreadConfig")
+        IlmThreadConfig.includedirs = OpenEXRConfig.includedirs
 
-        # IlmImfUtil
-        self.cpp_info.components["openexr_ilmimfutil"].set_property("cmake_target_name", "OpenEXR::IlmImfUtil")
-        self.cpp_info.components["openexr_ilmimfutil"].includedirs.append(include_dir)
-        self.cpp_info.components["openexr_ilmimfutil"].libs = [f"IlmImfUtil{lib_suffix}"]
-        self.cpp_info.components["openexr_ilmimfutil"].requires = ["openexr_ilmimfconfig", "openexr_ilmimf"]
-
-        # IlmBaseConfig
-        self.cpp_info.components["ilmbase_ilmbaseconfig"].set_property("cmake_target_name", "IlmBase::IlmBaseConfig")
-        self.cpp_info.components["ilmbase_ilmbaseconfig"].includedirs.append(include_dir)
-
-        # Half
-        self.cpp_info.components["ilmbase_half"].set_property("cmake_target_name", "IlmBase::Half")
-        self.cpp_info.components["ilmbase_half"].includedirs.append(include_dir)
-        self.cpp_info.components["ilmbase_half"].libs = [f"Half{lib_suffix}"]
-        self.cpp_info.components["ilmbase_half"].requires = ["ilmbase_ilmbaseconfig"]
-
-        # Iex
-        self.cpp_info.components["ilmbase_iex"].set_property("cmake_target_name", "IlmBase::Iex")
-        self.cpp_info.components["ilmbase_iex"].includedirs.append(include_dir)
-        self.cpp_info.components["ilmbase_iex"].libs = [f"Iex{lib_suffix}"]
-        self.cpp_info.components["ilmbase_iex"].requires = ["ilmbase_ilmbaseconfig"]
-
-        # IexMath
-        self.cpp_info.components["ilmbase_iexmath"].set_property("cmake_target_name", "IlmBase::IexMath")
-        self.cpp_info.components["ilmbase_iexmath"].includedirs.append(include_dir)
-        self.cpp_info.components["ilmbase_iexmath"].libs = [f"IexMath{lib_suffix}"]
-        self.cpp_info.components["ilmbase_iexmath"].requires = ["ilmbase_ilmbaseconfig", "ilmbase_iex"]
-
-        # IMath
-        self.cpp_info.components["ilmbase_imath"].set_property("cmake_target_name", "IlmBase::IMath")
-        self.cpp_info.components["ilmbase_imath"].includedirs.append(include_dir)
-        self.cpp_info.components["ilmbase_imath"].libs = [f"Imath{lib_suffix}"]
-        self.cpp_info.components["ilmbase_imath"].requires = ["ilmbase_ilmbaseconfig", "ilmbase_half", "ilmbase_iexmath"]
-
-        # IlmThread
-        self.cpp_info.components["ilmbase_ilmthread"].set_property("cmake_target_name", "IlmBase::IlmThread")
-        self.cpp_info.components["ilmbase_ilmthread"].includedirs.append(include_dir)
-        self.cpp_info.components["ilmbase_ilmthread"].libs = [f"IlmThread{lib_suffix}"]
-        self.cpp_info.components["ilmbase_ilmthread"].requires = ["ilmbase_ilmbaseconfig", "ilmbase_iex"]
+        # OpenEXR::Iex
+        Iex = self._add_component("Iex")
+        Iex.libs = [f"Iex{lib_suffix}"]
+        Iex.requires = [self._conan_comp("IexConfig")]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["ilmbase_ilmthread"].system_libs.append("pthread")
+            Iex.system_libs = ["m"]
 
-        # Convenient component to model official IlmBase.pc
-        self.cpp_info.components["ilmbase_conan_pkgconfig"].set_property("pkg_config_name", "IlmBase")
-        self.cpp_info.components["ilmbase_conan_pkgconfig"].requires = [
-            "ilmbase_ilmbaseconfig", "ilmbase_half", "ilmbase_iex",
-            "ilmbase_iexmath", "ilmbase_imath", "ilmbase_ilmthread"
+        # OpenEXR::IlmThread
+        IlmThread = self._add_component("IlmThread")
+        IlmThread.libs = [f"IlmThread{lib_suffix}"]
+        IlmThread.requires = [
+            self._conan_comp("IlmThreadConfig"), self._conan_comp("Iex"),
         ]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            IlmThread.system_libs = ["pthread", "m"]
 
-        if self.options.shared and self.settings.os == "Windows":
-            self.cpp_info.components["openexr_ilmimfconfig"].defines.append("OPENEXR_DLL")
-            self.cpp_info.components["ilmbase_ilmbaseconfig"].defines.append("OPENEXR_DLL")
+        # OpenEXR::OpenEXRCore
+        OpenEXRCore = self._add_component("OpenEXRCore")
+        OpenEXRCore.libs = [f"OpenEXRCore{lib_suffix}"]
+        OpenEXRCore.requires = [self._conan_comp("OpenEXRConfig"), "zlib::zlib"]
+        OpenEXRCore.requires.append("libdeflate::libdeflate")
+        if Version(self.version) >= "3.4":
+            OpenEXRCore.requires.append("openjph::openjph")
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            OpenEXRCore.system_libs = ["m"]
 
-        if not self.options.shared:
-            libcxx = stdcpp_library(self)
-            if libcxx:
-                self.cpp_info.components["openexr_ilmimfconfig"].system_libs.append(libcxx)
-                self.cpp_info.components["ilmbase_ilmbaseconfig"].system_libs.append(libcxx)
+        # OpenEXR::OpenEXR
+        OpenEXR = self._add_component("OpenEXR")
+        OpenEXR.libs = [f"OpenEXR{lib_suffix}"]
+        OpenEXR.requires = [
+            self._conan_comp("OpenEXRCore"), self._conan_comp("IlmThread"),
+            self._conan_comp("Iex"), "imath::imath",
+        ]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            OpenEXR.system_libs = ["m"]
 
-        # TODO: to remove in conan v2 once cmake_find_package* generators removed
-        self.cpp_info.names["cmake_find_package"] = "OpenEXR"
-        self.cpp_info.names["cmake_find_package_multi"] = "OpenEXR"
-        self.cpp_info.components["openexr_ilmimfconfig"].names["cmake_find_package"] = "IlmImfConfig"
-        self.cpp_info.components["openexr_ilmimfconfig"].names["cmake_find_package_multi"] = "IlmImfConfig"
-        self.cpp_info.components["openexr_ilmimf"].names["cmake_find_package"] = "IlmImf"
-        self.cpp_info.components["openexr_ilmimf"].names["cmake_find_package_multi"] = "IlmImf"
-        self.cpp_info.components["openexr_ilmimfutil"].names["cmake_find_package"] = "IlmImfUtil"
-        self.cpp_info.components["openexr_ilmimfutil"].names["cmake_find_package_multi"] = "IlmImfUtil"
-        self.cpp_info.components["ilmbase_ilmbaseconfig"].names["cmake_find_package"] = "IlmBaseConfig"
-        self.cpp_info.components["ilmbase_ilmbaseconfig"].names["cmake_find_package_multi"] = "IlmBaseConfig"
-        self.cpp_info.components["ilmbase_ilmbaseconfig"].build_modules["cmake_find_package"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_ilmbaseconfig"].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_half"].names["cmake_find_package"] = "Half"
-        self.cpp_info.components["ilmbase_half"].names["cmake_find_package_multi"] = "Half"
-        self.cpp_info.components["ilmbase_half"].build_modules["cmake_find_package"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_half"].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_iex"].names["cmake_find_package"] = "Iex"
-        self.cpp_info.components["ilmbase_iex"].names["cmake_find_package_multi"] = "Iex"
-        self.cpp_info.components["ilmbase_iex"].build_modules["cmake_find_package"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_iex"].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_iexmath"].names["cmake_find_package"] = "IexMath"
-        self.cpp_info.components["ilmbase_iexmath"].names["cmake_find_package_multi"] = "IexMath"
-        self.cpp_info.components["ilmbase_iexmath"].build_modules["cmake_find_package"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_iexmath"].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_imath"].names["cmake_find_package"] = "IMath"
-        self.cpp_info.components["ilmbase_imath"].names["cmake_find_package_multi"] = "IMath"
-        self.cpp_info.components["ilmbase_imath"].build_modules["cmake_find_package"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_imath"].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_ilmthread"].names["cmake_find_package"] = "IlmThread"
-        self.cpp_info.components["ilmbase_ilmthread"].names["cmake_find_package_multi"] = "IlmThread"
-        self.cpp_info.components["ilmbase_ilmthread"].build_modules["cmake_find_package"] = [self._module_file_rel_path]
-        self.cpp_info.components["ilmbase_ilmthread"].build_modules["cmake_find_package_multi"] = [self._module_file_rel_path]
+        # OpenEXR::OpenEXRUtil
+        OpenEXRUtil = self._add_component("OpenEXRUtil")
+        OpenEXRUtil.libs = [f"OpenEXRUtil{lib_suffix}"]
+        OpenEXRUtil.requires = [self._conan_comp("OpenEXR")]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            OpenEXRUtil.system_libs = ["m"]
+
+        # Add tools directory to PATH
+        self.env_info.PATH.append(os.path.join(self.package_folder, "bin"))
