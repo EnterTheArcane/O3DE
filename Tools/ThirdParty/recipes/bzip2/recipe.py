@@ -8,7 +8,7 @@ import textwrap
 class Recipe(RecipeBase):
     name = "bzip2"
     version = "1.0.8"
-    license = "bzip2-1.0.6" # SPDX license identifier for version 1.0.6 or newer
+    license = "bzip2-1.0.6"
 
     options = {
         "shared": [True, False],
