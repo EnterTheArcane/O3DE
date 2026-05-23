@@ -3,6 +3,7 @@ from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.tools.scm import Version
+from thirdparty.tools.github import GithubRepository
 
 import os
 
@@ -41,6 +42,10 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "mity/md4c")
+        return Version(repo.latest_release.removeprefix("release-"))
 
     def source(self):
         get(

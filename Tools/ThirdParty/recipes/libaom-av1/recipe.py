@@ -3,6 +3,7 @@ from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
+from thirdparty.tools.googlesource import GooglesourceRepository
 import os
 
 class Recipe(RecipeBase):
@@ -39,6 +40,10 @@ class Recipe(RecipeBase):
             self.tool_requires("nasm")
         if self.settings.os == "Windows":
             self.tool_requires("strawberryperl")
+
+    def latest_version(self):
+        repo = GooglesourceRepository(self, "https://aomedia.googlesource.com/aom")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

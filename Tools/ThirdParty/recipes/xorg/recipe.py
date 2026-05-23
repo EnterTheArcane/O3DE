@@ -8,10 +8,9 @@ class Recipe(RecipeBase):
     license = "MIT"
 
     def package_info(self):
-        if Version(conan_version) >= 2:
-            self.cpp_info.bindirs = []
-            self.cpp_info.includedirs = []
-            self.cpp_info.libdirs = []
+        self.cpp_info.bindirs = []
+        self.cpp_info.includedirs = []
+        self.cpp_info.libdirs = []
 
         for name in ["x11", "x11-xcb", "fontenc", "ice", "sm", "xau", "xaw7",
                      "xcomposite", "xcursor", "xdamage", "xdmcp", "xext", "xfixes", "xi",

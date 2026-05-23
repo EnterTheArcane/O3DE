@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -19,6 +21,10 @@ class Recipe(RecipeBase):
     def configure(self):
         self.license = "MPL-2.0"  # MPL-2 only
         del self.options.MPL2_only
+
+    def latest_version(self):
+        repo = GithubRepository(self, "eigen-mirror/eigen")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

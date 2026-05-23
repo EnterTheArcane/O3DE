@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd, valid_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -71,6 +73,10 @@ class Recipe(RecipeBase):
             self.requires("glfw")
         if self.options.get_safe("with_metal"):
             self.requires("metal-cpp")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "PixarAnimationStudios/OpenSubdiv")
+        return Version(repo.latest_release.removeprefix("v").replace("_", "."))
 
     def source(self):
         get(

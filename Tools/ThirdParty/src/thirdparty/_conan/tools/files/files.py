@@ -92,9 +92,24 @@ def rm(conanfile, pattern, folder, recursive=False, excludes=None):
             break
 
 
-def get(conanfile, url, md5=None, sha1=None, sha256=None, destination=".", filename="",
-        keep_permissions=False, pattern=None, verify=True, retry=None, retry_wait=None,
-        auth=None, headers=None, strip_root=False, extract_filter=None, excludes=None):
+def get(
+        conanfile,
+        url,
+        md5=None,
+        sha1=None,
+        sha256=None,
+        destination=".",
+        filename="",
+        keep_permissions=False,
+        pattern=None,
+        verify=True,
+        retry=None,
+        retry_wait=None,
+        auth=None,
+        headers=None,
+        strip_root=False,
+        extract_filter=None,
+        excludes=None):
     """
     High level download and decompressing of a tgz, zip or other compressed format file.
     Just a high level wrapper for download, unzip, and remove the temporary zip file once unzipped.
@@ -124,20 +139,42 @@ def get(conanfile, url, md5=None, sha1=None, sha256=None, destination=".", filen
     if not filename:  # deduce filename from the URL
         url_base = url[0] if isinstance(url, (list, tuple)) else url
         if "?" in url_base or "=" in url_base:
-            raise ConanException("Cannot deduce file name from the url: '{}'. Use 'filename' "
-                                 "parameter.".format(url_base))
+            raise ConanException(f"Cannot deduce file name from the url: '{url_base}'. Use 'filename' parameter.")
         filename = os.path.basename(url_base)
 
-    download(conanfile, url, filename, verify=verify,
-             retry=retry, retry_wait=retry_wait, auth=auth, headers=headers,
-             md5=md5, sha1=sha1, sha256=sha256)
-    unzip(conanfile, filename, destination=destination, keep_permissions=keep_permissions,
-          pattern=pattern, strip_root=strip_root, extract_filter=extract_filter,
-          excludes=excludes)
+    download(
+        conanfile,
+        url,
+        filename,
+        verify=verify,
+        retry=retry,
+        retry_wait=retry_wait,
+        auth=auth,
+        headers=headers,
+        md5=md5,
+        sha1=sha1,
+        sha256=sha256)
+
+    unzip(
+        conanfile,
+        filename,
+        destination=destination,
+        keep_permissions=keep_permissions,
+        pattern=pattern,
+        strip_root=strip_root,
+        extract_filter=extract_filter,
+        excludes=excludes)
+
     os.unlink(filename)
 
 
-def ftp_download(conanfile, host, filename, login='', password='', secure=False):
+def ftp_download(
+        conanfile,
+        host,
+        filename,
+        login='',
+        password='',
+        secure=False):
     """
     Ftp download of a file. Retrieves a file from an FTP server.
 

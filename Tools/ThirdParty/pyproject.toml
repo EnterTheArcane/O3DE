@@ -12,6 +12,7 @@ dependencies = [
     "packaging>=24.0",
     "patch-ng>=1.17.4",
     "PyGithub>=2.0",
+    "python-gitlab>=4.0",
     "pygments>=2.0",
     "python-dateutil>=2.8",
     "PyYAML>=6.0",

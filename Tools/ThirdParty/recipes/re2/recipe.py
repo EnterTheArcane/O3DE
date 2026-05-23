@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -29,6 +31,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "google/re2")
+        return Version(repo.latest_release.replace("-", ""))
 
     def source(self):
         get(

@@ -8,6 +8,8 @@ from thirdparty.tools.env import Environment, VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, rename, replace_in_file, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "libvpx"
@@ -53,6 +55,10 @@ class Recipe(RecipeBase):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "webmproject/libvpx")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(
