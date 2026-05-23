@@ -4,8 +4,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

@@ -1,13 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.build import cross_building, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rename, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 
 
 class Recipe(RecipeBase):

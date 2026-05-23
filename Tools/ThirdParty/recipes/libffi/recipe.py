@@ -6,10 +6,10 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, mkdir, rm, rmdir
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, unix_path
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

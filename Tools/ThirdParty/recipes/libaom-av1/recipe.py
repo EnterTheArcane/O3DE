@@ -4,8 +4,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
-from thirdparty.tools.scm.google import GoogleSourceRepository
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.google import GoogleSourceRepository
 
 
 class Recipe(RecipeBase):

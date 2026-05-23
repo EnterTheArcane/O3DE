@@ -5,10 +5,10 @@ from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import apply_patches, chdir, collect_libs, copy, get, replace_in_file, rmdir
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag, NMakeToolchain, NMakeDeps
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
