@@ -55,6 +55,8 @@ class Recipe(ConanFile):
             f"--enable-debug={yes_no(self.settings.build_type == 'Debug')}",
             "--enable-builddir=no",
             "--enable-docs=no",
+            "--enable-shared" if self.options.shared else "--disable-shared",
+            "--disable-static" if self.options.shared else "--enable-static",
         ])
 
         if self.settings_build.compiler == "apple-clang":
@@ -123,6 +125,20 @@ class Recipe(ConanFile):
         mkdir(self, os.path.join(self.package_folder, "bin"))
         for dll in glob.glob(os.path.join(self.package_folder, "lib", "*.dll")):
             shutil.move(dll, os.path.join(self.package_folder, "bin"))
+        if is_msvc(self) and self.options.shared:
+            for lib_path in glob.glob(os.path.join(self.package_folder, "lib", "*.dll.lib")):
+                libname = os.path.basename(lib_path)[:-len(".dll.lib")]
+                dst = os.path.join(self.package_folder, "lib", f"{libname}.lib")
+                if os.path.isfile(dst):
+                    os.remove(dst)
+                shutil.move(lib_path, dst)
+        elif is_msvc(self) and not self.options.shared:
+            for a_path in glob.glob(os.path.join(self.package_folder, "lib", "*.a")):
+                libname = os.path.basename(a_path)[:-2]  # strip .a
+                dst = os.path.join(self.package_folder, "lib", f"{libname}.lib")
+                if os.path.isfile(dst):
+                    os.remove(dst)
+                shutil.move(a_path, dst)
         copy(self, "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
         rm(self, "*.la", os.path.join(self.package_folder, "lib"), recursive=True)
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))

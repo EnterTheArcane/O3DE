@@ -27,7 +27,7 @@ class Recipe(ConanFile):
         "ftp": True,
         "http": True,
         "html": True,
-        "iconv": True,
+        "iconv": False,
         "icu": False,
         "iso8859x": True,
         "legacy": True,

@@ -79,6 +79,12 @@ class CMakeToolchain:
             message(FATAL_ERROR "The 'CMakeToolchain' generator only works with CMake >= 3.15")
         endif()
 
+        # CMake 4.x removed backward compatibility for cmake_minimum_required < 3.5.
+        # Set a floor so that third-party CMakeLists.txt files with old minimum versions still work.
+        if(NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
+            set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+        endif()
+
         {% for conan_block in conan_blocks %}
         {{ conan_block }}
         {% endfor %}

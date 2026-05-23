@@ -137,6 +137,8 @@ class Recipe(ConanFile):
         if self.settings.os == "Windows":
             if self.options.shared:
                 self.cpp_info.defines.append("X265_API_IMPORTS")
+            if not self.options.shared:
+                self.cpp_info.system_libs.extend(["advapi32"])
         elif self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.system_libs.extend(["dl", "pthread", "m", "rt"])
             if not self.options.shared:

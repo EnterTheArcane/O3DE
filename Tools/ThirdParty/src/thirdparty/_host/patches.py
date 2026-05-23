@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 
 import patch_ng
 
@@ -18,11 +19,29 @@ class _PatchLogHandler(logging.Handler):
             self._out.info(msg)
 
 
+def _patch_applies_to_version(filename: str, version: str) -> bool:
+    """Return True if the patch file should be applied to the given version.
+
+    Patches named with a version prefix (e.g. "2.5.2-0001-foo.patch") are only applied when
+    the recipe version exactly matches that prefix.  Patches without a version prefix (e.g.
+    "0001-foo.patch") are always applied.
+    """
+    # Match an optional version prefix like "1.2.3-" or "cci.20200101-"
+    m = re.match(r'^([\d][^\s/\\]*?)-\d{4}-', filename)
+    if m:
+        return m.group(1) == version
+    return True
+
+
 def apply_patches(conanfile):
     patches_dir = os.path.join(conanfile.recipe_folder, "patches")
     if not os.path.isdir(patches_dir):
         return
+    version = getattr(conanfile, "version", None) or ""
     for pf in sorted(f for f in os.listdir(patches_dir) if f.endswith(".patch")):
+        if not _patch_applies_to_version(pf, version):
+            conanfile.output.info(f"Skip patch (wrong version): {pf}")
+            continue
         path = os.path.join(patches_dir, pf)
         conanfile.output.info(f"Apply patch: {pf}")
         log = logging.getLogger("patch_ng")
