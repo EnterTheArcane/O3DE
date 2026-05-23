@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rm, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
@@ -99,7 +99,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         replace_in_file(self,
             os.path.join(self.source_folder, "meson.build"),
             "subdir('fuzzing')",

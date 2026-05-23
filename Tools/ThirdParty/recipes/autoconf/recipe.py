@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, rmdir, apply_conandata_patches, replace_in_file
+from thirdparty.tools.files import copy, get, rmdir, apply_patches, replace_in_file
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import unix_path, is_msvc
 import os
@@ -55,7 +55,7 @@ class Recipe(RecipeBase):
         tc.generate(env)
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         replace_in_file(self, os.path.join(self.source_folder, "Makefile.in"),
                         "M4 = /usr/bin/env m4", "#M4 = /usr/bin/env m4")
         if self.settings.os == "Windows":

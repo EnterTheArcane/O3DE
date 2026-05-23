@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.files import copy, load, save, apply_conandata_patches
+from thirdparty.tools.files import copy, load, save, apply_patches
 from thirdparty.tools.scm import Git
 import os
 
@@ -15,7 +15,7 @@ class Recipe(RecipeBase):
             target=".",
             args=["--depth", "1"]
         )
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     def build(self):
         pass

@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.files import copy, get, rm, rmdir, apply_conandata_patches
+from thirdparty.tools.files import copy, get, rm, rmdir, apply_patches
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -50,7 +50,7 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

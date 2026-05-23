@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rename, rm, rmdir, replace_in_file
+from thirdparty.tools.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
         if not self.options.get_safe("shared", False):
             replace_in_file(self, os.path.join(self.source_folder, "meson.build"),

@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir, save
+from thirdparty.tools.files import apply_patches, copy, get, rmdir, save
 import os
 
 from thirdparty.tools.gnu import PkgConfigDeps
@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
         cd.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         # disable subdirs
         save(self, os.path.join(self.source_folder, "src", "utils", "CMakeLists.txt"), "")
         save(self, os.path.join(self.source_folder, "src", "tests", "CMakeLists.txt"), "")

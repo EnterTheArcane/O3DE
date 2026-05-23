@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.files import apply_conandata_patches, copy, get, load, save
+from thirdparty.tools.files import apply_patches, copy, get, load, save
 from thirdparty.tools.microsoft import is_msvc
 import os
 
@@ -17,7 +17,7 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     @property
     def _license_text(self):

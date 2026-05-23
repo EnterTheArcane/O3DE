@@ -1,8 +1,8 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty._conan.errors import ConanException
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.env import Environment
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rename, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, rename, replace_in_file, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc
 
@@ -10,7 +10,7 @@ import os
 import re
 import shutil
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libtool"
     version = "2.4.7"
     license = ("GPL-2.0-or-later", "GPL-3.0-or-later")
@@ -85,7 +85,7 @@ class Recipe(ConanFile):
         tc.generate(env)
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         config_guess =  self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
         config_sub = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_sub")
         shutil.copy(config_sub, os.path.join(self.source_folder, "build-aux", "config.sub"))

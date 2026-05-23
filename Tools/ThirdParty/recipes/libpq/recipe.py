@@ -2,7 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import apply_conandata_patches, chdir, copy, get, replace_in_file, rm, rmdir
+from thirdparty.tools.files import apply_patches, chdir, copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path, VCVars
 from thirdparty.tools.scm import Version
@@ -188,7 +188,7 @@ class Recipe(RecipeBase):
                 "-v __cxa_atexit -e pthread_exit")
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         self._patch_sources()
         if is_msvc(self):
             with chdir(self, os.path.join(self.source_folder, "src", "tools", "msvc")):

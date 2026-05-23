@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, save, apply_conandata_patches
+from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, save, apply_patches
 import os
 
 class Recipe(RecipeBase):
@@ -82,7 +82,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         # CMAKE_POSITION_INDEPENDENT_CODE was set ON for the entire
         # project in the lists file.
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),

@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.files import apply_conandata_patches, get, copy, rm, rmdir
+from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -93,7 +93,7 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
         for module in ("expat", "lcms2", "pystring", "yaml-cpp", "Imath", "minizip-ng"):
             rm(self, "Find"+module+".cmake", os.path.join(self.source_folder, "share", "cmake", "modules"))
