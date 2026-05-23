@@ -74,7 +74,7 @@ class Recipe(RecipeBase):
 
     default_options = {
         "shared": False,
-        "opengl": "desktop",
+        "opengl": "no",
         "with_vulkan": False,
         "openssl": True,
         "with_pcre2": True,
@@ -157,7 +157,6 @@ class Recipe(RecipeBase):
             del self.options.with_egl
 
         if self.settings.os == "Windows":
-            self.options.opengl = "dynamic"
             del self.options.with_gssapi
         if self.settings.os != "Linux":
             self.options.qtwayland = False
