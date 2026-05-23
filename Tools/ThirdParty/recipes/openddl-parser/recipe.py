@@ -57,6 +57,3 @@ class Recipe(RecipeBase):
         if not self.options.shared:
             self.cpp_info.defines.append("OPENDDL_STATIC_LIBARY")
 
-        # TODO: to remove in conan v2 once cmake_find_package_* generators removed
-        self.cpp_info.names["cmake_find_package"] = "openddlparser"
-        self.cpp_info.names["cmake_find_package_multi"] = "openddlparser"

@@ -111,7 +111,6 @@ class Recipe(RecipeBase):
                 # https://github.com/fmtlib/fmt/blob/11.1.1/CMakeLists.txt#L371
                 self.cpp_info.components["_fmt"].defines.append("FMT_UNICODE=0")
 
-        # TODO: back to global scope in conan v2 once cmake_find_package* generators removed
         if self.options.with_fmt_alias:
             self.cpp_info.components["_fmt"].defines.append("FMT_STRING_ALIAS=1")
 

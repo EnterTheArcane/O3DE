@@ -47,14 +47,11 @@ class Recipe(RecipeBase):
             self.requires("fontconfig")
             self.requires("xorg")
 
-    @property
-    def _settings_build(self):
-        return getattr(self, "settings_build", self.settings)
-
+ 
     def build_requirements(self):
         if not is_msvc(self):
             if (
-                self._settings_build.os == "Windows"
+                self.settings.os == "Windows"
                 and not self.conf.get("tools.microsoft.bash:path")
                 and not self.conf.get("tools.microsoft.bash:subsystem")
             ):

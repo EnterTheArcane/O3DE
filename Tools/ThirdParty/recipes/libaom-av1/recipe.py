@@ -21,10 +21,7 @@ class Recipe(RecipeBase):
         "assembly": False,
     }
 
-    @property
-    def _settings_build(self):
-        return getattr(self, "settings_build", self.settings)
-
+ 
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -40,7 +37,7 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         if self.options.get_safe("assembly", False):
             self.tool_requires("nasm")
-        if self._settings_build.os == "Windows":
+        if self.settings.os == "Windows":
             self.tool_requires("strawberryperl")
 
     def source(self):
