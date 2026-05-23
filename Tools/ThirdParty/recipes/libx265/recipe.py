@@ -11,8 +11,6 @@ class Recipe(RecipeBase):
     version = "4.2"
     license = ("GPL-2.0-only", "commercial")  # https://bitbucket.org/multicoreware/x265/src/default/COPYING
 
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

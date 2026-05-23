@@ -12,8 +12,7 @@ class Recipe(RecipeBase):
     name = "glib"
     version = "2.85.3"
     license = "LGPL-2.1-or-later"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

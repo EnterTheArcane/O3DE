@@ -33,7 +33,6 @@ class Recipe(RecipeBase):
     version = "latest"
     license = "MSYS license"
 
-    settings = "os", "arch"
     # "exclude_files" "packages" "additional_packages" values are a comma separated list
     options = {
         "exclude_files": ["ANY"],

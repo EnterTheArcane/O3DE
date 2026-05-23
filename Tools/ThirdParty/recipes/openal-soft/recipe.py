@@ -11,8 +11,7 @@ class Recipe(RecipeBase):
     name = "openal-soft"
     version = "1.23.1"
     license = "LGPL-2.0-or-later"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

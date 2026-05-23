@@ -9,8 +9,6 @@ class Recipe(RecipeBase):
     version = "0.3.2"
     license = "Unlicense"
 
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

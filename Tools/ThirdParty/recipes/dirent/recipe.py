@@ -6,8 +6,6 @@ class Recipe(RecipeBase):
     name = "dirent"
     version = "1.24"
     license = "MIT"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):

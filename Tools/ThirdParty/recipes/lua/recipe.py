@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "lua"
     version = "5.5.0"
     license = "MIT"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [False, True],
         "fPIC": [True, False],

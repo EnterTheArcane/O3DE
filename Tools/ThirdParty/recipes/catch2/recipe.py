@@ -9,7 +9,6 @@ class Recipe(RecipeBase):
     version = "2.13.10"
     license = "BSL-1.0"
 
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "fPIC": [True, False],
         "with_main": [True, False],

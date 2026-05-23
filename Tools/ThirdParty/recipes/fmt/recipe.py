@@ -11,8 +11,7 @@ class Recipe(RecipeBase):
     name = "fmt"
     version = "12.1.0"
     license = "MIT"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "header_only": [True, False],
         "shared": [True, False],

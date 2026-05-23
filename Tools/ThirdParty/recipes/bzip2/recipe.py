@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "bzip2"
     version = "1.0.8"
     license = "bzip2-1.0.6" # SPDX license identifier for version 1.0.6 or newer
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

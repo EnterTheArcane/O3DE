@@ -7,8 +7,6 @@ class Recipe(RecipeBase):
     name = "strawberryperl"
     version = "5.40.2.1"
     license = ("Artistic-1.0", "GPL-1.0")
-    package_type = "application"
-    settings = "os", "arch", "compiler", "build_type"
     def compatibility(self):
         if self.settings.arch == "armv8":
             return [{"settings": [("arch", "x86_64")]}]

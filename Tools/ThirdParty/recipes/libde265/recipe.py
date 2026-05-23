@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "libde265"
     version = "1.0.15"
     license = "LGPL-3.0-or-later"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

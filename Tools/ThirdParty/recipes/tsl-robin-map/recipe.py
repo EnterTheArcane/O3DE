@@ -8,8 +8,6 @@ class Recipe(RecipeBase):
     name = "tsl-robin-map"
     version = "1.4.0"
     license = "MIT"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):

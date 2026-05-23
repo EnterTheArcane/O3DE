@@ -7,8 +7,7 @@ class Recipe(RecipeBase):
     name = "naive-tsearch"
     version = "0.1.1"
     license = "MIT"
-    package_type = 'static-library'
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "fPIC": [True, False],
         "header_only": [True, False],

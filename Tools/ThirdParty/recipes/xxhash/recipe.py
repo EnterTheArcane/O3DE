@@ -8,8 +8,7 @@ class Recipe(RecipeBase):
     name = "xxhash"
     version = "0.8.3"
     license = "BSD-2-Clause"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

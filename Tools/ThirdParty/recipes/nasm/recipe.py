@@ -9,10 +9,7 @@ import shutil
 class Recipe(RecipeBase):
     name = "nasm"
     version = "3.01"
-    package_type = "application"
     license = "BSD-2-Clause"
-
-    settings = "os", "arch", "compiler", "build_type"
 
     @property
     def _settings_build(self):

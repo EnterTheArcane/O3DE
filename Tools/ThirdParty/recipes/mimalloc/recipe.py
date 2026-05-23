@@ -10,8 +10,7 @@ class Recipe(RecipeBase):
     name = "mimalloc"
     version = "3.3.2"
     license = "MIT"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

@@ -8,8 +8,7 @@ class Recipe(RecipeBase):
     name = "spirv-reflect"
     version = "1.4.350.0"
     license = "Apache-2.0"
-    package_type = "static-library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "fPIC": [True, False],
     }

@@ -11,8 +11,7 @@ class Recipe(RecipeBase):
     name = "opencolorio"
     version = "2.5.2"
     license = "BSD-3-Clause"
-    settings = "os", "arch", "compiler", "build_type"
-    package_type = "library"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

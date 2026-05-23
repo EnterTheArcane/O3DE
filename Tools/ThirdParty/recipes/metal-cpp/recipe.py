@@ -12,9 +12,6 @@ class Recipe(RecipeBase):
     version = "26"
     license = "Apache-2.0"
 
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
-
     no_copy_source = True
 
     def source(self):

@@ -8,9 +8,7 @@ class Recipe(RecipeBase):
     name = "wil"
     version = "1.0.260126.7"
     license = "MIT"
-    package_type = "header-library"
     # only arch is aplicable, windows library
-    settings = "os", "arch", "compiler", "build_type" 
     
     no_copy_source = True
 

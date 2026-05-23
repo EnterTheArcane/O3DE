@@ -13,9 +13,7 @@ import textwrap
 class Recipe(RecipeBase):
     name = "libxml2"
     version = "2.13.8"
-    package_type = "library"
     license = "MIT"
-    settings = "os", "arch", "compiler", "build_type"
     # from ./configure and ./win32/configure.js
     default_options = {
         "shared": False,

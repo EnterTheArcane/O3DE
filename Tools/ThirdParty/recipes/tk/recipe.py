@@ -19,8 +19,7 @@ class Recipe(RecipeBase):
     name = "tk"
     version = "8.6.10"
     license = "TCL"
-    settings = "os", "compiler", "build_type", "arch"
-    package_type = "library"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

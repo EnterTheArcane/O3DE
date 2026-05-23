@@ -11,8 +11,7 @@ class Recipe(RecipeBase):
     name = "zlib-ng"
     version = "2.3.3"
     license = "Zlib"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

@@ -11,9 +11,7 @@ import shutil
 class Recipe(RecipeBase):
     name = "m4"
     version = "1.4.20"
-    package_type = "application"
     license = "GPL-3.0-only"
-    settings = "os", "arch", "compiler", "build_type"
 
     def build_requirements(self):
         if self.settings_build.os == "Windows":
