@@ -200,7 +200,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             tc.preprocessor_definitions["NOMINMAX"] = 1
 
-        tc.cache_variables["CMAKE_PROJECT_Assimp_INCLUDE"] = "conan_deps.cmake"
+        tc.cache_variables["CMAKE_PROJECT_Assimp_INCLUDE"] = os.path.join(self.generators_folder, "conan_deps.cmake").replace("\\", "/")
         tc.cache_variables["WITH_CLIPPER"] = self._depends_on_clipper
         tc.cache_variables["WITH_DRACO"] = self._depends_on_draco
         tc.cache_variables["WITH_KUBAZIP"] = self._depends_on_kuba_zip

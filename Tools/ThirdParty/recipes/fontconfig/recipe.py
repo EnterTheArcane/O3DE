@@ -93,18 +93,18 @@ class Recipe(RecipeBase):
         fontconfig_path = os.path.join(self.package_folder, "res", "etc", "fonts")
         self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
 
-def fix_msvc_libname((RecipeBase), remove_lib_prefix=True):
+def fix_msvc_libname(conanfile, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
-    if not (RecipeBase).settings.get_safe("compiler.runtime"):
+    if not conanfile.settings.get_safe("compiler.runtime"):
         return
     from thirdparty.tools.files import rename
     import glob
-    libdirs = getattr((RecipeBase).cpp.package, "libdirs")
+    libdirs = getattr(conanfile.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join((RecipeBase).package_folder, libdir)
+            full_folder = os.path.join(conanfile.package_folder, libdir)
             for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]
-                rename((RecipeBase), filepath, os.path.join(os.path.dirname(filepath), f"{libname}.lib"))
+                rename(conanfile, filepath, os.path.join(os.path.dirname(filepath), f"{libname}.lib"))
