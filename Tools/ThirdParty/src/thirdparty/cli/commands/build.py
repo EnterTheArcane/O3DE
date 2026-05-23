@@ -387,20 +387,15 @@ def _build_dep_graph(
     return ConanFileDependencies(deps_dict)
 
 
-_BUILD_COMPLETE_MARKER = ".build-complete"
-_SOURCE_COMPLETE_MARKER = ".source-complete"
-
-
-def _build_state_dir(build_root: Path, name: str, version: str) -> Path:
-    return build_root / name / version / "cache"
+_COMPLETE_MARKER = ".complete"
 
 
 def _is_built(build_root: Path, name: str, version: str) -> bool:
-    return (_build_state_dir(build_root, name, version) / _BUILD_COMPLETE_MARKER).is_file()
+    return (build_root / name / version / "build" / _COMPLETE_MARKER).is_file()
 
 
 def _is_sourced(build_root: Path, name: str, version: str) -> bool:
-    return (_build_state_dir(build_root, name, version) / _SOURCE_COMPLETE_MARKER).is_file()
+    return (build_root / name / version / "source" / _COMPLETE_MARKER).is_file()
 
 
 def _load_conandata(recipe) -> None:
@@ -658,8 +653,8 @@ def _build_recipe(
     # previous build was interrupted or failed mid-package().  Remove the partial
     # package directory so we start clean.
     pkg_dir = Path(recipe.package_folder)
-    state_dir = pkg_dir.parent / "cache"
-    if pkg_dir.exists() and not (state_dir / _BUILD_COMPLETE_MARKER).is_file():
+    build_dir = Path(recipe.build_folder)
+    if pkg_dir.exists() and not (build_dir / _COMPLETE_MARKER).is_file():
         shutil.rmtree(pkg_dir, ignore_errors=True)
 
     # Run config_options / configure / validate before creating any directories so
@@ -702,7 +697,7 @@ def _build_recipe(
             shutil.rmtree(src_folder, ignore_errors=True)
             src_folder.mkdir(parents=True, exist_ok=True)
             recipe.source()
-            (src_folder / _SOURCE_COMPLETE_MARKER).write_text("")
+            (src_folder / _COMPLETE_MARKER).write_text("")
     if hasattr(recipe, "generate"):
         # Conan generators write files with bare filenames and expect CWD == generators_folder
         # (the comment in CMakeDeps says "# Current directory is the generators_folder").
@@ -742,9 +737,7 @@ def _build_recipe(
             finally:
                 os.chdir(_orig_cwd_pkg)
         # Write the completion marker only after both build() and package() succeed.
-        state_dir = Path(recipe.package_folder).parent / "cache"
-        state_dir.mkdir(parents=True, exist_ok=True)
-        (state_dir / _BUILD_COMPLETE_MARKER).write_text("")
+        (build_dir / _COMPLETE_MARKER).write_text("")
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive

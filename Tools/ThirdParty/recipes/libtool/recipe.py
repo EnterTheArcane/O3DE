@@ -7,8 +7,7 @@ from thirdparty._conan.errors import ConanException
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.env import Environment
 from thirdparty.tools.files import apply_patches, copy, get, rename, replace_in_file, rmdir
-from thirdparty.tools.github import GithubRepository
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
+from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, GnuFtp
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
 
@@ -44,8 +43,8 @@ class Recipe(RecipeBase):
     _SOURCE_SHA256 = "04e96c2404ea70c590c546eba4202a4e12722c640016c12b9b2f1ce3d481e9a8"
 
     def latest_version(self):
-        repo = GithubRepository(self, "autotools-mirror/libtool")
-        return Version(repo.latest_release.removeprefix("v"))
+        repo = GnuFtp(self, "libtool")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

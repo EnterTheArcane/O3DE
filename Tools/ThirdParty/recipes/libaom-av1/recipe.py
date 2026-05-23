@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
-from thirdparty.tools.googlesource import GooglesourceRepository
+from thirdparty.tools.scm.google import GoogleSourceRepository
 from thirdparty.tools.scm import Version
 
 
@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
             self.tool_requires("strawberryperl")
 
     def latest_version(self):
-        repo = GooglesourceRepository(self, "https://aomedia.googlesource.com/aom")
+        repo = GoogleSourceRepository(self, "https://aomedia.googlesource.com/aom")
         return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):

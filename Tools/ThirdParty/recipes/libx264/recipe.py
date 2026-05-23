@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, XCRun, fix_apple_shared_install_name
 from thirdparty.tools.env import Environment
 from thirdparty.tools.files import copy, rename, get, rmdir, chdir
-from thirdparty.tools.gitlab import GitlabRepository
+from thirdparty.tools.scm.gitlab import GitlabRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, unix_path
 from thirdparty.tools.scm import Version
@@ -52,10 +52,6 @@ class Recipe(RecipeBase):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
-
-    def latest_version(self):
-        repo = GitlabRepository(self, "videolan/x264", host="code.videolan.org")
-        return Version(repo.latest_commit_date("stable"))
 
     def source(self):
         get(

@@ -4,7 +4,7 @@ import textwrap
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, save
-from thirdparty.tools.gitlab import GitlabRepository
+from thirdparty.tools.scm.gitlab import GitlabRepository
 from thirdparty.tools.scm import Version
 
 

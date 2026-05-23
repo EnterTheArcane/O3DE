@@ -3,7 +3,7 @@ import re
 
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
 
 
@@ -17,7 +17,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GithubRepository(self, "StrawberryPerl/Perl-Dist-Strawberry")
-        tag = repo.latest_release
+        tag = repo.latest_release_matching(r"SP_")
         m = re.match(r"SP_(\d+)_", tag)
         if not m:
             raise RuntimeError(f"unexpected tag: {tag}")

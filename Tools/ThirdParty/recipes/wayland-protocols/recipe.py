@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
-from thirdparty.tools.gitlab import GitlabRepository
+from thirdparty.tools.scm.gitlab import GitlabRepository
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.scm import Version
 
