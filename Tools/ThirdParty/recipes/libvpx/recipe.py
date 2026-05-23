@@ -1,7 +1,7 @@
 import os
 import re
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.env import Environment, VirtualBuildEnv
@@ -9,7 +9,7 @@ from thirdparty.tools.files import apply_conandata_patches, copy, get, rename, r
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libvpx"
     version = "1.16.0"
     license = "BSD-3-Clause"

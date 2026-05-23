@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.scm import Version
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libsamplerate"
     version = "0.2.2"
     license = "BSD-2-Clause"

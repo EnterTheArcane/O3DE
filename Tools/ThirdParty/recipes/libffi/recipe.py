@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_conandata_patches, copy, get, mkdir, rm, rmdir
@@ -9,7 +9,7 @@ import glob
 import os
 import shutil
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libffi"
     version = "3.4.8"
     license = "MIT"

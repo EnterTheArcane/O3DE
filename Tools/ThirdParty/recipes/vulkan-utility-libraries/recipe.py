@@ -1,10 +1,10 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import copy, get, rmdir, replace_in_file
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "vulkan-utility-libraries"
     version = "1.4.350.0"
     license = "Apache-2.0"

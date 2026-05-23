@@ -1,9 +1,9 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import apply_conandata_patches, copy, get, load, save
 from thirdparty.tools.microsoft import is_msvc
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "getopt-for-visual-studio"
     version = "20200201"
     license = "MIT", "BSD-2-Clause"

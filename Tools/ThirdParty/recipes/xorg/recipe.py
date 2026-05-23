@@ -1,8 +1,8 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.gnu import PkgConfig
 from thirdparty.tools.scm import Version
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "xorg"
     version = "0.0.0"
     package_type = "shared-library"

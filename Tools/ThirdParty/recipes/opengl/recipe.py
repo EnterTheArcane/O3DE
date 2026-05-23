@@ -1,7 +1,7 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.gnu import PkgConfig
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "opengl"
     version = "0.0.0"
     version = "system"

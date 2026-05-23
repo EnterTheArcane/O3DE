@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rm, rmdir, save
 import os
 import textwrap
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "spirv-cross"
     version = "1.4.350.0"
     license = "Apache-2.0"

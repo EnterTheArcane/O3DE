@@ -1,13 +1,13 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rename, rm, replace_in_file, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "vulkan-validationlayers"
     version = "1.4.350.0"
     license = "Apache-2.0"

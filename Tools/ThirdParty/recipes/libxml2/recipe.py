@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building, build_jobs
 from thirdparty.tools.files import copy, get, rename, rm, rmdir, replace_in_file, save, chdir, mkdir
@@ -10,7 +10,7 @@ import os
 import itertools
 import textwrap
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libxml2"
     version = "2.13.8"
     package_type = "library"

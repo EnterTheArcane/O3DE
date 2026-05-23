@@ -1,8 +1,8 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "dirent"
     version = "1.24"
     license = "MIT"

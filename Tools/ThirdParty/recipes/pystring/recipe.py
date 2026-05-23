@@ -1,9 +1,9 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "pystring"
     version = "1.1.4"
     license = "BSD-3-Clause"

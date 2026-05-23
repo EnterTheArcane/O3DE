@@ -1,11 +1,11 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "rvo2"
     version = "2.0.2"
     license = "Apache-2.0"

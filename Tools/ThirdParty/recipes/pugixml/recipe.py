@@ -1,9 +1,9 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, load, replace_in_file, rmdir, save
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "pugixml"
     version = "1.15"
     license = "MIT"

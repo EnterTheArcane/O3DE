@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_conandata_patches
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libjpeg-turbo"
     version = "3.1.4.1"
     license = ("IJG", "BSD-3-Clause", "Zlib")

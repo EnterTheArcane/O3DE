@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
@@ -6,7 +6,7 @@ from thirdparty.tools.files import apply_conandata_patches, copy, get, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "gdbm"
     version = "1.23"
     license = "GPL-3.0-or-later"

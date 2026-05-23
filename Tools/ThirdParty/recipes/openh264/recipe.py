@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rmdir, rm, rename
@@ -9,7 +9,7 @@ from thirdparty.tools.meson import Meson, MesonToolchain
 
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "openh264"
     version = "2.6.0"
     license = "BSD-2-Clause"

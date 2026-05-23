@@ -1,10 +1,10 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "openddl-parser"
     version = "0.5.1"
     license = "MIT"

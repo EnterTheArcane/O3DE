@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy, rmdir, apply_conandata_patches, replace_in_file
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "clipper2"
     version = "2.0.1"
     license = "BSL-2.0"

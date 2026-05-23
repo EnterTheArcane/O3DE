@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, rm, rmdir, apply_conandata_patches
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "c4core"
     version = "0.2.5"
     license = "MIT",

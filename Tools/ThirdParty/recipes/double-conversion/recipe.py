@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, rm
 from thirdparty.tools.microsoft import check_min_vs
 from thirdparty.tools.scm import Version
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "double-conversion"
     version = "3.3.0"
     license = "BSD-3-Clause"
