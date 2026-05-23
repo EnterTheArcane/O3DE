@@ -50,12 +50,12 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.get_safe("with_numa", False):
-            self.requires("libnuma/2.0.14")
+            self.requires("libnuma")
 
     def build_requirements(self):
         if self.options.assembly:
             if self.settings.arch in ["x86", "x86_64"]:
-                self.tool_requires("nasm/2.15.05")
+                self.tool_requires("nasm")
 
     def source(self):
         get(self, url="https://downloads.videolan.org/videolan/x265/x265_4.2.tar.gz", sha256="40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210", destination=self.source_folder, strip_root=True)

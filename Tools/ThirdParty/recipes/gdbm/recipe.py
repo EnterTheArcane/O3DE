@@ -45,14 +45,14 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.get_safe("with_libiconv"):
-            self.requires("libiconv/1.17")
+            self.requires("libiconv")
         if self.options.with_readline:
-            self.requires("readline/8.1.2")
+            self.requires("readline")
 
     def build_requirements(self):
-        self.tool_requires("bison/3.8.2")
-        self.tool_requires("flex/2.6.4")
-        self.tool_requires("gnu-config/20210814")
+        self.tool_requires("bison")
+        self.tool_requires("flex")
+        self.tool_requires("gnu-config")
 
     def source(self):
         get(self, url="https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz", sha256="74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd", destination=self.source_folder, strip_root=True)

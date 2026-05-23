@@ -38,7 +38,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if Version(self.version) >= "20251210":
-            self.tool_requires("cmake/[>=3.18]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/pytorch/cpuinfo/archive/ff24ffee8340fbd9001cce6a9ef41cdd16aa2bd3.tar.gz", sha256="59a0a35488762568c7b7575352d726cb11fee361455e451ad820bdf5a01b856e", destination=self.source_folder, strip_root=True)

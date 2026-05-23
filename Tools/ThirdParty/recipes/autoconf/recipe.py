@@ -16,14 +16,14 @@ class Recipe(RecipeBase):
         return getattr(self, "settings_build", self.settings)
 
     def requirements(self):
-        self.requires("m4/1.4.19") # Needed at runtime by downstream clients as well
+        self.requires("m4") # Needed at runtime by downstream clients as well
 
     def build_requirements(self):
-        self.tool_requires("m4/1.4.19")
+        self.tool_requires("m4")
         if self._settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
 
     def source(self):
         get(self, url="https://ftpmirror.gnu.org/autoconf/autoconf-2.72.tar.xz", sha256="ba885c1319578d6c94d46e9b0dceb4014caafe2490e437a0dbca3f270a223f5a", destination=self.source_folder, strip_root=True)

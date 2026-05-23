@@ -35,12 +35,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("freetype/2.13.2")
+        self.requires("freetype")
         if  Version(self.version) < "1.10":
-            self.requires("lodepng/20200615")
+            self.requires("lodepng")
         else:
-            self.requires("libpng/[>=1.6 <2]")
-        self.requires("tinyxml2/10.0.0")
+            self.requires("libpng")
+        self.requires("tinyxml2")
 
     def source(self):
         get(self, url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.12.tar.gz", sha256="f058117496097217d12e4ea86adbff8467adaf6f12af793925d243b86b0c4f57", destination=self.source_folder, strip_root=True)

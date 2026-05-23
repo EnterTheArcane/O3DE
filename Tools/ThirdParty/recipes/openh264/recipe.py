@@ -29,14 +29,14 @@ class Recipe(RecipeBase):
         return self.settings.os == 'Windows' and self.settings.compiler == 'clang'
 
     def build_requirements(self):
-        self.tool_requires("meson/[>=1.4.1 <2]")
+        self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
-            self.tool_requires("pkgconf/[>=2.2 <3]")
+            self.tool_requires("pkgconf")
         if self.settings.arch in ["x86", "x86_64"]:
-            self.tool_requires("nasm/2.16.01")
+            self.tool_requires("nasm")
         if is_msvc(self) and self.settings.arch == "armv8":
-            self.tool_requires("strawberryperl/[*]")
-            self.tool_requires("gas-preprocessor/[*]")
+            self.tool_requires("strawberryperl")
+            self.tool_requires("gas-preprocessor")
 
     def source(self):
         get(self, url="https://github.com/cisco/openh264/archive/refs/tags/v2.6.0.tar.gz", sha256="558544ad358283a7ab2930d69a9ceddf913f4a51ee9bf1bfb9e377322af81a69", destination=self.source_folder, strip_root=True)

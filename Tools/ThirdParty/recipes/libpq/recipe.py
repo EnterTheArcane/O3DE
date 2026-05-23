@@ -53,21 +53,21 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_openssl:
-            self.requires("openssl/[>=1.1 <4]")
+            self.requires("openssl")
         if self.options.with_icu:
-            self.requires("icu/75.1")
+            self.requires("icu")
 
     def build_requirements(self):
         if is_msvc(self):
-            self.tool_requires("strawberryperl/5.32.1.1")
+            self.tool_requires("strawberryperl")
         elif self._settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
         else:
             if self.options.with_openssl or self.options.with_icu:
                 if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-                    self.tool_requires("pkgconf/[>=2.2 <3]")
+                    self.tool_requires("pkgconf")
 
     def source(self):
         get(self, url="https://ftp.postgresql.org/pub/source/v16.13/postgresql-16.13.tar.bz2", sha256="dc2ddbbd245c0265a689408e3d2f2f3f9ba2da96bd19318214b313cdd9797287", destination=self.source_folder, strip_root=True)

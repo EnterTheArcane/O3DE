@@ -42,12 +42,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def build_requirements(self):
-        self.tool_requires("meson/[>=1.4.0 <2]")
+        self.tool_requires("meson")
         if self.options.assembly and self.settings.arch in ("x86", "x86_64"):
-            self.tool_requires("nasm/[*]")
+            self.tool_requires("nasm")
         if is_msvc(self) and self.settings.arch == "armv8":
-            self.tool_requires("gas-preprocessor/[*]")
-            self.tool_requires("strawberryperl/[*]")
+            self.tool_requires("gas-preprocessor")
+            self.tool_requires("strawberryperl")
 
     def source(self):
         get(self, url="https://downloads.videolan.org/videolan/dav1d/1.5.3/dav1d-1.5.3.tar.xz", sha256="732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011", destination=self.source_folder, strip_root=True)

@@ -59,9 +59,9 @@ class Recipe(RecipeBase):
         if self.settings_build.os == "Windows" and not self._use_msbuild and (Version(self.version) < "5.8.1" or self.settings.os == "Android"):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
         if self._use_cmake:
-            self.tool_requires("cmake/[>=3.20]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://tukaani.org/xz/xz-5.8.3.tar.xz", sha256="fff1ffcf2b0da84d308a14de513a1aa23d4e9aa3464d17e64b9714bfdd0bbfb6", destination=self.source_folder, strip_root=True)

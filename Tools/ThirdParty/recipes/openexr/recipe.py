@@ -28,13 +28,13 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("zlib/[>=1.2.11 <2]")
+        self.requires("zlib")
         # Note: OpenEXR and Imath are versioned independently.
-        self.requires("imath/[>=3.1.9 <4]", transitive_headers=True)
-        self.requires("libdeflate/[>=1.19 <2]")
+        self.requires("imath", transitive_headers=True)
+        self.requires("libdeflate")
 
         if Version(self.version) >= "3.4":
-            self.requires("openjph/[>=0.23.1 <1]")
+            self.requires("openjph")
 
     def source(self):
         get(self, url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.11/openexr-3.4.11.tar.gz", sha256="25f6a008e4060441a9e9d805bceda58fb811e0adef64b39807dfd73b94e12c91", destination=self.source_folder, strip_root=True)

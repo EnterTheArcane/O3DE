@@ -32,14 +32,14 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
-        self.requires("freetype/[>=2.13.2 <3]")
-        self.requires("expat/[>=2.6.2 <3]")
+        self.requires("freetype")
+        self.requires("expat")
 
     def build_requirements(self):
-        self.tool_requires("gperf/3.1")
-        self.tool_requires("meson/[>=1.4.0 <2]")
+        self.tool_requires("gperf")
+        self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
-            self.tool_requires("pkgconf/[>=2.1 <3]")
+            self.tool_requires("pkgconf")
 
     def source(self):
         get(self, url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.17.1/fontconfig-2.17.1.tar.xz", sha256="9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541", destination=self.source_folder, strip_root=True)
