@@ -1,13 +1,13 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.scm import Version
 from thirdparty.tools.microsoft import is_msvc
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "fmt"
     version = "12.1.0"
     license = "MIT"

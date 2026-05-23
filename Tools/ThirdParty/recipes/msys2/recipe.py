@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import chdir, get, replace_in_file, copy, trim_conandata
 import fnmatch
 import os
@@ -28,7 +28,7 @@ class lock:
 
     __del__ = close
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "msys2"
     version = "cci.latest"
     license = "MSYS license"

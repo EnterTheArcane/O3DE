@@ -1,10 +1,10 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rm, rmdir
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "meshoptimizer"
     version = "1.0"
     license = "MIT"

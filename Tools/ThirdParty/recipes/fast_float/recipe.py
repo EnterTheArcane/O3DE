@@ -1,9 +1,9 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import copy, get
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "fast_float"
     version = "8.1.0"
     license = ("Apache-2.0", "MIT", "BSL-1.0")

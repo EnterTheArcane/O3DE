@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.tools.build import build_jobs
 from thirdparty.tools.files import chdir, copy, get, replace_in_file, rm, rmdir, save
@@ -10,7 +10,7 @@ import fnmatch
 import os
 import textwrap
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "openssl"
     version = "3.6.2"
     license = "Apache-2.0"

@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.files import (
     collect_libs, copy, load,
@@ -9,7 +9,7 @@ import os
 import re
 import textwrap
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "freetype"
     version = "2.12.1"
     license = "FTL"

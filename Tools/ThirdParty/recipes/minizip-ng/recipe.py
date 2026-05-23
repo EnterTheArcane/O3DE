@@ -1,10 +1,10 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "minizip-ng"
     version = "4.2.1"
     license = "Zlib"

@@ -1,11 +1,11 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.meson import Meson, MesonToolchain
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "lcms"
     version = "2.17"
     license = "MIT"

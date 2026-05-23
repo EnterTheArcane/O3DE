@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir, save
@@ -6,7 +6,7 @@ import os
 
 from thirdparty.tools.gnu import PkgConfigDeps
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "ptex"
     version = "2.4.2"
     license = "BSD-3-Clause"

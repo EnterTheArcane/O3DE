@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.files import apply_conandata_patches, get, copy, rm, rmdir
@@ -7,7 +7,7 @@ from thirdparty.tools.scm import Version
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "opencolorio"
     version = "2.5.2"
     license = "BSD-3-Clause"

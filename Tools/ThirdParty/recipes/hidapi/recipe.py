@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.apple import is_apple_os
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "hidapi"
     version = "0.15.0"
     package_type = "library"

@@ -1,13 +1,13 @@
 import os
 
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.build import cross_building, stdcpp_library, check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, save, rm, replace_in_file
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "libjxl"
     version = "0.11.2"
     license = "BSD-3-Clause"

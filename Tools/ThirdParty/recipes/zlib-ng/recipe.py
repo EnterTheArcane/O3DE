@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, load
@@ -7,7 +7,7 @@ from thirdparty.tools.scm import Version
 import os
 import re
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "zlib-ng"
     version = "2.3.3"
     license = "Zlib"
