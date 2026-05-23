@@ -31,10 +31,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("lz4")
-        self.requires("lua")
+        self.requires("lua") # TODO
         self.requires("miniz")
         self.requires("spirv-headers")
-        self.requires("unordered_dense")
+        self.requires("unordered-dense")
         self.requires("vulkan-headers")
         self.requires("zstd")
 
@@ -66,6 +66,7 @@ class Recipe(RecipeBase):
         tc = CMakeToolchain(self)
         tc.cache_variables["SLANG_LIB_TYPE"] = "SHARED" if self.options.shared else "STATIC"
         tc.cache_variables["SLANG_SLANG_LLVM_FLAVOR"] = "DISABLE"
+        tc.cache_variables["SLANG_STANDARD_MODULE_DIR_NAME"] = "slang-standard-module"
         tc.variables["SLANG_ENABLE_GFX"] = False
         tc.variables["SLANG_ENABLE_SLANGD"] = False
         tc.variables["SLANG_ENABLE_SLANGRT"] = False

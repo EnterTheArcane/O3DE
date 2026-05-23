@@ -59,8 +59,11 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         apply_patches(self)
         # Don't force PIC
-        replace_in_file(self, os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
-                              "POSITION_INDEPENDENT_CODE On", "")
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
+            "POSITION_INDEPENDENT_CODE On",
+            "")
 
     def build(self):
         self._patch_sources()

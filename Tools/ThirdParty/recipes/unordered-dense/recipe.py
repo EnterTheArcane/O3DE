@@ -7,7 +7,7 @@ from thirdparty.tools.scm import Version
 
 
 class Recipe(RecipeBase):
-    name = "unordered_dense"
+    name = "unordered-dense"
     version = "4.8.1"
     license = "MIT"
 
