@@ -101,8 +101,14 @@ class Recipe(RecipeBase):
 
         deps = CMakeDeps(self)
         deps.set_property("brotli", "cmake_file_name", "Brotli")
+        deps.set_property("brotli::brotlicommon", "cmake_target_name", "brotlicommon")
+        deps.set_property("brotli::brotlidec", "cmake_target_name", "brotlidec")
+        deps.set_property("brotli::brotlienc", "cmake_target_name", "brotlienc")
         deps.set_property("highway", "cmake_file_name", "HWY")
+        deps.set_property("highway::hwy", "cmake_target_name", "hwy::hwy")
+        deps.set_property("highway::hwy_contrib", "cmake_target_name", "hwy_contrib::hwy_contrib")
         deps.set_property("lcms", "cmake_file_name", "LCMS2")
+        deps.set_property("lcms", "cmake_target_name", "lcms2")
         deps.generate()
 
         # For tcmalloc
