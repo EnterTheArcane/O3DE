@@ -3,8 +3,8 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.scm.gitlab import GitlabRepository
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.gitlab import GitlabRepository
 
 
 class Recipe(RecipeBase):

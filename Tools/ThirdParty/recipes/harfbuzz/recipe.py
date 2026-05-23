@@ -5,11 +5,11 @@ from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.env import Environment, VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rm, rmdir, replace_in_file
-from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
