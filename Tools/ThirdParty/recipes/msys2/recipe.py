@@ -1,5 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import chdir, get, replace_in_file, copy, trim_conandata
+from thirdparty._conan.errors import ConanInvalidConfiguration
 import fnmatch
 import os
 import shutil
@@ -7,7 +8,7 @@ import subprocess
 import errno
 import ctypes
 
-class lock:
+class OpLock:
     def __init__(self):
         self.handle = ctypes.windll.kernel32.CreateMutexA(None, 0, "Global\\ConanMSYS2".encode())
         if not self.handle:
@@ -58,6 +59,10 @@ class Recipe(RecipeBase):
             # The mingw-w64-cross-mingwarm64-gcc contains tools required to target arm64
             default_packages += ",mingw-w64-cross-mingwarm64-gcc"
         self.options.packages = default_packages
+
+    def validate(self):
+        if self.settings.os != "Windows":
+            raise ConanInvalidConfiguration("msys2 is only supported on Windows")
 
     def compatibility(self):
         if self.settings.arch == "armv8":
@@ -119,7 +124,7 @@ class Recipe(RecipeBase):
         return os.path.join(self.source_folder, subdir)
 
     def build(self):
-        with lock():
+        with OpLock():
             self._do_build()
 
     def _do_build(self):
