@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import can_run
-from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
 import os
@@ -59,7 +59,7 @@ class Recipe(RecipeBase):
             sha256="82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
             destination=self.source_folder,
             strip_root=True)
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     def generate(self):
         env = VirtualBuildEnv(self)

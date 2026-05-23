@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, chdir, copy, get, rename, replace_in_file, rm, rmdir
+from thirdparty.tools.files import apply_patches, chdir, copy, get, rename, replace_in_file, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, NMakeToolchain
 import os
@@ -109,7 +109,7 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         replace_in_file(self, os.path.join(self.source_folder, "include", "libmp3lame.sym"), "lame_init_old\n", "")
 
         if is_msvc(self) or self._is_clang_cl:

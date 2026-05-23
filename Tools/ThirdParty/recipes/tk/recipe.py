@@ -5,7 +5,7 @@ from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import (
-    apply_conandata_patches,
+    apply_patches,
     chdir,
     copy,
     get,
@@ -175,7 +175,7 @@ class Recipe(RecipeBase):
             )
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         if is_msvc(self):
             self._build_nmake()
         else:

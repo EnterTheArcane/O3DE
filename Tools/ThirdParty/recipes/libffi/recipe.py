@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, mkdir, rm, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, mkdir, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, unix_path
 import glob
@@ -113,7 +113,7 @@ class Recipe(RecipeBase):
         tc.generate(env=env)
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
         autotools = Autotools(self)
         autotools.configure()

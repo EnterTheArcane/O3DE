@@ -7,7 +7,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, stdcpp_library, check_min_cppstd
 from thirdparty.tools.env import Environment
-from thirdparty.tools.files import apply_conandata_patches, copy, get, mkdir, rename, replace_in_file, rm, rmdir, save
+from thirdparty.tools.files import apply_patches, copy, get, mkdir, rename, replace_in_file, rm, rmdir, save
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, unix_path
 from thirdparty.tools.scm import Version
@@ -149,7 +149,7 @@ class Recipe(RecipeBase):
             env.vars(self).save_script("conanbuild_icu_msvc")
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
         replace_in_file(
                 self,

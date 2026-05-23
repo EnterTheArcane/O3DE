@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get
+from thirdparty.tools.files import apply_patches, copy, get
 import os
 
 class Recipe(RecipeBase):
@@ -59,7 +59,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMakeToolchain, CMake
-from thirdparty.tools.files import load, get, apply_conandata_patches, rmdir, copy, replace_in_file, save
+from thirdparty.tools.files import load, get, apply_patches, rmdir, copy, replace_in_file, save
 from thirdparty.tools.build import valid_min_cppstd
 from thirdparty.tools.microsoft import msvc_runtime_flag, is_msvc
 import os
@@ -108,7 +108,7 @@ class Recipe(RecipeBase):
         return "CMakeModules" if self.settings.os == "Windows" else "cmakemodules"
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
         # There is no reason to force consumer of PhysX public headers to use one of
         # NDEBUG or _DEBUG, since none of them relies on NDEBUG or _DEBUG

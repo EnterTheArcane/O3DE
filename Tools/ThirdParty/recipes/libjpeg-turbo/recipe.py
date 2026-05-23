@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_conandata_patches
+from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_patches
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 import os
 
@@ -70,7 +70,7 @@ class Recipe(RecipeBase):
             sha256="ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022",
             destination=self.source_folder,
             strip_root=True)
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     @property
     def _is_arithmetic_encoding_enabled(self):

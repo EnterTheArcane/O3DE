@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
+from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, VCVars
 import os
 import shutil
@@ -92,7 +92,7 @@ class Recipe(RecipeBase):
             vcvars.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         if is_msvc(self) and self.settings.arch == "x86" and self.options.shared:
             replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
                             "mimalloc-redirect.lib",

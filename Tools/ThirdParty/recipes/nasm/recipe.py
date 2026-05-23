@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, chdir, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import NMakeToolchain, is_msvc
 import os
@@ -61,7 +61,7 @@ class Recipe(RecipeBase):
             tc.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         if is_msvc(self):
             with chdir(self, self.source_folder):
                 self.run(f'nmake /f {os.path.join("Mkfiles", "msvc.mak")}')

@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
-from thirdparty.tools.files import apply_conandata_patches, get, copy
+from thirdparty.tools.files import apply_patches, get, copy
 from thirdparty.tools.scm import Version
 import os
 
@@ -32,7 +32,7 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     def package(self):
         copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)

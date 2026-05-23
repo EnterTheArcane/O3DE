@@ -2,7 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, collect_libs, copy, get, rmdir, save
+from thirdparty.tools.files import apply_patches, collect_libs, copy, get, rmdir, save
 import os
 import textwrap
 
@@ -67,7 +67,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

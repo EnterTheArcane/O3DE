@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, rmdir
 
 import os
 
@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
             sha256="e7e1252e2c44d8ed6b99ee0f67a3caf2d8a61c43834b13b1c3cd485574c03ab9",
             destination=self.source_folder,
             strip_root=True)
-        apply_conandata_patches(self)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -9,7 +9,7 @@ from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, check_min_cppstd, default_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import Environment
-from thirdparty.tools.files import copy, get, replace_in_file, apply_conandata_patches, save, rm, rmdir
+from thirdparty.tools.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import msvc_runtime_flag, is_msvc
 from thirdparty.tools.scm import Version
@@ -594,7 +594,7 @@ class Recipe(RecipeBase):
             destination=destination)
 
         # patching in source method because of no_copy_source attribute
-        apply_conandata_patches(self)
+        apply_patches(self)
         for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
             replace_in_file(self, os.path.join(self.source_folder, "qtwebengine", "src", "3rdparty", "chromium", "third_party", "blink", f, "BUILD.gn"),
                                   "  if (enable_precompiled_headers) {\n    if (is_win) {",

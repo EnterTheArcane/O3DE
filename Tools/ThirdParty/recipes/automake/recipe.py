@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rename, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rename, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.scm import Version
 
@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         if self.settings.os == "Windows":
             # tracing using m4 on Windows returns Windows paths => use cygpath to convert to unix paths
             ac_local_in = os.path.join(self.source_folder, "bin", "aclocal.in")
