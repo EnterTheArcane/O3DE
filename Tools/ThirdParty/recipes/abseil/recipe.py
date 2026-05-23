@@ -1,14 +1,14 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.build import check_min_cppstd
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, load, rmdir, save
-from thirdparty.tools.github import GithubRepository
-from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
 import json
 import os
 import re
+
+from thirdparty import RecipeBase
+from thirdparty.tools.apple import is_apple_os
+from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.files import apply_patches, copy, get, load, rmdir, save
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "abseil"

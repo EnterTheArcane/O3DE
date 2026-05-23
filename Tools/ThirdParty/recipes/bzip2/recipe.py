@@ -1,10 +1,12 @@
+import os
+import textwrap
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, save
-from thirdparty.tools.scm import Version
 from thirdparty.tools.gitlab import GitlabRepository
-import os
-import textwrap
+from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "bzip2"

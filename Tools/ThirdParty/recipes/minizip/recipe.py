@@ -1,7 +1,9 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, load, save
-import os
+from thirdparty.tools.files import apply_patches, get, load, save
+
 
 class Recipe(RecipeBase):
     name = "minizip"

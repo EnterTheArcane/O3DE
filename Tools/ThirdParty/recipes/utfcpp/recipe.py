@@ -1,9 +1,11 @@
+import os
+
 from thirdparty import RecipeBase
-from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.cmake import CMakeToolchain, CMake
+from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "utfcpp"

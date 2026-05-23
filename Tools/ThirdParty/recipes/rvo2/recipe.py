@@ -7,6 +7,7 @@ from thirdparty.tools.files import copy, get, replace_in_file
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 
+
 class Recipe(RecipeBase):
     name = "rvo2"
     version = "2.0.2"

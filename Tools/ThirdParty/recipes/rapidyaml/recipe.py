@@ -1,11 +1,11 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.github import GithubRepository
-from thirdparty.tools.microsoft import check_min_vs
-from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir
-from thirdparty.tools.build import check_min_cppstd
-from thirdparty.tools.scm import Version
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "rapidyaml"

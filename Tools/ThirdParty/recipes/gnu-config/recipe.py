@@ -1,7 +1,9 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, load, save, apply_patches
 from thirdparty.tools.scm import Git
-import os
+
 
 class Recipe(RecipeBase):
     name = "gnu-config"

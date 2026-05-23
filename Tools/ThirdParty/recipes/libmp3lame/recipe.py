@@ -1,11 +1,13 @@
+import os
+import shutil
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, chdir, copy, get, rename, replace_in_file, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, NMakeToolchain
-import os
-import shutil
+
 
 class Recipe(RecipeBase):
     name = "libmp3lame"

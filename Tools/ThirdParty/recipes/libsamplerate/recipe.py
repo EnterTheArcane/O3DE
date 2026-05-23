@@ -1,3 +1,5 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
@@ -5,7 +7,7 @@ from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "libsamplerate"

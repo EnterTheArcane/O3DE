@@ -1,11 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.files import apply_patches, chdir, copy, get, rmdir, replace_in_file
 from thirdparty.tools.cmake import CMakeToolchain, CMake
+from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.github import GithubRepository
-from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "re2c"

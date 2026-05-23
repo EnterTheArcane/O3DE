@@ -1,10 +1,12 @@
+import os
+
 from thirdparty import RecipeBase
-from thirdparty.tools.build import check_min_cppstd, valid_min_cppstd
+from thirdparty.tools.build import valid_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
+
 
 class Recipe(RecipeBase):
     name = "opensubdiv"

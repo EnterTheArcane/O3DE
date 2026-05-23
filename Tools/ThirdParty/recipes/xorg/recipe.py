@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.gnu import PkgConfig
-from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "xorg"
