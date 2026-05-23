@@ -1,16 +1,17 @@
+import itertools
+import os
+import textwrap
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building, build_jobs
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import copy, get, rename, rm, rmdir, replace_in_file, save, chdir, mkdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path, NMakeDeps, NMakeToolchain
-from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
 
-import itertools
-import textwrap
 
 class Recipe(RecipeBase):
     name = "libxml2"

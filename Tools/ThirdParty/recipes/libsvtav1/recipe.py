@@ -1,9 +1,11 @@
 import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.scm import Version
 from thirdparty.tools.gitlab import GitlabRepository
+from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "libsvtav1"

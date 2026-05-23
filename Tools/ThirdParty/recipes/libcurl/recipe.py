@@ -1,16 +1,17 @@
+import os
+import re
+
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
+from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import copy, download, get, load, replace_in_file, rm, rmdir, save
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
-from thirdparty.tools.microsoft import is_msvc, unix_path
+from thirdparty.tools.files import copy, download, get, replace_in_file, rmdir
 from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.gnu import AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
+from thirdparty.tools.microsoft import is_msvc, unix_path
 from thirdparty.tools.scm import Version
 
-import os
-import re
 
 class Recipe(RecipeBase):
     name = "libcurl"

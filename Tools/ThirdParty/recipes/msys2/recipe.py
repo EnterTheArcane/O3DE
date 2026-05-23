@@ -1,12 +1,14 @@
-from thirdparty import RecipeBase
-from thirdparty.tools.files import chdir, get, replace_in_file, copy, trim_conandata
-from thirdparty._conan.errors import ConanInvalidConfiguration
+import ctypes
+import errno
 import fnmatch
 import os
 import shutil
 import subprocess
-import errno
-import ctypes
+
+from thirdparty import RecipeBase
+from thirdparty._conan.errors import ConanInvalidConfiguration
+from thirdparty.tools.files import chdir, get, replace_in_file, copy, trim_conandata
+
 
 class OpLock:
     def __init__(self):

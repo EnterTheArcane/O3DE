@@ -1,12 +1,14 @@
+import os
+import textwrap
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.build import check_min_cppstd, stdcpp_library
+from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, collect_libs, copy, get, rmdir, save
 from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
-import os
-import textwrap
+
 
 class Recipe(RecipeBase):
     name = "openal-soft"

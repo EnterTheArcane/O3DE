@@ -1,10 +1,12 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
-from thirdparty.tools.scm import Version
 from thirdparty.tools.googlesource import GooglesourceRepository
-import os
+from thirdparty.tools.scm import Version
+
 
 class Recipe(RecipeBase):
     name = "libaom-av1"

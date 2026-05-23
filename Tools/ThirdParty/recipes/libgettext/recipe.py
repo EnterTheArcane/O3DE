@@ -4,12 +4,13 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
-from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv, Environment
+from thirdparty.tools.env import VirtualRunEnv, Environment
 from thirdparty.tools.files import copy, get, rename
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, unix_path
 from thirdparty.tools.scm import Version
-from thirdparty.tools.github import GithubRepository
+
 
 class Recipe(RecipeBase):
     name = "libgettext"

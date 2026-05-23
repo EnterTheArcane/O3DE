@@ -1,8 +1,10 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import get, load, save
-import os
+
 
 class Recipe(RecipeBase):
     name = "sqlite3"
