@@ -3,6 +3,8 @@ from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import NMakeToolchain, is_msvc
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 import shutil
 
@@ -10,7 +12,6 @@ class Recipe(RecipeBase):
     name = "nasm"
     version = "3.01"
     license = "BSD-2-Clause"
-
  
     @property
     def _nasm(self):
@@ -37,6 +38,10 @@ class Recipe(RecipeBase):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.tool_requires("msys2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "netwide-assembler/nasm")
+        return Version(repo.latest_release.removeprefix("nasm-"))
 
     def source(self):
         get(
@@ -98,5 +103,3 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("NASM", self._nasm)
         self.buildenv_info.define_path("NDISASM", self._ndisasm)
         self.buildenv_info.define_path("AS", self._nasm)
-
-        # TODO: Legacy, to be removed on Conan 2.0

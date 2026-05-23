@@ -3,6 +3,8 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "spirv-reflect"
@@ -22,6 +24,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires(f"spirv-headers", transitive_headers=True)
+
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/SPIRV-Reflect")
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
 
     def source(self):
         get(

@@ -3,6 +3,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMakeToolchain, CMakeDeps, CMake
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
+from thirdparty.tools.gitlab import GitlabRepository
 
 class Recipe(RecipeBase):
     name = "libsvtav1"
@@ -59,6 +60,10 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
         if self.settings.arch in ("x86", "x86_64"):
             self.tool_requires("nasm")
+
+    def latest_version(self):
+        repo = GitlabRepository(self, "AOMediaCodec/SVT-AV1")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

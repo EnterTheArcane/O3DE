@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -25,6 +27,10 @@ class Recipe(RecipeBase):
         if self.options.shared:
             self.options.rm_safe("fPIC")
 
+    def latest_version(self):
+        repo = GithubRepository(self, "mstorsjo/fdk-aac")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def source(self):
         get(
             self,
@@ -41,45 +47,9 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        if self._use_cmake:
-            cmake = CMake(self)
-            cmake.configure()
-            cmake.build()
-        elif is_msvc(self):
-            makefile_vc = os.path.join(self.source_folder, "Makefile.vc")
-            replace_in_file(self, makefile_vc, "CFLAGS   = /nologo /W3 /Ox /MT", "CFLAGS   = /nologo")
-            replace_in_file(self, makefile_vc, "MKDIR_FLAGS = -p", "MKDIR_FLAGS =")
-            # Build either shared or static, and don't build utility (it always depends on static lib)
-            replace_in_file(self, makefile_vc, "copy $(PROGS) $(bindir)", "")
-            replace_in_file(self, makefile_vc, "copy $(LIB_DEF) $(libdir)", "")
-            if self.options.shared:
-                replace_in_file(
-                    self, makefile_vc,
-                    "all: $(LIB_DEF) $(STATIC_LIB) $(SHARED_LIB) $(IMP_LIB) $(PROGS)",
-                    "all: $(LIB_DEF) $(SHARED_LIB) $(IMP_LIB)",
-                )
-                replace_in_file(self, makefile_vc, "copy $(STATIC_LIB) $(libdir)", "")
-            else:
-                replace_in_file(
-                    self, makefile_vc,
-                    "all: $(LIB_DEF) $(STATIC_LIB) $(SHARED_LIB) $(IMP_LIB) $(PROGS)",
-                    "all: $(STATIC_LIB)",
-                )
-                replace_in_file(self, makefile_vc, "copy $(IMP_LIB) $(libdir)", "")
-                replace_in_file(self, makefile_vc, "copy $(SHARED_LIB) $(bindir)", "")
-            with chdir(self, self.source_folder):
-                self.run("nmake -f Makefile.vc")
-        else:
-            autotools = Autotools(self)
-            autotools.autoreconf()
-            if self.settings.os == "Android" and self.settings.os == "Windows":
-                # remove escape for quotation marks, to make ndk on windows happy
-                replace_in_file(
-                    self, os.path.join(self.source_folder, "configure"),
-                    "s/[	 `~#$^&*(){}\\\\|;'\\\''\"<>?]/\\\\&/g", "s/[	 `~#$^&*(){}\\\\|;<>?]/\\\\&/g",
-                )
-            autotools.configure()
-            autotools.make()
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
 
     def package(self):
         copy(self, "NOTICE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

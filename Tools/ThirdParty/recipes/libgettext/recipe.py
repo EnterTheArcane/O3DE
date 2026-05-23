@@ -9,6 +9,7 @@ from thirdparty.tools.files import copy, get, rename
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, unix_path
 from thirdparty.tools.scm import Version
+from thirdparty.tools.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "libgettext"
@@ -61,6 +62,10 @@ class Recipe(RecipeBase):
                 self.tool_requires("msys2")
         if is_msvc(self) or self._is_clang_cl:
             self.tool_requires("automake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "autotools-mirror/gettext")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

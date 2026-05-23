@@ -8,6 +8,8 @@ from thirdparty.tools.files import (
 )
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, PkgConfigDeps
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, unix_path
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 import glob
 import shutil
@@ -371,6 +373,10 @@ class Recipe(RecipeBase):
                 self.tool_requires("msys2")
             if self.settings.arch == "armv8" and is_msvc(self):
                 self.tool_requires("gas-preprocessor")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "FFmpeg/FFmpeg")
+        return Version(repo.latest_release.removeprefix("n"))
 
     def source(self):
         get(

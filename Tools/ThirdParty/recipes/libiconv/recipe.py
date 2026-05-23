@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
+from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import (
     apply_patches,
     copy,
@@ -10,8 +11,9 @@ from thirdparty.tools.files import (
     rmdir,
     replace_in_file
 )
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
+from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, GnuFtp
 from thirdparty.tools.microsoft import is_msvc, unix_path
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -54,6 +56,10 @@ class Recipe(RecipeBase):
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
             self.win_bash = True
+
+    def latest_version(self):
+        repo = GnuFtp(self, "libiconv")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -18,6 +18,8 @@ from pathlib import Path
 
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 # config.h for liblzma built inside CPython's PCbuild on Windows (MSVC).
 # Originally shipped as xz-5.2.x/windows/vs2019/config.h; XZ 5.4+ dropped the
@@ -103,6 +105,10 @@ class Recipe(RecipeBase):
         self.requires("sqlite3")
         if self.options.with_ssl:
             self.requires("openssl")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "python/cpython")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

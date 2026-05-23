@@ -8,6 +8,7 @@ from thirdparty.tools.files import copy, get, rename, replace_in_file, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, check_min_vs, is_msvc_static_runtime, MSBuild, MSBuildToolchain
 from thirdparty.tools.scm import Version
+from thirdparty.tools.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "xz_utils"
@@ -50,6 +51,10 @@ class Recipe(RecipeBase):
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "tukaani-project/xz")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

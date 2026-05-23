@@ -4,6 +4,8 @@ from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -48,6 +50,10 @@ class Recipe(RecipeBase):
         if is_msvc(self) and self.settings.arch == "armv8":
             self.tool_requires("gas-preprocessor")
             self.tool_requires("strawberryperl")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "videolan/dav1d")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -3,7 +3,8 @@ from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
-from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
+from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, GnuFtp
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -53,6 +54,10 @@ class Recipe(RecipeBase):
         self.tool_requires("bison")
         self.tool_requires("flex")
         self.tool_requires("gnu-config")
+
+    def latest_version(self):
+        repo = GnuFtp(self, "gdbm")
+        return Version(repo.latest_release)
 
     def source(self):
         get(
