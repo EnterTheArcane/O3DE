@@ -16,7 +16,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/skvadrik/re2c/releases/download/4.3/re2c-4.3.tar.xz", sha256="51e88d6d6b6ab03eb7970276aca7e0db4f8e29c958b84b561d2fdcb8351c7150", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/skvadrik/re2c/releases/download/4.3/re2c-4.3.tar.xz",
+            sha256="51e88d6d6b6ab03eb7970276aca7e0db4f8e29c958b84b561d2fdcb8351c7150",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

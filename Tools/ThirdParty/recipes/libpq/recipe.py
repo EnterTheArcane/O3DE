@@ -67,7 +67,12 @@ class Recipe(RecipeBase):
                     self.tool_requires("pkgconf")
 
     def source(self):
-        get(self, url="https://ftp.postgresql.org/pub/source/v16.13/postgresql-16.13.tar.bz2", sha256="dc2ddbbd245c0265a689408e3d2f2f3f9ba2da96bd19318214b313cdd9797287", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://ftp.postgresql.org/pub/source/v16.13/postgresql-16.13.tar.bz2",
+            sha256="dc2ddbbd245c0265a689408e3d2f2f3f9ba2da96bd19318214b313cdd9797287",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)

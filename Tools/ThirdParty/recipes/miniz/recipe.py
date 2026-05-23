@@ -29,7 +29,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def source(self):
-        get(self, url="https://github.com/richgel999/miniz/archive/refs/tags/3.1.1.tar.gz", sha256="8bb29c7bd6f22356e5583e794bed4a0b3e6dfcbcadb49974fc9270ccca1e5557", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/richgel999/miniz/archive/refs/tags/3.1.1.tar.gz",
+            sha256="8bb29c7bd6f22356e5583e794bed4a0b3e6dfcbcadb49974fc9270ccca1e5557",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

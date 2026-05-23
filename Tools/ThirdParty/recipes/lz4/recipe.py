@@ -30,7 +30,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/lz4/lz4/archive/v1.10.0.tar.gz", sha256="537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/lz4/lz4/archive/v1.10.0.tar.gz",
+            sha256="537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b",
+            destination=self.source_folder,
+            strip_root=True)
         apply_conandata_patches(self)
 
     def generate(self):

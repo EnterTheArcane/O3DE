@@ -56,7 +56,12 @@ class Recipe(RecipeBase):
             self.provides = ["zlib"]
 
     def source(self):
-        get(self, url="https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz", sha256="f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+            sha256="f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

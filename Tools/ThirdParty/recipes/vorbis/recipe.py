@@ -32,7 +32,12 @@ class Recipe(RecipeBase):
         self.requires("ogg", transitive_headers=True, transitive_libs=True)
 
     def source(self):
-        get(self, url="https://github.com/xiph/vorbis/archive/v1.3.7.tar.gz", sha256="270c76933d0934e42c5ee0a54a36280e2d87af1de3cc3e584806357e237afd13", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/xiph/vorbis/archive/v1.3.7.tar.gz",
+            sha256="270c76933d0934e42c5ee0a54a36280e2d87af1de3cc3e584806357e237afd13",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

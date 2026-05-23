@@ -74,7 +74,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v3.0.1.tar.gz", sha256="7ebb40bf2dddbcf0515984582aaa197ddd06e97581fd55b98cb64f91b243b8a6", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v3.0.1.tar.gz",
+            sha256="7ebb40bf2dddbcf0515984582aaa197ddd06e97581fd55b98cb64f91b243b8a6",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

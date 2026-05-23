@@ -44,7 +44,11 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://sourceforge.net/projects/libsquish/files/libsquish-1.15.tgz", sha256="628796eeba608866183a61d080d46967c9dda6723bc0a3ec52324c85d2147269", destination=self.source_folder)
+        get(
+            self,
+            url="https://sourceforge.net/projects/libsquish/files/libsquish-1.15.tgz",
+            sha256="628796eeba608866183a61d080d46967c9dda6723bc0a3ec52324c85d2147269",
+            destination=self.source_folder)
 
     def generate(self):
         tc = CMakeToolchain(self)

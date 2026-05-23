@@ -73,7 +73,12 @@ class Recipe(RecipeBase):
             self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/strukturag/libheif/releases/download/v1.20.1/libheif-1.20.1.tar.gz", sha256="55cc76b77c533151fc78ba58ef5ad18562e84da403ed749c3ae017abaf1e2090", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/strukturag/libheif/releases/download/v1.20.1/libheif-1.20.1.tar.gz",
+            sha256="55cc76b77c533151fc78ba58ef5ad18562e84da403ed749c3ae017abaf1e2090",
+            destination=self.source_folder,
+            strip_root=True)
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
                         "set(CMAKE_POSITION_INDEPENDENT_CODE", "#set(CMAKE_POSITION_INDEPENDENT_CODE")
 

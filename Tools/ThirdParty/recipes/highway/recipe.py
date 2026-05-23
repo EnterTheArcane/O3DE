@@ -31,7 +31,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/google/highway/archive/1.4.0.tar.gz", sha256="e72241ac9524bb653ae52ced768b508045d4438726a303f10181a38f764a453c", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/google/highway/archive/1.4.0.tar.gz",
+            sha256="e72241ac9524bb653ae52ced768b508045d4438726a303f10181a38f764a453c",
+            destination=self.source_folder,
+            strip_root=True)
         self._patch_sources()
 
     def generate(self):

@@ -41,8 +41,12 @@ class Recipe(ConanFile):
     _SOURCE_SHA256 = "04e96c2404ea70c590c546eba4202a4e12722c640016c12b9b2f1ce3d481e9a8"
 
     def source(self):
-        get(self, url=self._SOURCE_URL, sha256=self._SOURCE_SHA256,
-            destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url=self._SOURCE_URL,
+            sha256=self._SOURCE_SHA256,
+            destination=self.source_folder,
+            strip_root=True)
 
     @property
     def _datarootdir(self):

@@ -52,7 +52,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz", sha256="2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e", destination=self.source_folder, strip_root = Version(self.version) >= "1.2.3")
+        get(
+            self,
+            url="https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz",
+            sha256="2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e",
+            destination=self.source_folder,
+            strip_root = Version(self.version) >= "1.2.3")
 
     def generate(self):
         tc = CMakeToolchain(self)

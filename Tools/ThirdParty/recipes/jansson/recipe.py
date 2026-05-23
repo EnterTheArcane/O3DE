@@ -34,7 +34,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/akheron/jansson/releases/download/v2.14/jansson-2.14.tar.bz2", sha256="fba956f27c6ae56ce6dfd52fbf9d20254aad42821f74fa52f83957625294afb9", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/akheron/jansson/releases/download/v2.14/jansson-2.14.tar.bz2",
+            sha256="fba956f27c6ae56ce6dfd52fbf9d20254aad42821f74fa52f83957625294afb9",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

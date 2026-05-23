@@ -25,7 +25,12 @@ class Recipe(RecipeBase):
             self.license = ("MPL-2.0", "LGPL-3.0-or-later")
 
     def source(self):
-        get(self, url="https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.bz2", sha256="e4de6b08f33fd8b8985d2f204381408c660bffa6170ac65b68ae1bd3cd575c0a", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.bz2",
+            sha256="e4de6b08f33fd8b8985d2f204381408c660bffa6170ac65b68ae1bd3cd575c0a",
+            destination=self.source_folder,
+            strip_root=True)
         apply_conandata_patches(self)
 
     def generate(self):

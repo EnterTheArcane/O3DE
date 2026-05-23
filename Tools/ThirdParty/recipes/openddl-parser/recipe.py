@@ -27,7 +27,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/kimkulling/openddl-parser/archive/v0.5.1.tar.gz", sha256="511146377636f56a8a3bd6daace5ac2ed9672f4be28fc2c90597f4e88e069ffc", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/kimkulling/openddl-parser/archive/v0.5.1.tar.gz",
+            sha256="511146377636f56a8a3bd6daace5ac2ed9672f4be28fc2c90597f4e88e069ffc",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -77,7 +77,12 @@ class Recipe(RecipeBase):
             self.tool_requires("gettext")
 
     def source(self):
-        get(self, url="https://github.com/harfbuzz/harfbuzz/releases/download/12.3.0/harfbuzz-12.3.0.tar.xz", sha256="8660ebd3c27d9407fc8433b5d172bafba5f0317cb0bb4339f28e5370c93d42b7", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/harfbuzz/harfbuzz/releases/download/12.3.0/harfbuzz-12.3.0.tar.xz",
+            sha256="8660ebd3c27d9407fc8433b5d172bafba5f0317cb0bb4339f28e5370c93d42b7",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         def is_enabled(value):

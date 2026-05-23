@@ -32,7 +32,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/elalish/manifold/archive/refs/tags/v3.2.1.tar.gz", sha256="c2fddb0f4b2289caff660b29677883f0324415a9901f8f2aed4c83851f994c13", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/elalish/manifold/archive/refs/tags/v3.2.1.tar.gz",
+            sha256="c2fddb0f4b2289caff660b29677883f0324415a9901f8f2aed4c83851f994c13",
+            destination=self.source_folder,
+            strip_root=True)
         apply_conandata_patches(self)
 
     def generate(self):

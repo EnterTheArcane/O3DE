@@ -80,7 +80,12 @@ class Recipe(RecipeBase):
         self.requires("zlib")
 
     def source(self):
-        get(self, url="https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz", sha256="28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz",
+            sha256="28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

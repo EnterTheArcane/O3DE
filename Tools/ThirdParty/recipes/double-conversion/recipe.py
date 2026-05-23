@@ -28,7 +28,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/google/double-conversion/archive/refs/tags/v3.3.0.tar.gz", sha256="04ec44461850abbf33824da84978043b22554896b552c5fd11a9c5ae4b4d296e", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/google/double-conversion/archive/refs/tags/v3.3.0.tar.gz",
+            sha256="04ec44461850abbf33824da84978043b22554896b552c5fd11a9c5ae4b4d296e",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

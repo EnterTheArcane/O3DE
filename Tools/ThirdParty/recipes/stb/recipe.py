@@ -7,10 +7,10 @@ class Recipe(RecipeBase):
     name = "stb"
     version = "20240531"
     license = ("Unlicense", "MIT")
+    
     options = {
         "with_deprecated": [True, False],
     }
-
     default_options = {
         "with_deprecated": True,
     }
@@ -24,7 +24,12 @@ class Recipe(RecipeBase):
             del self.options.with_deprecated
 
     def source(self):
-        get(self, url="https://github.com/nothings/stb/archive/013ac3beddff3dbffafd5177e7972067cd2b5083.zip", sha256="b7f476902bbef1b30f8ecc2d9d95c459c32302c8b559d09b589b5955463b7af8", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/nothings/stb/archive/013ac3beddff3dbffafd5177e7972067cd2b5083.zip",
+            sha256="b7f476902bbef1b30f8ecc2d9d95c459c32302c8b559d09b589b5955463b7af8",
+            destination=self.source_folder,
+            strip_root=True)
 
     def package(self):
         copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
