@@ -63,7 +63,12 @@ class Recipe(RecipeBase):
             self.tool_requires("nasm")
 
     def source(self):
-        get(self, url="https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v2.2.1/SVT-AV1-v2.2.1.tar.gz", sha256="d02b54685542de0236bce4be1b50912aba68aff997c43b350d84a518df0cf4e5", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v2.2.1/SVT-AV1-v2.2.1.tar.gz",
+            sha256="d02b54685542de0236bce4be1b50912aba68aff997c43b350d84a518df0cf4e5",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

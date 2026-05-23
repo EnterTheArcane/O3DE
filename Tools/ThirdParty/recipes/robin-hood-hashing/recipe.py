@@ -9,7 +9,12 @@ class Recipe(RecipeBase):
     license = "MIT"
 
     def source(self):
-        get(self, url="https://github.com/martinus/robin-hood-hashing/archive/refs/tags/3.11.5.tar.gz", sha256="3693e44dda569e9a8b87ce8263f7477b23af448a3c3600c8ab9004fe79c20ad0", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/martinus/robin-hood-hashing/archive/refs/tags/3.11.5.tar.gz",
+            sha256="3693e44dda569e9a8b87ce8263f7477b23af448a3c3600c8ab9004fe79c20ad0",
+            destination=self.source_folder,
+            strip_root=True)
 
     def build(self):
         apply_conandata_patches(self)

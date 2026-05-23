@@ -182,7 +182,12 @@ class Recipe(RecipeBase):
                     self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://curl.se/download/curl-8.20.0.tar.xz", sha256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://curl.se/download/curl-8.20.0.tar.xz",
+            sha256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896",
+            destination=self.source_folder,
+            strip_root=True)
         cert_url = self.conf.get("user.libcurl.cert:url", check_type=str) or "https://curl.se/ca/cacert-2025-11-04.pem"
         cert_sha256 = self.conf.get("user.libcurl.cert:sha256", check_type=str) or "8ac40bdd3d3e151a6b4078d2b2029796e8f843e3f86fbf2adbc4dd9f05e79def"
         download(self, cert_url, "cacert.pem", verify=True, sha256=cert_sha256)

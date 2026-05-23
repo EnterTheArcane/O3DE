@@ -28,7 +28,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/imageworks/pystring/archive/refs/tags/v1.1.4.tar.gz", sha256="49da0fe2a049340d3c45cce530df63a2278af936003642330287b68cefd788fb", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/imageworks/pystring/archive/refs/tags/v1.1.4.tar.gz",
+            sha256="49da0fe2a049340d3c45cce530df63a2278af936003642330287b68cefd788fb",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

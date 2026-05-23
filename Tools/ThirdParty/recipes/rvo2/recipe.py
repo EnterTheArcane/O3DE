@@ -28,7 +28,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/snape/RVO2/archive/v2.0.2.tar.gz", sha256="20b59fcc4cf61783cb0d1baa40a0dff3c557a97246651f95d9d9fed91bf17724", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/snape/RVO2/archive/v2.0.2.tar.gz",
+            sha256="20b59fcc4cf61783cb0d1baa40a0dff3c557a97246651f95d9d9fed91bf17724",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

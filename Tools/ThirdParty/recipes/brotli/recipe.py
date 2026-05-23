@@ -41,7 +41,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/google/brotli/archive/v1.2.0.tar.gz", sha256="816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/google/brotli/archive/v1.2.0.tar.gz",
+            sha256="816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

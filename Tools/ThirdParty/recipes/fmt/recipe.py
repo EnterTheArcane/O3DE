@@ -56,7 +56,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/fmtlib/fmt/releases/download/12.1.0/fmt-12.1.0.zip", sha256="695fd197fa5aff8fc67b5f2bbc110490a875cdf7a41686ac8512fb480fa8ada7", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/fmtlib/fmt/releases/download/12.1.0/fmt-12.1.0.zip",
+            sha256="695fd197fa5aff8fc67b5f2bbc110490a875cdf7a41686ac8512fb480fa8ada7",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         if not self.options.header_only:

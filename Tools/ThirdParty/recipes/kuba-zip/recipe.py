@@ -29,7 +29,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/kuba--/zip/archive/v0.3.2.tar.gz", sha256="0c33740aec7a3913bca07df360420c19cac5e794e0f602f14f798cb2e6f710e5", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/kuba--/zip/archive/v0.3.2.tar.gz",
+            sha256="0c33740aec7a3913bca07df360420c19cac5e794e0f602f14f798cb2e6f710e5",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

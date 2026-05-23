@@ -31,7 +31,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/webmproject/libwebm/archive/refs/tags/libwebm-1.0.0.31.tar.gz", sha256="616cfdca1c869222dc60d5a49d112c1464040390e3876afca4d385347c6ce55e", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/webmproject/libwebm/archive/refs/tags/libwebm-1.0.0.31.tar.gz",
+            sha256="616cfdca1c869222dc60d5a49d112c1464040390e3876afca4d385347c6ce55e",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

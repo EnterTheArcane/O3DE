@@ -100,7 +100,12 @@ class Recipe(RecipeBase):
                     self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.8.tar.xz", sha256="277294cb33119ab71b2bc81f2f445e9bc9435b893ad15bb2cd2b0e859a0ee84a", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.8.tar.xz",
+            sha256="277294cb33119ab71b2bc81f2f445e9bc9435b893ad15bb2cd2b0e859a0ee84a",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         if is_msvc(self):

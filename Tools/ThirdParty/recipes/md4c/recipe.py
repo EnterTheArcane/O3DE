@@ -43,7 +43,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
-        get(self, url="https://github.com/mity/md4c/archive/refs/tags/release-0.5.2.tar.gz", sha256="55d0111d48fb11883aaee91465e642b8b640775a4d6993c2d0e7a8092758ef21", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/mity/md4c/archive/refs/tags/release-0.5.2.tar.gz",
+            sha256="55d0111d48fb11883aaee91465e642b8b640775a4d6993c2d0e7a8092758ef21",
+            destination=self.source_folder,
+            strip_root=True)
         self._patch_sources()
 
     def generate(self):

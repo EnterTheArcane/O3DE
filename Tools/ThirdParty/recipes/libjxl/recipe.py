@@ -54,7 +54,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/libjxl/libjxl/archive/v0.11.2.tar.gz", sha256="ab38928f7f6248e2a98cc184956021acb927b16a0dee71b4d260dc040a4320ea", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/libjxl/libjxl/archive/v0.11.2.tar.gz",
+            sha256="ab38928f7f6248e2a98cc184956021acb927b16a0dee71b4d260dc040a4320ea",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -54,7 +54,12 @@ class Recipe(RecipeBase):
             self.requires("brotli")
 
     def source(self):
-        get(self, url="https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.xz", sha256="4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.xz",
+            sha256="4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         deps = CMakeDeps(self)

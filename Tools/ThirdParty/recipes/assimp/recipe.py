@@ -162,7 +162,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.2.tar.gz", sha256="d1822d9a19c9205d6e8bc533bf897174ddb360ce504680f294170cc1d6319751", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.2.tar.gz",
+            sha256="d1822d9a19c9205d6e8bc533bf897174ddb360ce504680f294170cc1d6319751",
+            destination=self.source_folder,
+            strip_root=True)
         self._patch_sources()
 
     def generate(self):

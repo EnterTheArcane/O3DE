@@ -70,7 +70,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz", sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz",
+            sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba",
+            destination=self.source_folder,
+            strip_root=True)
         self._patch_sources()
 
     def generate(self):

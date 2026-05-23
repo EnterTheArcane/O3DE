@@ -20,7 +20,12 @@ class Recipe(RecipeBase):
                 self.tool_requires("msys2")
 
     def source(self):
-        get(self, url="https://ftpmirror.gnu.org/gnu/m4/m4-1.4.20.tar.xz", sha256="e236ea3a1ccf5f6c270b1c4bb60726f371fa49459a8eaaebc90b216b328daf2b", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://ftpmirror.gnu.org/gnu/m4/m4-1.4.20.tar.xz",
+            sha256="e236ea3a1ccf5f6c270b1c4bb60726f371fa49459a8eaaebc90b216b328daf2b",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)

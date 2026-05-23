@@ -35,7 +35,12 @@ class Recipe(RecipeBase):
             self.requires("libtiff")
 
     def source(self):
-        get(self, url="https://github.com/aous72/OpenJPH/archive/0.27.0.tar.gz", sha256="f6768e927d8e4e4884a2efcf500a88d1b6714a48d69516332a9256803a3c8343", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/aous72/OpenJPH/archive/0.27.0.tar.gz",
+            sha256="f6768e927d8e4e4884a2efcf500a88d1b6714a48d69516332a9256803a3c8343",
+            destination=self.source_folder,
+            strip_root=True)
         apply_conandata_patches(self)
 
     def generate(self):

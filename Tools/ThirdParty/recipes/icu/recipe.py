@@ -84,7 +84,12 @@ class Recipe(RecipeBase):
             self.tool_requires(str(self.ref))
 
     def source(self):
-        get(self, url="https://github.com/unicode-org/icu/releases/download/release-78.2/icu4c-78.2-sources.tgz", sha256="3e99687b5c435d4b209630e2d2ebb79906c984685e78635078b672e03c89df35", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/unicode-org/icu/releases/download/release-78.2/icu4c-78.2-sources.tgz",
+            sha256="3e99687b5c435d4b209630e2d2ebb79906c984685e78635078b672e03c89df35",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         env = VirtualBuildEnv(self)

@@ -32,7 +32,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def source(self):
-        get(self, url="https://github.com/strukturag/libde265/releases/download/v1.0.15/libde265-1.0.15.tar.gz", sha256="00251986c29d34d3af7117ed05874950c875dd9292d016be29d3b3762666511d", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/strukturag/libde265/releases/download/v1.0.15/libde265-1.0.15.tar.gz",
+            sha256="00251986c29d34d3af7117ed05874950c875dd9292d016be29d3b3762666511d",
+            destination=self.source_folder,
+            strip_root=True)
         self._patch_sources()
 
     def generate(self):

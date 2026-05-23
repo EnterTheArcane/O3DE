@@ -24,7 +24,12 @@ class Recipe(RecipeBase):
         }
 
     def source(self):
-        get(self, url="https://github.com/microsoft/wil/archive/refs/tags/v1.0.260126.7.tar.gz", sha256="de9e03b38ff0ff8d22048f00b111cb631d21c550328f12530ccba71c05c9e361", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/microsoft/wil/archive/refs/tags/v1.0.260126.7.tar.gz",
+            sha256="de9e03b38ff0ff8d22048f00b111cb631d21c550328f12530ccba71c05c9e361",
+            destination=self.source_folder,
+            strip_root=True)
 
     def build(self):
         apply_conandata_patches(self)

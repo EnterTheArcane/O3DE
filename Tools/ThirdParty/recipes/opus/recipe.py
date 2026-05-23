@@ -29,7 +29,12 @@ class Recipe(RecipeBase):
         self.tool_requires("cmake")
 
     def source(self):
-        get(self, url="https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz", sha256="65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz",
+            sha256="65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1",
+            destination=self.source_folder,
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
