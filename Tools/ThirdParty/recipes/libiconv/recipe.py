@@ -26,7 +26,7 @@ class Recipe(ConanFile):
         "fPIC": [True, False],
     }
     default_options = {
-        "shared": False,
+        "shared": True,
         "fPIC": True,
     }
 
@@ -118,6 +118,9 @@ class Recipe(ConanFile):
         fix_apple_shared_install_name(self)
         if (is_msvc(self) or self._is_clang_cl) and self.options.shared:
             for import_lib in ["iconv", "charset"]:
+                dst = os.path.join(self.package_folder, "lib", f"{import_lib}.lib")
+                if os.path.isfile(dst):
+                    os.remove(dst)
                 rename(self, os.path.join(self.package_folder, "lib", f"{import_lib}.dll.lib"),
                              os.path.join(self.package_folder, "lib", f"{import_lib}.lib"))
 

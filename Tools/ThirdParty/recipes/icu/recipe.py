@@ -28,7 +28,7 @@ class Recipe(ConanFile):
         "with_extras": [True, False],
     }
     default_options = {
-        "shared": False,
+        "shared": True,
         "fPIC": True,
         "data_packaging": "archive",
         "with_dyload": True,
