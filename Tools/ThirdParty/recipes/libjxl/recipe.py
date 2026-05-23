@@ -60,7 +60,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = "conan_deps.cmake"
+        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = os.path.join(self.generators_folder, "conan_deps.cmake").replace("\\", "/")
         tc.variables["BUILD_TESTING"] = False
         tc.variables["JPEGXL_STATIC"] = False
         tc.variables["JPEGXL_BUNDLE_LIBPNG"] = False
