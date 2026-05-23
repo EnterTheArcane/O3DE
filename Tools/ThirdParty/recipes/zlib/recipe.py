@@ -6,10 +6,8 @@ import os
 class Recipe(RecipeBase):
     name = "zlib"
     version = "1.3.2"
-    package_type = "library"
     license = "Zlib"
 
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

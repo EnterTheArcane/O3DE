@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "openjpeg"
     version = "2.5.4"
     license = "BSD-2-Clause"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

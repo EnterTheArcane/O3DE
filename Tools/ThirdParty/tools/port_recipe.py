@@ -69,10 +69,13 @@ _FILTER_SYMBOLS: dict[str, set[str]] = {
     "conan.tools.env":   set(),  # VirtualBuildEnv/VirtualRunEnv are re-exported from thirdparty.tools.env
 }
 
-# Class-level attribute assignments that carry only upstream metadata
+# Class-level attribute assignments that carry only upstream metadata or have
+# no meaning in this build system (settings/package_type are unused here)
 _REMOVE_CLASS_ATTRS: frozenset[str] = frozenset({
     "url", "homepage", "topics", "description",
     "short_paths", "extension_properties",
+    "settings", "package_type",
+    "package_id_embed_mode", "package_id_semi_embed_mode",
 })
 
 # Methods that don't apply in our build model

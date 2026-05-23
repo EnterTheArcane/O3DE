@@ -14,8 +14,6 @@ class Recipe(RecipeBase):
     version = "16.13"
     license = "PostgreSQL"
 
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

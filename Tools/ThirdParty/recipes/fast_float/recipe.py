@@ -7,8 +7,6 @@ class Recipe(RecipeBase):
     name = "fast_float"
     version = "8.1.0"
     license = ("Apache-2.0", "MIT", "BSL-1.0")
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):

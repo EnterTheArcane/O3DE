@@ -7,8 +7,7 @@ class Recipe(RecipeBase):
     name = "minizip"
     version = "1.3.1"
     license = "Zlib"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

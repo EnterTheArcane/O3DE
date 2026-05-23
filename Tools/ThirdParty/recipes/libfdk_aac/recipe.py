@@ -13,8 +13,7 @@ class Recipe(RecipeBase):
     name = "libfdk_aac"
     version = "2.0.3"
     license = "https://github.com/mstorsjo/fdk-aac/blob/master/NOTICE"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

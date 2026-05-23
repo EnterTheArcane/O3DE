@@ -13,8 +13,7 @@ class Recipe(RecipeBase):
     name = "freetype"
     version = "2.12.1"
     license = "FTL"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

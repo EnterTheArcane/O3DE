@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "opensubdiv"
     version = "3.7.0"
     license = "LicenseRef-LICENSE.txt"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

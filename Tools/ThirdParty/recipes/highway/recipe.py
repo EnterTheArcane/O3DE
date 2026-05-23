@@ -10,8 +10,7 @@ class Recipe(RecipeBase):
     name = "highway"
     version = "1.4.0"
     license = ("Apache-2.0", "BSD-3-Clause")
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

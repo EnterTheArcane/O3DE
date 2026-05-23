@@ -10,9 +10,6 @@ class Recipe(RecipeBase):
     version = "2.72"
     license = ("GPL-2.0-or-later", "GPL-3.0-or-later")
 
-    package_type = "application"
-    settings = "os", "arch", "compiler", "build_type"
-
     @property
     def _settings_build(self):
         # TODO: Remove for Conan v2

@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "clipper2"
     version = "2.0.1"
     license = "BSL-2.0"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

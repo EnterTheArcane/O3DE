@@ -11,8 +11,7 @@ class Recipe(RecipeBase):
     name = "vulkan-validationlayers"
     version = "1.4.350.0"
     license = "Apache-2.0"
-    package_type = "shared-library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "with_wsi_xcb": [True, False],
         "with_wsi_xlib": [True, False],

@@ -7,8 +7,6 @@ class Recipe(RecipeBase):
     name = "robin-hood-hashing"
     version = "3.11.5"
     license = "MIT"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
 
     def source(self):
         get(self, url="https://github.com/martinus/robin-hood-hashing/archive/refs/tags/3.11.5.tar.gz", sha256="3693e44dda569e9a8b87ce8263f7477b23af448a3c3600c8ab9004fe79c20ad0", destination=self.source_folder, strip_root=True)

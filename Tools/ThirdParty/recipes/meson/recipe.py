@@ -2,13 +2,10 @@ from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.files import copy, download, save
 import os
 
-
 class Recipe(ConanFile):
     name = "meson"
     version = "1.11.1"
     license = "Apache-2.0"
-    package_type = "application"
-    settings = "os", "arch"
 
     def source(self):
         pass

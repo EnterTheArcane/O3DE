@@ -9,8 +9,7 @@ class Recipe(RecipeBase):
     name = "luau"
     version = "0.700"
     license = "MIT"
-    package_type = "static-library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "with_cli": [True, False],
         "with_web": [True, False],

@@ -8,8 +8,7 @@ class Recipe(RecipeBase):
     name = "vorbis"
     version = "1.3.7"
     license = "BSD-3-Clause"
-    package_type = "library"
-    settings = "os", "arch", "build_type", "compiler"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

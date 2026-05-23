@@ -10,7 +10,6 @@ class Recipe(RecipeBase):
     version = "1.6.0"
     license = "BSD-3-Clause"
 
-    settings = "os", "arch", "compiler", "build_type"
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

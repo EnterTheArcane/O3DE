@@ -10,9 +10,8 @@ from thirdparty.tools.scm import Version
 class Recipe(RecipeBase):
     name = "pkgconf"
     version = "2.5.1"
-    package_type = "application"
     license = "ISC"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

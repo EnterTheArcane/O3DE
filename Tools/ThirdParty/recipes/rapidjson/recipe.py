@@ -6,9 +6,6 @@ class Recipe(RecipeBase):
     name = "rapidjson"
     version = "1.1.0"
     license = "MIT"
-    package_type = "header-library"
-    package_id_embed_mode = "minor_mode"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):

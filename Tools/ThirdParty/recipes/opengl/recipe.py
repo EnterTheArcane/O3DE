@@ -6,8 +6,6 @@ class Recipe(RecipeBase):
     version = "0.0.0"
     version = "system"
     license = "MIT"
-    package_type = "shared-library"
-    settings = "os", "arch", "compiler", "build_type"
 
     def package_info(self):
         # TODO: Workaround for #2311 until a better solution can be found

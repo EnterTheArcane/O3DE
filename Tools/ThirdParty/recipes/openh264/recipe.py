@@ -13,8 +13,7 @@ class Recipe(RecipeBase):
     name = "openh264"
     version = "2.6.0"
     license = "BSD-2-Clause"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

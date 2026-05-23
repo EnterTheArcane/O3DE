@@ -8,8 +8,7 @@ class Recipe(RecipeBase):
     name = "minizip-ng"
     version = "4.2.1"
     license = "Zlib"
-    package_type = "library"
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

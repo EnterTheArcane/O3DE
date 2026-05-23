@@ -10,7 +10,7 @@ class Recipe(RecipeBase):
     name = "rapidyaml"
     version = "0.10.0"
     license = "MIT",
-    settings = "os", "arch", "compiler", "build_type"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

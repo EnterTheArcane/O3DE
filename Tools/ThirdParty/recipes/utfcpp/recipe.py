@@ -7,8 +7,6 @@ class Recipe(RecipeBase):
     name = "utfcpp"
     version = "4.0.9"
     license = "BSL-1.0"
-    package_type = "header-library"
-    settings = "os", "arch", "compiler", "build_type"
     no_copy_source = True
 
     def source(self):
