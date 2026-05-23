@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase as ConanFile
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import stdcpp_library
-from thirdparty.tools.env import Environment
+from thirdparty.tools.env import Environment, VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rm, rmdir, replace_in_file
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
@@ -33,7 +33,7 @@ class Recipe(ConanFile):
         "fPIC": True,
         "with_freetype": True,
         "with_icu": False,
-        "with_glib": True,
+        "with_glib": False,
         "with_gdi": True,
         "with_uniscribe": True,
         "with_directwrite": False,
@@ -93,6 +93,9 @@ class Recipe(ConanFile):
                 # Mitigate https://learn.microsoft.com/en-us/cpp/build/reference/zf?view=msvc-170
                 return "vs", ["/bigobj"]
             return "ninja", []
+
+        VirtualBuildEnv(self).generate()
+        PkgConfigDeps(self).generate()
 
         # Avoid conflicts with libiconv
         # see: https://github.com/conan-io/conan-center-index/pull/17046#issuecomment-1554629094
