@@ -98,7 +98,7 @@ class Recipe(RecipeBase):
                 )
 
                 # Patch settings for a different build type
-                if self.settings.build_type is not "Release":
+                if self.settings.build_type != "Release":
                     replacements = {
                         "Release": str(self.settings.build_type)
                     }
