@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
-    name = "gtest"
+    name = "googletest"
     version = "1.17.0"
     license = "BSD-3-Clause"
 
