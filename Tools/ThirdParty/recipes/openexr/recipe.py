@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir, replace_in_file
+from thirdparty.tools.files import apply_patches, copy, get, rmdir, replace_in_file
 from thirdparty.tools.scm import Version
 import os
 
@@ -56,7 +56,7 @@ class Recipe(RecipeBase):
         cd.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
 
         # Even with BUILD_WEBSITE = False, Website examples target is compiled in 3.2
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),

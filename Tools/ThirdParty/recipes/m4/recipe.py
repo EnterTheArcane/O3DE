@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir, save
+from thirdparty.tools.files import apply_patches, copy, get, rmdir, save
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, unix_path
 from thirdparty.tools.scm import Version
@@ -79,7 +79,7 @@ class Recipe(RecipeBase):
         tc.generate(env)
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         if shutil.which("help2man") == None:
             # dummy file for configure
             help2man = os.path.join(self.source_folder, "help2man")

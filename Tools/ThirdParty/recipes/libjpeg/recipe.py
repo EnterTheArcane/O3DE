@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_conandata_patches, chdir, copy, get, load, replace_in_file, rm, rmdir, save
+from thirdparty.tools.files import apply_patches, chdir, copy, get, load, replace_in_file, rm, rmdir, save
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import MSBuild, MSBuildToolchain
 import os
@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
             tc.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         if self._is_cl_like:
             with chdir(self, self.source_folder):
                 self.run("nmake /f makefile.vs setupcopy-v16")

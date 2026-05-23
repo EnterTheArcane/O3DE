@@ -1,8 +1,8 @@
-from thirdparty import RecipeBase as ConanFile
+from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, download, save
 import os
 
-class Recipe(ConanFile):
+class Recipe(RecipeBase):
     name = "meson"
     version = "1.11.1"
     license = "Apache-2.0"

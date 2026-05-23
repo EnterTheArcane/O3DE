@@ -2,7 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.files import (
-    apply_conandata_patches,
+    apply_patches,
     copy,
     get,
     rename,
@@ -106,7 +106,7 @@ class Recipe(RecipeBase):
             replace_in_file(self, windres_options_path, '#   PACKAGE_VERSION_SUBMINOR', '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)
 
     def build(self): 
-        apply_conandata_patches(self)
+        apply_patches(self)
         self._apply_resource_patch()
         autotools = Autotools(self)
         autotools.configure()

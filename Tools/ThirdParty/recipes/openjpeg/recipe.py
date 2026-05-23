@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get, rmdir, save, replace_in_file
+from thirdparty.tools.files import apply_patches, copy, get, rmdir, save, replace_in_file
 from thirdparty.tools.scm import Version
 import os
 import textwrap
@@ -56,7 +56,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         # The finite-math-only optimization has no effect and can cause linking errors
         # when linked against glibc >= 2.31
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),

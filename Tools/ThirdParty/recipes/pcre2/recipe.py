@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 import os
 
@@ -89,7 +89,7 @@ class Recipe(RecipeBase):
         cd.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
         # Do not add ${PROJECT_SOURCE_DIR}/cmake because it contains a custom
         # FindPackageHandleStandardArgs.cmake which can break conan generators

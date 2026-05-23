@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, collect_libs, copy, get, replace_in_file, rmdir, rm
+from thirdparty.tools.files import apply_patches, collect_libs, copy, get, replace_in_file, rmdir, rm
 from thirdparty.tools.scm import Version
 import glob
 import os
@@ -50,7 +50,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         # Don't force PIC
         replace_in_file(self, os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
                               "POSITION_INDEPENDENT_CODE On", "")

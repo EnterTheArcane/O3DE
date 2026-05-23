@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_conandata_patches, copy, get
+from thirdparty.tools.files import apply_patches, copy, get
 from thirdparty.tools.microsoft import is_msvc
 import os
 
@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
             cd.generate()
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
         cmake.build()
