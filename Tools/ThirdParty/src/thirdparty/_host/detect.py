@@ -111,6 +111,14 @@ def detect_settings(build_type="Release"):
                 ("compiler.libcxx", "libc++"),
                 ("compiler.cppstd", "17"),
             ], raise_undefined=False)
+        # Set os.version so that CMakeToolchain emits CMAKE_OSX_DEPLOYMENT_TARGET.
+        # platform.mac_ver() returns e.g. "15.4.0" or "26.5.0"; strip the patch component.
+        _raw_ver = platform.mac_ver()[0]  # e.g. "26.5.0"
+        if _raw_ver:
+            _parts = _raw_ver.split(".")
+            # Use major.minor (e.g. "26.5"), falling back to just major if needed.
+            _os_version = ".".join(_parts[:2]) if len(_parts) >= 2 else _parts[0]
+            settings.update_values([("os.version", _os_version)], raise_undefined=False)
     else:
         compiler, ver = _detect_linux_compiler()
         if compiler == "gcc":

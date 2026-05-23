@@ -280,13 +280,31 @@ def _build_dep_graph(
                 except Exception:
                     pass
 
+        try:
+            from thirdparty._conan.internal.model.pkg_type import PackageType
+            PackageType.compute_package_type(dep)
+        except Exception:
+            pass
+
         # Register in cache BEFORE recursing to handle diamond/cycle deps.
         ref = RecipeReference(dep_name, dep_version)
         if is_build:
             req = Requirement(ref, headers=False, libs=False, build=True, run=True,
                               visible=False, direct=direct)
         else:
-            req = Requirement(ref, build=False, direct=direct)
+            # Set run=True if the package contains shared libraries so that
+            # VirtualRunEnv adds its lib dir to DYLD_LIBRARY_PATH / LD_LIBRARY_PATH.
+            import platform as _platform
+            _lib_path = Path(pkg_dir) / "lib"
+            _sys = _platform.system()
+            if _sys == "Darwin":
+                _pattern = "*.dylib"
+            elif _sys == "Windows":
+                _pattern = "*.dll"
+            else:
+                _pattern = "*.so*"
+            _is_shared = _lib_path.is_dir() and any(_lib_path.glob(_pattern))
+            req = Requirement(ref, build=False, run=_is_shared, direct=direct)
         iface = ConanFileInterface(dep, None)
         _iface_cache[dep_name] = (req, iface)
         deps_dict[req] = iface
@@ -343,21 +361,20 @@ def _build_dep_graph(
     return ConanFileDependencies(deps_dict)
 
 
-
-
-# Sentinel file written to <version>/cache/ only after a fully successful build.
-# Kept outside package/ so the distribution directory stays clean.
-_DONE_MARKER = ".build-complete"
+_BUILD_COMPLETE_MARKER = ".build-complete"
+_SOURCE_COMPLETE_MARKER = ".source-complete"
 
 
 def _build_state_dir(build_root: Path, name: str, version: str) -> Path:
-    """Directory that holds build-system state (completion marker, etc.).
-    Lives at build/<name>/<version>/cache/ alongside package/, source/, build/."""
     return build_root / name / version / "cache"
 
 
 def _is_built(build_root: Path, name: str, version: str) -> bool:
-    return (_build_state_dir(build_root, name, version) / _DONE_MARKER).is_file()
+    return (_build_state_dir(build_root, name, version) / _BUILD_COMPLETE_MARKER).is_file()
+
+
+def _is_sourced(build_root: Path, name: str, version: str) -> bool:
+    return (_build_state_dir(build_root, name, version) / _SOURCE_COMPLETE_MARKER).is_file()
 
 
 def _load_conandata(recipe) -> None:
@@ -428,6 +445,9 @@ def _build_recipe(
     # Recursively build deps and collect their full transitive dep lists.
     transitive: list[str] = []
     for dep_name in direct_deps:
+        if not (recipes_root / dep_name / "recipe.py").exists():
+            print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
+            continue
         sub = _build_recipe(recipes_root, build_root, dep_name, build_type, visited,
                             jobs=jobs, generate_only=generate_only)
         for d in sub:
@@ -482,7 +502,7 @@ def _build_recipe(
     # package directory so we start clean.
     pkg_dir = Path(recipe.package_folder)
     state_dir = pkg_dir.parent / "cache"
-    if pkg_dir.exists() and not (state_dir / _DONE_MARKER).is_file():
+    if pkg_dir.exists() and not (state_dir / _BUILD_COMPLETE_MARKER).is_file():
         shutil.rmtree(pkg_dir, ignore_errors=True)
 
     # Run config_options / configure / validate before creating any directories so
@@ -517,8 +537,15 @@ def _build_recipe(
     _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.export_sources_folder))
 
     if not generate_only and hasattr(recipe, "source"):
-        Path(recipe.source_folder).mkdir(parents=True, exist_ok=True)
-        recipe.source()
+        src_folder = Path(recipe.source_folder)
+        src_folder.mkdir(parents=True, exist_ok=True)
+        # Only run source() once per package; skip if already completed successfully.
+        if not _is_sourced(build_root, name, version):
+            # Wipe any partial state from a previous failed source() attempt
+            shutil.rmtree(src_folder, ignore_errors=True)
+            src_folder.mkdir(parents=True, exist_ok=True)
+            recipe.source()
+            (src_folder / _SOURCE_COMPLETE_MARKER).write_text("")
     if hasattr(recipe, "generate"):
         # Conan generators write files with bare filenames and expect CWD == generators_folder
         # (the comment in CMakeDeps says "# Current directory is the generators_folder").
@@ -541,6 +568,11 @@ def _build_recipe(
             try:
                 os.chdir(recipe.build_folder)
                 recipe.build()
+            except Exception:
+                # Clean up so that the next run starts fresh rather than resuming a broken state.
+                shutil.rmtree(recipe.build_folder, ignore_errors=True)
+                shutil.rmtree(recipe.package_folder, ignore_errors=True)
+                raise
             finally:
                 os.chdir(_orig_cwd_build)
         if hasattr(recipe, "package"):
@@ -555,7 +587,7 @@ def _build_recipe(
         # Write the completion marker only after both build() and package() succeed.
         state_dir = Path(recipe.package_folder).parent / "cache"
         state_dir.mkdir(parents=True, exist_ok=True)
-        (state_dir / _DONE_MARKER).write_text("")
+        (state_dir / _BUILD_COMPLETE_MARKER).write_text("")
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive
