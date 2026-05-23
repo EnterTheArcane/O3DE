@@ -1,7 +1,9 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, VCVars
+from thirdparty.tools.scm import Version
 import os
 import shutil
 
@@ -63,6 +65,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "microsoft/mimalloc")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -1,12 +1,18 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.cmake import CMakeToolchain, CMake
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "utfcpp"
     version = "4.0.9"
     license = "BSL-1.0"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "nemtrif/utfcpp")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -1,12 +1,18 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import get, copy, replace_in_file, rm, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "pybind11"
     version = "3.0.1"
     license = "BSD-3-Clause"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "pybind/pybind11")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

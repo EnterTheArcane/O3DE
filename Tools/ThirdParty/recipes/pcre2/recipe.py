@@ -1,7 +1,9 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -55,6 +57,10 @@ class Recipe(RecipeBase):
             self.requires("zlib")
         if self.options.get_safe("with_bzip2"):
             self.requires("bzip2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "PCRE2Project/pcre2")
+        return Version(repo.latest_release.removeprefix("pcre2-"))
 
     def source(self):
         get(

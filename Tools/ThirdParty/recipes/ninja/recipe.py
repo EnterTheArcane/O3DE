@@ -1,11 +1,17 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "ninja"
     version = "1.13.2"
     license = "Apache-2.0"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "ninja-build/ninja")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def build(self):
         if self.settings.os == "Windows":

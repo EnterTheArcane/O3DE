@@ -1,12 +1,18 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import apply_patches, copy, get
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "robin-hood-hashing"
     version = "3.11.5"
     license = "MIT"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "martinus/robin-hood-hashing")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -2,8 +2,10 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, mkdir, rm, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import check_min_vs, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, unix_path
+from thirdparty.tools.scm import Version
 import glob
 import os
 import shutil
@@ -39,6 +41,10 @@ class Recipe(RecipeBase):
                 self.tool_requires("msys2")
         if self.settings_build.os == "Windows" and self.settings.get_safe("compiler.runtime"):
             self.tool_requires("automake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "libffi/libffi")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

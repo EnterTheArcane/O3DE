@@ -1,6 +1,7 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.files import apply_patches, get, copy
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 import os
 
@@ -22,6 +23,10 @@ class Recipe(RecipeBase):
             "Visual Studio": "15",
             "msvc": "191"
         }
+
+    def latest_version(self):
+        repo = GithubRepository(self, "microsoft/wil")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

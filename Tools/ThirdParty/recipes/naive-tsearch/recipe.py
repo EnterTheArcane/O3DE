@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy, rm, rmdir
 from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -26,6 +28,10 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
         if self.options.header_only:
             self.package_type = 'header-library'
+
+    def latest_version(self):
+        repo = GithubRepository(self, "kulp/naive-tsearch")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

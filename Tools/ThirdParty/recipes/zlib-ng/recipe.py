@@ -2,7 +2,9 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, load
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc
+from thirdparty.tools.scm import Version
 import os
 import re
 
@@ -53,6 +55,10 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
         if self.options.zlib_compat:
             self.provides = ["zlib"]
+
+    def latest_version(self):
+        repo = GithubRepository(self, "zlib-ng/zlib-ng")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

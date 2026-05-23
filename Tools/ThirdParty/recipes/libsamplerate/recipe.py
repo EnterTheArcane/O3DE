@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -32,6 +34,10 @@ class Recipe(RecipeBase):
         if is_apple_os(self) and self.options.shared:
             # see https://github.com/libsndfile/libsamplerate/blob/0.2.2/src/CMakeLists.txt#L110-L119
             self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "libsndfile/libsamplerate")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

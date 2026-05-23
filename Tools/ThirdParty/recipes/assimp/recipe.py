@@ -4,6 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library, check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import collect_libs, copy, get, replace_in_file, rmdir, save
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 import os
@@ -160,6 +161,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "assimp/assimp")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

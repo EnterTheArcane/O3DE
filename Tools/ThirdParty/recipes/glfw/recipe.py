@@ -2,8 +2,10 @@ from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.tools.scm import Version
 import os
 import textwrap
 
@@ -71,6 +73,10 @@ class Recipe(RecipeBase):
                 self.tool_requires("wayland")
             if not self.conf.get("tools.gnu:pkg_config", check_type=str):
                 self.tool_requires("pkgconf")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "glfw/glfw")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

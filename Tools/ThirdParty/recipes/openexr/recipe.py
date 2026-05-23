@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir, replace_in_file
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.scm import Version
 import os
 
@@ -34,6 +35,10 @@ class Recipe(RecipeBase):
         self.requires("libdeflate")
 
         self.requires("openjph")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "AcademySoftwareFoundation/openexr")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(
