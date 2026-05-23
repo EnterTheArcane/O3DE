@@ -345,13 +345,19 @@ def _build_dep_graph(
 
 
 
-# Sentinel file written to package/ only after a fully successful build.
-_DONE_MARKER = ".build_complete"
+# Sentinel file written to <version>/cache/ only after a fully successful build.
+# Kept outside package/ so the distribution directory stays clean.
+_DONE_MARKER = ".build-complete"
+
+
+def _build_state_dir(build_root: Path, name: str, version: str) -> Path:
+    """Directory that holds build-system state (completion marker, etc.).
+    Lives at build/<name>/<version>/cache/ alongside package/, source/, build/."""
+    return build_root / name / version / "cache"
 
 
 def _is_built(build_root: Path, name: str, version: str) -> bool:
-    pkg = build_root / name / version / "package"
-    return (pkg / _DONE_MARKER).is_file()
+    return (_build_state_dir(build_root, name, version) / _DONE_MARKER).is_file()
 
 
 def _load_conandata(recipe) -> None:
@@ -471,10 +477,12 @@ def _build_recipe(
     # self.conan_data for custom version data (e.g. zlib-ng's "zlib_compat" field).
     _load_conandata(recipe)
 
-    # If the package directory exists but has no completion marker the previous
-    # build was interrupted or failed mid-package().  Remove it so we start clean.
+    # If the package directory exists but the completion marker is absent, the
+    # previous build was interrupted or failed mid-package().  Remove the partial
+    # package directory so we start clean.
     pkg_dir = Path(recipe.package_folder)
-    if pkg_dir.exists() and not (pkg_dir / _DONE_MARKER).is_file():
+    state_dir = pkg_dir.parent / "cache"
+    if pkg_dir.exists() and not (state_dir / _DONE_MARKER).is_file():
         shutil.rmtree(pkg_dir, ignore_errors=True)
 
     # Run config_options / configure / validate before creating any directories so
@@ -545,8 +553,9 @@ def _build_recipe(
             finally:
                 os.chdir(_orig_cwd_pkg)
         # Write the completion marker only after both build() and package() succeed.
-        Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
-        (Path(recipe.package_folder) / _DONE_MARKER).write_text("")
+        state_dir = Path(recipe.package_folder).parent / "cache"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / _DONE_MARKER).write_text("")
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive
