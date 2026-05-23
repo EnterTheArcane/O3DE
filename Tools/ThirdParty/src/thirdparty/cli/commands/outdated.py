@@ -9,19 +9,9 @@ from pathlib import Path
 import colorama
 from colorama import Fore, Style
 
-from thirdparty._conan import conan_version as _conan_version
 from thirdparty._conan.internal.model.conan_file import ConanFile
 from thirdparty._conan.internal.model.version import Version
-from thirdparty._conan.tools.env.virtualbuildenv import VirtualBuildEnv as _VirtualBuildEnv
-from thirdparty._conan.tools.env.virtualrunenv import VirtualRunEnv as _VirtualRunEnv
 from thirdparty.cli.command import command
-
-# Mirrors _RECIPE_INJECT in cli/commands/build.py — kept in sync deliberately.
-_RECIPE_INJECT: dict[str, object] = {
-    "VirtualBuildEnv": _VirtualBuildEnv,
-    "VirtualRunEnv":   _VirtualRunEnv,
-    "conan_version":   _conan_version,
-}
 
 _BUMP_COLOR = {
     "major": Fore.RED,
@@ -31,7 +21,19 @@ _BUMP_COLOR = {
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
-    pass
+    g = p.add_mutually_exclusive_group()
+    g.add_argument(
+        "--all",
+        action="store_true",
+        dest="all",
+        help="Include recipes that have no latest_version() method.",
+    )
+    g.add_argument(
+        "--missing",
+        action="store_true",
+        dest="missing",
+        help="List only recipes that have no latest_version() method.",
+    )
 
 
 @command
@@ -44,6 +46,7 @@ def outdated(args: argparse.Namespace) -> None:
         print(f"[thirdparty] error: no 'recipes/' directory in {cwd}", file=sys.stderr)
         sys.exit(1)
 
+    missing_rows: list[tuple[str, str]] = []
     rows: list[tuple[str, str, str, str, str | None]] = []
     checkable: list[tuple[str, type]] = []
 
@@ -58,8 +61,15 @@ def outdated(args: argparse.Namespace) -> None:
             rows.append((name, "?", "?", f"load-error: {exc}", None))
             continue
         if not hasattr(cls, "latest_version"):
+            missing_rows.append((name, str(getattr(cls, "version", "?"))))
+            if args.all:
+                rows.append((name, str(getattr(cls, "version", "?")), "", "no-version-check", None))
             continue
         checkable.append((name, cls))
+
+    if args.missing:
+        _print_missing(missing_rows)
+        return
 
     # latest_version() is network-bound; fan out so we don't wait serially on
     # one HTTP round-trip per recipe.
@@ -124,13 +134,22 @@ def _load_recipe_class(recipe_path: Path, name: str) -> type[ConanFile]:
         raise RuntimeError(f"cannot load {recipe_path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    for attr_name, obj in _RECIPE_INJECT.items():
-        if not hasattr(module, attr_name):
-            setattr(module, attr_name, obj)
     cls = getattr(module, "Recipe", None)
     if cls is None or not (isinstance(cls, type) and issubclass(cls, ConanFile)):
         raise RuntimeError(f"{recipe_path} has no Recipe class")
     return cls
+
+
+def _print_missing(rows: list[tuple[str, str]]) -> None:
+    if not rows:
+        print("All recipes have a latest_version() method.")
+        return
+    name_w = max(len("recipe"), max(len(r[0]) for r in rows))
+    ver_w  = max(len("version"), max(len(r[1]) for r in rows))
+    print(f"{'recipe':<{name_w}}  {'version':<{ver_w}}")
+    print(f"{'-' * name_w}  {'-' * ver_w}")
+    for name, version in rows:
+        print(f"{name:<{name_w}}  {version:<{ver_w}}")
 
 
 def _print_table(rows: list[tuple[str, str, str, str, str | None]]) -> None:
@@ -154,6 +173,9 @@ def _print_table(rows: list[tuple[str, str, str, str, str | None]]) -> None:
             latest_col = latest_padded
             status_col = f"{Fore.GREEN}{status}{Style.RESET_ALL}"
         elif status == "ahead":
+            latest_col = latest_padded
+            status_col = f"{Style.DIM}{status}{Style.RESET_ALL}"
+        elif status == "no-version-check":
             latest_col = latest_padded
             status_col = f"{Style.DIM}{status}{Style.RESET_ALL}"
         else:
