@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rmdir, rm, rename
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.scm import Version
@@ -37,6 +38,10 @@ class Recipe(RecipeBase):
         if is_msvc(self) and self.settings.arch == "armv8":
             self.tool_requires("strawberryperl")
             self.tool_requires("gas-preprocessor")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "cisco/openh264")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.tools.build import build_jobs
 from thirdparty.tools.files import chdir, copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import AutotoolsToolchain
 from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path
 from thirdparty.tools.scm import Version
@@ -129,6 +130,10 @@ class Recipe(RecipeBase):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.tool_requires("msys2")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "openssl/openssl")
+        return Version(repo.latest_release.removeprefix("openssl-"))
 
     def source(self):
         get(

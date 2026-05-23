@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -69,6 +71,10 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "zlib-ng/minizip-ng")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

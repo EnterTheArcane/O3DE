@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 import os
 
@@ -21,10 +23,14 @@ class Recipe(RecipeBase):
         "native_code_gen": False,
     }
 
+    def latest_version(self):
+        repo = GithubRepository(self, "luau-lang/luau")
+        return Version(repo.latest_release)
+
     def source(self):
         get(
             self,
-            url="https://github.com/Roblox/luau/archive/0.700.tar.gz",
+            url="https://github.com/luau-lang/luau/archive/0.700.tar.gz",
             sha256="e0dffe07a4b27c568b9688916e1d97ba7204b7a4d487d0a03648c99b88fc8df8",
             destination=self.source_folder,
             strip_root=True)
@@ -91,4 +97,3 @@ class Recipe(RecipeBase):
             self.cpp_info.components["Web"].libs = ["Luau.Web"]
             self.cpp_info.components["Web"].set_property("cmake_target_name", "Luau::Web")
             self.cpp_info.components["Web"].requires = ["Compiler", "VM", "Analysis"]
-

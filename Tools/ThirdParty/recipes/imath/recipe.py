@@ -2,6 +2,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
 import os
@@ -21,6 +22,10 @@ class Recipe(RecipeBase):
     }
 
     implements = ["auto_shared_fpic"]
+
+    def latest_version(self):
+        repo = GithubRepository(self, "AcademySoftwareFoundation/Imath")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

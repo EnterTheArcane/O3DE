@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 
 import os
 
@@ -41,6 +43,10 @@ class Recipe(RecipeBase):
         # The project requires cmake 3.15 but the use of CMAKE_REQUIRE_FIND_PACKAGE_JPEG below
         # requires 3.22.
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "google/libultrahdr")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

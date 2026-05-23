@@ -3,6 +3,8 @@ from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import check_min_cppstd, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import apply_patches, collect_libs, copy, get, rmdir, save
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 import textwrap
 
@@ -47,6 +49,10 @@ class Recipe(RecipeBase):
     def requirements(self):
         if self.settings.os == "Linux":
             self.requires("libalsa")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "kcat/openal-soft")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -2,7 +2,9 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import check_min_cppstd
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
@@ -118,6 +120,10 @@ class Recipe(RecipeBase):
         # TODO: R3DSDK dependency
         # TODO: Nuke dependency
         self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")
+        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

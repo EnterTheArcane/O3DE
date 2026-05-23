@@ -1,11 +1,17 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.files import get, copy
+from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm import Version
 import os
 
 class Recipe(RecipeBase):
     name = "dirent"
     version = "1.24"
     license = "MIT"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "tronkko/dirent")
+        return Version(repo.latest_release)
 
     def source(self):
         get(

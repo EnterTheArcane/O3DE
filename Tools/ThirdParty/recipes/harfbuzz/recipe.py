@@ -3,6 +3,7 @@ from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.env import Environment, VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rm, rmdir, replace_in_file
+from thirdparty.tools.github import GithubRepository
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc_static_runtime, is_msvc
@@ -75,6 +76,10 @@ class Recipe(RecipeBase):
             # Ensure that the gettext we use at build time is compatible
             # with the libiconv that is transitively exposed by glib
             self.tool_requires("gettext")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "harfbuzz/harfbuzz")
+        return Version(repo.latest_release)
 
     def source(self):
         get(
