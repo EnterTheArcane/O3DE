@@ -45,13 +45,13 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_png:
-            self.requires("libpng/[>=1.6 <2]")
+            self.requires("libpng")
         if self.options.with_zlib:
-            self.requires("zlib/[>=1.2.10 <2]")
+            self.requires("zlib")
         if self.options.with_bzip2:
-            self.requires("bzip2/1.0.8")
+            self.requires("bzip2")
         if self.options.with_brotli:
-            self.requires("brotli/1.1.0")
+            self.requires("brotli")
 
     def source(self):
         get(self, url="https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.xz", sha256="4766f20157cc4cf0cd292f80bf917f92d1c439b243ac3018debf6b9140c41a7f", destination=self.source_folder, strip_root=True)

@@ -35,11 +35,11 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if self._settings_build.os == "Windows":
-            self.tool_requires("strawberryperl/5.32.1.1")
+            self.tool_requires("strawberryperl")
             if not is_msvc(self):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/latest")
+                    self.tool_requires("msys2")
 
     def source(self):
         get(self, url="https://www.nasm.us/pub/nasm/releasebuilds/3.01/nasm-3.01.tar.xz", sha256="b7324cbe86e767b65f26f467ed8b12ad80e124e3ccb89076855c98e43a9eddd4", destination=self.source_folder, strip_root=True)

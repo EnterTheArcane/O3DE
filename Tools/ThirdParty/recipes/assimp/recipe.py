@@ -139,27 +139,27 @@ class Recipe(RecipeBase):
     def requirements(self):
         # TODO: unvendor others libs:
         # - Open3DGC
-        self.requires("minizip/1.2.13")
-        self.requires("pugixml/1.14")
-        self.requires("utfcpp/4.0.1")
-        self.requires("zlib/[>=1.2.11 <2]")
+        self.requires("minizip")
+        self.requires("pugixml")
+        self.requires("utfcpp")
+        self.requires("zlib")
         if self._depends_on_kuba_zip:
-            self.requires("kuba-zip/0.3.0")
+            self.requires("kuba-zip")
         if self._depends_on_poly2tri:
-            self.requires("poly2tri/20130502")
+            self.requires("poly2tri")
         if self._depends_on_rapidjson:
-            self.requires("rapidjson/20230929")
+            self.requires("rapidjson")
         if self._depends_on_draco:
-            self.requires("draco/1.5.6")
+            self.requires("draco")
         if self._depends_on_clipper:
-            self.requires("clipper/6.4.2")
+            self.requires("clipper")
         if self._depends_on_stb:
-            self.requires("stb/20230920")
+            self.requires("stb")
         if self._depends_on_openddlparser:
-            self.requires("openddl-parser/0.5.1")
+            self.requires("openddl-parser")
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.22]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.2.tar.gz", sha256="d1822d9a19c9205d6e8bc533bf897174ddb360ce504680f294170cc1d6319751", destination=self.source_folder, strip_root=True)

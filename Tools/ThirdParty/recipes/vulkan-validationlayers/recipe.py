@@ -40,21 +40,21 @@ class Recipe(RecipeBase):
             del self.options.with_wsi_wayland
 
     def requirements(self):
-        self.requires("robin-hood-hashing/3.11.5")
+        self.requires("robin-hood-hashing")
         self.requires(f"spirv-headers/{self.version}")
         self.requires(f"spirv-tools/{self.version}")
         self.requires(f"vulkan-headers/{self.version}", transitive_headers=True)
         self.requires(f"vulkan-utility-libraries/{self.version}")
 
         if self.options.get_safe("with_wsi_xcb") or self.options.get_safe("with_wsi_xlib"):
-            self.requires("xorg/system")
+            self.requires("xorg")
         if self.options.get_safe("with_wsi_wayland"):
-            self.requires("wayland/1.22.0")
+            self.requires("wayland")
 
     def build_requirements(self):
         if self._needs_pkg_config and not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf/[>=2.1 <3]")
-        self.tool_requires("cmake/[>=3.22.1]")
+            self.tool_requires("pkgconf")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz", sha256="4905ae2d2424cccdd88554b78f6f53e3469da17433c3923d049a167ea674f50e", destination=self.source_folder, strip_root=True)

@@ -39,9 +39,9 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if self.options.get_safe("assembly", False):
-            self.tool_requires("nasm/[*]")
+            self.tool_requires("nasm")
         if self._settings_build.os == "Windows":
-            self.tool_requires("strawberryperl/[*]")
+            self.tool_requires("strawberryperl")
 
     def source(self):
         get(self, url="https://storage.googleapis.com/aom-releases/libaom-3.13.3.tar.gz", sha256="446a4ae9741cb8f3eeb98c949d25f91b48cb2b8569cae975c4b737392e9024fc", destination=self.source_folder, strip_root=True)

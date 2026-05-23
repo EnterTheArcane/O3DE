@@ -25,16 +25,16 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.get_safe("with_icu"):
-            self.requires("icu/73.2")
+            self.requires("icu")
         if Version(self.version) >= "20251105":
-            self.requires("abseil/[>=20240116.1 <=20260107.1]", transitive_headers=True)
+            self.requires("abseil", transitive_headers=True)
         elif Version(self.version) >= "20230601":
             # 20250127.0 is the most recent abseil version that supports C++14
-            self.requires("abseil/[>=20240116.1 <=20250127.0]", transitive_headers=True)
+            self.requires("abseil", transitive_headers=True)
 
     def build_requirements(self):
         if Version(self.version) >= "20250805":
-            self.tool_requires("cmake/[>=3.22]")
+            self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/google/re2/releases/download/2025-11-05/re2-2025-11-05.tar.gz", sha256="87f6029d2f6de8aa023654240a03ada90e876ce9a4676e258dd01ea4c26ffd67", destination=self.source_folder, strip_root=True)

@@ -115,20 +115,20 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if not self.options.no_zlib:
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib")
 
     def build_requirements(self):
         if self.settings_build.os == "Windows":
             if self.conf.get("user.openssl:windows_use_jom", False):
-                self.tool_requires("jom/[*]")
+                self.tool_requires("jom")
             if not self.options.no_asm and self.settings.arch in ["x86", "x86_64"]:
-                self.tool_requires("nasm/2.16.01")
+                self.tool_requires("nasm")
             if self._use_nmake:
-                self.tool_requires("strawberryperl/5.32.1.1")
+                self.tool_requires("strawberryperl")
             else:
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/latest")
+                    self.tool_requires("msys2")
 
     def source(self):
         get(self, url="https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz", sha256="aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f", destination=self.source_folder, strip_root=True)

@@ -141,45 +141,45 @@ class Recipe(RecipeBase):
         if self.options.with_ssl == "openssl":
             self.requires(f"openssl/[>=3 <4]")
         elif self.options.with_ssl == "libressl":
-            self.requires("libressl/[>=3.5 <4]")
+            self.requires("libressl")
         elif self.options.with_ssl == "wolfssl":
-            self.requires("wolfssl/[>=5.6.6 <6]")
+            self.requires("wolfssl")
         elif self.options.with_ssl == "mbedtls":
-            self.requires("mbedtls/3.5.0")
+            self.requires("mbedtls")
         if self.settings.os == "Linux" and self.options.with_ldap:
-            self.requires("openldap/[>=2.6 <3]")
+            self.requires("openldap")
         if self.options.with_nghttp2:
-            self.requires("libnghttp2/[>=1.59.0 <2]")
+            self.requires("libnghttp2")
         if self.options.with_libssh2:
-            self.requires("libssh2/1.11.0")
+            self.requires("libssh2")
         if self.options.with_zlib:
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib")
         if self.options.with_brotli:
-            self.requires("brotli/1.1.0")
+            self.requires("brotli")
         if self.options.with_zstd:
-            self.requires("zstd/[~1.5]")
+            self.requires("zstd")
         if self.options.with_c_ares:
-            self.requires("c-ares/[>=1.27 <2]")
+            self.requires("c-ares")
         if self.options.get_safe("with_libpsl"):
-            self.requires("libpsl/0.21.1")
+            self.requires("libpsl")
         if self.options.with_libidn:
-            self.requires("libidn2/2.3.0")
+            self.requires("libidn2")
 
     def build_requirements(self):
         if self._is_using_cmake_build:
-            self.tool_requires("cmake/[>=3.18]")
+            self.tool_requires("cmake")
             if self._is_win_x_android:
-                self.tool_requires("ninja/[>=1.10.2 <2]")
+                self.tool_requires("ninja")
         else:
-            self.tool_requires("libtool/2.4.7")
+            self.tool_requires("libtool")
             if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-                self.tool_requires("pkgconf/[>=2.2 <3]")
+                self.tool_requires("pkgconf")
             if self.settings.os in [ "tvOS", "watchOS" ]:
-                self.tool_requires("gnu-config/20210814")
+                self.tool_requires("gnu-config")
             if self.settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/latest")
+                    self.tool_requires("msys2")
 
     def source(self):
         get(self, url="https://curl.se/download/curl-8.20.0.tar.xz", sha256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896", destination=self.source_folder, strip_root=True)

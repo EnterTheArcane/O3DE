@@ -84,23 +84,23 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.zlib:
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib")
         if self.options.lzma:
-            self.requires("xz_utils/5.4.5")
+            self.requires("xz_utils")
         if self.options.iconv:
-            self.requires("libiconv/1.17", transitive_headers=True, transitive_libs=True)
+            self.requires("libiconv", transitive_headers=True, transitive_libs=True)
         if self.options.icu:
-            self.requires("icu/73.2")
+            self.requires("icu")
 
     def build_requirements(self):
         if not (is_msvc(self) or self._is_mingw_windows):
             if self.options.zlib or self.options.lzma or self.options.icu:
                 if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-                    self.tool_requires("pkgconf/2.1.0")
+                    self.tool_requires("pkgconf")
             if self._settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/latest")
+                    self.tool_requires("msys2")
 
     def source(self):
         get(self, url="https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.8.tar.xz", sha256="277294cb33119ab71b2bc81f2f445e9bc9435b893ad15bb2cd2b0e859a0ee84a", destination=self.source_folder, strip_root=True)

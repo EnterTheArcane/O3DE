@@ -29,7 +29,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("zlib/[>=1.2.11 <2]")
+        self.requires("zlib")
 
     def source(self):
         get(self, url="https://github.com/wdas/ptex/archive/refs/tags/v2.4.2.tar.gz", sha256="c8235fb30c921cfb10848f4ea04d5b662ba46886c5e32ad5137c5086f3979ee1", destination=self.source_folder, strip_root=True)

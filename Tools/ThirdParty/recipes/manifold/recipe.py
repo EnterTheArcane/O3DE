@@ -24,12 +24,12 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         # For CrossSection for 2D support
-        self.requires("clipper2/1.4.0")
+        self.requires("clipper2")
         if self.options.with_parallel_acceleration:
-            self.requires("onetbb/2022.0.0")
+            self.requires("onetbb")
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.18]")
+        self.tool_requires("cmake")
 
     def source(self):
         get(self, url="https://github.com/elalish/manifold/archive/refs/tags/v3.2.1.tar.gz", sha256="c2fddb0f4b2289caff660b29677883f0324415a9901f8f2aed4c83851f994c13", destination=self.source_folder, strip_root=True)

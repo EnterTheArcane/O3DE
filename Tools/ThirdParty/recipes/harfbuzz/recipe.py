@@ -59,22 +59,22 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_freetype:
-            self.requires("freetype/[^2.13]")
+            self.requires("freetype")
         if self.options.with_icu:
-            self.requires("icu/74.1")
+            self.requires("icu")
         if self.options.with_glib:
-            self.requires("glib/[^2.78]")
+            self.requires("glib")
 
     def build_requirements(self):
-        self.tool_requires("meson/[>=1.4.0 <2]")
+        self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf/[>=2.2 <3]")
+            self.tool_requires("pkgconf")
         if self.options.with_glib:
-            self.tool_requires("glib/<host_version>")
+            self.tool_requires("glib")
         if self.settings.os == "Macos":
             # Ensure that the gettext we use at build time is compatible
             # with the libiconv that is transitively exposed by glib
-            self.tool_requires("gettext/0.22.5")
+            self.tool_requires("gettext")
 
     def source(self):
         get(self, url="https://github.com/harfbuzz/harfbuzz/releases/download/12.3.0/harfbuzz-12.3.0.tar.xz", sha256="8660ebd3c27d9407fc8433b5d172bafba5f0317cb0bb4339f28e5370c93d42b7", destination=self.source_folder, strip_root=True)

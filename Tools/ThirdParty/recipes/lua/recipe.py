@@ -38,7 +38,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_tools and self.options.with_readline:
-            self.requires("readline/8.2")
+            self.requires("readline")
 
     def source(self):
         get(self, url="https://www.lua.org/ftp/lua-5.5.0.tar.gz", sha256="57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d", destination=self.source_folder, strip_root=True)

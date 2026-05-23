@@ -44,8 +44,8 @@ class Recipe(RecipeBase):
             f"tcl/{self.version}", transitive_headers=True, transitive_libs=True
         )
         if self.settings.os == "Linux":
-            self.requires("fontconfig/[>=2.13.93 <3]")
-            self.requires("xorg/system")
+            self.requires("fontconfig")
+            self.requires("xorg")
 
     @property
     def _settings_build(self):
@@ -58,7 +58,7 @@ class Recipe(RecipeBase):
                 and not self.conf.get("tools.microsoft.bash:path")
                 and not self.conf.get("tools.microsoft.bash:subsystem")
             ):
-                self.build_requires("msys2/latest")
+                self.build_requires("msys2")
 
     def source(self):
         get(

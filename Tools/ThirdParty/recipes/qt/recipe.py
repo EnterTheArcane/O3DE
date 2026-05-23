@@ -254,103 +254,103 @@ class Recipe(RecipeBase):
         self.no_copy_source = not (self.settings_build.os == "Windows" and self.options.get_safe("qtwebengine"))
 
     def requirements(self):
-        self.requires("zlib/[>=1.2.11 <2]")
+        self.requires("zlib")
         if self.options.openssl:
-            self.requires("openssl/[>=1.1 <4]")
+            self.requires("openssl")
         if self.options.with_pcre2:
-            self.requires("pcre2/10.42")
+            self.requires("pcre2")
         if self.options.get_safe("with_vulkan"):
             # Note: the versions of vulkan-loader and moltenvk
             #       must be exactly part of the same Vulkan SDK version
             #       do not update either without checking both
             #       require exactly the same version of vulkan-headers
-            self.requires("vulkan-loader/1.3.239.0")
-            self.requires("vulkan-headers/1.3.239.0", transitive_headers=True)
+            self.requires("vulkan-loader")
+            self.requires("vulkan-headers", transitive_headers=True)
             if is_apple_os(self):
-                self.requires("moltenvk/1.2.2")
+                self.requires("moltenvk")
         if self.options.with_glib:
-            self.requires("glib/2.78.3")
+            self.requires("glib")
         if self.options.with_doubleconversion and not self.options.multiconfiguration:
-            self.requires("double-conversion/3.3.0")
+            self.requires("double-conversion")
         if self.options.get_safe("with_freetype", False) and not self.options.multiconfiguration:
-            self.requires("freetype/[>=2.13 <3]")
+            self.requires("freetype")
         if self.options.get_safe("with_fontconfig", False):
-            self.requires("fontconfig/2.15.0")
+            self.requires("fontconfig")
         if self.options.get_safe("with_icu", False):
-            self.requires("icu/74.2")
+            self.requires("icu")
         if self.options.get_safe("with_harfbuzz", False) and not self.options.multiconfiguration:
-            self.requires("harfbuzz/[>=8.3.0]")
+            self.requires("harfbuzz")
         if self.options.get_safe("with_libjpeg", False) and not self.options.multiconfiguration:
             if self.options.with_libjpeg == "libjpeg-turbo":
-                self.requires("libjpeg-turbo/[~3]")
+                self.requires("libjpeg-turbo")
             else:
-                self.requires("libjpeg/[>=9e]")
+                self.requires("libjpeg")
         if self.options.get_safe("with_libpng", False) and not self.options.multiconfiguration:
-            self.requires("libpng/[>=1.6 <2]")
+            self.requires("libpng")
         if self.options.with_sqlite3 and not self.options.multiconfiguration:
-            self.requires("sqlite3/[>=3.45.0 <4]")
+            self.requires("sqlite3")
         if self.options.get_safe("with_mysql", False):
-            self.requires("libmysqlclient/8.1.0")
+            self.requires("libmysqlclient")
         if self.options.with_pq:
-            self.requires("libpq/[>=15.4 <18]")
+            self.requires("libpq")
         if self.options.with_odbc:
             if self.settings.os != "Windows":
-                self.requires("odbc/2.3.11")
+                self.requires("odbc")
         if self.options.get_safe("with_openal", False):
-            self.requires("openal-soft/1.22.2")
+            self.requires("openal-soft")
         if self.options.get_safe("with_libalsa", False):
-            self.requires("libalsa/1.2.10")
+            self.requires("libalsa")
         if self.options.get_safe("with_x11") or self.options.qtwayland:
-            self.requires("xkbcommon/1.5.0")
+            self.requires("xkbcommon")
         if self.options.get_safe("with_x11", False):
-            self.requires("xorg/system")
+            self.requires("xorg")
         if self.options.get_safe("with_egl"):
-            self.requires("egl/system")
+            self.requires("egl")
         if self.settings.os != "Windows" and self.options.get_safe("opengl", "no") != "no":
-            self.requires("opengl/system")
+            self.requires("opengl")
         if self.options.with_zstd:
-            self.requires("zstd/[>=1.5 <1.6]")
+            self.requires("zstd")
         if self.options.qtwayland:
-            self.requires("wayland/1.22.0")
+            self.requires("wayland")
         if self.options.with_brotli:
-            self.requires("brotli/1.1.0")
+            self.requires("brotli")
         if self.options.get_safe("qtwebengine") and self.settings.os == "Linux":
-            self.requires("expat/[>=2.6.2 <3]")
-            self.requires("opus/1.4")
-            self.requires("xorg-proto/2022.2")
-            self.requires("libxshmfence/1.3")
-            self.requires("nss/3.93")
-            self.requires("libdrm/2.4.119")
+            self.requires("expat")
+            self.requires("opus")
+            self.requires("xorg-proto")
+            self.requires("libxshmfence")
+            self.requires("nss")
+            self.requires("libdrm")
         if self.options.get_safe("with_gstreamer", False):
-            self.requires("gstreamer/1.19.2")
-            self.requires("gst-plugins-base/1.19.2")
+            self.requires("gstreamer")
+            self.requires("gst-plugins-base")
         if self.options.get_safe("with_pulseaudio", False):
-            self.requires("pulseaudio/14.2")
+            self.requires("pulseaudio")
         if self.options.with_dbus:
-            self.requires("dbus/1.15.8")
+            self.requires("dbus")
         if self.settings.os in ['Linux', 'FreeBSD'] and self.options.with_gssapi:
-            self.requires("krb5/1.21.2")
+            self.requires("krb5")
         if self.options.get_safe("with_md4c", False):
-            self.requires("md4c/[>=0.4.8 <1]") # stable API since 0.3x as per md4c wiki
+            self.requires("md4c") # stable API since 0.3x as per md4c wiki
 
     def build_requirements(self):
-        self.tool_requires("cmake/[>=3.21.1 <4]")
-        self.tool_requires("ninja/[>=1.12 <2]")
+        self.tool_requires("cmake")
+        self.tool_requires("ninja")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf/[>=2.2 <3]")
+            self.tool_requires("pkgconf")
 
         if self.options.get_safe("qtwebengine"):
-            self.tool_requires("nodejs/18.15.0")
-            self.tool_requires("gperf/3.1")
+            self.tool_requires("nodejs")
+            self.tool_requires("gperf")
             # gperf, bison, flex, python >= 2.7.5 & < 3
             if self.settings_build.os == "Windows":
-                self.tool_requires("winflexbison/2.5.25")
+                self.tool_requires("winflexbison")
             else:
-                self.tool_requires("bison/3.8.2")
-                self.tool_requires("flex/2.6.4")
+                self.tool_requires("bison")
+                self.tool_requires("flex")
 
         if self.options.qtwayland:
-            self.tool_requires("wayland/1.22.0")
+            self.tool_requires("wayland")
         if cross_building(self):
             self.tool_requires(f"qt/{self.version}")
 

@@ -63,7 +63,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if self.options.get_safe("SIMD") and self.settings.arch in ["x86", "x86_64"]:
-            self.tool_requires("nasm/2.15.05")
+            self.tool_requires("nasm")
 
     def source(self):
         get(self, url="https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.4.1/libjpeg-turbo-3.1.4.1.tar.gz", sha256="ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022", destination=self.source_folder, strip_root=True)

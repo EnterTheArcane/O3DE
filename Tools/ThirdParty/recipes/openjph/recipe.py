@@ -32,7 +32,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_executables and self.options.with_tiff:
-            self.requires("libtiff/[>=4.6.0 <5]")
+            self.requires("libtiff")
 
     def source(self):
         get(self, url="https://github.com/aous72/OpenJPH/archive/0.27.0.tar.gz", sha256="f6768e927d8e4e4884a2efcf500a88d1b6714a48d69516332a9256803a3c8343", destination=self.source_folder, strip_root=True)

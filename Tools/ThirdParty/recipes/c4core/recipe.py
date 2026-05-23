@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_fast_float:
-            self.requires("fast_float/6.1.0", transitive_headers=True)
+            self.requires("fast_float", transitive_headers=True)
 
     def source(self):
         get(self, url="https://github.com/biojppm/c4core/releases/download/v0.2.5/c4core-0.2.5-src.tgz", sha256="758f23718cbdc9465f104249561c4028858caf3355a90616b54d1dd937a981b1", destination=self.source_folder, strip_root=True)

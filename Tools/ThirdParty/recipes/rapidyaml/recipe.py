@@ -50,9 +50,9 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if Version(self.version) < "0.6.0":
-            self.requires("c4core/0.1.11", transitive_headers=True)
+            self.requires("c4core", transitive_headers=True)
         else:
-            self.requires("c4core/0.2.0", transitive_headers=True)
+            self.requires("c4core", transitive_headers=True)
 
     def source(self):
         get(self, url="https://github.com/biojppm/rapidyaml/releases/download/v0.10.0/rapidyaml-0.10.0-src.tgz", sha256="54eb1050789809a26c780f80857b7668a5b3123405d6514a65d733e4292c690b", destination=self.source_folder, strip_root=True)

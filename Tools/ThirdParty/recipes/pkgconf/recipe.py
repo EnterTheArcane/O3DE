@@ -38,7 +38,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def build_requirements(self):
-        self.tool_requires("meson/[>=1.2.2 <2]")
+        self.tool_requires("meson")
 
     def source(self):
         get(self, url="https://distfiles.ariadne.space/pkgconf/pkgconf-2.5.1.tar.xz", sha256="cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243", destination=self.source_folder, strip_root=True)

@@ -53,9 +53,9 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.get_safe("with_zlib"):
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib")
         if self.options.get_safe("with_bzip2"):
-            self.requires("bzip2/1.0.8")
+            self.requires("bzip2")
 
     def source(self):
         get(self, url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.44/pcre2-10.44.tar.bz2", sha256="d34f02e113cf7193a1ebf2770d3ac527088d485d4e047ed10e5d217c6ef5de96", destination=self.source_folder, strip_root=True)

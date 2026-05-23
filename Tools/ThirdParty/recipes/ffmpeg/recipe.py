@@ -294,91 +294,91 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_zlib:
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib")
         if self.options.with_bzip2:
-            self.requires("bzip2/[>=1.0.8 <2]")
+            self.requires("bzip2")
         if self.options.with_lzma:
-            self.requires("xz_utils/[>=5.4.5 <6]")
+            self.requires("xz_utils")
         if self.options.with_libiconv:
-            self.requires("libiconv/1.17")
+            self.requires("libiconv")
         if self.options.get_safe("with_freetype"):
-            self.requires("freetype/2.13.2")
+            self.requires("freetype")
         if self.options.with_libxml2:
-            self.requires("libxml2/[>=2.12.5 <3]")
+            self.requires("libxml2")
         if self.options.get_safe("with_fontconfig"):
-            self.requires("fontconfig/2.15.0")
+            self.requires("fontconfig")
         if self.options.get_safe("with_fribidi"):
-            self.requires("fribidi/1.0.13")
+            self.requires("fribidi")
         if self.options.get_safe("with_harfbuzz"):
-            self.requires("harfbuzz/[>=8.3.0]")
+            self.requires("harfbuzz")
         if self.options.get_safe("with_libjxl"):
-            self.requires("libjxl/0.11.1")
+            self.requires("libjxl")
         if self.options.with_openjpeg:
-            self.requires("openjpeg/[>=2.5.2 <3]")
+            self.requires("openjpeg")
         if self.options.with_openh264:
-            self.requires("openh264/[>=2.4.1 <3]")
+            self.requires("openh264")
         if self.options.with_vorbis:
-            self.requires("vorbis/1.3.7")
+            self.requires("vorbis")
         if self.options.with_opus:
-            self.requires("opus/[>=1.4 <2]")
+            self.requires("opus")
         if self.options.with_zeromq:
-            self.requires("zeromq/4.3.5")
+            self.requires("zeromq")
         if self.options.with_sdl:
-            self.requires("sdl/[^2.28]")
+            self.requires("sdl")
         if self.options.with_libx264:
-            self.requires("libx264/[>=20240224]")
+            self.requires("libx264")
         if self.options.with_libx265:
-            self.requires("libx265/[>=3.4 <4]")
+            self.requires("libx265")
         if self.options.with_libvpx:
-            self.requires("libvpx/[>=1.15.2 <2]")
+            self.requires("libvpx")
         if self.options.with_libmp3lame:
-            self.requires("libmp3lame/3.100")
+            self.requires("libmp3lame")
         if self.options.get_safe("with_libfdk_aac"):
-            self.requires("libfdk_aac/2.0.3")
+            self.requires("libfdk_aac")
         if self.options.with_libwebp:
-            self.requires("libwebp/[>=1.3.2 <2]")
+            self.requires("libwebp")
         if self.options.with_ssl == "openssl":
-            self.requires("openssl/[>=1.1 <4]")
+            self.requires("openssl")
         if self.options.get_safe("with_libalsa"):
-            self.requires("libalsa/1.2.10")
+            self.requires("libalsa")
         if self.options.get_safe("with_xcb") or self.options.get_safe("with_xlib"):
-            self.requires("xorg/system")
+            self.requires("xorg")
         if self.options.get_safe("with_soxr"):
-            self.requires("soxr/0.1.3")
+            self.requires("soxr")
         if self.options.get_safe("with_pulse"):
-            self.requires("pulseaudio/14.2")
+            self.requires("pulseaudio")
         if self.options.get_safe("with_vaapi"):
-            self.requires("vaapi/system")
+            self.requires("vaapi")
         if self.options.get_safe("with_vdpau"):
-            self.requires("vdpau/system")
+            self.requires("vdpau")
         if self.options.get_safe("with_vulkan"):
-            self.requires("vulkan-loader/1.3.243.0")
+            self.requires("vulkan-loader")
         if self.options.get_safe("with_libsvtav1"):
-            self.requires("libsvtav1/2.1.0")
+            self.requires("libsvtav1")
         if self.options.with_libaom:
-            self.requires("libaom-av1/[>=3.6.1 <4]")
+            self.requires("libaom-av1")
         if self.options.get_safe("with_libdav1d"):
-            self.requires("dav1d/[>=1.4 <2]")
+            self.requires("dav1d")
         if self.options.get_safe("with_libdrm"):
-            self.requires("libdrm/2.4.119")
+            self.requires("libdrm")
         if self.options.get_safe("with_whisper"):
-            self.requires("whisper-cpp/[>=1.7.6 <2]")
+            self.requires("whisper-cpp")
         if self.options.get_safe("with_openapv"):
-            self.requires("openapv/0.2.0.4")
+            self.requires("openapv")
 
     def build_requirements(self):
         if self.settings.arch in ("x86", "x86_64"):
-            self.tool_requires("nasm/[>=2.16.01 <3]")
+            self.tool_requires("nasm")
 
         if self.settings.os != "Linux" and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             # See https://github.com/conan-io/conan-center-index/pull/26447#discussion_r1926682155
-            self.tool_requires("pkgconf/[>=2.1 <3]")
+            self.tool_requires("pkgconf")
         if self._settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/latest")
+                self.tool_requires("msys2")
             if self.settings.arch == "armv8" and is_msvc(self):
-                self.tool_requires("gas-preprocessor/[*]")
+                self.tool_requires("gas-preprocessor")
 
     def source(self):
         get(self, url="https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz", sha256="b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3", destination=self.source_folder, strip_root=True)
