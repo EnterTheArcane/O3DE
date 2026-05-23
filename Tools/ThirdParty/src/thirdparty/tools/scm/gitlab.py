@@ -11,14 +11,33 @@ from thirdparty._conan.internal.model.version import Version
 
 
 def _tag_version(tag: str) -> Version | None:
-    candidate = re.sub(r"^\D+", "", tag).replace("_", ".").replace("-", ".")
-    if not candidate:
+    # Strip a leading identifier+separator prefix: "vulkan-sdk-", "nasm-", "m4-", etc.
+    stripped = re.sub(r'^(?:[A-Za-z][A-Za-z0-9]*[-_])+', '', tag)
+    if not stripped or not stripped[0].isdigit():
+        if len(tag) >= 2 and tag[0].isalpha() and tag[1].isdigit():
+            stripped = tag[1:]
+        else:
+            return None
+    had_prefix = (stripped != tag)
+    candidate = stripped.replace("_", ".").replace("-", ".")
+    if not candidate or not candidate[0].isdigit():
+        return None
+    if not re.match(r'^\d+(?:\.\d+)*$', candidate):
         return None
     try:
         v = Version(candidate)
     except Exception:
         return None
     if not v.main or not all(isinstance(i.value, int) for i in v.main):
+        return None
+    if len(v.main) < 2:
+        return None
+    if had_prefix and v.main[0].value >= 1000:
+        return None
+    if (not had_prefix and len(v.main) == 3
+            and v.main[0].value > 1970
+            and 1 <= v.main[1].value <= 12
+            and 1 <= v.main[2].value <= 31):
         return None
     return v
 
@@ -58,7 +77,7 @@ class GitlabRepository:
         a strictly higher version, the tag is preferred.
         """
         releases = self._project.releases.list(
-            order_by="released_at", sort="desc", per_page=1
+            order_by="released_at", sort="desc", per_page=1, get_all=False
         )
         if not releases:
             return self._highest_tag()
@@ -67,7 +86,7 @@ class GitlabRepository:
             ht = self._highest_tag()
             r_v = _tag_version(release_tag)
             h_v = _tag_version(ht)
-            if h_v is not None and (r_v is None or h_v > r_v):
+            if h_v is not None and (r_v is None or h_v >= r_v):
                 return ht
         except Exception:
             pass
@@ -78,6 +97,16 @@ class GitlabRepository:
         if not commits:
             raise RuntimeError(f"no commits on {branch!r} for {self._slug} on {self._host}")
         return commits[0].created_at[:10].replace("-", "")
+
+    @cached_property
+    def latest_formal_release(self) -> str:
+        """Raw tag_name of the most recently published release; no tag-scan fallback."""
+        releases = self._project.releases.list(
+            order_by="released_at", sort="desc", per_page=1, get_all=False
+        )
+        if not releases:
+            return self._highest_tag()
+        return releases[0].tag_name
 
     def _highest_tag(self) -> str:
         """Walk all tags and return the one with the highest all-numeric version,

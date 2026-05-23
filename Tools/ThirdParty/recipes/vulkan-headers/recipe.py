@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
 
 
@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-Headers")
-        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
 
     def source(self):
         get(

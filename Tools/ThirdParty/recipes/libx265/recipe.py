@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.bitbucket import BitbucketRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.build import cross_building, stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
@@ -60,10 +60,6 @@ class Recipe(RecipeBase):
         if self.options.assembly:
             if self.settings.arch in ["x86", "x86_64"]:
                 self.tool_requires("nasm")
-
-    def latest_version(self):
-        repo = BitbucketRepository(self, "multicoreware/x265_git")
-        return Version(repo.latest_release.removeprefix("Release_"))
 
     def source(self):
         get(

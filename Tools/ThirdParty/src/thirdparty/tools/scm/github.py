@@ -12,18 +12,39 @@ from thirdparty._conan.internal.model.version import Version
 
 
 def _tag_version(tag: str) -> Version | None:
-    """Parse a version from a raw tag name, stripping any leading non-digit
-    prefix and normalising underscores and hyphens to dots.
-    Returns None if the result is not an all-integer version.
-    """
-    candidate = re.sub(r"^\D+", "", tag).replace("_", ".").replace("-", ".")
-    if not candidate:
+    # Strip a leading identifier+separator prefix: "vulkan-sdk-", "nasm-", "m4-",
+    # "bzip2-", "VER-", etc.  The pattern allows digits inside the word (like m4).
+    stripped = re.sub(r'^(?:[A-Za-z][A-Za-z0-9]*[-_])+', '', tag)
+    if not stripped or not stripped[0].isdigit():
+        # Fall back to a bare single-letter prefix: v1.2, V3.4, n8.1
+        if len(tag) >= 2 and tag[0].isalpha() and tag[1].isdigit():
+            stripped = tag[1:]
+        else:
+            return None
+    had_prefix = (stripped != tag)
+    candidate = stripped.replace("_", ".").replace("-", ".")
+    if not candidate or not candidate[0].isdigit():
+        return None
+    if not re.match(r'^\d+(?:\.\d+)*$', candidate):
         return None
     try:
         v = Version(candidate)
     except Exception:
         return None
     if not v.main or not all(isinstance(i.value, int) for i in v.main):
+        return None
+    # Require at least two components; single numbers (r42, v114, draft-15) are not versions.
+    if len(v.main) < 2:
+        return None
+    # When a non-digit prefix was stripped, reject year-like first components
+    # (e.g. "before-reformat-2005-01" -> 2005.01, "CVE-2021-3541" -> 2021.3541).
+    if had_prefix and v.main[0].value >= 1000:
+        return None
+    # Reject digit-starting YYYY-MM-DD style date tags (e.g. "2021-01-15").
+    if (not had_prefix and len(v.main) == 3
+            and v.main[0].value > 1970
+            and 1 <= v.main[1].value <= 12
+            and 1 <= v.main[2].value <= 31):
         return None
     return v
 
@@ -74,11 +95,21 @@ class GithubRepository:
             ht = self._highest_tag()
             r_v = _tag_version(release_tag)
             h_v = _tag_version(ht)
-            if h_v is not None and (r_v is None or h_v > r_v):
+            if h_v is not None and (r_v is None or h_v >= r_v):
                 return ht
         except Exception:
             pass
         return release_tag
+
+    @cached_property
+    def latest_formal_release(self) -> str:
+        """Raw tag_name of the GitHub latest release; no fallback to tag scanning."""
+        try:
+            return self._repo.get_latest_release().tag_name
+        except GithubException as exc:
+            if exc.status != 404:
+                raise
+            return self._highest_tag()
 
     def latest_tag(self, prefix: str) -> str:
         """Return the raw tag name with the highest version among tags starting with `prefix`.
@@ -91,7 +122,7 @@ class GithubRepository:
             if not tag.name.startswith(prefix):
                 continue
             try:
-                v = Version(tag.name[len(prefix):].replace("-", "."))
+                v = Version(tag.name[len(prefix):].replace("-", ".").replace("_", "."))
             except Exception:
                 continue
             if not v.main or not all(isinstance(item.value, int) for item in v.main):
@@ -102,6 +133,15 @@ class GithubRepository:
         if best_tag is None:
             raise RuntimeError(f"no tag with prefix {prefix!r} found in {self._slug}")
         return best_tag
+
+    def latest_release_matching(self, pattern: str) -> str:
+        """Return the tag of the most recently published non-pre-release release
+        whose tag_name matches the given regex pattern."""
+        rx = re.compile(pattern)
+        for release in self._repo.get_releases():
+            if not release.prerelease and rx.match(release.tag_name):
+                return release.tag_name
+        raise RuntimeError(f"no release matching {pattern!r} found in {self._slug}")
 
     def _highest_tag(self) -> str:
         """Walk up to 500 tags (newest first) and return the one with the

@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
-from thirdparty.tools.github import GithubRepository
+from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm import Version
 
 
@@ -123,7 +123,7 @@ class Recipe(RecipeBase):
 
     def latest_version(self):
         repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")
-        return Version(repo.latest_release.removeprefix("v"))
+        return Version(repo.latest_tag("v").removeprefix("v"))
 
     def source(self):
         get(

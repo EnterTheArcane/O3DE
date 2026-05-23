@@ -1,3 +1,3 @@
-from thirdparty.tools.gitlab.repository import GitlabRepository
+from thirdparty.tools.scm.gitlab import GitlabRepository
 
 __all__ = ["GitlabRepository"]
