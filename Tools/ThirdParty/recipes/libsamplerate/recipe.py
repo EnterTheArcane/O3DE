@@ -70,7 +70,6 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "SampleRate")
         self.cpp_info.set_property("cmake_target_name", "SampleRate::samplerate")
         self.cpp_info.set_property("pkg_config_name", "samplerate")
-        # TODO: back to global scope once cmake_find_package* generators removed
         self.cpp_info.components["samplerate"].libs = ["samplerate"]
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.components["samplerate"].system_libs.append("m")

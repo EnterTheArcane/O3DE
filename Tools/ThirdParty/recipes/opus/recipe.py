@@ -57,7 +57,6 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "Opus")
         self.cpp_info.set_property("cmake_target_name", "Opus::opus")
         self.cpp_info.set_property("pkg_config_name", "opus")
-        # TODO: back to global scope in conan v2 once cmake_find_package_* generators removed
         self.cpp_info.components["libopus"].libs = ["opus"]
         self.cpp_info.components["libopus"].includedirs.append(os.path.join("include", "opus"))
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
@@ -65,6 +64,5 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows" and self.settings.compiler == "gcc":
             self.cpp_info.components["libopus"].system_libs.append("ssp")
 
-        # TODO: to remove in conan v2 once cmake_find_package_* generators removed
         self.cpp_info.components["libopus"].set_property("cmake_target_name", "Opus::opus")
         self.cpp_info.components["libopus"].set_property("pkg_config_name", "opus")

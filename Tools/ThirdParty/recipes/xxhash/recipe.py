@@ -63,6 +63,5 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "xxHash")
         self.cpp_info.set_property("cmake_target_name", "xxHash::xxhash")
         self.cpp_info.set_property("pkg_config_name", "libxxhash")
-        # TODO: back to global scope in conan v2 once cmake_find_package_* generators removed
         self.cpp_info.components["libxxhash"].libs = ["xxhash"]
         self.cpp_info.components["libxxhash"].set_property("cmake_target_name", "xxHash::xxhash")

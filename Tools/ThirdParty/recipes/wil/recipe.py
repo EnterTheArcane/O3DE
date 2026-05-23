@@ -10,7 +10,6 @@ class Recipe(RecipeBase):
     license = "MIT"
     # only arch is aplicable, windows library
     
-    no_copy_source = True
 
     @property
     def _min_cppstd(self):
@@ -48,8 +47,3 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "wil")
         self.cpp_info.set_property("cmake_target_name", "WIL::WIL")
 
-        # TODO: to remove in conan v2 once cmake_find_package_* generators removed
-        self.cpp_info.filenames["cmake_find_package"] = "wil"
-        self.cpp_info.filenames["cmake_find_package_multi"] = "wil"
-        self.cpp_info.names["cmake_find_package"] = "WIL"
-        self.cpp_info.names["cmake_find_package_multi"] = "WIL"

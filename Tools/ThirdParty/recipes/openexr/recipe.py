@@ -149,4 +149,3 @@ class Recipe(RecipeBase):
             OpenEXRUtil.system_libs = ["m"]
 
         # Add tools directory to PATH
-        self.env_info.PATH.append(os.path.join(self.package_folder, "bin"))

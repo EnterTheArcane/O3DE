@@ -61,7 +61,6 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "Ogg")
         self.cpp_info.set_property("cmake_target_name", "Ogg::ogg")
         self.cpp_info.set_property("pkg_config_name", "ogg")
-        # TODO: back to global scope in conan v2 once cmake_find_package_* generators removed
         self.cpp_info.components["ogglib"].libs = ["ogg"]
         self.cpp_info.components["ogglib"].set_property("cmake_target_name", "Ogg::ogg")
         self.cpp_info.components["ogglib"].set_property("pkg_config_name", "ogg")

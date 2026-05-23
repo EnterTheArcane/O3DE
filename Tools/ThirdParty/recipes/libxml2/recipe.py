@@ -58,13 +58,10 @@ class Recipe(RecipeBase):
         return [name for name in self.default_options.keys() if (name in self.options)
                 and (name not in ["shared", "fPIC", "include_utils"])]
 
-    @property
-    def _settings_build(self):
-        return getattr(self, "settings_build", self.settings)
-
+ 
     @property
     def _is_mingw_windows(self):
-        return self.settings.compiler == "gcc" and self.settings.os == "Windows" and self._settings_build.os == "Windows"
+        return self.settings.compiler == "gcc" and self.settings.os == "Windows" and self.settings.os == "Windows"
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -97,7 +94,7 @@ class Recipe(RecipeBase):
             if self.options.zlib or self.options.lzma or self.options.icu:
                 if not self.conf.get("tools.gnu:pkg_config", check_type=str):
                     self.tool_requires("pkgconf")
-            if self._settings_build.os == "Windows":
+            if self.settings.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.tool_requires("msys2")
@@ -377,7 +374,6 @@ class Recipe(RecipeBase):
         if self.options.include_utils:
             bindir = os.path.join(self.package_folder, "bin")
             self.output.info(f"Appending PATH environment variable: {bindir}")
-            self.env_info.PATH.append(bindir)
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
             self.cpp_info.system_libs.append("m")
             if self.options.threads and self.settings.os in ["Linux", "FreeBSD"]:
@@ -392,10 +388,3 @@ class Recipe(RecipeBase):
                 # https://gitlab.gnome.org/GNOME/libxml2/-/blob/2.13/win32/Makefile.msvc?ref_type=heads#L84
                 self.cpp_info.system_libs.append("bcrypt")
 
-        # TODO: to remove in conan v2 once cmake_find_package* & pkg_config generators removed
-        self.cpp_info.filenames["cmake_find_package"] = "LibXml2"
-        self.cpp_info.filenames["cmake_find_package_multi"] = "libxml2"
-        self.cpp_info.names["cmake_find_package"] = "LibXml2"
-        self.cpp_info.names["cmake_find_package_multi"] = "LibXml2"
-        self.cpp_info.build_modules["cmake_find_package"] = [self._module_file_rel_path]
-        self.cpp_info.names["pkg_config"] = "libxml-2.0"

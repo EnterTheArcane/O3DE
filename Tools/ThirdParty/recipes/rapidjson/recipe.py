@@ -6,7 +6,6 @@ class Recipe(RecipeBase):
     name = "rapidjson"
     version = "1.1.0"
     license = "MIT"
-    no_copy_source = True
 
     def source(self):
         get(self, url="https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz", sha256="bf7ced29704a1e696fbccf2a2b4ea068e7774fa37f6d7dd4039d0787f8bed98e", strip_root=True,
@@ -22,6 +21,3 @@ class Recipe(RecipeBase):
         self.cpp_info.bindirs = []
         self.cpp_info.libdirs = []
 
-        # TODO: to remove in conan v2 once cmake_find_package* generators removed
-        self.cpp_info.names["cmake_find_package"] = "RapidJSON"
-        self.cpp_info.names["cmake_find_package_multi"] = "RapidJSON"

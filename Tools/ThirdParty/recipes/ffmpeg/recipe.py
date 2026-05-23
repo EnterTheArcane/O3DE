@@ -205,10 +205,7 @@ class Recipe(RecipeBase):
         "enable_filters": None,
     }
 
-    @property
-    def _settings_build(self):
-        return getattr(self, "settings_build", self.settings)
-
+ 
     @property
     def _dependencies(self):
         return {
@@ -373,7 +370,7 @@ class Recipe(RecipeBase):
         if self.settings.os != "Linux" and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             # See https://github.com/conan-io/conan-center-index/pull/26447#discussion_r1926682155
             self.tool_requires("pkgconf")
-        if self._settings_build.os == "Windows":
+        if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")

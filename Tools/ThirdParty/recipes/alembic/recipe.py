@@ -35,7 +35,13 @@ class Recipe(RecipeBase):
             self.requires("hdf5")
 
     def source(self):
-        get(self, url="https://github.com/alembic/alembic/archive/refs/tags/1.8.8.tar.gz", sha256="ba1f34544608ef7d3f68cafea946ec9cc84792ddf9cda3e8d5590821df71f6c6", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://github.com/alembic/alembic/archive/refs/tags/1.8.8.tar.gz",
+            sha256="ba1f34544608ef7d3f68cafea946ec9cc84792ddf9cda3e8d5590821df71f6c6",
+            destination=self.source_folder,
+            strip_root=True,
+        )
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -77,6 +83,3 @@ class Recipe(RecipeBase):
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.system_libs.extend(["m", "pthread"])
 
-        # TODO: to remove in conan v2 once cmake_find_package* generators removed
-        self.cpp_info.names["cmake_find_package"] = "Alembic"
-        self.cpp_info.names["cmake_find_package_multi"] = "Alembic"

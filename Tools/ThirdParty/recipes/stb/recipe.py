@@ -7,7 +7,6 @@ class Recipe(RecipeBase):
     name = "stb"
     version = "20240531"
     license = ("Unlicense", "MIT")
-    no_copy_source = True
     options = {
         "with_deprecated": [True, False],
     }
