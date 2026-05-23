@@ -17,7 +17,12 @@ class Recipe(ConanFile):
         pass
 
     def build(self):
-        get(self, **self.conan_data["sources"][self.version][str(self.settings.arch)], destination=self.build_folder)
+        get(
+            self,
+            url="https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54021_64bit_UCRT/strawberry-perl-5.40.2.1-64bit-portable.zip",
+            sha256="7707700d5ad027773b775134fe48cd9610abf221433fcfb68c8eb0ec9c6fde8c",
+            destination=self.build_folder
+        )
 
     def package(self):
         copy(self, pattern="License.rtf*", src=os.path.join(self.build_folder, "licenses"), dst=os.path.join(self.package_folder, "licenses"))
