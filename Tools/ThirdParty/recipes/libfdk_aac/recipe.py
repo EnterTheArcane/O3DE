@@ -46,7 +46,7 @@ class Recipe(RecipeBase):
             if self._settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/cci.latest")
+                    self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.3.tar.gz", sha256="829b6b89eef382409cda6857fd82af84fabb63417b08ede9ea7a553f811cb79e", destination=self.source_folder, strip_root=True)

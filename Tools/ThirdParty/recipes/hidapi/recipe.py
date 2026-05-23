@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
             if self.settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/cci.latest")
+                    self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://github.com/libusb/hidapi/archive/hidapi-0.15.0.tar.gz", sha256="5d84dec684c27b97b921d2f3b73218cb773cf4ea915caee317ac8fc73cef8136", destination=self.source_folder, strip_root=True)

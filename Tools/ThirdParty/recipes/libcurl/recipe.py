@@ -176,11 +176,11 @@ class Recipe(RecipeBase):
             if not self.conf.get("tools.gnu:pkg_config", check_type=str):
                 self.tool_requires("pkgconf/[>=2.2 <3]")
             if self.settings.os in [ "tvOS", "watchOS" ]:
-                self.tool_requires("gnu-config/cci.20210814")
+                self.tool_requires("gnu-config/20210814")
             if self.settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/cci.latest")
+                    self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://curl.se/download/curl-8.20.0.tar.xz", sha256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896", destination=self.source_folder, strip_root=True)

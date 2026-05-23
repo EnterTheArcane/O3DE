@@ -27,7 +27,7 @@ class Recipe(RecipeBase):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/cci.latest")
+                self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://ftpmirror.gnu.org/gnu/automake/automake-1.16.5.tar.gz", sha256="07bd24ad08a64bc17250ce09ec56e921d6343903943e99ccf63bbf0705e34605", destination=self.source_folder, strip_root=True)
