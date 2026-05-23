@@ -101,14 +101,9 @@ class Recipe(RecipeBase):
         # Required to avoid some side effect in CMakeDeps generator of downstream recipes
         self.cpp_info.set_property("cmake_target_name", "msdfgen::msdgen-all-unofficial")
 
-        self.cpp_info.names["cmake_find_package"] = "msdfgen"
-        self.cpp_info.names["cmake_find_package_multi"] = "msdfgen"
-
         includedir = os.path.join("include", "msdfgen")
 
         self.cpp_info.components["_msdfgen"].set_property("cmake_target_name", "msdfgen::msdfgen")
-        self.cpp_info.components["_msdfgen"].names["cmake_find_package"] = "msdfgen"
-        self.cpp_info.components["_msdfgen"].names["cmake_find_package_multi"] = "msdfgen"
         self.cpp_info.components["_msdfgen"].includedirs.append(includedir)
         self.cpp_info.components["_msdfgen"].libs = ["msdfgen" if Version(self.version) < "1.10" else "msdfgen-core"]
         self.cpp_info.components["_msdfgen"].defines = ["MSDFGEN_USE_CPP11"]
@@ -119,8 +114,6 @@ class Recipe(RecipeBase):
                 self.cpp_info.components["_msdfgen"].defines.append("MSDFGEN_PUBLIC=")
 
         self.cpp_info.components["msdfgen-ext"].set_property("cmake_target_name", "msdfgen::msdfgen-ext")
-        self.cpp_info.components["msdfgen-ext"].names["cmake_find_package"] = "msdfgen-ext"
-        self.cpp_info.components["msdfgen-ext"].names["cmake_find_package_multi"] = "msdfgen-ext"
         self.cpp_info.components["msdfgen-ext"].includedirs.append(includedir)
         self.cpp_info.components["msdfgen-ext"].libs = ["msdfgen-ext"]
         self.cpp_info.components["msdfgen-ext"].requires = [
@@ -131,7 +124,3 @@ class Recipe(RecipeBase):
 
         if self.options.with_skia:
             self.cpp_info.components["msdfgen-ext"].defines.append("MSDFGEN_USE_SKIA")
-
-        # TODO: to remove once conan v1 support dropped
-        if self.options.utility:
-            self.env_info.PATH.append(os.path.join(self.package_folder, "bin"))

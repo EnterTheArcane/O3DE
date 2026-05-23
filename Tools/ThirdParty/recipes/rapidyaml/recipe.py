@@ -89,5 +89,3 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_target_name", "ryml::ryml")
         self.cpp_info.libs = ["ryml"]
 
-        self.cpp_info.names["cmake_find_package"] = "ryml"
-        self.cpp_info.names["cmake_find_package_multi"] = "ryml"

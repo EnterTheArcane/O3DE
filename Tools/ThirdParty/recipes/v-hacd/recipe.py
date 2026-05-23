@@ -8,7 +8,6 @@ class Recipe(RecipeBase):
     name = "v-hacd"
     version = "4.1.0"
     license = "BSD-3-Clause"
-    no_copy_source = True
 
     @property
     def _min_cppstd(self):
@@ -22,9 +21,6 @@ class Recipe(RecipeBase):
 
     def source(self):
         get(self, url="https://github.com/kmammou/v-hacd/archive/refs/tags/v4.1.0.tar.gz", sha256="9fe895cd10ec995d2171b11bde97aaaa221b418a3aaed0f5d9a068ae057d626b", destination=self.source_folder, strip_root=True)
-
-    def build(self):
-        pass
 
     def package(self):
         copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

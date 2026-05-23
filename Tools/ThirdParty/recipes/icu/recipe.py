@@ -50,10 +50,7 @@ class Recipe(RecipeBase):
             "msvc": "192",
         }
 
-    @property
-    def _settings_build(self):
-        return getattr(self, "settings_build", self.settings)
-
+ 
     @property
     def _enable_icu_tools(self):
         return self.settings.os not in ["iOS", "tvOS", "watchOS", "Emscripten"]
@@ -78,7 +75,7 @@ class Recipe(RecipeBase):
         return m.hexdigest()
 
     def build_requirements(self):
-        if self._settings_build.os == "Windows":
+        if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
@@ -126,7 +123,7 @@ class Recipe(RecipeBase):
                 # the build triple to avoid the collision and ensure the scripts
                 # know we are cross-building.
                 host_triplet = f"{str(self.settings.arch)}-apple-darwin"
-                build_triplet = f"{str(self._settings_build.arch)}-apple"
+                build_triplet = f"{str(self.settings.arch)}-apple"
                 tc.update_configure_args({"--host": host_triplet,
                                           "--build": build_triplet})
         else:
@@ -157,7 +154,7 @@ class Recipe(RecipeBase):
                 "if true",
         )
 
-        if self._settings_build.os == "Windows":
+        if self.settings.os == "Windows":
             # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545
             makeconv_cpp = os.path.join(self.source_folder, "source", "tools", "makeconv", "makeconv.cpp")
             replace_in_file(self, makeconv_cpp,
@@ -310,29 +307,3 @@ class Recipe(RecipeBase):
             self.cpp_info.components["icu-test"].set_property("cmake_target_name", "ICU::test")
             self.cpp_info.components["icu-test"].libs = [f"{prefix}icutest{suffix}"]
             self.cpp_info.components["icu-test"].requires = ["icu-tu", "icu-uc"]
-
-        # TODO: to remove after conan v2
-        self.cpp_info.names["cmake_find_package"] = "ICU"
-        self.cpp_info.names["cmake_find_package_multi"] = "ICU"
-        self.cpp_info.components["icu-data"].names["cmake_find_package"] = "data"
-        self.cpp_info.components["icu-data"].names["cmake_find_package_multi"] = "data"
-        self.cpp_info.components["icu-data-alias"].names["cmake_find_package"] = "dt"
-        self.cpp_info.components["icu-data-alias"].names["cmake_find_package_multi"] = "dt"
-        self.cpp_info.components["icu-uc"].names["cmake_find_package"] = "uc"
-        self.cpp_info.components["icu-uc"].names["cmake_find_package_multi"] = "uc"
-        self.cpp_info.components["icu-i18n"].names["cmake_find_package"] = "i18n"
-        self.cpp_info.components["icu-i18n"].names["cmake_find_package_multi"] = "i18n"
-        self.cpp_info.components["icu-i18n-alias"].names["cmake_find_package"] = "in"
-        self.cpp_info.components["icu-i18n-alias"].names["cmake_find_package_multi"] = "in"
-        if self.options.with_icuio:
-            self.cpp_info.components["icu-io"].names["cmake_find_package"] = "io"
-            self.cpp_info.components["icu-io"].names["cmake_find_package_multi"] = "io"
-        if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
-            self.env_info.ICU_DATA.append(data_path)
-        if self._enable_icu_tools:
-            self.cpp_info.components["icu-tu"].names["cmake_find_package"] = "tu"
-            self.cpp_info.components["icu-tu"].names["cmake_find_package_multi"] = "tu"
-            self.cpp_info.components["icu-test"].names["cmake_find_package"] = "test"
-            self.cpp_info.components["icu-test"].names["cmake_find_package_multi"] = "test"
-        if self._enable_icu_tools or self.options.with_extras:
-            self.env_info.PATH.append(os.path.join(self.package_folder, "bin"))

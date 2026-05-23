@@ -10,17 +10,13 @@ class Recipe(RecipeBase):
     version = "2.72"
     license = ("GPL-2.0-or-later", "GPL-3.0-or-later")
 
-    @property
-    def _settings_build(self):
-        # TODO: Remove for Conan v2
-        return getattr(self, "settings_build", self.settings)
-
+ 
     def requirements(self):
         self.requires("m4") # Needed at runtime by downstream clients as well
 
     def build_requirements(self):
         self.tool_requires("m4")
-        if self._settings_build.os == "Windows":
+        if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
@@ -40,8 +36,8 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             if is_msvc(self):
                 build = "{}-{}-{}".format(
-                    "x86_64" if self._settings_build.arch == "x86_64" else "i686",
-                    "pc" if self._settings_build.arch == "x86" else "win64",
+                    "x86_64" if self.settings.arch == "x86_64" else "i686",
+                    "pc" if self.settings.arch == "x86" else "win64",
                     "mingw32")
                 host = "{}-{}-{}".format(
                     "x86_64" if self.settings.arch == "x86_64" else "i686",
@@ -58,7 +54,7 @@ class Recipe(RecipeBase):
         apply_conandata_patches(self)
         replace_in_file(self, os.path.join(self.source_folder, "Makefile.in"),
                         "M4 = /usr/bin/env m4", "#M4 = /usr/bin/env m4")
-        if self._settings_build.os == "Windows":
+        if self.settings.os == "Windows":
             # Handle vagaries of Windows line endings
             replace_in_file(self, os.path.join(self.source_folder, "bin", "autom4te.in"),
                             "$result =~ s/^\\n//mg;", "$result =~ s/^\\R//mg;")
@@ -89,9 +85,3 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("AUTOHEADER", os.path.join(bin_path, "autoheader"))
         self.buildenv_info.define_path("AUTOM4TE", os.path.join(bin_path, "autom4te"))
 
-        # TODO: to remove in conan v2
-        self.env_info.PATH.append(bin_path)
-        self.env_info.AUTOCONF = "autoconf"
-        self.env_info.AUTORECONF = "autoreconf"
-        self.env_info.AUTOHEADER = "autoheader"
-        self.env_info.AUTOM4TE = "autom4te"

@@ -157,7 +157,6 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_target_name", "SQLite::SQLite3")
         self.cpp_info.set_property("pkg_config_name", "sqlite3")
 
-        # TODO: back to global scope in conan v2 once cmake_find_package_* generators removed
         self.cpp_info.components["sqlite"].libs = ["sqlite3"]
         if self.options.enable_icu:
             self.cpp_info.components["sqlite"].requires = ["icu::icu"]

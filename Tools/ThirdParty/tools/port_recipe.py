@@ -76,6 +76,8 @@ _REMOVE_CLASS_ATTRS: frozenset[str] = frozenset({
     "short_paths", "extension_properties",
     "settings", "package_type",
     "package_id_embed_mode", "package_id_semi_embed_mode",
+    # no_copy_source: not read by the build runner
+    "no_copy_source",
 })
 
 # Methods that don't apply in our build model
@@ -312,6 +314,17 @@ _DROP_LINE_RE: list[re.Pattern] = [
     re.compile(r"^\s*VirtualRunEnv\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
     re.compile(r"^\s*PkgConfigDeps\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
     re.compile(r"^\s*AutotoolsDeps\s*\(.*?\)\.generate\s*\(\s*\)\s*$"),
+    # Dead Conan v1 compat: MockInfoProperty subscript assignments
+    re.compile(r"""\.names\[["'](cmake_find_package|cmake_find_package_multi|pkg_config)["']"""),
+    re.compile(r"""\.filenames\[["'](cmake_find_package|cmake_find_package_multi)["']"""),
+    re.compile(r"""\.build_modules\[["'](cmake_find_package|cmake_find_package_multi)["']"""),
+    # Dead Conan v1 compat: env_info (MockInfoProperty)
+    re.compile(r"\bself\.env_info\."),
+    # Dead Conan v1 compat: standalone TODO comments about cmake_find_package* / conan v2
+    re.compile(
+        r"^\s*#\s*TODO:.*(?:conan v2|cmake_find_package|global scope|Remove for Conan)",
+        re.IGNORECASE,
+    ),
 ]
 
 # Strip version specifiers from dependency declarations.  All packages must use
@@ -320,10 +333,25 @@ _STRIP_DEP_VERSION_RE = re.compile(
     r"""(self\.(?:requires?|tool_requires?|build_requires?)\s*\(\s*["'])([^/"']+)/[^"']*(["'])"""
 )
 
+# _settings_build property block: always equals self.settings in our build system
+_SETTINGS_BUILD_BLOCK_RE = re.compile(
+    r'(?:[ \t]*#[^\n]*Remove for Conan[^\n]*\n)?'
+    r'([ \t]*)@property\n'
+    r'\1[ \t]+def _settings_build\(self\):?\n'
+    r'(?:\1[ \t]+#[^\n]*\n)?'
+    r'\1[ \t]+return getattr\(self,\s*["\']settings_build["\'],\s*self\.settings\)\n?',
+    re.MULTILINE,
+)
+
 
 def _apply_regex_transforms(code: str) -> str:
+    # Remove _settings_build property blocks
+    code = _SETTINGS_BUILD_BLOCK_RE.sub("", code)
+    # Replace remaining _settings_build usages with self.settings
+    code = re.sub(r'\bself\._settings_build\b', 'self.settings', code)
+    # Drop dead lines
     lines = code.splitlines(keepends=True)
-    out = [ln for ln in lines if not any(p.match(ln.rstrip()) for p in _DROP_LINE_RE)]
+    out = [ln for ln in lines if not any(p.search(ln.rstrip()) for p in _DROP_LINE_RE)]
     code = "".join(out)
     code = _STRIP_DEP_VERSION_RE.sub(r"\1\2\3", code)
     code = re.sub(r"\n{3,}", "\n\n", code)

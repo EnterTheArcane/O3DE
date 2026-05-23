@@ -36,10 +36,7 @@ class Recipe(RecipeBase):
                Version(self.settings.compiler.version) == "8" and \
                self.settings.arch == "x86"
 
-    @property
-    def _settings_build(self):
-        return getattr(self, "settings_build", self.settings)
-
+ 
     def config_options(self):
         if self.settings.os == "Windows":
             self.options.rm_safe("fPIC")
@@ -60,7 +57,7 @@ class Recipe(RecipeBase):
     def build_requirements(self):
         if is_msvc(self):
             self.tool_requires("strawberryperl")
-        elif self._settings_build.os == "Windows":
+        elif self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
@@ -274,8 +271,6 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "PostgreSQL")
         self.cpp_info.set_property("cmake_target_name", "PostgreSQL::PostgreSQL")
         self.cpp_info.set_property("pkg_config_name", "libpq")
-
-        self.env_info.PostgreSQL_ROOT = self.package_folder
 
         self.cpp_info.components["pq"].libs = [f"{'lib' if is_msvc(self) else ''}pq"]
 

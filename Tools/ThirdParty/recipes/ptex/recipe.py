@@ -65,7 +65,6 @@ class Recipe(RecipeBase):
         cmake_target = "Ptex_dynamic" if self.options.shared else "Ptex_static"
         self.cpp_info.set_property("cmake_file_name", "ptex")
         self.cpp_info.set_property("cmake_target_name", f"Ptex::{cmake_target}")
-        # TODO: back to global scope once cmake_find_package* generators removed
         self.cpp_info.components["_ptex"].libs = ["Ptex"]
         if not self.options.shared:
             self.cpp_info.components["_ptex"].defines.append("PTEX_STATIC")
@@ -73,11 +72,4 @@ class Recipe(RecipeBase):
             self.cpp_info.components["_ptex"].system_libs.append("pthread")
         self.cpp_info.components["_ptex"].requires = ["zlib::zlib"]
 
-        # TODO: to remove in conan v2 once cmake_find_package* generators removed
-        self.cpp_info.filenames["cmake_find_package"] = "ptex"
-        self.cpp_info.filenames["cmake_find_package_multi"] = "ptex"
-        self.cpp_info.names["cmake_find_package"] = "Ptex"
-        self.cpp_info.names["cmake_find_package_multi"] = "Ptex"
         self.cpp_info.components["_ptex"].set_property("cmake_target_name", f"Ptex::{cmake_target}")
-        self.cpp_info.components["_ptex"].names["cmake_find_package"] = cmake_target
-        self.cpp_info.components["_ptex"].names["cmake_find_package_multi"] = cmake_target

@@ -7,9 +7,6 @@ class Recipe(ConanFile):
     version = "4.3.3"
     license = "BSD-3-Clause"
 
-    def source(self):
-        pass
-
     def build(self):
         os_name = str(self.settings.os)
         arch = str(self.settings.arch)
@@ -43,4 +40,3 @@ class Recipe(ConanFile):
         self.cpp_info.includedirs = []
         bin_dir = os.path.join(self.package_folder, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)
-        self.env_info.PATH.append(bin_dir)

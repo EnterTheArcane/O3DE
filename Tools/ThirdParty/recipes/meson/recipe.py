@@ -7,9 +7,6 @@ class Recipe(ConanFile):
     version = "1.11.1"
     license = "Apache-2.0"
 
-    def source(self):
-        pass
-
     def build(self):
         download(self,
                  url="https://github.com/mesonbuild/meson/releases/download/1.11.1/meson.pyz",
@@ -51,4 +48,3 @@ class Recipe(ConanFile):
         self.cpp_info.includedirs = []
         bin_dir = os.path.join(self.package_folder, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)
-        self.env_info.PATH.append(bin_dir)
