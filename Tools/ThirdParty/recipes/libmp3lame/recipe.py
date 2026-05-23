@@ -42,11 +42,11 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if not is_msvc(self) and not self._is_clang_cl:
-            self.tool_requires("gnu-config/cci.20210814")
+            self.tool_requires("gnu-config/20210814")
             if self._settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2/cci.latest")
+                    self.tool_requires("msys2/latest")
 
     def source(self):
         get(self, url="https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz", sha256="ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e", destination=self.source_folder, strip_root=True)

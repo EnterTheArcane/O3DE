@@ -30,7 +30,7 @@ class lock:
 
 class Recipe(RecipeBase):
     name = "msys2"
-    version = "cci.latest"
+    version = "latest"
     license = "MSYS license"
 
     settings = "os", "arch"

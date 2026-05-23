@@ -60,7 +60,7 @@ class Recipe(RecipeBase):
         if self.settings_build.os == "Windows" and not self._use_msbuild and (Version(self.version) < "5.8.1" or self.settings.os == "Android"):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2/cci.latest")
+                self.tool_requires("msys2/latest")
         if self._use_cmake:
             self.tool_requires("cmake/[>=3.20]")
 
