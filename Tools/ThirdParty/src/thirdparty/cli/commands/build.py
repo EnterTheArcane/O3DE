@@ -345,9 +345,13 @@ def _build_dep_graph(
 
 
 
+# Sentinel file written to package/ only after a fully successful build.
+_DONE_MARKER = ".build_complete"
+
+
 def _is_built(build_root: Path, name: str, version: str) -> bool:
     pkg = build_root / name / version / "package"
-    return pkg.exists() and any(pkg.iterdir())
+    return (pkg / _DONE_MARKER).is_file()
 
 
 def _load_conandata(recipe) -> None:
@@ -467,17 +471,15 @@ def _build_recipe(
     # self.conan_data for custom version data (e.g. zlib-ng's "zlib_compat" field).
     _load_conandata(recipe)
 
-    Path(recipe.source_folder).mkdir(parents=True, exist_ok=True)
-    Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
-    Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
+    # If the package directory exists but has no completion marker the previous
+    # build was interrupted or failed mid-package().  Remove it so we start clean.
+    pkg_dir = Path(recipe.package_folder)
+    if pkg_dir.exists() and not (pkg_dir / _DONE_MARKER).is_file():
+        shutil.rmtree(pkg_dir, ignore_errors=True)
 
-    # Mirror what Conan's export_sources phase does: copy auxiliary recipe files
-    # (CMakeLists.txt, patches/, etc.) to export_sources_folder so that:
-    #   - cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
-    #     can find a CMakeLists.txt one level above source_folder
-    #   - apply_patches() / patch tools can locate patch files
-    _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.export_sources_folder))
-
+    # Run config_options / configure / validate before creating any directories so
+    # that packages which are not supported on this platform (ConanInvalidConfiguration)
+    # don't leave empty build trees behind.
     if hasattr(recipe, "config_options"):
         try:
             recipe.config_options()
@@ -498,7 +500,16 @@ def _build_recipe(
                 return transitive
             raise
 
+    # Mirror what Conan's export_sources phase does: copy auxiliary recipe files
+    # (CMakeLists.txt, patches/, etc.) to export_sources_folder so that:
+    #   - cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+    #     can find a CMakeLists.txt one level above source_folder
+    #   - apply_patches() / patch tools can locate patch files
+    Path(recipe.export_sources_folder).mkdir(parents=True, exist_ok=True)
+    _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.export_sources_folder))
+
     if not generate_only and hasattr(recipe, "source"):
+        Path(recipe.source_folder).mkdir(parents=True, exist_ok=True)
         recipe.source()
     if hasattr(recipe, "generate"):
         # Conan generators write files with bare filenames and expect CWD == generators_folder
@@ -517,6 +528,7 @@ def _build_recipe(
     generate_aggregated_env(recipe)
     if not generate_only:
         if hasattr(recipe, "build"):
+            Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
             _orig_cwd_build = os.getcwd()
             try:
                 os.chdir(recipe.build_folder)
@@ -524,12 +536,17 @@ def _build_recipe(
             finally:
                 os.chdir(_orig_cwd_build)
         if hasattr(recipe, "package"):
+            Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
+            Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
             _orig_cwd_pkg = os.getcwd()
             try:
                 os.chdir(recipe.build_folder)
                 recipe.package()
             finally:
                 os.chdir(_orig_cwd_pkg)
+        # Write the completion marker only after both build() and package() succeed.
+        Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
+        (Path(recipe.package_folder) / _DONE_MARKER).write_text("")
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive
