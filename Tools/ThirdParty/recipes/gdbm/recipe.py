@@ -11,7 +11,7 @@ from thirdparty.tools.scm import Version
 
 class Recipe(RecipeBase):
     name = "gdbm"
-    version = "1.23"
+    version = "1.26"
     license = "GPL-3.0-or-later"
 
     options = {
@@ -64,8 +64,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://ftp.gnu.org/gnu/gdbm/gdbm-1.23.tar.gz",
-            sha256="74b1081d21fff13ae4bd7c16e5d6e504a4c26f7cde1dca0d963a484174bbcacd",
+            url="https://ftp.gnu.org/gnu/gdbm/gdbm-1.26.tar.gz",
+            sha256="6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e",
             destination=self.source_folder,
             strip_root=True)
 

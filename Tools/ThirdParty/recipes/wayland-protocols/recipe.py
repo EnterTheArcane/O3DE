@@ -9,7 +9,7 @@ from thirdparty.tools.scm.gitlab import GitlabRepository
 
 class Recipe(RecipeBase):
     name = "wayland-protocols"
-    version = "1.45"
+    version = "1.48"
     license = "MIT"
 
     def build_requirements(self):
@@ -22,8 +22,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.45/downloads/wayland-protocols-1.45.tar.xz",
-            sha256="4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0",
+            url="https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.48/downloads/wayland-protocols-1.48.tar.xz",
+            sha256="398036ac0eb6484982ddbde7ff86848d753231f9cdeeae983f06b52946625aa1",
             destination=self.source_folder,
             strip_root=True)
 

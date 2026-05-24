@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "meshoptimizer"
-    version = "1.1"
+    version = "1.1.1"
     license = "MIT"
 
     options = {
@@ -37,8 +37,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/zeux/meshoptimizer/archive/refs/tags/v1.1.tar.gz",
-            sha256="b787011f81b4b3069c2f9065b7c191efdd4189a49be32ba5282dd5579f05261a",
+            url="https://github.com/zeux/meshoptimizer/archive/refs/tags/v1.1.1.tar.gz",
+            sha256="30cd4d28fe71bf58c614c23c87fed385bac223acbb2dfaf343d20ffc3584a083",
             destination=self.source_folder,
             strip_root=True)
 

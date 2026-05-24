@@ -12,7 +12,7 @@ from thirdparty.tools.scm.gitlab import GitlabRepository
 
 class Recipe(RecipeBase):
     name = "fontconfig"
-    version = "2.17.1"
+    version = "2.18.0"
     license = "MIT"
 
     options = {
@@ -51,8 +51,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.17.1/fontconfig-2.17.1.tar.xz",
-            sha256="9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541",
+            url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.18.0/fontconfig-2.18.0.tar.xz",
+            sha256="e7064a4725431ddba06ff8b971ec5a4b422e23b0169ce215747beedcb30e9073",
             destination=self.source_folder,
             strip_root=True)
 
