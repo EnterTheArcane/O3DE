@@ -15,7 +15,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "libxml2"
-    version = "2.13.8"
+    version = "2.15.3"
     license = "MIT"
 
     default_options = {
@@ -104,8 +104,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://download.gnome.org/sources/libxml2/2.13/libxml2-2.13.8.tar.xz",
-            sha256="277294cb33119ab71b2bc81f2f445e9bc9435b893ad15bb2cd2b0e859a0ee84a",
+            url="https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz",
+            sha256="78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07",
             destination=self.source_folder,
             strip_root=True)
 

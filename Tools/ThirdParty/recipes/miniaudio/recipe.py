@@ -1,0 +1,101 @@
+import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.files import copy, get
+from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
+
+
+class Recipe(RecipeBase):
+    name = "miniaudio"
+    version = "0.11.25"
+    license = "Unlicense"
+
+    exports_sources = "CMakeLists.txt"
+
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "header_only": [True, False],
+    }
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "header_only": True,
+    }
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.header_only or self.options.shared:
+            self.options.rm_safe("fPIC")
+        if self.options.header_only:
+            del self.options.shared
+        self.settings.rm_safe("compiler.libcxx")
+        self.settings.rm_safe("compiler.cppstd")
+
+    def build_requirements(self):
+        if not self.options.header_only:
+            self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "mackron/miniaudio")
+        return Version(repo.latest_release)
+
+    def source(self):
+        get(
+            self,
+            url="https://github.com/mackron/miniaudio/archive/0.11.25.tar.gz",
+            sha256="b900edcffe979816e2560a0580b9b1216d674b4f17fbadeca8f777a7f8ab0274",
+            destination=self.source_folder,
+            strip_root=True)
+
+    def generate(self):
+        if self.options.header_only:
+            return
+        tc = CMakeToolchain(self)
+        tc.variables["MINIAUDIO_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["MINIAUDIO_VERSION_STRING"] = self.version
+        tc.generate()
+
+    def build(self):
+        if self.options.header_only:
+            return
+        cmake = CMake(self)
+        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.build()
+
+    def package(self):
+        copy(self, "LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(
+            self,
+            pattern="**",
+            dst=os.path.join(self.package_folder, "include", "extras"),
+            src=os.path.join(self.source_folder, "extras"),
+        )
+        if self.options.header_only:
+            copy(self, "miniaudio.h", dst=os.path.join(self.package_folder, "include"), src=self.source_folder)
+            copy(
+                self,
+                pattern="miniaudio.*",
+                dst=os.path.join(self.package_folder, "include", "extras", "miniaudio_split"),
+                src=os.path.join(self.source_folder, "extras", "miniaudio_split"),
+            )
+        else:
+            cmake = CMake(self)
+            cmake.install()
+
+    def package_info(self):
+        if self.options.get_safe("header_only"):
+            self.cpp_info.bindirs = []
+            self.cpp_info.libdirs = []
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.system_libs.extend(["m", "pthread"])
+        if self.settings.os == "Linux":
+            self.cpp_info.system_libs.append("dl")
+        if self.settings.os == "Macos":
+            self.cpp_info.frameworks.extend(["CoreFoundation", "CoreAudio", "AudioUnit"])
+            self.cpp_info.defines.append("MA_NO_RUNTIME_LINKING=1")
