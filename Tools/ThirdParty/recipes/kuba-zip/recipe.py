@@ -42,6 +42,7 @@ class Recipe(RecipeBase):
             sha256="944656c33aa776dc2c882991d1a6a86c8408fec8b8a19bc5305bf7eabdd4d908",
             destination=self.source_folder,
             strip_root=True)
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "-Werror", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -50,11 +51,7 @@ class Recipe(RecipeBase):
         tc.variables["ZIP_BUILD_DOCS"] = False
         tc.generate()
 
-    def _patch_sources(self):
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "-Werror", "")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

@@ -53,6 +53,8 @@ class Recipe(RecipeBase):
             sha256="ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
+        replace_in_file(self, os.path.join(self.source_folder, "include", "libmp3lame.sym"), "lame_init_old\n", "", strict=False)
 
     def generate(self):
         if is_msvc(self) or self._is_clang_cl:
@@ -111,9 +113,6 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def build(self):
-        apply_patches(self)
-        replace_in_file(self, os.path.join(self.source_folder, "include", "libmp3lame.sym"), "lame_init_old\n", "", strict=False)
-
         if is_msvc(self) or self._is_clang_cl:
             self._build_vs()
         else:

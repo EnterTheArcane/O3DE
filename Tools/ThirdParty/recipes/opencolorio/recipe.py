@@ -61,6 +61,9 @@ class Recipe(RecipeBase):
             sha256="cb8b0ae38fa523be8f899a0b2d6b8ca8cbcda7bc4322c91d1ac2b6b2a0082474",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
+        for module in ("expat", "lcms2", "pystring", "yaml-cpp", "Imath", "minizip-ng"):
+            rm(self, f"Find{module}.cmake", os.path.join(self.source_folder, "share", "cmake", "modules"))
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -98,15 +101,7 @@ class Recipe(RecipeBase):
         deps = CMakeDeps(self)
         deps.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-
-        for module in ("expat", "lcms2", "pystring", "yaml-cpp", "Imath", "minizip-ng"):
-            rm(self, "Find"+module+".cmake", os.path.join(self.source_folder, "share", "cmake", "modules"))
-
     def build(self):
-        self._patch_sources()
-
         cm = CMake(self)
         cm.configure()
         cm.build()

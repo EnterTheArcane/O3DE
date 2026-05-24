@@ -54,6 +54,7 @@ class Recipe(RecipeBase):
             sha256="816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -81,7 +82,6 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
