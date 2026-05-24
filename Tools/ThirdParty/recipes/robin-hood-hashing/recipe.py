@@ -22,9 +22,10 @@ class Recipe(RecipeBase):
             sha256="3693e44dda569e9a8b87ce8263f7477b23af448a3c3600c8ab9004fe79c20ad0",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
 
     def build(self):
-        apply_patches(self)
+        pass
 
     def package(self):
         copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

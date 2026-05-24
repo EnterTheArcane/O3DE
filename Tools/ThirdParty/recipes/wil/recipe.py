@@ -34,8 +34,6 @@ class Recipe(RecipeBase):
             sha256="de9e03b38ff0ff8d22048f00b111cb631d21c550328f12530ccba71c05c9e361",
             destination=self.source_folder,
             strip_root=True)
-
-    def build(self):
         apply_patches(self)
 
     def package(self):

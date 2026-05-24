@@ -49,6 +49,7 @@ class Recipe(RecipeBase):
             sha256="3258da280511d24b49d6b08615bbe824d0cacc9842b0e4caf11c52cf2b043893",
             destination=self.source_folder,
             strip_root=True)
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "cmake_policy(SET CMP0091 OLD)", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -60,13 +61,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
-    def _patch_sources(self):
-        # Disable upstream logic about msvc runtime policy, called before conan toolchain resolution
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                        "cmake_policy(SET CMP0091 OLD)", "")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

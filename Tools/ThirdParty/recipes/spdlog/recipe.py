@@ -58,6 +58,7 @@ class Recipe(RecipeBase):
             sha256="d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744",
             destination=self.source_folder,
             strip_root=True)
+        replace_in_file(self, os.path.join(self.source_folder, "cmake", "utils.cmake"), "/WX", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -82,7 +83,6 @@ class Recipe(RecipeBase):
         cmake_deps.generate()
 
     def build(self):
-        replace_in_file(self, os.path.join(self.source_folder, "cmake", "utils.cmake"), "/WX", "")
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

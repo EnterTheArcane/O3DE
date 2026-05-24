@@ -67,6 +67,7 @@ class Recipe(RecipeBase):
             self,
             url="https://prdownloads.sourceforge.net/tcl/tk8.6.10-src.tar.gz", sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386", strip_root=True,
             destination=self.source_folder)
+        apply_patches(self)
 
     def generate(self):
         buildenv = VirtualBuildEnv(self)
@@ -182,7 +183,6 @@ class Recipe(RecipeBase):
             )
 
     def build(self):
-        apply_patches(self)
         if is_msvc(self):
             self._build_nmake()
         else:
