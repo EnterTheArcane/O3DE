@@ -102,7 +102,6 @@ class Recipe(RecipeBase):
         content = re.sub(r"\$\{MINIMUM_\S+_VERSION\}", "", content)
         with open(cmakelists_path, "w") as f:
             f.write(content)
-        replace_in_file(self, cmakelists_path, "OPENVDB_FUTURE_DEPRECATION", "FALSE")
 
     def build(self):
         self._patch_sources()

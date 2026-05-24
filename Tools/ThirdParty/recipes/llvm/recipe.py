@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty._conan.errors import ConanException
+from thirdparty._conan.errors import ConanInvalidConfiguration
 from thirdparty.tools.files import copy, get
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
         os_name = str(self.settings.os)
         arch = str(self.settings.arch)
         if os_name not in _SOURCES or arch not in _SOURCES[os_name]:
-            raise ConanException(f"{self.name} has no prebuilt binaries for {os_name}/{arch}")
+            raise ConanInvalidConfiguration(f"{self.name} has no prebuilt binaries for {os_name}/{arch}")
 
     def build(self):
         entry = _SOURCES[str(self.settings.os)][str(self.settings.arch)]
