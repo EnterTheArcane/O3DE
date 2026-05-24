@@ -508,7 +508,7 @@ class Recipe(RecipeBase):
             opt_enable_disable("libx265", self.options.with_libx265),
             opt_enable_disable("libvpx", self.options.with_libvpx),
             opt_enable_disable("libmp3lame", self.options.with_libmp3lame),
-            opt_enable_disable("fdk-aac", self.options.get_safe("with_libfdk_aac")),
+            opt_enable_disable("libfdk-aac", self.options.get_safe("with_libfdk_aac")),
             opt_enable_disable("libwebp", self.options.with_libwebp),
             opt_enable_disable("libaom", self.options.with_libaom),
             opt_enable_disable("openssl", self.options.with_ssl == "openssl"),

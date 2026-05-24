@@ -15,7 +15,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "openssl"
-    version = "4.0.0"
+    version = "3.6.2"
     license = "Apache-2.0"
 
     options = {
@@ -140,8 +140,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/openssl/openssl/releases/download/openssl-4.0.0/openssl-4.0.0.tar.gz",
-            sha256="c32cf49a959c4f345f9606982dd36e7d28f7c58b19c2e25d75624d2b3d2f79ac",
+            url="https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz",
+            sha256="aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
             destination=self.source_folder,
             strip_root=True)
 
