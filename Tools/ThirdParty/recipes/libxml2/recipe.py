@@ -17,14 +17,13 @@ class Recipe(RecipeBase):
     name = "libxml2"
     version = "2.13.8"
     license = "MIT"
-    # from ./configure and ./win32/configure.js
+
     default_options = {
         "shared": False,
         "fPIC": True,
         "include_utils": True,
         "c14n": True,
         "catalog": True,
-        "docbook": True,    # dropped after 2.10.3
         "ftp": True,
         "http": True,
         "html": True,
@@ -69,7 +68,6 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        del self.options.docbook
         self.options.rm_safe("run-debug")
         self.options.rm_safe("mem-debug")
 
@@ -168,8 +166,7 @@ class Recipe(RecipeBase):
 
             for name in self._configure_option_names:
                 cname = {"mem-debug": "mem_debug",
-                         "run-debug": "run_debug",
-                         "docbook": "docb"}.get(name, name)
+                         "run-debug": "run_debug"}.get(name, name)
                 value = getattr(self.options, name)
                 value = "yes" if value else "no"
                 args.append(f"{cname}={value}")
@@ -232,7 +229,6 @@ class Recipe(RecipeBase):
                 cname = {
                     "mem-debug": "mem_debug",
                     "run-debug": "run_debug",
-                    "docbook": "docb",
                 }.get(name, name)
                 args.append(f"{cname}={yes_no(getattr(self.options, name))}")
             configure_command = " ".join(args)

@@ -29,7 +29,6 @@ class Recipe(RecipeBase):
         "with_stream_expand_tool": False,
         "disable_simd": False,
     }
-    implements = ["auto_shared_fpic"]
 
     def requirements(self):
         if self.options.with_executables and self.options.with_tiff:

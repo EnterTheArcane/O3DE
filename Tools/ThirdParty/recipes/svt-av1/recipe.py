@@ -8,7 +8,7 @@ from thirdparty.tools.scm.gitlab import GitlabRepository
 
 
 class Recipe(RecipeBase):
-    name = "libsvtav1"
+    name = "svt-av1"
     version = "2.2.1"
     license = "BSD-3-Clause"
 

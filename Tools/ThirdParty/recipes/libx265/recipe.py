@@ -11,7 +11,8 @@ from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 class Recipe(RecipeBase):
     name = "libx265"
     version = "4.2"
-    license = ("GPL-2.0-only", "commercial")  # https://bitbucket.org/multicoreware/x265/src/default/COPYING
+    # https://bitbucket.org/multicoreware/x265/src/default/COPYING
+    license = "GPL-2.0-only", "commercial"
 
     options = {
         "shared": [True, False],

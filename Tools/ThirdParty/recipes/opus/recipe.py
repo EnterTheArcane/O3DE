@@ -25,8 +25,6 @@ class Recipe(RecipeBase):
         "fixed_point": False,
         "stack_protector": True,
     }
-    implements = ["auto_shared_fpic"]
-    languages = "C"
 
     def build_requirements(self):
         self.tool_requires("cmake")
