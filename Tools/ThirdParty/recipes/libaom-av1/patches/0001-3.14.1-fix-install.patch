@@ -1,6 +1,6 @@
---- build/cmake/aom_install.cmake
-+++ build/cmake/aom_install.cmake
-@@ -27,7 +27,7 @@
+--- cmake/aom_install.cmake
++++ cmake/aom_install.cmake
+@@ -29,7 +29,7 @@
  # Note: aom.pc generation uses GNUInstallDirs:
  # https://cmake.org/cmake/help/latest/module/GNUInstallDirs.html
  macro(setup_aom_install_targets)
@@ -9,7 +9,7 @@
      include("GNUInstallDirs")
      set(AOM_PKG_CONFIG_FILE "${AOM_CONFIG_DIR}/aom.pc")
  
-@@ -79,7 +79,8 @@
+@@ -81,7 +81,8 @@
      endif()
  
      if(BUILD_SHARED_LIBS)
