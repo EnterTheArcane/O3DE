@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "fast-float"
     version = "8.2.5"
-    license = ("Apache-2.0", "MIT", "BSL-1.0")
+    license = "Apache-2.0", "MIT", "BSL-1.0"
 
     def latest_version(self):
         repo = GithubRepository(self, "fastfloat/fast_float")

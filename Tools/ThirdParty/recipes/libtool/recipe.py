@@ -15,9 +15,8 @@ from thirdparty.tools.scm import Version
 class Recipe(RecipeBase):
     name = "libtool"
     version = "2.4.7"
-    license = ("GPL-2.0-or-later", "GPL-3.0-or-later")
-    languages = ["C"]
-    implements = ["auto_shared_fpic"]
+    license = "GPL-2.0-or-later", "GPL-3.0-or-later"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

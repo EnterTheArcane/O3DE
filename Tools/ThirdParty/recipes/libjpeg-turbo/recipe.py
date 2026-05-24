@@ -12,8 +12,8 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "libjpeg-turbo"
     version = "3.1.4.1"
-    license = ("IJG", "BSD-3-Clause", "Zlib")
-    provides = "libjpeg"
+    license = "IJG", "BSD-3-Clause", "Zlib"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

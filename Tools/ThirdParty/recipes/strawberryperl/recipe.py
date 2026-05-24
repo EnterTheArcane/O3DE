@@ -10,7 +10,8 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "strawberryperl"
     version = "5.42.2.1"
-    license = ("Artistic-1.0", "GPL-1.0")
+    license = "Artistic-1.0", "GPL-1.0"
+
     def compatibility(self):
         if self.settings.arch == "armv8":
             return [{"settings": [("arch", "x86_64")]}]
