@@ -144,5 +144,6 @@ def make_conf(jobs=None):
     conf.define("tools.cmake.cmaketoolchain:generator", "Ninja")
     conf.define("tools.meson.mesontoolchain:backend", "ninja")
     conf.define("tools.build:jobs", jobs if jobs is not None else cpu_count())
+    conf.define("tools.cmake:configure_args", ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"])
     conf.define("user.openssl:windows_use_jom", True)
     return conf
