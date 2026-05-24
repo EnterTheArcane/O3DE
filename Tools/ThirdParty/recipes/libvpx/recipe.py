@@ -26,16 +26,16 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
-    _arch_options = ['mmx', 'sse', 'sse2', 'sse3', 'ssse3', 'sse4_1', 'avx', 'avx2', 'avx512']
+    _arch_options = ["mmx", "sse", "sse2", "sse3", "ssse3", "sse4_1", "avx", "avx2", "avx512"]
 
     options.update({name: [True, False] for name in _arch_options})
-    default_options.update({name: 'avx' not in name for name in _arch_options})
+    default_options.update({name: "avx" not in name for name in _arch_options})
 
  
     def config_options(self):
-        if self.settings.os == 'Windows':
+        if self.settings.os == "Windows":
             del self.options.fPIC
-        if str(self.settings.arch) not in ['x86', 'x86_64']:
+        if str(self.settings.arch) not in ["x86", "x86_64"]:
             for name in self._arch_options:
                 delattr(self.options, name)
 
@@ -75,18 +75,18 @@ class Recipe(RecipeBase):
 
     @property
     def _target_name(self):
-        arch = {'x86': 'x86',
-                'x86_64': 'x86_64',
-                'armv7': 'armv7',
-                'armv7s': 'armv7s',
-                'armv8': 'arm64',
-                'mips': 'mips32',
-                'mips64': 'mips64',
-                'sparc': 'sparc'}.get(str(self.settings.arch))
+        arch = {"x86": "x86",
+                "x86_64": "x86_64",
+                "armv7": "armv7",
+                "armv7s": "armv7s",
+                "armv8": "arm64",
+                "mips": "mips32",
+                "mips64": "mips64",
+                "sparc": "sparc"}.get(str(self.settings.arch))
         if arch is None:
             # Fallback for unknown architectures. This is supported by upstream to be used
             # when no specific target set is provided by the configure script.
-            return 'generic-gnu'
+            return "generic-gnu"
 
         compiler = str(self.settings.compiler)
         os_name = str(self.settings.os)
@@ -98,26 +98,26 @@ class Recipe(RecipeBase):
             vc_version = {"170": "11", "180": "12", "190": "14", "191": "15", "192": "16", "193": "17", "194": "17", "195": "18"}[vc_version]
             compiler = f"vs{vc_version}"
         elif self.settings.compiler in ["gcc", "clang", "apple-clang"]:
-            compiler = 'gcc'
+            compiler = "gcc"
         host_os = str(self.settings.os)
-        if host_os == 'Windows':
-            os_name = 'win32' if self.settings.arch == 'x86' else 'win64'
+        if host_os == "Windows":
+            os_name = "win32" if self.settings.arch == "x86" else "win64"
         elif is_apple_os(self):
             if self.settings.arch in ["x86", "x86_64"]:
                 if self.settings.os == "Macos":
-                    os_name = f'darwin11'
+                    os_name = f"darwin11"
                 else:
-                    os_name = 'iphonesimulator'
+                    os_name = "iphonesimulator"
             elif self.settings.arch == "armv8":
-                os_name = 'darwin21'
+                os_name = "darwin21"
             else:
-                os_name = 'darwin'
-        elif host_os == 'Linux':
-            os_name = 'linux'
-        elif host_os == 'Solaris':
-            os_name = 'solaris'
-        elif host_os == 'Android':
-            os_name = 'android'
+                os_name = "darwin"
+        elif host_os == "Linux":
+            os_name = "linux"
+        elif host_os == "Solaris":
+            os_name = "solaris"
+        elif host_os == "Android":
+            os_name = "android"
         return f"{arch}-{os_name}-{compiler}"
 
     def generate(self):

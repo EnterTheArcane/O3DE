@@ -15,19 +15,15 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_parallel_acceleration": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_parallel_acceleration": False,
     }
 
     def requirements(self):
-        # For CrossSection for 2D support
         self.requires("clipper2")
-        if self.options.with_parallel_acceleration:
-            self.requires("onetbb")
+        self.requires("onetbb")
 
     def build_requirements(self):
         self.tool_requires("cmake")
@@ -51,7 +47,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["MANIFOLD_CBIND"] = False
         tc.cache_variables["MANIFOLD_PYBIND"] = False
         tc.cache_variables["MANIFOLD_STRICT"] = False # no -Werror
-        tc.cache_variables["MANIFOLD_PAR"] = self.options.with_parallel_acceleration
+        tc.cache_variables["MANIFOLD_PAR"] = True
         tc.generate()
 
         deps = CMakeDeps(self)

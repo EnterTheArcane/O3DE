@@ -10,18 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "eigen"
     version = "5.0.1"
-    license = "MPL-2.0", "LGPL-3.0-or-later"
-
-    options = {
-        "MPL2_only": [True, False],
-    }
-    default_options = {
-        "MPL2_only": False,
-    }
-
-    def configure(self):
-        self.license = "MPL-2.0"  # MPL-2 only
-        del self.options.MPL2_only
+    license = "MPL-2.0"
 
     def latest_version(self):
         repo = GithubRepository(self, "eigen-mirror/eigen")
@@ -67,8 +56,6 @@ class Recipe(RecipeBase):
         self.cpp_info.components["eigen3"].libdirs = []
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.components["eigen3"].system_libs = ["m"]
-        if self.options.get_safe("MPL2_only"):
-            self.cpp_info.components["eigen3"].defines = ["EIGEN_MPL2_ONLY"]
 
         self.cpp_info.components["eigen3"].set_property("cmake_target_name", "Eigen3::Eigen")
         self.cpp_info.components["eigen3"].includedirs = [os.path.join("include", "eigen3")]

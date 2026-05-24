@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, rmdir, apply_patches, save
+from thirdparty.tools.files import copy, get, rmdir, replace_in_file, apply_patches, save
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import unix_path, is_msvc
 from thirdparty.tools.scm import Version
@@ -76,6 +76,11 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "res", "info"))
         rmdir(self, os.path.join(self.package_folder, "res", "man"))
 
+        if self.settings.os == "Windows":
+            actual_data_path = unix_path(self, os.path.join(self.package_folder, "res", "autoconf"))
+            autom4te_cfg = os.path.join(self.package_folder, "res", "autoconf", "autom4te.cfg")
+            replace_in_file(self, autom4te_cfg, "'/res/autoconf'", f"'{actual_data_path}'")
+
     def package_info(self):
         self.cpp_info.frameworkdirs = []
         self.cpp_info.libdirs = []
@@ -87,4 +92,9 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("AUTORECONF", os.path.join(bin_path, "autoreconf"))
         self.buildenv_info.define_path("AUTOHEADER", os.path.join(bin_path, "autoheader"))
         self.buildenv_info.define_path("AUTOM4TE", os.path.join(bin_path, "autom4te"))
+
+        perllib_path = os.path.join(self.package_folder, "res", "autoconf")
+        self.buildenv_info.define_path("autom4te_perllibdir", perllib_path)
+        self.buildenv_info.define_path("AC_MACRODIR", perllib_path)
+        self.buildenv_info.define_path("trailer_m4", os.path.join(perllib_path, "autoconf", "trailer.m4"))
 

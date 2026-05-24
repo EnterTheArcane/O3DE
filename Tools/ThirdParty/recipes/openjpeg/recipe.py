@@ -16,12 +16,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "build_codec": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "build_codec": False,
     }
 
     def config_options(self):

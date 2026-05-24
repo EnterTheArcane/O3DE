@@ -16,12 +16,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_cxxlibs": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_cxxlibs": True,
     }
 
     def config_options(self):
@@ -57,7 +55,7 @@ class Recipe(RecipeBase):
         tc.variables["BUILD_DOCS"] = False
         tc.variables["BUILD_PROGRAMS"] = not is_apple_os(self) or self.settings.os == "Macos"
         tc.variables["BUILD_TESTING"] = False
-        tc.variables["BUILD_CXXLIBS"] = self.options.with_cxxlibs
+        tc.variables["BUILD_CXXLIBS"] = True
         tc.generate()
         cd = CMakeDeps(self)
         cd.generate()
@@ -90,10 +88,9 @@ class Recipe(RecipeBase):
         self.cpp_info.components["libflac"].libs = ["FLAC"]
         self.cpp_info.components["libflac"].requires = ["ogg::ogg"]
 
-        if self.options.with_cxxlibs:
-            self.cpp_info.components["libflac++"].set_property("cmake_target_name", "FLAC::FLAC++")
-            self.cpp_info.components["libflac++"].libs = ["FLAC++"]
-            self.cpp_info.components["libflac++"].requires = ["libflac"]
+        self.cpp_info.components["libflac++"].set_property("cmake_target_name", "FLAC::FLAC++")
+        self.cpp_info.components["libflac++"].libs = ["FLAC++"]
+        self.cpp_info.components["libflac++"].requires = ["libflac"]
 
         if not self.options.shared:
             self.cpp_info.components["libflac"].defines = ["FLAC__NO_DLL"]

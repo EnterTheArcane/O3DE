@@ -22,8 +22,6 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
-    implements = ["auto_shared_fpic"]
-
     def latest_version(self):
         repo = GithubRepository(self, "AcademySoftwareFoundation/Imath")
         return Version(repo.latest_release.removeprefix("v"))

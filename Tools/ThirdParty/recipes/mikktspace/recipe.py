@@ -11,8 +11,6 @@ class Recipe(RecipeBase):
     version = "2020.03.25"
     license = "Zlib"
 
-    exports_sources = "CMakeLists.txt"
-
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

@@ -51,7 +51,6 @@ class Recipe(RecipeBase):
         tc = CMakeToolchain(self)
         # Relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
         cd = CMakeDeps(self)
         cd.generate()

@@ -15,12 +15,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_fast_float": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_fast_float": True,
     }
 
     def config_options(self):
@@ -32,8 +30,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        if self.options.with_fast_float:
-            self.requires("fast-float", transitive_headers=True)
+        self.requires("fast-float", transitive_headers=True)
 
     def latest_version(self):
         repo = GithubRepository(self, "biojppm/c4core")
@@ -49,7 +46,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["C4CORE_WITH_FASTFLOAT"] = bool(self.options.with_fast_float)
+        tc.variables["C4CORE_WITH_FASTFLOAT"] = True
         tc.generate()
 
         deps = CMakeDeps(self)
@@ -70,9 +67,6 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         self.cpp_info.libs = ["c4core"]
-        if not self.options.with_fast_float:
-            self.cpp_info.defines.append("C4CORE_NO_FAST_FLOAT")
-
         self.cpp_info.set_property("cmake_file_name", "c4core")
         self.cpp_info.set_property("cmake_target_name", "c4core::c4core")
 

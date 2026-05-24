@@ -15,12 +15,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_test": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_test": False,
     }
 
     def config_options(self):
@@ -48,7 +46,7 @@ class Recipe(RecipeBase):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTING"] = False
         tc.variables["HWY_ENABLE_EXAMPLES"] = False
-        tc.variables["HWY_ENABLE_TESTS"] = self.options.get_safe("with_test", False)
+        tc.variables["HWY_ENABLE_TESTS"] = False
         tc.generate()
 
     def _patch_sources(self):
@@ -89,10 +87,6 @@ class Recipe(RecipeBase):
         self.cpp_info.components["hwy_contrib"].requires = ["hwy"]
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.components["hwy_contrib"].system_libs.append("pthread")
-        if self.options.with_test:
-            self.cpp_info.components["hwy_test"].set_property("pkg_config_name", "libhwy-test")
-            self.cpp_info.components["hwy_test"].libs = ["hwy_test"]
-            self.cpp_info.components["hwy_test"].requires = ["hwy"]
 
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.system_libs.append("m")

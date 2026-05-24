@@ -19,7 +19,6 @@ class Recipe(RecipeBase):
         "fPIC": [True, False],
         "with_fmt_alias": [True, False],
         "with_os_api": [True, False],
-        "with_unicode": [True, False],
     }
     default_options = {
         "header_only": False,
@@ -27,7 +26,6 @@ class Recipe(RecipeBase):
         "fPIC": True,
         "with_fmt_alias": False,
         "with_os_api": True,
-        "with_unicode": True,
     }
 
     def config_options(self):
@@ -65,7 +63,7 @@ class Recipe(RecipeBase):
             tc.cache_variables["FMT_INSTALL"] = True
             tc.cache_variables["FMT_LIB_DIR"] = "lib"
             tc.cache_variables["FMT_OS"] = bool(self.options.with_os_api)
-            tc.cache_variables["FMT_UNICODE"] = bool(self.options.with_unicode)
+            tc.cache_variables["FMT_UNICODE"] = True
             tc.generate()
 
     def build(self):
@@ -97,12 +95,7 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("pkg_config_name",  "fmt")
 
         if is_msvc(self):
-            if self.options.get_safe("with_unicode"):
-                self.cpp_info.components["_fmt"].cxxflags.append("/utf-8")
-            else:
-                # Set the FMT_UNICODE=0, as defined publicly upstream
-                # https://github.com/fmtlib/fmt/blob/11.1.1/CMakeLists.txt#L371
-                self.cpp_info.components["_fmt"].defines.append("FMT_UNICODE=0")
+            self.cpp_info.components["_fmt"].cxxflags.append("/utf-8")
 
         if self.options.with_fmt_alias:
             self.cpp_info.components["_fmt"].defines.append("FMT_STRING_ALIAS=1")

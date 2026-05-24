@@ -19,13 +19,10 @@ class Recipe(RecipeBase):
         "shared": [True, False],
         "fPIC": [True, False],
         "enable_libraries": [True, False],
-        "enable_dtd_validation": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        # "enable_libraries": True, # See `config_options()`
-        "enable_dtd_validation": True,
     }
 
     def configure(self):
@@ -46,8 +43,7 @@ class Recipe(RecipeBase):
     def requirements(self):
         if self.options.enable_libraries:
             self.requires("libffi")
-        if self.options.enable_dtd_validation:
-            self.requires("libxml2")
+        self.requires("libxml2")
         self.requires("expat")
 
     def build_requirements(self):
@@ -89,7 +85,7 @@ class Recipe(RecipeBase):
         tc.project_options["libdir"] = "lib"
         tc.project_options["datadir"] = "res"
         tc.project_options["libraries"] = self.options.enable_libraries
-        tc.project_options["dtd_validation"] = self.options.enable_dtd_validation
+        tc.project_options["dtd_validation"] = True
         tc.project_options["documentation"] = False
         if not can_run(self):
             tc.project_options["build.pkg_config_path"] = self.generators_folder
@@ -115,8 +111,7 @@ class Recipe(RecipeBase):
         self.cpp_info.components["wayland-scanner"].libdirs = []
         self.cpp_info.components["wayland-scanner"].set_property("component_version", self.version)
         self.cpp_info.components["wayland-scanner"].requires = ["expat::expat"]
-        if self.options.enable_dtd_validation:
-            self.cpp_info.components["wayland-scanner"].requires.append("libxml2::libxml2")
+        self.cpp_info.components["wayland-scanner"].requires.append("libxml2::libxml2")
         pkgconfig_variables = {
             'datarootdir': '${prefix}/res',
             'pkgdatadir': '${datarootdir}/wayland',

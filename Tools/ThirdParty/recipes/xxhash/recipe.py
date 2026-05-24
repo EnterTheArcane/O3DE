@@ -15,12 +15,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "utility": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "utility": True,
     }
 
     def config_options(self):
@@ -49,7 +47,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["XXHASH_BUNDLED_MODE"] = False
-        tc.variables["XXHASH_BUILD_XXHSUM"] = self.options.utility
+        tc.variables["XXHASH_BUILD_XXHSUM"] = True
         # Fix CMake configuration if target is iOS/tvOS/watchOS
         tc.cache_variables["CMAKE_MACOSX_BUNDLE"] = False
         # Generate a relocatable shared lib on Macos

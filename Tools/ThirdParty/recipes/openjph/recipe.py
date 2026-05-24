@@ -16,23 +16,14 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_executables": [True, False],
-        "with_tiff": [True, False],
-        "with_stream_expand_tool": [True, False],
-        "disable_simd": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_executables": True,
-        "with_tiff": True,
-        "with_stream_expand_tool": False,
-        "disable_simd": False,
     }
 
     def requirements(self):
-        if self.options.with_executables and self.options.with_tiff:
-            self.requires("libtiff")
+        self.requires("libtiff")
 
     def latest_version(self):
         repo = GithubRepository(self, "aous72/OpenJPH")
@@ -48,10 +39,10 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.cache_variables["OJPH_BUILD_EXECUTABLES"] = self.options.with_executables
-        tc.cache_variables["OJPH_ENABLE_TIFF_SUPPORT"] = self.options.with_tiff
-        tc.cache_variables["OJPH_BUILD_STREAM_EXPAND"] = self.options.with_stream_expand_tool
-        tc.cache_variables["OJPH_DISABLE_SIMD"] = self.options.disable_simd
+        tc.cache_variables["OJPH_BUILD_EXECUTABLES"] = True
+        tc.cache_variables["OJPH_ENABLE_TIFF_SUPPORT"] = True
+        tc.cache_variables["OJPH_BUILD_STREAM_EXPAND"] = False
+        tc.cache_variables["OJPH_DISABLE_SIMD"] = False
         tc.generate()
 
         deps = CMakeDeps(self)

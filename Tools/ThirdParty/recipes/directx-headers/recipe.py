@@ -13,20 +13,6 @@ class Recipe(RecipeBase):
     version = "1.619.1"
     license = "MIT"
 
-    @property
-    def _min_cppstd(self):
-        return 11
-
-    @property
-    def _compilers_minimum_version(self):
-        return {
-            "apple-clang": "10",
-            "clang": "5",
-            "gcc": "6",
-            "msvc": "191",
-            "Visual Studio": "15",
-        }
-
     def build_requirements(self):
         self.tool_requires("meson")
 

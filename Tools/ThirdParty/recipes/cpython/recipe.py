@@ -90,22 +90,19 @@ class Recipe(RecipeBase):
         "shared": [True, False],
         "fPIC": [True, False],
         "optimizations": [True, False],
-        "with_ssl": [True, False],
     }
     default_options = {
         "shared": True,
         "fPIC": True,
         "optimizations": False,
-        "with_ssl": False,
     }
 
     def requirements(self) -> None:
         self.requires("bzip2")
-        self.requires("zlib")
-        self.requires("xz_utils")
+        self.requires("openssl")
         self.requires("sqlite3")
-        if self.options.with_ssl:
-            self.requires("openssl")
+        self.requires("xz_utils")
+        self.requires("zlib")
 
     def latest_version(self):
         repo = GithubRepository(self, "python/cpython")
@@ -293,9 +290,7 @@ class Recipe(RecipeBase):
             # ctypes requires libffi prebuilt binaries; no recipe available yet.
             "--no-ctypes",
         ]
-        if not self.options.with_ssl:
-            cmd.append("--no-ssl")
-        elif "openssl" in self.dependencies:
+        if "openssl" in self.dependencies:
             ssl_dir = self.dependencies["openssl"].package_folder.replace("\\", "/")
             cmd += [f"--ssl={ssl_dir}"]
         if self.options.optimizations:
@@ -335,12 +330,8 @@ class Recipe(RecipeBase):
             "--without-ensurepip",
             "--enable-shared" if self.options.shared else "--disable-shared",
         ]
-        if not self.options.with_ssl:
-            configure_args.append("--without-ssl")
-        elif "openssl" in self.dependencies:
-            configure_args.append(
-                f"--with-openssl={self.dependencies['openssl'].package_folder}"
-            )
+        if "openssl" in self.dependencies:
+            configure_args.append(f"--with-openssl={self.dependencies['openssl'].package_folder}")
 
         env = dict(os.environ)
         env["CPPFLAGS"] = cppflags

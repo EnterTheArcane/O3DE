@@ -18,7 +18,6 @@ class Recipe(RecipeBase):
         "wchar_support": [True, False],
         "wchar_filenames": [True, False],
         "wchar_console": [True, False],
-        "no_exceptions": [True, False],
     }
     default_options = {
         "shared": False,
@@ -26,7 +25,6 @@ class Recipe(RecipeBase):
         "wchar_support": False,
         "wchar_filenames": False,
         "wchar_console": False,
-        "no_exceptions": False,
     }
 
     def config_options(self):
@@ -75,7 +73,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["SPDLOG_WCHAR_FILENAMES"] = self.options.get_safe("wchar_filenames", False)
         tc.cache_variables["SPDLOG_WCHAR_CONSOLE"] = self.options.get_safe("wchar_console", False)
         tc.cache_variables["SPDLOG_INSTALL"] = True
-        tc.cache_variables["SPDLOG_NO_EXCEPTIONS"] = self.options.no_exceptions
+        tc.cache_variables["SPDLOG_NO_EXCEPTIONS"] = True
         tc.cache_variables["SPDLOG_USE_STD_FORMAT"] = False
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0091"] = "NEW"
         tc.generate()
@@ -113,7 +111,6 @@ class Recipe(RecipeBase):
             self.cpp_info.components["libspdlog"].defines.append("SPDLOG_WCHAR_FILENAMES")
         if self.options.get_safe("wchar_console"):
             self.cpp_info.components["libspdlog"].defines.append("SPDLOG_UTF8_TO_WCHAR_CONSOLE")
-        if self.options.no_exceptions:
-            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_NO_EXCEPTIONS")
+        self.cpp_info.components["libspdlog"].defines.append("SPDLOG_NO_EXCEPTIONS")
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.components["libspdlog"].system_libs = ["pthread"]

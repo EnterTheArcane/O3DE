@@ -11,18 +11,6 @@ class Recipe(RecipeBase):
     version = "1.0.260126.7"
     license = "MIT"
 
-    @property
-    def _min_cppstd(self):
-        return 11
-
-    @property
-    def _compilers_minimum_version(self):
-        # About compiler version: https://github.com/microsoft/wil/issues/207#issuecomment-991722592 
-        return {
-            "Visual Studio": "15",
-            "msvc": "191"
-        }
-
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/wil")
         return Version(repo.latest_release.removeprefix("v"))
