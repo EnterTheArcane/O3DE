@@ -1,6 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
+from thirdparty._conan.errors import ConanInvalidConfiguration
 from thirdparty.tools.cmake import CMake, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
@@ -18,6 +19,10 @@ class Recipe(RecipeBase):
     default_options = {
         "shared": False,
     }
+    
+    def validate(self):
+        if self.settings.os != "Windows":
+            raise ConanInvalidConfiguration(f"{self.name} is only supported on Windows")
 
     def build_requirements(self):
         self.tool_requires("cmake")
