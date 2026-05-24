@@ -12,7 +12,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "assimp"
-    version = "6.0.2"
+    version = "6.0.5"
     license = "BSD-3-Clause"
 
     options = {
@@ -170,8 +170,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.2.tar.gz",
-            sha256="d1822d9a19c9205d6e8bc533bf897174ddb360ce504680f294170cc1d6319751",
+            url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.5.tar.gz",
+            sha256="edf3749559c2b7d1f758ffb66fc5bec62186221e623b7f2e8969f17ee46ecb6f",
             destination=self.source_folder,
             strip_root=True)
         self._patch_sources()

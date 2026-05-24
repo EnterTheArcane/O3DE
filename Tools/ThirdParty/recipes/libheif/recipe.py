@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "libheif"
-    version = "1.20.1"
+    version = "1.22.0"
     license = ("LGPL-3.0-only", "GPL-3.0-or-later", "MIT")
 
     options = {
@@ -74,8 +74,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/strukturag/libheif/releases/download/v1.20.1/libheif-1.20.1.tar.gz",
-            sha256="55cc76b77c533151fc78ba58ef5ad18562e84da403ed749c3ae017abaf1e2090",
+            url="https://github.com/strukturag/libheif/releases/download/v1.22.0/libheif-1.22.0.tar.gz",
+            sha256="8bd20cfa3201997b8f63266cddfabea2e1481467d7f992e6a2595e0bec691fc2",
             destination=self.source_folder,
             strip_root=True)
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),

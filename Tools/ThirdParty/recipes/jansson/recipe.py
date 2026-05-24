@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "jansson"
-    version = "2.14"
+    version = "2.15.0"
     license = "MIT"
 
     options = {
@@ -43,8 +43,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/akheron/jansson/releases/download/v2.14/jansson-2.14.tar.bz2",
-            sha256="fba956f27c6ae56ce6dfd52fbf9d20254aad42821f74fa52f83957625294afb9",
+            url="https://github.com/akheron/jansson/releases/download/v2.15.0/jansson-2.15.0.tar.bz2",
+            sha256="a7eac7765000373165f9373eb748be039c10b2efc00be9af3467ec92357d8954",
             destination=self.source_folder,
             strip_root=True)
 

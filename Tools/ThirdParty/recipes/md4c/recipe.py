@@ -3,14 +3,14 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
     name = "md4c"
-    version = "0.5.2"
+    version = "0.5.3"
     license = "MIT"
 
     options = {
@@ -51,11 +51,10 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/mity/md4c/archive/refs/tags/release-0.5.2.tar.gz",
-            sha256="55d0111d48fb11883aaee91465e642b8b640775a4d6993c2d0e7a8092758ef21",
+            url="https://github.com/mity/md4c/archive/refs/tags/release-0.5.3.tar.gz",
+            sha256="353c346f376b87c954a13f3415ede2d51264cc61dc5abcd38ff1d2aa0d059b9e",
             destination=self.source_folder,
             strip_root=True)
-        self._patch_sources()
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -69,16 +68,6 @@ class Recipe(RecipeBase):
         if Version(self.version) < "0.5.0":
             tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
         tc.generate()
-
-    def _patch_sources(self):
-        apply_patches(self)
-        # Honor encoding option
-        replace_in_file(
-            self,
-            os.path.join(self.source_folder, "src", "CMakeLists.txt"),
-            "COMPILE_FLAGS \"-DMD4C_USE_UTF8\"",
-            "",
-        )
 
     def build(self):
         cmake = CMake(self)

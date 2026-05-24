@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get
+from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -10,49 +10,21 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "joltphysics"
-    version = "3.0.1"
+    version = "5.5.0"
     license = "MIT"
 
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "simd": ["sse", "sse41", "sse42", "avx", "avx2", "avx512"],
-        "debug_renderer": [True, False],
-        "profile": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "simd": "sse42",
-        "debug_renderer": False,
-        "profile": False,
     }
-
-    @property
-    def _has_sse41(self) -> bool:
-        return self.options.get_safe("simd") in ("sse41", "sse42", "avx", "avx2", "avx512")
-
-    @property
-    def _has_sse42(self):
-        return self.options.get_safe("simd") in ("sse42", "avx", "avx2", "avx512")
-
-    @property
-    def _has_avx(self) -> bool:
-        return self.options.get_safe("simd") in ("avx", "avx2", "avx512")
-
-    @property
-    def _has_avx2(self) -> bool:
-        return self.options.get_safe("simd") in ("avx2", "avx512")
-
-    @property
-    def _has_avx512(self) -> bool:
-        return self.options.get_safe("simd") == "avx512"
 
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if self.settings.arch not in ("x86", "x86_64"):
-            del self.options.simd
 
     def configure(self):
         if self.options.shared:
@@ -68,34 +40,30 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v3.0.1.tar.gz",
-            sha256="7ebb40bf2dddbcf0515984582aaa197ddd06e97581fd55b98cb64f91b243b8a6",
+            url="https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v5.5.0.tar.gz",
+            sha256="3dae862a32c9092fca5b17f8e5d32cd57e035d30c3145c00040f13ca58a866df",
             destination=self.source_folder,
             strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["TARGET_UNIT_TESTS"] = False
-        tc.variables["TARGET_HELLO_WORLD"] = False
-        tc.variables["TARGET_PERFORMANCE_TEST"] = False
-        tc.variables["TARGET_SAMPLES"] = False
-        tc.variables["TARGET_VIEWER"] = False
-        tc.variables["GENERATE_DEBUG_SYMBOLS"] = False
-        tc.variables["TARGET_UNIT_TESTS"] = False
-        tc.variables["USE_SSE4_1"] = self._has_sse41
-        tc.variables["USE_SSE4_2"] = self._has_sse42
-        tc.variables["USE_AVX"] = self._has_avx
-        tc.variables["USE_AVX2"] = self._has_avx2
-        tc.variables["USE_AVX512"] = self._has_avx512
+        tc.cache_variables["TARGET_UNIT_TESTS"] = False
+        tc.cache_variables["TARGET_HELLO_WORLD"] = False
+        tc.cache_variables["TARGET_PERFORMANCE_TEST"] = False
+        tc.cache_variables["TARGET_SAMPLES"] = False
+        tc.cache_variables["TARGET_VIEWER"] = False
+        tc.cache_variables["CROSS_PLATFORM_DETERMINISTIC"] = False
+        tc.cache_variables["INTERPROCEDURAL_OPTIMIZATION"] = False
+        tc.cache_variables["GENERATE_DEBUG_SYMBOLS"] = False
+        tc.cache_variables["ENABLE_ALL_WARNINGS"] = False
+        tc.cache_variables["OVERRIDE_CXX_FLAGS"] = False
+        tc.cache_variables["DEBUG_RENDERER_IN_DEBUG_AND_RELEASE"] = False
+        tc.cache_variables["PROFILER_IN_DEBUG_AND_RELEASE"] = False
         if is_msvc(self):
-            tc.variables["USE_STATIC_MSVC_RUNTIME_LIBRARY"] = is_msvc_static_runtime(self)
-        tc.variables["JPH_DEBUG_RENDERER"] = self.options.debug_renderer
-        tc.variables["JPH_PROFILE_ENABLED"] = self.options.profile
-        tc.variables["ENABLE_ALL_WARNINGS"] = False
+            tc.cache_variables["USE_STATIC_MSVC_RUNTIME_LIBRARY"] = is_msvc_static_runtime(self)
         tc.generate()
 
     def build(self):
-        apply_patches(self)
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, "Build"))
         cmake.build()
@@ -104,22 +72,22 @@ class Recipe(RecipeBase):
         copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rm(self, "*.cmake", os.path.join(self.package_folder, "include", "Jolt"))
 
     def package_info(self):
         self.cpp_info.libs = ["Jolt"]
-        if self._has_sse41:
-            self.cpp_info.defines.append("JPH_USE_SSE4_1")
-        if self._has_sse42:
-            self.cpp_info.defines.append("JPH_USE_SSE4_2")
-        if self._has_avx:
-            self.cpp_info.defines.append("JPH_USE_AVX")
-        if self._has_avx2:
-            self.cpp_info.defines.append("JPH_USE_AVX2")
-        if self._has_avx512:
-            self.cpp_info.defines.append("JPH_USE_AVX512")
-        if self.options.debug_renderer:
-            self.cpp_info.defines.append("JPH_DEBUG_RENDERER")
-        if self.options.profile:
-            self.cpp_info.defines.append("JPH_PROFILE_ENABLED")
+        self.cpp_info.set_property("cmake_file_name", "Jolt")
+        self.cpp_info.set_property("cmake_target_name", "Jolt::Jolt")
+        self.cpp_info.defines = ["JPH_OBJECT_STREAM"]
+        if self.settings.arch in ["x86_64", "x86"]:
+            self.cpp_info.defines.extend(["JPH_USE_AVX2", "JPH_USE_AVX", "JPH_USE_SSE4_1",
+                                          "JPH_USE_SSE4_2", "JPH_USE_LZCNT", "JPH_USE_TZCNT",
+                                          "JPH_USE_F16C", "JPH_USE_FMADD"])
+        if is_msvc(self):
+            self.cpp_info.defines.append("JPH_FLOATING_POINT_EXCEPTIONS_ENABLED")
+        if self.options.shared:
+            self.cpp_info.defines.append("JPH_SHARED_LIBRARY")
+        self.cpp_info.defines.append("JPH_OBJECT_LAYER_BITS=16")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.cpp_info.system_libs.append("pthread")

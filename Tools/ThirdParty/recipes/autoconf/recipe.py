@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, rmdir, apply_patches, replace_in_file
+from thirdparty.tools.files import copy, get, rmdir, apply_patches, replace_in_file, save
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import unix_path, is_msvc
 from thirdparty.tools.scm import Version

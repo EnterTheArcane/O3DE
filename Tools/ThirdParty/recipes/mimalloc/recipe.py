@@ -107,7 +107,8 @@ class Recipe(RecipeBase):
                 self,
                 os.path.join(self.source_folder, "CMakeLists.txt"),
                 "mimalloc-redirect.lib",
-                "mimalloc-redirect32.lib")
+                "mimalloc-redirect32.lib",
+                strict=False)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

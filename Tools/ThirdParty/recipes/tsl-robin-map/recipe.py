@@ -8,7 +8,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "tsl-robin-map"
-    version = "1.4.0"
+    version = "1.4.1"
     license = "MIT"
 
     def latest_version(self):
@@ -18,8 +18,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/Tessil/robin-map/archive/v1.4.0.tar.gz",
-            sha256="7930dbf9634acfc02686d87f615c0f4f33135948130b8922331c16d90a03250c",
+            url="https://github.com/Tessil/robin-map/archive/v1.4.1.tar.gz",
+            sha256="0e3f53a377fdcdc5f9fed7a4c0d4f99e82bbb64175233bd13427fef9a771f4a1",
             destination=self.source_folder,
             strip_root=True)
 

@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "manifold"
-    version = "3.2.1"
+    version = "3.5.0"
     license = "Apache-2.0"
 
     options = {
@@ -40,11 +40,10 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/elalish/manifold/archive/refs/tags/v3.2.1.tar.gz",
-            sha256="c2fddb0f4b2289caff660b29677883f0324415a9901f8f2aed4c83851f994c13",
+            url="https://github.com/elalish/manifold/archive/refs/tags/v3.5.0.tar.gz",
+            sha256="7002091f992c80bec49b69e49c85769d862bb97169781e23b9909a4b72b6a618",
             destination=self.source_folder,
             strip_root=True)
-        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -62,9 +62,9 @@ class Recipe(RecipeBase):
             header_file = os.path.join(self.source_folder, "src", "pugiconfig.hpp")
             # For the library build mode, options applied via change the configuration file
             if self.options.wchar_mode:
-                replace_in_file(self, header_file, "// #define PUGIXML_WCHAR_MODE", "#define PUGIXML_WCHAR_MODE")
+                replace_in_file(self, header_file, "// #define PUGIXML_WCHAR_MODE", "#define PUGIXML_WCHAR_MODE", strict=False)
             if self.options.no_exceptions:
-                replace_in_file(self, header_file, "// #define PUGIXML_NO_EXCEPTIONS", "#define PUGIXML_NO_EXCEPTIONS")
+                replace_in_file(self, header_file, "// #define PUGIXML_NO_EXCEPTIONS", "#define PUGIXML_NO_EXCEPTIONS", strict=False)
             cmake = CMake(self)
             cmake.configure()
             cmake.build()

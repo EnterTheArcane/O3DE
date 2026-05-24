@@ -22,15 +22,13 @@ class Recipe(RecipeBase):
             self,
             pattern="LICENSE.txt",
             dst=os.path.join(self.package_folder, "licenses"),
-            src=os.path.join(self.source_folder)
-        )
+            src=os.path.join(self.source_folder))
         copy(
             self,
             pattern="**.hpp",
             dst=os.path.join(self.package_folder, "include"),
             src=os.path.join(self.source_folder),
-            keep_path=True
-        )
+            keep_path=True)
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "metal-cpp")

@@ -8,7 +8,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
-    name = "libfdk_aac"
+    name = "fdk-aac"
     version = "2.0.3"
     license = "https://github.com/mstorsjo/fdk-aac/blob/master/NOTICE"
 
