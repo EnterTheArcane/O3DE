@@ -801,7 +801,7 @@ class Recipe(RecipeBase):
                 rmdir(self, os.path.join(self.package_folder, "licenses", module))
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         for mask in ["Find*.cmake", "*Config.cmake", "*-config.cmake"]:
-            rm(self, mask, self.package_folder, recursive=True, excludes="Qt6HostInfoConfig.cmake")
+            rm(self, mask, self.package_folder, recursive=True, excludes=["Qt6HostInfoConfig.cmake", "Qt6Config.cmake"])
         rm(self, "*.la*", os.path.join(self.package_folder, "lib"), recursive=True)
         rm(self, "*.pdb*", self.package_folder, recursive=True)
         rm(self, "ensure_pro_file.cmake", self.package_folder, recursive=True)
@@ -1573,28 +1573,29 @@ class Recipe(RecipeBase):
         if self.settings.os in ["Windows", "iOS"]:
             _add_build_module("qtCore", self._cmake_entry_point_file)
 
-        for m in os.listdir(os.path.join("lib", "cmake")):
+        qt_cmake_dir = os.path.join(self.package_folder, "lib", "cmake")
+        for m in os.listdir(qt_cmake_dir):
             component_name = m.replace("Qt6", "qt")
             if component_name == "qt":
                 component_name = "qtCore"
 
             if component_name in self.cpp_info.components:
-                module = os.path.join("lib", "cmake", m, f"{m}Macros.cmake")
+                module = os.path.join(qt_cmake_dir, m, f"{m}Macros.cmake")
                 if os.path.isfile(module):
                     _add_build_module(component_name, module)
 
-                module = os.path.join("lib", "cmake", m, f"{m}ConfigExtras.cmake")
+                module = os.path.join(qt_cmake_dir, m, f"{m}ConfigExtras.cmake")
                 if os.path.isfile(module):
                     _add_build_module(component_name, module)
 
-                for helper_modules in glob.glob(os.path.join(self.package_folder, "lib", "cmake", m, "QtPublic*Helpers.cmake")):
+                for helper_modules in glob.glob(os.path.join(qt_cmake_dir, m, "QtPublic*Helpers.cmake")):
                     _add_build_module(component_name, helper_modules)
-                for helper_modules in glob.glob(os.path.join(self.package_folder, "lib", "cmake", m, "Qt6QmlPublic*Helpers.cmake")):
+                for helper_modules in glob.glob(os.path.join(qt_cmake_dir, m, "Qt6QmlPublic*Helpers.cmake")):
                     _add_build_module(component_name, helper_modules)
                 self.cpp_info.components[component_name].builddirs.append(os.path.join("lib", "cmake", m))
 
             elif component_name.endswith("Tools") and component_name[:-5] in self.cpp_info.components:
-                module = os.path.join("lib", "cmake", f"{m}", f"{m[:-5]}Macros.cmake")
+                module = os.path.join(qt_cmake_dir, m, f"{m[:-5]}Macros.cmake")
                 if os.path.isfile(module):
                     _add_build_module(component_name[:-5], module)
                 self.cpp_info.components[component_name[:-5]].builddirs.append(os.path.join("lib", "cmake", m))
