@@ -4,6 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
+from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
 
@@ -18,6 +19,7 @@ class Recipe(RecipeBase):
         "fPIC": [True, False],
         "with_libde265": [True, False],
         "with_x265": [True, False],
+        "with_x264": [True, False],
         "with_libaomav1": [True, False],
         "with_dav1d": [True, False],
         "with_jpeg": [True, False],
@@ -29,12 +31,13 @@ class Recipe(RecipeBase):
         "shared": False,
         "fPIC": True,
         "with_libde265": True,
-        "with_x265": False,
-        "with_libaomav1": False,
-        "with_dav1d": False,
-        "with_jpeg": False,
+        "with_x265": True,
+        "with_x264": True,
+        "with_libaomav1": True,
+        "with_dav1d": True,
+        "with_jpeg": True,
         "with_openjpeg": False,
-        "with_openjph": False,
+        "with_openjph": True,
         "with_openh264": False,
     }
 
@@ -63,6 +66,8 @@ class Recipe(RecipeBase):
             self.requires("openjph", transitive_headers=False)
         if self.options.get_safe("with_openh264"):
             self.requires("openh264")
+        if self.options.get_safe("with_x264"):
+            self.requires("libx264")
 
     def build_requirements(self):
         self.tool_requires("cmake")
@@ -92,6 +97,7 @@ class Recipe(RecipeBase):
         if self.options.with_libaomav1:
             tc.cache_variables["AOM_ENCODER_FOUND"] = "YES"
             tc.cache_variables["AOM_DECODER_FOUND"] = "YES"
+        tc.cache_variables["WITH_X264"] = self.options.get_safe("with_x264", False)
         tc.cache_variables["WITH_RAV1E"] = False
         tc.cache_variables["WITH_DAV1D"] = self.options.with_dav1d
         tc.cache_variables["WITH_EXAMPLES"] = False
@@ -114,6 +120,7 @@ class Recipe(RecipeBase):
         deps.set_property("openjph", "cmake_file_name", "OPENJPH")
         deps.set_property("openh264", "cmake_file_name", "OpenH264")
         deps.generate()
+        PkgConfigDeps(self).generate()
 
     def build(self):
         cmake = CMake(self)
@@ -159,3 +166,5 @@ class Recipe(RecipeBase):
             self.cpp_info.requires.append("openjph::openjph")
         if self.options.get_safe("with_openh264"):
             self.cpp_info.requires.append("openh264::openh264")
+        if self.options.get_safe("with_x264"):
+            self.cpp_info.requires.append("libx264::libx264")
