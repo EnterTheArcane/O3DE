@@ -23,7 +23,6 @@ class Recipe(RecipeBase):
         "fPIC": True,
         "assembly": False,
     }
-
  
     def config_options(self):
         if self.settings.os == "Windows":
@@ -71,8 +70,8 @@ class Recipe(RecipeBase):
         tc.variables["CONFIG_LIBYUV"] = 0
         # webm is not yet packaged
         tc.variables["CONFIG_WEBM_IO"] = 0
-        # Requires C99 or higher
-        tc.variables["CMAKE_C_STANDARD"] = "99"
+        # Requires C11 or higher 
+        tc.variables["CMAKE_C_STANDARD"] = "11"
         tc.generate()
 
     def build(self):
