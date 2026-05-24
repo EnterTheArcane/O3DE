@@ -35,6 +35,7 @@ class Recipe(RecipeBase):
             sha256="ba885c1319578d6c94d46e9b0dceb4014caafe2490e437a0dbca3f270a223f5a",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -62,11 +63,7 @@ class Recipe(RecipeBase):
         env.define_path("INSTALL", unix_path(self, os.path.join(self.source_folder, "build-aux", "install-sh")))
         tc.generate(env)
 
-    def _patch_sources(self):
-        apply_patches(self)
-
     def build(self):
-        self._patch_sources()
         autotools = Autotools(self)
         autotools.configure()
         autotools.make()

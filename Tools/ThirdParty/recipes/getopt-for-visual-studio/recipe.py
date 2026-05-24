@@ -16,8 +16,6 @@ class Recipe(RecipeBase):
             sha256="9b50026b3f10c3f6a7340e0074a898d6d1105eef068bf98d90af99770375a465",
             destination=self.source_folder,
             strip_root=True)
-
-    def build(self):
         apply_patches(self)
 
     @property

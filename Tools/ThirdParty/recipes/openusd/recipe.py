@@ -52,6 +52,11 @@ class Recipe(RecipeBase):
             sha256="bf514f62ac9508d3c5b121dc1107f3b29bf3c954473b9b0bf8324b7cf04c64c1",
             destination=self.source_folder,
             strip_root=True)
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "pxr", "base", "work", "workTBB", "dispatcher_impl.h"),
+            "#include <tbb/blocked_range.h>",
+            "#include <tbb/version.h>\n#include <tbb/blocked_range.h>")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -101,15 +106,7 @@ class Recipe(RecipeBase):
         deps.set_property("onetbb", "cmake_target_name", "TBB::tbb")
         deps.generate()
 
-    def _patch_sources(self):
-        replace_in_file(
-            self,
-            os.path.join(self.source_folder, "pxr", "base", "work", "workTBB", "dispatcher_impl.h"),
-            "#include <tbb/blocked_range.h>",
-            "#include <tbb/version.h>\n#include <tbb/blocked_range.h>")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

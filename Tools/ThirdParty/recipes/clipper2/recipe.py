@@ -60,6 +60,8 @@ class Recipe(RecipeBase):
             sha256="2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
+        replace_in_file(self, os.path.join(self.source_folder, "CPP", "CMakeLists.txt"), "-Werror", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -74,12 +76,7 @@ class Recipe(RecipeBase):
             tc.variables["CLIPPER2_MAX_PRECISION"] = self.options.with_max_precision
         tc.generate()
     
-    def _patch_sources(self):
-        apply_patches(self)
-        replace_in_file(self, os.path.join(self.source_folder, "CPP", "CMakeLists.txt"), "-Werror", "")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, "CPP"))
         cmake.build()

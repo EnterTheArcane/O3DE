@@ -64,6 +64,7 @@ class Recipe(RecipeBase):
             sha256="732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
             destination=self.source_folder,
             strip_root=True)
+        replace_in_file(self, os.path.join(self.source_folder, "meson.build"), "subdir('doc')", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -79,12 +80,7 @@ class Recipe(RecipeBase):
             tc.project_options["bitdepths"] = str(self.options.bit_depth)
         tc.generate()
 
-    def _patch_sources(self):
-        replace_in_file(self, os.path.join(self.source_folder, "meson.build"),
-                              "subdir('doc')", "")
-
     def build(self):
-        self._patch_sources()
         meson = Meson(self)
         meson.configure()
         meson.build()

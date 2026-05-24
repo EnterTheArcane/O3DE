@@ -80,6 +80,11 @@ class Recipe(RecipeBase):
             destination=self.source_folder,
             strip_root=True)
         apply_patches(self)
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "sharedlib", "CMakeLists.txt"),
+            """string(REGEX REPLACE "/MT" "/MD" ${var} "${${var}}")""",
+            "")
 
     @property
     def _is_arithmetic_encoding_enabled(self):
@@ -112,14 +117,7 @@ class Recipe(RecipeBase):
             tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = os.path.join(self.package_folder, "lib", "java")
         tc.generate()
 
-    def _patch_sources(self):
-        # do not override /MT by /MD if shared
-        replace_in_file(self, os.path.join(self.source_folder, "sharedlib", "CMakeLists.txt"),
-                              """string(REGEX REPLACE "/MT" "/MD" ${var} "${${var}}")""",
-                              "")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

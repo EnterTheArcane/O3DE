@@ -50,6 +50,7 @@ class Recipe(RecipeBase):
             destination=self.source_folder,
             strip_root=True)
         apply_patches(self)
+        rm(self, "Find*.cmake", os.path.join(self.source_folder, "cmake"), recursive=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -94,11 +95,7 @@ class Recipe(RecipeBase):
         deps.set_property("imath", "cmake_target_name", "Imath::Imath")
         deps.generate()
 
-    def _patch_sources(self):
-        rm(self, "Find*.cmake", os.path.join(self.source_folder, "cmake"), recursive=True)
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

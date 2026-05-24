@@ -47,6 +47,11 @@ class Recipe(RecipeBase):
             sha256="59a0a35488762568c7b7575352d726cb11fee361455e451ad820bdf5a01b856e",
             destination=self.source_folder,
             strip_root=True)
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "CMakeLists.txt"),
+            "LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}",
+            "LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -64,19 +69,7 @@ class Recipe(RecipeBase):
         tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.get_safe("fPIC", True)
         tc.generate()
 
-    def _patch_sources(self):
-        cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
-
-        # Fix install dir of dll
-        replace_in_file(
-            self,
-            cmakelists,
-            "LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}",
-            "LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}",
-        )
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

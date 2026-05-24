@@ -47,6 +47,12 @@ class Recipe(RecipeBase):
             sha256="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
+            "POSITION_INDEPENDENT_CODE On",
+            "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -56,17 +62,7 @@ class Recipe(RecipeBase):
         tc.variables["ZSTD_MULTITHREAD_SUPPORT"] = self.options.threading
         tc.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        # Don't force PIC
-        replace_in_file(
-            self,
-            os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
-            "POSITION_INDEPENDENT_CODE On",
-            "")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, "build", "cmake"))
         cmake.build()

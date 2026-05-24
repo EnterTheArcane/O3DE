@@ -55,6 +55,7 @@ class Recipe(RecipeBase):
             sha256="695fd197fa5aff8fc67b5f2bbc110490a875cdf7a41686ac8512fb480fa8ada7",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
 
     def generate(self):
         if not self.options.header_only:
@@ -68,7 +69,6 @@ class Recipe(RecipeBase):
             tc.generate()
 
     def build(self):
-        apply_patches(self)
         if not self.options.header_only:
             cmake = CMake(self)
             cmake.configure()

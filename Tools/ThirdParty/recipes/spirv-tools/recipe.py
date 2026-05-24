@@ -50,6 +50,8 @@ class Recipe(RecipeBase):
             sha256="446b288fe76d3f31bbf9a405d62b97020ac0f135edb0ed5dbdf1136c488138f5",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -90,15 +92,7 @@ class Recipe(RecipeBase):
 
         tc.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        # CMAKE_POSITION_INDEPENDENT_CODE was set ON for the entire
-        # project in the lists file.
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                              "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
