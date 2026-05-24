@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "openjph"
-    version = "0.27.0"
+    version = "0.27.3"
     license = "BSD-2-Clause"
 
     options = {
@@ -42,11 +42,10 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/aous72/OpenJPH/archive/0.27.0.tar.gz",
-            sha256="f6768e927d8e4e4884a2efcf500a88d1b6714a48d69516332a9256803a3c8343",
+            url="https://github.com/aous72/OpenJPH/archive/0.27.3.tar.gz",
+            sha256="f96808ef72cf3acca73a52123bda3e680f6550dfb4774ad7de57eb3ce26de57a",
             destination=self.source_folder,
             strip_root=True)
-        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

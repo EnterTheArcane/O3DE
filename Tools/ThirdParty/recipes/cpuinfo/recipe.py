@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.microsoft import is_msvc
 
 

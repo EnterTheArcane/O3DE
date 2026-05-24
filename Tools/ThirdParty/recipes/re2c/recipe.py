@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "re2c"
-    version = "4.3"
+    version = "4.5.1"
     license = "LicenseRef-re2c"
 
     def configure(self):
@@ -23,8 +23,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/skvadrik/re2c/releases/download/4.3/re2c-4.3.tar.xz",
-            sha256="51e88d6d6b6ab03eb7970276aca7e0db4f8e29c958b84b561d2fdcb8351c7150",
+            url="https://github.com/skvadrik/re2c/releases/download/4.5.1/re2c-4.5.1.tar.xz",
+            sha256="ffea067c11aa668bcb42885be6e6cd000302000b7747d2bb213299ec66b7864e",
             destination=self.source_folder,
             strip_root=True)
 

@@ -16,7 +16,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "icu"
-    version = "78.2"
+    version = "78.3"
     license = "ICU"
 
     options = {
@@ -91,8 +91,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/unicode-org/icu/releases/download/release-78.2/icu4c-78.2-sources.tgz",
-            sha256="3e99687b5c435d4b209630e2d2ebb79906c984685e78635078b672e03c89df35",
+            url="https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz",
+            sha256="3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0",
             destination=self.source_folder,
             strip_root=True)
 
@@ -155,7 +155,6 @@ class Recipe(RecipeBase):
             env.vars(self).save_script("conanbuild_icu_msvc")
 
     def _patch_sources(self):
-        apply_patches(self)
 
         replace_in_file(
                 self,

@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "luau"
-    version = "0.700"
+    version = "0.722"
     license = "MIT"
 
     options = {
@@ -30,8 +30,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/luau-lang/luau/archive/0.700.tar.gz",
-            sha256="e0dffe07a4b27c568b9688916e1d97ba7204b7a4d487d0a03648c99b88fc8df8",
+            url="https://github.com/luau-lang/luau/archive/0.722.tar.gz",
+            sha256="b69d7dd42540dc3892c5aa2f5c733897a8350ad64f09a0e0984a8c42ba29961b",
             destination=self.source_folder,
             strip_root=True)
 

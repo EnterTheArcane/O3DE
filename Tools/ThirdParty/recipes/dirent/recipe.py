@@ -8,7 +8,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "dirent"
-    version = "1.24"
+    version = "1.26"
     license = "MIT"
 
     def latest_version(self):
@@ -18,8 +18,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/tronkko/dirent/archive/1.24.tar.gz",
-            sha256="37009127a65bb1ddc47d06c097321f87f45ca2e998b2ec3bf2e0b2b19649d6f9",
+            url="https://github.com/tronkko/dirent/archive/1.26.tar.gz",
+            sha256="a91662ee5243d2dae5aee7ed8527f95097afda517cc5cc7ca2699648a74a419c",
             destination=self.source_folder,
             strip_root=True)
 

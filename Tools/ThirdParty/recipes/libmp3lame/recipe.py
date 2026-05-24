@@ -71,28 +71,28 @@ class Recipe(RecipeBase):
         with chdir(self, self.source_folder):
             shutil.copy2("configMS.h", "config.h")
             # Honor vc runtime
-            replace_in_file(self, "Makefile.MSVC", "CC_OPTS = $(CC_OPTS) /MT", "")
+            replace_in_file(self, "Makefile.MSVC", "CC_OPTS = $(CC_OPTS) /MT", "", strict=False)
             # Do not hardcode LTO
-            replace_in_file(self, "Makefile.MSVC", " /GL", "")
-            replace_in_file(self, "Makefile.MSVC", " /LTCG", "")
-            replace_in_file(self, "Makefile.MSVC", "ADDL_OBJ = bufferoverflowU.lib", "")
+            replace_in_file(self, "Makefile.MSVC", " /GL", "", strict=False)
+            replace_in_file(self, "Makefile.MSVC", " /LTCG", "", strict=False)
+            replace_in_file(self, "Makefile.MSVC", "ADDL_OBJ = bufferoverflowU.lib", "", strict=False)
             command = "nmake -f Makefile.MSVC comp=msvc"
             if self._is_clang_cl:
                 compilers_from_conf = self.conf.get("tools.build:compiler_executables", default={}, check_type=dict)
                 buildenv_vars = VirtualBuildEnv(self).vars()
                 cl = compilers_from_conf.get("c", buildenv_vars.get("CC", "clang-cl"))
                 link = buildenv_vars.get("LD", "lld-link")
-                replace_in_file(self, "Makefile.MSVC", "CC = cl", f"CC = {cl}")
-                replace_in_file(self, "Makefile.MSVC", "LN = link", f"LN = {link}")
+                replace_in_file(self, "Makefile.MSVC", "CC = cl", f"CC = {cl}", strict=False)
+                replace_in_file(self, "Makefile.MSVC", "LN = link", f"LN = {link}", strict=False)
                 # what is /GAy? MSDN doesn't know it
                 # clang-cl: error: no such file or directory: '/GAy'
                 # https://docs.microsoft.com/en-us/cpp/build/reference/ga-optimize-for-windows-application?view=msvc-170
-                replace_in_file(self, "Makefile.MSVC", "/GAy", "/GA")
+                replace_in_file(self, "Makefile.MSVC", "/GAy", "/GA", strict=False)
             if self.settings.arch == "x86_64":
-                replace_in_file(self, "Makefile.MSVC", "MACHINE = /machine:I386", "MACHINE =/machine:X64")
+                replace_in_file(self, "Makefile.MSVC", "MACHINE = /machine:I386", "MACHINE =/machine:X64", strict=False)
                 command += " MSVCVER=Win64 asm=yes"
             elif self.settings.arch == "armv8":
-                replace_in_file(self, "Makefile.MSVC", "MACHINE = /machine:I386", "MACHINE =/machine:ARM64")
+                replace_in_file(self, "Makefile.MSVC", "MACHINE = /machine:I386", "MACHINE =/machine:ARM64", strict=False)
                 command += " MSVCVER=Win64"
             else:
                 command += " asm=yes"
@@ -112,7 +112,7 @@ class Recipe(RecipeBase):
 
     def build(self):
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.source_folder, "include", "libmp3lame.sym"), "lame_init_old\n", "")
+        replace_in_file(self, os.path.join(self.source_folder, "include", "libmp3lame.sym"), "lame_init_old\n", "", strict=False)
 
         if is_msvc(self) or self._is_clang_cl:
             self._build_vs()

@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
 
@@ -87,7 +87,8 @@ class Recipe(RecipeBase):
         self.cpp_info.components["hwy_contrib"].set_property("pkg_config_name", "libhwy-contrib")
         self.cpp_info.components["hwy_contrib"].libs = ["hwy_contrib"]
         self.cpp_info.components["hwy_contrib"].requires = ["hwy"]
-        self.cpp_info.components["hwy_contrib"].system_libs.append("pthread")
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.components["hwy_contrib"].system_libs.append("pthread")
         if self.options.with_test:
             self.cpp_info.components["hwy_test"].set_property("pkg_config_name", "libhwy-test")
             self.cpp_info.components["hwy_test"].libs = ["hwy_test"]

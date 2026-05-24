@@ -136,9 +136,7 @@ class Recipe(RecipeBase):
         # FindAtomics.cmake values are set by CMakeToolchain instead
         save(self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"), "")
 
-        # Allow fPIC to be set by Conan
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                        "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
+        # Allow fPIC to be set by Conan (top-level set() was removed in 0.11.2; individual targets handle it)
         for cmake_file in ["jxl.cmake", "jxl_threads.cmake", "jxl_cms.cmake", "jpegli.cmake"]:
             path = os.path.join(self.source_folder, "lib", cmake_file)
             if os.path.exists(path):

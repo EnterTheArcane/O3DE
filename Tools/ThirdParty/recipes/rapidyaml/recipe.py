@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "rapidyaml"
-    version = "0.10.0"
+    version = "0.13.0"
     license = "MIT",
 
     options = {
@@ -54,8 +54,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/biojppm/rapidyaml/releases/download/v0.10.0/rapidyaml-0.10.0-src.tgz",
-            sha256="54eb1050789809a26c780f80857b7668a5b3123405d6514a65d733e4292c690b",
+            url="https://github.com/biojppm/rapidyaml/releases/download/v0.13.0/rapidyaml-0.13.0-src.tgz",
+            sha256="b70b484b612152b0dbb2ca61178c9534d80c392fe36d4d54e75d127ec8864d52",
             destination=self.source_folder,
             strip_root=True)
 
@@ -71,7 +71,6 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def build(self):
-        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
