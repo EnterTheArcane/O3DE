@@ -799,6 +799,10 @@ class CppInfo:
             # Reversed to make more dependant first
             for component in reversed(self.get_sorted_components().values()):
                 result.merge(component)
+            # Also merge root-level package fields (e.g. builddirs set at the package level
+            # rather than on any specific component). Without this, root-level fields are
+            # silently dropped when components are present.
+            result.merge(self._package)
             # NOTE: The properties are not aggregated because they might refer only to the
             # component like "cmake_target_name" describing the target name FOR THE component
             # not the namespace.
