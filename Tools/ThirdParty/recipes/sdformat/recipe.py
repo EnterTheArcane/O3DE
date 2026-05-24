@@ -101,11 +101,11 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         self.cpp_info.set_property("cmake_find_mode", "none")
-        self.cpp_info.builddirs = [""]
 
         version_major = self.version.split(".")[0]
 
         self.cpp_info.components["sdformat"].libs = [f"sdformat{version_major}"]
+        self.cpp_info.components["sdformat"].builddirs = [""]
         self.cpp_info.components["sdformat"].set_property("cmake_file_name", "sdformat16")
         self.cpp_info.components["sdformat"].set_property("cmake_target_name", "sdformat16::sdformat16")
         self.cpp_info.components["sdformat"].includedirs = [

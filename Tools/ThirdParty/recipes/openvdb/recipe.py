@@ -1,9 +1,8 @@
 import os
-import re
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rm, replace_in_file
+from thirdparty.tools.files import apply_patches, copy, get, rm
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -70,6 +69,7 @@ class Recipe(RecipeBase):
         tc.variables["OPENVDB_ENABLE_UNINSTALL"] = False
         tc.variables["OPENVDB_INSTALL_CMAKE_MODULES"] = False
         tc.variables["OPENVDB_SIMD"] = "None"
+        tc.variables["OPENVDB_USE_DELAYED_LOADING"] = False
         tc.variables["USE_AX"] = False
         tc.variables["USE_BLOSC"] = False
         tc.variables["USE_COLORED_OUTPUT"] = False
@@ -96,12 +96,6 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         rm(self, "Find*.cmake", os.path.join(self.source_folder, "cmake"), recursive=True)
-        cmakelists_path = os.path.join(self.source_folder, "openvdb", "openvdb", "CMakeLists.txt")
-        with open(cmakelists_path, "r") as f:
-            content = f.read()
-        content = re.sub(r"\$\{MINIMUM_\S+_VERSION\}", "", content)
-        with open(cmakelists_path, "w") as f:
-            f.write(content)
 
     def build(self):
         self._patch_sources()

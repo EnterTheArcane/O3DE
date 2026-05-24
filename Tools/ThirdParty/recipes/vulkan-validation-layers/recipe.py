@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "vulkan-validation-layers"
-    version = "1.4.350.0"
+    version = "1.4.352"
     license = "Apache-2.0"
 
     options = {
@@ -64,16 +64,12 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
-            sha256="4905ae2d2424cccdd88554b78f6f53e3469da17433c3923d049a167ea674f50e",
+            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/v1.4.352.tar.gz",
+            sha256="126d6e5ad7becf0e4fd40e757709cfabe3bc61104cc1fc95595b510bef3f37eb",
             destination=self.source_folder,
             strip_root=True)
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)"]:
-            replace_in_file(
-                self,
-                os.path.join(self.source_folder, "CMakeLists.txt"),
-                text,
-                "")
+            replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), text, "")
 
     def generate(self):
         tc = CMakeToolchain(self)

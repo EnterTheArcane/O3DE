@@ -13,7 +13,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "m4"
-    version = "1.4.21"
+    version = "1.4.20"
     license = "GPL-3.0-only"
 
     def build_requirements(self):
@@ -29,8 +29,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://ftpmirror.gnu.org/gnu/m4/m4-1.4.21.tar.xz",
-            sha256="f25c6ab51548a73a75558742fb031e0625d6485fe5f9155949d6486a2408ab66",
+            url="https://ftpmirror.gnu.org/gnu/m4/m4-1.4.20.tar.xz",
+            sha256="af6568a26a7bde42598c93cf40aa9ac88f7e2afdaed7df3d37a0ff9d8d27b474",
             destination=self.source_folder,
             strip_root=True)
 
