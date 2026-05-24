@@ -19,23 +19,11 @@ class Recipe(RecipeBase):
         "shared": [True, False],
         "fPIC": [True, False],
         "zlib_compat": [True, False],
-        "with_gzfileop": [True, False],
-        "with_optim": [True, False],
-        "with_new_strategies": [True, False],
-        "with_native_instructions": [True, False],
-        "with_reduced_mem": [True, False],
-        "with_runtime_cpu_detection": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
         "zlib_compat": False,
-        "with_gzfileop": True,
-        "with_optim": True,
-        "with_new_strategies": True,
-        "with_native_instructions": False,
-        "with_reduced_mem": False,
-        "with_runtime_cpu_detection": True,
     }
 
     @property
@@ -75,12 +63,12 @@ class Recipe(RecipeBase):
         tc.cache_variables["BUILD_TESTING"] = False
 
         tc.variables["ZLIB_COMPAT"] = self.options.zlib_compat
-        tc.variables["WITH_GZFILEOP"] = self.options.with_gzfileop
-        tc.variables["WITH_OPTIM"] = self.options.with_optim
-        tc.variables["WITH_NEW_STRATEGIES"] = self.options.with_new_strategies
-        tc.variables["WITH_NATIVE_INSTRUCTIONS"] = self.options.with_native_instructions
-        tc.variables["WITH_REDUCED_MEM"] = self.options.with_reduced_mem
-        tc.variables["WITH_RUNTIME_CPU_DETECTION"] = self.options.with_runtime_cpu_detection
+        tc.variables["WITH_GZFILEOP"] = True
+        tc.variables["WITH_OPTIM"] = True
+        tc.variables["WITH_NEW_STRATEGIES"] = True
+        tc.variables["WITH_NATIVE_INSTRUCTIONS"] = True
+        tc.variables["WITH_REDUCED_MEM"] = False
+        tc.variables["WITH_RUNTIME_CPU_DETECTION"] = True
         tc.generate()
 
     def _get_zlib_header_version(self):
@@ -128,7 +116,4 @@ class Recipe(RecipeBase):
             self.cpp_info.set_property("cmake_file_name", "ZLIB")
             self.cpp_info.set_property("cmake_target_name", "ZLIB::ZLIB")
             self.cpp_info.set_property("system_package_version", self._zlib_compat_version)
-        if self.options.with_gzfileop:
-            self.cpp_info.defines.append("WITH_GZFILEOP")
-        if not self.options.with_new_strategies:
-            self.cpp_info.defines.extend(["NO_QUICK_STRATEGY", "NO_MEDIUM_STRATEGY"])
+        self.cpp_info.defines.append("WITH_GZFILEOP")

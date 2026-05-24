@@ -37,21 +37,6 @@ class Recipe(RecipeBase):
         "with_icuio": True,
         "with_extras": False,
     }
-
-    @property
-    def _min_cppstd(self):
-        return 17
-
-    @property
-    def _compilers_minimum_version(self):
-        return {
-            "gcc": "8",
-            "clang": "7",
-            "apple-clang": "12",
-            "Visual Studio": "16",
-            "msvc": "192",
-        }
-
  
     @property
     def _enable_icu_tools(self):
@@ -105,7 +90,7 @@ class Recipe(RecipeBase):
             tc.extra_cflags.append("-FS")
             tc.extra_cxxflags.append("-FS")
         if not self.settings.compiler.cppstd and is_msvc(self):
-            tc.extra_cxxflags.append(f"-std:c++{self._min_cppstd}")
+            tc.extra_cxxflags.append(f"-std:c++17")
         if not self.options.shared:
             tc.extra_defines.append("U_STATIC_IMPLEMENTATION")
         if is_apple_os(self):

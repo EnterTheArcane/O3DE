@@ -19,7 +19,6 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("autoconf")
-        # automake requires perl-Thread-Queue package
 
     def build_requirements(self):
         self.tool_requires("autoconf")
@@ -52,14 +51,23 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             # tracing using m4 on Windows returns Windows paths => use cygpath to convert to unix paths
             ac_local_in = os.path.join(self.source_folder, "bin", "aclocal.in")
-            replace_in_file(self, ac_local_in,
-                                "          $map_traced_defs{$arg1} = $file;",
-                                "          $file = `cygpath -u $file`;\n"
-                                "          $file =~ s/^\\s+|\\s+$//g;\n"
-                                "          $map_traced_defs{$arg1} = $file;")
+            with open(ac_local_in, encoding="utf-8") as _f:
+                _content = _f.read()
+            if "cygpath -u $file" not in _content:
+                replace_in_file(
+                    self,
+                    ac_local_in,
+                    "          $map_traced_defs{$arg1} = $file;",
+                    "          $file = `cygpath -u $file`;\n"
+                    "          $file =~ s/^\\s+|\\s+$//g;\n"
+                    "          $map_traced_defs{$arg1} = $file;")
             # handle relative paths during aclocal.m4 creation
-            replace_in_file(self, ac_local_in, "$map{$m} eq $map_traced_defs{$m}",
-                                "abs_path($map{$m}) eq abs_path($map_traced_defs{$m})")
+            replace_in_file(
+                self,
+                ac_local_in,
+                "$map{$m} eq $map_traced_defs{$m}",
+                "abs_path($map{$m}) eq abs_path($map_traced_defs{$m})",
+                strict=False)
 
     def build(self):
         self._patch_sources()

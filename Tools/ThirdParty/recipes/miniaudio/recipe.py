@@ -12,8 +12,6 @@ class Recipe(RecipeBase):
     version = "0.11.25"
     license = "Unlicense"
 
-    exports_sources = "CMakeLists.txt"
-
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

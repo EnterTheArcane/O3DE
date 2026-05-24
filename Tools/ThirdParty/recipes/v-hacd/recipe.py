@@ -11,16 +11,6 @@ class Recipe(RecipeBase):
     version = "4.1.0"
     license = "BSD-3-Clause"
 
-    @property
-    def _min_cppstd(self):
-        return "11"
-
-    @property
-    def _compilers_minimum_version(self):
-        return {
-            "gcc": "6",
-        }
-
     def latest_version(self):
         repo = GithubRepository(self, "kmammou/v-hacd")
         return Version(repo.latest_release.removeprefix("v"))

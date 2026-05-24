@@ -15,12 +15,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_python": [True, False],
     }
     default_options = {
         "shared": True,
         "fPIC": True,
-        "with_python": False,
     }
 
     def config_options(self):
@@ -32,14 +30,12 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
+        self.requires("cpython")
         self.requires("onetbb")
-        if self.options.with_python:
-            self.requires("cpython")
 
     def build_requirements(self):
         self.tool_requires("cmake")
-        if self.options.with_python:
-            self.tool_requires("cpython")
+        self.tool_requires("cpython")
 
     def latest_version(self):
         repo = GithubRepository(self, "PixarAnimationStudios/OpenUSD")
@@ -86,18 +82,17 @@ class Recipe(RecipeBase):
         tc.variables["PXR_ENABLE_OPENVDB_SUPPORT"] = False
         tc.variables["PXR_ENABLE_OSL_SUPPORT"] = False
         tc.variables["PXR_ENABLE_PTEX_SUPPORT"] = False
-        tc.variables["PXR_ENABLE_PYTHON_SUPPORT"] = self.options.with_python
+        tc.variables["PXR_ENABLE_PYTHON_SUPPORT"] = True
         tc.variables["PXR_ENABLE_VULKAN_SUPPORT"] = False
         tc.variables["PXR_STRICT_BUILD_MODE"] = False
         tc.variables["PXR_VALIDATE_GENERATED_CODE"] = False
 
-        if self.options.with_python:
-            python_pkg = self.dependencies["cpython"]
-            python_root = python_pkg.package_folder.replace("\\", "/")
-            tc.variables["Python3_ROOT_DIR"] = python_root
-            tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
-            if self.settings.os == "Windows":
-                tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
+        python_pkg = self.dependencies["cpython"]
+        python_root = python_pkg.package_folder.replace("\\", "/")
+        tc.variables["Python3_ROOT_DIR"] = python_root
+        tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
+        if self.settings.os == "Windows":
+            tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
 
         tc.generate()
 
@@ -131,5 +126,4 @@ class Recipe(RecipeBase):
             self.cpp_info.system_libs = ["pthread", "dl", "m"]
 
         self.cpp_info.requires = ["onetbb::onetbb"]
-        if self.options.with_python:
-            self.cpp_info.requires.append("cpython::cpython")
+        self.cpp_info.requires.append("cpython::cpython")

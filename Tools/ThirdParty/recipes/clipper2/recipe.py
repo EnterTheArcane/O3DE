@@ -27,20 +27,6 @@ class Recipe(RecipeBase):
         "with_hi_precision": False,
     }
 
-    @property
-    def _min_cppstd(self):
-        return 17
-
-    @property
-    def _compilers_minimum_version(self):
-        return {
-            "gcc": "8",
-            "clang": "7",
-            "apple-clang": "12",
-            "Visual Studio": "16",
-            "msvc": "192",
-        }
-
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC

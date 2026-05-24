@@ -20,7 +20,6 @@ class Recipe(RecipeBase):
         "enable_mesh_compression": [True, False],
         "enable_standard_edgebreaker": [True, False],
         "enable_predictive_edgebreaker": [True, False],
-        "enable_backwards_compatibility": [True, False],
     }
     default_options = {
         "shared": False,
@@ -30,7 +29,6 @@ class Recipe(RecipeBase):
         "enable_mesh_compression": True,
         "enable_standard_edgebreaker": True,
         "enable_predictive_edgebreaker": True,
-        "enable_backwards_compatibility": True,
     }
 
     def config_options(self):
@@ -66,7 +64,7 @@ class Recipe(RecipeBase):
             tc.variables["DRACO_STANDARD_EDGEBREAKER"] = self.options.enable_standard_edgebreaker
             tc.variables["DRACO_PREDICTIVE_EDGEBREAKER"] = self.options.enable_predictive_edgebreaker
         tc.variables["DRACO_ANIMATION_ENCODING"] = False
-        tc.variables["DRACO_BACKWARDS_COMPATIBILITY"] = self.options.enable_backwards_compatibility
+        tc.variables["DRACO_BACKWARDS_COMPATIBILITY"] = True
         tc.variables["DRACO_DECODER_ATTRIBUTE_DEDUPLICATION"] = False
         tc.variables["DRACO_FAST"] = False
         tc.variables["DRACO_GLTF"] = False

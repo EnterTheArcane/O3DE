@@ -13,21 +13,6 @@ class Recipe(RecipeBase):
     version = "2023.0.0"
     license = "Apache-2.0"
 
-    options = {
-        "tbbmalloc": [True, False],
-        "tbbproxy": [True, False],
-        "interprocedural_optimization": [True, False],
-    }
-    default_options = {
-        "tbbmalloc": True,
-        "tbbproxy": True,
-        "interprocedural_optimization": True,
-    }
-
-    def configure(self):
-        if not self.options.tbbmalloc:
-            self.options.rm_safe("tbbproxy")
-
     def build_requirements(self):
         self.tool_requires("cmake")
 
@@ -45,14 +30,13 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["TBB_TEST"] = False
-        tc.variables["TBB_STRICT"] = False
-        tc.variables["TBBMALLOC_BUILD"] = self.options.tbbmalloc
-        tc.variables["TBB_ENABLE_IPO"] = self.options.interprocedural_optimization
-        if self.options.tbbmalloc:
-            tc.variables["TBBMALLOC_PROXY_BUILD"] = self.options.tbbproxy
-        tc.variables["TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH"] = True
         tc.cache_variables["BUILD_SHARED_LIBS"] = True
+        tc.variables["TBB_DISABLE_HWLOC_AUTOMATIC_SEARCH"] = True
+        tc.variables["TBB_ENABLE_IPO"] = True
+        tc.variables["TBB_STRICT"] = False
+        tc.variables["TBB_TEST"] = False
+        tc.variables["TBBMALLOC_BUILD"] = True
+        tc.variables["TBBMALLOC_PROXY_BUILD"] = True
         tc.generate()
 
     def build(self):
@@ -94,17 +78,15 @@ class Recipe(RecipeBase):
         if self.settings.os in ["Linux", "FreeBSD"]:
             tbb.system_libs = ["m", "dl", "rt", "pthread"]
 
-        if self.options.tbbmalloc:
-            tbbmalloc = self.cpp_info.components["tbbmalloc"]
-            tbbmalloc.set_property("cmake_target_name", "TBB::tbbmalloc")
-            tbbmalloc.libs = [lib_name("tbbmalloc")]
-            if self.settings.os in ["Linux", "FreeBSD"]:
-                tbbmalloc.system_libs = ["dl", "pthread"]
+        tbbmalloc = self.cpp_info.components["tbbmalloc"]
+        tbbmalloc.set_property("cmake_target_name", "TBB::tbbmalloc")
+        tbbmalloc.libs = [lib_name("tbbmalloc")]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            tbbmalloc.system_libs = ["dl", "pthread"]
 
-            if self.options.tbbproxy:
-                tbbproxy = self.cpp_info.components["tbbmalloc_proxy"]
-                tbbproxy.set_property("cmake_target_name", "TBB::tbbmalloc_proxy")
-                tbbproxy.libs = [lib_name("tbbmalloc_proxy")]
-                tbbproxy.requires = ["tbbmalloc"]
-                if self.settings.os in ["Linux", "FreeBSD"]:
-                    tbbproxy.system_libs = ["m", "dl", "pthread"]
+        tbbproxy = self.cpp_info.components["tbbmalloc_proxy"]
+        tbbproxy.set_property("cmake_target_name", "TBB::tbbmalloc_proxy")
+        tbbproxy.libs = [lib_name("tbbmalloc_proxy")]
+        tbbproxy.requires = ["tbbmalloc"]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            tbbproxy.system_libs = ["m", "dl", "pthread"]

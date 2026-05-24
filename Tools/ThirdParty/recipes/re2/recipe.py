@@ -15,20 +15,15 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_icu": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_icu": False,
     }
 
-    implements = ["auto_shared_fpic"]
-
     def requirements(self):
-        if self.options.get_safe("with_icu"):
-            self.requires("icu")
         self.requires("abseil", transitive_headers=True)
+        self.requires("icu")
 
     def build_requirements(self):
         self.tool_requires("cmake")
