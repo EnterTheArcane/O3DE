@@ -44,6 +44,9 @@ class Recipe(RecipeBase):
             sha256="dd95fbea4b50e9e68fd042f540fb83157a0ff25053066c3439d4527de3621d34",
             destination=self.source_folder,
             strip_root=True)
+        save(self, os.path.join(self.source_folder, "src", "utils", "CMakeLists.txt"), "")
+        save(self, os.path.join(self.source_folder, "src", "tests", "CMakeLists.txt"), "")
+        save(self, os.path.join(self.source_folder, "src", "doc", "CMakeLists.txt"), "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -53,14 +56,7 @@ class Recipe(RecipeBase):
         cd = CMakeDeps(self)
         cd.generate()
 
-    def _patch_sources(self):
-        # disable subdirs
-        save(self, os.path.join(self.source_folder, "src", "utils", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.source_folder, "src", "tests", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.source_folder, "src", "doc", "CMakeLists.txt"), "")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

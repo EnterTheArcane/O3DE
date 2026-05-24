@@ -33,6 +33,7 @@ class Recipe(RecipeBase):
             url="https://sourceforge.net/projects/polyclipping/files/clipper_ver6.4.2.zip",
             sha256="a14320d82194807c4480ce59c98aa71cd4175a5156645c4e2b3edd330b930627",
             destination=self.source_folder)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -44,7 +45,6 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        apply_patches(self)
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, "cpp"))
         cmake.build()

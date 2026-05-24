@@ -41,13 +41,6 @@ class Recipe(RecipeBase):
             sha256="20b59fcc4cf61783cb0d1baa40a0dff3c557a97246651f95d9d9fed91bf17724",
             destination=self.source_folder,
             strip_root=True)
-
-    def generate(self):
-        tc = CMakeToolchain(self)
-        tc.variables["CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS"] = True
-        tc.generate()
-
-    def _patch_sources(self):
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "add_subdirectory(examples)", "")
         replace_in_file(
             self,
@@ -62,8 +55,12 @@ class Recipe(RecipeBase):
             "RVO RUNTIME LIBRARY ARCHIVE",
         )
 
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS"] = True
+        tc.generate()
+
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

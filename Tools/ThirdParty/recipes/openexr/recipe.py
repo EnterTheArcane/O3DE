@@ -48,6 +48,12 @@ class Recipe(RecipeBase):
             sha256="25f6a008e4060441a9e9d805bceda58fb811e0adef64b39807dfd73b94e12c91",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "CMakeLists.txt"),
+            "add_subdirectory(website/src)",
+            "#  add_subdirectory(website/src)")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -61,16 +67,7 @@ class Recipe(RecipeBase):
         cd.set_property("openjph", "cmake_target_name", "openjph")
         cd.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-
-        # Even with BUILD_WEBSITE = False, Website examples target is compiled in 3.2
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                        "add_subdirectory(website/src)",
-                        "#  add_subdirectory(website/src)")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

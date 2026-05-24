@@ -45,6 +45,8 @@ class Recipe(RecipeBase):
             sha256="a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a",
             destination=self.source_folder,
             strip_root=True)
+        apply_patches(self)
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "-ffast-math", "-ffast-math;-fno-finite-math-only")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -62,15 +64,7 @@ class Recipe(RecipeBase):
         tc.variables["OPJ_USE_THREAD"] = True
         tc.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        # The finite-math-only optimization has no effect and can cause linking errors
-        # when linked against glibc >= 2.31
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                        "-ffast-math", "-ffast-math;-fno-finite-math-only")
-
     def build(self):
-        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

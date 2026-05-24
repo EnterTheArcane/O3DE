@@ -26,6 +26,11 @@ class Recipe(RecipeBase):
             sha256="398036ac0eb6484982ddbde7ff86848d753231f9cdeeae983f06b52946625aa1",
             destination=self.source_folder,
             strip_root=True)
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "meson.build"),
+            "dep_scanner = dependency('wayland-scanner',",
+            "dep_scanner = dependency('wayland-scanner', required: false, disabler: true,")
 
     def generate(self):
         tc = MesonToolchain(self)
@@ -34,15 +39,7 @@ class Recipe(RecipeBase):
         tc.project_options["tests"] = "false"
         tc.generate()
 
-    def _patch_sources(self):
-        replace_in_file(
-            self,
-            os.path.join(self.source_folder, "meson.build"),
-            "dep_scanner = dependency('wayland-scanner',",
-            "dep_scanner = dependency('wayland-scanner', required: false, disabler: true,")
-
     def build(self):
-        self._patch_sources()
         meson = Meson(self)
         meson.configure()
         meson.build()

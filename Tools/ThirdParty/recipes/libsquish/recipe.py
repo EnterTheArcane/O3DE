@@ -51,6 +51,7 @@ class Recipe(RecipeBase):
             url="https://sourceforge.net/projects/libsquish/files/libsquish-1.15.tgz",
             sha256="628796eeba608866183a61d080d46967c9dda6723bc0a3ec52324c85d2147269",
             destination=self.source_folder)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -61,7 +62,6 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

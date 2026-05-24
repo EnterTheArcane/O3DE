@@ -69,6 +69,7 @@ class Recipe(RecipeBase):
             destination=self.source_folder,
             strip_root=True)
         apply_patches(self)
+        replace_in_file(self, os.path.join(self.source_folder, "meson.build"), "subdir('tests')", "#subdir('tests')")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -95,12 +96,7 @@ class Recipe(RecipeBase):
         tc.project_options["scanner"] = True
         tc.generate()
 
-    def _patch_sources(self):
-        replace_in_file(self, os.path.join(self.source_folder, "meson.build"),
-                        "subdir('tests')", "#subdir('tests')")
-
     def build(self):
-        self._patch_sources()
         meson = Meson(self)
         meson.configure()
         meson.build()
