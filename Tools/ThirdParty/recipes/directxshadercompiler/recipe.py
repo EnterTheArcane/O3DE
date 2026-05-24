@@ -29,7 +29,7 @@ class Recipe(RecipeBase):
             sha256 = "a1d3e3b5e1c5685b3eb27d5e8890e41d87df45def05112a2d6f1a63a931f7d60"
         else:
             raise ConanInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
-        get(self, url=url, sha256=sha256, destination=self.build_folder, strip_root=True)
+        get(self, url=url, sha256=sha256, destination=self.build_folder)
 
     def package(self):
         for subdir in ("bin", "include", "lib"):

@@ -77,13 +77,13 @@ class Recipe(RecipeBase):
     def package_info(self):
         # Keep gz-utils cmake config files; consumers use find_package(gz-utils) via CMAKE_PREFIX_PATH
         self.cpp_info.set_property("cmake_find_mode", "none")
-        self.cpp_info.builddirs = [""]
 
         # gz-utils major version suffix in library name: gz-utils4
         version_major = self.version.split(".")[0]
         lib_suffix = version_major
 
         self.cpp_info.components["core"].libs = [f"gz-utils{lib_suffix}"]
+        self.cpp_info.components["core"].builddirs = [""]
         self.cpp_info.components["core"].set_property("cmake_target_name", "gz-utils::gz-utils")
         self.cpp_info.components["core"].requires = ["spdlog::spdlog"]
 
