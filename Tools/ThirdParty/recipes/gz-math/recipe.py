@@ -81,12 +81,12 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         self.cpp_info.set_property("cmake_find_mode", "none")
-        self.cpp_info.builddirs = [""]
 
         version_major = self.version.split(".")[0]
         lib_suffix = version_major
 
         self.cpp_info.components["core"].libs = [f"gz-math{lib_suffix}"]
+        self.cpp_info.components["core"].builddirs = [""]
         self.cpp_info.components["core"].set_property("cmake_target_name", "gz-math::gz-math")
         self.cpp_info.components["core"].requires = ["gz-utils::core"]
         if self.settings.os in ("Linux", "FreeBSD"):

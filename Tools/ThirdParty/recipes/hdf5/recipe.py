@@ -37,7 +37,7 @@ class Recipe(RecipeBase):
             self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        self.requires("zlib/[>=1.2.11 <2]")
+        self.requires("zlib")
 
     def build_requirements(self):
         self.tool_requires("cmake")

@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, rmdir, apply_patches, replace_in_file, save
+from thirdparty.tools.files import copy, get, rmdir, apply_patches, save
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
 from thirdparty.tools.microsoft import unix_path, is_msvc
 from thirdparty.tools.scm import Version
@@ -64,12 +64,6 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.source_folder, "Makefile.in"),
-                        "M4 = /usr/bin/env m4", "#M4 = /usr/bin/env m4")
-        if self.settings.os == "Windows":
-            # Handle vagaries of Windows line endings
-            replace_in_file(self, os.path.join(self.source_folder, "bin", "autom4te.in"),
-                            "$result =~ s/^\\n//mg;", "$result =~ s/^\\R//mg;")
 
     def build(self):
         self._patch_sources()

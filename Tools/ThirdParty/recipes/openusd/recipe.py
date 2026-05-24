@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import copy, get, rmdir
+from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
 
@@ -101,7 +101,15 @@ class Recipe(RecipeBase):
         deps.set_property("onetbb", "cmake_target_name", "TBB::tbb")
         deps.generate()
 
+    def _patch_sources(self):
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "pxr", "base", "work", "workTBB", "dispatcher_impl.h"),
+            "#include <tbb/blocked_range.h>",
+            "#include <tbb/version.h>\n#include <tbb/blocked_range.h>")
+
     def build(self):
+        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
