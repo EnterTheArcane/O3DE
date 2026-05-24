@@ -12,7 +12,7 @@ from thirdparty.tools.scm.gitlab import GitlabRepository
 
 class Recipe(RecipeBase):
     name = "wayland"
-    version = "1.24.0"
+    version = "1.25.0"
     license = "MIT"
 
     options = {
@@ -64,8 +64,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/wayland-1.24.0.tar.xz",
-            sha256="82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
+            url="https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.25.0/downloads/wayland-1.25.0.tar.xz",
+            sha256="c065f040afdff3177680600f249727e41a1afc22fccf27222f15f5306faa1f03",
             destination=self.source_folder,
             strip_root=True)
         apply_patches(self)

@@ -1,0 +1,119 @@
+import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.files import copy, get, replace_in_file, rmdir
+from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
+
+
+class Recipe(RecipeBase):
+    name = "spdlog"
+    version = "1.17.0"
+    license = "MIT"
+
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "wchar_support": [True, False],
+        "wchar_filenames": [True, False],
+        "wchar_console": [True, False],
+        "no_exceptions": [True, False],
+    }
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "wchar_support": False,
+        "wchar_filenames": False,
+        "wchar_console": False,
+        "no_exceptions": False,
+    }
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+        else:
+            del self.options.wchar_support
+            del self.options.wchar_filenames
+            del self.options.wchar_console
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
+    def requirements(self):
+        self.requires("fmt/[>=10 <12]", transitive_headers=True, transitive_libs=True)
+
+    def build_requirements(self):
+        self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "gabime/spdlog")
+        return Version(repo.latest_release.removeprefix("v"))
+
+    def source(self):
+        get(
+            self,
+            url="https://github.com/gabime/spdlog/archive/v1.17.0.tar.gz",
+            sha256="d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744",
+            destination=self.source_folder,
+            strip_root=True)
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.cache_variables["SPDLOG_BUILD_EXAMPLE"] = False
+        tc.cache_variables["SPDLOG_BUILD_EXAMPLE_HO"] = False
+        tc.cache_variables["SPDLOG_BUILD_TESTS"] = False
+        tc.cache_variables["SPDLOG_BUILD_TESTS_HO"] = False
+        tc.cache_variables["SPDLOG_BUILD_BENCH"] = False
+        fmt = self.dependencies["fmt"]
+        tc.cache_variables["SPDLOG_FMT_EXTERNAL"] = not fmt.options.header_only
+        tc.cache_variables["SPDLOG_FMT_EXTERNAL_HO"] = fmt.options.header_only
+        tc.cache_variables["SPDLOG_BUILD_SHARED"] = self.options.shared
+        tc.cache_variables["SPDLOG_WCHAR_SUPPORT"] = self.options.get_safe("wchar_support", False)
+        tc.cache_variables["SPDLOG_WCHAR_FILENAMES"] = self.options.get_safe("wchar_filenames", False)
+        tc.cache_variables["SPDLOG_WCHAR_CONSOLE"] = self.options.get_safe("wchar_console", False)
+        tc.cache_variables["SPDLOG_INSTALL"] = True
+        tc.cache_variables["SPDLOG_NO_EXCEPTIONS"] = self.options.no_exceptions
+        tc.cache_variables["SPDLOG_USE_STD_FORMAT"] = False
+        tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0091"] = "NEW"
+        tc.generate()
+        cmake_deps = CMakeDeps(self)
+        cmake_deps.generate()
+
+    def build(self):
+        replace_in_file(self, os.path.join(self.source_folder, "cmake", "utils.cmake"), "/WX", "")
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        copy(self, "LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        cmake = CMake(self)
+        cmake.install()
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "spdlog", "cmake"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "spdlog")
+        self.cpp_info.set_property("cmake_target_name", "spdlog::spdlog")
+
+        self.cpp_info.components["libspdlog"].set_property("cmake_target_name", "spdlog::spdlog")
+        self.cpp_info.components["libspdlog"].requires = ["fmt::fmt"]
+        self.cpp_info.components["libspdlog"].defines.append("SPDLOG_FMT_EXTERNAL")
+
+        suffix = "d" if self.settings.build_type == "Debug" else ""
+        self.cpp_info.components["libspdlog"].libs = [f"spdlog{suffix}"]
+        self.cpp_info.components["libspdlog"].defines.append("SPDLOG_COMPILED_LIB")
+
+        if self.options.get_safe("wchar_support"):
+            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_WCHAR_TO_UTF8_SUPPORT")
+        if self.options.get_safe("wchar_filenames"):
+            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_WCHAR_FILENAMES")
+        if self.options.get_safe("wchar_console"):
+            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_UTF8_TO_WCHAR_CONSOLE")
+        if self.options.no_exceptions:
+            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_NO_EXCEPTIONS")
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.components["libspdlog"].system_libs = ["pthread"]
