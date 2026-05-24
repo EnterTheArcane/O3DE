@@ -16,14 +16,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "threading": [True, False],
-        "build_programs": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "threading": True,
-        "build_programs": True,
     }
 
     def config_options(self):
@@ -56,10 +52,10 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["ZSTD_BUILD_PROGRAMS"] = self.options.build_programs
-        tc.variables["ZSTD_BUILD_STATIC"] = not self.options.shared or self.options.build_programs
+        tc.variables["ZSTD_BUILD_PROGRAMS"] = True
+        tc.variables["ZSTD_BUILD_STATIC"] = True
         tc.variables["ZSTD_BUILD_SHARED"] = self.options.shared
-        tc.variables["ZSTD_MULTITHREAD_SUPPORT"] = self.options.threading
+        tc.variables["ZSTD_MULTITHREAD_SUPPORT"] = True
         tc.generate()
 
     def build(self):
@@ -75,7 +71,7 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(self, os.path.join(self.package_folder, "share"))
 
-        if self.options.shared and self.options.build_programs:
+        if self.options.shared:
             # If we build programs we have to build static libs (see logic in generate()),
             # but if shared is True, we only want shared lib in package folder.
             rm(self, "*_static.*", os.path.join(self.package_folder, "lib"))

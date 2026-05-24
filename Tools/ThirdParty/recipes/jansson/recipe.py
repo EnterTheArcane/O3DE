@@ -16,14 +16,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "use_urandom": [True, False],
-        "use_windows_cryptoapi": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "use_urandom": True,
-        "use_windows_cryptoapi": True,
     }
 
     def config_options(self):
@@ -54,11 +50,10 @@ class Recipe(RecipeBase):
         tc.variables["JANSSON_BUILD_SHARED_LIBS"] = self.options.shared
         tc.variables["JANSSON_EXAMPLES"] = False
         tc.variables["JANSSON_WITHOUT_TESTS"] = True
-        tc.variables["USE_URANDOM"] = self.options.use_urandom
-        tc.variables["USE_WINDOWS_CRYPTOAPI"] = self.options.use_windows_cryptoapi
+        tc.variables["USE_URANDOM"] = True
+        tc.variables["USE_WINDOWS_CRYPTOAPI"] = True
         if is_msvc(self):
             tc.variables["JANSSON_STATIC_CRT"] = is_msvc_static_runtime(self)
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):

@@ -16,16 +16,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "bit_depth": [8, 10, "all"],
-        "with_opencl": [True, False],
-        "with_asm": [True, False]
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "bit_depth": "all",
-        "with_opencl": True,
-        "with_asm": True
     }
 
     def config_options(self):
@@ -65,7 +59,7 @@ class Recipe(RecipeBase):
         extra_cflags = []
         extra_ldflags = []
         args = {
-            "--bit-depth": self.options.bit_depth,
+            "--bit-depth": "all",
             "--disable-cli": "",
             "--sbindir": None,          # Not understood by configure
             "--oldincludedir": None     # Not understood by configure
@@ -75,10 +69,6 @@ class Recipe(RecipeBase):
             args["--enable-shared"] = ""
         else:
             args["--enable-static"] = ""
-        if not self.options.with_opencl:
-            args["--disable-opencl"] = ""
-        if not self.options.with_asm:
-            args["--disable-asm"] = ""
         if self.options.get_safe("fPIC", self.settings.os != "Windows"):
             args["--enable-pic"] = ""
         if self.settings.build_type == "Debug":

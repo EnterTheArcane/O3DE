@@ -16,7 +16,6 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_tbb": [True, False],
         "with_opengl": [True, False],
         "with_omp": [True, False],
         "with_cuda": [True, False],
@@ -28,13 +27,12 @@ class Recipe(RecipeBase):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_tbb": False,
         "with_opengl": False,
         "with_omp": False,
         "with_cuda": False,
         "with_clew": False,
         "with_opencl": False,
-        "with_dx": False,
+        "with_dx": True,
         "with_metal": True
     }
 
@@ -43,16 +41,6 @@ class Recipe(RecipeBase):
         if self.options.get_safe("with_metal"):
             return "14"
         return "11"
-
-    @property
-    def _minimum_compilers_version(self):
-        return {
-            "Visual Studio": "15",
-            "msvc": "191",
-            "gcc": "5",
-            "clang": "11",
-            "apple-clang": "11.0",
-        }
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -68,8 +56,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        if self.options.with_tbb:
-            self.requires("onetbb", transitive_headers=True)
+        self.requires("onetbb", transitive_headers=True)
         if self.options.with_opengl:
             self.requires("opengl")
             self.requires("glfw")
@@ -90,21 +77,19 @@ class Recipe(RecipeBase):
 
     @property
     def _osd_gpu_enabled(self):
-        return any(
-            [
-                self.options.with_opengl,
-                self.options.with_opencl,
-                self.options.with_cuda,
-                self.options.get_safe("with_dx"),
-                self.options.get_safe("with_metal"),
-            ]
-        )
+        return any([
+            self.options.with_opengl,
+            self.options.with_opencl,
+            self.options.with_cuda,
+            self.options.get_safe("with_dx"),
+            self.options.get_safe("with_metal"),
+        ])
 
     def generate(self):
         tc = CMakeToolchain(self)
         if not valid_min_cppstd(self, self._min_cppstd):
             tc.variables["CMAKE_CXX_STANDARD"] = self._min_cppstd
-        tc.variables["NO_TBB"] = not self.options.with_tbb
+        tc.variables["NO_TBB"] = False
         tc.variables["NO_OPENGL"] = not self.options.with_opengl
         tc.variables["BUILD_SHARED_LIBS"] = self.options.get_safe("shared")
         tc.variables["NO_OMP"] = not self.options.with_omp
@@ -154,8 +139,7 @@ class Recipe(RecipeBase):
 
         self.cpp_info.components["osdcpu"].set_property("cmake_target_name", f"OpenSubdiv::osdcpu{target_suffix}")
         self.cpp_info.components["osdcpu"].libs = ["osdCPU"]
-        if self.options.with_tbb:
-            self.cpp_info.components["osdcpu"].requires = ["onetbb::onetbb"]
+        self.cpp_info.components["osdcpu"].requires = ["onetbb::onetbb"]
 
         if self._osd_gpu_enabled:
             self.cpp_info.components["osdgpu"].set_property("cmake_target_name", f"OpenSubdiv::osdgpu{target_suffix}")

@@ -58,7 +58,6 @@ class Recipe(RecipeBase):
         tc.cache_variables["LIBSAMPLERATE_EXAMPLES"] = False
         tc.cache_variables["LIBSAMPLERATE_INSTALL"] = True
         tc.cache_variables["BUILD_TESTING"] = False
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def build(self):

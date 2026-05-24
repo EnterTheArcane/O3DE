@@ -37,7 +37,6 @@ class ConanFile:
     upload_policy = None
 
     exports = None
-    exports_sources = None
 
     generators = []
     revision_mode = "hash"

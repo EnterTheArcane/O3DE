@@ -22,7 +22,6 @@ class Recipe(RecipeBase):
     default_options = {
         "shared": False,
         "fPIC": True,
-        #"md2html": True,  # conditional default value in config_options
         "encoding": "utf-8",
     }
 
@@ -65,8 +64,6 @@ class Recipe(RecipeBase):
             tc.preprocessor_definitions["MD4C_USE_UTF16"] = "1"
         elif self.options.encoding == "ascii":
             tc.preprocessor_definitions["MD4C_USE_ASCII"] = "1"
-        if Version(self.version) < "0.5.0":
-            tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
         tc.generate()
 
     def build(self):

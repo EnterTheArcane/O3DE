@@ -18,7 +18,6 @@ class Recipe(RecipeBase):
         "with_default_callbacks": [True, False],
         "with_tab_tokens": [True, False],
         "with_default_callback_uses_exceptions": [True, False],
-        "with_assert": [True, False],
     }
     default_options = {
         "shared": False,
@@ -26,7 +25,6 @@ class Recipe(RecipeBase):
         "with_default_callbacks": True,
         "with_tab_tokens": False,
         "with_default_callback_uses_exceptions": False,
-        "with_assert": False,
     }
 
     @property
@@ -64,7 +62,7 @@ class Recipe(RecipeBase):
         tc.variables["RYML_DEFAULT_CALLBACKS"] = self.options.with_default_callbacks
         tc.variables["RYML_WITH_TAB_TOKENS"] = self.options.with_tab_tokens
         tc.variables["RYML_DEFAULT_CALLBACK_USES_EXCEPTIONS"] = self.options.with_default_callback_uses_exceptions
-        tc.variables["RYML_USE_ASSERT"] = self.options.with_assert
+        tc.variables["RYML_USE_ASSERT"] = False
         tc.generate()
 
         deps = CMakeDeps(self)

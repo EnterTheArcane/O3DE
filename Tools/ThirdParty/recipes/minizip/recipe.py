@@ -13,14 +13,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "bzip2": [True, False],
-        "tools": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "bzip2": True,
-        "tools": False,
     }
 
     def config_options(self):
@@ -34,9 +30,8 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
+        self.requires("bzip2", transitive_headers=True)
         self.requires("zlib", transitive_headers=True)
-        if self.options.bzip2:
-            self.requires("bzip2", transitive_headers=True)
 
     def source(self):
         get(
@@ -50,8 +45,8 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["MINIZIP_SRC_DIR"] = os.path.join(self.source_folder, "contrib", "minizip").replace("\\", "/")
-        tc.variables["MINIZIP_ENABLE_BZIP2"] = self.options.bzip2
-        tc.variables["MINIZIP_BUILD_TOOLS"] = self.options.tools
+        tc.variables["MINIZIP_ENABLE_BZIP2"] = True
+        tc.variables["MINIZIP_BUILD_TOOLS"] = True
         # fopen64 and similar are unavailable before API level 24: https://github.com/madler/zlib/pull/436
         if self.settings.os == "Android" and int(str(self.settings.os.api_level)) < 24:
             tc.preprocessor_definitions["IOAPI_NO_64"] = "1"
@@ -76,5 +71,4 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.cpp_info.libs = ["minizip"]
         self.cpp_info.includedirs.append(os.path.join("include", "minizip"))
-        if self.options.bzip2:
-            self.cpp_info.defines.append("HAVE_BZIP2")
+        self.cpp_info.defines.append("HAVE_BZIP2")

@@ -4,13 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import (
-    apply_patches,
-    chdir,
-    copy,
-    get,
-    replace_in_file,
-    rmdir)
+from thirdparty.tools.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.tools.microsoft import NMakeDeps, NMakeToolchain, is_msvc
 from thirdparty.tools.scm import Version

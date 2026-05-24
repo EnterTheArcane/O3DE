@@ -13,16 +13,14 @@ class Recipe(RecipeBase):
     version = "2.15.3"
     license = "MIT"
 
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+    }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "include_utils": True,
-        "iconv": False,
-        "icu": False,
-        "zlib": True,
     }
-
-    options = {name: [True, False] for name in default_options.keys()}
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -35,12 +33,9 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
-        if self.options.zlib:
-            self.requires("zlib")
-        if self.options.iconv:
-            self.requires("libiconv", transitive_headers=True, transitive_libs=True)
-        if self.options.icu:
-            self.requires("icu")
+        self.requires("icu")
+        self.requires("libiconv", transitive_headers=True, transitive_libs=True)
+        self.requires("zlib")
 
     def build_requirements(self):
         self.tool_requires("cmake")
@@ -65,13 +60,13 @@ class Recipe(RecipeBase):
         tc.variables["LIBXML2_WITH_DOCS"] = False
         tc.variables["LIBXML2_WITH_HTML"] = True
         tc.variables["LIBXML2_WITH_HTTP"] = True
-        tc.variables["LIBXML2_WITH_ICONV"] = self.options.iconv
-        tc.variables["LIBXML2_WITH_ICU"] = self.options.icu
+        tc.variables["LIBXML2_WITH_ICONV"] = True
+        tc.variables["LIBXML2_WITH_ICU"] = True
         tc.variables["LIBXML2_WITH_ISO8859X"] = True
         tc.variables["LIBXML2_WITH_LEGACY"] = True
         tc.variables["LIBXML2_WITH_OUTPUT"] = True
         tc.variables["LIBXML2_WITH_PATTERN"] = True
-        tc.variables["LIBXML2_WITH_PROGRAMS"] = self.options.include_utils
+        tc.variables["LIBXML2_WITH_PROGRAMS"] = True
         tc.variables["LIBXML2_WITH_PUSH"] = True
         tc.variables["LIBXML2_WITH_PYTHON"] = False
         tc.variables["LIBXML2_WITH_READER"] = True
@@ -86,7 +81,7 @@ class Recipe(RecipeBase):
         tc.variables["LIBXML2_WITH_XINCLUDE"] = True
         tc.variables["LIBXML2_WITH_XPATH"] = True
         tc.variables["LIBXML2_WITH_XPTR"] = True
-        tc.variables["LIBXML2_WITH_ZLIB"] = self.options.zlib
+        tc.variables["LIBXML2_WITH_ZLIB"] = True
         tc.generate()
 
         deps = CMakeDeps(self)

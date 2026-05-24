@@ -15,12 +15,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_eigen3": [True, False],
     }
     default_options = {
         "shared": True,
         "fPIC": True,
-        "with_eigen3": True,
     }
 
     def config_options(self):
@@ -32,10 +30,9 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
+        self.requires("eigen")
         self.requires("gz-cmake")
         self.requires("gz-utils")
-        if self.options.with_eigen3:
-            self.requires("eigen")
 
     def build_requirements(self):
         self.tool_requires("cmake")
@@ -64,9 +61,8 @@ class Recipe(RecipeBase):
         deps = CMakeDeps(self)
         deps.set_property("gz-cmake", "cmake_find_mode", "none")
         deps.set_property("gz-utils", "cmake_find_mode", "none")
-        if self.options.with_eigen3:
-            deps.set_property("eigen", "cmake_file_name", "Eigen3")
-            deps.set_property("eigen", "cmake_target_name", "Eigen3::Eigen")
+        deps.set_property("eigen", "cmake_file_name", "Eigen3")
+        deps.set_property("eigen", "cmake_target_name", "Eigen3::Eigen")
         deps.generate()
 
     def build(self):
@@ -92,7 +88,6 @@ class Recipe(RecipeBase):
         if self.settings.os in ("Linux", "FreeBSD"):
             self.cpp_info.components["core"].system_libs = ["m"]
 
-        if self.options.with_eigen3:
-            self.cpp_info.components["eigen3"].libs = []
-            self.cpp_info.components["eigen3"].set_property("cmake_target_name", "gz-math::gz-math-eigen3")
-            self.cpp_info.components["eigen3"].requires = ["core", "eigen::eigen3"]
+        self.cpp_info.components["eigen3"].libs = []
+        self.cpp_info.components["eigen3"].set_property("cmake_target_name", "gz-math::gz-math-eigen3")
+        self.cpp_info.components["eigen3"].requires = ["core", "eigen::eigen3"]

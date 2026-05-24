@@ -20,19 +20,13 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_png": [True, False],
-        "with_zlib": [True, False],
         "with_bzip2": [True, False],
-        "with_brotli": [True, False],
         "subpixel": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_png": True,
-        "with_zlib": True,
         "with_bzip2": True,
-        "with_brotli": True,
         "subpixel": False,
     }
 
@@ -47,14 +41,10 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        if self.options.with_png:
-            self.requires("libpng")
-        if self.options.with_zlib:
-            self.requires("zlib")
-        if self.options.with_bzip2:
-            self.requires("bzip2")
-        if self.options.with_brotli:
-            self.requires("brotli")
+        self.requires("brotli")
+        self.requires("bzip2")
+        self.requires("libpng")
+        self.requires("zlib")
 
     def latest_version(self):
         repo = GithubRepository(self, "freetype/freetype")
@@ -73,20 +63,19 @@ class Recipe(RecipeBase):
         deps.generate()
 
         tc = CMakeToolchain(self)
-        tc.variables["FT_REQUIRE_ZLIB"] = self.options.with_zlib
-        tc.variables["FT_DISABLE_ZLIB"] = not self.options.with_zlib
-        tc.variables["FT_REQUIRE_PNG"] = self.options.with_png
-        tc.variables["FT_DISABLE_PNG"] = not self.options.with_png
-        tc.variables["FT_REQUIRE_BZIP2"] = self.options.with_bzip2
-        tc.variables["FT_DISABLE_BZIP2"] = not self.options.with_bzip2
+        tc.variables["FT_REQUIRE_ZLIB"] = True
+        tc.variables["FT_DISABLE_ZLIB"] = False
+        tc.variables["FT_REQUIRE_PNG"] = True
+        tc.variables["FT_DISABLE_PNG"] = False
+        tc.variables["FT_REQUIRE_BZIP2"] = True
+        tc.variables["FT_DISABLE_BZIP2"] = False
         # TODO: Harfbuzz can be added as an option as soon as it is available.
         tc.variables["FT_REQUIRE_HARFBUZZ"] = False
         tc.variables["FT_DISABLE_HARFBUZZ"] = True
-        tc.variables["FT_REQUIRE_BROTLI"] = self.options.with_brotli
-        tc.variables["FT_DISABLE_BROTLI"] = not self.options.with_brotli
+        tc.variables["FT_REQUIRE_BROTLI"] = True
+        tc.variables["FT_DISABLE_BROTLI"] = False
         # Generate a relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
 
     def _patch_sources(self):
@@ -95,15 +84,6 @@ class Recipe(RecipeBase):
         if_harfbuzz_found = "if (HarfBuzz_FOUND)"
         replace_in_file(self, cmakelists, "find_package(HarfBuzz ${HARFBUZZ_MIN_VERSION})", "", strict=False)
         replace_in_file(self, cmakelists, if_harfbuzz_found, "if(0)", strict=False)
-        if not self.options.with_png:
-            replace_in_file(self, cmakelists, "find_package(PNG)", "", strict=False)
-            replace_in_file(self, cmakelists, "if (PNG_FOUND)", "if(0)", strict=False)
-        if not self.options.with_zlib:
-            replace_in_file(self, cmakelists, "find_package(ZLIB)", "", strict=False)
-            replace_in_file(self, cmakelists, "if (ZLIB_FOUND)", "if(0)", strict=False)
-        if not self.options.with_bzip2:
-            replace_in_file(self, cmakelists, "find_package(BZip2)", "", strict=False)
-            replace_in_file(self, cmakelists, "if (BZIP2_FOUND)", "if(0)", strict=False)
         # the custom FindBrotliDec of upstream is too fragile
         replace_in_file(self, cmakelists,
                               "find_package(BrotliDec REQUIRED)",
@@ -111,9 +91,6 @@ class Recipe(RecipeBase):
                               "set(BROTLIDEC_FOUND 1)\n"
                               "set(BROTLIDEC_LIBRARIES \"brotli::brotli\")",
                               strict=False)
-        if not self.options.with_brotli:
-            replace_in_file(self, cmakelists, "find_package(BrotliDec)", "", strict=False)
-            replace_in_file(self, cmakelists, "if (BROTLIDEC_FOUND)", "if(0)", strict=False)
 
         config_h = os.path.join(self.source_folder, "include", "freetype", "config", "ftoption.h")
         if self.options.subpixel:

@@ -28,13 +28,13 @@ class Recipe(RecipeBase):
     default_options = {
         "shared": False,
         "fPIC": True,
-        # Handle default value for `threads` in `config_options` method
     }
 
     @property
     def _is_clang_cl(self):
-        return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
-               self.settings.compiler.get_safe("runtime")
+        return self.settings.os == "Windows" \
+            and self.settings.compiler == "clang" \
+            and self.settings.compiler.get_safe("runtime")
 
     @property
     def _gettext_folder(self):

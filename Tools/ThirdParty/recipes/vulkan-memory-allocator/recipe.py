@@ -11,10 +11,6 @@ class Recipe(RecipeBase):
     version = "3.3.0"
     license = "MIT"
 
-    @property
-    def _min_cppstd(self):
-        return "14"
-
     def requirements(self):
         self.requires("vulkan-headers")
 

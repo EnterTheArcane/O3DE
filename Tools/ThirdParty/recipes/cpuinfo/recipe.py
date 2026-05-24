@@ -14,12 +14,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "log_level": ["default", "debug", "info", "warning", "error", "fatal", "none"],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "log_level": "default",
     }
 
     def config_options(self):
@@ -58,7 +56,7 @@ class Recipe(RecipeBase):
         # cpuinfo
         tc.cache_variables["CPUINFO_LIBRARY_TYPE"] = "default"
         tc.cache_variables["CPUINFO_RUNTIME_TYPE"] = "default"
-        tc.cache_variables["CPUINFO_LOG_LEVEL"] = self.options.log_level
+        tc.cache_variables["CPUINFO_LOG_LEVEL"] = "default"
         tc.variables["CPUINFO_BUILD_TOOLS"] = False
         tc.variables["CPUINFO_BUILD_UNIT_TESTS"] = False
         tc.variables["CPUINFO_BUILD_MOCK_TESTS"] = False
