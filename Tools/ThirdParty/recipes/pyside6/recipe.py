@@ -30,16 +30,16 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def requirements(self):
-        self.requires("qt")
         self.requires("cpython")
         self.requires("llvm")
+        self.requires("qt")
 
     def build_requirements(self):
         self.tool_requires("cmake")
         self.tool_requires("cpython")
 
     def latest_version(self):
-        repo = GithubRepository(self, "qt/pyside-setup")
+        repo = GithubRepository(self, "qtproject/pyside-pyside-setup")
         return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
@@ -53,13 +53,17 @@ class Recipe(RecipeBase):
     def generate(self):
         llvm_pkg = self.dependencies["llvm"].package_folder
         cpython_pkg = self.dependencies["cpython"].package_folder
+        qt_pkg = self.dependencies["qt"].package_folder
 
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTS"] = False
         tc.variables["INSTALL_TESTS"] = False
         tc.variables["CMAKE_VERBOSE_MAKEFILE"] = False
+        if self.settings.os == "Windows":
+            tc.cache_variables["CMAKE_LINKER_TYPE"] = "MSVC"
 
         tc.variables["CLANG_INSTALL_DIR"] = llvm_pkg.replace("\\", "/")
+        tc.variables["Clang_DIR"] = os.path.join(llvm_pkg, "lib", "cmake", "clang").replace("\\", "/")
 
         python_root = cpython_pkg.replace("\\", "/")
         tc.variables["Python3_ROOT_DIR"] = python_root
@@ -67,10 +71,67 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
 
+        qt_version = str(self.dependencies["qt"].ref.version)
+        tc.variables["Qt6Core_VERSION"] = qt_version
+        tc.variables["QT6_INSTALL_PREFIX"] = qt_pkg.replace("\\", "/")
+        tc.variables["QT6_INSTALL_BINS"] = "bin"
+        tc.variables["QT6_INSTALL_LIBS"] = "lib"
+        tc.variables["QT6_INSTALL_LIBEXECS"] = "bin"
+
         tc.generate()
 
+        fix_script_content = (
+            'get_property(_bst DIRECTORY . PROPERTY BUILDSYSTEM_TARGETS)\n'
+            'foreach(_t IN LISTS _bst)\n'
+            '    if(TARGET ${_t})\n'
+            '        get_target_property(_type ${_t} TYPE)\n'
+            '        if(NOT _type STREQUAL "INTERFACE_LIBRARY")\n'
+            '            set_property(TARGET ${_t} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")\n'
+            '        endif()\n'
+            '    endif()\n'
+            'endforeach()\n'
+            'unset(_bst)\n'
+            'unset(_t)\n'
+            'unset(_type)\n'
+        )
+        fix_script_path = os.path.join(self.generators_folder, "fix_msvc_runtime.cmake")
+        fix_script_fwd = fix_script_path.replace("\\", "/")
+        with open(fix_script_path, "w") as f:
+            f.write(fix_script_content)
+
+        helper_content = (
+            'if(MSVC)\n'
+            '    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")\n'
+            '    string(REGEX REPLACE "/M[TtDd]+" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")\n'
+            '    string(STRIP "${CMAKE_CXX_FLAGS_RELEASE}" CMAKE_CXX_FLAGS_RELEASE)\n'
+            '    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")\n'
+            '    string(REGEX REPLACE "/M[TtDd]+" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")\n'
+            '    string(STRIP "${CMAKE_C_FLAGS_RELEASE}" CMAKE_C_FLAGS_RELEASE)\n'
+            '    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MD")\n'
+            f'    cmake_language(DEFER DIRECTORY "${{CMAKE_CURRENT_SOURCE_DIR}}" CALL\n'
+            f'        include "{fix_script_fwd}")\n'
+            'endif()\n'
+            'if(NOT TARGET Qt6::PlatformCommonInternal)\n'
+            '    add_library(Qt6::PlatformCommonInternal INTERFACE IMPORTED)\n'
+            '    set_target_properties(Qt6::PlatformCommonInternal PROPERTIES\n'
+            '        INTERFACE_COMPILE_DEFINITIONS'
+            ' "NOMINMAX;QT_NO_NARROWING_CONVERSIONS_IN_CONNECT;_CRT_SECURE_NO_WARNINGS;'
+            '$<$<NOT:$<CONFIG:Debug>>:QT_NO_DEBUG>"\n'
+            '        INTERFACE_COMPILE_OPTIONS "-FS;-bigobj;-Zc:rvalueCast;-Zc:inline"\n'
+            '    )\n'
+            'endif()\n'
+            'if(NOT TARGET Qt::PlatformCommonInternal)\n'
+            '    add_library(Qt::PlatformCommonInternal ALIAS Qt6::PlatformCommonInternal)\n'
+            'endif()\n'
+        )
+        helper_path = os.path.join(self.generators_folder, "qt_pyside6_internal_targets.cmake")
+        with open(helper_path, "w") as f:
+            f.write(helper_content)
+        toolchain_path = os.path.join(self.generators_folder, "conan_toolchain.cmake")
+        with open(toolchain_path, "a") as f:
+            f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
+
         deps = CMakeDeps(self)
-        deps.set_property("qt", "cmake_find_mode", "none")
         deps.set_property("llvm", "cmake_find_mode", "none")
         deps.set_property("cpython", "cmake_find_mode", "none")
         deps.generate()
