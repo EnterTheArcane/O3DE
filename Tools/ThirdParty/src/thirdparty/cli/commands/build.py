@@ -649,12 +649,18 @@ def _build_recipe(
     # self.conan_data for custom version data (e.g. zlib-ng's "zlib_compat" field).
     _load_conandata(recipe)
 
-    # If the package directory exists but the completion marker is absent, the
-    # previous build was interrupted or failed mid-package().  Remove the partial
-    # package directory so we start clean.
     pkg_dir = Path(recipe.package_folder)
     build_dir = Path(recipe.build_folder)
-    if pkg_dir.exists() and not (build_dir / _COMPLETE_MARKER).is_file():
+    src_dir = Path(recipe.source_folder)
+
+    if force:
+        # Wipe all build artifacts so source(), build(), and package() run fresh.
+        for _dir in (src_dir, build_dir, pkg_dir):
+            shutil.rmtree(_dir, ignore_errors=True)
+    elif pkg_dir.exists() and not (build_dir / _COMPLETE_MARKER).is_file():
+        # If the package directory exists but the completion marker is absent, the
+        # previous build was interrupted or failed mid-package().  Remove the partial
+        # package directory so we start clean.
         shutil.rmtree(pkg_dir, ignore_errors=True)
 
     # Run config_options / configure / validate before creating any directories so
