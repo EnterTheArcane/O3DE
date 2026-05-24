@@ -20,7 +20,6 @@ class Recipe(RecipeBase):
         "with_opencl": [True, False],
         "with_asm": [True, False]
     }
-    # The project by default enables opencl and asm, it can be opted-out
     default_options = {
         "shared": False,
         "fPIC": True,

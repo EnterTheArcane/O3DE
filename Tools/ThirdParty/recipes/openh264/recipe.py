@@ -24,7 +24,6 @@ class Recipe(RecipeBase):
         "shared": False,
         "fPIC": True,
     }
-    implements = ["auto_shared_fpic"]
 
     @property
     def _is_clang_cl(self):

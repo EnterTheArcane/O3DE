@@ -12,7 +12,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "autoconf"
     version = "2.72"
-    license = ("GPL-2.0-or-later", "GPL-3.0-or-later")
+    license = "GPL-2.0-or-later", "GPL-3.0-or-later"
  
     def requirements(self):
         self.requires("m4") # Needed at runtime by downstream clients as well

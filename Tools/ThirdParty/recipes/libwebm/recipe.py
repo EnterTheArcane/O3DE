@@ -18,7 +18,6 @@ class Recipe(RecipeBase):
         "with_pes_ts": [True, False],
         "with_new_parser_api": [True, False],
     }
-
     default_options = {
         "shared": False,
         "fPIC": True,

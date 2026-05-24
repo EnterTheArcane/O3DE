@@ -11,7 +11,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "libheif"
     version = "1.22.0"
-    license = ("LGPL-3.0-only", "GPL-3.0-or-later", "MIT")
+    license = "LGPL-3.0-only", "GPL-3.0-or-later", "MIT"
 
     options = {
         "shared": [True, False],

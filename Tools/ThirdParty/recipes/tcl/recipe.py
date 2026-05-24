@@ -24,7 +24,6 @@ class Recipe(RecipeBase):
         "shared": False,
         "fPIC": True,
     }
-
  
     def config_options(self):
         if self.settings.os == "Windows":

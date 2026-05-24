@@ -22,7 +22,6 @@ class Recipe(RecipeBase):
         "fPIC": True,
         "with_parallel_acceleration": False,
     }
-    implements = ["auto_shared_fpic"]
 
     def requirements(self):
         # For CrossSection for 2D support
