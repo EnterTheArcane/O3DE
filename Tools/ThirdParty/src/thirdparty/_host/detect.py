@@ -43,15 +43,15 @@ def _detect_msvc_version():
 
 
 def _detect_apple_clang_version():
-    try:
-        out = subprocess.check_output(
-            ["clang", "--version"], text=True, stderr=subprocess.STDOUT,
-        )
-        m = re.search(r"Apple clang version (\d+)", out, re.IGNORECASE)
-        if m:
-            return m.group(1)
-    except Exception:
-        pass
+    # Try xcrun first so we always get Xcode's clang, not a Homebrew LLVM override.
+    for cmd in (["xcrun", "clang", "--version"], ["clang", "--version"]):
+        try:
+            out = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
+            m = re.search(r"Apple clang version (\d+)", out, re.IGNORECASE)
+            if m:
+                return m.group(1)
+        except Exception:
+            continue
     return None
 
 
@@ -100,7 +100,7 @@ def detect_settings(build_type="Release"):
                 ("compiler", "msvc"),
                 ("compiler.version", msvc_ver),
                 ("compiler.runtime", "dynamic"),
-                ("compiler.cppstd", "17"),
+                ("compiler.cppstd", "20"),
             ], raise_undefined=False)
     elif the_os == "Macos":
         ver = _detect_apple_clang_version()
@@ -109,7 +109,7 @@ def detect_settings(build_type="Release"):
                 ("compiler", "apple-clang"),
                 ("compiler.version", ver + ".0"),
                 ("compiler.libcxx", "libc++"),
-                ("compiler.cppstd", "17"),
+                ("compiler.cppstd", "20"),
             ], raise_undefined=False)
         # Set os.version so that CMakeToolchain emits CMAKE_OSX_DEPLOYMENT_TARGET.
         # platform.mac_ver() returns e.g. "15.4.0" or "26.5.0"; strip the patch component.
@@ -126,14 +126,14 @@ def detect_settings(build_type="Release"):
                 ("compiler", "gcc"),
                 ("compiler.version", ver),
                 ("compiler.libcxx", "libstdc++11"),
-                ("compiler.cppstd", "17"),
+                ("compiler.cppstd", "20"),
             ], raise_undefined=False)
         elif compiler == "clang":
             settings.update_values([
                 ("compiler", "clang"),
                 ("compiler.version", ver),
                 ("compiler.libcxx", "libc++"),
-                ("compiler.cppstd", "17"),
+                ("compiler.cppstd", "20"),
             ], raise_undefined=False)
 
     return settings

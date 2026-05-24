@@ -415,14 +415,16 @@ class Recipe(RecipeBase):
         }.get(str(self.settings.os), "none")
 
     def _patch_sources(self):
-        if self.options.with_ssl == "openssl":
-                # https://trac.ffmpeg.org/ticket/5675
+        if self.is_windows and self.options.with_ssl == "openssl":
+                # https://trac.ffmpeg.org/ticket/5675 (Windows-only: replaces hard-coded WinSock
+                # libs in the OpenSSL check_lib line with the actual libs from the built package)
                 openssl_libs = load(self, os.path.join(self.build_folder, "openssl_libs.list"))
                 replace_in_file(self, os.path.join(self.source_folder, "configure"),
                                     "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto -lws2_32 -lgdi32 ||",
                                     f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} || ")
 
-        replace_in_file(self, os.path.join(self.source_folder, "configure"), "echo libx264.lib", "echo x264.lib")
+        if self.is_windows:
+            replace_in_file(self, os.path.join(self.source_folder, "configure"), "echo libx264.lib", "echo x264.lib")
 
     @property
     def _default_compilers(self):
