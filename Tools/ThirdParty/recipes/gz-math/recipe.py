@@ -1,0 +1,98 @@
+import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.files import copy, get
+from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
+
+
+class Recipe(RecipeBase):
+    name = "gz-math"
+    version = "9.1.0"
+    license = "Apache-2.0"
+
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "with_eigen3": [True, False],
+    }
+    default_options = {
+        "shared": True,
+        "fPIC": True,
+        "with_eigen3": True,
+    }
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
+    def requirements(self):
+        self.requires("gz-cmake")
+        self.requires("gz-utils")
+        if self.options.with_eigen3:
+            self.requires("eigen")
+
+    def build_requirements(self):
+        self.tool_requires("cmake")
+        self.tool_requires("gz-cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "gazebosim/gz-math")
+        tag = repo.latest_release
+        return Version(tag.split("_", 1)[-1])
+
+    def source(self):
+        get(
+            self,
+            url="https://github.com/gazebosim/gz-math/archive/refs/tags/gz-math9_9.1.0.tar.gz",
+            sha256="d6d266a2a5094b977a3cfec4646efb2eede5fd36781a53faaa37ba416da5cdaf",
+            destination=self.source_folder,
+            strip_root=True)
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["BUILD_TESTING"] = False
+        tc.variables["SKIP_PYBIND11"] = True
+        tc.variables["SKIP_SWIG"] = True
+        tc.generate()
+
+        deps = CMakeDeps(self)
+        deps.set_property("gz-cmake", "cmake_find_mode", "none")
+        deps.set_property("gz-utils", "cmake_find_mode", "none")
+        if self.options.with_eigen3:
+            deps.set_property("eigen", "cmake_file_name", "Eigen3")
+            deps.set_property("eigen", "cmake_target_name", "Eigen3::Eigen")
+        deps.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        cmake = CMake(self)
+        cmake.install()
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_find_mode", "none")
+        self.cpp_info.builddirs = [""]
+
+        version_major = self.version.split(".")[0]
+        lib_suffix = version_major
+
+        self.cpp_info.components["core"].libs = [f"gz-math{lib_suffix}"]
+        self.cpp_info.components["core"].set_property("cmake_target_name", "gz-math::gz-math")
+        self.cpp_info.components["core"].requires = ["gz-utils::core"]
+        if self.settings.os in ("Linux", "FreeBSD"):
+            self.cpp_info.components["core"].system_libs = ["m"]
+
+        if self.options.with_eigen3:
+            self.cpp_info.components["eigen3"].libs = []
+            self.cpp_info.components["eigen3"].set_property("cmake_target_name", "gz-math::gz-math-eigen3")
+            self.cpp_info.components["eigen3"].requires = ["core", "eigen::eigen3"]

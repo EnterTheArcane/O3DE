@@ -7,7 +7,7 @@ from thirdparty.tools.scm import Git
 
 class Recipe(RecipeBase):
     name = "gnu-config"
-    version = "cci.20210814"
+    version = "2021.08.14"
     license = "GPL-3.0-or-later", "autoconf-special-exception"
 
     def source(self):
@@ -15,8 +15,7 @@ class Recipe(RecipeBase):
         git.clone(
             url="https://git.savannah.gnu.org/git/config.git",
             target=".",
-            args=["--depth", "1"]
-        )
+            args=["--depth", "1"])
         apply_patches(self)
 
     def build(self):

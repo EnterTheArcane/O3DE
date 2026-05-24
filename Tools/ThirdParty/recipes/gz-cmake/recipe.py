@@ -1,0 +1,50 @@
+import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.files import copy, get
+from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
+
+
+class Recipe(RecipeBase):
+    name = "gz-cmake"
+    version = "5.1.1"
+    license = "Apache-2.0"
+
+    def latest_version(self):
+        repo = GithubRepository(self, "gazebosim/gz-cmake")
+        tag = repo.latest_release
+        return Version(tag.split("_", 1)[-1])
+
+    def source(self):
+        get(
+            self,
+            url="https://github.com/gazebosim/gz-cmake/archive/refs/tags/gz-cmake5_5.1.1.tar.gz",
+            sha256="5424e481b765e7e88347c167e87b1c89f152ded2f8bbc7f24c7559ea3694f83f",
+            destination=self.source_folder,
+            strip_root=True)
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["BUILD_TESTING"] = False
+        tc.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        cmake = CMake(self)
+        cmake.install()
+
+    def package_info(self):
+        # gz-cmake installs only cmake modules — no compiled libraries
+        self.cpp_info.set_property("cmake_find_mode", "none")
+        self.cpp_info.libdirs = []
+        self.cpp_info.bindirs = []
+        # Adding "" makes CMakeToolchain put the package folder in CMAKE_PREFIX_PATH,
+        # so that find_package(gz-cmake) can locate share/cmake/gz-cmake/gz-cmake-config.cmake
+        self.cpp_info.builddirs = [""]
