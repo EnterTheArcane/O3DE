@@ -15,19 +15,62 @@ from thirdparty.tools.microsoft import msvc_runtime_flag, is_msvc
 from thirdparty.tools.scm import Version
 
 
+SUBMODULES = [
+    "qt3d",
+    "qt5compat",
+    "qtactiveqt",
+    "qtcanvaspainter",
+    "qtcharts",
+    "qtcoap",
+    "qtconnectivity",
+    "qtdatavis3d",
+    "qtdeclarative",
+    "qtdoc",
+    "qtgraphs",
+    "qtgrpc",
+    "qthttpserver",
+    "qtimageformats",
+    "qtlanguageserver",
+    "qtlocation",
+    "qtlottie",
+    "qtmqtt",
+    "qtmultimedia",
+    "qtnetworkauth",
+    "qtopcua",
+    "qtopenapi",
+    "qtpositioning",
+    "qtquick3d",
+    "qtquick3dphysics",
+    "qtquickcontrols2",
+    "qtquickeffectmaker",
+    "qtquicktimeline",
+    "qtremoteobjects",
+    "qtscxml",
+    "qtsensors",
+    "qtserialbus",
+    "qtserialport",
+    "qtshadertools",
+    "qtspeech",
+    "qtsvg",
+    "qttasktree",
+    "qttools",
+    "qttranslations",
+    "qtvirtualkeyboard",
+    "qtwayland",
+    "qtwebchannel",
+    "qtwebengine",
+    "qtwebsockets",
+    "qtwebview",
+]
+
+MODULE_STATUSES = [
+    "essential",
+    "addon",
+    "deprecated",
+    "preview",
+]
+
 class Recipe(RecipeBase):
-    _submodules = ["qtsvg", "qtdeclarative", "qttools", "qttranslations", "qtdoc",
-                   "qtwayland", "qtquickcontrols2", "qtquicktimeline", "qtquick3d", "qtshadertools", "qt5compat",
-                   "qtactiveqt", "qtcharts", "qtdatavis3d", "qtlottie", "qtscxml", "qtvirtualkeyboard",
-                   "qt3d", "qtimageformats", "qtnetworkauth", "qtcoap", "qtmqtt", "qtopcua",
-                   "qtmultimedia", "qtlocation", "qtsensors", "qtconnectivity", "qtserialbus",
-                   "qtserialport", "qtwebsockets", "qtwebchannel", "qtwebengine", "qtwebview",
-                   "qtremoteobjects", "qtpositioning", "qtlanguageserver",
-                   "qtspeech", "qthttpserver", "qtquick3dphysics", "qtgrpc", "qtquickeffectmaker",
-                   "qtgraphs", "qttasktree", "qtopenapi", "qtcanvaspainter"]
-
-    _module_statuses = ["essential", "addon", "deprecated", "preview"]
-
     name = "qt"
     version = "6.11.1"
     license = "LGPL-3.0-only"
@@ -47,6 +90,8 @@ class Recipe(RecipeBase):
         "with_libjpeg": ["libjpeg", "libjpeg-turbo", False],
         "with_libpng": [True, False],
         "with_sqlite3": [True, False],
+        "with_mysql": [True, False],
+        "with_pq": [True, False],
         "with_odbc": [True, False],
         "with_zstd": [True, False],
         "with_brotli": [True, False],
@@ -69,8 +114,8 @@ class Recipe(RecipeBase):
         "multiconfiguration": [True, False],
         "disabled_features": [None, "ANY"],
     }
-    options.update({module: [True, False] for module in _submodules})
-    options.update({f"{status}_modules": [True, False] for status in _module_statuses})
+    options.update({module: [True, False] for module in SUBMODULES})
+    options.update({f"{status}_modules": [True, False] for status in MODULE_STATUSES})
 
     default_options = {
         "shared": False,
@@ -87,6 +132,7 @@ class Recipe(RecipeBase):
         "with_libjpeg": False,
         "with_libpng": True,
         "with_sqlite3": True,
+        "with_mysql": False,
         "with_pq": False,
         "with_odbc": False,
         "with_zstd": False,
@@ -112,7 +158,7 @@ class Recipe(RecipeBase):
     }
     # essential_modules, addon_modules, deprecated_modules, preview_modules:
     #    these are only provided for convenience, set to False by default
-    default_options.update({f"{status}_modules": False for status in _module_statuses})
+    default_options.update({f"{status}_modules": False for status in MODULE_STATUSES})
 
     _submodules_tree = None
 
@@ -134,9 +180,9 @@ class Recipe(RecipeBase):
                 continue
             status = str(config.get(section, "status"))
             if status not in ["obsolete", "ignore", "additionalLibrary"]:
-                if status not in self._module_statuses:
-                    raise ConanException(f"module {modulename} has status {status} which is not in self._module_statuses {self._module_statuses}")
-                assert modulename in self._submodules, f"module {modulename} not in self._submodules"
+                if status not in MODULE_STATUSES:
+                    raise ConanException(f"module {modulename} has status {status} which is not in MODULE_STATUSES {MODULE_STATUSES}")
+                assert modulename in SUBMODULES, f"module {modulename} not in SUBMODULES"
                 self._submodules_tree[modulename] = {"status": status,
                                 "path": str(config.get(section, "path")), "depends": []}
                 if config.has_option(section, "depends"):
@@ -161,7 +207,7 @@ class Recipe(RecipeBase):
         if self.settings.os != "Linux":
             self.options.qtwayland = False
 
-        for submodule in self._submodules:
+        for submodule in SUBMODULES:
             if submodule not in self._get_module_tree:
                 self.output.debug(f"Qt6: Removing {submodule} option as it is not in the module tree for this version, or is marked as obsolete or ignore")
                 self.options.rm_safe(submodule)
@@ -187,8 +233,8 @@ class Recipe(RecipeBase):
         # - any enabled via `xxx_modules` that does not have a 'False' value
         # Note that at this point, the submodule options dont have a value unless one is given externally
         # to the recipe (e.g. via the command line, a profile, or a consumer)
-        requested_modules = set([module for module in self._submodules if self.options.get_safe(module)])
-        for module in [m for m in self._submodules if m in self._get_module_tree]:
+        requested_modules = set([module for module in SUBMODULES if self.options.get_safe(module)])
+        for module in [m for m in SUBMODULES if m in self._get_module_tree]:
             status = self._get_module_tree[module]['status']
             is_disabled = self.options.get_safe(module) == False
             if self.options.get_safe(f"{status}_modules"):
@@ -222,7 +268,7 @@ class Recipe(RecipeBase):
         for module in list(enabled_modules):
             setattr(self.options, module, True)
 
-        for module in self._submodules:
+        for module in SUBMODULES:
             if module in self.options and not self.options.get_safe(module):
                 setattr(self.options, module, False)
 
@@ -236,7 +282,7 @@ class Recipe(RecipeBase):
             if self.options.get_safe("qtwebengine"):
                 self.options.with_fontconfig = True
 
-        for status in self._module_statuses:
+        for status in MODULE_STATUSES:
             # These are convenience only, should not affect package_id
             option_name = f"{status}_modules"
             self.output.debug(f"qt6 removing convenience option: {option_name},"
@@ -286,6 +332,10 @@ class Recipe(RecipeBase):
             self.requires("libpng")
         if self.options.with_sqlite3 and not self.options.multiconfiguration:
             self.requires("sqlite3")
+        if self.options.get_safe("with_mysql", False):
+            self.requires("libmysqlclient")
+        if self.options.with_pq:
+            self.requires("libpq")
         if self.options.with_odbc:
             if self.settings.os != "Windows":
                 self.requires("odbc")
@@ -1157,8 +1207,12 @@ class Recipe(RecipeBase):
                     jpeg_reqs.append("libjpeg::libjpeg")
                 _create_plugin("QJpegPlugin", "qjpeg", "imageformats", jpeg_reqs)
 
+        if self.options.with_mysql:
+            _create_plugin("QMYSQLDriverPlugin", "qsqlmysql", "sqldrivers", ["libmysqlclient::libmysqlclient"])
         if self.options.with_sqlite3:
             _create_plugin("QSQLiteDriverPlugin", "qsqlite", "sqldrivers", ["sqlite3::sqlite3"])
+        if self.options.with_pq:
+            _create_plugin("QPSQLDriverPlugin", "qsqlpsql", "sqldrivers", ["libpq::libpq"])
         if self.options.with_odbc:
             _create_plugin("QODBCDriverPlugin", "qsqlodbc", "sqldrivers", [])
             if self.settings.os != "Windows":

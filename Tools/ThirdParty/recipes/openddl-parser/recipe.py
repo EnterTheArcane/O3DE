@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "openddl-parser"
-    version = "0.5.1"
+    version = "0.5.2"
     license = "MIT"
 
     options = {
@@ -36,8 +36,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/kimkulling/openddl-parser/archive/v0.5.1.tar.gz",
-            sha256="511146377636f56a8a3bd6daace5ac2ed9672f4be28fc2c90597f4e88e069ffc",
+            url="https://github.com/kimkulling/openddl-parser/archive/v0.5.2.tar.gz",
+            sha256="8058caacdc989a010c2ad3ab62df99f9f3034b4981649c5fb832efa6fbf10c36",
             destination=self.source_folder,
             strip_root=True)
 

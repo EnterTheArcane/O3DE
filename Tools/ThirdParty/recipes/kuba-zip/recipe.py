@@ -2,14 +2,14 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
     name = "kuba-zip"
-    version = "0.3.2"
+    version = "0.3.8"
     license = "Unlicense"
 
     options = {
@@ -38,8 +38,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/kuba--/zip/archive/v0.3.2.tar.gz",
-            sha256="0c33740aec7a3913bca07df360420c19cac5e794e0f602f14f798cb2e6f710e5",
+            url="https://github.com/kuba--/zip/archive/v0.3.8.tar.gz",
+            sha256="944656c33aa776dc2c882991d1a6a86c8408fec8b8a19bc5305bf7eabdd4d908",
             destination=self.source_folder,
             strip_root=True)
 

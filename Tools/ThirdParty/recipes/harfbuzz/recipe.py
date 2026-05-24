@@ -14,7 +14,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "harfbuzz"
-    version = "12.3.0"
+    version = "14.2.0"
     license = "MIT"
 
     options = {
@@ -84,8 +84,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/harfbuzz/harfbuzz/releases/download/12.3.0/harfbuzz-12.3.0.tar.xz",
-            sha256="8660ebd3c27d9407fc8433b5d172bafba5f0317cb0bb4339f28e5370c93d42b7",
+            url="https://github.com/harfbuzz/harfbuzz/releases/download/14.2.0/harfbuzz-14.2.0.tar.xz",
+            sha256="94017020f96d025bb66ae91574e4cf334bcad23e8175a8a40565b3721bc2eaff",
             destination=self.source_folder,
             strip_root=True)
 
@@ -135,7 +135,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        replace_in_file(self, os.path.join(self.source_folder, "meson.build"), "subdir('util')", "")
+        replace_in_file(self, os.path.join(self.source_folder, "meson.build"), "subdir('util')", "", strict=False)
         meson = Meson(self)
         meson.configure()
         meson.build()
@@ -219,4 +219,7 @@ def fix_msvc_libname(conanfile, remove_lib_prefix=True):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]
-                rename(conanfile, filepath, os.path.join(os.path.dirname(filepath), f"{libname}.lib"))
+                dst = os.path.join(os.path.dirname(filepath), f"{libname}.lib")
+                if os.path.exists(dst):
+                    os.remove(dst)
+                rename(conanfile, filepath, dst)

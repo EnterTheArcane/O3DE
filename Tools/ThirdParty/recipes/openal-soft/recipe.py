@@ -12,7 +12,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "openal-soft"
-    version = "1.23.1"
+    version = "1.25.2"
     license = "LGPL-2.0-or-later"
 
     options = {
@@ -59,8 +59,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/kcat/openal-soft/releases/download/1.23.1/openal-soft-1.23.1.tar.bz2",
-            sha256="796f4b89134c4e57270b7f0d755f0fa3435b90da437b745160a49bd41c845b21",
+            url="https://github.com/kcat/openal-soft/archive/refs/tags/1.25.2.tar.gz",
+            sha256="fb27e5839aa11f0e5b9d33756965291fad5d6909ab928ea1f796f4a1a6877894",
             destination=self.source_folder,
             strip_root=True)
 

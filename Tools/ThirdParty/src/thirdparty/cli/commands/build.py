@@ -737,6 +737,7 @@ def _build_recipe(
             finally:
                 os.chdir(_orig_cwd_pkg)
         # Write the completion marker only after both build() and package() succeed.
+        build_dir.mkdir(parents=True, exist_ok=True)
         (build_dir / _COMPLETE_MARKER).write_text("")
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")

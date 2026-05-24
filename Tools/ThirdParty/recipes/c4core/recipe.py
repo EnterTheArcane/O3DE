@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "c4core"
-    version = "0.2.5"
+    version = "0.3.0"
     license = "MIT",
 
     options = {
@@ -33,7 +33,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.with_fast_float:
-            self.requires("fast_float", transitive_headers=True)
+            self.requires("fast-float", transitive_headers=True)
 
     def latest_version(self):
         repo = GithubRepository(self, "biojppm/c4core")
@@ -42,8 +42,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/biojppm/c4core/releases/download/v0.2.5/c4core-0.2.5-src.tgz",
-            sha256="758f23718cbdc9465f104249561c4028858caf3355a90616b54d1dd937a981b1",
+            url="https://github.com/biojppm/c4core/releases/download/v0.3.0/c4core-0.3.0-src.tgz",
+            sha256="47a5634c785f84a6bef07c04c3cc3c063ff61c5c7554b95c35298712e2f306fd",
             destination=self.source_folder,
             strip_root=True)
 
@@ -56,7 +56,6 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def build(self):
-        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()

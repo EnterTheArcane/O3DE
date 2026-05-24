@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "alembic"
-    version = "1.8.8"
+    version = "1.8.11"
     license = "BSD-3-Clause"
 
     options = {
@@ -43,8 +43,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/alembic/alembic/archive/refs/tags/1.8.8.tar.gz",
-            sha256="ba1f34544608ef7d3f68cafea946ec9cc84792ddf9cda3e8d5590821df71f6c6",
+            url="https://github.com/alembic/alembic/archive/refs/tags/1.8.11.tar.gz",
+            sha256="ab299bb4b1894a6675c73fa29940522b54c81a91b1d691ca3470d86b7345ffce",
             destination=self.source_folder,
             strip_root=True,
         )
@@ -70,7 +70,6 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def build(self):
-        apply_patches(self)
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
