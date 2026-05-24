@@ -20,8 +20,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "ffmpeg"
     version = "8.1.1"
-    # https://github.com/FFmpeg/FFmpeg/blob/master/LICENSE.md
-    license = ("LGPL-2.1-or-later", "GPL-2.0-or-later")
+    license = "LGPL-2.1-or-later", "GPL-2.0-or-later"
 
     options = {
         "shared": [True, False],
@@ -350,7 +349,7 @@ class Recipe(RecipeBase):
         if self.options.get_safe("with_vulkan"):
             self.requires("vulkan-loader")
         if self.options.get_safe("with_libsvtav1"):
-            self.requires("libsvtav1")
+            self.requires("svt-av1")
         if self.options.with_libaom:
             self.requires("libaom-av1")
         if self.options.get_safe("with_libdav1d"):

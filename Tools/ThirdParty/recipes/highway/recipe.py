@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "highway"
     version = "1.4.0"
-    license = ("Apache-2.0", "BSD-3-Clause")
+    license = "Apache-2.0", "BSD-3-Clause"
 
     options = {
         "shared": [True, False],

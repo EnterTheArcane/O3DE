@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "slang"
     version = "2026.9.1"
-    license = ("Apache-2.0", "MIT")
+    license = "Apache-2.0", "MIT"
 
     options = {
         "shared": [True, False],

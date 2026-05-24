@@ -11,7 +11,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "automake"
     version = "1.16.5"
-    license = ("GPL-2.0-or-later", "GPL-3.0-or-later")
+    license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")

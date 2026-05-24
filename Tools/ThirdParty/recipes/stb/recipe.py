@@ -8,7 +8,7 @@ from thirdparty.tools.scm import Version
 class Recipe(RecipeBase):
     name = "stb"
     version = "20240531"
-    license = ("Unlicense", "MIT")
+    license = "Unlicense", "MIT"
     
     options = {
         "with_deprecated": [True, False],

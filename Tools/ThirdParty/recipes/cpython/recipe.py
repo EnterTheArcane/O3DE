@@ -85,6 +85,7 @@ class Recipe(RecipeBase):
     name = "cpython"
     version = "3.12.7"
     license = "PSF-2.0"
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

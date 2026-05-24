@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "rapidyaml"
     version = "0.13.0"
-    license = "MIT",
+    license = "MIT"
 
     options = {
         "shared": [True, False],
