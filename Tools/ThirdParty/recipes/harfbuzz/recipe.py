@@ -20,8 +20,6 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_freetype": [True, False],
-        "with_icu": [True, False],
         "with_glib": [True, False],
         "with_gdi": [True, False],
         "with_uniscribe": [True, False],
@@ -32,8 +30,6 @@ class Recipe(RecipeBase):
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_freetype": True,
-        "with_icu": False,
         "with_glib": False,
         "with_gdi": True,
         "with_uniscribe": True,
@@ -59,10 +55,8 @@ class Recipe(RecipeBase):
             self.options["glib"].shared = True
 
     def requirements(self):
-        if self.options.with_freetype:
-            self.requires("freetype")
-        if self.options.with_icu:
-            self.requires("icu")
+        self.requires("freetype")
+        self.requires("icu")
         if self.options.with_glib:
             self.requires("glib")
 
@@ -119,8 +113,8 @@ class Recipe(RecipeBase):
         tc.project_options["auto_features"] = "disabled"
         tc.project_options.update({
             "glib": is_enabled(self.options.with_glib),
-            "icu": is_enabled(self.options.with_icu),
-            "freetype": is_enabled(self.options.with_freetype),
+            "icu": is_enabled(True),
+            "freetype": is_enabled(True),
             "gdi": is_enabled(self.options.get_safe("with_gdi")),
             "coretext": is_enabled(self.options.get_safe("with_coretext")),
             "directwrite": is_enabled(self.options.get_safe("with_directwrite")),
@@ -161,8 +155,7 @@ class Recipe(RecipeBase):
         self.cpp_info.components["core"].set_property("cmake_target_name", "harfbuzz::harfbuzz")
         self.cpp_info.components["core"].libs = ["harfbuzz"]
         self.cpp_info.components["core"].includedirs.append(os.path.join("include", "harfbuzz"))
-        if self.options.with_freetype:
-            self.cpp_info.components["core"].requires.append("freetype::freetype")
+        self.cpp_info.components["core"].requires.append("freetype::freetype")
         if self.options.with_glib:
             self.cpp_info.components["core"].requires.append("glib::glib")
         if self.settings.os in ["Linux", "FreeBSD"]:
@@ -187,11 +180,10 @@ class Recipe(RecipeBase):
             if libcxx:
                 self.cpp_info.components["core"].system_libs.append(libcxx)
 
-        if self.options.with_icu:
-            self.cpp_info.components["icu"].libs = ["harfbuzz-icu"]
-            self.cpp_info.components["icu"].set_property("cmake_target_name", "harfbuzz::icu")
-            self.cpp_info.components["icu"].set_property("pkg_config_name", "harfbuzz-icu")
-            self.cpp_info.components["icu"].requires = ["core", "icu::icu"]
+        self.cpp_info.components["icu"].libs = ["harfbuzz-icu"]
+        self.cpp_info.components["icu"].set_property("cmake_target_name", "harfbuzz::icu")
+        self.cpp_info.components["icu"].set_property("pkg_config_name", "harfbuzz-icu")
+        self.cpp_info.components["icu"].requires = ["core", "icu::icu"]
 
         if self.options.with_subset:
             self.cpp_info.components["subset"].libs = ["harfbuzz-subset"]

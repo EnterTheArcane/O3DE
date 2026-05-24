@@ -52,7 +52,6 @@ class Recipe(RecipeBase):
         tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.get_safe("fPIC", True)
         tc.variables["ENABLE_SDL"] = False
         tc.variables["DISABLE_SSE"] = not self.options.get_safe("sse", False)
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5"  # CMake 4 support
         tc.generate()
 
     def _patch_sources(self):

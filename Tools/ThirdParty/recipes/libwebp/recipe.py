@@ -16,16 +16,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "with_simd": [True, False],
-        "near_lossless": [True, False],
-        "swap_16bit_csp": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "with_simd": True,
-        "near_lossless": True,
-        "swap_16bit_csp": False,
     }
 
     def config_options(self):
@@ -56,11 +50,9 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        # should be an option but it doesn't work yet
-        tc.variables["WEBP_ENABLE_SIMD"] = self.options.with_simd
-        tc.variables["WEBP_NEAR_LOSSLESS"] = self.options.near_lossless
-        tc.variables["WEBP_ENABLE_SWAP_16BIT_CSP"] = self.options.swap_16bit_csp
-        # avoid finding system libs
+        tc.variables["WEBP_ENABLE_SIMD"] = True
+        tc.variables["WEBP_NEAR_LOSSLESS"] = True
+        tc.variables["WEBP_ENABLE_SWAP_16BIT_CSP"] = False
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_GIF"] = True
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_PNG"] = True
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_TIFF"] = True

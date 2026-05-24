@@ -37,8 +37,6 @@ class Recipe(RecipeBase):
     version = "r29"
     license = "Apache-2.0"
 
-    exports_sources = "cmake-wrapper cmake-wrapper.cmd"
-
     def latest_version(self):
         repo = GithubRepository(self, "android/ndk")
         return Version(repo.latest_release)

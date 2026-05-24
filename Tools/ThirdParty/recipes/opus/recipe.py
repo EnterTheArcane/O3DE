@@ -16,14 +16,10 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "fixed_point": [True, False],
-        "stack_protector": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "fixed_point": False,
-        "stack_protector": True,
     }
 
     def build_requirements(self):
@@ -45,8 +41,8 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.cache_variables["OPUS_BUILD_SHARED_LIBRARY"] = self.options.shared
-        tc.cache_variables["OPUS_FIXED_POINT"] = self.options.fixed_point
-        tc.cache_variables["OPUS_STACK_PROTECTOR"] = self.options.stack_protector
+        tc.cache_variables["OPUS_FIXED_POINT"] = False
+        tc.cache_variables["OPUS_STACK_PROTECTOR"] = True
         if is_msvc(self):
             tc.cache_variables["OPUS_STATIC_RUNTIME"] = is_msvc_static_runtime(self)
         tc.generate()

@@ -11,18 +11,16 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "spirv-tools"
-    version = "1.4.350.0"
+    version = "1.4.352.0"
     license = "Apache-2.0"
 
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "build_executables": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "build_executables": True,
     }
 
     def config_options(self):
@@ -46,8 +44,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
-            sha256="446b288fe76d3f31bbf9a405d62b97020ac0f135edb0ed5dbdf1136c488138f5",
+            url="https://github.com/KhronosGroup/SPIRV-Tools/archive/18b08af19b08515d5a1749adbdb05bc4369a57ed.tar.gz",
+            sha256="3445457d807912b879f526eade9e191235e1bd272ff8e70e7fd8b7e5435e2397",
             destination=self.source_folder,
             strip_root=True)
         apply_patches(self)
@@ -86,7 +84,7 @@ class Recipe(RecipeBase):
         tc.variables["SPIRV_SKIP_TESTS"] = True
         tc.variables["SPIRV_CHECK_CONTEXT"] = False
         tc.variables["SPIRV_BUILD_FUZZER"] = False
-        tc.variables["SPIRV_SKIP_EXECUTABLES"] = not self.options.build_executables
+        tc.variables["SPIRV_SKIP_EXECUTABLES"] = False
         # For iOS/tvOS/watchOS
         tc.variables["CMAKE_MACOSX_BUNDLE"] = False
 

@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "spirv-headers"
-    version = "1.4.350.0"
+    version = "1.4.352.0"
     license = "MIT-KhronosGroup"
 
     def latest_version(self):
@@ -19,8 +19,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
-            sha256="9905d9341f20388adb852c77dd982f2c4d539fd68e6c1f1bcebf034715f2d1d5",
+            url="https://github.com/KhronosGroup/SPIRV-Headers/archive/fe44b2002bf7871e2e92fc001bc9f6e09f92194f.tar.gz",
+            sha256="78a19a22810130602110761b7eaa47e49b778ea61bc7b05377c9794f54d2a426",
             destination=self.source_folder,
             strip_root=True)
 

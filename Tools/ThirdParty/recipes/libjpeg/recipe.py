@@ -26,7 +26,6 @@ class Recipe(RecipeBase):
     @property
     def _is_cl_like(self):
         return self.settings.compiler.get_safe("runtime") is not None
-
  
     def config_options(self):
         if self.settings.os == "Windows":

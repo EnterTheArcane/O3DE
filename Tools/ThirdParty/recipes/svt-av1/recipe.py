@@ -95,7 +95,6 @@ class Recipe(RecipeBase):
             tc.cache_variables["ENABLE_SVE"] = self.options.with_sve
         if "with_sve2" in self.options:
             tc.cache_variables["ENABLE_SVE2"] = self.options.with_sve2
-        tc.cache_variables["CMAKE_POLICY_VERSION_MINIMUM"] = "3.5" # CMake 4 support
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

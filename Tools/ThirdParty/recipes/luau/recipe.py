@@ -12,17 +12,6 @@ class Recipe(RecipeBase):
     version = "0.722"
     license = "MIT"
 
-    options = {
-        "with_cli": [True, False],
-        "with_web": [True, False],
-        "native_code_gen": [True, False],
-    }
-    default_options = {
-        "with_cli": False,
-        "with_web": False,
-        "native_code_gen": False,
-    }
-
     def latest_version(self):
         repo = GithubRepository(self, "luau-lang/luau")
         return Version(repo.latest_release)
@@ -37,12 +26,12 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["LUAU_BUILD_CLI"] = self.options.with_cli
+        tc.variables["LUAU_BUILD_CLI"] = False
         tc.variables["LUAU_BUILD_TESTS"] = False
-        tc.variables["LUAU_BUILD_WEB"] = self.options.with_web
+        tc.variables["LUAU_BUILD_WEB"] = False
         tc.variables["LUAU_WERROR"] = False
         tc.variables["LUAU_STATIC_CRT"] = False
-        tc.variables["LUAU_NATIVE"] = self.options.native_code_gen
+        tc.variables["LUAU_NATIVE"] = True
         tc.variables["LUAU_SRC_DIR"] = self.source_folder.replace("\\", "/")
         tc.generate()
 
