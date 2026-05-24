@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "hdf5"
-    version = "1.14.6"
+    version = "2.1.1"
     license = "BSD-3-Clause"
 
     options = {
@@ -49,8 +49,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/HDFGroup/hdf5/archive/refs/tags/hdf5_1.14.6.tar.gz",
-            sha256="09ee1c671a87401a5201c06106650f62badeea5a3b3941e9b1e2e1e08317357f",
+            url="https://github.com/HDFGroup/hdf5/archive/refs/tags/2.1.1.tar.gz",
+            sha256="5849ed7a81be6bc84ff8aa65dd966430adf0daf71e6bcb734b7a37474f92c859",
             destination=self.source_folder,
             strip_root=True)
 
@@ -59,37 +59,32 @@ class Recipe(RecipeBase):
         deps.generate()
 
         tc = CMakeToolchain(self)
-        tc.variables["HDF5_EXTERNALLY_CONFIGURED"] = True
-        tc.variables["HDF5_EXTERNAL_LIB_PREFIX"] = ""
-        tc.variables["HDF5_USE_FOLDERS"] = False
-        tc.variables["HDF5_NO_PACKAGES"] = True
-        tc.variables["ONLY_SHARED_LIBS"] = self.options.shared
-        tc.variables["BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["BUILD_STATIC_EXECS"] = False
-        tc.variables["HDF5_ENABLE_COVERAGE"] = False
-        tc.variables["HDF5_ENABLE_USING_MEMCHECKER"] = False
-        tc.variables["HDF5_MEMORY_ALLOC_SANITY_CHECK"] = False
-        tc.variables["HDF5_ENABLE_PREADWRITE"] = True
-        tc.variables["HDF5_ENABLE_DEPRECATED_SYMBOLS"] = True
-        tc.variables["HDF5_BUILD_GENERATORS"] = False
-        tc.variables["HDF5_ENABLE_TRACE"] = False
-        tc.variables["HDF5_ENABLE_PARALLEL"] = False
-        tc.variables["HDF5_ENABLE_Z_LIB_SUPPORT"] = True
-        tc.variables["HDF5_ENABLE_SZIP_SUPPORT"] = False
-        tc.variables["HDF5_ENABLE_SZIP_ENCODING"] = False
-        tc.variables["HDF5_USE_ZLIB_NG"] = False
-        tc.variables["HDF5_PACKAGE_EXTLIBS"] = False
-        tc.variables["HDF5_ENABLE_THREADSAFE"] = False
-        tc.variables["HDF5_ENABLE_DEBUG_APIS"] = False
+        tc.variables["BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["BUILD_TESTING"] = False
-        tc.variables["HDF5_INSTALL_INCLUDE_DIR"] = "include/hdf5"
-        tc.variables["HDF5_BUILD_TOOLS"] = False
-        tc.variables["HDF5_BUILD_EXAMPLES"] = False
-        tc.variables["HDF5_BUILD_HL_LIB"] = self.options.hl
-        tc.variables["HDF5_BUILD_FORTRAN"] = False
+        tc.variables["HDF5_ALLOW_UNSUPPORTED"] = False
         tc.variables["HDF5_BUILD_CPP_LIB"] = self.options.enable_cxx
+        tc.variables["HDF5_BUILD_EXAMPLES"] = False
+        tc.variables["HDF5_BUILD_FORTRAN"] = False
+        tc.variables["HDF5_BUILD_HL_LIB"] = self.options.hl
         tc.variables["HDF5_BUILD_JAVA"] = False
-        tc.variables["ALLOW_UNSUPPORTED"] = False
+        tc.variables["HDF5_BUILD_TOOLS"] = False
+        tc.variables["HDF5_ENABLE_COVERAGE"] = False
+        tc.variables["HDF5_ENABLE_DEPRECATED_SYMBOLS"] = True
+        tc.variables["HDF5_ENABLE_PARALLEL"] = False
+        tc.variables["HDF5_ENABLE_PREADWRITE"] = True
+        tc.variables["HDF5_ENABLE_SZIP_SUPPORT"] = False
+        tc.variables["HDF5_ENABLE_THREADSAFE"] = False
+        tc.variables["HDF5_ENABLE_TRACE"] = False
+        tc.variables["HDF5_ENABLE_USING_MEMCHECKER"] = False
+        tc.variables["HDF5_ENABLE_ZLIB_SUPPORT"] = True
+        tc.variables["HDF5_EXTERNAL_LIB_PREFIX"] = ""
+        tc.variables["HDF5_EXTERNALLY_CONFIGURED"] = True
+        tc.variables["HDF5_INSTALL_INCLUDE_DIR"] = "include/hdf5"
+        tc.variables["HDF5_NO_PACKAGES"] = True
+        tc.variables["HDF5_ONLY_SHARED_LIBS"] = self.options.shared
+        tc.variables["HDF5_PACKAGE_EXTLIBS"] = False
+        tc.variables["HDF5_USE_FOLDERS"] = False
         tc.generate()
 
     def build(self):
