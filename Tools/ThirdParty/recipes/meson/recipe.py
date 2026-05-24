@@ -16,10 +16,11 @@ class Recipe(RecipeBase):
         return Version(repo.latest_release)
 
     def build(self):
-        download(self,
-                 url="https://github.com/mesonbuild/meson/releases/download/1.11.1/meson.pyz",
-                 sha256="05f25d74eab0d1a9b26f1d2fe482677b9c2b9543f974016c8102a5f96b2b73f5",
-                 filename=os.path.join(self.build_folder, "meson.pyz"))
+        download(
+            self,
+            url="https://github.com/mesonbuild/meson/releases/download/1.11.1/meson.pyz",
+            sha256="05f25d74eab0d1a9b26f1d2fe482677b9c2b9543f974016c8102a5f96b2b73f5",
+            filename=os.path.join(self.build_folder, "meson.pyz"))
 
     def package(self):
         dst = os.path.join(self.package_folder, "bin")

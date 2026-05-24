@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "double-conversion"
-    version = "3.3.0"
+    version = "3.4.0"
     license = "BSD-3-Clause"
 
     options = {
@@ -36,8 +36,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/google/double-conversion/archive/refs/tags/v3.3.0.tar.gz",
-            sha256="04ec44461850abbf33824da84978043b22554896b552c5fd11a9c5ae4b4d296e",
+            url="https://github.com/google/double-conversion/archive/refs/tags/v3.4.0.tar.gz",
+            sha256="42fd4d980ea86426e457b24bdfa835a6f5ad9517ddb01cdb42b99ab9c8dd5dc9",
             destination=self.source_folder,
             strip_root=True)
 

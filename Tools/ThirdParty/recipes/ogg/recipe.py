@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "ogg"
-    version = "1.3.5"
+    version = "1.3.6"
     license = "BSD-2-Clause"
 
     options = {
@@ -38,8 +38,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/xiph/ogg/archive/refs/tags/v1.3.5.tar.gz",
-            sha256="f6f1b04cfa4e98b70ffe775d5e302d9c6b98541f05159af6de2d6617817ed7d6",
+            url="https://github.com/xiph/ogg/archive/refs/tags/v1.3.6.tar.gz",
+            sha256="95b643da661155d79db9de2fca55daed3a8d491039829def246aacb3d9201c81",
             destination=self.source_folder,
             strip_root=True)
 

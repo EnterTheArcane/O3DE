@@ -3,14 +3,14 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
 from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
     name = "libde265"
-    version = "1.0.15"
+    version = "1.0.19"
     license = "LGPL-3.0-or-later"
 
     options = {
@@ -41,8 +41,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/strukturag/libde265/releases/download/v1.0.15/libde265-1.0.15.tar.gz",
-            sha256="00251986c29d34d3af7117ed05874950c875dd9292d016be29d3b3762666511d",
+            url="https://github.com/strukturag/libde265/releases/download/v1.0.19/libde265-1.0.19.tar.gz",
+            sha256="bb19a0b485d2643e0eeb7e91f3ab32d1ad617e7c487dbedc91214ca3dbd8d7eb",
             destination=self.source_folder,
             strip_root=True)
         self._patch_sources()

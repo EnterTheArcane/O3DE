@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "pcre2"
-    version = "10.44"
+    version = "10.47"
     license = "BSD-3-Clause"
 
     options = {
@@ -67,8 +67,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.44/pcre2-10.44.tar.bz2",
-            sha256="d34f02e113cf7193a1ebf2770d3ac527088d485d4e047ed10e5d217c6ef5de96",
+            url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.bz2",
+            sha256="47fe8c99461250d42f89e6e8fdaeba9da057855d06eb7fc08d9ca03fd08d7bc7",
             destination=self.source_folder,
             strip_root=True)
 
@@ -91,6 +91,9 @@ class Recipe(RecipeBase):
         tc.variables["PCRE2_SUPPORT_JIT"] = self.options.support_jit
         tc.variables["PCRE2_LINK_SIZE"] = self.options.link_size
         tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.get_safe("grep_support_callout_fork", False)
+        # 10.47 accidentally dropped the list(APPEND CMAKE_MODULE_PATH cmake/) call;
+        # inject it via the toolchain so cmake/ modules (PCRE2CheckVscript etc.) can be found
+        tc.variables["CMAKE_MODULE_PATH"] = os.path.join(self.source_folder, "cmake").replace("\\", "/")
         tc.generate()
 
         cd = CMakeDeps(self)
@@ -99,13 +102,11 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         apply_patches(self)
         cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
-        # Do not add ${PROJECT_SOURCE_DIR}/cmake because it contains a custom
-        # FindPackageHandleStandardArgs.cmake which can break conan generators
-        replace_in_file(self, cmakelists, "LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)", "")
         # Avoid CMP0006 error (macos bundle)
-        replace_in_file(self, cmakelists,
-                              "RUNTIME DESTINATION bin",
-                              "RUNTIME DESTINATION bin BUNDLE DESTINATION bin")
+        if self.settings.os == "Macos":
+            replace_in_file(self, cmakelists,
+                                  "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}",
+                                  "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}")
         # pcre2-config does not correctly include '-static' in static library names
         if is_msvc(self):
             postfix = "-static" if not self.options.shared else ""

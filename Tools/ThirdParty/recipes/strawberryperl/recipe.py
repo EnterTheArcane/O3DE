@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "strawberryperl"
-    version = "5.40.2.1"
+    version = "5.42.2.1"
     license = ("Artistic-1.0", "GPL-1.0")
     def compatibility(self):
         if self.settings.arch == "armv8":
@@ -27,8 +27,8 @@ class Recipe(RecipeBase):
     def build(self):
         get(
             self,
-            url="https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54021_64bit_UCRT/strawberry-perl-5.40.2.1-64bit-portable.zip",
-            sha256="7707700d5ad027773b775134fe48cd9610abf221433fcfb68c8eb0ec9c6fde8c",
+            url="https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54221_64bit/strawberry-perl-5.42.2.1-64bit-portable.zip",
+            sha256="32d83be90cf04b807cfb9477482bc36302cdee6f5b04cf57e81adecbd8f07898",
             destination=self.build_folder
         )
 

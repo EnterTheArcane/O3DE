@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file
+from thirdparty.tools.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file, save
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
@@ -60,10 +60,10 @@ class Recipe(RecipeBase):
         if not self.options.get_safe("shared", False):
             replace_in_file(self, os.path.join(self.source_folder, "meson.build"),
                                   "'-DLIBPKGCONF_EXPORT'",
-                                  "'-DPKGCONFIG_IS_STATIC'")
+                                  "'-DPKGCONFIG_IS_STATIC'", strict=False)
             replace_in_file(self, os.path.join(self.source_folder, "meson.build"),
             "project('pkgconf', 'c',",
-            "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],")
+            "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -91,6 +91,7 @@ class Recipe(RecipeBase):
         if is_msvc(self):
             rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
             if self.options.enable_lib and not self.options.shared:
+                rm(self, "pkgconf.lib", os.path.join(self.package_folder, "lib"))
                 rename(self, os.path.join(self.package_folder, "lib", "libpkgconf.a"),
                           os.path.join(self.package_folder, "lib", "pkgconf.lib"),)
 
@@ -99,8 +100,8 @@ class Recipe(RecipeBase):
             rmdir(self, os.path.join(self.package_folder, "include"))
 
         rmdir(self, os.path.join(self.package_folder, "share", "man"))
-        rename(self, os.path.join(self.package_folder, "share", "aclocal"),
-                  os.path.join(self.package_folder, "bin", "aclocal"))
+        copy(self, "*", src=os.path.join(self.package_folder, "share", "aclocal"),
+             dst=os.path.join(self.package_folder, "bin", "aclocal"))
         rmdir(self, os.path.join(self.package_folder, "share"))
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
 

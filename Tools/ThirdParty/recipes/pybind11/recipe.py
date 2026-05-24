@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "pybind11"
-    version = "3.0.1"
+    version = "3.0.4"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -19,8 +19,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/pybind/pybind11/archive/v3.0.1.tar.gz",
-            sha256="741633da746b7c738bb71f1854f957b9da660bcd2dce68d71949037f0969d0ca",
+            url="https://github.com/pybind/pybind11/archive/v3.0.4.tar.gz",
+            sha256="74b6a2c2b4573a400cafb6ecbf60c98df300cd3d0041296b913d02b2cbbb2676",
             destination=self.source_folder,
             strip_root=True)
 

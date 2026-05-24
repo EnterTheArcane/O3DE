@@ -14,7 +14,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "libffi"
-    version = "3.4.8"
+    version = "3.5.2"
     license = "MIT"
 
     options = {
@@ -51,8 +51,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/libffi/libffi/releases/download/v3.4.8/libffi-3.4.8.tar.gz",
-            sha256="bc9842a18898bfacb0ed1252c4febcc7e78fa139fd27fdc7a3e30d9d9356119b",
+            url="https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz",
+            sha256="f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc",
             destination=self.source_folder,
             strip_root=True)
 
@@ -121,7 +121,6 @@ class Recipe(RecipeBase):
         tc.generate(env=env)
 
     def build(self):
-        apply_patches(self)
 
         autotools = Autotools(self)
         autotools.configure()

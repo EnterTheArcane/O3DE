@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "msdfgen"
-    version = "1.12"
+    version = "1.13"
     license = "MIT"
 
     options = {
@@ -48,8 +48,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.12.tar.gz",
-            sha256="f058117496097217d12e4ea86adbff8467adaf6f12af793925d243b86b0c4f57",
+            url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.13.tar.gz",
+            sha256="93cd1ad8918c1a78c5c96e82d4f4c77f0eb86c2e7e8579a0967e54196c4b7167",
             destination=self.source_folder,
             strip_root=True)
 

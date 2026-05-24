@@ -93,30 +93,32 @@ class Recipe(RecipeBase):
         # Do not accidentally enable dependencies we have disabled
         cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
         if_harfbuzz_found = "if (HarfBuzz_FOUND)"
-        replace_in_file(self, cmakelists, "find_package(HarfBuzz ${HARFBUZZ_MIN_VERSION})", "")
-        replace_in_file(self, cmakelists, if_harfbuzz_found, "if(0)")
+        replace_in_file(self, cmakelists, "find_package(HarfBuzz ${HARFBUZZ_MIN_VERSION})", "", strict=False)
+        replace_in_file(self, cmakelists, if_harfbuzz_found, "if(0)", strict=False)
         if not self.options.with_png:
-            replace_in_file(self, cmakelists, "find_package(PNG)", "")
-            replace_in_file(self, cmakelists, "if (PNG_FOUND)", "if(0)")
+            replace_in_file(self, cmakelists, "find_package(PNG)", "", strict=False)
+            replace_in_file(self, cmakelists, "if (PNG_FOUND)", "if(0)", strict=False)
         if not self.options.with_zlib:
-            replace_in_file(self, cmakelists, "find_package(ZLIB)", "")
-            replace_in_file(self, cmakelists, "if (ZLIB_FOUND)", "if(0)")
+            replace_in_file(self, cmakelists, "find_package(ZLIB)", "", strict=False)
+            replace_in_file(self, cmakelists, "if (ZLIB_FOUND)", "if(0)", strict=False)
         if not self.options.with_bzip2:
-            replace_in_file(self, cmakelists, "find_package(BZip2)", "")
-            replace_in_file(self, cmakelists, "if (BZIP2_FOUND)", "if(0)")
+            replace_in_file(self, cmakelists, "find_package(BZip2)", "", strict=False)
+            replace_in_file(self, cmakelists, "if (BZIP2_FOUND)", "if(0)", strict=False)
         # the custom FindBrotliDec of upstream is too fragile
         replace_in_file(self, cmakelists,
                               "find_package(BrotliDec REQUIRED)",
                               "find_package(Brotli REQUIRED)\n"
                               "set(BROTLIDEC_FOUND 1)\n"
-                              "set(BROTLIDEC_LIBRARIES \"brotli::brotli\")")
+                              "set(BROTLIDEC_LIBRARIES \"brotli::brotli\")",
+                              strict=False)
         if not self.options.with_brotli:
-            replace_in_file(self, cmakelists, "find_package(BrotliDec)", "")
-            replace_in_file(self, cmakelists, "if (BROTLIDEC_FOUND)", "if(0)")
+            replace_in_file(self, cmakelists, "find_package(BrotliDec)", "", strict=False)
+            replace_in_file(self, cmakelists, "if (BROTLIDEC_FOUND)", "if(0)", strict=False)
 
         config_h = os.path.join(self.source_folder, "include", "freetype", "config", "ftoption.h")
         if self.options.subpixel:
-            replace_in_file(self, config_h, "/* #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING */", "#define FT_CONFIG_OPTION_SUBPIXEL_RENDERING")
+            replace_in_file(self, config_h, "/* #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING */", "#define FT_CONFIG_OPTION_SUBPIXEL_RENDERING", strict=False)
+
 
     def build(self):
         self._patch_sources()
@@ -129,7 +131,7 @@ class Recipe(RecipeBase):
         if not os.path.isdir(os.path.join(self.package_folder, "bin")):
             os.makedirs(os.path.join(self.package_folder, "bin"))
         freetype_config = os.path.join(self.package_folder, "bin", "freetype-config")
-        rename(self, freetype_config_in, freetype_config)
+        save(self, freetype_config, load(self, freetype_config_in))
         libs = "-lfreetyped" if self.settings.build_type == "Debug" else "-lfreetype"
         staticlibs = f"-lm {libs}" if self.settings.os == "Linux" else libs
         replace_in_file(self, freetype_config, r"%PKG_CONFIG%", r"/bin/false")  # never use pkg-config
