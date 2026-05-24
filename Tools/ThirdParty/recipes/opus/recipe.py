@@ -10,7 +10,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "opus"
-    version = "1.5.2"
+    version = "1.6.1"
     license = "BSD-3-Clause"
 
     options = {
@@ -36,8 +36,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz",
-            sha256="65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1",
+            url="https://github.com/xiph/opus/archive/refs/tags/v1.6.1.tar.gz",
+            sha256="bf0b97ec7a65890b8db90ef94c4d6c18de12584c3085031953a10986f5917745",
             destination=self.source_folder,
             strip_root=True)
 

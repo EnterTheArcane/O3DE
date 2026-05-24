@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "vulkan-utility-libraries"
-    version = "1.4.350.0"
+    version = "1.4.352"
     license = "Apache-2.0"
 
     options = {
@@ -36,8 +36,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
-            sha256="19a215e9469df0749d7c1b389fc667a3f7e160f0b6da71000fadc30140494563",
+            url="https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/v1.4.352.tar.gz",
+            sha256="a8dd82f0f52714a2a1c9deae1e3b21553a7e312aae50445ee9ab7f2dfc1b90c6",
             destination=self.source_folder,
             strip_root=True)
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)",
