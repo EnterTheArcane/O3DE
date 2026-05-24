@@ -30,7 +30,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url="https://ftpmirror.gnu.org/gnu/m4/m4-1.4.20.tar.xz",
-            sha256="af6568a26a7bde42598c93cf40aa9ac88f7e2afdaed7df3d37a0ff9d8d27b474",
+            sha256="e236ea3a1ccf5f6c270b1c4bb60726f371fa49459a8eaaebc90b216b328daf2b",
             destination=self.source_folder,
             strip_root=True)
 
