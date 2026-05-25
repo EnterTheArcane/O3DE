@@ -8,7 +8,7 @@ from github import Auth, Github
 from github.GithubException import GithubException
 from github.Repository import Repository
 
-from thirdparty._conan.internal.model.version import Version
+from conan.internal.model.version import Version
 
 
 def _tag_version(tag: str) -> Version | None:
