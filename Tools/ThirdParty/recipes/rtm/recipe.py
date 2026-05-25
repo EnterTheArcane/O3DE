@@ -8,7 +8,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "rtm"
-    version = "2.3.0"
+    version = "2.3.1"
     license = "MIT"
 
     def package_id(self):
@@ -21,8 +21,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/nfrechette/rtm/archive/v2.3.0.tar.gz",
-            sha256="2b5f2c3761bb52ae89802a574e9dc9949aec3b183f7e100b9b66a65adcc6f5ab",
+            url="https://github.com/nfrechette/rtm/archive/v2.3.1.tar.gz",
+            sha256="a16fc698feca580533fa12c92fe7d1df4f341f807df7ec314274659fdfec11fb",
             destination=self.source_folder,
             strip_root=True)
 

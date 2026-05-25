@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.env import Environment
+from thirdparty.tools.env import Environment, VirtualBuildEnv
 from thirdparty.tools.files import copy, get
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -12,15 +12,6 @@ class Recipe(RecipeBase):
     name = "rive-runtime"
     version = "0.1.99"
     license = "MIT"
-
-    options = {
-        "with_rive_text": [True, False],
-        "with_rive_layout": [True, False],
-    }
-    default_options = {
-        "with_rive_text": True,
-        "with_rive_layout": True,
-    }
 
     def build_requirements(self):
         self.tool_requires("premake5")
@@ -77,10 +68,11 @@ class Recipe(RecipeBase):
         )
 
     def generate(self):
-        tc = PremakeToolchain(self)
-        tc.generate()
         deps = PremakeDeps(self)
         deps.generate()
+        tc = PremakeToolchain(self)
+        tc.generate()
+        VirtualBuildEnv(self).generate()
 
     def build(self):
         config = "release" if str(self.settings.build_type) == "Release" else "debug"
@@ -90,13 +82,11 @@ class Recipe(RecipeBase):
         premake.arguments["config"] = config
         # Put generated build files directly in build_folder so premake.build() can find them
         premake.arguments["out"] = "."
-        if self.options.with_rive_text:
-            premake.arguments["with_rive_text"] = ""
-        if self.options.with_rive_layout:
-            premake.arguments["with_rive_layout"] = ""
+        premake.arguments["with_rive_text"] = ""
+        premake.arguments["with_rive_layout"] = ""
 
         # rive_build_config.lua is found via PREMAKE_PATH; dependency source via DEPENDENCIES
-        env = Environment(self)
+        env = Environment()
         env.define("PREMAKE_PATH", os.path.join(self.source_folder, "build").replace("\\", "/"))
         env.define("DEPENDENCIES", os.path.join(self.source_folder, "dependencies").replace("\\", "/"))
         with env.vars(self).apply():

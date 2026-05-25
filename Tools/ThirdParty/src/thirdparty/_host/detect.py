@@ -43,15 +43,14 @@ def _detect_msvc_version():
 
 
 def _detect_apple_clang_version():
-    try:
-        out = subprocess.check_output(
-            ["clang", "--version"], text=True, stderr=subprocess.STDOUT,
-        )
-        m = re.search(r"Apple clang version (\d+)", out, re.IGNORECASE)
-        if m:
-            return m.group(1)
-    except Exception:
-        pass
+    for cmd in (["xcrun", "clang", "--version"], ["clang", "--version"]):
+        try:
+            out = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
+            m = re.search(r"Apple clang version (\d+)", out, re.IGNORECASE)
+            if m:
+                return m.group(1)
+        except Exception:
+            continue
     return None
 
 
