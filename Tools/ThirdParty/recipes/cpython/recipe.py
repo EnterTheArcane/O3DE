@@ -127,7 +127,12 @@ class Recipe(RecipeBase):
             self.requires("xz_utils")
 
     def source(self):
-        get(self, url="https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz", sha256="73ac8fe780227bf371add8373c3079f42a0dc62deff8d612cd15a618082ab623", destination=self.source_folder, strip_root=True)
+        get(
+            self,
+            url="https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz",
+            sha256="73ac8fe780227bf371add8373c3079f42a0dc62deff8d612cd15a618082ab623",
+            destination=self.source_folder,
+            strip_root=True)
 
     def _generate_autotools(self):
         tc = AutotoolsToolchain(self, prefix=self.package_folder)
