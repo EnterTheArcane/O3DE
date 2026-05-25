@@ -42,9 +42,9 @@ class Recipe(RecipeBase):
             self.options.rm_safe("with_libiconv")
 
     def validate(self):
-        from thirdparty._conan.errors import ConanInvalidConfiguration
+        from thirdparty.errors import InvalidConfiguration
         if self.settings.os == "Windows":
-            raise ConanInvalidConfiguration(f"{self.name} is not supported on Windows")
+            raise InvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def requirements(self):
         if self.options.get_safe("with_libiconv"):

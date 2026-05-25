@@ -17,6 +17,7 @@ from conan.internal.model.conan_file import ConanFile
 from conan.internal.model.conanfile_interface import ConanFileInterface
 from conan.internal.model.dependencies import ConanFileDependencies
 from conan.internal.model.requires import Requirement
+from conan.internal.rest.conan_requester import ConanRequester
 from conan.tools.env import Environment
 from conan.tools.env.environment import generate_aggregated_env
 from thirdparty._host.detect import detect_settings, make_conf
@@ -32,7 +33,7 @@ class _ConanHelpers:
     def __init__(self, conf):
         self.cmd_wrapper = _PassthroughWrapper()
         self.global_conf = conf
-        self.requester = None
+        self.requester = ConanRequester(conf)
         self.cache = None
         self.home_folder = None
         self.conan_api = None
