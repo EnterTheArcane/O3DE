@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "materialx"
-    version = "1.39.4"
+    version = "1.39.5"
     license = "Apache-2.0"
 
     options = {
@@ -43,8 +43,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/MaterialX/archive/refs/tags/v1.39.4.tar.gz",
-            sha256="ce9c1a3b84a060d6280d355a72bf42b53837ee7bcc5a566cab1e927c64078fd9",
+            url="https://github.com/AcademySoftwareFoundation/MaterialX/archive/refs/tags/v1.39.5.tar.gz",
+            sha256="c0d739b70a36f6f72888a0e8e66db5c83ae87c40737cc9b51c108166804f3a3b",
             destination=self.source_folder,
             strip_root=True)
         replace_in_file(
