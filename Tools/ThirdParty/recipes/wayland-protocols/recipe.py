@@ -1,6 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
+from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir, save
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.scm import Version
@@ -38,6 +39,8 @@ class Recipe(RecipeBase):
         tc.project_options["datadir"] = "res"
         tc.project_options["tests"] = "false"
         tc.generate()
+        env = VirtualBuildEnv(self)
+        env.generate()
 
     def build(self):
         meson = Meson(self)
