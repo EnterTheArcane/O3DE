@@ -4,6 +4,8 @@ import re
 
 import patch_ng
 
+from thirdparty.internal.model.recipe import RecipeBase
+
 
 class _PatchLogHandler(logging.Handler):
     def __init__(self, output, name):
@@ -33,7 +35,7 @@ def _patch_applies_to_version(filename: str, version: str) -> bool:
     return True
 
 
-def apply_patches(conanfile):
+def apply_patches(conanfile: RecipeBase):
     patches_dir = os.path.join(conanfile.recipe_folder, "patches")
     if not os.path.isdir(patches_dir):
         return

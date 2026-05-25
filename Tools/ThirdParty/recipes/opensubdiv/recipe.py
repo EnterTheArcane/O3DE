@@ -32,8 +32,8 @@ class Recipe(RecipeBase):
         "with_cuda": False,
         "with_clew": False,
         "with_opencl": False,
-        "with_dx": True,
-        "with_metal": True
+        "with_dx": False,
+        "with_metal": True,
     }
 
     @property
@@ -117,7 +117,7 @@ class Recipe(RecipeBase):
             path = os.path.join(self.source_folder, "opensubdiv", "CMakeLists.txt")
             replace_in_file(self, path, "$<TARGET_OBJECTS:osd_gpu_obj>", "")
         # No warnings as errors
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "/WX", "")
+        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "/WX", "", strict=False)
 
     def build(self):
         self._patch_sources()
