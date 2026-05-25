@@ -1,9 +1,10 @@
 from thirdparty import RecipeBase
+from thirdparty._conan.errors import ConanInvalidConfiguration
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
-from thirdparty.tools.microsoft import is_msvc, unix_path
+from thirdparty.tools.microsoft import unix_path
 import os
 
 
@@ -21,6 +22,10 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
+    def validate(self):
+        if self.settings.os == "Windows":
+            raise ConanInvalidConfiguration(f"{self.name} is not supported on Windows")
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -32,11 +37,9 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def build_requirements(self):
+        self.tool_requires("autoconf")
+        self.tool_requires("automake")
         self.tool_requires("libtool")
-        if self.settings.os == "Windows":
-            self.win_bash = True
-            if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
 
     def source(self):
         get(
@@ -63,8 +66,6 @@ class Recipe(RecipeBase):
         autotools = Autotools(self)
         autotools.autoreconf()
         autotools.configure()
-        if self.settings.os == "Windows":
-            replace_in_file(self, os.path.join(self.build_folder, "libtool"), "-DPIC", "")
         autotools.make()
 
     def package(self):
