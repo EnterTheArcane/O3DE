@@ -421,7 +421,7 @@ class Recipe(RecipeBase):
             replace_in_file(
                 self,
                 os.path.join(self.source_folder, "configure"),
-                "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto -lws2_32 -lgdi32 ||",
+                "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto ||",
                 f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} || ")
 
         replace_in_file(self, os.path.join(self.source_folder, "configure"), "echo libx264.lib", "echo x264.lib")

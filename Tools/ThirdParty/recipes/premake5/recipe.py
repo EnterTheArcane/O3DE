@@ -1,4 +1,5 @@
 import os
+import stat
 
 from thirdparty import RecipeBase
 from thirdparty.tools.files import copy, get
@@ -41,6 +42,9 @@ class Recipe(RecipeBase):
         copy(self, "LICENSE.txt", src=self.build_folder, dst=os.path.join(self.package_folder, "licenses"))
         suffix = ".exe" if self.settings.os == "Windows" else ""
         copy(self, f"premake5{suffix}", src=self.build_folder, dst=os.path.join(self.package_folder, "bin"))
+        if self.settings.os != "Windows":
+            premake5_path = os.path.join(self.package_folder, "bin", "premake5")
+            os.chmod(premake5_path, os.stat(premake5_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     def package_info(self):
         self.cpp_info.includedirs = []
