@@ -5,6 +5,7 @@ import fnmatch
 import importlib.util
 import os
 import shutil
+import stat
 import sys
 import time
 import yaml
@@ -21,6 +22,23 @@ from thirdparty._conan.tools.env import Environment
 from thirdparty._conan.tools.env.environment import generate_aggregated_env
 from thirdparty._host.detect import detect_settings, make_conf
 from thirdparty.cli.command import command
+
+
+def _rmtree(path) -> None:
+    """Like shutil.rmtree(ignore_errors=True) but clears read-only bits first.
+
+    On Windows, .git directories contain read-only files that cause
+    shutil.rmtree to silently fail when ignore_errors=True, leaving the
+    directory in place.  This variant makes each file writable before
+    retrying the delete so the tree is fully removed.
+    """
+    def _on_error(func, path, exc_info):
+        try:
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        except Exception:
+            pass
+    shutil.rmtree(path, onerror=_on_error)
 
 
 class _PassthroughWrapper:
@@ -656,12 +674,12 @@ def _build_recipe(
     if force:
         # Wipe all build artifacts so source(), build(), and package() run fresh.
         for _dir in (src_dir, build_dir, pkg_dir):
-            shutil.rmtree(_dir, ignore_errors=True)
+            _rmtree(_dir)
     elif pkg_dir.exists() and not (build_dir / _COMPLETE_MARKER).is_file():
         # If the package directory exists but the completion marker is absent, the
         # previous build was interrupted or failed mid-package().  Remove the partial
         # package directory so we start clean.
-        shutil.rmtree(pkg_dir, ignore_errors=True)
+        _rmtree(pkg_dir)
 
     # Run config_options / configure / validate before creating any directories so
     # that packages which are not supported on this platform (ConanInvalidConfiguration)
@@ -700,7 +718,7 @@ def _build_recipe(
         # Only run source() once per package; skip if already completed successfully.
         if not _is_sourced(build_root, name, version):
             # Wipe any partial state from a previous failed source() attempt
-            shutil.rmtree(src_folder, ignore_errors=True)
+            _rmtree(src_folder)
             src_folder.mkdir(parents=True, exist_ok=True)
             recipe.source()
             (src_folder / _COMPLETE_MARKER).write_text("")
@@ -728,8 +746,8 @@ def _build_recipe(
                 recipe.build()
             except Exception:
                 # Clean up so that the next run starts fresh rather than resuming a broken state.
-                shutil.rmtree(recipe.build_folder, ignore_errors=True)
-                shutil.rmtree(recipe.package_folder, ignore_errors=True)
+                _rmtree(recipe.build_folder)
+                _rmtree(recipe.package_folder)
                 raise
             finally:
                 os.chdir(_orig_cwd_build)

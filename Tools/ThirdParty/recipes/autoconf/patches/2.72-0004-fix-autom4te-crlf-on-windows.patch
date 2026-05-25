@@ -1,6 +1,6 @@
 --- a/bin/autom4te.in
 +++ b/bin/autom4te.in
-@@ -1019,6 +1019,7 @@ sub freeze ($)
+@@ -1022,5 +1022,6 @@ sub freeze ($)
    $result =~ s/#.*\n//g;
 +  $result =~ s/\r//g;
    $result =~ s/^\n//mg;
