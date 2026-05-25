@@ -5,7 +5,7 @@ diff --git a/src/meson.build b/src/meson.build
 index 984e34a..bf02135 100644
 --- a/src/meson.build
 +++ b/src/meson.build
-@@ -81,8 +81,8 @@ if get_option('scanner')
+@@ -80,8 +80,8 @@ endif
  endif
  
  if meson.is_cross_build() or not get_option('scanner')
