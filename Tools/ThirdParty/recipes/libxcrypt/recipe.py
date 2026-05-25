@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty._conan.errors import ConanInvalidConfiguration
+from thirdparty.errors import InvalidConfiguration
 from thirdparty.tools.apple import fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir
@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os == "Windows":
-            raise ConanInvalidConfiguration(f"{self.name} is not supported on Windows")
+            raise InvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def config_options(self):
         if self.settings.os == "Windows":

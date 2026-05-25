@@ -32,9 +32,9 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def validate(self):
-        from thirdparty._conan.errors import ConanInvalidConfiguration
+        from thirdparty.errors import InvalidConfiguration
         if self.settings.os == "Windows":
-            raise ConanInvalidConfiguration(f"{self.name} is not supported on Windows")
+            raise InvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def config_options(self):
         # enable libraries by defualt only on Linux, Android
