@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 from thirdparty import RecipeBase
-from thirdparty._conan.errors import ConanInvalidConfiguration
+from thirdparty.errors import InvalidConfiguration
 from thirdparty.tools.files import chdir, get, replace_in_file, copy, trim_conandata
 
 
@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os != "Windows":
-            raise ConanInvalidConfiguration("msys2 is only supported on Windows")
+            raise InvalidConfiguration("msys2 is only supported on Windows")
 
     def compatibility(self):
         if self.settings.arch == "armv8":

@@ -259,7 +259,7 @@ class Recipe(RecipeBase):
             required_by = set()
             for m in required_but_disabled:
                 required_by.update(required_modules[m])
-            raise ConanInvalidConfiguration(f"Modules {required_but_disabled} are explicitly disabled, "
+            raise InvalidConfiguration(f"Modules {required_but_disabled} are explicitly disabled, "
                                             f"but are required by {list(required_by)}, enabled by other options")
 
         enabled_modules = requested_modules.union(set(required_modules.keys()))

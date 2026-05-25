@@ -3,7 +3,7 @@ import re
 import shutil
 
 from thirdparty import RecipeBase
-from thirdparty._conan.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.env import Environment
 from thirdparty.tools.files import apply_patches, copy, get, rename, replace_in_file, rmdir, save
@@ -163,7 +163,7 @@ class Recipe(RecipeBase):
                 contents, nb1 = re.subn("^{}=\"[^\"]*\"".format(key), "{}=\"{}\"".format(key, repl), contents, flags=re.MULTILINE)
                 contents, nb2 = re.subn("^: \\$\\{{{}=\"[^$\"]*\"\\}}".format(key), ": ${{{}=\"{}\"}}".format(key, repl), contents, flags=re.MULTILINE)
                 if nb1 + nb2 == 0:
-                    raise ConanException("Failed to find {} in {}".format(key, repl))
+                    raise RecipeException("Failed to find {} in {}".format(key, repl))
             open(file, "w").write(contents)
 
         binpath = os.path.join(self.package_folder, "bin")

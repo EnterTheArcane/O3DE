@@ -318,7 +318,7 @@ class Recipe(RecipeBase):
         query = f"{self.settings.os}-{self.settings.arch}-{compiler}"
         ancestor = next((self._targets[i] for i in self._targets if fnmatch.fnmatch(query, i)), None)
         if not ancestor:
-            raise ConanInvalidConfiguration(
+            raise InvalidConfiguration(
                 f"Unsupported configuration ({self.settings.os}/{self.settings.arch}/{self.settings.compiler}).\n"
                 f"Please open an issue at {self.url}.\n"
                 f"Alternatively, set the CONAN_OPENSSL_CONFIGURATION environment variable into your conan profile."
