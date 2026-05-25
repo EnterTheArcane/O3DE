@@ -78,6 +78,8 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
                    help="Print build plan without building")
     p.add_argument("--force", action="store_true",
                    help="Rebuild even if already built")
+    p.add_argument("--fail-fast", action="store_true", dest="fail_fast",
+                   help="Stop on the first build failure instead of continuing")
 
 
 @command
@@ -89,6 +91,7 @@ def build(args: argparse.Namespace) -> None:
     force: bool = getattr(args, "force", False)
     resume: str | None = getattr(args, "resume", None)
     dry_run: bool = getattr(args, "dry_run", False)
+    fail_fast: bool = getattr(args, "fail_fast", False)
 
     cwd = Path.cwd()
     recipes_root = cwd / "recipes"
@@ -125,7 +128,7 @@ def build(args: argparse.Namespace) -> None:
         _build_ordered(
             recipes_root, build_root, names, build_type,
             jobs=args.jobs, resume=resume, dry_run=dry_run,
-            force=force, generate_only=generate_only,
+            force=force, generate_only=generate_only, fail_fast=fail_fast,
         )
     else:
         _build_recipe(recipes_root, build_root, names[0], build_type, set(),
@@ -472,6 +475,7 @@ def _build_ordered(
     dry_run: bool,
     force: bool,
     generate_only: bool,
+    fail_fast: bool = False,
 ) -> None:
     known = set(names)
     graph: dict[str, list[str]] = {}
@@ -535,6 +539,9 @@ def _build_ordered(
             elapsed = time.time() - t0
             results.append((name, version, elapsed, str(exc)))
             print(f"[thirdparty] FAIL {name}/{version}: {exc}")
+            if fail_fast:
+                print("[thirdparty] stopping due to --fail-fast", file=sys.stderr)
+                sys.exit(1)
 
     ok   = [(n, v, t) for n, v, t, e in results if e is None]
     fail = [(n, v, e) for n, v, t, e in results if e is not None]
