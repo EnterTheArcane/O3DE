@@ -1,1 +1,1 @@
-from thirdparty._conan.tools.premake import *
+from conan.tools.premake import *

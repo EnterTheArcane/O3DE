@@ -7,7 +7,7 @@ from functools import cached_property
 import gitlab
 import gitlab.exceptions
 
-from thirdparty._conan.internal.model.version import Version
+from conan.internal.model.version import Version
 
 
 def _tag_version(tag: str) -> Version | None:

@@ -11,14 +11,14 @@ import yaml
 from collections import OrderedDict
 from pathlib import Path
 
-from thirdparty._conan.api.model.refs import RecipeReference
-from thirdparty._conan.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
-from thirdparty._conan.internal.model.conan_file import ConanFile
-from thirdparty._conan.internal.model.conanfile_interface import ConanFileInterface
-from thirdparty._conan.internal.model.dependencies import ConanFileDependencies
-from thirdparty._conan.internal.model.requires import Requirement
-from thirdparty._conan.tools.env import Environment
-from thirdparty._conan.tools.env.environment import generate_aggregated_env
+from conan.api.model.refs import RecipeReference
+from conan.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
+from conan.internal.model.conan_file import ConanFile
+from conan.internal.model.conanfile_interface import ConanFileInterface
+from conan.internal.model.dependencies import ConanFileDependencies
+from conan.internal.model.requires import Requirement
+from conan.tools.env import Environment
+from conan.tools.env.environment import generate_aggregated_env
 from thirdparty._host.detect import detect_settings, make_conf
 from thirdparty.cli.command import command
 
@@ -210,7 +210,7 @@ def _get_requires(recipe: ConanFile) -> tuple[list[str], list[str]]:
     """
     # Wire up callable wrappers that conan's graph resolution normally sets before calling these
     # methods. Without them, recipe.tool_requires("foo") raises TypeError (calls None).
-    from thirdparty._conan.internal.model.requires import (
+    from conan.internal.model.requires import (
         BuildRequirements, TestRequirements, ToolRequirements,
     )
     recipe.build_requires = BuildRequirements(recipe.requires)
@@ -307,7 +307,7 @@ def _build_dep_graph(
                     pass
 
         try:
-            from thirdparty._conan.internal.model.pkg_type import PackageType
+            from conan.internal.model.pkg_type import PackageType
             PackageType.compute_package_type(dep)
         except Exception:
             pass
@@ -338,7 +338,7 @@ def _build_dep_graph(
         # Populate dep's own transitive dep graph so generators can resolve
         # component dependencies (e.g. spirv-tools-core → spirv-headers).
         try:
-            from thirdparty._conan.internal.model.requires import (
+            from conan.internal.model.requires import (
                 BuildRequirements, TestRequirements, ToolRequirements,
             )
             dep.build_requires = BuildRequirements(dep.requires)
@@ -633,7 +633,7 @@ def _build_recipe(
 
     # Wire up build_requires/tool_requires wrappers then call build_requirements() so
     # recipes can set win_bash=True and add further tool_requires.
-    from thirdparty._conan.internal.model.requires import (
+    from conan.internal.model.requires import (
         BuildRequirements, TestRequirements, ToolRequirements,
     )
     recipe.build_requires = BuildRequirements(recipe.requires)
@@ -680,7 +680,7 @@ def _build_recipe(
         try:
             recipe.validate()
         except Exception as _val_exc:
-            from thirdparty._conan.errors import ConanInvalidConfiguration
+            from conan.errors import ConanInvalidConfiguration
             if isinstance(_val_exc, ConanInvalidConfiguration):
                 print(f"[thirdparty] {name}/{version} not supported on this platform: {_val_exc} — skipping")
                 return transitive

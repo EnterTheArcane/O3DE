@@ -9,8 +9,8 @@ from pathlib import Path
 import colorama
 from colorama import Fore, Style
 
-from thirdparty._conan.internal.model.conan_file import ConanFile
-from thirdparty._conan.internal.model.version import Version
+from conan.internal.model.conan_file import ConanFile
+from conan.internal.model.version import Version
 from thirdparty.cli.command import command
 
 _BUMP_COLOR = {
