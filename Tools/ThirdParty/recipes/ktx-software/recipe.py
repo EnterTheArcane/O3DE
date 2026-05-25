@@ -1,0 +1,112 @@
+import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.build import stdcpp_library
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
+
+
+class Recipe(RecipeBase):
+    name = "ktx-software"
+    version = "4.4.2"
+    license = "Apache-2.0"
+
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "sse": [True, False],
+        "tools": [True, False],
+    }
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "sse": True,
+        "tools": True,
+    }
+
+    @property
+    def _has_sse_support(self):
+        return self.settings.arch in ["x86", "x86_64"]
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+        if not self._has_sse_support:
+            del self.options.sse
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
+    def requirements(self):
+        self.requires("zstd")
+        if self.options.tools:
+            self.requires("fmt")
+
+    def build_requirements(self):
+        self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/KTX-Software")
+        return Version(repo.latest_release.lstrip("v"))
+
+    def source(self):
+        get(
+            self,
+            url="https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v4.4.2.tar.gz",
+            sha256="9412cb45045a503005acd47d98f9e8b47154634a50b4df21e17a1dfa8971d323",
+            destination=self.source_folder,
+            strip_root=True)
+        rmdir(self, os.path.join(self.source_folder, "tests"))
+        save(self, os.path.join(self.source_folder, "tests", "CMakeLists.txt"), "")
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "external", "astc-encoder", "CMakeLists.txt"),
+            "set(CMAKE_CXX_STANDARD", "#")
+        apply_patches(self)
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["KTX_FEATURE_TOOLS"] = self.options.tools
+        tc.variables["KTX_FEATURE_DOC"] = False
+        tc.variables["KTX_FEATURE_LOADTEST_APPS"] = False
+        tc.variables["KTX_FEATURE_TESTS"] = False
+        tc.variables["BASISU_SUPPORT_SSE"] = self.options.get_safe("sse", False)
+        tc.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        copy(self, "LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "*", src=os.path.join(self.source_folder, "LICENSES"), dst=os.path.join(self.package_folder, "licenses"))
+        cmake = CMake(self)
+        cmake.install()
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "Ktx")
+        self.cpp_info.set_property("cmake_target_name", "KTX::ktx")
+        self.cpp_info.components["libktx"].libs = ["ktx"]
+        self.cpp_info.components["libktx"].defines = [
+            "KTX_FEATURE_KTX1", "KTX_FEATURE_KTX2", "KTX_FEATURE_WRITE",
+        ]
+        if not self.options.shared:
+            self.cpp_info.components["libktx"].defines.append("KHRONOS_STATIC")
+            libcxx = stdcpp_library(self)
+            if libcxx:
+                self.cpp_info.components["libktx"].system_libs.append(libcxx)
+        if self.settings.os == "Windows":
+            self.cpp_info.components["libktx"].defines.append("BASISU_NO_ITERATOR_DEBUG_LEVEL")
+        elif self.settings.os == "Linux":
+            self.cpp_info.components["libktx"].system_libs.extend(["m", "dl", "pthread"])
+        self.cpp_info.components["libktx"].set_property("cmake_target_name", "KTX::ktx")
+        self.cpp_info.components["libktx"].requires = ["zstd::zstd"]
+        if self.options.tools:
+            self.cpp_info.components["libktx"].requires.append("fmt::fmt")
