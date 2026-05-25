@@ -2,6 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
+from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.meson import Meson, MesonToolchain
 from thirdparty.tools.scm import Version
@@ -50,6 +51,8 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = MesonToolchain(self)
         tc.generate()
+        env = VirtualBuildEnv(self)
+        env.generate()
 
     def build(self):
         meson = Meson(self)
