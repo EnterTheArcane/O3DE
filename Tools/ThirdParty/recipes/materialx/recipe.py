@@ -1,0 +1,107 @@
+import os
+
+from thirdparty import RecipeBase
+from thirdparty.tools.cmake import CMake, CMakeToolchain
+from thirdparty.tools.files import copy, get, replace_in_file, rmdir
+from thirdparty.tools.scm import Version
+from thirdparty.tools.scm.github import GithubRepository
+
+
+class Recipe(RecipeBase):
+    name = "materialx"
+    version = "1.39.4"
+    license = "Apache-2.0"
+
+    options = {
+        "shared": [True, False],
+        "fPIC": [True, False],
+        "build_gen_msl": [True, False],
+        "with_openimageio": [True, False],
+    }
+    default_options = {
+        "shared": False,
+        "fPIC": True,
+        "build_gen_msl": True,
+        "with_openimageio": False,
+    }
+
+    def config_options(self):
+        if self.settings.os == "Windows":
+            del self.options.fPIC
+
+    def configure(self):
+        if self.options.shared:
+            self.options.rm_safe("fPIC")
+
+    def build_requirements(self):
+        self.tool_requires("cmake")
+
+    def latest_version(self):
+        repo = GithubRepository(self, "AcademySoftwareFoundation/MaterialX")
+        return Version(repo.latest_release.lstrip("v"))
+
+    def source(self):
+        get(
+            self,
+            url="https://github.com/AcademySoftwareFoundation/MaterialX/archive/refs/tags/v1.39.4.tar.gz",
+            sha256="ce9c1a3b84a060d6280d355a72bf42b53837ee7bcc5a566cab1e927c64078fd9",
+            destination=self.source_folder,
+            strip_root=True)
+        replace_in_file(
+            self, os.path.join(self.source_folder, "CMakeLists.txt"),
+            "set(CMAKE_CXX_STANDARD", "# set(CMAKE_CXX_STANDARD")
+        replace_in_file(
+            self, os.path.join(self.source_folder, "CMakeLists.txt"),
+            "set(CMAKE_POSITION_INDEPENDENT_CODE", "# set(CMAKE_POSITION_INDEPENDENT_CODE")
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables["MATERIALX_BUILD_SHARED_LIBS"] = self.options.shared
+        tc.variables["MATERIALX_BUILD_TESTS"] = False
+        tc.variables["MATERIALX_BUILD_DOCS"] = False
+        tc.variables["MATERIALX_BUILD_GEN_MSL"] = self.options.build_gen_msl
+        tc.variables["MATERIALX_BUILD_VIEWER"] = False
+        tc.variables["MATERIALX_BUILD_EDITOR"] = False
+        tc.variables["MATERIALX_INSTALL_PYTHON"] = False
+        tc.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        cmake = CMake(self)
+        cmake.install()
+        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+
+    def package_info(self):
+        self.cpp_info.set_property("cmake_file_name", "MaterialX")
+
+        components = [
+            ("MaterialXCore",        "MaterialX::MaterialXCore"),
+            ("MaterialXFormat",      "MaterialX::MaterialXFormat"),
+            ("MaterialXGenGlsl",     "MaterialX::MaterialXGenGlsl"),
+            ("MaterialXGenMdl",      "MaterialX::MaterialXGenMdl"),
+            ("MaterialXGenOsl",      "MaterialX::MaterialXGenOsl"),
+            ("MaterialXGenShader",   "MaterialX::MaterialXGenShader"),
+            ("MaterialXRender",      "MaterialX::MaterialXRender"),
+            ("MaterialXRenderGlsl",  "MaterialX::MaterialXRenderGlsl"),
+            ("MaterialXRenderHw",    "MaterialX::MaterialXRenderHw"),
+            ("MaterialXRenderOsl",   "MaterialX::MaterialXRenderOsl"),
+        ]
+        if self.options.build_gen_msl:
+            components.append(("MaterialXGenMsl", "MaterialX::MaterialXGenMsl"))
+        if self.settings.os == "Macos":
+            components.append(("MaterialXRenderMsl", "MaterialX::MaterialXRenderMsl"))
+
+        for comp_name, target_name in components:
+            self.cpp_info.components[comp_name].set_property("cmake_target_name", target_name)
+            self.cpp_info.components[comp_name].libs = [comp_name]
+
+        if self.settings.os == "Windows":
+            self.cpp_info.components["MaterialXRenderGlsl"].system_libs = ["opengl32"]
+        elif self.settings.os in ["Linux", "FreeBSD"]:
+            self.cpp_info.components["MaterialXRenderGlsl"].system_libs = ["GL"]
