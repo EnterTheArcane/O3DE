@@ -5,7 +5,7 @@ import textwrap
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.tools.env import VirtualRunEnv
-from thirdparty.tools.files import apply_conandata_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
+from thirdparty.tools.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
 from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
 from thirdparty.tools.microsoft import MSBuildDeps, MSBuildToolchain, MSBuild, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, msvs_toolset
 from thirdparty.tools.scm import Version
@@ -348,7 +348,7 @@ class Recipe(RecipeBase):
         self._inject_conan_props_file("_bsddb", "libdb", self.options.get_safe("with_bsddb"))
 
     def _patch_sources(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         # <=3.10 requires a lot of manual injection of dependencies through setup.py
         # 3.12 removes setup.py completely, and uses pkgconfig dependencies
         # 3.11 is an in awkward transition state where some dependencies use pkgconfig, and others use setup.py

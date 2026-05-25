@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.tools.gnu import AutotoolsToolchain, Autotools
-from thirdparty.tools.files import get, chdir, copy, apply_conandata_patches, mkdir, rename
+from thirdparty.tools.files import get, chdir, copy, apply_patches, mkdir, rename
 from thirdparty.tools.build import cross_building
 from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.microsoft import VCVars, is_msvc, NMakeDeps, NMakeToolchain
@@ -146,7 +146,7 @@ class Recipe(RecipeBase):
         return f"libmpdec{suffix}", f"libmpdec++{suffix}"
 
     def build(self):
-        apply_conandata_patches(self)
+        apply_patches(self)
         if is_msvc(self):
             self._build_msvc()
         else:
