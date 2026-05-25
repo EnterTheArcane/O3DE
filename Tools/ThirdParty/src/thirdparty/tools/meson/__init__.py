@@ -1,1 +1,1 @@
-from thirdparty._conan.tools.meson import *
+from conan.tools.meson import *
