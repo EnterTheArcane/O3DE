@@ -36,35 +36,40 @@ class SourcesCachingDownloader:
 
         last_err = None
         for url in urls:
+            tmp_path = file_path + ".tmp"
             try:
                 self._output.info(f"Downloading {url}")
                 os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
                 req = urllib.request.Request(url, headers=headers or {})
-                with urllib.request.urlopen(req) as resp, open(file_path, "wb") as f:
+                with urllib.request.urlopen(req) as resp, open(tmp_path, "wb") as f:
                     f.write(resp.read())
                 if sha256:
-                    with open(file_path, "rb") as f:
+                    with open(tmp_path, "rb") as f:
                         digest = hashlib.sha256(f.read()).hexdigest()
                     if digest != sha256:
-                        os.unlink(file_path)
                         raise RuntimeError(f"SHA256 mismatch: expected {sha256}, got {digest}")
                     # Store in cache atomically (temp-file + rename) to avoid partial cache entries.
                     cache_dir = _downloads_cache_dir()
                     cache_dir.mkdir(parents=True, exist_ok=True)
                     cache_path = cache_dir / sha256
                     if not cache_path.is_file():
-                        tmp_fd, tmp_path = tempfile.mkstemp(dir=cache_dir)
+                        tmp_fd, tmp_cache_path = tempfile.mkstemp(dir=cache_dir)
                         try:
                             os.close(tmp_fd)
-                            shutil.copy2(file_path, tmp_path)
-                            os.replace(tmp_path, cache_path)
+                            shutil.copy2(tmp_path, tmp_cache_path)
+                            os.replace(tmp_cache_path, cache_path)
                         except Exception:
                             try:
-                                os.unlink(tmp_path)
+                                os.unlink(tmp_cache_path)
                             except OSError:
                                 pass
+                os.replace(tmp_path, file_path)
                 return
             except Exception as e:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
                 last_err = e
                 self._output.warning(f"Download failed ({url}): {e}")
         raise RuntimeError(f"All download URLs failed: {last_err}")
