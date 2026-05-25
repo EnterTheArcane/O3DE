@@ -9,7 +9,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "openexr"
-    version = "3.4.11"
+    version = "3.4.12"
     license = "BSD-3-Clause"
 
     options = {
@@ -44,16 +44,15 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.11/openexr-3.4.11.tar.gz",
-            sha256="25f6a008e4060441a9e9d805bceda58fb811e0adef64b39807dfd73b94e12c91",
+            url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.12/openexr-3.4.12.tar.gz",
+            sha256="2d45db1d4bb78a5b263cd21cefa93119e1fcd37a13fa446c74663b6b8ec02d00",
             destination=self.source_folder,
             strip_root=True)
-        apply_patches(self)
         replace_in_file(
             self,
             os.path.join(self.source_folder, "CMakeLists.txt"),
             "add_subdirectory(website/src)",
-            "#  add_subdirectory(website/src)")
+            "# add_subdirectory(website/src)")
 
     def generate(self):
         tc = CMakeToolchain(self)
