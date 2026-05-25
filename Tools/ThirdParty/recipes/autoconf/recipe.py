@@ -76,10 +76,13 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "res", "info"))
         rmdir(self, os.path.join(self.package_folder, "res", "man"))
 
+        autom4te_cfg = os.path.join(self.package_folder, "res", "autoconf", "autom4te.cfg")
         if self.settings.os == "Windows":
             actual_data_path = unix_path(self, os.path.join(self.package_folder, "res", "autoconf"))
-            autom4te_cfg = os.path.join(self.package_folder, "res", "autoconf", "autom4te.cfg")
             replace_in_file(self, autom4te_cfg, "'/res/autoconf'", f"'{actual_data_path}'")
+        else:
+            actual_data_path = os.path.join(self.package_folder, "res", "autoconf")
+            replace_in_file(self, autom4te_cfg, "'//res/autoconf'", f"'{actual_data_path}'")
 
     def package_info(self):
         self.cpp_info.frameworkdirs = []
