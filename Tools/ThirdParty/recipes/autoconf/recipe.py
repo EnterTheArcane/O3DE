@@ -100,4 +100,3 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("autom4te_perllibdir", perllib_path)
         self.buildenv_info.define_path("AC_MACRODIR", perllib_path)
         self.buildenv_info.define_path("trailer_m4", os.path.join(perllib_path, "autoconf", "trailer.m4"))
-

@@ -35,6 +35,11 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
+        
+    def validate(self):
+        from thirdparty._conan.errors import ConanInvalidConfiguration
+        if self.settings.os != "Linux":
+            raise ConanInvalidConfiguration(f"{self.name} is only supported on Linux")
 
     def requirements(self):
         if self.settings.os == "Macos":
