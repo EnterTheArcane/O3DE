@@ -2,7 +2,7 @@ import json
 import os
 from enum import Enum
 
-from conan.internal.model.cpp_info import CppInfo
+from conan2.internal.model.cpp_info import CppInfo
 
 
 class CPSComponentType(Enum):
