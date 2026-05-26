@@ -29,6 +29,7 @@ if(CMAKE_GENERATOR MATCHES "Visual Studio 18" AND CMAKE_VERSION VERSION_LESS "4.
 endif()
 
 if(NOT PROJECT_NAME)
+    list(APPEND CMAKE_PROJECT_TOP_LEVEL_INCLUDES "${CMAKE_CURRENT_LIST_DIR}/cmake/DependencyProvider.cmake")
     include(cmake/CompilerSettings.cmake)
     project(O3DE
         LANGUAGES C CXX
@@ -89,6 +90,7 @@ include(cmake/Configurations.cmake) # Requires to be after PAL so we get platfor
 include(cmake/Dependencies.cmake)
 include(cmake/Deployment.cmake)
 include(cmake/3rdParty.cmake)
+include(cmake/ThirdParty.cmake)
 include(cmake/LYPython.cmake)
 include(cmake/Install.cmake)
 include(cmake/LYWrappers.cmake)

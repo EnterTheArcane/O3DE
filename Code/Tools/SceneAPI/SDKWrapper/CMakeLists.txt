@@ -16,6 +16,8 @@ set(sdkwrapper_dir ${CMAKE_CURRENT_LIST_DIR}/../SDKWrapper)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
 
+find_package(ThirdParty::assimp REQUIRED)
+
 ly_add_target(
     NAME SDKWrapper STATIC
     NAMESPACE AZ
@@ -30,5 +32,5 @@ ly_add_target(
             AZ::AzCore
             AZ::AzToolsFramework
         PUBLIC
-            3rdParty::assimp
+            assimp
 )

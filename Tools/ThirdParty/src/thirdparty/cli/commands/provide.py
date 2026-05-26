@@ -1,0 +1,33 @@
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from thirdparty.cli.command import command
+from thirdparty.cli.commands.build import _try_load_recipe_class, _resolve_version
+
+
+def setup_parser(p: argparse.ArgumentParser) -> None:
+    p.add_argument("package", metavar="<package>", help="Package name to provide")
+
+
+@command
+def provide(args: argparse.Namespace) -> None:
+    name: str = args.package
+    cwd = Path.cwd()
+    recipes_root = cwd / "recipes"
+    build_root = cwd / "build"
+
+    cls = _try_load_recipe_class(recipes_root, name)
+    if cls is None:
+        print(f"[thirdparty] error: recipe not found: {name}", file=sys.stderr)
+        sys.exit(1)
+
+    version = _resolve_version(cls)
+    pkg_path = build_root / name / version / "package"
+    if not pkg_path.exists():
+        print(f"[thirdparty] error: package not built: {name}/{version}", file=sys.stderr)
+        sys.exit(1)
+
+    print(str(pkg_path.resolve()))
