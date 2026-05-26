@@ -375,7 +375,7 @@ def _build_dep_graph(
                 _pattern = "*.so*"
             _is_shared = _lib_path.is_dir() and any(_lib_path.glob(_pattern))
             req = Requirement(ref, build=False, run=_is_shared, direct=direct)
-        iface = ConanFileInterface(dep)
+        iface = ConanFileInterface(dep, None)
         _iface_cache[dep_name] = (req, iface)
         deps_dict[req] = iface
 
@@ -484,11 +484,11 @@ def _generate_cps(recipe, name: str, version: str, pkg_dir: Path) -> None:
         recipe.cpp_info.set_relative_base_folder(str(pkg_dir))
         proxy = _CPSDepProxy(recipe, name, version)
         cps = CPS.from_conan(proxy)
-        cps.cps_path = f"@prefix@/cps/{name}"
-        cps_dir = pkg_dir / "cps" / name
+        cps.cps_path = f"@prefix@/cps"
+        cps_dir = pkg_dir / "cps"
         cps_dir.mkdir(parents=True, exist_ok=True)
         cps.save(str(cps_dir))
-        generate_cmake_config(cps, pkg_dir)
+        #generate_cmake_config(cps, pkg_dir)
     except Exception as exc:
         print(f"[thirdparty] warn: CPS generation failed for {name}: {exc}")
 

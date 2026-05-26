@@ -2,6 +2,7 @@ import os
 import re
 
 from thirdparty import RecipeBase
+from thirdparty.errors import InvalidConfiguration
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -11,6 +12,10 @@ class Recipe(RecipeBase):
     name = "strawberryperl"
     version = "5.42.2.1"
     license = "Artistic-1.0", "GPL-1.0"
+    
+    def validate(self):
+        if self.settings.os != "Windows":
+            raise InvalidConfiguration("Strawberry Perl is only supported on Windows")
 
     def compatibility(self):
         if self.settings.arch == "armv8":

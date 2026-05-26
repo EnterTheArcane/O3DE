@@ -64,6 +64,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
+        tc.variables["GLSLANG_ENABLE_INSTALL"] = True
         tc.variables["ENABLE_GLSLANG_BINARIES"] = self.options.build_executables
         tc.variables["ENABLE_HLSL"] = True
         tc.variables["ENABLE_RTTI"] = True

@@ -140,6 +140,7 @@ class Recipe(RecipeBase):
         tc.update_configure_args({"--enable-static": None, "--disable-static": None})
         yes_no = lambda v: "yes" if v else "no"
         tc.configure_args += [
+            "--enable-shared" if self.options.shared else "--disable-shared",
             "--with-doc-strings={}".format(yes_no(self.options.docstrings)),
             "--with-pymalloc={}".format(yes_no(self.options.pymalloc)),
             "--with-system-expat",
@@ -173,8 +174,27 @@ class Recipe(RecipeBase):
                 "--with-tcltk-includes={}".format(" ".join(tcltk_includes)),
                 "--with-tcltk-libs={}".format(" ".join(tcltk_libs)),
             ]
+        if self._supports_modules and "mpdecimal" in self.dependencies:
+            # mpdecimal >= 4.0 renamed CONFIG_64/CONFIG_32 → MPD_CONFIG_64/MPD_CONFIG_32.
+            # CPython 3.12 _decimal.c still checks the old names; provide compat defines.
+            if Version(str(self.dependencies["mpdecimal"].ref.version)) >= "4.0":
+                _arch = str(self.settings.arch)
+                if _arch in ("x86_64", "armv8", "armv8.3", "armv8.4", "mips64", "ppc64", "ppc64le"):
+                    tc.extra_defines.append("CONFIG_64")
+                else:
+                    tc.extra_defines.append("CONFIG_32")
+
         if not is_apple_os(self):
             tc.extra_ldflags.append('-Wl,--as-needed')
+        else:
+            # On macOS, some deps (tcl, tk, gdbm, libxcrypt) use @rpath-based dylib
+            # install names. Without explicit -rpath entries, configure test programs
+            # abort: "dyld: Library not loaded: @rpath/libtk8.6.dylib, Reason: no
+            # LC_RPATH's found". Add -rpath for each of these dep lib directories.
+            for _rpath_dep in ("tcl", "tk", "gdbm", "libxcrypt"):
+                if _rpath_dep in self.dependencies:
+                    _lib_dir = os.path.join(self.dependencies[_rpath_dep].package_folder, "lib")
+                    tc.extra_ldflags.append(f"-Wl,-rpath,{_lib_dir}")
 
         tc.generate()
 
@@ -357,7 +377,8 @@ class Recipe(RecipeBase):
         if Version(self.version) >= "3.11":
             replace_in_file(self, os.path.join(self.source_folder, "configure"),
                             'OPENSSL_LIBS="-lssl -lcrypto"',
-                            'OPENSSL_LIBS="-lssl -lcrypto -lz"')
+                            'OPENSSL_LIBS="-lssl -lcrypto -lz"',
+                            strict=False)
         if is_msvc(self):
             runtime_library = {
                 "MT": "MultiThreaded",

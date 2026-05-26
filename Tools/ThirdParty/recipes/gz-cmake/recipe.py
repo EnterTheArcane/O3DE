@@ -45,6 +45,9 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_find_mode", "none")
         self.cpp_info.libdirs = []
         self.cpp_info.bindirs = []
-        # Adding "" makes CMakeToolchain put the package folder in CMAKE_PREFIX_PATH,
-        # so that find_package(gz-cmake) can locate share/cmake/gz-cmake/gz-cmake-config.cmake
-        self.cpp_info.builddirs = [""]
+        # Point directly to the directory containing the real gz-cmake-config.cmake.
+        # Using "" (package root) would cause CMake to find the auto-generated stub
+        # at <root>/gz-cmake-config.cmake instead of the real one installed by gz-cmake
+        # at share/cmake/gz-cmake/gz-cmake-config.cmake, which actually loads the cmake
+        # modules (gz_configure_project, etc.) that downstream packages need.
+        self.cpp_info.builddirs = ["share/cmake/gz-cmake"]
