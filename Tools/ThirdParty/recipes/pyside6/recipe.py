@@ -89,11 +89,33 @@ class Recipe(RecipeBase):
             tc.variables["Python_FIND_REGISTRY"] = "NEVER"
 
         qt_version = str(self.dependencies["qt"].ref.version)
+        qt_pkg_fwd = qt_pkg.replace("\\", "/")
+        qt_cmake_dir = os.path.join(qt_pkg, "lib", "cmake", "Qt6").replace("\\", "/")
         tc.variables["Qt6Core_VERSION"] = qt_version
-        tc.variables["QT6_INSTALL_PREFIX"] = qt_pkg.replace("\\", "/")
+        tc.variables["QT6_INSTALL_PREFIX"] = qt_pkg_fwd
         tc.variables["QT6_INSTALL_BINS"] = "bin"
         tc.variables["QT6_INSTALL_LIBS"] = "lib"
         tc.variables["QT6_INSTALL_LIBEXECS"] = "bin"
+        # Use Qt6's own native cmake configs (not CMakeDeps-generated) so that
+        # find_package(Qt6 REQUIRED COMPONENTS Core) properly sets Qt6Core_FOUND
+        # and creates all Qt6-specific target properties (e.g. QT_DARWIN_MIN_DEPLOYMENT_TARGET).
+        tc.variables["Qt6_DIR"] = qt_cmake_dir
+        # Don't override CMAKE_PREFIX_PATH - let CMakeToolchain set it to include all dependencies
+        # (zlib, pcre2, etc.) that Qt's FindWrap*.cmake modules need to find
+        tc.variables["QT_DEBUG_FIND_PACKAGE"] = "ON"
+
+        if self.settings.os == "Macos":
+            llvm_lib = os.path.join(llvm_pkg, "lib").replace("\\", "/")
+            # LLVM's libc++ does NOT re-export libc++abi symbols (unlike system libc++).
+            # Without explicit -lc++abi, std::length_error and similar symbols are attributed
+            # to libc++ at link time (via the system SDK stub), but LLVM's libc++.1.dylib
+            # does not export them → runtime crash when DYLD_LIBRARY_PATH loads LLVM's libc++.
+            # Explicitly linking -lc++abi ensures symbols are attributed to libc++abi, which
+            # does export them. CMAKE_BUILD_RPATH ensures shiboken6 can find libc++abi at
+            # runtime during the cmake build's code-generation step.
+            tc.variables["CMAKE_EXE_LINKER_FLAGS"] = f"-L{llvm_lib} -lc++abi"
+            tc.variables["CMAKE_SHARED_LINKER_FLAGS"] = f"-L{llvm_lib} -lc++abi"
+            tc.variables["CMAKE_BUILD_RPATH"] = llvm_lib
 
         tc.generate()
 
@@ -128,17 +150,19 @@ class Recipe(RecipeBase):
             f'    cmake_language(DEFER DIRECTORY "${{CMAKE_CURRENT_SOURCE_DIR}}" CALL\n'
             f'        include "{fix_script_fwd}")\n'
             'endif()\n'
-            'if(NOT TARGET Qt6::PlatformCommonInternal)\n'
-            '    add_library(Qt6::PlatformCommonInternal INTERFACE IMPORTED)\n'
-            '    set_target_properties(Qt6::PlatformCommonInternal PROPERTIES\n'
-            '        INTERFACE_COMPILE_DEFINITIONS'
+            'if(WIN32)\n'
+            '    if(NOT TARGET Qt6::PlatformCommonInternal)\n'
+            '        add_library(Qt6::PlatformCommonInternal INTERFACE IMPORTED)\n'
+            '        set_target_properties(Qt6::PlatformCommonInternal PROPERTIES\n'
+            '            INTERFACE_COMPILE_DEFINITIONS'
             ' "NOMINMAX;QT_NO_NARROWING_CONVERSIONS_IN_CONNECT;_CRT_SECURE_NO_WARNINGS;'
             '$<$<NOT:$<CONFIG:Debug>>:QT_NO_DEBUG>"\n'
-            '        INTERFACE_COMPILE_OPTIONS "-FS;-bigobj;-Zc:rvalueCast;-Zc:inline"\n'
-            '    )\n'
-            'endif()\n'
-            'if(NOT TARGET Qt::PlatformCommonInternal)\n'
-            '    add_library(Qt::PlatformCommonInternal ALIAS Qt6::PlatformCommonInternal)\n'
+            '            INTERFACE_COMPILE_OPTIONS "-FS;-bigobj;-Zc:rvalueCast;-Zc:inline"\n'
+            '        )\n'
+            '    endif()\n'
+            '    if(NOT TARGET Qt::PlatformCommonInternal)\n'
+            '        add_library(Qt::PlatformCommonInternal ALIAS Qt6::PlatformCommonInternal)\n'
+            '    endif()\n'
             'endif()\n'
         )
         helper_path = os.path.join(self.generators_folder, "qt_pyside6_internal_targets.cmake")
@@ -151,6 +175,11 @@ class Recipe(RecipeBase):
         deps = CMakeDeps(self)
         deps.set_property("llvm", "cmake_find_mode", "none")
         deps.set_property("cpython", "cmake_find_mode", "none")
+        # Qt has its own cmake config files that properly set Qt6Core_FOUND and
+        # Qt6-specific target properties. CMakeDeps-generated Qt6Config.cmake would
+        # create Qt6::Core as an IMPORTED target but NOT set Qt6Core_FOUND, causing
+        # ShibokenHelpers.cmake to fatal-error on macOS. Use Qt's native cmake instead.
+        deps.set_property("qt", "cmake_find_mode", "none")
         deps.generate()
 
     def build(self):

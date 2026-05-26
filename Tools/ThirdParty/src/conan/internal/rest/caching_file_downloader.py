@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 
 from urllib.parse import urlparse
 from urllib.request import url2pathname
@@ -43,6 +44,12 @@ class SourcesCachingDownloader:
         if None in source_origins:
             raise ConanException(f"Incorrect 'core.sources:download_urls' contains invalid 'None'"
                                  f"url: {source_origins}")
+
+        # O3DE fallback: when no conan download cache is configured, use the local O3DE cache.
+        # Defaults to ~/.o3de/ThirdParty/Downloads; override with O3DE_THIRDPARTY_CACHE env var.
+        if not download_cache_folder and sha256:
+            _base = os.environ.get("O3DE_THIRDPARTY_CACHE", str(Path.home() / ".o3de" / "ThirdParty"))
+            download_cache_folder = str(Path(_base) / "Downloads")
 
         # First, see if it is already in the download cache
         if download_cache_folder:

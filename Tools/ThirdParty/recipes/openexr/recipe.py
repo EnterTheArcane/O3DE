@@ -8,7 +8,7 @@ from thirdparty.tools.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
-    name = "OpenEXR"
+    name = "openexr"
     version = "3.4.12"
     license = "BSD-3-Clause"
 
@@ -80,8 +80,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
 
     @staticmethod
-    def _conan_comp(name: str) -> str:
-        return f"OpenEXR::{name}"
+    def _conan_comp(name):
+        return f"openexr_{name.lower()}"
 
     def _add_component(self, name):
         component = self.cpp_info.components[self._conan_comp(name)]
@@ -153,4 +153,4 @@ class Recipe(RecipeBase):
         if self.settings.os in ["Linux", "FreeBSD"]:
             OpenEXRUtil.system_libs = ["m"]
 
-        # Add tools directory to PATH
+        # TODO: Add tools directory to PATH

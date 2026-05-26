@@ -81,8 +81,10 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "VulkanLoader")
         self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_module_file_name", "Vulkan")
-        self.cpp_info.set_property("cmake_target_name", "Vulkan::Vulkan")
+        self.cpp_info.set_property("cmake_target_name", "Vulkan::Loader")
+        self.cpp_info.set_property("cmake_target_aliases", ["Vulkan::Vulkan"])
         self.cpp_info.set_property("cmake_module_target_name", "Vulkan::Vulkan")
+        self.cpp_info.includedirs = []
         if self.settings.os == "Windows":
             self.cpp_info.libs = ["vulkan-1"]
         else:
