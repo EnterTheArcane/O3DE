@@ -1,1 +1,1 @@
-from conan.tools.microsoft import *
+from conan2.tools.microsoft import *

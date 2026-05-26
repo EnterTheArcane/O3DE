@@ -1,1 +1,1 @@
-from conan.tools.meson import *
+from conan2.tools.meson import *
