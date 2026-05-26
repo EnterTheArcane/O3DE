@@ -5,9 +5,9 @@ import subprocess
 import sys
 from multiprocessing import cpu_count
 
-from conan.internal.default_settings import default_settings_yml
-from conan.internal.model.settings import Settings
-from conan.internal.model.conf import Conf
+from conan2.internal.default_settings import default_settings_yml
+from conan2.internal.model.settings import Settings
+from conan2.internal.model.conf import Conf
 
 
 def _detect_msvc_version():

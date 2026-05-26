@@ -1,4 +1,4 @@
-from conan.tools.scm import *
+from conan2.tools.scm import *
 from thirdparty.tools.scm.github import GithubRepository
 from thirdparty.tools.scm.gitlab import GitlabRepository
 from thirdparty.tools.scm.google import GoogleSourceRepository

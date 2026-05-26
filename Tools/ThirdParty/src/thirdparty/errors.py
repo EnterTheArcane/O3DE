@@ -1,4 +1,4 @@
-from conan.errors import ConanException, ConanInvalidConfiguration, ConanMigrationError
+from conan2.errors import ConanException, ConanInvalidConfiguration, ConanMigrationError
 
 RecipeException = ConanException
 InvalidConfiguration = ConanInvalidConfiguration

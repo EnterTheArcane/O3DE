@@ -1,1 +1,1 @@
-from conan.tools.build import *
+from conan2.tools.build import *

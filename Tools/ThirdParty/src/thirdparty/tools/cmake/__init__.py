@@ -1,1 +1,1 @@
-from conan.tools.cmake import *
+from conan2.tools.cmake import *

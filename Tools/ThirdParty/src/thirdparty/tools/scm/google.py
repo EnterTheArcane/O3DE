@@ -5,7 +5,7 @@ from functools import cached_property
 
 import requests
 
-from conan.internal.model.version import Version
+from conan2.internal.model.version import Version
 
 
 class GoogleSourceRepository:

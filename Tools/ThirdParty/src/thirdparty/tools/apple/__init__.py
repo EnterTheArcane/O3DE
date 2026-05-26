@@ -1,1 +1,1 @@
-from conan.tools.apple import *
+from conan2.tools.apple import *
