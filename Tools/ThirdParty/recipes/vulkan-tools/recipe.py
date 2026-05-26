@@ -50,6 +50,9 @@ class Recipe(RecipeBase):
         tc.variables["BUILD_VULKANINFO"] = self.options.build_vulkaninfo
         tc.variables["BUILD_ICD"] = self.options.build_icd
         tc.variables["VULKAN_TOOLS_TESTS"] = False
+        if self.settings.os == "Macos":
+            # Use system ICD discovery instead of requiring MoltenVK source tree layout
+            tc.variables["APPLE_USE_SYSTEM_ICD"] = True
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()
