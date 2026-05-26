@@ -12,6 +12,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 from conan.api.model.refs import RecipeReference
+from thirdparty.cps.cps import CPS
 from conan.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
 from conan.internal.model.conan_file import ConanFile
 from conan.internal.model.conanfile_interface import ConanFileInterface
@@ -48,6 +49,43 @@ class _FakeNode:
         self.recipe = RECIPE_INCACHE  # any non-RECIPE_PLATFORM value
 
 
+class _VersionResolvingRequirements:
+    """Wraps conan's Requirements object to accept bare package names (no version).
+
+    Recipes in this system use ``self.requires("abseil")`` without a version.  Conan 2.x
+    rejects that, so we intercept every call, look up the matching local recipe to find its
+    version, and convert the ref to ``"abseil/20260107.1"`` before forwarding.
+    """
+
+    def __init__(self, inner, recipes_root: Path) -> None:
+        self._inner = inner
+        self._recipes_root = recipes_root
+
+    def _resolve(self, ref: str) -> str:
+        if ref and "/" not in ref and "@" not in ref:
+            cls = _try_load_recipe_class(self._recipes_root, ref)
+            if cls:
+                return f"{ref}/{_resolve_version(cls)}"
+        return ref
+
+    def __call__(self, str_ref, **kwargs):
+        return self._inner(self._resolve(str_ref), **kwargs)
+
+    def tool_require(self, ref, **kwargs):
+        resolved = self._resolve(ref)
+        # Skip tool deps that have no local recipe and no explicit version — they are
+        # system-provided tools (e.g. gperf, pkg-config) and cannot be version-resolved.
+        # Passing an unversioned name to Requirements.tool_require() raises an error that
+        # would abort the entire build_requirements() call, preventing later tool_requires
+        # (e.g. meson) from being registered.
+        if resolved and "/" not in resolved:
+            return
+        return self._inner.tool_require(resolved, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
 def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument("recipe", metavar="<recipe>", nargs="*",
                    help="Recipe name(s) or glob pattern(s) to build (e.g. 'abseil' or '*'); omit to build all")
@@ -79,7 +117,7 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument("--force", action="store_true",
                    help="Rebuild even if already built")
     p.add_argument("--fail-fast", action="store_true", dest="fail_fast",
-                   help="Stop on the first build failure instead of continuing")
+                   help="Stop after the first recipe failure")
 
 
 @command
@@ -202,6 +240,7 @@ def _instantiate(
     recipe._conan_dependencies = ConanFileDependencies(OrderedDict())
     recipe._conan_buildenv = Environment()
     recipe._conan_runenv = Environment()
+    recipe.requires = _VersionResolvingRequirements(recipe.requires, recipes_root)
 
     return recipe
 
@@ -300,6 +339,7 @@ def _build_dep_graph(
         dep._conan_dependencies = ConanFileDependencies(OrderedDict())
         dep._conan_buildenv = Environment()
         dep._conan_runenv = Environment()
+        dep.requires = _VersionResolvingRequirements(dep.requires, recipes_root)
 
         dep._conan_node = _FakeNode(dep_name, dep_version)
 
@@ -335,7 +375,7 @@ def _build_dep_graph(
                 _pattern = "*.so*"
             _is_shared = _lib_path.is_dir() and any(_lib_path.glob(_pattern))
             req = Requirement(ref, build=False, run=_is_shared, direct=direct)
-        iface = ConanFileInterface(dep, None)
+        iface = ConanFileInterface(dep)
         _iface_cache[dep_name] = (req, iface)
         deps_dict[req] = iface
 
@@ -392,6 +432,65 @@ def _build_dep_graph(
 
 
 _COMPLETE_MARKER = ".complete"
+
+
+class _CPSDepProxy:
+    """Minimal duck-type proxy satisfying CPS.from_conan()'s attribute requirements."""
+
+    class _EmptyHost:
+        def values(self):
+            return []
+        def items(self):
+            return []
+        def __bool__(self):
+            return False
+
+    class _EmptyDependencies:
+        def __init__(self):
+            self.host = _CPSDepProxy._EmptyHost()
+        def __bool__(self):
+            return False
+
+    def __init__(self, recipe, name: str, version: str):
+        self.ref = RecipeReference(name, version)
+        self.package_folder = recipe.package_folder
+        self.license = getattr(recipe, "license", None)
+        self.description = getattr(recipe, "description", None)
+        self.homepage = getattr(recipe, "homepage", None)
+        self.settings = recipe.settings
+        self.cpp_info = recipe.cpp_info
+        self.languages = getattr(recipe, "languages", [])
+        try:
+            from conan.internal.model.pkg_type import PackageType as _PT
+            _PT.compute_package_type(recipe)
+        except Exception:
+            pass
+        self.package_type = getattr(recipe, "package_type", None)
+        self.dependencies = _CPSDepProxy._EmptyDependencies()
+
+    def __str__(self):
+        return str(self.ref)
+
+
+def _cps_file(pkg_dir: Path, name: str) -> Path:
+    return pkg_dir / "cps" / name / f"{name}.cps"
+
+
+def _generate_cps(recipe, name: str, version: str, pkg_dir: Path) -> None:
+    from ...cmake.cmake_config import generate as generate_cmake_config
+    try:
+        if hasattr(recipe, "package_info"):
+            recipe.package_info()
+        recipe.cpp_info.set_relative_base_folder(str(pkg_dir))
+        proxy = _CPSDepProxy(recipe, name, version)
+        cps = CPS.from_conan(proxy)
+        cps.cps_path = f"@prefix@/cps/{name}"
+        cps_dir = pkg_dir / "cps" / name
+        cps_dir.mkdir(parents=True, exist_ok=True)
+        cps.save(str(cps_dir))
+        generate_cmake_config(cps, pkg_dir)
+    except Exception as exc:
+        print(f"[thirdparty] warn: CPS generation failed for {name}: {exc}")
 
 
 def _is_built(build_root: Path, name: str, version: str) -> bool:
@@ -528,6 +627,10 @@ def _build_ordered(
         if not force and _is_built(build_root, name, version):
             skipped.append(name)
             visited.add(name)
+            pkg_dir = build_root / name / version / "package"
+            if not _cps_file(pkg_dir, name).exists():
+                probe_cps = _instantiate(cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
+                _generate_cps(probe_cps, name, version, pkg_dir)
             continue
         t0 = time.time()
         try:
@@ -540,7 +643,8 @@ def _build_ordered(
             results.append((name, version, elapsed, str(exc)))
             print(f"[thirdparty] FAIL {name}/{version}: {exc}")
             if fail_fast:
-                print("[thirdparty] stopping due to --fail-fast", file=sys.stderr)
+                import traceback
+                traceback.print_exc()
                 sys.exit(1)
 
     ok   = [(n, v, t) for n, v, t, e in results if e is None]
@@ -620,6 +724,9 @@ def _build_recipe(
 
     if not generate_only and not force and _is_built(build_root, name, version):
         print(f"[thirdparty] {name}/{version} already built — skipping")
+        pkg_dir_cps = build_root / name / version / "package"
+        if not _cps_file(pkg_dir_cps, name).exists():
+            _generate_cps(probe, name, version, pkg_dir_cps)
         return transitive
 
     # Build the dependency graph for this recipe from all transitive deps.
@@ -712,6 +819,7 @@ def _build_recipe(
             src_folder.mkdir(parents=True, exist_ok=True)
             recipe.source()
             (src_folder / _COMPLETE_MARKER).write_text("")
+    gen_folder = recipe.generators_folder if hasattr(recipe, "generate") else None
     if hasattr(recipe, "generate"):
         # Conan generators write files with bare filenames and expect CWD == generators_folder
         # (the comment in CMakeDeps says "# Current directory is the generators_folder").
@@ -726,6 +834,12 @@ def _build_recipe(
             recipe.generate()
         finally:
             os.chdir(_orig_cwd)
+    # system conan 2.27.1 generates conandeps_legacy.cmake but recipes may expect conan_deps.cmake
+    if gen_folder:
+        _legacy = Path(gen_folder) / "conandeps_legacy.cmake"
+        _conan_deps = Path(gen_folder) / "conan_deps.cmake"
+        if _legacy.is_file() and not _conan_deps.is_file():
+            _conan_deps.write_text(_legacy.read_text(encoding="utf-8"), encoding="utf-8")
     generate_aggregated_env(recipe)
     if not generate_only:
         if hasattr(recipe, "build"):
@@ -743,16 +857,21 @@ def _build_recipe(
                 os.chdir(_orig_cwd_build)
         if hasattr(recipe, "package"):
             Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
+            shutil.rmtree(recipe.package_folder, ignore_errors=True)
             Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
             _orig_cwd_pkg = os.getcwd()
             try:
                 os.chdir(recipe.build_folder)
                 recipe.package()
+            except Exception:
+                shutil.rmtree(recipe.package_folder, ignore_errors=True)
+                raise
             finally:
                 os.chdir(_orig_cwd_pkg)
         # Write the completion marker only after both build() and package() succeed.
         build_dir.mkdir(parents=True, exist_ok=True)
         (build_dir / _COMPLETE_MARKER).write_text("")
 
+    _generate_cps(recipe, name, version, pkg_dir)
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive
