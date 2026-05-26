@@ -77,11 +77,17 @@ class Recipe(RecipeBase):
     def build(self):
         config = "release" if str(self.settings.build_type) == "Release" else "debug"
 
+        _arch_map = {"x86_64": "x64", "x86": "x86", "armv8": "arm64", "armv7": "arm"}
+
         premake = Premake(self)
         premake.luafile = os.path.join(self.source_folder, "premake5_v2.lua").replace("\\", "/")
+        if premake.action == "vs2026":
+            premake.action = "vs2022"
         premake.arguments["config"] = config
         # Put generated build files directly in build_folder so premake.build() can find them
         premake.arguments["out"] = "."
+        premake.arguments["arch"] = _arch_map.get(str(self.settings.arch), "x64")
+        premake.arguments["toolset"] = "msc"
         premake.arguments["with_rive_text"] = ""
         premake.arguments["with_rive_layout"] = ""
 
@@ -89,8 +95,17 @@ class Recipe(RecipeBase):
         env = Environment()
         env.define("PREMAKE_PATH", os.path.join(self.source_folder, "build").replace("\\", "/"))
         env.define("DEPENDENCIES", os.path.join(self.source_folder, "dependencies").replace("\\", "/"))
-        with env.vars(self).apply():
-            premake.configure()
+
+        # configure() injects --arch from CONAN_TO_PREMAKE_ARCH when the conan toolchain file exists,
+        # but rive uses its own --arch option with different values (x64 not x86_64).
+        # Hide the toolchain path so configure() takes the legacy code path and uses our arch arg.
+        _real_tc = premake._premake_conan_toolchain
+        premake._premake_conan_toolchain = _real_tc.parent / "_disabled_conantoolchain.premake5.lua"
+        try:
+            with env.vars(self).apply():
+                premake.configure()
+        finally:
+            premake._premake_conan_toolchain = _real_tc
 
         premake.build(workspace="rive", targets=["rive"], configuration="default")
 

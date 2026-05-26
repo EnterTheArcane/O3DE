@@ -59,6 +59,7 @@ class Recipe(RecipeBase):
         tc.variables["BUILD_TESTS"] = False
         tc.variables["INSTALL_TESTS"] = False
         tc.variables["CMAKE_VERBOSE_MAKEFILE"] = False
+        tc.variables["FORCE_LIMITED_API"] = "no"
         if self.settings.os == "Windows":
             tc.cache_variables["CMAKE_LINKER_TYPE"] = "MSVC"
 
@@ -68,8 +69,24 @@ class Recipe(RecipeBase):
         python_root = cpython_pkg.replace("\\", "/")
         tc.variables["Python3_ROOT_DIR"] = python_root
         tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
+        # Shiboken uses find_package(Python ...) (unversioned), so set Python_ variables too.
+        tc.variables["Python_ROOT_DIR"] = python_root
+        tc.variables["Python_FIND_STRATEGY"] = "LOCATION"
+        cpython_ver = str(self.dependencies["cpython"].ref.version)
+        ver_parts = cpython_ver.split(".")
+        py_maj, py_min = ver_parts[0], ver_parts[1]
+        py_exe = f"{python_root}/bin/python.exe" if self.settings.os == "Windows" else f"{python_root}/bin/python{py_maj}.{py_min}"
+        py_inc = f"{python_root}/bin/include" if self.settings.os == "Windows" else f"{python_root}/include/python{py_maj}.{py_min}"
+        py_lib = f"{python_root}/bin/libs/python{py_maj}{py_min}.lib" if self.settings.os == "Windows" else f"{python_root}/lib/libpython{py_maj}.{py_min}.so"
+        tc.variables["Python_EXECUTABLE"] = py_exe
+        tc.variables["Python3_EXECUTABLE"] = py_exe
+        tc.variables["Python_INCLUDE_DIR"] = py_inc
+        tc.variables["Python3_INCLUDE_DIR"] = py_inc
+        tc.variables["Python_LIBRARY"] = py_lib
+        tc.variables["Python3_LIBRARY"] = py_lib
         if self.settings.os == "Windows":
             tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
+            tc.variables["Python_FIND_REGISTRY"] = "NEVER"
 
         qt_version = str(self.dependencies["qt"].ref.version)
         tc.variables["Qt6Core_VERSION"] = qt_version

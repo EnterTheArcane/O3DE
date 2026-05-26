@@ -36,6 +36,12 @@ endforeach()
 o3de_pal_dir(pal_source_dir ${CMAKE_CURRENT_LIST_DIR}/Source/Platform/${PAL_PLATFORM_NAME} "${gem_restricted_path}" "${gem_path}" "${gem_parent_relative_path}")
 set(common_source_dir ${CMAKE_CURRENT_LIST_DIR}/Source/Platform/Common)
 
+find_package(ThirdParty::imath REQUIRED)
+find_package(ThirdParty::libdeflate REQUIRED)
+find_package(ThirdParty::OpenEXR REQUIRED)
+find_package(ThirdParty::openjph REQUIRED)
+find_package(ThirdParty::zlib REQUIRED)
+
 ly_add_target(
     NAME ${gem_name}.Editor.Static STATIC
     NAMESPACE Gem
@@ -67,7 +73,7 @@ ly_add_target(
             3rdParty::squish-ccr
             3rdParty::TIFF
             3rdParty::ISPCTexComp
-            3rdParty::OpenEXR
+            ThirdParty::OpenEXR
             AZ::AzFramework
             AZ::AzToolsFramework
             AZ::AzQtComponents
