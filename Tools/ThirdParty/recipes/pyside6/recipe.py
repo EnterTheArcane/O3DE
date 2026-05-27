@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -96,7 +96,7 @@ class Recipe(RecipeBase):
         tc.variables["QT6_INSTALL_BINS"] = "bin"
         tc.variables["QT6_INSTALL_LIBS"] = "lib"
         tc.variables["QT6_INSTALL_LIBEXECS"] = "bin"
-        # Use Qt6's own native cmake configs (not CMakeConfigDeps-generated) so that
+        # Use Qt6's own native cmake configs (not CMakeDeps-generated) so that
         # find_package(Qt6 REQUIRED COMPONENTS Core) properly sets Qt6Core_FOUND
         # and creates all Qt6-specific target properties (e.g. QT_DARWIN_MIN_DEPLOYMENT_TARGET).
         tc.variables["Qt6_DIR"] = qt_cmake_dir
@@ -184,22 +184,126 @@ class Recipe(RecipeBase):
         with open(toolchain_path, "a") as f:
             f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.set_property("llvm", "cmake_find_mode", "none")
         deps.set_property("cpython", "cmake_find_mode", "none")
         # Qt has its own cmake config files that properly set Qt6Core_FOUND and
-        # Qt6-specific target properties. CMakeConfigDeps-generated Qt6Config.cmake would
+        # Qt6-specific target properties. CMakeDeps-generated Qt6Config.cmake would
         # create Qt6::Core as an IMPORTED target but NOT set Qt6Core_FOUND, causing
         # ShibokenHelpers.cmake to fatal-error on macOS. Use Qt's native cmake instead.
         deps.set_property("qt", "cmake_find_mode", "none")
         deps.generate()
 
     def build(self):
+        if self.settings.os == "Macos":
+            self._patch_qtcore_cmake()
+            self._patch_pyside_tools_cmake()
         cmake = CMake(self)
         cmake.configure()
         if self.settings.os == "Macos":
             self._patch_shiboken_wrapper()
+        # Build shibokenmodule first and stage it to the package prefix.
+        # PySide6's pyi stub generation (QtCore_pyi etc.) imports shiboken6 from
+        # PYTHON_SITE_PACKAGES at cmake build time, but shiboken6 is only installed
+        # there during cmake --install (i.e. package()). Pre-staging the just-built
+        # shibokenmodule lets the pyi targets find it before install runs.
+        cmake.build(target="shibokenmodule")
+        self._stage_shiboken6_for_pyi()
         cmake.build()
+
+    def _patch_qtcore_cmake(self):
+        """Force-load Darwin permission plugin archives and weak-link their frameworks.
+
+        PySide6's qtcore.cpp glue file contains Q_IMPORT_PLUGIN calls for 5 Darwin
+        permission plugins (Camera, Microphone, Bluetooth, Contacts, Calendar). These
+        expand to static initializer objects that call qt_static_plugin_QDarwin*Plugin().
+        Those symbols are defined in the permission .a archives.
+
+        The macOS linker with -undefined dynamic_lookup allows the undefined references at
+        link time, but at dlopen time (RTLD_NOW) the flat-namespace lookup fails because
+        the archives are not included in the link by default (QT_SKIP_AUTO_PLUGIN_INCLUSION
+        is ON, so no cmake genex includes them either).
+
+        Fix:
+        1. -force_load each archive so the qt_static_plugin_* symbols are defined.
+        2. -weak_framework for each framework the archives depend on, so their ObjC class
+           symbols are optional at dlopen time. dyld sets them to NULL if not found instead
+           of raising a symbol-not-found error. (The frameworks exist on macOS so they will
+           be loaded; weak just prevents hard failure if somehow absent.)
+        """
+        cmake_path = os.path.join(
+            self.source_folder, "sources", "pyside6", "PySide6", "QtCore", "CMakeLists.txt"
+        )
+        with open(cmake_path, "r") as f:
+            content = f.read()
+        if "_pyside6_qtcore_permplugin_patched" in content:
+            return  # Already patched (idempotent on retry)
+        patch = (
+            "\n# Recipe patch: force-load Darwin permission plugin archives into QtCore.so to\n"
+            "# satisfy qt_static_plugin_QDarwin*Plugin symbols referenced by Q_IMPORT_PLUGIN\n"
+            "# calls in PySide6's qtcore.cpp glue file. Also weak-link the Apple frameworks\n"
+            "# so their ObjC class symbols are optional at dlopen time.\n"
+            "set(_pyside6_qtcore_permplugin_patched TRUE)  # recipe patch sentinel\n"
+            "if(APPLE AND TARGET QtCore)\n"
+            "    file(GLOB _pyside6_perm_libs\n"
+            '        "${QT6_INSTALL_PREFIX}/plugins/permissions/libqdarwin*.a")\n'
+            "    foreach(_perm_lib IN LISTS _pyside6_perm_libs)\n"
+            '        target_link_options(QtCore PRIVATE "LINKER:-force_load,${_perm_lib}")\n'
+            "    endforeach()\n"
+            "    target_link_options(QtCore PRIVATE\n"
+            '        "LINKER:-weak_framework,AVFoundation"\n'
+            '        "LINKER:-weak_framework,Contacts"\n'
+            '        "LINKER:-weak_framework,CoreBluetooth"\n'
+            '        "LINKER:-weak_framework,CoreLocation"\n'
+            '        "LINKER:-weak_framework,EventKit"\n'
+            "    )\n"
+            "endif()\n"
+        )
+        with open(cmake_path, "a") as f:
+            f.write(patch)
+
+    def _patch_pyside_tools_cmake(self):
+        """Guard .app bundle directory installs with existence checks.
+
+        pyside-tools/CMakeLists.txt unconditionally installs Assistant.app,
+        Designer.app, and Linguist.app from Qt's bin directory. These .app bundles
+        are optional Qt GUI tools that are not built in our headless Qt package.
+        Without the existence guard, cmake --install fails with 'file INSTALL cannot
+        find' for each missing .app bundle.
+        """
+        cmake_path = os.path.join(
+            self.source_folder, "sources", "pyside-tools", "CMakeLists.txt"
+        )
+        with open(cmake_path, "r") as f:
+            content = f.read()
+        old = (
+            "    foreach(directory ${directories})\n"
+            "        install(DIRECTORY \"${directory}\"\n"
+            "                DESTINATION bin\n"
+            "                FILE_PERMISSIONS\n"
+            "                OWNER_EXECUTE OWNER_WRITE OWNER_READ\n"
+            "                GROUP_EXECUTE GROUP_READ\n"
+            "                WORLD_EXECUTE WORLD_READ\n"
+            "                PATTERN \"android_utilities.py\" EXCLUDE) # excluding the symlink\n"
+            "    endforeach()"
+        )
+        new = (
+            "    foreach(directory ${directories})\n"
+            "        if(EXISTS \"${directory}\")\n"
+            "        install(DIRECTORY \"${directory}\"\n"
+            "                DESTINATION bin\n"
+            "                FILE_PERMISSIONS\n"
+            "                OWNER_EXECUTE OWNER_WRITE OWNER_READ\n"
+            "                GROUP_EXECUTE GROUP_READ\n"
+            "                WORLD_EXECUTE WORLD_READ\n"
+            "                PATTERN \"android_utilities.py\" EXCLUDE) # excluding the symlink\n"
+            "        endif()\n"
+            "    endforeach()"
+        )
+        if old not in content:
+            return  # Already patched or source changed
+        with open(cmake_path, "w") as f:
+            f.write(content.replace(old, new, 1))
 
     def _patch_shiboken_wrapper(self):
         """Remove LLVM's lib dir from DYLD_LIBRARY_PATH in shiboken_wrapper.sh.
@@ -218,10 +322,10 @@ class Recipe(RecipeBase):
         llvm_pkg = self.dependencies["llvm"].package_folder
         llvm_lib = os.path.join(llvm_pkg, "lib")
 
-        for wrapper_path in glob.glob(
-            os.path.join(self.build_folder, "**", "shiboken_wrapper.sh"),
-            recursive=True,
-        ):
+        search_pattern = os.path.join(self.build_folder, "**", "shiboken_wrapper.sh")
+        found = list(glob.glob(search_pattern, recursive=True, include_hidden=True))
+
+        for wrapper_path in found:
             with open(wrapper_path, "r") as f:
                 content = f.read()
             # Remove LLVM lib dir from colon-separated path lists, handling
@@ -235,6 +339,51 @@ class Recipe(RecipeBase):
             if patched != content:
                 with open(wrapper_path, "w") as f:
                     f.write(patched)
+
+    def _stage_shiboken6_for_pyi(self):
+        """Copy shiboken6 Python module to the package prefix for pyi stub generation.
+
+        PySide6's cmake pyi targets (e.g. QtCore_pyi) run generate_pyi.py, which
+        does 'import shiboken6' with PYTHON_SITE_PACKAGES as a sys.path entry.
+        PYTHON_SITE_PACKAGES resolves to {package_folder}/lib/pythonX.Y/site-packages/
+        (the install destination), which is empty until cmake --install runs in
+        package(). By copying the just-built shiboken6 files there first, we let
+        the pyi targets succeed during cmake --build.
+        """
+        import glob
+        import shutil
+
+        cpython_ver = str(self.dependencies["cpython"].ref.version)
+        py_maj, py_min = cpython_ver.split(".")[:2]
+
+        # After cmake.build(target="shibokenmodule"), the shiboken6 Python package
+        # lives in {build_folder}/sources/shiboken6/ because shibokenmodule sets
+        # LIBRARY_OUTPUT_DIRECTORY to ${CMAKE_CURRENT_BINARY_DIR}/.. (i.e. one level
+        # above the shibokenmodule build dir).
+        src_dir = os.path.join(self.build_folder, "sources", "shiboken6")
+        site_pkgs = os.path.join(
+            self.package_folder, "lib", f"python{py_maj}.{py_min}", "site-packages"
+        )
+        dst_dir = os.path.join(site_pkgs, "shiboken6")
+        os.makedirs(dst_dir, exist_ok=True)
+
+        # Copy Python files and extension modules from the shiboken6 build output dir.
+        patterns = [
+            os.path.join(src_dir, "*.py"),
+            os.path.join(src_dir, "*.pyi"),
+            os.path.join(src_dir, "py.typed"),
+            os.path.join(src_dir, "Shiboken*.so"),    # macOS / Linux Python extension
+            os.path.join(src_dir, "Shiboken*.dylib"),  # alternate macOS extension name
+            os.path.join(src_dir, "Shiboken*.pyd"),    # Windows Python extension
+        ]
+        for pattern in patterns:
+            for src_file in glob.glob(pattern):
+                shutil.copy2(src_file, os.path.join(dst_dir, os.path.basename(src_file)))
+
+        # _config.py is generated in the shibokenmodule subdirectory, not the parent dir.
+        config_src = os.path.join(src_dir, "shibokenmodule", "_config.py")
+        if os.path.exists(config_src):
+            shutil.copy2(config_src, os.path.join(dst_dir, "_config.py"))
 
     def package(self):
         copy(self, "LICENSE.FDL", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

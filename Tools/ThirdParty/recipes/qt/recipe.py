@@ -7,7 +7,7 @@ import textwrap
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, default_cppstd
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
@@ -401,7 +401,7 @@ class Recipe(RecipeBase):
         ms = VirtualBuildEnv(self)
         ms.generate()
 
-        tc = CMakeConfigDeps(self)
+        tc = CMakeDeps(self)
         tc.set_property("libdrm", "cmake_file_name", "Libdrm")
         tc.set_property("libdrm::libdrm_libdrm", "cmake_target_name", "Libdrm::Libdrm")
         tc.set_property("wayland", "cmake_file_name", "Wayland")
@@ -410,7 +410,7 @@ class Recipe(RecipeBase):
         tc.set_property("wayland::wayland-cursor", "cmake_target_name", "Wayland::Cursor")
         tc.set_property("wayland::wayland-egl", "cmake_target_name", "Wayland::Egl")
 
-        # CMakeConfigDeps generates EGL-config.cmake and sets EGL_DIR in conan_cmakedeps_paths.cmake,
+        # CMakeDeps generates EGL-config.cmake and sets EGL_DIR in conan_cmakedeps_paths.cmake,
         # so find_package(EGL) prefers the Conan-installed config over Qt's bundled FindEGL.cmake.
         tc.set_property("egl", "cmake_file_name", "EGL")
         tc.set_property("egl", "cmake_find_mode", "config")
@@ -491,7 +491,7 @@ class Recipe(RecipeBase):
                 tc.variables["QT_FEATURE_openssl_linked"] = "ON"
 
         # TODO: Remove after fixing https://github.com/conan-io/conan/issues/12012
-        # Required for qt_config_compile_test() calls against CMakeConfigDeps targets to work correctly.
+        # Required for qt_config_compile_test() calls against CMakeDeps targets to work correctly.
         tc.cache_variables["CMAKE_TRY_COMPILE_CONFIGURATION"] = str(self.settings.build_type)
 
         if self.options.with_dbus:
