@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMakeToolchain, CMakeDeps, CMake
+from thirdparty.tools.cmake import CMakeToolchain, CMakeConfigDeps, CMake
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.gitlab import GitlabRepository
@@ -96,7 +96,7 @@ class Recipe(RecipeBase):
         if "with_sve2" in self.options:
             tc.cache_variables["ENABLE_SVE2"] = self.options.with_sve2
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):

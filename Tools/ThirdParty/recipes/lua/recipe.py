@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import fix_apple_shared_install_name
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import get, load, save, apply_patches, collect_libs
 
 
@@ -57,7 +57,7 @@ class Recipe(RecipeBase):
         tc.variables["SKIP_INSTALL_TOOLS"] = not self.options.with_tools
         tc.variables["WITH_READLINE"] = self.options.with_readline
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):

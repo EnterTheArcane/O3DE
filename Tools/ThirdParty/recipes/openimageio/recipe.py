@@ -233,6 +233,9 @@ class Recipe(RecipeBase):
         deps.set_property("libjxl", "cmake_file_name", "JXL")
         deps.set_property("openjph", "cmake_target_name", "openjph")
         deps.set_property("libheif", "cmake_target_name", "heif")
+        deps.set_property("ptex", "cmake_file_name", "Ptex")
+        deps.set_property("freetype", "cmake_file_name", "Freetype")
+        deps.set_property("libheif", "cmake_file_name", "Libheif")
         deps.generate()
 
     def build(self):

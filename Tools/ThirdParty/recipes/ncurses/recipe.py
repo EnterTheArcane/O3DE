@@ -242,7 +242,6 @@ class Recipe(RecipeBase):
         return f"conan-official-{self.name}-targets.cmake"
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "Curses")
 
         # CMake's standard FindCurses module does not define a target.

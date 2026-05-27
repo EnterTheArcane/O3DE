@@ -2,7 +2,7 @@ import os
 import textwrap
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.tools.files import copy, get, rm, rmdir, save
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -84,7 +84,7 @@ class Recipe(RecipeBase):
         tc.variables["LIBXML2_WITH_ZLIB"] = True
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):
@@ -141,8 +141,6 @@ class Recipe(RecipeBase):
         return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
-        self.cpp_info.set_property("cmake_module_file_name", "LibXml2")
         self.cpp_info.set_property("cmake_file_name", "libxml2")
         self.cpp_info.set_property("cmake_target_name", "LibXml2::LibXml2")
         self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])

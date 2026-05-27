@@ -56,7 +56,6 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_target_name", "pybind11_all_do_not_use")
         self.cpp_info.components["headers"].includedirs = ["include"]
         self.cpp_info.components["pybind11_"].set_property("cmake_target_name", "pybind11::pybind11")
-        self.cpp_info.components["pybind11_"].set_property("cmake_module_file_name", "pybind11")
         self.cpp_info.components["pybind11_"].builddirs = [cmake_base_path]
         self.cpp_info.components["pybind11_"].requires = ["headers"]
         cmake_file = os.path.join(cmake_base_path, "pybind11Common.cmake")

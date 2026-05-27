@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.build import stdcpp_library
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.scm import Version
@@ -114,7 +114,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_Doxygen"] = True
         tc.cache_variables["CMAKE_COMPILE_WARNING_AS_ERROR"] = False
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.set_property("dav1d", "cmake_additional_variables_prefixes", ["DAV1D"])
         deps.set_property("libde265", "cmake_file_name", "LIBDE265")
         deps.set_property("openjph", "cmake_file_name", "OPENJPH")

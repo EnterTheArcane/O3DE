@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -66,7 +66,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_JPEG"] = True
 
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         if self.options.with_jpeg:
             deps.set_property(self.options.with_jpeg, "cmake_file_name", "JPEG")
             deps.set_property(self.options.with_jpeg, "cmake_target_name", "JPEG::JPEG")

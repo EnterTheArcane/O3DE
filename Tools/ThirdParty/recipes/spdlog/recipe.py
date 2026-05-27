@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -77,7 +77,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["SPDLOG_USE_STD_FORMAT"] = False
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0091"] = "NEW"
         tc.generate()
-        cmake_deps = CMakeDeps(self)
+        cmake_deps = CMakeConfigDeps(self)
         cmake_deps.generate()
 
     def build(self):

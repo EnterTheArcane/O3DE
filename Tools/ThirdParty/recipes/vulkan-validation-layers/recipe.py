@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rename, rm, replace_in_file
 from thirdparty.tools.gnu import PkgConfigDeps
 from thirdparty.tools.scm import Version
@@ -82,7 +82,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["UPDATE_DEPS"] = False
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         # Conan provides both under the same name, upstream only uses this one
         deps.set_property("spirv-tools", "cmake_file_name", "SPIRV-Tools-opt")
         deps.generate()

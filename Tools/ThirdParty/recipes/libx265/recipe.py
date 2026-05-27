@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.build import cross_building, stdcpp_library
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rename, rm, rmdir, save
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
@@ -90,7 +90,7 @@ class Recipe(RecipeBase):
         if "arm" in self.settings.arch:
             tc.variables["CROSS_COMPILE_ARM"] = cross_building(self)
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def _patch_sources(self):
