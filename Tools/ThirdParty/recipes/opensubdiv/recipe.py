@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.build import valid_min_cppstd
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir, save
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -108,7 +108,7 @@ class Recipe(RecipeBase):
         tc.variables["NO_MACOS_FRAMEWORK"] = True
         tc.generate()
 
-        tc = CMakeDeps(self)
+        tc = CMakeConfigDeps(self)
         tc.generate()
 
     def _patch_sources(self):

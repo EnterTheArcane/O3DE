@@ -162,7 +162,6 @@ class Recipe(RecipeBase):
             save(self, path, re.subn(r"(?:EXTERN|GLOBAL)\(([^)]+)\)", r"\1", load(self, path))[0])
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "JPEG")
         self.cpp_info.set_property("cmake_target_name", "JPEG::JPEG")
         self.cpp_info.set_property("pkg_config_name", "libjpeg")

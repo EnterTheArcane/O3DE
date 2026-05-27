@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
         # Relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         tc.generate()
-        cd = CMakeDeps(self)
+        cd = CMakeConfigDeps(self)
         cd.generate()
 
     def build(self):
@@ -84,7 +84,7 @@ class Recipe(RecipeBase):
 
         # TODO: Upstream VorbisConfig.cmake defines components 'Enc' and 'File',
         # which are related to imported targets Vorbis::vorbisenc and Vorbis::vorbisfile
-        # Find a way to emulate this in CMakeDeps. See https://github.com/conan-io/conan/issues/10258
+        # Find a way to emulate this in CMakeConfigDeps. See https://github.com/conan-io/conan/issues/10258
 
         # vorbisenc
         self.cpp_info.components["vorbisenc"].set_property("cmake_target_name", "Vorbis::vorbisenc")

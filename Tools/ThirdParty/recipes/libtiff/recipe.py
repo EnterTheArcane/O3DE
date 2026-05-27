@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir, save
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
@@ -109,7 +109,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
         tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = self.options.jpeg == "libjpeg-turbo"
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.set_property("jbig", "cmake_file_name", "JBIG")
         deps.set_property("jbig", "cmake_target_name", "JBIG::JBIG")
         deps.set_property("xz_utils", "cmake_file_name", "liblzma")
@@ -146,7 +146,6 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "TIFF")
         self.cpp_info.set_property("cmake_target_name", "TIFF::TIFF")
         self.cpp_info.set_property("pkg_config_name", f"libtiff-{Version(self.version).major}")

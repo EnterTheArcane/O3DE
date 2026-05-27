@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -96,13 +96,16 @@ class Recipe(RecipeBase):
         tc.variables["QT6_INSTALL_BINS"] = "bin"
         tc.variables["QT6_INSTALL_LIBS"] = "lib"
         tc.variables["QT6_INSTALL_LIBEXECS"] = "bin"
-        # Use Qt6's own native cmake configs (not CMakeDeps-generated) so that
+        # Use Qt6's own native cmake configs (not CMakeConfigDeps-generated) so that
         # find_package(Qt6 REQUIRED COMPONENTS Core) properly sets Qt6Core_FOUND
         # and creates all Qt6-specific target properties (e.g. QT_DARWIN_MIN_DEPLOYMENT_TARGET).
         tc.variables["Qt6_DIR"] = qt_cmake_dir
         # Don't override CMAKE_PREFIX_PATH - let CMakeToolchain set it to include all dependencies
         # (zlib, pcre2, etc.) that Qt's FindWrap*.cmake modules need to find
         tc.variables["QT_DEBUG_FIND_PACKAGE"] = "ON"
+        # Prevent Qt6GuiConfig from auto-loading plugins (e.g. QTuioTouch → Qt6Network
+        # → WrapOpenSSL::WrapOpenSSL) which would cause "target not found" errors.
+        tc.variables["QT_SKIP_AUTO_PLUGIN_INCLUSION"] = "ON"
 
         if self.settings.os == "Macos":
             llvm_lib = os.path.join(llvm_pkg, "lib").replace("\\", "/")
@@ -164,6 +167,15 @@ class Recipe(RecipeBase):
             '        add_library(Qt::PlatformCommonInternal ALIAS Qt6::PlatformCommonInternal)\n'
             '    endif()\n'
             'endif()\n'
+            '# Stub target for WrapOpenSSL so Qt6NetworkTargets generate step succeeds\n'
+            '# when Qt6Network is transitively found but OpenSSL find modules are not loaded.\n'
+            'if(NOT TARGET WrapOpenSSL::WrapOpenSSL)\n'
+            '    add_library(WrapOpenSSL::WrapOpenSSL INTERFACE IMPORTED)\n'
+            '    find_package(OpenSSL QUIET)\n'
+            '    if(TARGET OpenSSL::SSL)\n'
+            '        target_link_libraries(WrapOpenSSL::WrapOpenSSL INTERFACE OpenSSL::SSL OpenSSL::Crypto)\n'
+            '    endif()\n'
+            'endif()\n'
         )
         helper_path = os.path.join(self.generators_folder, "qt_pyside6_internal_targets.cmake")
         with open(helper_path, "w") as f:
@@ -172,11 +184,11 @@ class Recipe(RecipeBase):
         with open(toolchain_path, "a") as f:
             f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.set_property("llvm", "cmake_find_mode", "none")
         deps.set_property("cpython", "cmake_find_mode", "none")
         # Qt has its own cmake config files that properly set Qt6Core_FOUND and
-        # Qt6-specific target properties. CMakeDeps-generated Qt6Config.cmake would
+        # Qt6-specific target properties. CMakeConfigDeps-generated Qt6Config.cmake would
         # create Qt6::Core as an IMPORTED target but NOT set Qt6Core_FOUND, causing
         # ShibokenHelpers.cmake to fatal-error on macOS. Use Qt's native cmake instead.
         deps.set_property("qt", "cmake_find_mode", "none")
@@ -185,7 +197,44 @@ class Recipe(RecipeBase):
     def build(self):
         cmake = CMake(self)
         cmake.configure()
+        if self.settings.os == "Macos":
+            self._patch_shiboken_wrapper()
         cmake.build()
+
+    def _patch_shiboken_wrapper(self):
+        """Remove LLVM's lib dir from DYLD_LIBRARY_PATH in shiboken_wrapper.sh.
+
+        PySide6's cmake sets DYLD_LIBRARY_PATH to include LLVM's lib dir so that
+        shiboken6 can find Qt/LLVM libs at runtime. However, this causes
+        libclang.dylib's hard-coded dependency on /usr/lib/libc++.1.dylib to be
+        intercepted by LLVM's libc++.1.dylib (via the libc++.1.dylib -> libc++.1.0.dylib
+        symlink in LLVM's lib dir). LLVM's libc++ does NOT re-export ___cxa_guard_release
+        (that symbol is defined in libc++abi), so dyld aborts with "Symbol not found".
+
+        shiboken6 and libclang already use @rpath to find LLVM libs, so removing
+        LLVM's lib dir from DYLD_LIBRARY_PATH is safe.
+        """
+        import glob
+        llvm_pkg = self.dependencies["llvm"].package_folder
+        llvm_lib = os.path.join(llvm_pkg, "lib")
+
+        for wrapper_path in glob.glob(
+            os.path.join(self.build_folder, "**", "shiboken_wrapper.sh"),
+            recursive=True,
+        ):
+            with open(wrapper_path, "r") as f:
+                content = f.read()
+            # Remove LLVM lib dir from colon-separated path lists, handling
+            # it appearing at the start, middle, or end of the value.
+            patched = (
+                content
+                .replace(f":{llvm_lib}:", ":")
+                .replace(f"{llvm_lib}:", "")
+                .replace(f":{llvm_lib}", "")
+            )
+            if patched != content:
+                with open(wrapper_path, "w") as f:
+                    f.write(patched)
 
     def package(self):
         copy(self, "LICENSE.FDL", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))

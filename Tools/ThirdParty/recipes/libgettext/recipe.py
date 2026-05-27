@@ -215,7 +215,6 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "Intl")
         self.cpp_info.set_property("cmake_target_name", "Intl::Intl")
         self.cpp_info.libs = ["gnuintl"]

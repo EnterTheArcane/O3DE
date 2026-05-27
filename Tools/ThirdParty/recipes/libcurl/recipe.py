@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.files import copy, download, get, replace_in_file, rmdir, save
 from thirdparty.tools.github import GithubRepository
@@ -279,7 +279,7 @@ class Recipe(RecipeBase):
 
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.set_property("wolfssl", "cmake_additional_variables_prefixes", ["WolfSSL", "WOLFSSL"])
         deps.set_property("wolfssl", "cmake_file_name", "WolfSSL")
 
@@ -349,7 +349,6 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "CURL")
         self.cpp_info.set_property("cmake_target_name", "CURL::libcurl")
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("pkg_config_name", "libcurl")
 
         self.cpp_info.components["curl"].resdirs = ["res"]

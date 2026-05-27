@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.tools.scm import Version
@@ -96,7 +96,7 @@ class Recipe(RecipeBase):
         tc.variables["CMAKE_MODULE_PATH"] = os.path.join(self.source_folder, "cmake").replace("\\", "/")
         tc.generate()
 
-        cd = CMakeDeps(self)
+        cd = CMakeConfigDeps(self)
         cd.generate()
 
     def _patch_sources(self):

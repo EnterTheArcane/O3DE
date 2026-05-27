@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, copy, get
 from thirdparty.tools.microsoft import is_msvc
 
@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
         if is_msvc(self):
-            cd = CMakeDeps(self)
+            cd = CMakeConfigDeps(self)
             cd.generate()
 
     def build(self):
@@ -66,7 +66,6 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "GIF")
         self.cpp_info.set_property("cmake_target_name", "GIF::GIF")
         self.cpp_info.libs = ["gif"]

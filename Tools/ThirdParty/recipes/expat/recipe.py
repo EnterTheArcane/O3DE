@@ -79,9 +79,6 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
-        self.cpp_info.set_property("cmake_module_file_name", "EXPAT")
-        self.cpp_info.set_property("cmake_module_target_name", "EXPAT::EXPAT")
         self.cpp_info.set_property("cmake_file_name", "expat")
         self.cpp_info.set_property("cmake_target_name", "expat::expat")
         self.cpp_info.set_property("pkg_config_name", "expat")
