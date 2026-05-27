@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -54,7 +54,7 @@ class Recipe(RecipeBase):
             # Use system ICD discovery instead of requiring MoltenVK source tree layout
             tc.variables["APPLE_USE_SYSTEM_ICD"] = True
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):

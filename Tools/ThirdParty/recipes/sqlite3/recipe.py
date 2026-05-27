@@ -157,7 +157,6 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "SQLite3")
         self.cpp_info.set_property("cmake_target_name", "SQLite::SQLite3")
         self.cpp_info.set_property("pkg_config_name", "sqlite3")

@@ -229,7 +229,6 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "ICU")
 
         prefix = "s" if self.settings.os == "Windows" and not self.options.shared else ""

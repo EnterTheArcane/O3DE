@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.tools.files import copy, get, rmdir, replace_in_file
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -51,7 +51,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["VUL_ENABLE_INSTALL"] = True
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):

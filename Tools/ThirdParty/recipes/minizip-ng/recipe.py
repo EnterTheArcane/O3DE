@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -106,7 +106,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_PkgConfig"] = True
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):

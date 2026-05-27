@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, rmdir, apply_patches
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -50,7 +50,8 @@ class Recipe(RecipeBase):
         tc.cache_variables["MANIFOLD_PAR"] = True
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
+        deps.set_property("clipper2", "cmake_file_name", "Clipper2")
         deps.set_property("clipper2::clipper2", "cmake_target_name", "Clipper2")
         deps.generate()
 

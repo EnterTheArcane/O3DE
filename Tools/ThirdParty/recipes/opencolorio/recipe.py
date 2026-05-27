@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
@@ -98,7 +98,7 @@ class Recipe(RecipeBase):
 
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):

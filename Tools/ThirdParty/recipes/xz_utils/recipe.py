@@ -159,7 +159,6 @@ class Recipe(RecipeBase):
         return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "LibLZMA")
         self.cpp_info.set_property("cmake_target_name", "LibLZMA::LibLZMA")
         self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])

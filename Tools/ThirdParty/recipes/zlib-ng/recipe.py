@@ -112,7 +112,6 @@ class Recipe(RecipeBase):
         if self.options.zlib_compat:
             self.cpp_info.defines.append("ZLIB_COMPAT")
             #copied from zlib
-            self.cpp_info.set_property("cmake_find_mode", "both")
             self.cpp_info.set_property("cmake_file_name", "ZLIB")
             self.cpp_info.set_property("cmake_target_name", "ZLIB::ZLIB")
             self.cpp_info.set_property("system_package_version", self._zlib_compat_version)

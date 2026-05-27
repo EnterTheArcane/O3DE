@@ -7,7 +7,7 @@ import textwrap
 from thirdparty import RecipeBase
 from thirdparty.tools.apple import is_apple_os
 from thirdparty.tools.build import cross_building, default_cppstd
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.tools.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.tools.gnu import PkgConfigDeps
@@ -401,7 +401,7 @@ class Recipe(RecipeBase):
         ms = VirtualBuildEnv(self)
         ms.generate()
 
-        tc = CMakeDeps(self)
+        tc = CMakeConfigDeps(self)
         tc.set_property("libdrm", "cmake_file_name", "Libdrm")
         tc.set_property("libdrm::libdrm_libdrm", "cmake_target_name", "Libdrm::Libdrm")
         tc.set_property("wayland", "cmake_file_name", "Wayland")
@@ -410,14 +410,15 @@ class Recipe(RecipeBase):
         tc.set_property("wayland::wayland-cursor", "cmake_target_name", "Wayland::Cursor")
         tc.set_property("wayland::wayland-egl", "cmake_target_name", "Wayland::Egl")
 
-        # override https://github.com/qt/qtbase/blob/dev/cmake/3rdparty/extra-cmake-modules/find-modules/FindEGL.cmake
+        # CMakeConfigDeps generates EGL-config.cmake and sets EGL_DIR in conan_cmakedeps_paths.cmake,
+        # so find_package(EGL) prefers the Conan-installed config over Qt's bundled FindEGL.cmake.
         tc.set_property("egl", "cmake_file_name", "EGL")
-        tc.set_property("egl", "cmake_find_mode", "module")
+        tc.set_property("egl", "cmake_find_mode", "config")
         tc.set_property("egl::egl", "cmake_target_name", "EGL::EGL")
 
-        # don't override https://github.com/qt/qtmultimedia/blob/dev/cmake/FindGStreamer.cmake
-        tc.set_property("gstreamer", "cmake_file_name", "gstreamer_conan")
-        tc.set_property("gstreamer", "cmake_find_mode", "module")
+        # Don't generate any file for gstreamer — let Qt's own FindGStreamer.cmake handle
+        # detection via CMAKE_PREFIX_PATH (same intent as the previous gstreamer_conan hack).
+        tc.set_property("gstreamer", "cmake_find_mode", "none")
 
         tc.generate()
 
@@ -490,7 +491,7 @@ class Recipe(RecipeBase):
                 tc.variables["QT_FEATURE_openssl_linked"] = "ON"
 
         # TODO: Remove after fixing https://github.com/conan-io/conan/issues/12012
-        # Required for qt_config_compile_test() calls against CMakeDeps targets to work correctly.
+        # Required for qt_config_compile_test() calls against CMakeConfigDeps targets to work correctly.
         tc.cache_variables["CMAKE_TRY_COMPILE_CONFIGURATION"] = str(self.settings.build_type)
 
         if self.options.with_dbus:
@@ -801,7 +802,7 @@ class Recipe(RecipeBase):
                 rmdir(self, os.path.join(self.package_folder, "licenses", module))
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         for mask in ["Find*.cmake", "*Config.cmake", "*-config.cmake"]:
-            rm(self, mask, self.package_folder, recursive=True, excludes=["Qt6HostInfoConfig.cmake", "Qt6Config.cmake"])
+            rm(self, mask, self.package_folder, recursive=True, excludes=["Qt6*Config.cmake", "FindWrap*.cmake"])
         rm(self, "*.la*", os.path.join(self.package_folder, "lib"), recursive=True)
         rm(self, "*.pdb*", self.package_folder, recursive=True)
         rm(self, "ensure_pro_file.cmake", self.package_folder, recursive=True)
@@ -817,7 +818,10 @@ class Recipe(RecipeBase):
             if m.endswith("Tools"):
                 if os.path.isfile(os.path.join(self.package_folder, "lib", "cmake", m, f"{m[:-5]}Macros.cmake")):
                     continue
-
+            if m.endswith("Private"):
+                continue
+            if glob.glob(os.path.join(self.package_folder, "lib", "cmake", m, "Qt6*Config.cmake")):
+                continue
             if m != "Qt6HostInfo":
                 rmdir(self, os.path.join(self.package_folder, "lib", "cmake", m))
 

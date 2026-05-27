@@ -94,7 +94,6 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "share"))
 
     def package_info(self):
-
         # brotlicommon
         self.cpp_info.components["brotlicommon"].set_property("pkg_config_name", "libbrotlicommon")
         self.cpp_info.components["brotlicommon"].libs = [self._get_decorated_lib("brotlicommon")]

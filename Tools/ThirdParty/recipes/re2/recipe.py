@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.tools.files import copy, get, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -45,7 +45,7 @@ class Recipe(RecipeBase):
         tc.variables["RE2_BUILD_TESTING"] = False
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):

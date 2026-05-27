@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.tools.files import copy, get, rm, rmdir
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.tools.scm import Version
@@ -114,7 +114,7 @@ class Recipe(RecipeBase):
             tc.cache_variables["PNG_POWERPC_VSX"] = self._neon_msa_sse_vsx_mapping[str(self.options.vsx)]
         
         tc.generate()
-        tc = CMakeDeps(self)
+        tc = CMakeConfigDeps(self)
         tc.generate()
 
     def build(self):
@@ -138,7 +138,6 @@ class Recipe(RecipeBase):
     def package_info(self):
         major_min_version = f"{Version(self.version).major}{Version(self.version).minor}"
 
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "PNG")
         self.cpp_info.set_property("cmake_target_name", "PNG::PNG")
         self.cpp_info.set_property("pkg_config_name", "libpng")

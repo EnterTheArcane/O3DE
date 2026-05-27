@@ -66,7 +66,6 @@ class Recipe(RecipeBase):
         rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_file_name", "ZLIB")
         self.cpp_info.set_property("cmake_target_name", "ZLIB::ZLIB")
         self.cpp_info.set_property("pkg_config_name", "zlib")

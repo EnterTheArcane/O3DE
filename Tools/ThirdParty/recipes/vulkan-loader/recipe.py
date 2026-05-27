@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.tools.files import copy, get, replace_in_file, rmdir
 from thirdparty.tools.scm import Version
 from thirdparty.tools.scm.github import GithubRepository
@@ -61,7 +61,7 @@ class Recipe(RecipeBase):
         vulkan_headers = self.dependencies["vulkan-headers"].package_folder.replace("\\", "/")
         tc.variables["VULKAN_HEADERS_INSTALL_DIR"] = vulkan_headers
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.generate()
 
     def build(self):
@@ -79,11 +79,8 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "VulkanLoader")
-        self.cpp_info.set_property("cmake_find_mode", "both")
-        self.cpp_info.set_property("cmake_module_file_name", "Vulkan")
         self.cpp_info.set_property("cmake_target_name", "Vulkan::Loader")
         self.cpp_info.set_property("cmake_target_aliases", ["Vulkan::Vulkan"])
-        self.cpp_info.set_property("cmake_module_target_name", "Vulkan::Vulkan")
         self.cpp_info.includedirs = []
         if self.settings.os == "Windows":
             self.cpp_info.libs = ["vulkan-1"]

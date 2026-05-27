@@ -819,8 +819,6 @@ class Recipe(RecipeBase):
 
         # Transparent integration with CMake's FindPython(3)
         self.cpp_info.set_property("cmake_file_name", "Python3")
-        self.cpp_info.set_property("cmake_module_file_name", "Python")
-        self.cpp_info.set_property("cmake_find_mode", "both")
         self.cpp_info.set_property("cmake_build_modules", [os.path.join(self._cmake_module_path, "use_conan_python.cmake")])
         self.cpp_info.builddirs = [self._cmake_module_path]
 
