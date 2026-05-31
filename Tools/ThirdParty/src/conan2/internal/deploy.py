@@ -4,10 +4,10 @@ import shutil
 import fnmatch
 
 from conan2.internal.cache.home_paths import HomePaths
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.loader import load_python_file
 from conan2.internal.errors import conanfile_exception_formatter
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import rmdir, mkdir, save
 
 
@@ -138,14 +138,14 @@ def runtime_deploy(graph, output_folder):
 
 
 def cyclonedx_1_4(graph, output_folder):
-    from conan2.tools.sbom import cyclonedx_1_4
+    from thirdparty.tools.sbom import cyclonedx_1_4
     import json
     sbom = cyclonedx_1_4(graph.root.conanfile)
     save(os.path.join(output_folder, "sbom-cyclonedx-1.4.json"), json.dumps(sbom, indent=2))
 
 
 def cyclonedx_1_6(graph, output_folder):
-    from conan2.tools.sbom import cyclonedx_1_6
+    from thirdparty.tools.sbom import cyclonedx_1_6
     import json
     sbom = cyclonedx_1_6(graph.root.conanfile)
     save(os.path.join(output_folder, "sbom-cyclonedx-1.6.json"), json.dumps(sbom, indent=2))

@@ -1,7 +1,7 @@
 import os
 
-from conan2.errors import ConanException
-from conan2.api.model import RecipeReference
+from thirdparty.errors import ConanException
+from thirdparty.api.model import RecipeReference
 from conan2.internal.model.requires import Requirement
 
 

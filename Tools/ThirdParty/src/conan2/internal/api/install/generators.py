@@ -3,7 +3,7 @@ import inspect
 import os
 import traceback
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.errors import conanfile_exception_formatter
 from conan2.internal.util.files import mkdir, chdir
@@ -130,18 +130,18 @@ def write_generators(conanfile, hook_manager, home_folder, envs_generation=None)
         if conanfile.virtualbuildenv:
             mkdir(new_gen_folder)
             with chdir(new_gen_folder):
-                from conan2.tools.env.virtualbuildenv import VirtualBuildEnv
+                from thirdparty.tools.env.virtualbuildenv import VirtualBuildEnv
                 env = VirtualBuildEnv(conanfile)
                 # TODO: Check length of env.vars().keys() when adding NotEmpty
                 env.generate()
         if conanfile.virtualrunenv:
             mkdir(new_gen_folder)
             with chdir(new_gen_folder):
-                from conan2.tools.env import VirtualRunEnv
+                from thirdparty.tools.env import VirtualRunEnv
                 env = VirtualRunEnv(conanfile)
                 env.generate()
 
-    from conan2.tools.env.environment import generate_aggregated_env
+    from thirdparty.tools.env.environment import generate_aggregated_env
     generate_aggregated_env(conanfile)
     hook_manager.execute("post_generate", conanfile=conanfile)
 

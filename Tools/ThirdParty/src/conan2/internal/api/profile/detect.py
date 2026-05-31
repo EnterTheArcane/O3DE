@@ -1,4 +1,4 @@
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.api.detect.detect_api import detect_os, detect_arch, default_msvc_runtime, \
     detect_libcxx, detect_cppstd, detect_default_compiler, default_compiler_version
 

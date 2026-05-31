@@ -2,12 +2,12 @@ import json
 import os
 import textwrap
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.graph.graph import RECIPE_CONSUMER, RECIPE_VIRTUAL, BINARY_SKIP, \
     BINARY_MISSING, BINARY_INVALID, Overrides, BINARY_BUILD, BINARY_EDITABLE_BUILD, BINARY_PLATFORM
-from conan2.errors import ConanException, ConanInvalidConfiguration
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.errors import ConanException, ConanInvalidConfiguration
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.files import load
 
 

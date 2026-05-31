@@ -1,8 +1,8 @@
 import os
 import json
 
-from conan2.api.output import ConanOutput
-from conan2.errors import ConanException
+from thirdparty.api.output import ConanOutput
+from thirdparty.errors import ConanException
 from conan2.internal.cache.conan_reference_layout import METADATA
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.loader import load_python_file

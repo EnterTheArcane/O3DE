@@ -2,8 +2,8 @@ import json
 import os
 from shutil import which
 
-from conan2.tools.build import cmd_args_to_string
-from conan2.errors import ConanException
+from thirdparty.tools.build import cmd_args_to_string
+from thirdparty.errors import ConanException
 
 
 def vs_installation_path(version):

@@ -6,17 +6,17 @@ from io import StringIO
 
 import yaml
 
-from conan2.api.model import LOCAL_RECIPES_INDEX
-from conan2.api.output import ConanOutput
+from thirdparty.api.model import LOCAL_RECIPES_INDEX
+from thirdparty.api.output import ConanOutput
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.api.export import cmd_export
 from conan2.internal.hook_manager import HookManager
 from conan2.internal.loader import ConanFileLoader
 from conan2.internal.errors import ConanReferenceDoesNotExistInDB, RecipeNotFoundException, \
     PackageNotFoundException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.conf import ConfDefinition
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.files import load, save, rmdir, copytree_compat
 
 

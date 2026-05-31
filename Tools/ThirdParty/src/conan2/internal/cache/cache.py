@@ -11,9 +11,9 @@ from conan2.internal.cache.conan_reference_layout import RecipeLayout, PackageLa
 # TODO: We need the workflow to remove existing references.
 from conan2.internal.cache.db.cache_database import CacheDatabase
 from conan2.internal.errors import ConanReferenceAlreadyExistsInDB
-from conan2.errors import ConanException
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.errors import ConanException
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.dates import revision_timestamp_now
 from conan2.internal.util.files import rmdir, renamedir, mkdir
 

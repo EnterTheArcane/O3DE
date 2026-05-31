@@ -1,13 +1,13 @@
 import os
 import shutil
 
-from conan2.tools.files import copy
-from conan2.api.output import ConanOutput
-from conan2.tools.scm import Git
+from thirdparty.tools.files import copy
+from thirdparty.api.output import ConanOutput
+from thirdparty.tools.scm import Git
 from conan2.internal.errors import conanfile_exception_formatter
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.manifest import FileTreeManifest
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.paths import DATA_YML
 from conan2.internal.util.files import is_dirty, rmdir, set_dirty, mkdir, clean_dirty, chdir
 

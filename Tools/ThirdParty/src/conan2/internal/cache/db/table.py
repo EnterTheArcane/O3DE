@@ -5,8 +5,8 @@ from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 from typing import Tuple, List
 
-from conan2.api.output import ConanOutput
-from conan2.errors import ConanException
+from thirdparty.api.output import ConanOutput
+from thirdparty.errors import ConanException
 
 
 class BaseDbTable:

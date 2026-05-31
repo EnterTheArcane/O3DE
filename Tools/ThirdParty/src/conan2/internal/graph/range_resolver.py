@@ -1,7 +1,7 @@
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.graph.proxy import should_update_reference
-from conan2.errors import ConanException
-from conan2.api.model import RecipeReference
+from thirdparty.errors import ConanException
+from thirdparty.api.model import RecipeReference
 from conan2.internal.model.version_range import VersionRange
 
 

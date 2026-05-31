@@ -1,5 +1,5 @@
 from conan2.internal.graph.graph_error import GraphProvidesError
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 
 
 def check_graph_provides(dep_graph):

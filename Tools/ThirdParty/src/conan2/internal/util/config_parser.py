@@ -1,6 +1,6 @@
 import re
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 
 class TextINIParse:

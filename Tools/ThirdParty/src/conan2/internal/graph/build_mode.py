@@ -1,5 +1,5 @@
-from conan2.api.output import ConanOutput
-from conan2.errors import ConanException
+from thirdparty.api.output import ConanOutput
+from thirdparty.errors import ConanException
 from conan2.internal.model.recipe_ref import ref_matches
 
 

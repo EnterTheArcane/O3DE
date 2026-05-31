@@ -2,11 +2,11 @@ import io
 import os
 import time
 
-from conan2.api.output import ConanOutput, TimedOutput
+from thirdparty.api.output import ConanOutput, TimedOutput
 from conan2.internal.rest import response_to_str
 from conan2.internal.errors import InternalErrorException, RequestErrorException, AuthenticationException, \
     ForbiddenException, NotFoundException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import sha1sum
 
 

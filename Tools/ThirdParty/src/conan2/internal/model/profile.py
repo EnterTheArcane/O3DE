@@ -1,11 +1,11 @@
 import copy
 from collections import OrderedDict, defaultdict
 
-from conan2.errors import ConanException
-from conan2.tools.env.environment import ProfileEnvironment
+from thirdparty.errors import ConanException
+from thirdparty.tools.env.environment import ProfileEnvironment
 from conan2.internal.model.conf import ConfDefinition
 from conan2.internal.model.options import Options
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 
 
 class Profile:

@@ -11,7 +11,7 @@ import yaml
 from collections import OrderedDict
 from pathlib import Path
 
-from conan2.api.model.refs import RecipeReference
+from thirdparty.api.model.refs import RecipeReference
 from thirdparty.cps.cps import CPS
 from conan2.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
 from conan2.internal.model.conan_file import ConanFile
@@ -19,8 +19,8 @@ from conan2.internal.model.conanfile_interface import ConanFileInterface
 from conan2.internal.model.dependencies import ConanFileDependencies
 from conan2.internal.model.requires import Requirement
 from conan2.internal.rest.conan_requester import ConanRequester
-from conan2.tools.env import Environment
-from conan2.tools.env.environment import generate_aggregated_env
+from thirdparty.tools.env import Environment
+from thirdparty.tools.env.environment import generate_aggregated_env
 from thirdparty._host.detect import detect_settings, make_conf
 from thirdparty.cli.command import command
 
@@ -795,7 +795,7 @@ def _build_recipe(
         try:
             recipe.validate()
         except Exception as _val_exc:
-            from conan2.errors import ConanInvalidConfiguration
+            from thirdparty.errors import ConanInvalidConfiguration
             if isinstance(_val_exc, ConanInvalidConfiguration):
                 print(f"[thirdparty] {name}/{version} not supported on this platform: {_val_exc} — skipping")
                 return transitive

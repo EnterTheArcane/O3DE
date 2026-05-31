@@ -2,8 +2,8 @@ import os
 import textwrap
 
 from conan2 import conan_version
-from conan2.api.output import ConanOutput
-from conan2.errors import ConanException, ConanMigrationError
+from thirdparty.api.output import ConanOutput
+from thirdparty.errors import ConanException, ConanMigrationError
 from conan2.internal.default_settings import migrate_settings_file
 from conan2.internal.loader import load_python_file
 from conan2.internal.model.version import Version

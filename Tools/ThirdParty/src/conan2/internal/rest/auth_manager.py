@@ -10,11 +10,11 @@ Flow:
     (with LOGIN_RETRIES retries) and retry to call with the new token.
 """
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.rest.remote_credentials import RemoteCredentials
 from conan2.internal.rest.rest_client import RestApiClient
 from conan2.internal.errors import AuthenticationException, ForbiddenException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 LOGIN_RETRIES = 3
 
