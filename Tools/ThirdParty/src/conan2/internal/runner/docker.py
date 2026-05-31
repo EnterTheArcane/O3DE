@@ -6,12 +6,12 @@ import platform
 import shutil
 from typing import Optional, NamedTuple, Dict, List
 import yaml
-from conan2.api.conan_api import ConanAPI
-from conan2.api.model import ListPattern
-from conan2.api.output import Color, ConanOutput
+from thirdparty.api.conan_api import ConanAPI
+from thirdparty.api.model import ListPattern
+from thirdparty.api.output import Color, ConanOutput
 from conan2.cli import make_abs_path
 from conan2.internal.runner import RunnerException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from pathlib import Path
 from conan2.internal.model.profile import Profile
 from conan2.internal.model.version import Version

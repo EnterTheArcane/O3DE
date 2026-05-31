@@ -1,9 +1,9 @@
 import hashlib
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.dependencies import UserRequirementsDict
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.config_parser import TextINIParse
 
 

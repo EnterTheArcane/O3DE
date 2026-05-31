@@ -1,7 +1,7 @@
 import textwrap
 from urllib.parse import urljoin
-from conan2.api.output import Color, ConanOutput
-from conan2.errors import ConanException
+from thirdparty.api.output import Color, ConanOutput
+from thirdparty.errors import ConanException
 
 
 def _build_headers(token):
@@ -21,7 +21,7 @@ class ConanCenterProvider:
 
     def get_cves(self, refs):
         if not self._token:
-            from conan2.api.subapi.audit import CONAN_CENTER_AUDIT_PROVIDER_NAME
+            from thirdparty.api.subapi.audit import CONAN_CENTER_AUDIT_PROVIDER_NAME
             if self.name == CONAN_CENTER_AUDIT_PROVIDER_NAME:
                 output = ConanOutput()
                 output.write("\n")

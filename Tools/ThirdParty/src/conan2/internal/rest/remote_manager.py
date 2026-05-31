@@ -7,18 +7,18 @@ from typing import List
 
 from requests.exceptions import ConnectionError
 
-from conan2.api.model import LOCAL_RECIPES_INDEX
+from thirdparty.api.model import LOCAL_RECIPES_INDEX
 from conan2.internal.paths import CONANINFO, CONAN_MANIFEST, PACKAGE_FILE_NAME, EXPORT_FILE_NAME
 from conan2.internal.rest.rest_client_local_recipe_index import RestApiClientLocalRecipesIndex
-from conan2.api.model import Remote
-from conan2.api.output import ConanOutput
+from thirdparty.api.model import Remote
+from thirdparty.api.output import ConanOutput
 from conan2.internal.cache.conan_reference_layout import METADATA
 from conan2.internal.rest.pkg_sign import PkgSignaturesPlugin
 from conan2.internal.errors import ConanConnectionError, NotFoundException, PackageNotFoundException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.info import load_binary_info
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.files import rmdir, human_size
 from conan2.internal.util.files import mkdir, tar_extract
 

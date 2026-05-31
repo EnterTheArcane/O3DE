@@ -23,8 +23,8 @@ import os
 import platform
 import re
 
-from conan2.tools.build import cmd_args_to_string
-from conan2.errors import ConanException
+from thirdparty.tools.build import cmd_args_to_string
+from thirdparty.errors import ConanException
 
 WINDOWS = "windows"
 MSYS2 = 'msys2'
@@ -34,7 +34,7 @@ WSL = 'wsl'  # Windows Subsystem for Linux
 
 
 def command_env_wrapper(conanfile, command, envfiles, envfiles_folder, scope="build"):
-    from conan2.tools.env.environment import environment_wrap_command
+    from thirdparty.tools.env.environment import environment_wrap_command
     if getattr(conanfile, "conf", None) is None:
         # TODO: No conf, no profile defined!! This happens at ``export()`` time
         #  Is it possible to run a self.run() in export() in bash?
@@ -59,8 +59,8 @@ def command_env_wrapper(conanfile, command, envfiles, envfiles_folder, scope="bu
 
 
 def _windows_bash_wrapper(conanfile, command, env, envfiles_folder):
-    from conan2.tools.env import Environment
-    from conan2.tools.env.environment import environment_wrap_command
+    from thirdparty.tools.env import Environment
+    from thirdparty.tools.env.environment import environment_wrap_command
     """ Will wrap a unix command inside a bash terminal It requires to have MSYS2, CYGWIN, or WSL"""
 
     subsystem = conanfile.conf.get("tools.microsoft.bash:subsystem")

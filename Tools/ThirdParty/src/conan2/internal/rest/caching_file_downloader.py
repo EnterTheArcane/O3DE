@@ -5,12 +5,12 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.rest.file_downloader import FileDownloader
 from conan2.internal.rest.download_cache import DownloadCache
 from conan2.internal.errors import AuthenticationException, ForbiddenException, NotFoundException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import mkdir, set_dirty_context_manager, remove_if_dirty, human_size
 
 

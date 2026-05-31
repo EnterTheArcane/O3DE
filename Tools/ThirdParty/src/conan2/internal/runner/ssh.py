@@ -2,8 +2,8 @@ from pathlib import Path
 import pathlib
 import tempfile
 
-from conan2.api.output import Color, ConanOutput
-from conan2.errors import ConanException
+from thirdparty.api.output import Color, ConanOutput
+from thirdparty.errors import ConanException
 
 import os
 from io import BytesIO

@@ -1,11 +1,11 @@
 import os
 import sqlite3
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.cache.db.packages_table import PackagesDBTable
 from conan2.internal.cache.db.recipes_table import RecipesDBTable
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.model.version import Version
 
 

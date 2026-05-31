@@ -9,7 +9,7 @@ import textwrap
 
 from jinja2 import Environment, FileSystemLoader
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.api.detect import detect_api
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.model.options import _PackageOption

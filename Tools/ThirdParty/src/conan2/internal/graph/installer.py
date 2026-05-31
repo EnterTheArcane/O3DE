@@ -2,7 +2,7 @@ import os
 import shutil
 from multiprocessing.pool import ThreadPool
 
-from conan2.api.output import ConanOutput, Color
+from thirdparty.api.output import ConanOutput, Color
 from conan2.internal.methods import run_build_method, run_package_method
 from conan2.internal.api.install.generators import write_generators
 from conan2.internal.graph.graph import (BINARY_BUILD, BINARY_CACHE, BINARY_DOWNLOAD,
@@ -11,9 +11,9 @@ from conan2.internal.graph.graph import (BINARY_BUILD, BINARY_CACHE, BINARY_DOWN
 from conan2.internal.graph.install_graph import InstallGraph
 from conan2.internal.source import retrieve_exports_sources, config_source
 from conan2.internal.errors import conanfile_remove_attr, conanfile_exception_formatter
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.cpp_info import CppInfo, MockInfoProperty
-from conan2.api.model import PkgReference
+from thirdparty.api.model import PkgReference
 from conan2.internal.paths import CONANINFO
 from conan2.internal.util import cpu_count
 from conan2.internal.util.files import clean_dirty, is_dirty, mkdir, rmdir, save, set_dirty, chdir

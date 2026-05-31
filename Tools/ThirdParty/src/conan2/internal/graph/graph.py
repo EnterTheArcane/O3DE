@@ -1,8 +1,8 @@
 from collections import OrderedDict
 
 from conan2.internal.graph.graph_error import GraphError, GraphConflictError
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 
 RECIPE_DOWNLOADED = "Downloaded"
 RECIPE_INCACHE = "Cache"  # The previously installed recipe in cache is being used

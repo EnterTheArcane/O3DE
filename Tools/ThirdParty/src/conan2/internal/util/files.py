@@ -10,7 +10,7 @@ import time
 
 from contextlib import contextmanager
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 _DIRTY_FOLDER = ".dirty"
 
@@ -36,7 +36,7 @@ def remove_if_dirty(item):
     if is_dirty(item):
         if os.path.exists(item):
             # To avoid circular import in conan_server
-            from conan2.api.output import ConanOutput
+            from thirdparty.api.output import ConanOutput
             ConanOutput().warning(f"{item} is dirty, removing it")
             if os.path.isfile(item):
                 os.remove(item)
@@ -266,7 +266,7 @@ def tar_extract(fileobj, destination_dir):
 
 
 def merge_directories(src, dst):
-    from conan2.tools.files import copy
+    from thirdparty.tools.files import copy
     copy(None, pattern="*", src=src, dst=dst)
 
 

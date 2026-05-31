@@ -5,7 +5,7 @@ import yaml
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.default_settings import default_settings_yml
 from conan2.internal.internal_tools import is_universal_arch
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import save, load
 
 

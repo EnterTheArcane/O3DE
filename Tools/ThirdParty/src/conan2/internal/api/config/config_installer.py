@@ -6,13 +6,13 @@ import zipfile
 from urllib.parse import urlparse, urlsplit
 from contextlib import contextmanager
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.paths import find_file_walk_up
 from conan2.internal.rest.file_downloader import FileDownloader
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import mkdir, rmdir, remove, chdir
 from conan2.internal.util.runners import detect_runner
-from conan2.tools.files.files import untargz
+from thirdparty.tools.files.files import untargz
 
 
 class _ConanIgnoreMatcher:

@@ -1,6 +1,6 @@
 from conan2.internal import REVISIONS
 from conan2.internal.rest.rest_client_v2 import RestV2Methods
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 CHECKSUM_DEPLOY = "checksum_deploy"  # capability
 

@@ -1,6 +1,6 @@
 from urllib.parse import urlencode
 
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.rest.rest_routes import RestRoutes
 
 

@@ -1,12 +1,12 @@
 import os
 from collections import OrderedDict
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.graph.compute_pid import run_validate_package_id
 from conan2.internal.loader import load_python_file
 from conan2.internal.errors import conanfile_exception_formatter, scoped_traceback
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.api.migrations import CONAN_GENERATED_COMMENT
 
 # TODO: Define other compatibility besides applications

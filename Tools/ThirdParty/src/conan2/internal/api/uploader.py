@@ -6,10 +6,10 @@ import sys
 import tarfile
 import time
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.source import retrieve_exports_sources
 from conan2.internal.errors import NotFoundException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.paths import CONAN_MANIFEST, CONANFILE, CONANINFO, COMPRESSIONS, \
     EXPORT_SOURCES_FILE_NAME, EXPORT_FILE_NAME, PACKAGE_FILE_NAME
 from conan2.internal.util.files import (clean_dirty, is_dirty, gather_files,

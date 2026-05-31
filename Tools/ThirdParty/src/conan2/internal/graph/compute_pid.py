@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
 from conan2.internal.errors import conanfile_remove_attr, conanfile_exception_formatter
-from conan2.errors import ConanException, ConanInvalidConfiguration
+from thirdparty.errors import ConanException, ConanInvalidConfiguration
 from conan2.internal.methods import auto_header_only_package_id
 from conan2.internal.model.info import (ConanInfo, RequirementsInfo, RequirementInfo,
                                        PythonRequiresInfo)

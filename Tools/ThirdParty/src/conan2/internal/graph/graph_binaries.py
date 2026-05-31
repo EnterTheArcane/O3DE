@@ -1,6 +1,6 @@
 import os
 
-from conan2.api.output import ConanOutput, Color
+from thirdparty.api.output import ConanOutput, Color
 from conan2.internal.cache.home_paths import HomePaths
 from conan2.internal.graph.build_mode import BuildMode
 from conan2.internal.graph.compatibility import BinaryCompatibility
@@ -13,7 +13,7 @@ from conan2.internal.graph.graph import (BINARY_BUILD, BINARY_CACHE, BINARY_DOWN
 from conan2.internal.graph.proxy import should_update_reference
 from conan2.internal.errors import (conanfile_exception_formatter, ConanConnectionError,
                                    NotFoundException, PackageNotFoundException)
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.conanconfig import loadconanconfig
 from conan2.internal.model.info import RequirementInfo, RequirementsInfo
 from conan2.internal.model.pkg_type import PackageType

@@ -2,7 +2,7 @@ import os
 import platform
 from pathlib import Path
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 if platform.system() == "Windows":
     def _conan_expand_user(path):

@@ -1,4 +1,4 @@
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 
 
 def ref_matches(ref, pattern, is_consumer):

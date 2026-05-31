@@ -6,7 +6,7 @@ from threading import Lock
 
 import fasteners
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.dates import timestamp_now
 from conan2.internal.util.files import load, save, remove_if_dirty
 

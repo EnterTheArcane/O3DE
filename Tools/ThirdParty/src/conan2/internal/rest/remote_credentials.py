@@ -4,13 +4,13 @@ import platform
 
 from jinja2 import Template
 
-from conan2.api.input import UserInput
+from thirdparty.api.input import UserInput
 from conan2.internal.cache.home_paths import HomePaths
 
 from conan2.internal.loader import load_python_file
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.errors import scoped_traceback
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import load
 
 

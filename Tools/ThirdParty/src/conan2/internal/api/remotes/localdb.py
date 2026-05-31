@@ -3,7 +3,7 @@ import sqlite3
 from contextlib import contextmanager
 from sqlite3 import OperationalError
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.api.remotes import encrypt
 
 REMOTES_USER_TABLE = "users_remotes"

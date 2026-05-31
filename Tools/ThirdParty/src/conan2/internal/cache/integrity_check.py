@@ -1,9 +1,9 @@
 import os
 
-from conan2.api.model.list import PackagesList
-from conan2.api.output import ConanOutput
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.api.model.list import PackagesList
+from thirdparty.api.output import ConanOutput
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 
 
 class IntegrityChecker:

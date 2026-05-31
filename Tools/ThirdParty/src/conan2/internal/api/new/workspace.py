@@ -1,4 +1,4 @@
-from conan2.api.subapi.new import NewAPI
+from thirdparty.api.subapi.new import NewAPI
 from conan2.internal.api.new.cmake_exe import cmake_exe_files
 from conan2.internal.api.new.cmake_lib import cmake_lib_files
 

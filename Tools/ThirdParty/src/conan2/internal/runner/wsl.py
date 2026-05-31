@@ -1,8 +1,8 @@
 from pathlib import PurePosixPath, PureWindowsPath, Path
-from conan2.api.output import Color, ConanOutput
+from thirdparty.api.output import Color, ConanOutput
 from conan2.internal.util.runners import conan_run
 from conan2.internal.subsystems import subsystem_path
-from conan2.tools.files import save
+from thirdparty.tools.files import save
 from io import StringIO
 import tempfile
 import os

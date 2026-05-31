@@ -12,15 +12,15 @@ import yaml
 
 from pathlib import Path
 
-from conan2.api.output import ConanOutput
-from conan2.tools.cmake import cmake_layout
-from conan2.tools.google import bazel_layout
-from conan2.tools.microsoft import vs_layout
+from thirdparty.api.output import ConanOutput
+from thirdparty.tools.cmake import cmake_layout
+from thirdparty.tools.google import bazel_layout
+from thirdparty.tools.microsoft import vs_layout
 from conan2.internal.errors import conanfile_exception_formatter, NotFoundException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.conan_file import ConanFile
 from conan2.internal.model.options import Options
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.paths import DATA_YML
 from conan2.internal.model.version_range import validate_conan_version
 from conan2.internal.util.config_parser import TextINIParse
