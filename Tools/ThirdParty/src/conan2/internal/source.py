@@ -1,10 +1,10 @@
 import os
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.methods import run_source_method
-from conan2.tools.env import VirtualBuildEnv
+from thirdparty.tools.env import VirtualBuildEnv
 from conan2.internal.errors import NotFoundException
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import is_dirty, mkdir, rmdir, set_dirty_context_manager, merge_directories, clean_dirty
 
 

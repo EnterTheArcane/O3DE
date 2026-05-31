@@ -6,15 +6,15 @@ from collections import OrderedDict, defaultdict
 from jinja2 import Environment, FileSystemLoader
 
 from conan2 import conan_version
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.api.detect import detect_api
 from conan2.internal.cache.home_paths import HomePaths
-from conan2.tools.env.environment import ProfileEnvironment
-from conan2.errors import ConanException
+from thirdparty.tools.env.environment import ProfileEnvironment
+from thirdparty.errors import ConanException
 from conan2.internal.model.conf import ConfDefinition, CORE_CONF_PATTERN
 from conan2.internal.model.options import Options
 from conan2.internal.model.profile import Profile
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.config_parser import TextINIParse
 from conan2.internal.util.files import mkdir, load_user_encoded
 

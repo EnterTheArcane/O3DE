@@ -2,7 +2,7 @@ from functools import total_ordering
 from typing import Optional
 
 from conan2.internal.model.version import Version
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 
 def required_conan_version_policy(conanfile, limit_version):
@@ -184,7 +184,7 @@ class VersionRange:
         for t in tokens[1:]:
             if "include_prerelease" in t:
                 if "include_prerelease=" in t:
-                    from conan2.api.output import ConanOutput
+                    from thirdparty.api.output import ConanOutput
                     ConanOutput().warning(
                         f'include_prerelease version range option in "{expression}" does not take an attribute, '
                         'its presence unconditionally enables prereleases')
@@ -193,7 +193,7 @@ class VersionRange:
             else:
                 t = t.strip()
                 if len(t) > 0 and t[0].isalpha():
-                    from conan2.api.output import ConanOutput
+                    from thirdparty.api.output import ConanOutput
                     ConanOutput().warning(f'Unrecognized version range option "{t}" in "{expression}"')
                 else:
                     raise ConanException(f'"{t}" in version range "{expression}" is not a valid option')

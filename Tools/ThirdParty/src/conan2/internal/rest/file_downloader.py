@@ -3,11 +3,11 @@ import re
 import time
 
 
-from conan2.api.output import ConanOutput, TimedOutput
+from thirdparty.api.output import ConanOutput, TimedOutput
 from conan2.internal.rest import response_to_str
 from conan2.internal.errors import (ConanConnectionError, RequestErrorException,
                                    AuthenticationException, ForbiddenException, NotFoundException)
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.util.files import human_size, check_with_algorithm_sum
 
 

@@ -11,11 +11,11 @@ from conan2.internal.graph.graph_error import (GraphLoopError, GraphConflictErro
                                               GraphError)
 from conan2.internal.graph.profile_node_definer import initialize_conanfile_profile
 from conan2.internal.graph.provides import check_graph_provides
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.conan_file import ConanFile
 from conan2.internal.model.options import Options, _PackageOptions
 from conan2.internal.model.pkg_type import PackageType
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.model.requires import Requirement
 from conan2.internal.model.version_range import VersionRange, required_conan_version_policy
 

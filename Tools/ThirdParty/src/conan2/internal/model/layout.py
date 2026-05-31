@@ -14,7 +14,7 @@ class Infos:
 
 class PartialLayout:
     def __init__(self):
-        from conan2.tools.env import Environment
+        from thirdparty.tools.env import Environment
         self.buildenv_info = Environment()
         self.runenv_info = Environment()
         self.conf_info = Conf()

@@ -1,6 +1,6 @@
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.pkg_type import PackageType
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.model.version_range import VersionRange
 
 

@@ -1,4 +1,4 @@
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.recipe_ref import ref_matches
 
 _falsey_options = ["false", "none", "0", "off", ""]
@@ -245,7 +245,7 @@ class Options:
                         if "[" in package:
                             msg = (f"Options pattern {package} contains a version range, which has no effect. "
                                    f"Only '&' for consumer and '*' as wildcard are supported in this context.")
-                            from conan2.api.output import ConanOutput
+                            from thirdparty.api.output import ConanOutput
                             ConanOutput().warning(msg, warn_tag="risk")
                         self._deps_package_options.setdefault(package, _PackageOptions())[option] = v
                     else:

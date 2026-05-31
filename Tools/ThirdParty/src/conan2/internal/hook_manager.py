@@ -1,7 +1,7 @@
 import os
 
 from conan2.internal.loader import load_python_file
-from conan2.errors import ConanException, ConanInvalidConfiguration
+from thirdparty.errors import ConanException, ConanInvalidConfiguration
 
 valid_hook_methods = ["pre_export", "post_export",
                       "pre_validate", "post_validate",

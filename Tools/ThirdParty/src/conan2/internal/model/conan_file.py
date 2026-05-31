@@ -2,9 +2,9 @@ import os
 import subprocess
 from pathlib import Path
 
-from conan2.api.output import ConanOutput, Color, LEVEL_QUIET
+from thirdparty.api.output import ConanOutput, Color, LEVEL_QUIET
 from conan2.internal.subsystems import command_env_wrapper
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 from conan2.internal.model.cpp_info import MockInfoProperty
 from conan2.internal.model.conf import Conf
 from conan2.internal.model.dependencies import ConanFileDependencies
@@ -85,7 +85,7 @@ class ConanFile:
         # something that can run commands, as os.sytem
 
         self._conan_helpers = None
-        from conan2.tools.env import Environment
+        from thirdparty.tools.env import Environment
         self.buildenv_info = Environment()
         self.runenv_info = Environment()
         # At the moment only for build_requires, others will be ignored
@@ -222,7 +222,7 @@ class ConanFile:
     @property
     def buildenv(self):
         # Lazy computation of the package buildenv based on the profileone
-        from conan2.tools.env import Environment
+        from thirdparty.tools.env import Environment
         if not isinstance(self._conan_buildenv, Environment):
             self._conan_buildenv = self._conan_buildenv.get_profile_env(self.ref,
                                                                         self._conan_is_consumer)
@@ -231,7 +231,7 @@ class ConanFile:
     @property
     def runenv(self):
         # Lazy computation of the package runenv based on the profile one
-        from conan2.tools.env import Environment
+        from thirdparty.tools.env import Environment
         if not isinstance(self._conan_runenv, Environment):
             self._conan_runenv = self._conan_runenv.get_profile_env(self.ref,
                                                                     self._conan_is_consumer)

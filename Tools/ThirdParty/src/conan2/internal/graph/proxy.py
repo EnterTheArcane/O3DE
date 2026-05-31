@@ -1,12 +1,12 @@
 from fnmatch import fnmatch
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.cache.conan_reference_layout import BasicLayout
 from conan2.internal.graph.graph import (RECIPE_DOWNLOADED, RECIPE_INCACHE, RECIPE_NEWER,
                                         RECIPE_NOT_IN_REMOTE, RECIPE_UPDATED, RECIPE_EDITABLE,
                                         RECIPE_INCACHE_DATE_UPDATED, RECIPE_UPDATEABLE)
 from conan2.internal.errors import NotFoundException, ConanReferenceAlreadyExistsInDB
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 
 class ConanProxy:

@@ -2,8 +2,8 @@ import sqlite3
 
 from conan2.internal.cache.db.table import BaseDbTable
 from conan2.internal.errors import ConanReferenceDoesNotExistInDB, ConanReferenceAlreadyExistsInDB
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.dates import timestamp_now
 
 

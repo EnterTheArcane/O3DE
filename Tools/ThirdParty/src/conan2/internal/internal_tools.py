@@ -1,4 +1,4 @@
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 universal_arch_separator = '|'
 

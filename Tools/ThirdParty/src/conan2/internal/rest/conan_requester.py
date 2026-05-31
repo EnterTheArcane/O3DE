@@ -9,13 +9,13 @@ import urllib3
 from jinja2 import Template
 from requests.adapters import HTTPAdapter
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.cache.home_paths import HomePaths
 
 from conan2 import __version__
 from conan2.internal.loader import load_python_file
 from conan2.internal.errors import scoped_traceback
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 # Capture SSL warnings as pointed out here:
 # https://urllib3.readthedocs.org/en/latest/security.html#insecureplatformwarning

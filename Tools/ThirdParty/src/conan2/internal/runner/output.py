@@ -1,4 +1,4 @@
-from conan2.api.output import Color, ConanOutput
+from thirdparty.api.output import Color, ConanOutput
 
 
 class RunnerOutput(ConanOutput):

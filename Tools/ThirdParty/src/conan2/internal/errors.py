@@ -1,7 +1,7 @@
 import traceback
 from contextlib import contextmanager
 
-from conan2.errors import ConanException, ConanInvalidConfiguration
+from thirdparty.errors import ConanException, ConanInvalidConfiguration
 
 
 @contextmanager
@@ -39,7 +39,7 @@ def conanfile_exception_formatter(conanfile, funcname):
         raise ConanInvalidConfiguration(msg)
     except Exception as exc:
         m = scoped_traceback(f"{conanfile}: Error in {funcname}() method", exc, scope="conanfile.py")
-        from conan2.api.output import LEVEL_DEBUG, ConanOutput
+        from thirdparty.api.output import LEVEL_DEBUG, ConanOutput
         if ConanOutput.level_allowed(LEVEL_DEBUG):
             m = traceback.format_exc() + "\n" + m
         raise ConanException(m)

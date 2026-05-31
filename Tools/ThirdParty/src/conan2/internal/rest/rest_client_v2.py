@@ -8,7 +8,7 @@ from threading import Thread
 from requests.auth import AuthBase, HTTPBasicAuth
 from uuid import getnode as get_mac
 
-from conan2.api.output import ConanOutput
+from thirdparty.api.output import ConanOutput
 from conan2.internal.paths import EXPORT_SOURCES_FILE_NAME, CONANINFO, CONAN_MANIFEST, \
     EXPORT_FILE_NAME, PACKAGE_FILE_NAME
 from conan2.internal.rest.caching_file_downloader import ConanInternalCacheDownloader
@@ -17,9 +17,9 @@ from conan2.internal.rest.client_routes import ClientV2Router
 from conan2.internal.rest.file_uploader import FileUploader
 from conan2.internal.errors import AuthenticationException, ForbiddenException, NotFoundException, \
     RecipeNotFoundException, PackageNotFoundException, EXCEPTION_CODE_MAPPING
-from conan2.errors import ConanException
-from conan2.api.model import PkgReference
-from conan2.api.model import RecipeReference
+from thirdparty.errors import ConanException
+from thirdparty.api.model import PkgReference
+from thirdparty.api.model import RecipeReference
 from conan2.internal.util.dates import from_iso8601_to_timestamp
 
 

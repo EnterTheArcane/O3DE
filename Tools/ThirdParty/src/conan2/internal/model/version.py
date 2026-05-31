@@ -1,7 +1,7 @@
 from functools import total_ordering
 from typing import Optional
 
-from conan2.errors import ConanException
+from thirdparty.errors import ConanException
 
 
 @total_ordering
