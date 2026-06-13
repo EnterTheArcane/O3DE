@@ -14,11 +14,11 @@ index 2a883d16a..5645004d5 100644
 +@@ -2500,6 +2500,38 @@ static stbir__inline stbir_uint8 stbir__linear_to_srgb_uchar(float in)
       }
     }
-  
+
 @@ -40,3 +41,15 @@ diff -rupN -x .git autoclone/tinyusdz_repo-src/src/external/stb_image_resize2.h
   #endif
-  
-  
+
+
 +diff --git a/src/value-types.hh b/src/value-types.hh
 +index 5b6be1d2..0f15f7c3 100644
 +--- a/src/value-types.hh
@@ -31,3 +31,16 @@ index 2a883d16a..5645004d5 100644
 + #include <cstring>
 + #include <functional>
 + #include <iostream>
+diff --git a/code/CMakeLists.txt b/code/CMakeLists.txt
+index b7b08de3b..02557e572 100644
+--- a/code/CMakeLists.txt
++++ b/code/CMakeLists.txt
+@@ -1016,7 +1016,7 @@ IF (ASSIMP_BUILD_USD_IMPORTER)
+
+     # Patch required to build arm32 on android
+     set(TINYUSDZ_PATCHFILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../contrib/tinyusdz/patches/tinyusdz.patch")
+-    set(TINYUSDZ_PATCH_CMD git apply ${TINYUSDZ_PATCHFILE_PATH})
++    set(TINYUSDZ_PATCH_CMD git apply --ignore-whitespace ${TINYUSDZ_PATCHFILE_PATH})
+
+     # Note: CMake's "FetchContent" (which executes at configure time) is much better for this use case
+     #       than "ExternalProject" (which executes at build time); we just want to clone a repo and
