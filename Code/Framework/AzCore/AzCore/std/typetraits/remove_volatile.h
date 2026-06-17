@@ -12,6 +12,5 @@
 namespace AZStd
 {
     using std::remove_volatile;
-    template<class T>
-    using remove_volatile_t = std::remove_volatile_t<T>;
+    using std::remove_volatile_t;
 }

@@ -11,10 +11,8 @@
 namespace AZStd
 {
     using std::add_lvalue_reference;
-    template< class T >
-    using add_lvalue_reference_t = typename add_lvalue_reference<T>::type;
+    using std::add_lvalue_reference_t;
 
     using std::add_rvalue_reference;
-    template< class T >
-    using add_rvalue_reference_t = typename add_rvalue_reference<T>::type;
+    using std::add_rvalue_reference_t;
 }
