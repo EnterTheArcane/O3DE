@@ -15,27 +15,20 @@ namespace AZStd::ranges
 {
     namespace Internal
     {
-        template<class T, size_t N, class = void>
-        /*concept*/ constexpr bool has_tuple_element = false;
+        template<class T, size_t N>
+        concept has_tuple_element =
+            requires
+            {
+                typename tuple_size<T>::type;
+                typename tuple_element_t<N, T>;
+            } &&
+            (N < tuple_size_v<T>) &&
+            convertible_to<decltype(AZStd::get<N>(declval<T>())), const tuple_element_t<N, T>&>;
 
         template<class T, size_t N>
-        /*concept*/ constexpr bool has_tuple_element<T, N, enable_if_t<conjunction_v<
-            sfinae_trigger<typename tuple_size<T>::type>,
-            bool_constant<(N < tuple_size_v<T>)>,
-            sfinae_trigger<tuple_element_t<N, T>>,
-            bool_constant<convertible_to<decltype(AZStd::get<N>(declval<T>())), const tuple_element_t<N, T>&>> >
-        >> = true;
-
-        template<class T, size_t N, class = void>
-        /*concept*/ constexpr bool returnable_element = false;
-
-        template<class T, size_t N>
-        /*concept*/ constexpr bool returnable_element<T, N, enable_if_t<
-            is_reference_v<T>> > = true;
-
-        template<class T, size_t N>
-        /*concept*/ constexpr bool returnable_element<T, N, enable_if_t<
-            move_constructible<tuple_element_t<N, T>>> > = true;
+        concept returnable_element =
+            is_reference_v<T> ||
+            move_constructible<tuple_element_t<N, T>>;
     }
 
     template<class View, size_t N, class = enable_if_t<conjunction_v<

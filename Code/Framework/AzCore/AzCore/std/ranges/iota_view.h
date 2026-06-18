@@ -56,28 +56,25 @@ namespace AZStd::ranges::views
 
 namespace AZStd::ranges::Internal
 {
-    template<class I, class = void>
-    /*concept*/ constexpr bool decrementable = false;
     template<class I>
-    /*concept*/ constexpr bool decrementable<I, enable_if_t<conjunction_v<
-        bool_constant<incrementable<I>>,
-        bool_constant<same_as<decltype(--declval<I&>()), I&>>,
-        bool_constant<same_as<decltype(declval<I&>()--), I>>
-    > >> = true;
+    concept decrementable =
+        incrementable<I> &&
+        same_as<decltype(--declval<I&>()), I&> &&
+        same_as<decltype(declval<I&>()--), I>;
 
-    template<class I, class = void>
-    /*concept*/ constexpr bool advanceable = false;
     template<class I>
-    /*concept*/ constexpr bool advanceable<I, enable_if_t<conjunction_v<
-        bool_constant<decrementable<I>>,
-        bool_constant<totally_ordered<I>>,
-        bool_constant<same_as<decltype(declval<I&>() += declval<const IOTA_DIFF_T<I>>()), I&>>,
-        bool_constant<same_as<decltype(declval<I&>() -= declval<const IOTA_DIFF_T<I>>()), I&>>,
-        sfinae_trigger<decltype(I(declval<const I>() + declval<const IOTA_DIFF_T<I>>()))>,
-        sfinae_trigger<decltype(I(declval<const IOTA_DIFF_T<I>>() + declval<const I>()))>,
-        sfinae_trigger<decltype(I(declval<const I>() - declval<const IOTA_DIFF_T<I>>()))>,
-        bool_constant<convertible_to<decltype(declval<const I&>() - declval<const I&>()), IOTA_DIFF_T<I> > >
-        > >> = true;
+    concept advanceable =
+        decrementable<I> &&
+        totally_ordered<I> &&
+        same_as<decltype(declval<I&>() += declval<const IOTA_DIFF_T<I>>()), I&> &&
+        same_as<decltype(declval<I&>() -= declval<const IOTA_DIFF_T<I>>()), I&> &&
+        requires
+        {
+            I(declval<const I>() + declval<const IOTA_DIFF_T<I>>());
+            I(declval<const IOTA_DIFF_T<I>>() + declval<const I>());
+            I(declval<const I>() - declval<const IOTA_DIFF_T<I>>());
+        } &&
+        convertible_to<decltype(declval<const I&>() - declval<const I&>()), IOTA_DIFF_T<I>>;
 }
 
 namespace AZStd::ranges

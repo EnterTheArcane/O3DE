@@ -51,15 +51,10 @@ namespace AZStd
 {
     // Add tuple specialization for common_type and common_reference so that it can be used in range algorithms
     template<class T>
-    /*concept*/ constexpr bool tuple_like = Internal::is_tuple_like<remove_cvref_t<T>>;
-
-    template<class T, class = void>
-    /*concept*/ constexpr bool pair_like = false;
+    concept tuple_like = Internal::is_tuple_like<remove_cvref_t<T>>;
 
     template<class T>
-    /*concept*/ constexpr bool
-        pair_like<T, enable_if_t<tuple_like<T>>> = tuple_size_v<remove_cvref_t<T>> == 2;
-
+    concept pair_like = tuple_like<T> && tuple_size_v<remove_cvref_t<T>> == 2;
 }
 
 //! common_type and basic_common_reference are from the std namespace.

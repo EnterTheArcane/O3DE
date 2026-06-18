@@ -26,10 +26,13 @@ namespace AZStd::Internal
         sfinae_trigger_v<decltype(declval<I>().operator->())>
         >> = true;
 
-    template <class T, class = void>
-    /*concept*/ constexpr bool can_reference_post_increment = false;
     template <class T>
-    constexpr bool can_reference_post_increment<T, enable_if_t<can_reference<decltype(*declval<T>()++)>>> = true;
+    concept can_reference_post_increment =
+        requires(T value)
+        {
+            *value++;
+        } &&
+        can_reference<decltype(*declval<T>()++)>;
 }
 
 namespace AZStd

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -29,9 +30,8 @@ namespace AZStd
     using std::random_access_iterator_tag;
     using std::contiguous_iterator_tag;
 
-    /// Add the default_sentinel struct from C++20
-    struct default_sentinel_t {};
-    inline constexpr default_sentinel_t default_sentinel{};
+    using std::default_sentinel_t;
+    using std::default_sentinel;
 }
 
 namespace AZStd::Internal

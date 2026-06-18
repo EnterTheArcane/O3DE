@@ -5,7 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
+
+#include <algorithm>
 
 #include <AzCore/std/function/identity.h>
 #include <AzCore/std/ranges/iter_move.h>
@@ -17,95 +20,12 @@
 
 namespace AZStd::ranges
 {
-    // Algorithm result types
-    // https://eel.is/c++draft/algorithms#results
-    template<class T>
-    struct min_max_result
-    {
-        AZ_NO_UNIQUE_ADDRESS T min;
-        AZ_NO_UNIQUE_ADDRESS T max;
-
-        template<class T2, class = enable_if_t<convertible_to<const T&, T2>>>
-        constexpr operator min_max_result<T2>() const&
-        {
-            return { min, max };
-        }
-
-        template<class T2, class = enable_if_t<convertible_to<T, T2>>>
-        constexpr operator min_max_result<T2>()&&
-        {
-            return { AZStd::move(min), AZStd::move(max) };
-        }
-    };
-    template<class T>
-    using minmax_result = min_max_result<T>;
-
-    template<class I>
-    using minmax_element_result = min_max_result<I>;
-
-    template<class I, class F>
-    struct in_fun_result
-    {
-        AZ_NO_UNIQUE_ADDRESS I in;
-        AZ_NO_UNIQUE_ADDRESS F fun;
-
-        template<class I2, class F2, class = enable_if_t<convertible_to<const I&, I2> && convertible_to<const F&, F2>>>
-        constexpr operator in_fun_result<I2, F2>() const&
-        {
-            return { in, fun };
-        }
-
-        template<class I2, class F2, enable_if_t<convertible_to<I, I2> && convertible_to<F, F2>>>
-        constexpr operator in_fun_result<I2, F2>() &&
-        {
-            return { AZStd::move(in), AZStd::move(fun) };
-        }
-    };
-
-    template<class I, class O>
-    struct in_out_result
-    {
-        AZ_NO_UNIQUE_ADDRESS I in;
-        AZ_NO_UNIQUE_ADDRESS O out;
-
-        template<class I2, class O2, class = enable_if_t<convertible_to<const I&, I2> && convertible_to<const O&, O2>>>
-        constexpr operator in_out_result<I2, O2>() const&
-        {
-            return { in, out };
-        }
-
-        template<class I2, class O2, class = enable_if_t<convertible_to<I, I2> && convertible_to<O, O2>>>
-        constexpr operator in_out_result<I2, O2>()&&
-        {
-            return { AZStd::move(in), AZStd::move(out) };
-        }
-    };
-
-    template<class I1, class I2, class O>
-    struct in_in_out_result
-    {
-        AZ_NO_UNIQUE_ADDRESS I1 in1;
-        AZ_NO_UNIQUE_ADDRESS I2 in2;
-        AZ_NO_UNIQUE_ADDRESS O out;
-
-        template<class II1, class II2, class OO, class = enable_if_t<
-            convertible_to<const I1&, II1>
-            && convertible_to<const I2&, II2>
-            && convertible_to<const O&, OO>>>
-        constexpr operator in_in_out_result<II1, II2, OO>() const&
-        {
-            return { in1, in2, out };
-        }
-
-        template<class II1, class II2, class OO, class = enable_if_t<
-            convertible_to<I1, II1>
-            && convertible_to<I2, II2>
-            && convertible_to<O, OO>>>
-        constexpr operator in_in_out_result<II1, II2, OO>() &&
-        {
-            return { AZStd::move(in1), AZStd::move(in2), AZStd::move(out) };
-        }
-    };
+    using std::ranges::min_max_result;
+    using std::ranges::minmax_result;
+    using std::ranges::minmax_element_result;
+    using std::ranges::in_fun_result;
+    using std::ranges::in_out_result;
+    using std::ranges::in_in_out_result;
 
     template<class O, class T>
     struct out_value_result
@@ -962,8 +882,7 @@ namespace AZStd::ranges
 
 
     // ranges::mismatch
-    template<class I1, class I2>
-    using mismatch_result = in_in_result<I1, I2>;
+    using std::ranges::mismatch_result;
 
     namespace Internal
     {
@@ -1403,10 +1322,8 @@ namespace AZStd::ranges
 
     // ranges::for_each
     // ranges::for_each_n
-    template<class I, class F>
-    using for_each_result = in_fun_result<I, F>;
-    template<class I, class F>
-    using for_each_n_result = in_fun_result<I, F>;
+    using std::ranges::for_each_result;
+    using std::ranges::for_each_n_result;
 
     namespace Internal
     {
@@ -1548,14 +1465,10 @@ namespace AZStd::ranges
     // ranges::copy_if
     // ranges::copy_n
     // ranges::copy_backward
-    template<class I, class O>
-    using copy_result = in_out_result<I, O>;
-    template<class I, class O>
-    using copy_if_result = in_out_result<I, O>;
-    template<class I, class O>
-    using copy_n_result = in_out_result<I, O>;
-    template<class I1, class I2>
-    using copy_backward_result = in_out_result<I1, I2>;
+    using std::ranges::copy_result;
+    using std::ranges::copy_if_result;
+    using std::ranges::copy_n_result;
+    using std::ranges::copy_backward_result;
 
     namespace Internal
     {
@@ -1787,10 +1700,8 @@ namespace AZStd::ranges
 
     // ranges::move
     // ranges::move_backward
-    template<class I, class O>
-    using move_result = in_out_result<I, O>;
-    template<class I1, class I2>
-    using move_backward_result = in_out_result<I1, I2>;
+    using std::ranges::move_result;
+    using std::ranges::move_backward_result;
 
     namespace Internal
     {
@@ -1921,10 +1832,8 @@ namespace AZStd::ranges
     }
 
     // ranges::transform
-    template<class I, class O>
-    using unary_transform_result = in_out_result<I, O>;
-    template<class I1, class I2, class O>
-    using binary_transform_result = in_in_out_result<I1, I2, O>;
+    using std::ranges::unary_transform_result;
+    using std::ranges::binary_transform_result;
 
     namespace Internal
     {

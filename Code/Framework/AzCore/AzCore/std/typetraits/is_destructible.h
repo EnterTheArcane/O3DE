@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <concepts>
 #include <type_traits>
 
 namespace AZStd
@@ -19,7 +20,5 @@ namespace AZStd
     constexpr bool is_default_destructible_v = std::is_destructible<T>::value;
     using std::is_trivially_destructible_v;
     using std::is_nothrow_destructible_v;
-
-    template<class T>
-    /*concept*/ constexpr bool destructible = is_nothrow_destructible_v<T>;
+    using std::destructible;
 }

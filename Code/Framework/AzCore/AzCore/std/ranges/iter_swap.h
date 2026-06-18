@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -21,6 +22,7 @@
 #include <AzCore/std/typetraits/remove_cvref.h>
 #include <AzCore/std/typetraits/void_t.h>
 #include <AzCore/std/utility/declval.h>
+#include <iterator>
 
 
 namespace AZStd::ranges::Internal
@@ -96,25 +98,8 @@ namespace AZStd::ranges
     }
 }
 
-namespace AZStd::Internal
-{
-    template <class I1, class I2, class = void>
-    constexpr bool indirectly_swappable_impl = false;
-    template <class I1, class I2>
-    constexpr bool indirectly_swappable_impl<I1, I2, enable_if_t<conjunction_v<
-        bool_constant<indirectly_readable<I1>>,
-        bool_constant<indirectly_readable<I2>>,
-        is_void<void_t<
-        decltype(AZStd::ranges::iter_swap(declval<I1>(), declval<I1>())),
-        decltype(AZStd::ranges::iter_swap(declval<I2>(), declval<I2>())),
-        decltype(AZStd::ranges::iter_swap(declval<I1>(), declval<I2>())),
-        decltype(AZStd::ranges::iter_swap(declval<I2>(), declval<I1>()))>>
-        >>> = true;
-}
-
 namespace AZStd
 {
-    template<class I1, class I2 = I1>
-    /*concept*/ constexpr bool indirectly_swappable = Internal::indirectly_swappable_impl<I1, I2>;
+    using std::indirectly_swappable;
 }
 

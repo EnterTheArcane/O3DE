@@ -5,7 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
+
+#include <algorithm>
+#include <ranges>
 
 #include <AzCore/std/concepts/concepts.h>
 #include <AzCore/std/iterator/const_iterator.h>
@@ -530,18 +534,7 @@ namespace AZStd::ranges
 
 namespace AZStd::ranges
 {
-    namespace Internal
-    {
-        template<class T, class = void>
-        constexpr bool range_impl = false;
-        template<class T>
-        constexpr bool range_impl<T, void_t<
-            decltype(ranges::begin(declval<T&>())), decltype(ranges::end(declval<T&>()))>> = true;
-    }
-
-    // Models range concept
-    template<class T>
-    /*concept*/ constexpr bool range = Internal::range_impl<T>;
+    using std::ranges::range;
 
     // sentinel type can now be defined after the range concept has been modeled
     template<class R>
@@ -552,17 +545,11 @@ namespace AZStd::ranges
     template<class R>
     using const_iterator_t = enable_if_t<range<R>, const_iterator<iterator_t<R>>>;
 
-    // Models borrowed range concept
     template<class T>
-    /*concept*/ constexpr bool borrowed_range = conjunction_v<bool_constant<range<T>>,
+    constexpr bool borrowed_range = conjunction_v<bool_constant<range<T>>,
         disjunction<is_lvalue_reference<T>, bool_constant<enable_borrowed_range<remove_cvref_t<T>>>>>;
 
-    struct dangling
-    {
-        constexpr dangling() = default;
-        template <typename T>
-        constexpr dangling(T&&...) noexcept {}
-    };
+    using std::ranges::dangling;
 
     template<class R>
     using borrowed_iterator_t = conditional_t<borrowed_range<R>, iterator_t<R>, dangling>;
@@ -570,18 +557,7 @@ namespace AZStd::ranges
     template<class R>
     using borrowed_subrange_t = conditional_t<borrowed_range<R>, subrange<iterator_t<R>>, dangling>;
 
-    // Models sized range concept
-    namespace Internal
-    {
-        template<class T, class = void>
-        constexpr bool sized_range_impl = false;
-        template<class T>
-        constexpr bool sized_range_impl<T, enable_if_t<range<T>
-            && sfinae_trigger_v<decltype(ranges::size(declval<T&>()))> >> = true;
-    }
-
-    template<class T>
-    /*concept*/ constexpr bool sized_range = Internal::sized_range_impl<T>;
+    using std::ranges::sized_range;
 
     namespace Internal
     {
@@ -595,7 +571,7 @@ namespace AZStd::ranges
     }
 
     template<class R, class T>
-    /*concept*/ constexpr bool output_range = Internal::output_range_impl<R, T>;
+    constexpr bool output_range = Internal::output_range_impl<R, T>;
 
     namespace Internal
     {
@@ -609,7 +585,7 @@ namespace AZStd::ranges
     }
 
     template<class T>
-    /*concept*/ constexpr bool input_range = Internal::input_range_impl<T>;
+    constexpr bool input_range = Internal::input_range_impl<T>;
 
     namespace Internal
     {
@@ -623,7 +599,7 @@ namespace AZStd::ranges
     }
 
     template<class T>
-    /*concept*/ constexpr bool forward_range = Internal::forward_range_impl<T>;
+    constexpr bool forward_range = Internal::forward_range_impl<T>;
 
     namespace Internal
     {
@@ -637,7 +613,7 @@ namespace AZStd::ranges
     }
 
     template<class T>
-    /*concept*/ constexpr bool bidirectional_range = Internal::bidirectional_range_impl<T>;
+    constexpr bool bidirectional_range = Internal::bidirectional_range_impl<T>;
 
     namespace Internal
     {
@@ -651,7 +627,7 @@ namespace AZStd::ranges
     }
 
     template<class T>
-    /*concept*/ constexpr bool random_access_range = Internal::random_access_range_impl<T>;
+    constexpr bool random_access_range = Internal::random_access_range_impl<T>;
 
     template<class R>
     using range_size_t = enable_if_t<sized_range<R>, decltype(ranges::size(declval<R&>()))>;
@@ -678,14 +654,14 @@ namespace AZStd::ranges
     }
 
     template<class T>
-    /*concept*/ constexpr bool contiguous_range = Internal::contiguous_range_impl<T>;
+    constexpr bool contiguous_range = Internal::contiguous_range_impl<T>;
 
     template<class T>
-    /*concept*/ constexpr bool common_range = conjunction_v<bool_constant<range<T>>,
+    constexpr bool common_range = conjunction_v<bool_constant<range<T>>,
         bool_constant<same_as<iterator_t<T>, sentinel_t<T>>>>;
 
     template<class T>
-    /*concept*/ constexpr bool constant_range = conjunction_v<bool_constant<input_range<T>>,
+    constexpr bool constant_range = conjunction_v<bool_constant<input_range<T>>,
         bool_constant<::AZStd::Internal::constant_iterator<iterator_t<T>>> >;
 
     namespace Internal
@@ -1030,10 +1006,10 @@ namespace AZStd::ranges
     inline constexpr bool enable_view = derived_from<T, view_base> || Internal::is_derived_from_view_interface<T>;
 
     template<class T>
-    /*concept*/ constexpr bool view = conjunction_v<bool_constant<range<T>>, bool_constant<movable<T>>, bool_constant<enable_view<T>>>;
+    constexpr bool view = conjunction_v<bool_constant<range<T>>, bool_constant<movable<T>>, bool_constant<enable_view<T>>>;
 
     template<class T>
-    /*concept*/ constexpr bool viewable_range = conjunction_v<bool_constant<range<T>>,
+    constexpr bool viewable_range = conjunction_v<bool_constant<range<T>>,
         disjunction<
             conjunction<bool_constant<view<remove_cvref_t<T>>>, bool_constant<constructible_from<remove_cvref_t<T>, T>>>,
             conjunction<bool_constant<!view<remove_cvref_t<T>>>,
@@ -1164,52 +1140,31 @@ namespace AZStd::ranges
         using maybe_const = conditional_t<Const, const T, T>;
 
         template<class R, class = void>
-        /*concept*/ constexpr bool simple_view = false;
+        constexpr bool simple_view = false;
         template<class R>
-        /*concept*/ inline constexpr bool simple_view<R, enable_if_t<conjunction_v<
+        inline constexpr bool simple_view<R, enable_if_t<conjunction_v<
             bool_constant<view<R>>,
             bool_constant<range<const R>>,
             bool_constant<same_as<iterator_t<R>, iterator_t<const R>>>,
             bool_constant<same_as<sentinel_t<R>, sentinel_t<const R>>> >>> = true;
 
         template<class I, class = void>
-        /*concept*/ constexpr bool has_arrow = false;
+        constexpr bool has_arrow = false;
         template<class I>
-        /*concept*/ inline constexpr bool has_arrow<I, enable_if_t<conjunction_v<
+        inline constexpr bool has_arrow<I, enable_if_t<conjunction_v<
             bool_constant<input_iterator<I>>,
             disjunction<is_pointer<I>, sfinae_trigger<decltype(declval<I>().operator->())>>
             >>> = true;
 
         template<class T, class U>
-        /*concept*/ constexpr bool different_from = ::AZStd::Internal::different_from<T, U>;
+        constexpr bool different_from = ::AZStd::Internal::different_from<T, U>;
     }
 }
 
 namespace AZStd::ranges
 {
-    template<class I1, class I2>
-    struct in_in_result
-    {
-        AZ_NO_UNIQUE_ADDRESS I1 in1;
-        AZ_NO_UNIQUE_ADDRESS I2 in2;
-
-        template<class II1, class II2, class = enable_if_t<conjunction_v<
-            bool_constant<convertible_to<const I1&, II1>>, bool_constant<convertible_to<const I2&, II2>>>> >
-        constexpr operator in_in_result<II1, II2>() const&
-        {
-            return { in1, in2 };
-        }
-
-        template<class II1, class II2, class = enable_if_t<conjunction_v<
-            bool_constant<convertible_to<I1, II1>>, bool_constant<convertible_to<I2, II2>>>> >
-        constexpr operator in_in_result<II1, II2>()&&
-        {
-            return { AZStd::move(in1), AZStd::move(in2) };
-        }
-    };
-
-    template<class I1, class I2>
-    using swap_ranges_result = in_in_result<I1, I2>;
+    using std::ranges::in_in_result;
+    using std::ranges::swap_ranges_result;
 
     namespace Internal
     {

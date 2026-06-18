@@ -51,7 +51,7 @@ namespace AZStd::ranges
     namespace ZipViewInternal
     {
         template<class... Rs>
-        /*concept*/ constexpr bool zip_is_common = (sizeof...(Rs) == 1 && (common_range<Rs> && ...)) ||
+        concept zip_is_common = (sizeof...(Rs) == 1 && (common_range<Rs> && ...)) ||
             (!(bidirectional_range<Rs> && ...) && (common_range<Rs> && ...)) ||
             ((random_access_range<Rs> && ...) && (sized_range<Rs> && ...));
 
@@ -132,11 +132,11 @@ namespace AZStd::ranges
     namespace ZipViewInternal
     {
         template<bool Const, class... Views>
-        /*concept*/ constexpr bool all_random_access = (random_access_range<::AZStd::ranges::Internal::maybe_const<Const, Views>>&&...);
+        concept all_random_access = (random_access_range<::AZStd::ranges::Internal::maybe_const<Const, Views>>&&...);
         template<bool Const, class... Views>
-        /*concept*/ constexpr bool all_bidirectional = (bidirectional_range<::AZStd::ranges::Internal::maybe_const<Const, Views>>&&...);
+        concept all_bidirectional = (bidirectional_range<::AZStd::ranges::Internal::maybe_const<Const, Views>>&&...);
         template<bool Const, class... Views>
-        /*concept*/ constexpr bool all_forward = (forward_range<::AZStd::ranges::Internal::maybe_const<Const, Views>>&&...);
+        concept all_forward = (forward_range<::AZStd::ranges::Internal::maybe_const<Const, Views>>&&...);
 
         struct requirements_fulfilled {};
     }

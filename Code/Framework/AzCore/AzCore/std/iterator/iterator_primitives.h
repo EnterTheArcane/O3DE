@@ -50,11 +50,11 @@ namespace AZStd::Internal
     template <>
     inline constexpr bool can_reference<void> = false;
 
-    // Models the dereferencable concept which isn't available until C++20
-    template <class T, class = void>
-    /*concept*/ constexpr bool dereferenceable = false;
     template <class T>
-    constexpr bool dereferenceable<T, enable_if_t<can_reference<decltype(*declval<T>())>>> = true;
+    concept dereferenceable = requires(T& value)
+    {
+        *value;
+    } && can_reference<decltype(*declval<T&>())>;
 
     template <class T, class = void>
     constexpr bool is_primary_template_v = false;
@@ -215,9 +215,8 @@ namespace AZStd
 
 namespace AZStd
 {
-    // indirectly readable
     template <class In>
-    /*concept*/ constexpr bool indirectly_readable = Internal::indirectly_readable_impl<remove_cvref_t<In>>;
+    concept indirectly_readable = Internal::indirectly_readable_impl<remove_cvref_t<In>>;
 }
 
 namespace AZStd::Internal
@@ -236,14 +235,13 @@ namespace AZStd::Internal
 }
 namespace AZStd
 {
-    // indirectly writable
     template <class Out, class T>
-    /*concept*/ constexpr bool indirectly_writable = Internal::indirectly_writable_impl<Out, T>;
+    concept indirectly_writable = Internal::indirectly_writable_impl<Out, T>;
 
-    // indirectly movable
     template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_movable = conjunction_v<bool_constant<indirectly_readable<In>>,
-        bool_constant<indirectly_writable<Out, iter_rvalue_reference_t<In>>>>;
+    concept indirectly_movable =
+        indirectly_readable<In> &&
+        indirectly_writable<Out, iter_rvalue_reference_t<In>>;
 }
 
 namespace AZStd::Internal
@@ -263,7 +261,7 @@ namespace AZStd::Internal
 namespace AZStd
 {
     template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_movable_storable = Internal::indirectly_movable_storage_impl<In, Out>;
+    concept indirectly_movable_storable = Internal::indirectly_movable_storage_impl<In, Out>;
 }
 
 namespace AZStd::Internal
@@ -279,9 +277,8 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    // indirectly copyable
     template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_copyable = Internal::indirectly_copyable_impl<In, Out>;
+    concept indirectly_copyable = Internal::indirectly_copyable_impl<In, Out>;
 }
 namespace AZStd::Internal
 {
@@ -304,5 +301,5 @@ namespace AZStd::Internal
 namespace AZStd
 {
     template<class In, class Out>
-    /*concept*/ constexpr bool indirectly_copyable_storable = Internal::indirectly_copyable_storable_impl<In, Out>;
+    concept indirectly_copyable_storable = Internal::indirectly_copyable_storable_impl<In, Out>;
 }

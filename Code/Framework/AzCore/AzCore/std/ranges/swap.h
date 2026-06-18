@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <AzCore/std/base.h>
@@ -18,6 +19,7 @@
 #include <AzCore/std/typetraits/is_assignable.h>
 #include <AzCore/std/typetraits/is_array.h>
 #include <AzCore/std/typetraits/is_class.h>
+#include <AzCore/std/typetraits/is_constructible.h>
 #include <AzCore/std/typetraits/is_enum.h>
 #include <AzCore/std/typetraits/is_void.h>
 #include <AzCore/std/typetraits/remove_cvref.h>
@@ -111,8 +113,8 @@ namespace AZStd::Internal
 namespace AZStd
 {
     template<class T>
-    /*concept*/ constexpr bool swappable = Internal::swappable_impl<T>;
+    concept swappable = Internal::swappable_impl<T>;
 
     template<class T, class U>
-    /*concept*/ constexpr bool swappable_with = Internal::swappable_with_impl<T, U>;
+    concept swappable_with = Internal::swappable_with_impl<T, U>;
 }
