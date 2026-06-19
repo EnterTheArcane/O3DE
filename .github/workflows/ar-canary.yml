@@ -51,7 +51,7 @@ jobs:
       platform: Android
       type: profile
       last_artifact: false
-      ndk_version: "28.0.12433566"
+      ndk_version: "29.0.14206865"
       gradle_version: "8.13"
       cmake_version: *cmake_version
 
@@ -66,7 +66,7 @@ jobs:
       platform: Android
       type: asset_profile
       last_artifact: false
-      ndk_version: "28.0.12433566"
+      ndk_version: "29.0.14206865"
       gradle_version: "8.13"
       cmake_version: *cmake_version
 
@@ -81,7 +81,7 @@ jobs:
       platform: Android
       type: gradle
       last_artifact: false
-      ndk_version: "28.0.12433566"
+      ndk_version: "29.0.14206865"
       gradle_version: "8.13"
       cmake_version: *cmake_version
 
@@ -96,7 +96,7 @@ jobs:
       platform: Android
       type: profile
       last_artifact: false
-      ndk_version: "28.0.12433566"
+      ndk_version: "29.0.14206865"
       gradle_version: "8.13"
       cmake_version: *cmake_version
 
@@ -111,7 +111,7 @@ jobs:
       platform: Android
       type: asset_profile
       last_artifact: false
-      ndk_version: "28.0.12433566"
+      ndk_version: "29.0.14206865"
       gradle_version: "8.13"
       cmake_version: *cmake_version
 
@@ -126,7 +126,7 @@ jobs:
       platform: Android
       type: gradle
       last_artifact: false
-      ndk_version: "28.0.12433566"
+      ndk_version: "29.0.14206865"
       gradle_version: "8.13"
       cmake_version: *cmake_version
 
