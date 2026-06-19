@@ -23,7 +23,7 @@ namespace AZStd
     public:
         constexpr unexpected(const unexpected&) = default;
         constexpr unexpected(unexpected&&) = default;
-        template<class Err = E>
+        template<class Err>
             requires (!is_same_v<remove_cvref_t<Err>, unexpected<E>>)
                 && (!is_same_v<remove_cvref_t<Err>, in_place_t>)
                 && is_constructible_v<E, Err>
@@ -116,7 +116,7 @@ namespace AZStd
         constexpr expected(expected<U, G>&& rhs);
 
         // Direct non-list initialization for value type from U
-        template<class U = T>
+        template<class U>
             requires (!is_void_v<T>)
                 && (!is_same_v<remove_cvref_t<U>, in_place_t>)
                 && (!is_same_v<expected<T, E>, remove_cvref_t<U>>)
@@ -181,7 +181,7 @@ namespace AZStd
             && is_nothrow_move_assignable_v<E> && is_nothrow_move_constructible_v<E>) = default;
 
         //! Direct initializes value into expected.
-        template<class U = T>
+        template<class U>
             requires (!is_void_v<T>)
                 && (!is_same_v<expected<T, E>, remove_cvref_t<U>>)
                 && (!Internal::is_std_unexpected_specialization_v<remove_cvref_t<U>>)
