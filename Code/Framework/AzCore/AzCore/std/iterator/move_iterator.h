@@ -204,8 +204,7 @@ namespace AZStd
             return ranges::iter_move(i.base());
         }
 
-        template<class I2>
-            requires indirectly_swappable<I2, I>
+        template<indirectly_swappable<I> I2>
         friend constexpr void iter_swap(const move_iterator& x, const move_iterator<I2>& y)
             noexcept(noexcept(ranges::iter_swap(declval<const I&>(), declval<const I2&>())))
         {

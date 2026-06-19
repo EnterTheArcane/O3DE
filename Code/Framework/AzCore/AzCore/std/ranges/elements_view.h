@@ -22,14 +22,14 @@ namespace AZStd::ranges
             {
                 typename tuple_size<T>::type;
                 typename tuple_element_t<N, T>;
-            } &&
-            (N < tuple_size_v<T>) &&
-            convertible_to<decltype(AZStd::get<N>(declval<T>())), const tuple_element_t<N, T>&>;
+            }
+            && (N < tuple_size_v<T>)
+            && convertible_to<decltype(AZStd::get<N>(declval<T>())), const tuple_element_t<N, T>&>;
 
         template<class T, size_t N>
         concept returnable_element =
-            is_reference_v<T> ||
-            move_constructible<tuple_element_t<N, T>>;
+            is_reference_v<T>
+            || move_constructible<tuple_element_t<N, T>>;
     }
 
     template<class View, size_t N>

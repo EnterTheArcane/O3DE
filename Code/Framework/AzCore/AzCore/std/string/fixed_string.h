@@ -20,7 +20,8 @@ namespace AZStd::Internal
 {
     template<class Element, class Traits, class T>
     concept fixed_string_view_compatible =
-        is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>;
+        is_convertible_v<const T&, basic_string_view<Element, Traits>>
+        && (!is_convertible_v<const T&, const Element*>);
 }
 
 namespace AZStd

@@ -20,12 +20,14 @@ namespace AZStd::ranges
     {
         template<class Range, class Pattern>
         concept compatible_joinable_ranges =
-            common_with<range_value_t<Range>, range_value_t<Pattern>> &&
-            common_reference_with<range_reference_t<Range>, range_reference_t<Pattern>> &&
-            common_reference_with<range_rvalue_reference_t<Range>, range_rvalue_reference_t<Pattern>>;
+            common_with<range_value_t<Range>, range_value_t<Pattern>>
+            && common_reference_with<range_reference_t<Range>, range_reference_t<Pattern>>
+            && common_reference_with<range_rvalue_reference_t<Range>, range_rvalue_reference_t<Pattern>>;
 
         template<class R>
-        concept bidirectional_common = bidirectional_range<R> && common_range<R>;
+        concept bidirectional_common =
+            bidirectional_range<R>
+            && common_range<R>;
     }
 
     template<class View, class Pattern>

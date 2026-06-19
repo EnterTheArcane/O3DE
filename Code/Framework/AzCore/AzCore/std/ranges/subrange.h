@@ -51,34 +51,35 @@ namespace AZStd::ranges
     {
         template <typename From, typename To>
         concept uses_nonqualification_pointer_conversion =
-            is_pointer_v<From> && is_pointer_v<To> &&
-            !convertible_to<remove_pointer_t<From>(*)[], remove_pointer_t<To>(*)[]>;
+            is_pointer_v<From>
+            && is_pointer_v<To>
+            && (!convertible_to<remove_pointer_t<From>(*)[], remove_pointer_t<To>(*)[]>);
 
         template<class From, class To>
         concept convertible_to_non_slicing =
-            convertible_to<From, To> &&
-            !uses_nonqualification_pointer_conversion<decay_t<From>, decay_t<To>>;
+            convertible_to<From, To>
+            && (!uses_nonqualification_pointer_conversion<decay_t<From>, decay_t<To>>);
 
         template<class T>
         concept pair_like =
-            !is_reference_v<T> &&
-            requires
+            (!is_reference_v<T>)
+            && requires
             {
                 typename tuple_size<T>::type;
                 typename tuple_element_t<0, remove_const_t<T>>;
                 typename tuple_element_t<1, remove_const_t<T>>;
-            } &&
-            derived_from<tuple_size<T>, integral_constant<size_t, 2>> &&
-            convertible_to<decltype(AZStd::get<0>(declval<T>())), const tuple_element_t<0, T>&> &&
-            convertible_to<decltype(AZStd::get<1>(declval<T>())), const tuple_element_t<1, T>&>;
+            }
+            && derived_from<tuple_size<T>, integral_constant<size_t, 2>>
+            && convertible_to<decltype(AZStd::get<0>(declval<T>())), const tuple_element_t<0, T>&>
+            && convertible_to<decltype(AZStd::get<1>(declval<T>())), const tuple_element_t<1, T>&>;
 
         template<class T, class U, class V>
         concept pair_like_convertible_from =
-            !range<T> &&
-            pair_like<T> &&
-            constructible_from<T, U, V> &&
-            convertible_to_non_slicing<U, tuple_element_t<0, T>> &&
-            convertible_to<V, tuple_element_t<1, T>>;
+            (!range<T>)
+            && pair_like<T>
+            && constructible_from<T, U, V>
+            && convertible_to_non_slicing<U, tuple_element_t<0, T>>
+            && convertible_to<V, tuple_element_t<1, T>>;
     }
 
     template<class I, class S, subrange_kind K>

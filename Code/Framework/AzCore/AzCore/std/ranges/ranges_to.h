@@ -36,7 +36,8 @@ namespace AZStd::ranges
         };
 
         template<class Container>
-        concept reservable_container = sized_range<Container>
+        concept reservable_container =
+            sized_range<Container>
             && has_reserve<Container>
             && has_capacity<Container>
             && has_max_size<Container>;
@@ -57,7 +58,9 @@ namespace AZStd::ranges
         // most of the concept conditions have been logical-and until now
         // https://eel.is/c++draft/range.utility.conv#general-4
         template<class Container, class Ref>
-        concept container_insertable = has_push_back<Container, Ref> || has_insert<Container, Ref>;
+        concept container_insertable =
+            has_push_back<Container, Ref>
+            || has_insert<Container, Ref>;
 
         template<class Ref, class Container>
         constexpr auto container_inserter(Container& c)

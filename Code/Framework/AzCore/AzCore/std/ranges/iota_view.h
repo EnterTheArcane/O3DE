@@ -58,23 +58,23 @@ namespace AZStd::ranges::Internal
 {
     template<class I>
     concept decrementable =
-        incrementable<I> &&
-        same_as<decltype(--declval<I&>()), I&> &&
-        same_as<decltype(declval<I&>()--), I>;
+        incrementable<I>
+        && same_as<decltype(--declval<I&>()), I&>
+        && same_as<decltype(declval<I&>()--), I>;
 
     template<class I>
     concept advanceable =
-        decrementable<I> &&
-        totally_ordered<I> &&
-        same_as<decltype(declval<I&>() += declval<const IOTA_DIFF_T<I>>()), I&> &&
-        same_as<decltype(declval<I&>() -= declval<const IOTA_DIFF_T<I>>()), I&> &&
-        requires
+        decrementable<I>
+        && totally_ordered<I>
+        && same_as<decltype(declval<I&>() += declval<const IOTA_DIFF_T<I>>()), I&>
+        && same_as<decltype(declval<I&>() -= declval<const IOTA_DIFF_T<I>>()), I&>
+        && requires
         {
             I(declval<const I>() + declval<const IOTA_DIFF_T<I>>());
             I(declval<const IOTA_DIFF_T<I>>() + declval<const I>());
             I(declval<const I>() - declval<const IOTA_DIFF_T<I>>());
-        } &&
-        convertible_to<decltype(declval<const I&>() - declval<const I&>()), IOTA_DIFF_T<I>>;
+        }
+        && convertible_to<decltype(declval<const I&>() - declval<const I&>()), IOTA_DIFF_T<I>>;
 }
 
 namespace AZStd::ranges

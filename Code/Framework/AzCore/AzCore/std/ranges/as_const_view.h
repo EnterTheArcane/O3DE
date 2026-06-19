@@ -39,7 +39,7 @@ namespace AZStd::ranges::views
         concept is_lvalue_constant_range_not_view =
             is_lvalue_reference_v<V>
             && constant_range<const remove_cvref_t<V>>
-            && !view<remove_cvref_t<V>>;
+            && (!view<remove_cvref_t<V>>);
 
         template<class V>
         struct get_const_span_type {};

@@ -55,9 +55,10 @@ namespace AZStd::ranges
     namespace ZipViewInternal
     {
         template<class... Rs>
-        concept zip_is_common = (sizeof...(Rs) == 1 && (common_range<Rs> && ...)) ||
-            (!(bidirectional_range<Rs> && ...) && (common_range<Rs> && ...)) ||
-            ((random_access_range<Rs> && ...) && (sized_range<Rs> && ...));
+        concept zip_is_common =
+            (sizeof...(Rs) == 1 && (common_range<Rs> && ...))
+            || (!(bidirectional_range<Rs> && ...) && (common_range<Rs> && ...))
+            || ((random_access_range<Rs> && ...) && (sized_range<Rs> && ...));
 
         template<class... Ts>
         using tuple_or_pair = tuple<Ts...>;

@@ -55,7 +55,8 @@ namespace AZStd::Internal
     concept dereferenceable = requires(T& value)
     {
         *value;
-    } && can_reference<decltype(*declval<T&>())>;
+    }
+    && can_reference<decltype(*declval<T&>())>;
 
     template <class T>
     concept is_primary_template = requires { requires is_same_v<T, typename T::_is_primary_template>; };

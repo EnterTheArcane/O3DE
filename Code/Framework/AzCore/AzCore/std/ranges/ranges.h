@@ -42,7 +42,9 @@ namespace AZStd::ranges
     namespace Internal
     {
         template <class T>
-        concept is_lvalue_or_borrowable = is_lvalue_reference_v<T> || enable_borrowed_range<remove_cv_t<T>>;
+        concept is_lvalue_or_borrowable =
+            is_lvalue_reference_v<T>
+            || enable_borrowed_range<remove_cv_t<T>>;
 
         //! begin
         template<class T>
@@ -52,13 +54,15 @@ namespace AZStd::ranges
 
         template <class T>
         concept has_member_begin =
-            !is_array_v<T> && is_lvalue_or_borrowable<T> &&
-            requires(T& t) { requires input_or_output_iterator<decltype(t.begin())>; };
+            (!is_array_v<T>)
+            && is_lvalue_or_borrowable<T>
+            && requires(T& t) { requires input_or_output_iterator<decltype(t.begin())>; };
 
         template <class T>
         concept has_unqualified_begin =
-            !has_member_begin<T> && AZStd::Internal::is_class_or_enum<T> &&
-            requires(T& t) { begin(t); };
+            (!has_member_begin<T>)
+            && AZStd::Internal::is_class_or_enum<T>
+            && requires(T& t) { begin(t); };
 
         struct begin_fn
         {
@@ -111,8 +115,9 @@ namespace AZStd::ranges
 
         template <class T>
         concept has_unqualified_end =
-            !has_member_end<T> && AZStd::Internal::is_class_or_enum<T> &&
-            requires(T& t) { end(t); };
+            (!has_member_end<T>)
+            && AZStd::Internal::is_class_or_enum<T>
+            && requires(T& t) { end(t); };
 
         struct end_fn
         {
@@ -162,13 +167,15 @@ namespace AZStd::ranges
 
         template <class T>
         concept has_unqualified_rbegin =
-            !has_member_rbegin<T> && ::AZStd::Internal::is_class_or_enum<T> &&
-            requires(T& t) { rbegin(t); };
+            (!has_member_rbegin<T>)
+            && ::AZStd::Internal::is_class_or_enum<T>
+            && requires(T& t) { rbegin(t); };
 
         template <class T>
         concept has_bidirectional_rbegin =
-            !has_member_rbegin<T> && !has_unqualified_rbegin<T> &&
-            requires(T& t) {
+            (!has_member_rbegin<T>)
+            && (!has_unqualified_rbegin<T>)
+            && requires(T& t) {
                 requires same_as<decltype(ranges::begin(t)), decltype(ranges::end(t))>;
                 requires bidirectional_iterator<decltype(ranges::begin(t))>;
                 requires bidirectional_iterator<decltype(ranges::end(t))>;
@@ -220,13 +227,15 @@ namespace AZStd::ranges
 
         template <class T>
         concept has_unqualified_rend =
-            !has_member_rend<T> && ::AZStd::Internal::is_class_or_enum<T> &&
-            requires(T& t) { rend(t); };
+            (!has_member_rend<T>)
+            && ::AZStd::Internal::is_class_or_enum<T>
+            && requires(T& t) { rend(t); };
 
         template <class T>
         concept has_bidirectional_rend =
-            !has_member_rend<T> && !has_unqualified_rend<T> &&
-            requires(T& t) {
+            (!has_member_rend<T>)
+            && (!has_unqualified_rend<T>)
+            && requires(T& t) {
                 requires same_as<decltype(ranges::begin(t)), decltype(ranges::end(t))>;
                 requires bidirectional_iterator<decltype(ranges::begin(t))>;
                 requires bidirectional_iterator<decltype(ranges::end(t))>;
@@ -278,13 +287,15 @@ namespace AZStd::ranges
 
         template <class T>
         concept has_unqualified_size =
-            !has_member_size<T> && ::AZStd::Internal::is_class_or_enum<T> &&
-            requires(T& t) { size(t); };
+            (!has_member_size<T>)
+            && ::AZStd::Internal::is_class_or_enum<T>
+            && requires(T& t) { size(t); };
 
         template <class T>
         concept has_end_subtract_begin =
-            !has_member_size<T> && !has_unqualified_size<T> &&
-            requires(T& t) { ranges::end(t) - ranges::begin(t); };
+            (!has_member_size<T>)
+            && (!has_unqualified_size<T>)
+            && requires(T& t) { ranges::end(t) - ranges::begin(t); };
 
         template<class IntType>
         constexpr auto to_unsigned_like(IntType value)
@@ -381,8 +392,9 @@ namespace AZStd::ranges
 
         template <class T>
         concept has_begin_compare_to_end =
-            !has_member_empty<T> && !has_size_compare_to_0<T> &&
-            requires(T& t) { requires convertible_to<decltype(ranges::begin(t) == ranges::end(t)), bool>; };
+            (!has_member_empty<T>)
+            && (!has_size_compare_to_0<T>)
+            && requires(T& t) { requires convertible_to<decltype(ranges::begin(t) == ranges::end(t)), bool>; };
 
         struct empty_fn
         {
@@ -498,8 +510,9 @@ namespace AZStd::ranges
     using const_iterator_t = const_iterator<iterator_t<R>>;
 
     template<class T>
-    concept borrowed_range = range<T> &&
-        (is_lvalue_reference_v<T> || enable_borrowed_range<remove_cvref_t<T>>);
+    concept borrowed_range =
+        range<T>
+        && (is_lvalue_reference_v<T> || enable_borrowed_range<remove_cvref_t<T>>);
 
     using std::ranges::dangling;
 
@@ -517,8 +530,8 @@ namespace AZStd::ranges
     {
         template<class R, class T>
         concept output_range_impl =
-            range<R> &&
-            requires(R& r) { requires output_iterator<decltype(ranges::begin(r)), T>; };
+            range<R>
+            && requires(R& r) { requires output_iterator<decltype(ranges::begin(r)), T>; };
     }
 
     template<class R, class T>
@@ -528,8 +541,8 @@ namespace AZStd::ranges
     {
         template<class T>
         concept input_range_impl =
-            range<T> &&
-            requires(T& t) { requires input_iterator<decltype(ranges::begin(t))>; };
+            range<T>
+            && requires(T& t) { requires input_iterator<decltype(ranges::begin(t))>; };
     }
 
     template<class T>
@@ -539,8 +552,8 @@ namespace AZStd::ranges
     {
         template<class T>
         concept forward_range_impl =
-            input_range<T> &&
-            requires(T& t) { requires forward_iterator<decltype(ranges::begin(t))>; };
+            input_range<T>
+            && requires(T& t) { requires forward_iterator<decltype(ranges::begin(t))>; };
     }
 
     template<class T>
@@ -550,8 +563,8 @@ namespace AZStd::ranges
     {
         template<class T>
         concept bidirectional_range_impl =
-            forward_range<T> &&
-            requires(T& t) { requires bidirectional_iterator<decltype(ranges::begin(t))>; };
+            forward_range<T>
+            && requires(T& t) { requires bidirectional_iterator<decltype(ranges::begin(t))>; };
     }
 
     template<class T>
@@ -561,8 +574,8 @@ namespace AZStd::ranges
     {
         template<class T>
         concept random_access_range_impl =
-            bidirectional_range<T> &&
-            requires(T& t) { requires random_access_iterator<decltype(ranges::begin(t))>; };
+            bidirectional_range<T>
+            && requires(T& t) { requires random_access_iterator<decltype(ranges::begin(t))>; };
     }
 
     template<class T>
@@ -589,8 +602,8 @@ namespace AZStd::ranges
     {
         template<class T>
         concept contiguous_range_impl =
-            random_access_range<T> &&
-            requires(T& t) {
+            random_access_range<T>
+            && requires(T& t) {
                 requires contiguous_iterator<decltype(ranges::begin(t))>;
                 requires same_as<decltype(ranges::data(t)), add_pointer_t<decltype(*ranges::begin(t))>>;
             };
@@ -600,10 +613,14 @@ namespace AZStd::ranges
     concept contiguous_range = Internal::contiguous_range_impl<T>;
 
     template<class T>
-    concept common_range = range<T> && same_as<iterator_t<T>, sentinel_t<T>>;
+    concept common_range =
+        range<T>
+        && same_as<iterator_t<T>, sentinel_t<T>>;
 
     template<class T>
-    concept constant_range = input_range<T> && ::AZStd::Internal::constant_iterator<iterator_t<T>>;
+    concept constant_range =
+        input_range<T>
+        && ::AZStd::Internal::constant_iterator<iterator_t<T>>;
 
     namespace Internal
     {
@@ -954,12 +971,15 @@ namespace AZStd::ranges
     inline constexpr bool enable_view = derived_from<T, view_base> || Internal::is_derived_from_view_interface<T>;
 
     template<class T>
-    concept view = range<T> && movable<T> && enable_view<T>;
+    concept view =
+        range<T>
+        && movable<T>
+        && enable_view<T>;
 
     template<class T>
     concept viewable_range =
-        range<T> &&
-        ((view<remove_cvref_t<T>> && constructible_from<remove_cvref_t<T>, T>) ||
+        range<T>
+        && ((view<remove_cvref_t<T>> && constructible_from<remove_cvref_t<T>, T>) ||
          (!view<remove_cvref_t<T>> &&
           (is_lvalue_reference_v<T> ||
            (movable<remove_reference_t<T>> && !Internal::is_initializer_list<T>))));
@@ -1093,16 +1113,17 @@ namespace AZStd::ranges
 
         template<class R>
         concept simple_view =
-            view<R> && range<const R> &&
-            requires(R& r, const R& cr) {
+            view<R>
+            && range<const R>
+            && requires(R& r, const R& cr) {
                 requires same_as<decltype(ranges::begin(r)), decltype(ranges::begin(cr))>;
                 requires same_as<decltype(ranges::end(r)), decltype(ranges::end(cr))>;
             };
 
         template<class I>
         concept has_arrow =
-            input_iterator<I> &&
-            (is_pointer_v<I> || requires(I i) { i.operator->(); });
+            input_iterator<I>
+            && (is_pointer_v<I> || requires(I i) { i.operator->(); });
 
         template<class T, class U>
         concept different_from = ::AZStd::Internal::different_from<T, U>;

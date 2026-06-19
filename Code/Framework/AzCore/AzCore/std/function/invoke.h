@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include <AzCore/std/typetraits/invoke_traits.h>
 #include <concepts>
+
+#include <AzCore/std/typetraits/invoke_traits.h>
 
 namespace AZStd
 {

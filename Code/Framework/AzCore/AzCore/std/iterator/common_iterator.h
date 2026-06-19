@@ -28,8 +28,8 @@ namespace AZStd::Internal
         requires(T value)
         {
             *value++;
-        } &&
-        can_reference<decltype(*declval<T>()++)>;
+        }
+        && can_reference<decltype(*declval<T>()++)>;
 }
 
 namespace AZStd

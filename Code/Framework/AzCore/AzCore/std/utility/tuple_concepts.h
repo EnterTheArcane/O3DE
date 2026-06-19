@@ -54,7 +54,9 @@ namespace AZStd
     concept tuple_like = Internal::is_tuple_like<remove_cvref_t<T>>;
 
     template<class T>
-    concept pair_like = tuple_like<T> && tuple_size_v<remove_cvref_t<T>> == 2;
+    concept pair_like =
+        tuple_like<T>
+        && tuple_size_v<remove_cvref_t<T>> == 2;
 }
 
 //! common_type and basic_common_reference are from the std namespace.

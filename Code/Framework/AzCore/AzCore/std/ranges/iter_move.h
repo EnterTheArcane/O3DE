@@ -40,7 +40,8 @@ namespace AZStd::ranges::Internal
     };
 
     template <typename It>
-    concept is_class_or_enum_with_iter_move_adl = iter_move_adl<It>
+    concept is_class_or_enum_with_iter_move_adl =
+        iter_move_adl<It>
         && (is_class_v<remove_cvref_t<It>> || is_enum_v<remove_cvref_t<It>>);
 
     struct iter_move_fn

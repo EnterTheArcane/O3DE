@@ -59,14 +59,15 @@ namespace AZStd
         // pointer_traits isn't SFINAE friendly https://cplusplus.github.io/LWG/lwg-active.html#3545
         // working around that by checking if type T has an element_type alias
         template <class T>
-        concept pointer_traits_has_to_address = has_element_type_v<T>
+        concept pointer_traits_has_to_address =
+            has_element_type_v<T>
             && requires { requires !is_void_v<decltype(pointer_traits<T>::to_address(declval<const T&>()))>; };
 
         // fancy pointer helper
         template <class T>
         concept to_address_fancy_pointer =
             requires { requires !is_void_v<decltype(declval<const T&>().operator->())>; }
-                || pointer_traits_has_to_address<T>;
+            || pointer_traits_has_to_address<T>;
 
         struct to_address_fn
         {
@@ -113,7 +114,9 @@ namespace AZStd::Internal
     concept different_from = !same_as<remove_cvref_t<T>, remove_cvref_t<U>>;
 
     template <class It>
-    concept is_class_or_enum = is_class_v<remove_cvref_t<It>> || is_enum_v<remove_cvref_t<It>>;
+    concept is_class_or_enum =
+        is_class_v<remove_cvref_t<It>>
+        || is_enum_v<remove_cvref_t<It>>;
 }
 
 namespace AZStd
@@ -137,27 +140,29 @@ namespace AZStd::Internal
     concept boolean_testable_impl = convertible_to<T, bool>;
 
     template<class T>
-    concept boolean_testable = boolean_testable_impl<T> && boolean_testable_impl<decltype(!declval<T>())>;
+    concept boolean_testable =
+        boolean_testable_impl<T>
+        && boolean_testable_impl<decltype(!declval<T>())>;
 
     // weakly comparable ==, !=
     template<class T, class U>
     concept weakly_equality_comparable_with =
-        boolean_testable<decltype(declval<const AZStd::remove_reference_t<T>&>() == declval<const AZStd::remove_reference_t<U>&>())> &&
-        boolean_testable<decltype(declval<const AZStd::remove_reference_t<T>&>() != declval<const AZStd::remove_reference_t<U>&>())> &&
-        boolean_testable<decltype(declval<const AZStd::remove_reference_t<U>&>() == declval<const AZStd::remove_reference_t<T>&>())> &&
-        boolean_testable<decltype(declval<const AZStd::remove_reference_t<U>&>() != declval<const AZStd::remove_reference_t<T>&>())>;
+        boolean_testable<decltype(declval<const AZStd::remove_reference_t<T>&>() == declval<const AZStd::remove_reference_t<U>&>())>
+        && boolean_testable<decltype(declval<const AZStd::remove_reference_t<T>&>() != declval<const AZStd::remove_reference_t<U>&>())>
+        && boolean_testable<decltype(declval<const AZStd::remove_reference_t<U>&>() == declval<const AZStd::remove_reference_t<T>&>())>
+        && boolean_testable<decltype(declval<const AZStd::remove_reference_t<U>&>() != declval<const AZStd::remove_reference_t<T>&>())>;
 
     // partially ordered <, >, <=, >=
     template<class T, class U>
     concept partially_ordered_with_impl =
-        boolean_testable<decltype(declval<const remove_reference_t<T>&>() < declval<const remove_reference_t<U>&>())> &&
-        boolean_testable<decltype(declval<const remove_reference_t<T>&>() > declval<const remove_reference_t<U>&>())> &&
-        boolean_testable<decltype(declval<const remove_reference_t<T>&>() <= declval<const remove_reference_t<U>&>())> &&
-        boolean_testable<decltype(declval<const remove_reference_t<T>&>() >= declval<const remove_reference_t<U>&>())> &&
-        boolean_testable<decltype(declval<const remove_reference_t<U>&>() < declval<const remove_reference_t<T>&>())> &&
-        boolean_testable<decltype(declval<const remove_reference_t<U>&>() > declval<const remove_reference_t<T>&>())> &&
-        boolean_testable<decltype(declval<const remove_reference_t<U>&>() <= declval<const remove_reference_t<T>&>())> &&
-        boolean_testable<decltype(declval<const remove_reference_t<U>&>() >= declval<const remove_reference_t<T>&>())>;
+        boolean_testable<decltype(declval<const remove_reference_t<T>&>() < declval<const remove_reference_t<U>&>())>
+        && boolean_testable<decltype(declval<const remove_reference_t<T>&>() > declval<const remove_reference_t<U>&>())>
+        && boolean_testable<decltype(declval<const remove_reference_t<T>&>() <= declval<const remove_reference_t<U>&>())>
+        && boolean_testable<decltype(declval<const remove_reference_t<T>&>() >= declval<const remove_reference_t<U>&>())>
+        && boolean_testable<decltype(declval<const remove_reference_t<U>&>() < declval<const remove_reference_t<T>&>())>
+        && boolean_testable<decltype(declval<const remove_reference_t<U>&>() > declval<const remove_reference_t<T>&>())>
+        && boolean_testable<decltype(declval<const remove_reference_t<U>&>() <= declval<const remove_reference_t<T>&>())>
+        && boolean_testable<decltype(declval<const remove_reference_t<U>&>() >= declval<const remove_reference_t<T>&>())>;
 }
 
 namespace AZStd
@@ -187,13 +192,16 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template <class T>
-    concept is_integer_like = integral<T> && !same_as<T, bool>;
+    concept is_integer_like =
+        integral<T>
+        && (!same_as<T, bool>);
 
     template <class T>
     concept is_signed_integer_like = signed_integral<T>;
 
     template <class T>
-    concept weakly_incrementable_impl = movable<T>
+    concept weakly_incrementable_impl =
+        movable<T>
         && requires(T& t) {
             requires is_signed_integer_like<iter_difference_t<T>>;
             { ++t } -> same_as<T&>;
@@ -217,14 +225,15 @@ namespace AZStd
 {
     template <class T>
     concept input_or_output_iterator =
-        Internal::input_or_output_iterator_override<remove_cvref_t<T>> ||
-        (!is_void_v<T> && weakly_incrementable<T>);
+        Internal::input_or_output_iterator_override<remove_cvref_t<T>>
+        || (!is_void_v<T> && weakly_incrementable<T>);
 }
 
 namespace AZStd::Internal
 {
     template <class T>
-    concept incrementable_impl = regular<T>
+    concept incrementable_impl =
+        regular<T>
         && weakly_incrementable<T>
         && requires(T& t) { { t++ } -> same_as<T>; };
 }
@@ -239,9 +248,9 @@ namespace AZStd
 {
     template<class S, class I>
     concept sentinel_for =
-        semiregular<S> &&
-        input_or_output_iterator<I> &&
-        Internal::weakly_equality_comparable_with<S, I>;
+        semiregular<S>
+        && input_or_output_iterator<I>
+        && Internal::weakly_equality_comparable_with<S, I>;
 
     template<class S, class I>
     inline constexpr bool disable_sized_sentinel_for = false;
@@ -251,9 +260,9 @@ namespace AZStd::Internal
 {
     template<class S, class I>
     concept sized_sentinel_for_impl =
-        sentinel_for<S, I> &&
-        !disable_sized_sentinel_for<remove_cv_t<S>, remove_cv_t<I>> &&
-        requires(S s, I i)
+        sentinel_for<S, I>
+        && (!disable_sized_sentinel_for<remove_cv_t<S>, remove_cv_t<I>>)
+        && requires(S s, I i)
         {
             { s - i } -> same_as<iter_difference_t<I>>;
             { i - s } -> same_as<iter_difference_t<I>>;
@@ -279,13 +288,13 @@ namespace AZStd::Internal
 
     template<class I>
     concept use_traits_iterator_category_for_concept =
-        !use_traits_iterator_concept_for_concept<I>
+        (!use_traits_iterator_concept_for_concept<I>)
         && requires { typename ITER_TRAITS<I>::iterator_category; };
 
     template<class I>
     concept use_random_access_iterator_tag_for_concept =
-        !use_traits_iterator_concept_for_concept<I>
-        && !use_traits_iterator_category_for_concept<I>
+        (!use_traits_iterator_concept_for_concept<I>)
+        && (!use_traits_iterator_category_for_concept<I>)
         && requires { typename ITER_TRAITS<I>; };
 
     template<class I, class = void>
@@ -319,7 +328,8 @@ namespace AZStd::Internal
 namespace AZStd::Internal
 {
     template<class I>
-    concept input_iterator_impl = input_or_output_iterator<I>
+    concept input_iterator_impl =
+        input_or_output_iterator<I>
         && indirectly_readable<I>
         && requires { requires derived_from<iter_concept_t<I>, input_iterator_tag>; };
 }
@@ -333,7 +343,8 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template<class I, class T>
-    concept output_iterator_impl = input_or_output_iterator<I>
+    concept output_iterator_impl =
+        input_or_output_iterator<I>
         && indirectly_writable<I, T>
         && requires(I& i) { *i++ = AZStd::declval<T>(); };
 }
@@ -347,7 +358,8 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template<class I>
-    concept forward_iterator_impl = input_iterator<I>
+    concept forward_iterator_impl =
+        input_iterator<I>
         && incrementable<I>
         && sentinel_for<I, I>
         && requires { requires derived_from<Internal::iter_concept_t<I>, forward_iterator_tag>; };
@@ -362,7 +374,8 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template<class I>
-    concept bidirectional_iterator_impl = forward_iterator<I>
+    concept bidirectional_iterator_impl =
+        forward_iterator<I>
         && requires(I& i) {
             requires derived_from<iter_concept_t<I>, bidirectional_iterator_tag>;
             { --i } -> same_as<I&>;
@@ -379,7 +392,8 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template<class I>
-    concept random_access_iterator_impl = bidirectional_iterator<I>
+    concept random_access_iterator_impl =
+        bidirectional_iterator<I>
         && totally_ordered<I>
         && sized_sentinel_for<I, I>
         && requires(I i, const I j, const iter_difference_t<I> n) {
@@ -402,7 +416,8 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template<class I>
-    concept contiguous_iterator_impl = random_access_iterator<I>
+    concept contiguous_iterator_impl =
+        random_access_iterator<I>
         && indirectly_readable<I>
         && requires {
             requires derived_from<iter_concept_t<I>, contiguous_iterator_tag>;

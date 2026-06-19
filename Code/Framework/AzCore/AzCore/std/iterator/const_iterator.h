@@ -35,8 +35,8 @@ namespace AZStd::Internal
 
     template<class It>
     concept constant_iterator =
-        input_iterator<It> &&
-        same_as<iter_const_reference_t<It>, iter_reference_t<It>>;
+        input_iterator<It>
+        && same_as<iter_const_reference_t<It>, iter_reference_t<It>>;
 
     template<class I, class = void>
     struct basic_const_iterator_iter_category {};
@@ -59,15 +59,15 @@ namespace AZStd
 
     template<class It>
     concept not_a_const_iterator =
-        !Internal::is_basic_const_iterator<remove_cvref_t<It>> ||
-        Internal::is_primary_template<remove_cvref_t<It>>;
+        (!Internal::is_basic_const_iterator<remove_cvref_t<It>>)
+        || Internal::is_primary_template<remove_cvref_t<It>>;
 
     template<class S, class I>
     concept basic_const_iterator_sentinel_for =
-        !Internal::is_basic_const_iterator<remove_cvref_t<S>> &&
-        semiregular<S> &&
-        input_or_output_iterator<I> &&
-        Internal::weakly_equality_comparable_with<I, S>;
+        (!Internal::is_basic_const_iterator<remove_cvref_t<S>>)
+        && semiregular<S>
+        && input_or_output_iterator<I>
+        && Internal::weakly_equality_comparable_with<I, S>;
 
     template<class S, class I>
     concept basic_const_iterator_sized_sentinel_for_impl =
@@ -79,15 +79,15 @@ namespace AZStd
 
     template<class S, class I>
     concept basic_const_iterator_sized_sentinel_for =
-        !Internal::is_basic_const_iterator<remove_cvref_t<S>> &&
-        basic_const_iterator_sentinel_for<S, I> &&
-        basic_const_iterator_sized_sentinel_for_impl<S, I>;
+        (!Internal::is_basic_const_iterator<remove_cvref_t<S>>)
+        && basic_const_iterator_sentinel_for<S, I>
+        && basic_const_iterator_sized_sentinel_for_impl<S, I>;
 
     template<class I, class I2>
     concept basic_const_iterator_ordered_with =
-        !Internal::is_basic_const_iterator<remove_cvref_t<I2>> &&
-        random_access_iterator<I> &&
-        Internal::partially_ordered_with_impl<I, I2>;
+        (!Internal::is_basic_const_iterator<remove_cvref_t<I2>>)
+        && random_access_iterator<I>
+        && Internal::partially_ordered_with_impl<I, I2>;
 
     template<class I>
         requires input_or_output_iterator<I>
@@ -222,14 +222,11 @@ namespace AZStd
 
 
         // comparison operations
-        // Note: these heterogeneous sentinel comparisons keep the enable_if_t return-type
-        // SFINAE form on purpose. Expressed as a `requires` clause, the associated-constraint
-        // is re-entered through `==` overload resolution inside basic_const_iterator_sentinel_for
-        // (which checks weakly_equality_comparable_with), defeating Clang's self-dependency
-        // detection and producing an infinite constraint-satisfaction recursion for nested
-        // iterator adapters such as move_iterator<basic_const_iterator<...>>. Evaluating the
-        // concept as a value in enable_if_t keeps the satisfaction on the stack where the
-        // self-dependency is detected and the candidate is correctly discarded.
+
+        // NOTE: these heterogeneous sentinel comparisons keep the enable_if_t return-type SFINAE form on purpose.
+        // If we use a requires constraint, the associated-constraint is re-entered through `==` overload resolution inside basic_const_iterator_sentinel_for (which checks weakly_equality_comparable_with),
+        // defeating clangs self-dependency detection and producing an infinite constraint-satisfaction recursion for nested iterator adapters such as move_iterator<basic_const_iterator>.
+        // Evaluating the concept as a value in enable_if_t keeps the satisfaction on the stack where the self-dependency is detected and the candidate is correctly discarded.
         template<class S>
         friend constexpr auto operator==(const basic_const_iterator& i, const S& s)
             -> enable_if_t<basic_const_iterator_sentinel_for<S, I>, bool>
