@@ -194,6 +194,7 @@ namespace AZStd
 
     //! expected<void, E> specializtion in-place constructor
     template<class T, class E>
+    template<bool>
     constexpr expected<T, E>::expected(in_place_t)
         requires is_void_v<T>
         : expected{}

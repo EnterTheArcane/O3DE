@@ -97,8 +97,11 @@ namespace AZStd
     // To allow incomplete types to be used with the const_iterator
     // the forward list iterator has specializations added for the basic_const_iterator
     // constraints
-    template<class I>
-    inline constexpr bool Internal::input_or_output_iterator_override<forward_list_iterator<I>> = true;
+    namespace Internal
+    {
+        template<class I>
+        inline constexpr bool input_or_output_iterator_override<forward_list_iterator<I>> = true;
+    }
 
     /**
     * The list container (single linked list) is complaint with \ref CStd (23.2.2). In addition we introduce the following \ref ListExtensions "extensions".

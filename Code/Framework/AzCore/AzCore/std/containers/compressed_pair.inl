@@ -40,33 +40,6 @@ namespace AZStd
         return m_element;
     }
 
-    // compressed_pair_element specialization for a non-final empty base class.
-    template <typename T, size_t Index>
-        requires std::is_empty_v<T>
-            && (!std::is_final_v<T>)
-    template <template <typename...> class TupleType, class... Args, size_t... Indices>
-    inline constexpr compressed_pair_element<T, Index>::compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>)
-        : T{ AZStd::forward<Args>(AZStd::get<Indices>(AZStd::forward<TupleType<Args...>>(args) ))... }
-    {
-        (void)args;
-    }
-
-    template <typename T, size_t Index>
-        requires std::is_empty_v<T>
-            && (!std::is_final_v<T>)
-    inline constexpr T& compressed_pair_element<T, Index>::get()
-    {
-        return *this;
-    }
-
-    template <typename T, size_t Index>
-        requires std::is_empty_v<T>
-            && (!std::is_final_v<T>)
-    inline constexpr const T& compressed_pair_element<T, Index>::get() const
-    {
-        return *this;
-    }
-
     // compressed_pair implementation
     template <typename T1, typename T2>
     inline constexpr compressed_pair<T1, T2>::compressed_pair()

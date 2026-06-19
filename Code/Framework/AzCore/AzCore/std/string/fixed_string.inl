@@ -78,7 +78,7 @@ namespace AZStd
     // https://eel.is/c++draft/strings#string.cons-18
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
-        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
+        requires Internal::container_compatible_range<R, Element>
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(from_range_t, R&& rg)
     {
         assign_range(AZStd::forward<R>(rg));
@@ -385,7 +385,7 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
-        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
+        requires Internal::container_compatible_range<R, Element>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::append_range(R&& rg)
         -> basic_fixed_string&
     {
@@ -534,7 +534,7 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
-        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
+        requires Internal::container_compatible_range<R, Element>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::assign_range(R&& rg)
         -> basic_fixed_string&
     {
@@ -725,7 +725,7 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
-        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
+        requires Internal::container_compatible_range<R, Element>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::insert_range(const_iterator insertPos, R&& rg)
         -> iterator
     {
@@ -1043,7 +1043,7 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
-        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
+        requires Internal::container_compatible_range<R, Element>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace_with_range(
         const_iterator first, const_iterator last, R&& rg)
         -> basic_fixed_string&

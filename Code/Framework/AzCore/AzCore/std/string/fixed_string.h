@@ -89,7 +89,7 @@ namespace AZStd
 
         // https://eel.is/c++draft/strings#string.cons-18
         template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+            requires Internal::container_compatible_range<R, Element>
         constexpr basic_fixed_string(from_range_t, R&& rg);
 
         // #7
@@ -167,7 +167,7 @@ namespace AZStd
             -> basic_fixed_string&;
 
         template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+            requires Internal::container_compatible_range<R, Element>
         constexpr auto append_range(R&& rg)
             -> basic_fixed_string&;
 
@@ -191,7 +191,7 @@ namespace AZStd
             -> basic_fixed_string&;
 
         template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+            requires Internal::container_compatible_range<R, Element>
         constexpr auto assign_range(R&& rg)
             -> basic_fixed_string&;
 
@@ -217,7 +217,7 @@ namespace AZStd
             -> iterator;
 
         template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+            requires Internal::container_compatible_range<R, Element>
         constexpr auto insert_range(const_iterator insertPos, R&& rg)
             -> iterator;
 
@@ -261,7 +261,7 @@ namespace AZStd
             -> basic_fixed_string&;
 
         template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+            requires Internal::container_compatible_range<R, Element>
         constexpr auto replace_with_range(const_iterator first, const_iterator last, R&& rg)
             -> basic_fixed_string&;
 

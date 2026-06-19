@@ -23,7 +23,7 @@ namespace AZStd
         constexpr unexpected(const unexpected&) = default;
         constexpr unexpected(unexpected&&) = default;
         template<class Err = E>
-            requires (!is_same_v<remove_cvref_t<Err>, unexpected>)
+            requires (!is_same_v<remove_cvref_t<Err>, unexpected<E>>)
                 && (!is_same_v<remove_cvref_t<Err>, in_place_t>)
                 && is_constructible_v<E, Err>
         constexpr explicit unexpected(Err&&);
@@ -118,7 +118,7 @@ namespace AZStd
         template<class U = T>
             requires (!is_void_v<T>)
                 && (!is_same_v<remove_cvref_t<U>, in_place_t>)
-                && (!is_same_v<expected, remove_cvref_t<U>>)
+                && (!is_same_v<expected<T, E>, remove_cvref_t<U>>)
                 && (!Internal::is_std_unexpected_specialization_v<remove_cvref_t<U>>)
                 && is_constructible_v<T, U>
 #if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
@@ -155,6 +155,7 @@ namespace AZStd
         constexpr explicit expected(in_place_t, initializer_list<U> il, Args&&...args);
 
         //! expected<void, E> specialization for in-place constructor
+        template<bool = true>
         constexpr explicit expected(in_place_t)
             requires is_void_v<T>;
 
@@ -181,7 +182,7 @@ namespace AZStd
         //! Direct initializes value into expected.
         template<class U = T>
             requires (!is_void_v<T>)
-                && (!is_same_v<expected, remove_cvref_t<U>>)
+                && (!is_same_v<expected<T, E>, remove_cvref_t<U>>)
                 && (!Internal::is_std_unexpected_specialization_v<remove_cvref_t<U>>)
                 && is_constructible_v<T, U>
                 && is_assignable_v<add_lvalue_reference_t<T>, U>

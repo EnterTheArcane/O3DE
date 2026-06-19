@@ -123,7 +123,7 @@ namespace AZStd
     public:
         // Variant constructor #1
         constexpr variant()
-            requires is_default_constructible_v<variant_alternative_t<0, variant>>;
+            requires is_default_constructible_v<variant_alternative_t<0, variant<Types...>>>;
         // Variant constructor #2
         variant(const variant&) = default;
         // Variant constructor #3
@@ -132,10 +132,10 @@ namespace AZStd
         template <class T,
             class Alternative = variant_detail::best_alternative_t<T, Types...>,
             size_t Index = find_type::find_exactly_one_alternative_v<Alternative, Types...>>
-            requires (!is_same_v<remove_cvref_t<T>, variant>)
+            requires (!is_same_v<remove_cvref_t<T>, variant<Types...>>)
                 && (!is_same_v<remove_cvref_t<T>, in_place_type_t<remove_cvref_t<T>>>)
                 && (!is_same_v<remove_cvref_t<T>, Internal::is_in_place_index_t<remove_cvref_t<T>>>)
-                && (variant_size_v<variant> != 0)
+                && (variant_size_v<variant<Types...>> != 0)
                 && is_constructible_v<Alternative, T>
         constexpr variant(T&& arg);
 
@@ -153,14 +153,14 @@ namespace AZStd
 
         // Variant constructor #7
         template <size_t Index, class... Args>
-            requires (Index < variant_size_v<variant>)
-                && is_constructible_v<variant_alternative_t<Index, variant>, Args...>
+            requires (Index < variant_size_v<variant<Types...>>)
+                && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, Args...>
         explicit constexpr variant(in_place_index_t<Index>, Args&&... args);
 
         // Variant constructor #8
         template <size_t Index, class U, class... Args>
-            requires (Index < variant_size_v<variant>)
-                && is_constructible_v<variant_alternative_t<Index, variant>, std::initializer_list<U>&, Args...>
+            requires (Index < variant_size_v<variant<Types...>>)
+                && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, std::initializer_list<U>&, Args...>
         explicit constexpr variant(in_place_index_t<Index>, std::initializer_list<U> il, Args&&... args);
 
         ~variant() = default;
@@ -172,7 +172,7 @@ namespace AZStd
         template <class T,
             class Alternative = variant_detail::best_alternative_t<T, Types...>,
             size_t Index = find_type::find_exactly_one_alternative_v<Alternative, Types...>>
-            requires (!is_same_v<remove_cvref_t<T>, variant>)
+            requires (!is_same_v<remove_cvref_t<T>, variant<Types...>>)
                 && is_assignable_v<Alternative&, T>
                 && is_constructible_v<Alternative, T>
         constexpr auto operator=(T&& arg)->variant&;
@@ -191,15 +191,15 @@ namespace AZStd
 
         // Variant emplace #3
         template <size_t Index, class... Args>
-            requires (Index < variant_size_v<variant>)
-                && is_constructible_v<variant_alternative_t<Index, variant>, Args...>
-        constexpr variant_alternative_t<Index, variant>& emplace(Args&&... args);
+            requires (Index < variant_size_v<variant<Types...>>)
+                && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, Args...>
+        constexpr variant_alternative_t<Index, variant<Types...>>& emplace(Args&&... args);
 
         // Variant emplace #4
         template <size_t Index, class U, class... Args>
-            requires (Index < variant_size_v<variant>)
-                && is_constructible_v<variant_alternative_t<Index, variant>, std::initializer_list<U>&, Args...>
-        constexpr variant_alternative_t<Index, variant>& emplace(std::initializer_list<U> il, Args&&... args);
+            requires (Index < variant_size_v<variant<Types...>>)
+                && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, std::initializer_list<U>&, Args...>
+        constexpr variant_alternative_t<Index, variant<Types...>>& emplace(std::initializer_list<U> il, Args&&... args);
 
         /// Returns false if and only if the variant holds a value.
         constexpr bool valueless_by_exception() const;

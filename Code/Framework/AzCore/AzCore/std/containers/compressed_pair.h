@@ -82,10 +82,14 @@ namespace AZStd
         {}
 
         template <template <typename...> class TupleType, class... Args, size_t... Indices>
-        constexpr compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>);
+        constexpr compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>)
+            : T{ AZStd::forward<Args>(AZStd::get<Indices>(AZStd::forward<TupleType<Args...>>(args)))... }
+        {
+            (void)args;
+        }
 
-        constexpr T& get();
-        constexpr const T& get() const;
+        constexpr T& get() { return *this; }
+        constexpr const T& get() const { return *this; }
     };
 
     // Structure to pass as the first element when only the second element of the pair

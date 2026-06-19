@@ -115,8 +115,11 @@ namespace AZStd
     // To allow incomplete types to be used with the const_iterator
     // the list_iterator has specializations added for the basic_const_iterator
     // constraints
-    template <class T, class Allocator, AZStd::size_t NumElementsPerBlock, AZStd::size_t MinMapSize>
-    inline constexpr bool Internal::input_or_output_iterator_override<deque_iterator_impl<T, Allocator, NumElementsPerBlock, MinMapSize>> = true;
+    namespace Internal
+    {
+        template <class T, class Allocator, AZStd::size_t NumElementsPerBlock, AZStd::size_t MinMapSize>
+        inline constexpr bool input_or_output_iterator_override<deque_iterator_impl<T, Allocator, NumElementsPerBlock, MinMapSize>> = true;
+    }
 
     /**
      * The deque is complaint with \ref CStd (23.2.1). In addition we introduce the following \ref DequeExtensions "extensions".
