@@ -10,27 +10,6 @@
 
 namespace AZStd
 {
-    // Variant constructor #1
-    template <class... Types>
-    inline constexpr variant<Types...>::variant()
-        requires is_default_constructible_v<variant_alternative_t<0, variant<Types...>>>
-        : m_impl(in_place_index_t<0>{})
-    {
-    }
-
-    // Variant constructor #4
-    template <class... Types>
-    template <class T, class Alternative, size_t Index>
-        requires (!is_same_v<remove_cvref_t<T>, variant<Types...>>)
-            && (!is_same_v<remove_cvref_t<T>, in_place_type_t<remove_cvref_t<T>>>)
-            && (!is_same_v<remove_cvref_t<T>, Internal::is_in_place_index_t<remove_cvref_t<T>>>)
-            && (variant_size_v<variant<Types...>> != 0)
-            && is_constructible_v<Alternative, T>
-    inline constexpr variant<Types...>::variant(T&& arg)
-        : m_impl(in_place_index_t<Index>{}, AZStd::forward<T>(arg))
-    {
-    }
-
     // Variant constructor #5
     template <class... Types>
     template <class T, class... Args, size_t Index>
@@ -48,38 +27,6 @@ namespace AZStd
     inline constexpr variant<Types...>::variant(in_place_type_t<T>, std::initializer_list<U> il, Args&&... args)
         : m_impl(in_place_index_t<Index>{}, il, AZStd::forward<Args>(args)...)
     {
-    }
-
-    // Variant constructor #7
-    template <class... Types>
-    template <size_t Index, class... Args>
-        requires (Index < variant_size_v<variant<Types...>>)
-            && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, Args...>
-    inline constexpr variant<Types...>::variant(in_place_index_t<Index>, Args&&... args)
-        : m_impl(in_place_index_t<Index>{}, AZStd::forward<Args>(args)...)
-    {
-    }
-
-    // Variant constructor #8
-    template <class... Types>
-    template <size_t Index, class U, class... Args>
-        requires (Index < variant_size_v<variant<Types...>>)
-            && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, std::initializer_list<U>&, Args...>
-    inline constexpr variant<Types...>::variant(in_place_index_t<Index>, std::initializer_list<U> il, Args&&... args)
-        : m_impl(in_place_index_t<Index>{}, il, AZStd::forward<Args>(args)...)
-    {
-    }
-
-    // Variant assignment operator #3
-    template <class... Types>
-    template <class T, class Alternative, size_t Index>
-        requires (!is_same_v<remove_cvref_t<T>, variant<Types...>>)
-            && is_assignable_v<Alternative&, T>
-            && is_constructible_v<Alternative, T>
-    inline constexpr auto variant<Types...>::operator=(T&& arg) -> variant&
-    {
-        m_impl.template assign<Index>(AZStd::forward<T>(arg));
-        return *this;
     }
 
     // std::variant member functions
@@ -101,26 +48,6 @@ namespace AZStd
         return m_impl.template emplace<Index>(il, AZStd::forward<Args>(args)...);
     }
 
-    // Variant emplace #3
-    template <class... Types>
-    template <size_t Index, class... Args>
-        requires (Index < variant_size_v<variant<Types...>>)
-            && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, Args...>
-    inline constexpr variant_alternative_t<Index, variant<Types...>>& variant<Types...>::emplace(Args&&... args)
-    {
-        return m_impl.template emplace<Index>(AZStd::forward<Args>(args)...);
-    }
-
-    // Variant emplace #4
-    template <class... Types>
-    template <size_t Index, class U, class... Args>
-        requires (Index < variant_size_v<variant<Types...>>)
-            && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, std::initializer_list<U>&, Args...>
-    inline constexpr variant_alternative_t<Index, variant<Types...>>& variant<Types...>::emplace(std::initializer_list<U> il, Args&&... args)
-    {
-        return m_impl.template emplace<Index>(il, AZStd::forward<Args>(args)...);
-    }
-
     template <class... Types>
     inline constexpr bool variant<Types...>::valueless_by_exception() const
     {
@@ -131,14 +58,6 @@ namespace AZStd
     inline constexpr size_t variant<Types...>::index() const
     {
         return m_impl.index();
-    }
-
-    template <class... Types>
-    template <bool Placeholder>
-        requires ((Placeholder && is_swappable_v<Types> && is_move_constructible_v<Types>) && ...)
-    inline constexpr void variant<Types...>::swap(variant& other)
-    {
-        m_impl.swap(other.m_impl);
     }
 
     // Variant holds_alternative function

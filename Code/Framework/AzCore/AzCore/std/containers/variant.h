@@ -124,7 +124,10 @@ namespace AZStd
     public:
         // Variant constructor #1
         constexpr variant()
-            requires is_default_constructible_v<variant_alternative_t<0, variant<Types...>>>;
+            requires is_default_constructible_v<variant_alternative_t<0, variant<Types...>>>
+            : m_impl(in_place_index_t<0>{})
+        {
+        }
         // Variant constructor #2
         variant(const variant&) = default;
         // Variant constructor #3
@@ -138,7 +141,10 @@ namespace AZStd
                 && (!is_same_v<remove_cvref_t<T>, Internal::is_in_place_index_t<remove_cvref_t<T>>>)
                 && (variant_size_v<variant<Types...>> != 0)
                 && is_constructible_v<Alternative, T>
-        constexpr variant(T&& arg);
+        constexpr variant(T&& arg)
+            : m_impl(in_place_index_t<Index>{}, AZStd::forward<T>(arg))
+        {
+        }
 
         // Variant constructor #5
         template <class T, class... Args,
@@ -156,13 +162,19 @@ namespace AZStd
         template <size_t Index, class... Args>
             requires (Index < variant_size_v<variant<Types...>>)
                 && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, Args...>
-        explicit constexpr variant(in_place_index_t<Index>, Args&&... args);
+        explicit constexpr variant(in_place_index_t<Index>, Args&&... args)
+            : m_impl(in_place_index_t<Index>{}, AZStd::forward<Args>(args)...)
+        {
+        }
 
         // Variant constructor #8
         template <size_t Index, class U, class... Args>
             requires (Index < variant_size_v<variant<Types...>>)
                 && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, std::initializer_list<U>&, Args...>
-        explicit constexpr variant(in_place_index_t<Index>, std::initializer_list<U> il, Args&&... args);
+        explicit constexpr variant(in_place_index_t<Index>, std::initializer_list<U> il, Args&&... args)
+            : m_impl(in_place_index_t<Index>{}, il, AZStd::forward<Args>(args)...)
+        {
+        }
 
         ~variant() = default;
 
@@ -176,7 +188,11 @@ namespace AZStd
             requires (!is_same_v<remove_cvref_t<T>, variant<Types...>>)
                 && is_assignable_v<Alternative&, T>
                 && is_constructible_v<Alternative, T>
-        constexpr auto operator=(T&& arg)->variant&;
+        constexpr auto operator=(T&& arg) -> variant&
+        {
+            m_impl.template assign<Index>(AZStd::forward<T>(arg));
+            return *this;
+        }
 
         // Variant emplace #1
         template <class T, class... Args,
@@ -194,13 +210,19 @@ namespace AZStd
         template <size_t Index, class... Args>
             requires (Index < variant_size_v<variant<Types...>>)
                 && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, Args...>
-        constexpr variant_alternative_t<Index, variant<Types...>>& emplace(Args&&... args);
+        constexpr variant_alternative_t<Index, variant<Types...>>& emplace(Args&&... args)
+        {
+            return m_impl.template emplace<Index>(AZStd::forward<Args>(args)...);
+        }
 
         // Variant emplace #4
         template <size_t Index, class U, class... Args>
             requires (Index < variant_size_v<variant<Types...>>)
                 && is_constructible_v<variant_alternative_t<Index, variant<Types...>>, std::initializer_list<U>&, Args...>
-        constexpr variant_alternative_t<Index, variant<Types...>>& emplace(std::initializer_list<U> il, Args&&... args);
+        constexpr variant_alternative_t<Index, variant<Types...>>& emplace(std::initializer_list<U> il, Args&&... args)
+        {
+            return m_impl.template emplace<Index>(il, AZStd::forward<Args>(args)...);
+        }
 
         /// Returns false if and only if the variant holds a value.
         constexpr bool valueless_by_exception() const;
@@ -211,7 +233,10 @@ namespace AZStd
         /// Overloads the std::swap algorithm for std::variant. Effectively calls lhs.swap(rhs).
         template <bool Placeholder = true>
             requires ((Placeholder && is_swappable_v<Types> && is_move_constructible_v<Types>) && ...)
-        constexpr void swap(variant& other);
+        constexpr void swap(variant& other)
+        {
+            m_impl.swap(other.m_impl);
+        }
 
     private:
         variant_detail::impl<Types...> m_impl;
