@@ -13,7 +13,6 @@
 #include <stdarg.h>
 #include <cstring>
 
-#include <AzCore/std/containers/compressed_pair.h>
 #include <AzCore/std/containers/containers_concepts.h>
 #include <AzCore/std/base.h>
 #include <AzCore/std/iterator.h>
@@ -25,6 +24,7 @@
 #include <AzCore/std/typetraits/aligned_storage.h>
 #include <AzCore/std/typetraits/alignment_of.h>
 #include <AzCore/std/typetraits/is_convertible.h>
+#include <AzCore/std/typetraits/is_empty.h>
 #include <AzCore/std/typetraits/is_integral.h>
 
 #include <AzCore/std/string/string_view.h>
@@ -98,25 +98,25 @@ namespace AZStd
         // Constructors and Assignment operators
         // https://eel.is/c++draft/strings#string.cons
         inline constexpr basic_string(const Allocator& alloc = Allocator())
-            : m_storage{ skip_element_tag{}, alloc }
+            : m_storage{ alloc }
         {
             Traits::assign(m_storage.first().GetData()[0], Element());
         }
 
         inline basic_string(const_pointer ptr, size_type count, const Allocator& alloc = Allocator())
-            : m_storage{ skip_element_tag{}, alloc }
+            : m_storage{ alloc }
         {   // construct from [ptr, ptr + count)
             assign(ptr, count);
         }
 
         inline basic_string(const_pointer ptr, const Allocator& alloc = Allocator())
-            : m_storage{ skip_element_tag{}, alloc }
+            : m_storage{ alloc }
         {   // construct from [ptr, <null>)
             assign(ptr);
         }
 
         inline basic_string(size_type count, Element ch, const Allocator& alloc = Allocator())
-            : m_storage{ skip_element_tag{}, alloc }
+            : m_storage{ alloc }
         {   // construct from count * ch
             assign(count, ch);
         }
@@ -125,14 +125,14 @@ namespace AZStd
             requires input_iterator<InputIt>
                 && (!is_convertible_v<InputIt, size_t>)
         inline basic_string(InputIt first, InputIt last, const Allocator& alloc = Allocator())
-            : m_storage{ skip_element_tag{}, alloc }
+            : m_storage{ alloc }
         {   // construct from [first, last)
             assign(first, last);
         }
         template<class R>
             requires Internal::container_compatible_range<R, value_type>
         basic_string(from_range_t, R&& rg, const Allocator& alloc = Allocator())
-            : m_storage{ skip_element_tag{}, alloc }
+            : m_storage{ alloc }
         {
             assign_range(AZStd::forward<R>(rg));
         }
@@ -142,13 +142,13 @@ namespace AZStd
         }
 
         inline basic_string(const this_type& rhs)
-            : m_storage{ skip_element_tag{}, rhs.m_storage.second() }
+            : m_storage{ rhs.m_storage.second() }
         {
             assign(rhs);
         }
 
         inline basic_string(this_type&& rhs)
-            : m_storage{ skip_element_tag{}, rhs.m_storage.second() }
+            : m_storage{ rhs.m_storage.second() }
         {
             assign(AZStd::move(rhs));
         }
@@ -159,7 +159,7 @@ namespace AZStd
         }
 
         inline basic_string(const this_type& rhs, size_type rhsOffset, size_type count, const Allocator& alloc)
-            : m_storage{ skip_element_tag{}, alloc }
+            : m_storage{ alloc }
         {   // construct from rhs [rhsOffset, rhsOffset + count) with allocator
             assign(rhs, rhsOffset, count);
         }
@@ -1892,7 +1892,34 @@ namespace AZStd
             PointerAlignedData m_pointerData;
         };
 
-        AZStd::compressed_pair<Storage, allocator_type> m_storage;
+        // Stores the string storage together with the allocator.
+        // The allocator is declared with AZ_NO_UNIQUE_ADDRESS so that a stateless allocator contributes no additional size.
+        struct StorageWithAllocator
+        {
+            StorageWithAllocator() = default;
+
+            StorageWithAllocator(const allocator_type& alloc)
+                : m_second(alloc)
+            {
+            }
+
+            constexpr Storage& first() { return m_first; }
+            constexpr const Storage& first() const { return m_first; }
+            constexpr allocator_type& second() { return m_second; }
+            constexpr const allocator_type& second() const { return m_second; }
+
+            Storage m_first{};
+            AZ_NO_UNIQUE_ADDRESS allocator_type m_second{};
+        };
+
+        // A stateless (empty) allocator must not add any space to the storage,
+        // preserving the footprint that the previously used AZStd::compressed_pair
+        // guaranteed via the empty-base optimization.
+        static_assert(
+            !AZStd::is_empty_v<allocator_type> || sizeof(StorageWithAllocator) == sizeof(Storage),
+            "A stateless allocator must not increase the size of the string storage");
+
+        StorageWithAllocator m_storage;
 
 #if defined(HAVE_BENCHMARK)
         friend class Benchmark::StringBenchmarkFixture;

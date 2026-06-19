@@ -451,22 +451,5 @@ namespace AZStd
         F, Is...>::type;
 
     // https://eel.is/c++draft/iterators#projected
-    template<class I, class Proj, class = void>
-    struct projected;
-
-    template<class I, class Proj>
-        requires indirectly_readable<I>
-            && indirectly_regular_unary_invocable<Proj, I>
-    struct projected<I, Proj, void>
-    {
-        using value_type = remove_cvref_t<indirect_result_t<Proj&, I>>;
-        indirect_result_t<Proj&, I> operator*() const; // not defined
-    };
-
-    template <class I, class Proj>
-        requires weakly_incrementable<I>
-    struct incrementable_traits<projected<I, Proj>, void>
-    {
-        using difference_type = iter_difference_t<I>;
-    };
+    using std::projected;
 }

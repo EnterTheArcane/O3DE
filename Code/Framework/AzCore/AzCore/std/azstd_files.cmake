@@ -88,8 +88,6 @@ set(FILES
     containers/array.h
     containers/array_fwd.h
     containers/bitset.h
-    containers/compressed_pair.h
-    containers/compressed_pair.inl
     containers/containers_concepts.h
     containers/deque.h
     containers/fixed_forward_list.h
