@@ -22,12 +22,16 @@ namespace AZStd
     public:
         constexpr unexpected(const unexpected&) = default;
         constexpr unexpected(unexpected&&) = default;
-        template<class Err = E, class = enable_if_t<!is_same_v<remove_cvref_t<Err>, unexpected>
-            && !is_same_v<remove_cvref_t<Err>, in_place_t>&& is_constructible_v<E, Err>>>
+        template<class Err = E>
+            requires (!is_same_v<remove_cvref_t<Err>, unexpected>)
+                && (!is_same_v<remove_cvref_t<Err>, in_place_t>)
+                && is_constructible_v<E, Err>
         constexpr explicit unexpected(Err&&);
-        template<class... Args, class = enable_if_t<is_constructible_v<E, Args...>>>
+        template<class... Args>
+            requires is_constructible_v<E, Args...>
         constexpr explicit unexpected(in_place_t, Args&&...);
-        template<class U, class... Args, class = enable_if_t<is_constructible_v<E, initializer_list<U>&, Args...>>>
+        template<class U, class... Args>
+            requires is_constructible_v<E, initializer_list<U>&, Args...>
         constexpr explicit unexpected(in_place_t, initializer_list<U>, Args&&...);
 
         constexpr unexpected& operator=(const unexpected&) = default;
@@ -77,8 +81,9 @@ namespace AZStd
 
         // Default constructor for expected which is only available in overload resolution
         // if the expected type is void or it is default constructible
-        template <bool Enable = is_void_v<T> || is_default_constructible_v<T>, class = enable_if_t<Enable>>
-        constexpr expected() noexcept;
+        constexpr expected() noexcept
+            requires is_void_v<T>
+                || is_default_constructible_v<T>;
 
         //! copy constructor - Defaults to the `expected_storage_copy_constructor` for constraint checks
         constexpr expected(const expected& rhs) = default;
@@ -88,10 +93,10 @@ namespace AZStd
 
         //! Direct initialization copy constructor
         //! Allows construction of an expected from a type that can direct initialize T
-        template<class U, class G, class = enable_if_t<
-            /* constraint checks */ ((is_void_v<T> && is_void_v<U>) || is_constructible_v<T, add_lvalue_reference_t<const U>>)
-            && is_constructible_v<E, const G&>
-            && Internal::not_convertible_or_constructible_from_other_std_expected_v<T, E, U, G>>>
+        template<class U, class G>
+            requires ((is_void_v<T> && is_void_v<U>) || is_constructible_v<T, add_lvalue_reference_t<const U>>)
+                && is_constructible_v<E, const G&>
+                && Internal::not_convertible_or_constructible_from_other_std_expected_v<T, E, U, G>
 #if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
         explicit(!is_convertible_v<add_lvalue_reference_t<const U>, T> || !is_convertible_v<const G&, E>)
 #endif
@@ -100,35 +105,38 @@ namespace AZStd
         //! Direct initialization move constructor
         //! The first `class =` parameter check the condition for whether the constructor should be explicit
         //! The second `class=` paramter checks the constraints on the constructor
-        template<class U, class G, class = enable_if_t<
-            /* constraint checks */ ((is_void_v<T> && is_void_v<U>) || is_constructible_v<T, U>)
-            && is_constructible_v<E, G>
-            && Internal::not_convertible_or_constructible_from_other_std_expected_v<T, E, U, G>>>
+        template<class U, class G>
+            requires ((is_void_v<T> && is_void_v<U>) || is_constructible_v<T, U>)
+                && is_constructible_v<E, G>
+                && Internal::not_convertible_or_constructible_from_other_std_expected_v<T, E, U, G>
 #if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
         explicit(!is_convertible_v<U, T> || !is_convertible_v<G, E>)
 #endif
         constexpr expected(expected<U, G>&& rhs);
 
         // Direct non-list initialization for value type from U
-        template<class U = T, class = enable_if_t<!is_void_v<T>
-            && !is_same_v<remove_cvref_t<U>, in_place_t>
-            && !is_same_v<expected, remove_cvref_t<U>>
-            && !Internal::is_std_unexpected_specialization_v<remove_cvref_t<U>>
-            && is_constructible_v<T, U> >>
+        template<class U = T>
+            requires (!is_void_v<T>)
+                && (!is_same_v<remove_cvref_t<U>, in_place_t>)
+                && (!is_same_v<expected, remove_cvref_t<U>>)
+                && (!Internal::is_std_unexpected_specialization_v<remove_cvref_t<U>>)
+                && is_constructible_v<T, U>
 #if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
         explicit(!is_convertible_v<U, T>)
 #endif
         constexpr expected(U&& v);
 
         // Direct non-list initialization for error type
-        template<class G, class = enable_if_t<is_constructible_v<E, const G&> >>
+        template<class G>
+            requires is_constructible_v<E, const G&>
 #if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
         explicit(!is_convertible_v<const G&, E>)
 #endif
         constexpr expected(const unexpected<G>& err);
 
 
-        template<class G, class = enable_if_t<is_constructible_v<E, G> >>
+        template<class G>
+            requires is_constructible_v<E, G>
 #if !defined(O3DE_DISABLE_CONDITIONAL_EXPLICIT) && __cpp_conditional_explicit >= 201806L
         explicit(!is_convertible_v<G, E>)
 #endif
@@ -136,21 +144,27 @@ namespace AZStd
 
 
         //! Direct non-list initialization for expected type with variadic arguments
-        template<class... Args, class = enable_if_t<!is_void_v<T>&& is_constructible_v<T, Args...>, int>>
+        template<class... Args>
+            requires (!is_void_v<T>)
+                && is_constructible_v<T, Args...>
         constexpr explicit expected(in_place_t, Args&&... args);
 
-        template<class U, class... Args, class = enable_if_t<!is_void_v<T>&& is_constructible_v<T, initializer_list<U>&, Args...>, int>>
+        template<class U, class... Args>
+            requires (!is_void_v<T>)
+                && is_constructible_v<T, initializer_list<U>&, Args...>
         constexpr explicit expected(in_place_t, initializer_list<U> il, Args&&...args);
 
         //! expected<void, E> specialization for in-place constructor
-        template<bool Enable = is_void_v<T>, class = enable_if_t<Enable>>
-        constexpr explicit expected(in_place_t);
+        constexpr explicit expected(in_place_t)
+            requires is_void_v<T>;
 
         //! Direct non-list initialization for error type with variadic arguments
-        template<class... Args, class = enable_if_t<is_constructible_v<E, Args...>, int>>
+        template<class... Args>
+            requires is_constructible_v<E, Args...>
         constexpr explicit expected(unexpect_t, Args&&... args);
 
-        template<class U, class... Args, class = enable_if_t<is_constructible_v<E, initializer_list<U>&, Args...>, int>>
+        template<class U, class... Args>
+            requires is_constructible_v<E, initializer_list<U>&, Args...>
         constexpr explicit expected(unexpect_t, initializer_list<U> il, Args&&...args);
 
         //! destructor - Defaults to the `expected_union` for constraint checks
@@ -165,24 +179,25 @@ namespace AZStd
             && is_nothrow_move_assignable_v<E> && is_nothrow_move_constructible_v<E>) = default;
 
         //! Direct initializes value into expected.
-        template<class U = T, class = enable_if_t<!is_void_v<T>
-            && !is_same_v<expected, remove_cvref_t<U>>
-            && !Internal::is_std_unexpected_specialization_v<remove_cvref_t<U>>
-            && is_constructible_v<T, U>
-            && is_assignable_v<add_lvalue_reference_t<T>, U>>>
+        template<class U = T>
+            requires (!is_void_v<T>)
+                && (!is_same_v<expected, remove_cvref_t<U>>)
+                && (!Internal::is_std_unexpected_specialization_v<remove_cvref_t<U>>)
+                && is_constructible_v<T, U>
+                && is_assignable_v<add_lvalue_reference_t<T>, U>
         constexpr auto operator=(U&& value) -> expected&;
 
         //! Copy error into expected.
         template<class G>
-        constexpr auto operator=(const unexpected<G>& error) -> enable_if_t<is_constructible_v<E, const G&>
-            && is_assignable_v<E&, const G&>,
-            expected&>;
+            requires is_constructible_v<E, const G&>
+                && is_assignable_v<E&, const G&>
+        constexpr auto operator=(const unexpected<G>& error) -> expected&;
 
         //! Move error into expected.
         template<class G>
-        constexpr auto operator=(unexpected<G>&& error) -> enable_if_t<is_constructible_v<E, G>
-            && is_assignable_v<E&, G>,
-            expected&>;
+            requires is_constructible_v<E, G>
+                && is_assignable_v<E&, G>
+        constexpr auto operator=(unexpected<G>&& error) -> expected&;
 
         //! emplace overloads for when T is not a void type
         template<class... Args>
@@ -191,16 +206,19 @@ namespace AZStd
         constexpr decltype(auto) emplace(initializer_list<U>, Args&&...) noexcept;
 
         //! emplace overload for when T is void
-        template<bool Enable = is_void_v<T>, class = enable_if_t<Enable>>
-        constexpr void emplace() noexcept;
+        constexpr void emplace() noexcept
+            requires is_void_v<T>;
 
         // [expected.object.swap], swap
-        template<bool Enable = !is_void_v<T> && is_swappable_v<T> && is_swappable_v<E>
-            && is_move_constructible_v<T> && is_move_constructible_v<E>>
         constexpr auto swap(expected& rhs) noexcept(is_nothrow_move_constructible_v<T>
             && is_nothrow_swappable_v<T>
             && is_nothrow_move_constructible_v<E>
-            && is_nothrow_swappable_v<E>) -> enable_if_t<Enable>;
+            && is_nothrow_swappable_v<E>) -> void
+            requires (!is_void_v<T>)
+                && is_swappable_v<T>
+                && is_swappable_v<E>
+                && is_move_constructible_v<T>
+                && is_move_constructible_v<E>;
 
         // swap internal
         friend constexpr void swap(expected& x, expected& y) noexcept(noexcept(x.swap(y)))
@@ -213,50 +231,52 @@ namespace AZStd
         constexpr explicit operator bool() const noexcept;
         constexpr bool has_value() const noexcept;
 
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto operator->() const noexcept -> enable_if_t<Enable, const T*>;
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto operator->() noexcept -> enable_if_t<Enable, T*>;
+        constexpr auto operator->() const noexcept -> const T*
+            requires (!is_void_v<T>);
+        constexpr auto operator->() noexcept -> T*
+            requires (!is_void_v<T>);
 
         // Overloads when T is not a void type
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto operator*() const & noexcept -> enable_if_t<Enable, add_lvalue_reference_t<const T>>;
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto operator*() & noexcept -> enable_if_t<Enable, add_lvalue_reference_t<T>>;
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto operator*() const && noexcept -> enable_if_t < Enable, add_rvalue_reference_t<const T>>;
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto operator*() && noexcept -> enable_if_t<Enable, add_rvalue_reference_t<T>>;
+        constexpr auto operator*() const & noexcept -> add_lvalue_reference_t<const T>
+            requires (!is_void_v<T>);
+        constexpr auto operator*() & noexcept -> add_lvalue_reference_t<T>
+            requires (!is_void_v<T>);
+        constexpr auto operator*() const && noexcept -> add_rvalue_reference_t<const T>
+            requires (!is_void_v<T>);
+        constexpr auto operator*() && noexcept -> add_rvalue_reference_t<T>
+            requires (!is_void_v<T>);
 
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto value() const & -> enable_if_t<Enable, add_lvalue_reference_t<const T>>;
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto value() & -> enable_if_t<Enable, add_lvalue_reference_t<T>>;
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto value() const && -> enable_if_t<Enable, add_rvalue_reference_t<const T>>;
-        template<bool Enable = !is_void_v<T>>
-        constexpr auto value() && -> enable_if_t<Enable, add_rvalue_reference_t<T>>;
+        constexpr auto value() const & -> add_lvalue_reference_t<const T>
+            requires (!is_void_v<T>);
+        constexpr auto value() & -> add_lvalue_reference_t<T>
+            requires (!is_void_v<T>);
+        constexpr auto value() const && -> add_rvalue_reference_t<const T>
+            requires (!is_void_v<T>);
+        constexpr auto value() && -> add_rvalue_reference_t<T>
+            requires (!is_void_v<T>);
 
         // Overloads when T is a void type
-        template<bool Enable = is_void_v<T>, enable_if_t<Enable>* = nullptr>
-        constexpr void operator*() const noexcept;
+        constexpr void operator*() const & noexcept
+            requires is_void_v<T>;
+        constexpr void operator*() const && noexcept
+            requires is_void_v<T>;
 
-        template<bool Enable = is_void_v<T>, enable_if_t<Enable>* = nullptr>
-        constexpr void value() const&;
-        template<bool Enable = is_void_v<T>, enable_if_t<Enable>* = nullptr>
-        constexpr void value() &&;
+        constexpr void value() const &
+            requires is_void_v<T>;
+        constexpr void value() &&
+            requires is_void_v<T>;
 
         // Error overloads
         constexpr const E& error() const & noexcept;
         constexpr E& error() & noexcept;
         constexpr const E&& error() const && noexcept;
         constexpr E&& error() && noexcept;
-        //! Need to use the U template parameter in the enable_if_t check to defer evaluation
-        //! until the function is instantiated.
         template<class U>
-        constexpr auto value_or(U&&) const& -> enable_if_t<Internal::sfinae_trigger_v<U> && !is_void_v<T>, T>;
+            requires (!is_void_v<T>)
+        constexpr auto value_or(U&&) const& -> T;
         template<class U>
-        constexpr auto value_or(U&&) && -> enable_if_t<Internal::sfinae_trigger_v<U> && !is_void_v<T>, T>;
+            requires (!is_void_v<T>)
+        constexpr auto value_or(U&&) && -> T;
 
         // [expected.object.eq], equality operators
         template<class T2, class E2>

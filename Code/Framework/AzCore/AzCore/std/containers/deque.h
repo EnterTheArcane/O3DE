@@ -147,7 +147,7 @@ namespace AZStd
         struct block_node
         {
             //T m_array[NumElementsPerBlock];
-            typename aligned_storage<NumElementsPerBlock* sizeof(T), alignment_of<T>::value >::type   m_data;     ///< pointer with all the data
+            typename aligned_storage<NumElementsPerBlock* sizeof(T), alignment_of_v<T> >::type   m_data;     ///< pointer with all the data
         };
     public:
 
@@ -242,7 +242,8 @@ namespace AZStd
             construct_iter(first, last, is_integral<InputIterator>{});
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         deque(from_range_t, R&& rg, const Allocator& alloc = Allocator())
             : m_allocator(alloc)
         {
@@ -398,7 +399,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto prepend_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, T>>
+            requires Internal::container_compatible_range<R, T>
+        void prepend_range(R&& rg)
         {
             insert_range(begin(), AZStd::forward<R>(rg));
         }
@@ -424,7 +426,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto append_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, T>>
+            requires Internal::container_compatible_range<R, T>
+        void append_range(R&& rg)
         {
             insert_range(end(), AZStd::forward<R>(rg));
         }
@@ -443,7 +446,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto assign_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>>
+            requires Internal::container_compatible_range<R, value_type>
+        void assign_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -574,7 +578,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto insert_range(const_iterator insertPos, R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator>
+            requires Internal::container_compatible_range<R, value_type>
+        iterator insert_range(const_iterator insertPos, R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -657,7 +662,7 @@ namespace AZStd
 
             if (m_map)
             {
-                deallocate_memory(m_map, sizeof(map_node_type) * m_mapSize, alignment_of<map_node_type>::value);
+                deallocate_memory(m_map, sizeof(map_node_type) * m_mapSize, alignment_of_v<map_node_type>);
                 m_map = 0;
             }
 
@@ -974,7 +979,7 @@ namespace AZStd
                 numElements = inc;
             }
             size_type offset = m_firstOffset / NumElementsPerBlock;
-            map_node_ptr_type newMap = reinterpret_cast<map_node_ptr_type>(m_allocator.allocate(sizeof(map_node_type) * (m_mapSize + numElements), alignment_of<map_node_type>::value));
+            map_node_ptr_type newMap = reinterpret_cast<map_node_ptr_type>(m_allocator.allocate(sizeof(map_node_type) * (m_mapSize + numElements), alignment_of_v<map_node_type>));
             map_node_ptr_type mapPtr = newMap + offset;
 
             mapPtr = AZStd::uninitialized_copy(m_map + offset, m_map + m_mapSize, mapPtr, Internal::is_fast_copy<map_node_ptr_type, map_node_ptr_type>());
@@ -999,7 +1004,7 @@ namespace AZStd
                 map_node_ptr_type toDestroyStart = m_map + offset;
                 map_node_ptr_type toDestroyEnd = m_map + m_mapSize;
                 Internal::destroy<map_node_ptr_type>::range(toDestroyStart, toDestroyEnd);
-                deallocate_memory(m_map, sizeof(map_node_type) * m_mapSize, alignment_of<map_node_type>::value);
+                deallocate_memory(m_map, sizeof(map_node_type) * m_mapSize, alignment_of_v<map_node_type>);
             }
 
             m_map = newMap;
@@ -1138,7 +1143,8 @@ namespace AZStd
     template <class InputIt, class Alloc = allocator>
     deque(InputIt, InputIt, Alloc = Alloc()) -> deque<iter_value_t<InputIt>, Alloc>;
 
-    template<class R, class Alloc = allocator, class = enable_if_t<ranges::input_range<R>>>
+    template<class R, class Alloc = allocator>
+        requires ranges::input_range<R>
     deque(from_range_t, R&&, Alloc = Alloc()) -> deque<ranges::range_value_t<R>, Alloc>;
 
     template <class T, class Allocator, AZStd::size_t NumElementsPerBlock, AZStd::size_t MinMapSize>

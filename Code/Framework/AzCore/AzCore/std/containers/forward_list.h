@@ -205,7 +205,8 @@ namespace AZStd
             insert_after_iter(before_begin(), first, last, is_integral<InputIterator>());
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         forward_list(from_range_t, R&& rg, const allocator_type& alloc = allocator_type())
             : m_allocator(alloc)
         {
@@ -270,7 +271,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto assign_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>>
+            requires Internal::container_compatible_range<R, value_type>
+        void assign_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -361,7 +363,8 @@ namespace AZStd
         void pop_front() { erase_after(before_begin()); }
 
         template<class R>
-        auto prepend_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>>
+            requires Internal::container_compatible_range<R, value_type>
+        void prepend_range(R&& rg)
         {
             insert_range_after(before_begin(), AZStd::forward<R>(rg));
         }
@@ -381,7 +384,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto append_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>>
+            requires Internal::container_compatible_range<R, value_type>
+        void append_range(R&& rg)
         {
             insert_range_after(before_end(), AZStd::forward<R>(rg));
         }
@@ -416,8 +420,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto insert_range_after(const_iterator insertPos, R&& rg)
-            -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator>
+            requires Internal::container_compatible_range<R, value_type>
+        iterator insert_range_after(const_iterator insertPos, R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -1146,7 +1150,7 @@ namespace AZStd
     protected:
         AZ_FORCE_INLINE void    deallocate_node(node_ptr_type node)
         {
-            m_allocator.deallocate(node, sizeof(node_type), alignment_of<node_type>::value);
+            m_allocator.deallocate(node, sizeof(node_type), alignment_of_v<node_type>);
         }
 
         /**
@@ -1268,7 +1272,8 @@ namespace AZStd
     forward_list(InputIt, InputIt, Alloc = Alloc{})
         -> forward_list<iter_value_t<InputIt>, Alloc>;
 
-    template<class R, class Alloc = allocator, class = enable_if_t<ranges::input_range<R>>>
+    template<class R, class Alloc = allocator>
+        requires ranges::input_range<R>
     forward_list(from_range_t, R&&, Alloc = Alloc{})
         -> forward_list<ranges::range_value_t<R>, Alloc>;
 

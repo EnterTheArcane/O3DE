@@ -75,7 +75,7 @@ namespace AZStd
                     }
                 }
 
-                m_allocator.deallocate(m_data, sizeof(T) * m_capacity, alignment_of<T>::value);
+                m_allocator.deallocate(m_data, sizeof(T) * m_capacity, alignment_of_v<T>);
             }
 
             AZ_FORCE_INLINE size_type   capacity() const    { return m_capacity; }

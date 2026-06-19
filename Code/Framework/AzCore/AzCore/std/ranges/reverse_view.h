@@ -13,11 +13,9 @@
 
 namespace AZStd::ranges
 {
-    template<class View, class = enable_if_t<conjunction_v<
-        bool_constant<bidirectional_range<View>>,
-        bool_constant<view<View>>
-        >
-        >>
+    template<class View>
+        requires bidirectional_range<View>
+            && view<View>
     class reverse_view;
 
 
@@ -44,7 +42,8 @@ namespace AZStd::ranges
             struct reverse_fn
                 : Internal::range_adaptor_closure<reverse_fn>
             {
-                template <class View, class = enable_if_t<viewable_range<View>>>
+                template <class View>
+                    requires viewable_range<View>
                 constexpr auto operator()(View&& view) const
                 {
                     if constexpr (is_reverse_view<AZStd::remove_cvref_t<View>>)
@@ -73,23 +72,25 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View, class>
+    template<class View>
+        requires bidirectional_range<View>
+            && view<View>
     class reverse_view
         : public view_interface<reverse_view<View>>
     {
 
     public:
-        template <bool Enable = default_initializable<View>,
-            class = enable_if_t<Enable>>
-        reverse_view() {}
+        reverse_view()
+            requires default_initializable<View>
+        {}
 
          constexpr explicit reverse_view(View base)
             : m_base(AZStd::move(base))
         {
         }
 
-        template <bool Enable = copy_constructible<View>, class = enable_if_t<Enable>>
         constexpr View base() const&
+            requires copy_constructible<View>
         {
             return m_base;
         }
@@ -127,13 +128,13 @@ namespace AZStd::ranges
             return make_reverse_iterator(ranges::begin(m_base));
         }
 
-        template<bool Enable = sized_range<View>, class = enable_if_t<Enable>>
         constexpr auto size()
+            requires sized_range<View>
         {
             return ranges::size(m_base);
         }
-        template<bool Enable = sized_range<const View>, class = enable_if_t<Enable>>
         constexpr auto size() const
+            requires sized_range<const View>
         {
             return ranges::size(m_base);
         }

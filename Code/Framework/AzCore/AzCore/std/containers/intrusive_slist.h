@@ -981,7 +981,7 @@ namespace AZStd
          * So at this stage we consider the wasting a memory for a fake root node as the best solution, while we can debug the container.
          * This can change internally at any moment if needed, no interface change will occur.
          */
-        typename aligned_storage<sizeof(node_type), alignment_of<node_type>::value>::type    m_root;
+        typename aligned_storage<sizeof(node_type), alignment_of_v<node_type>>::type    m_root;
 
         inline node_ptr_type get_head() { return reinterpret_cast<node_ptr_type>(&m_root); }
 

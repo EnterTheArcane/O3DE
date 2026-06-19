@@ -14,12 +14,12 @@
 
 namespace AZStd
 {
-    template<class S, class = enable_if_t<semiregular<S>>>
+    template<semiregular S>
     class move_sentinel
     {
     public:
-        template<bool Enable = default_initializable<S>, class = enable_if<Enable>>
         constexpr move_sentinel()
+            requires default_initializable<S>
             : m_last{}
         {
         }
@@ -28,13 +28,15 @@ namespace AZStd
         {
         }
 
-        template<class S2, class = enable_if_t<convertible_to<const S2&, S>>>
+        template<class S2>
+            requires convertible_to<const S2&, S>
         constexpr move_sentinel(const move_sentinel<S2>& other)
             : m_last{ other.m_last }
         {
         }
 
-        template<class S2, class = enable_if_t<assignable_from<S&, const S2&>>>
+        template<class S2>
+            requires assignable_from<S&, const S2&>
         constexpr move_sentinel& operator=(const move_sentinel<S2>& other)
         {
             m_last = other.m_last;
@@ -46,35 +48,41 @@ namespace AZStd
             return m_last;
         }
 
-        template<class I, class = enable_if_t<sentinel_for<S, I>>>
+        template<class I>
+            requires sentinel_for<S, I>
         friend constexpr bool operator==(const move_iterator<I>& x, const move_sentinel& y)
         {
             return x.base() == y.base();
         }
-        template<class I, class = enable_if_t<sentinel_for<S, I>>>
+        template<class I>
+            requires sentinel_for<S, I>
         friend constexpr bool operator!=(const move_iterator<I>& x, const move_sentinel& y)
         {
             return !operator==(x, y);
         }
 
         // Swap the compare arguments
-        template<class I, class = enable_if_t<sentinel_for<S, I>>>
+        template<class I>
+            requires sentinel_for<S, I>
         friend constexpr bool operator==(const move_sentinel& y, const move_iterator<I>& x)
         {
             return operator==(x, y);
         }
-        template<class I, class = enable_if_t<sentinel_for<S, I>>>
+        template<class I>
+            requires sentinel_for<S, I>
         friend constexpr bool operator!=(const move_sentinel& y, const move_iterator<I>& x)
         {
             return !operator==(x, y);
         }
 
-        template<class I, class = enable_if_t<sized_sentinel_for<S, I>>>
+        template<class I>
+            requires sized_sentinel_for<S, I>
         friend constexpr iter_difference_t<I> operator-(const move_sentinel& x, const move_iterator<I>& y)
         {
             return x.base() - y.base();
         }
-        template<class I, class = enable_if_t<sized_sentinel_for<S, I>>>
+        template<class I>
+            requires sized_sentinel_for<S, I>
         friend constexpr iter_difference_t<I> operator-(const move_iterator<I>& x, const move_sentinel& y)
         {
             return x.base() - y.base();

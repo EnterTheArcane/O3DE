@@ -17,8 +17,9 @@ namespace AZStd::ranges
     struct equal_to
     {
         template<class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const ->
-            enable_if_t<equality_comparable_with<T, U>, decltype(AZStd::forward<T>(t) == AZStd::forward<U>(u))>
+        constexpr auto operator()(T&& t, U&& u) const
+            -> decltype(AZStd::forward<T>(t) == AZStd::forward<U>(u))
+            requires equality_comparable_with<T, U>
         {
             return AZStd::forward<T>(t) == AZStd::forward<U>(u);
         }
@@ -28,8 +29,9 @@ namespace AZStd::ranges
     struct not_equal_to
     {
         template<class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const ->
-            enable_if_t<equality_comparable_with<T, U>, decltype(!ranges::equal_to{}(AZStd::forward<T>(t), AZStd::forward<U>(u)))>
+        constexpr auto operator()(T&& t, U&& u) const
+            -> decltype(!ranges::equal_to{}(AZStd::forward<T>(t), AZStd::forward<U>(u)))
+            requires equality_comparable_with<T, U>
         {
             return !ranges::equal_to{}(AZStd::forward<T>(t), AZStd::forward<U>(u));
         }
@@ -39,8 +41,9 @@ namespace AZStd::ranges
     struct less
     {
         template<class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const ->
-            enable_if_t<totally_ordered_with<T, U>, decltype(AZStd::forward<T>(t) < AZStd::forward<U>(u))>
+        constexpr auto operator()(T&& t, U&& u) const
+            -> decltype(AZStd::forward<T>(t) < AZStd::forward<U>(u))
+            requires totally_ordered_with<T, U>
         {
             return AZStd::forward<T>(t) < AZStd::forward<U>(u);
         }
@@ -50,10 +53,11 @@ namespace AZStd::ranges
     struct greater
     {
         template<class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const ->
-            enable_if_t<totally_ordered_with<T, U>, decltype(ranges::less{}(AZStd::forward<T>(t) < AZStd::forward<U>(u)))>
+        constexpr auto operator()(T&& t, U&& u) const
+            -> decltype(ranges::less{}(AZStd::forward<U>(u), AZStd::forward<T>(t)))
+            requires totally_ordered_with<T, U>
         {
-            return ranges::less{}(AZStd::forward<U>(u) < AZStd::forward<T>(t));
+            return ranges::less{}(AZStd::forward<U>(u), AZStd::forward<T>(t));
         }
         using is_transparent = void;
     };
@@ -61,8 +65,9 @@ namespace AZStd::ranges
     struct greater_equal
     {
         template<class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const ->
-            enable_if_t<totally_ordered_with<T, U>, decltype(!ranges::less{}(AZStd::forward<T>(t), AZStd::forward<U>(u)))>
+        constexpr auto operator()(T&& t, U&& u) const
+            -> decltype(!ranges::less{}(AZStd::forward<T>(t), AZStd::forward<U>(u)))
+            requires totally_ordered_with<T, U>
         {
             return !ranges::less{}(AZStd::forward<T>(t), AZStd::forward<U>(u));
         }
@@ -72,8 +77,9 @@ namespace AZStd::ranges
     struct less_equal
     {
         template<class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const ->
-            enable_if_t<totally_ordered_with<T, U>, decltype(!ranges::less{}(AZStd::forward<U>(u), AZStd::forward<T>(t)))>
+        constexpr auto operator()(T&& t, U&& u) const
+            -> decltype(!ranges::less{}(AZStd::forward<U>(u), AZStd::forward<T>(t)))
+            requires totally_ordered_with<T, U>
         {
             return !ranges::less{}(AZStd::forward<U>(u), AZStd::forward<T>(t));
         }

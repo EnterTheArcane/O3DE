@@ -15,6 +15,13 @@
 
 #include <AzCore/std/string/string_view.h>
 
+namespace AZStd::Internal
+{
+    template<class Element, class Traits, class T>
+    concept fixed_string_view_compatible =
+        is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>;
+}
+
 namespace AZStd
 {
     //! Implementation of string based class which stores an the characters in internal buffer that is determined at compile time
@@ -75,11 +82,14 @@ namespace AZStd
         constexpr basic_fixed_string(const_pointer ptr);
 
         // #6
-        template<class InputIt, typename = enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_t>>>
+        template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_t>)
         constexpr basic_fixed_string(InputIt first, InputIt last);
 
         // https://eel.is/c++draft/strings#string.cons-18
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         constexpr basic_fixed_string(from_range_t, R&& rg);
 
         // #7
@@ -92,13 +102,13 @@ namespace AZStd
         constexpr basic_fixed_string(AZStd::initializer_list<Element> ilist);
 
         // #10
-        template<typename T, typename = AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>>>
+        template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr explicit basic_fixed_string(const T& convertibleToView);
 
         // #11
-        template<typename T, typename = AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>>>
+        template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr basic_fixed_string(const T& convertibleToView, size_type rhsOffset, size_type count);
 
 
@@ -126,9 +136,9 @@ namespace AZStd
         constexpr auto operator=(Element ch) -> basic_fixed_string&;
         constexpr auto operator=(AZStd::initializer_list<Element> ilist) -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto operator=(const T& convertible_to_view)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
         constexpr auto operator=(AZStd::nullptr_t) -> basic_fixed_string& = delete;
 
         constexpr auto operator+=(const basic_fixed_string& rhs) -> basic_fixed_string&;
@@ -136,27 +146,30 @@ namespace AZStd
         constexpr auto operator+=(Element ch) -> basic_fixed_string&;
         constexpr auto operator+=(AZStd::initializer_list<Element> ilist) -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto operator+=(const T& convertible_to_view)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
 
         constexpr auto append(const basic_fixed_string& rhs) -> basic_fixed_string&;
         constexpr auto append(const basic_fixed_string& rhs, size_type rhsOffset, size_type count) -> basic_fixed_string&;
         constexpr auto append(const_pointer ptr, size_type count) -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto append(const T& convertible_to_view)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
         constexpr auto append(const_pointer ptr) -> basic_fixed_string&;
         constexpr auto append(size_type count, Element ch) -> basic_fixed_string&;
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_t>)
         constexpr auto append(InputIt first, InputIt last)
-            -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, basic_fixed_string&>;
+            -> basic_fixed_string&;
 
         template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         constexpr auto append_range(R&& rg)
-            -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_fixed_string&>;
+            -> basic_fixed_string&;
 
         constexpr auto append(AZStd::initializer_list<Element> ilist) -> basic_fixed_string&;
 
@@ -165,19 +178,22 @@ namespace AZStd
         constexpr auto assign(const basic_fixed_string& rhs, size_type rhsOffset, size_type count) -> basic_fixed_string&;
         constexpr auto assign(const_pointer ptr, size_type count) -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto assign(const T& convertible_to_view)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
         constexpr auto assign(const_pointer ptr) -> basic_fixed_string&;
         constexpr auto assign(size_type count, Element ch) -> basic_fixed_string&;
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_t>)
         constexpr auto assign(InputIt first, InputIt last)
-            ->enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, basic_fixed_string&>;
+            -> basic_fixed_string&;
 
         template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         constexpr auto assign_range(R&& rg)
-            -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_fixed_string&>;
+            -> basic_fixed_string&;
 
         constexpr auto assign(AZStd::initializer_list<Element> ilist) -> basic_fixed_string&;
 
@@ -186,21 +202,24 @@ namespace AZStd
         constexpr auto insert(size_type offset, const_pointer ptr, size_type count) -> basic_fixed_string&;
         constexpr auto insert(size_type offset, const_pointer ptr) -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto insert(size_type offset, const T& convertible_to_view)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
         constexpr auto insert(size_type offset, size_type count, Element ch) -> basic_fixed_string&;
         constexpr auto insert(const_iterator insertPos) -> iterator;
         constexpr auto insert(const_iterator insertPos, Element ch) -> iterator;
         constexpr auto insert(const_iterator insertPos, size_type count, Element ch) -> iterator;
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_t>)
         constexpr auto insert(const_iterator insertPos, InputIt first, InputIt last)
-        -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, iterator>;
+            -> iterator;
 
         template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         constexpr auto insert_range(const_iterator insertPos, R&& rg)
-            -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator>;
+            -> iterator;
 
         constexpr auto insert(const_iterator insertPos, AZStd::initializer_list<Element> ilist) -> iterator;
 
@@ -214,15 +233,15 @@ namespace AZStd
         constexpr auto replace(size_type offset, size_type count, const basic_fixed_string& rhs, size_type rhsOffset, size_type rhsCount)
             -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto replace(size_type offset, size_type count, const T& convertible_to_view, size_type rhsOffset, size_type rhsCount = npos)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
         constexpr auto replace(size_type offset, size_type count, const_pointer ptr, size_type ptrCount) -> basic_fixed_string&;
         constexpr auto replace(size_type offset, size_type count, const_pointer ptr) -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto replace(size_type offset, size_type count, const T& convertible_to_view)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
         constexpr auto replace(size_type offset, size_type count, size_type num, Element ch) -> basic_fixed_string&;
 
         constexpr auto replace(const_iterator first, const_iterator last, const basic_fixed_string& rhs) -> basic_fixed_string&;
@@ -230,18 +249,21 @@ namespace AZStd
         constexpr auto replace(const_iterator first, const_iterator last, const_pointer ptr, size_type count) -> basic_fixed_string&;
         constexpr auto replace(const_iterator first, const_iterator last, const_pointer ptr) -> basic_fixed_string&;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto replace(const_iterator first, const_iterator last, const T& convertible_to_view)
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>;
+            -> basic_fixed_string&;
         constexpr auto replace(const_iterator first, const_iterator last, size_type count, Element ch) -> basic_fixed_string&;
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_t>)
         constexpr auto replace(const_iterator first, const_iterator last, InputIt first2, InputIt last2)
-            -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, basic_fixed_string&>;
+            -> basic_fixed_string&;
 
         template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         constexpr auto replace_with_range(const_iterator first, const_iterator last, R&& rg)
-            -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_fixed_string&>;
+            -> basic_fixed_string&;
 
         constexpr auto replace(const_iterator first, const_iterator last, AZStd::initializer_list<Element> ilist) -> basic_fixed_string&;
 
@@ -289,52 +311,54 @@ namespace AZStd
         constexpr auto find(const_pointer ptr, size_type offset = 0) const -> size_type;
         constexpr auto find(Element ch, size_type offset = 0) const -> size_type;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto find(const T& convertibleToView, size_type offset = 0) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>;
+            -> size_type;
 
         constexpr auto rfind(const basic_fixed_string& rhs, size_type offset = npos) const -> size_type;
         constexpr auto rfind(const_pointer ptr, size_type offset, size_type count) const -> size_type;
         constexpr auto rfind(const_pointer ptr, size_type offset = npos) const -> size_type;
         constexpr auto rfind(Element ch, size_type offset = npos) const -> size_type;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto rfind(const T& convertibleToView, size_type offset = npos) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>;
+            -> size_type;
 
         constexpr auto find_first_of(const basic_fixed_string& rhs, size_type offset = 0) const -> size_type;
         constexpr auto find_first_of(const_pointer ptr, size_type offset, size_type count) const -> size_type;
         constexpr auto find_first_of(const_pointer ptr, size_type offset = 0) const -> size_type;
         constexpr auto find_first_of(Element ch, size_type offset = 0) const -> size_type;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto find_first_of(const T& convertibleToView, size_type offset = 0) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, size_type>;
+            -> size_type;
 
         constexpr auto find_first_not_of(const basic_fixed_string& rhs, size_type offset = 0) const -> size_type;
         constexpr auto find_first_not_of(const_pointer ptr, size_type offset, size_type count) const -> size_type;
         constexpr auto find_first_not_of(const_pointer ptr, size_type offset = 0) const -> size_type;
         constexpr auto find_first_not_of(Element ch, size_type offset = 0) const -> size_type;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto find_first_not_of(const T& convertibleToView, size_type offset = 0) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, size_type>;
+            -> size_type;
 
         constexpr auto find_last_of(const basic_fixed_string& rhs, size_type offset = npos) const -> size_type;
         constexpr auto find_last_of(const_pointer ptr, size_type offset, size_type count) const -> size_type;
         constexpr auto find_last_of(const_pointer ptr, size_type offset = npos) const -> size_type;
         constexpr auto find_last_of(Element ch, size_type offset = npos) const -> size_type;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto find_last_of(const T& convertibleToView, size_type offset = npos) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, size_type>;
+            -> size_type;
 
         constexpr auto find_last_not_of(const basic_fixed_string& rhs, size_type offset = npos) const -> size_type;
         constexpr auto find_last_not_of(const_pointer ptr, size_type offset, size_type count) const -> size_type;
         constexpr auto find_last_not_of(const_pointer ptr, size_type offset = npos) const -> size_type;
         constexpr auto find_last_not_of(Element ch, size_type offset = npos) const -> size_type;
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto find_last_not_of(const T& convertibleToView, size_type offset = npos) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>>
-            && !is_convertible_v<const T&, const Element*>, size_type>;
+            -> size_type;
 
         constexpr auto substr(size_type offset = 0, size_type count = npos) const -> basic_fixed_string;
 
@@ -347,15 +371,17 @@ namespace AZStd
 
         // starts_with
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto starts_with(const T& prefix) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, bool>;
+            -> bool;
         constexpr auto starts_with(value_type prefix) const -> bool;
         constexpr auto starts_with(const_pointer prefix) const -> bool;
 
         // ends_with
         template<typename T>
+            requires Internal::fixed_string_view_compatible<Element, Traits, T>
         constexpr auto ends_with(const T& suffix) const
-            -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, bool>;
+            -> bool;
         constexpr auto ends_with(value_type suffix) const -> bool;
         constexpr auto ends_with(const_pointer suffix) const -> bool;
 

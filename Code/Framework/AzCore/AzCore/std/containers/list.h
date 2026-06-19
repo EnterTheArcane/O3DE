@@ -217,7 +217,8 @@ namespace AZStd
             insert_iter(begin(), first, last, is_integral<InputIterator>());
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         list(from_range_t, R&& rg, const allocator_type& alloc = Allocator())
             : m_allocator(alloc)
         {
@@ -271,7 +272,8 @@ namespace AZStd
 
 
         template<class R>
-        auto assign_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>>
+            requires Internal::container_compatible_range<R, value_type>
+        void assign_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -327,21 +329,24 @@ namespace AZStd
         // 23.2.2.3 modifiers
         AZ_FORCE_INLINE void push_front(const_reference value) { insert(begin(), value); }
         template<class R>
-        auto prepend_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, T>>
+            requires Internal::container_compatible_range<R, T>
+        void prepend_range(R&& rg)
         {
             insert_range(begin(), AZStd::forward<R>(rg));
         }
         AZ_FORCE_INLINE void pop_front() { erase(begin()); }
         AZ_FORCE_INLINE void push_back(const_reference value) { insert(end(), value); }
         template<class R>
-        auto append_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, T>>
+            requires Internal::container_compatible_range<R, T>
+        void append_range(R&& rg)
         {
             insert_range(end(), AZStd::forward<R>(rg));
         }
         AZ_FORCE_INLINE void pop_back() { erase(--end()); }
 
         template <typename MyAllocator = allocator_type>
-        list(this_type&& rhs, typename AZStd::enable_if_t<AZStd::is_default_constructible<MyAllocator>::value>* = nullptr)
+            requires AZStd::is_default_constructible_v<MyAllocator>
+        list(this_type&& rhs)
             : m_numElements(0)
         {
             m_head.m_next = m_head.m_prev = &m_head;
@@ -465,7 +470,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto insert_range(const_iterator insertPos, R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator>
+            requires Internal::container_compatible_range<R, value_type>
+        iterator insert_range(const_iterator insertPos, R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -758,7 +764,7 @@ namespace AZStd
             }
         }
 
-        auto remove(const_reference value) -> size_type
+        size_type remove(const_reference value)
         {
             // Different STL implementations handle this in a different way.
             // The question is do we need the copy of the value ? If the value passed
@@ -784,7 +790,7 @@ namespace AZStd
             return removeCount;
         }
         template <class Predicate>
-        auto remove_if(Predicate pred) -> size_type
+        size_type remove_if(Predicate pred)
         {
             iterator first = begin();
             iterator last = end();
@@ -1294,7 +1300,8 @@ namespace AZStd
     template <class InputIt, class Alloc = allocator>
     list(InputIt, InputIt, Alloc = Alloc()) -> list<iter_value_t<InputIt>, Alloc>;
 
-    template<class R, class Alloc = allocator, class = enable_if_t<ranges::input_range<R>>>
+    template<class R, class Alloc = allocator>
+        requires ranges::input_range<R>
     list(from_range_t, R&&, Alloc = Alloc()) -> list<ranges::range_value_t<R>, Alloc>;
 
     template< class T, class Allocator >

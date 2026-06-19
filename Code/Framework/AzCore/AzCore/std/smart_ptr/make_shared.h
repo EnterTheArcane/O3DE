@@ -31,7 +31,7 @@ namespace AZStd
         {
         private:
 
-            typedef typename AZStd::aligned_storage< sizeof(T), ::AZStd::alignment_of< T >::value >::type storage_type;
+            typedef typename AZStd::aligned_storage< sizeof(T), ::AZStd::alignment_of_v< T > >::type storage_type;
 
             bool initialized_;
             storage_type storage_;

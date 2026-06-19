@@ -32,7 +32,8 @@ namespace AZStd
 
     //////////////////////////////////////////////////////////////////////////
     // thread
-    template<class F, class... Args, typename>
+    template<class F, class... Args>
+        requires (!AZStd::is_convertible_v<AZStd::decay_t<F>, thread_desc>)
     thread::thread(F&& f, Args&&... args)
         : thread(thread_desc{}, AZStd::forward<F>(f), AZStd::forward<Args>(args)...)
     {}

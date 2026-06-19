@@ -20,7 +20,8 @@ namespace AZStd
     template <class T>
     struct default_destruct
     {
-        template <class U, class = typename AZStd::enable_if<AZStd::is_constructible<U*, T*>::value, void>::type>
+        template <class U>
+            requires AZStd::is_constructible_v<U*, T*>
         void operator()(U* ptr)
         {
             ptr->~T();
@@ -30,7 +31,8 @@ namespace AZStd
     template <class T>
     struct no_destruct
     {
-        template <class U, class = typename AZStd::enable_if<AZStd::is_constructible<U*, T*>::value, void>::type>
+        template <class U>
+            requires AZStd::is_constructible_v<U*, T*>
         void operator()(U*)
         {
         }
@@ -68,12 +70,12 @@ namespace AZStd
             T* obj = nullptr;
             do {
                 obj = m_object.load();
-            } while (obj != reinterpret_cast<T*>(&m_storage)); 
+            } while (obj != reinterpret_cast<T*>(&m_storage));
             return *obj;
         }
 
     private:
-        typename aligned_storage<sizeof(T), alignment_of<T>::value>::type m_storage;
+        typename aligned_storage<sizeof(T), alignment_of_v<T>>::type m_storage;
         AZStd::atomic<T*> m_object;
     };
 }

@@ -142,7 +142,8 @@ namespace AZStd
             construct_iter(first, last, is_integral<InputIterator>());
         }
 
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         vector(from_range_t, R&& rg, const allocator_type& alloc = Allocator())
             : m_allocator(alloc)
         {
@@ -302,7 +303,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto append_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, T>>
+            requires Internal::container_compatible_range<R, T>
+        void append_range(R&& rg)
         {
             insert_range(end(), AZStd::forward<R>(rg));
         }
@@ -600,7 +602,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto assign_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>>
+            requires Internal::container_compatible_range<R, value_type>
+        void assign_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -796,9 +799,12 @@ namespace AZStd
         }
 
         template<class R>
-        auto insert_range(AZStd::nullptr_t, R&&) -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator> = delete;
+            requires Internal::container_compatible_range<R, value_type>
+        iterator insert_range(AZStd::nullptr_t, R&&) = delete;
+
         template<class R>
-        auto insert_range(const_iterator insertPos, R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator>
+            requires Internal::container_compatible_range<R, value_type>
+        iterator insert_range(const_iterator insertPos, R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -1306,7 +1312,8 @@ namespace AZStd
     template <class InputIt, class Alloc = allocator>
     vector(InputIt, InputIt, Alloc = Alloc()) -> vector<iter_value_t<InputIt>, Alloc>;
 
-    template<class R, class Alloc = allocator, class = enable_if_t<ranges::input_range<R>>>
+    template<class R, class Alloc = allocator>
+        requires ranges::input_range<R>
     vector(from_range_t, R&&, Alloc = Alloc()) -> vector<ranges::range_value_t<R>, Alloc>;
 
     //#pragma region Vector equality/inequality

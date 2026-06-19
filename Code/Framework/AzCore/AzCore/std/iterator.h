@@ -211,7 +211,7 @@ namespace AZStd
         template<class Iterator, class ConstIterator>
         inline Iterator ConstIteratorCast(ConstIterator& iter)
         {
-            static_assert((AZStd::is_base_of<ConstIterator, Iterator>::value), "For this cast to work Iterator should derive from ConstIterator");
+            static_assert(AZStd::is_base_of_v<ConstIterator, Iterator>, "For this cast to work Iterator should derive from ConstIterator");
             static_assert(sizeof(ConstIterator) == sizeof(Iterator), "For this cast to work ConstIterator and Iterator should be binarily identical");
             return *reinterpret_cast<Iterator*>(&iter);
         }

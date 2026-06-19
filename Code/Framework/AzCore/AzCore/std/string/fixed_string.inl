@@ -67,7 +67,9 @@ namespace AZStd
 
     // #6
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class InputIt, typename>
+    template<class InputIt>
+        requires input_iterator<InputIt>
+            && (!is_convertible_v<InputIt, size_t>)
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(InputIt first, InputIt last)
     {   // construct from [first, last)
         assign(first, last);
@@ -75,7 +77,8 @@ namespace AZStd
 
     // https://eel.is/c++draft/strings#string.cons-18
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class R, typename>
+    template<class R>
+        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(from_range_t, R&& rg)
     {
         assign_range(AZStd::forward<R>(rg));
@@ -107,7 +110,8 @@ namespace AZStd
 
     // #10
     template<class Element, size_t MaxElementCount, class Traits>
-    template<typename T, typename>
+    template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(const T& convertibleToView)
     {
         assign(convertibleToView);
@@ -115,7 +119,8 @@ namespace AZStd
 
     // #11
     template<class Element, size_t MaxElementCount, class Traits>
-    template<typename T, typename>
+    template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(const T& convertibleToView,
         size_type rhsOffset, size_type count)
     {
@@ -216,8 +221,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::operator=(const T& convertibleToView)
-        ->AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return assign(view);
@@ -244,8 +250,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::operator+=(const T& convertibleToView)
-        ->AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return append(view);
@@ -303,8 +310,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::append(const T& convertibleToView)
-        ->AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return append(view.data(), view.size());
@@ -333,8 +341,10 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class InputIt>
+        requires input_iterator<InputIt>
+            && (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::append(InputIt first, InputIt last)
-        -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         if constexpr (contiguous_iterator<InputIt>
             && is_same_v<iter_value_t<InputIt>, value_type>)
@@ -375,8 +385,9 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
+        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::append_range(R&& rg)
-        -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         return append(basic_fixed_string(from_range, AZStd::forward<R>(rg)));
     }
@@ -451,8 +462,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::assign(const T& convertibleToView)
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return assign(view.data(), view.size());
@@ -478,8 +490,10 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class InputIt>
+        requires input_iterator<InputIt>
+            && (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::assign(InputIt first, InputIt last)
-        -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         if constexpr (contiguous_iterator<InputIt>
             && is_same_v<iter_value_t<InputIt>, value_type>)
@@ -520,8 +534,9 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
+        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::assign_range(R&& rg)
-        -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         if constexpr (is_lvalue_reference_v<R>)
         {
@@ -606,8 +621,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::insert(size_type offset, const T& convertibleToView)
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return insert(offset, view.data(), view.size());
@@ -662,8 +678,10 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class InputIt>
+        requires input_iterator<InputIt>
+            && (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::insert(const_iterator insertPos,
-        InputIt first, InputIt last)-> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, iterator>
+        InputIt first, InputIt last) -> iterator
     {   // insert [_First, _Last) at _Where
         size_type insertOffset = ranges::distance(cbegin(), insertPos);
         if constexpr (contiguous_iterator<InputIt>
@@ -707,8 +725,9 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
+        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::insert_range(const_iterator insertPos, R&& rg)
-        -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator>
+        -> iterator
     {
         size_t offset = insertPos - begin();
         insert(insertPos - begin(), basic_fixed_string(from_range, AZStd::forward<R>(rg)));
@@ -785,9 +804,10 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace(size_type offset, size_type count,
         const T& convertibleToView, size_type rhsOffset, size_type rhsCount)
-        ->AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         view = view.substr(rhsOffset, rhsCount);
@@ -889,9 +909,10 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace(size_type offset, size_type count,
         const T& convertibleToView)
-        ->AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return replace(offset, count, view.data(), view.size());
@@ -951,9 +972,10 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace(const_iterator first, const_iterator last,
         const T& convertibleToView)
-        ->AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return replace(first, last, view.data(), view.size());
@@ -972,8 +994,10 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class InputIt>
+        requires input_iterator<InputIt>
+            && (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace(const_iterator first, const_iterator last,
-        InputIt replaceFirst, InputIt replaceLast) -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, basic_fixed_string&>
+        InputIt replaceFirst, InputIt replaceLast) -> basic_fixed_string&
     {   // replace [first, last) with [replaceFirst,replaceLast)
         if constexpr (contiguous_iterator<InputIt>
             && is_same_v<iter_value_t<InputIt>, value_type>)
@@ -1019,9 +1043,10 @@ namespace AZStd
 
     template<class Element, size_t MaxElementCount, class Traits>
     template<class R>
+        requires Internal::container_compatible_range<R, typename basic_fixed_string<Element, MaxElementCount, Traits>::value_type>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace_with_range(
         const_iterator first, const_iterator last, R&& rg)
-        -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_fixed_string&>
+        -> basic_fixed_string&
     {
         return replace(first, last, basic_fixed_string(from_range, AZStd::forward<R>(rg)));
     }
@@ -1289,8 +1314,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::find(const T& convertibleToView, size_type offset) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>
+        -> size_type
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return find(view.data(), offset, view.size());
@@ -1318,8 +1344,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::rfind(const T& convertibleToView, size_type offset) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>
+        -> size_type
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return rfind(view.data(), offset, view.size());
@@ -1347,8 +1374,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::find_first_of(const T& convertibleToView, size_type offset) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>
+        -> size_type
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return find_first_of(view.data(), offset, view.size());
@@ -1376,8 +1404,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::find_first_not_of(const T& convertibleToView, size_type offset) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>
+        -> size_type
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return find_first_not_of(view.data(), offset, view.size());
@@ -1406,8 +1435,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::find_last_of(const T& convertibleToView, size_type offset) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>
+        -> size_type
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return find_last_of(view.data(), offset, view.size());
@@ -1435,8 +1465,9 @@ namespace AZStd
     }
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::find_last_not_of(const T& convertibleToView, size_type offset) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, size_type>
+        -> size_type
     {
         basic_string_view<Element, Traits> view = convertibleToView;
         return find_last_not_of(view.data(), offset, view.size());
@@ -1503,8 +1534,9 @@ namespace AZStd
     // starts_with
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::starts_with(const T& prefix) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, bool>
+        -> bool
     {
         return AZStd::basic_string_view<Element, Traits>(data(), size()).starts_with(prefix);
     }
@@ -1524,8 +1556,9 @@ namespace AZStd
     // ends_with
     template<class Element, size_t MaxElementCount, class Traits>
     template<typename T>
+        requires Internal::fixed_string_view_compatible<Element, Traits, T>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::ends_with(const T& suffix) const
-        -> AZStd::enable_if_t<is_convertible_v<const T&, basic_string_view<Element, Traits>> && !is_convertible_v<const T&, const Element*>, bool>
+        -> bool
     {
         return AZStd::basic_string_view<Element, Traits>(data(), size()).ends_with(suffix);
     }

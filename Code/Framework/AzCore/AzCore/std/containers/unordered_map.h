@@ -119,7 +119,8 @@ namespace AZStd
             base_type::rehash(numBucketsHint);
             base_type::insert(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         unordered_map(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),
             const allocator_type& alloc = allocator_type())
@@ -167,12 +168,14 @@ namespace AZStd
             : unordered_map(f, l, n, hf, key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         unordered_map(from_range_t, R&& rg, size_type n, const allocator_type& a)
             : unordered_map(from_range, AZStd::forward<R>(rg), n, hasher(), key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         unordered_map(from_range_t, R&& rg, size_type n, const hasher& hf, const allocator_type& a)
             : unordered_map(from_range, AZStd::forward<R>(rg), n, hf, key_equal(), a)
         {
@@ -368,8 +371,8 @@ namespace AZStd
     template<class R,
         class Hash = hash<range_key_type<R>>,
         class Pred = equal_to<range_key_type<R>>,
-        class Allocator = allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator = allocator>
+        requires ranges::input_range<R>
     unordered_map(from_range_t, R&&,
         typename allocator_traits<Allocator>::size_type = {},
         Hash = Hash(), Pred = Pred(), Allocator = Allocator())
@@ -405,23 +408,23 @@ namespace AZStd
         equal_to<iter_key_type<InputIterator>>, Allocator>;
 
     template<class R,
-        class Allocator = allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator = allocator>
+        requires ranges::input_range<R>
     unordered_map(from_range_t, R&&,
         typename allocator_traits<Allocator>::size_type,
         Allocator)
         -> unordered_map<range_key_type<R>, range_mapped_type<R>, hash<range_key_type<R>>, equal_to<range_key_type<R>>, Allocator>;
 
     template<class R,
-        class Allocator = allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator = allocator>
+        requires ranges::input_range<R>
     unordered_map(from_range_t, R&&, Allocator)
         -> unordered_map<range_key_type<R>, range_mapped_type<R>, hash<range_key_type<R>>, equal_to<range_key_type<R>>, Allocator>;
 
     template<class R,
         class Hash,
-        class Allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator>
+        requires ranges::input_range<R>
     unordered_map(from_range_t, R&&,
         typename allocator_traits<Allocator>::size_type,
         Hash, Allocator = Allocator())
@@ -505,7 +508,8 @@ namespace AZStd
             base_type::rehash(numBucketsHint);
             base_type::insert(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         unordered_multimap(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),
             const allocator_type& alloc = allocator_type())
@@ -553,12 +557,14 @@ namespace AZStd
             : unordered_multimap(f, l, n, hf, key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         unordered_multimap(from_range_t, R&& rg, size_type n, const allocator_type& a)
             : unordered_multimap(from_range, AZStd::forward<R>(rg), n, hasher(), key_equal(), a)
         {
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         unordered_multimap(from_range_t, R&& rg, size_type n, const hasher& hf, const allocator_type& a)
             : unordered_multimap(from_range, AZStd::forward<R>(rg), n, hf, key_equal(), a)
         {
@@ -682,8 +688,8 @@ namespace AZStd
     template<class R,
         class Hash = hash<range_key_type<R>>,
         class Pred = equal_to<range_key_type<R>>,
-        class Allocator = allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator = allocator>
+        requires ranges::input_range<R>
     unordered_multimap(from_range_t, R&&,
         typename allocator_traits<Allocator>::size_type = {},
         Hash = Hash(), Pred = Pred(), Allocator = Allocator())
@@ -718,23 +724,23 @@ namespace AZStd
         equal_to<iter_key_type<InputIterator>>, Allocator>;
 
     template<class R,
-        class Allocator = allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator = allocator>
+        requires ranges::input_range<R>
     unordered_multimap(from_range_t, R&&,
         typename allocator_traits<Allocator>::size_type,
         Allocator)
         ->unordered_multimap<range_key_type<R>, range_mapped_type<R>, hash<range_key_type<R>>, equal_to<range_key_type<R>>, Allocator>;
 
     template<class R,
-        class Allocator = allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator = allocator>
+        requires ranges::input_range<R>
     unordered_multimap(from_range_t, R&&, Allocator)
         ->unordered_multimap<range_key_type<R>, range_mapped_type<R>, hash<range_key_type<R>>, equal_to<range_key_type<R>>, Allocator>;
 
     template<class R,
         class Hash,
-        class Allocator,
-        class = enable_if_t<ranges::input_range<R>>>
+        class Allocator>
+        requires ranges::input_range<R>
     unordered_multimap(from_range_t, R&&,
         typename allocator_traits<Allocator>::size_type,
         Hash, Allocator = Allocator())
@@ -753,4 +759,3 @@ namespace AZStd
         Hash, Allocator)
         ->unordered_multimap<Key, T, Hash, equal_to<Key>, Allocator>;
 }
-

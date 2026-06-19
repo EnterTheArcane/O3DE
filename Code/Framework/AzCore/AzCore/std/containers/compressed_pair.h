@@ -40,14 +40,15 @@ namespace AZStd
      * The Index template parameter is used to disambiguate a compressed pair containing multiple elements of the same types
      * This is used to allow multiple inheritance from 2 of the same types underlying elements
      */
-    template <typename T, size_t Index, bool CanBeEmptyBase = std::is_empty<T>::value && !std::is_final<T>::value>
+    template <typename T, size_t Index>
     struct compressed_pair_element
     {
         using value_type = T;
 
         constexpr compressed_pair_element() = default;
 
-        template <typename U, typename = AZStd::enable_if_t<!AZStd::is_same<AZStd::remove_cvref_t<U>, compressed_pair_element>::value>>
+        template <typename U>
+            requires (!AZStd::is_same_v<AZStd::remove_cvref_t<U>, compressed_pair_element<T, Index>>)
         constexpr explicit compressed_pair_element(U&& value);
 
         template <template <typename...> class TupleType, class... Args, size_t... Indices>
@@ -65,15 +66,20 @@ namespace AZStd
      * Empty class is not final so it can be used as a base class
      */
     template <typename T, size_t Index>
-    struct compressed_pair_element<T, Index, true>
+        requires std::is_empty_v<T>
+            && (!std::is_final_v<T>)
+    struct compressed_pair_element<T, Index>
         : private T
     {
         using value_type = T;
 
         constexpr compressed_pair_element() = default;
 
-        template <typename U, typename = AZStd::enable_if_t<!AZStd::is_same<AZStd::remove_cvref_t<U>, compressed_pair_element>::value>>
-        constexpr explicit compressed_pair_element(U&& value);
+        template <typename U>
+            requires (!AZStd::is_same_v<AZStd::remove_cvref_t<U>, compressed_pair_element>)
+        constexpr explicit compressed_pair_element(U&& value)
+            : T{ AZStd::forward<U>(value) }
+        {}
 
         template <template <typename...> class TupleType, class... Args, size_t... Indices>
         constexpr compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>);
@@ -99,14 +105,12 @@ namespace AZStd
         using second_base_value_type = typename second_base_type::value_type;
 
     public:
-        // First template argument is used to perform a substitution into AZStd::enable_if_t
-        // so that SFINAE can trigger
-        template <typename Unused = void, typename = AZStd::enable_if_t<
-            AZStd::is_default_constructible_v<first_base_value_type>
-            && AZStd::is_default_constructible_v<second_base_value_type>, Unused>>
-        constexpr compressed_pair();
+        constexpr compressed_pair()
+            requires AZStd::is_default_constructible_v<T1>
+                && AZStd::is_default_constructible_v<T2>;
 
-        template <typename T, AZStd::enable_if_t<!is_same_v<remove_cvref_t<T>, compressed_pair>, bool> = true>
+        template <typename T>
+            requires (!is_same_v<remove_cvref_t<T>, compressed_pair<T1, T2>>)
         constexpr explicit compressed_pair(T&& firstElement);
 
         template <typename T>

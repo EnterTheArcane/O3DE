@@ -60,7 +60,8 @@ namespace AZStd
         template<class T, class = void>
         constexpr bool IsMapType_v = false;
         template<class T>
-        constexpr bool IsMapType_v<T, enable_if_t<Internal::sfinae_trigger_v<typename T::mapped_type>>> = true;
+            requires requires { typename T::mapped_type; }
+        constexpr bool IsMapType_v<T, void> = true;
 
         template <class T>
         constexpr bool IsOrderedSetImpl_v = false;

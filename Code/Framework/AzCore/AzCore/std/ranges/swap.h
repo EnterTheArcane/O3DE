@@ -39,21 +39,20 @@ namespace AZStd::ranges::Internal
     template <class T>
     void swap(T&, T&) = delete;
 
-    template <class T, class U, class = void>
-    constexpr bool is_class_or_enum_with_swap_adl = false;
     template <class T, class U>
-    constexpr bool is_class_or_enum_with_swap_adl<T, U, enable_if_t<conjunction_v<
-        disjunction<
-            disjunction<is_class<remove_cvref_t<T>>, is_enum<remove_cvref_t<T>>>,
-            disjunction<is_class<remove_cvref_t<U>>, is_enum<remove_cvref_t<U>>>>,
-        is_void<void_t<decltype(swap(declval<T&>(), declval<U&>()))>>
-        >>> = true;
+    concept is_class_or_enum_with_swap_adl =
+        (is_class_v<remove_cvref_t<T>> || is_enum_v<remove_cvref_t<T>>
+            || is_class_v<remove_cvref_t<U>> || is_enum_v<remove_cvref_t<U>>)
+        && requires
+        {
+            swap(declval<T&>(), declval<U&>());
+        };
 
     struct swap_fn
     {
         template <class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const noexcept(noexcept(swap(AZStd::forward<T>(t), AZStd::forward<U>(u))))
-            ->enable_if_t<is_class_or_enum_with_swap_adl<T, U>>
+        constexpr void operator()(T&& t, U&& u) const noexcept(noexcept(swap(AZStd::forward<T>(t), AZStd::forward<U>(u))))
+            requires is_class_or_enum_with_swap_adl<T, U>
         {
             swap(AZStd::forward<T>(t), AZStd::forward<U>(u));
         }
@@ -62,19 +61,17 @@ namespace AZStd::ranges::Internal
         // Implemented in ranges.h as to prevent circular dependency.
         // ranges::swap_ranges depends on the range concepts that can't be defined here
         template <class T, class U>
-        constexpr auto operator()(T&& t, U&& u) const noexcept(noexcept((*this)(*t, *u)))
-            ->enable_if_t<conjunction_v<
-            bool_constant<!is_class_or_enum_with_swap_adl<T, U>>,
-            is_array<T>,
-            is_array<U>,
-            bool_constant<extent_v<T> == extent_v<U>>
-            >>;
+        constexpr void operator()(T&& t, U&& u) const noexcept(noexcept((*this)(*t, *u)))
+            requires (!is_class_or_enum_with_swap_adl<T, U>)
+                && is_array_v<T>
+                && is_array_v<U>
+                && (extent_v<T> == extent_v<U>);
 
         template <class T>
-        constexpr auto operator()(T& t1, T& t2) const noexcept(noexcept(is_nothrow_move_constructible_v<T> && is_nothrow_move_assignable_v<T>))
-            ->enable_if_t<conjunction_v<bool_constant<!is_class_or_enum_with_swap_adl<T, T>>,
-                bool_constant<move_constructible<T>>,
-                bool_constant<assignable_from<T&, T>> >>
+        constexpr void operator()(T& t1, T& t2) const noexcept(noexcept(is_nothrow_move_constructible_v<T> && is_nothrow_move_assignable_v<T>))
+            requires (!is_class_or_enum_with_swap_adl<T, T>)
+                && move_constructible<T>
+                && assignable_from<T&, T>
         {
             auto temp(AZStd::move(t1));
             t1 = AZStd::move(t2);
@@ -93,21 +90,21 @@ namespace AZStd::ranges
 
 namespace AZStd::Internal
 {
-    template <class T, class = void>
-    constexpr bool swappable_impl = false;
     template <class T>
-    constexpr bool swappable_impl<T, void_t<decltype(AZStd::ranges::swap(declval<T&>(), declval<T&>()))>> = true;
+    concept swappable_impl = requires
+    {
+        AZStd::ranges::swap(declval<T&>(), declval<T&>());
+    };
 
-    template <class T, class U, class = void>
-    constexpr bool swappable_with_impl = false;
     template <class T, class U>
-    constexpr bool swappable_with_impl<T, U, enable_if_t<conjunction_v<
-        bool_constant<common_reference_with<T, U>>,
-        is_void<void_t<
-        decltype(AZStd::ranges::swap(declval<T&>(), declval<T&>())),
-        decltype(AZStd::ranges::swap(declval<U&>(), declval<U&>())),
-        decltype(AZStd::ranges::swap(declval<T&>(), declval<U&>())),
-        decltype(AZStd::ranges::swap(declval<U&>(), declval<T&>()))>> >>> = true;
+    concept swappable_with_impl = common_reference_with<T, U>
+        && requires
+        {
+            AZStd::ranges::swap(declval<T&>(), declval<T&>());
+            AZStd::ranges::swap(declval<U&>(), declval<U&>());
+            AZStd::ranges::swap(declval<T&>(), declval<U&>());
+            AZStd::ranges::swap(declval<U&>(), declval<T&>());
+        };
 }
 
 namespace AZStd

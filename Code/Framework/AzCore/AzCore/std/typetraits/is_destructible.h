@@ -14,6 +14,7 @@
 namespace AZStd
 {
     using std::is_destructible;
+    using std::is_destructible_v;
     using std::is_trivially_destructible;
     using std::is_nothrow_destructible;
     template<class T>

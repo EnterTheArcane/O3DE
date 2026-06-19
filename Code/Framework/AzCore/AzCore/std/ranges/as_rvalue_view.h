@@ -16,6 +16,7 @@ namespace AZStd::ranges
     //! view which provides the same behavior of the underlying sequenence, except
     //! that its elements are rvalues
     template<class View>
+        requires input_range<View>
     class as_rvalue_view;
 }
 
@@ -57,22 +58,22 @@ namespace AZStd::ranges::Internal
 namespace AZStd::ranges
 {
     template<class View>
+        requires input_range<View>
     class as_rvalue_view
         : public view_interface<as_rvalue_view<View>>
-        , private enable_if_t<input_range<View>, Internal::as_rvalue_view_requirements_fulfilled>
     {
     public:
-        template <bool Enable = default_initializable<View>,
-            class = enable_if_t<Enable>>
-        constexpr as_rvalue_view() {}
+        constexpr as_rvalue_view()
+            requires default_initializable<View>
+        {}
 
         explicit constexpr as_rvalue_view(View base)
             : m_base(AZStd::move(base))
         {
         }
 
-        template <bool Enable = copy_constructible<View>, class = enable_if_t<Enable>>
         constexpr View base() const&
+            requires copy_constructible<View>
         {
             return m_base;
         }
@@ -81,20 +82,20 @@ namespace AZStd::ranges
             return AZStd::move(m_base);
         }
 
-        template<bool Enable = !Internal::simple_view<View>, class = enable_if_t<Enable>>
         constexpr auto begin()
+            requires (!Internal::simple_view<View>)
         {
             return move_iterator{ ranges::begin(m_base) };
         }
 
-        template<bool Enable = range<const View>, class = enable_if_t<Enable>>
         constexpr auto begin() const
+            requires range<const View>
         {
             return move_iterator{ ranges::begin(m_base) };
         }
 
-        template<bool Enable = !Internal::simple_view<View>, class = enable_if_t<Enable>>
         constexpr auto end()
+            requires (!Internal::simple_view<View>)
         {
             if constexpr (common_range<View>)
             {
@@ -106,8 +107,8 @@ namespace AZStd::ranges
             }
         }
 
-        template<bool Enable = range<const View>, class = enable_if_t<Enable>>
         constexpr auto end() const
+            requires range<const View>
         {
             if constexpr (common_range<const View>)
             {
@@ -120,14 +121,14 @@ namespace AZStd::ranges
         }
 
 
-        template<bool Enable = sized_range<View>, class = enable_if_t<Enable>>
         constexpr auto size()
+            requires sized_range<View>
         {
             return ranges::size(m_base);
         }
 
-        template<bool Enable = sized_range<const View>, class = enable_if_t<Enable>>
         constexpr auto size() const
+            requires sized_range<const View>
         {
             return ranges::size(m_base);
         }

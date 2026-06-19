@@ -49,15 +49,6 @@ namespace AZStd
     using std::contiguous_iterator_tag;
 }
 
-namespace AZStd::Internal
-{
-    // Variadic template which maps types to true For SFINAE
-    template <class... Args>
-    using sfinae_trigger = true_type;
-    template <class... Args>
-    constexpr bool sfinae_trigger_v = true;
-}
-
 namespace AZStd
 {
     //! Implements the C++20 to_address function
@@ -65,26 +56,17 @@ namespace AZStd
     //! to the pointee type
     namespace Internal
     {
-        template <class T, class = void>
-        constexpr bool pointer_traits_has_to_address_v = false;
-
         // pointer_traits isn't SFINAE friendly https://cplusplus.github.io/LWG/lwg-active.html#3545
         // working around that by checking if type T has an element_type alias
         template <class T>
-        constexpr bool pointer_traits_has_to_address_v<T, enable_if_t<has_element_type_v<T>>>
-            = !is_void_v<decltype(pointer_traits<T>::to_address(declval<const T&>()))>;
+        concept pointer_traits_has_to_address = has_element_type_v<T>
+            && requires { requires !is_void_v<decltype(pointer_traits<T>::to_address(declval<const T&>()))>; };
 
         // fancy pointer helper
-        template <class T, class = void>
-        inline constexpr bool to_address_fancy_pointer_v = false;
-
         template <class T>
-        inline constexpr bool to_address_fancy_pointer_v<T, enable_if_t<
-            !is_void_v<decltype(declval<const T&>().operator->())>>> = true;
-
-        template <class T>
-        inline constexpr bool to_address_fancy_pointer_v<T, enable_if_t<
-            pointer_traits_has_to_address_v<T>>> = true;
+        concept to_address_fancy_pointer =
+            requires { requires !is_void_v<decltype(declval<const T&>().operator->())>; }
+                || pointer_traits_has_to_address<T>;
 
         struct to_address_fn
         {
@@ -100,15 +82,14 @@ namespace AZStd
             //! if that is a well-formed expression, otherwise it returns ptr->operator->()
             //! For example invoking `to_address(AZStd::reverse_iterator<const char*>(char_ptr))`
             //! Returns an element of type const char*
-            template <class T, class = enable_if_t<conjunction_v<
-                bool_constant<!is_pointer_v<T>>,
-                bool_constant<!is_array_v<T>>,
-                bool_constant<!is_function_v<T>>,
-                bool_constant<to_address_fancy_pointer_v<T>>
-                >>>
+            template <class T>
+                requires (!is_pointer_v<T>)
+                    && (!is_array_v<T>)
+                    && (!is_function_v<T>)
+                    && to_address_fancy_pointer<T>
             constexpr auto operator()(const T& ptr) const noexcept
             {
-                if constexpr (pointer_traits_has_to_address_v<T>)
+                if constexpr (pointer_traits_has_to_address<T>)
                 {
                     return pointer_traits<T>::to_address(ptr);
                 }
@@ -131,11 +112,8 @@ namespace AZStd::Internal
     template<class T, class U>
     concept different_from = !same_as<remove_cvref_t<T>, remove_cvref_t<U>>;
 
-    template <class It, class = void>
-    constexpr bool is_class_or_enum = false;
     template <class It>
-    constexpr bool is_class_or_enum<It, enable_if_t<disjunction_v<
-        is_class<remove_cvref_t<It>>, is_enum<remove_cvref_t<It>> >>> = true;
+    concept is_class_or_enum = is_class_v<remove_cvref_t<It>> || is_enum_v<remove_cvref_t<It>>;
 }
 
 namespace AZStd
@@ -209,20 +187,18 @@ namespace AZStd
 namespace AZStd::Internal
 {
     template <class T>
-    constexpr bool is_integer_like = conjunction_v<bool_constant<integral<T>>, bool_constant<!same_as<T, bool>>>;
+    concept is_integer_like = integral<T> && !same_as<T, bool>;
 
     template <class T>
-    constexpr bool is_signed_integer_like = signed_integral<T>;
+    concept is_signed_integer_like = signed_integral<T>;
 
-    template <class T, class = void>
-    constexpr bool weakly_incrementable_impl = false;
     template <class T>
-    constexpr bool weakly_incrementable_impl<T, enable_if_t<conjunction_v<
-        bool_constant<movable<T>>,
-        bool_constant<is_signed_integer_like<iter_difference_t<T>>>,
-        bool_constant<same_as<decltype(++declval<T&>()), T&>>,
-        sfinae_trigger<decltype(declval<T&>()++)>
-        >>> = true;
+    concept weakly_incrementable_impl = movable<T>
+        && requires(T& t) {
+            requires is_signed_integer_like<iter_difference_t<T>>;
+            { ++t } -> same_as<T&>;
+            t++;
+        };
 }
 
 namespace AZStd
@@ -247,14 +223,10 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template <class T, class = void>
-    constexpr bool incrementable_impl = false;
     template <class T>
-    constexpr bool incrementable_impl<T, enable_if_t<conjunction_v<
-        bool_constant<regular<T>>,
-        bool_constant<weakly_incrementable<T>>,
-        bool_constant<same_as<decltype(declval<T&>()++), T>>
-        >>> = true;
+    concept incrementable_impl = regular<T>
+        && weakly_incrementable<T>
+        && requires(T& t) { { t++ } -> same_as<T>; };
 }
 
 namespace AZStd
@@ -298,45 +270,43 @@ namespace AZStd::Internal
 {
     // ITER_TRAITS(I) general concept
     template<class I>
-    using ITER_TRAITS = conditional_t<is_primary_template_v<iterator_traits<I>>, I, iterator_traits<I>>;
+    using ITER_TRAITS = conditional_t<is_primary_template<iterator_traits<I>>, I, iterator_traits<I>>;
 
     // ITER_CONCEPT(I) general concept
-    template<class I, class = void>
-    constexpr bool use_traits_iterator_concept_for_concept = false;
     template<class I>
-    constexpr bool use_traits_iterator_concept_for_concept<I, void_t<typename ITER_TRAITS<I>::iterator_concept>> = true;
+    concept use_traits_iterator_concept_for_concept =
+        requires { typename ITER_TRAITS<I>::iterator_concept; };
 
-    template<class I, class = void>
-    constexpr bool use_traits_iterator_category_for_concept = false;
     template<class I>
-    constexpr bool use_traits_iterator_category_for_concept<I, enable_if_t<conjunction_v<
-        sfinae_trigger<typename ITER_TRAITS<I>::iterator_category>,
-        bool_constant<!use_traits_iterator_concept_for_concept<I>> >>> = true;
+    concept use_traits_iterator_category_for_concept =
+        !use_traits_iterator_concept_for_concept<I>
+        && requires { typename ITER_TRAITS<I>::iterator_category; };
 
-    template<class I, class = void>
-    constexpr bool use_random_access_iterator_tag_for_concept = false;
     template<class I>
-    constexpr bool use_random_access_iterator_tag_for_concept<I, enable_if_t<conjunction_v<
-        sfinae_trigger<ITER_TRAITS<I>>,
-        bool_constant<!use_traits_iterator_concept_for_concept<I>>,
-        bool_constant<!use_traits_iterator_category_for_concept<I>> >>> = true;
+    concept use_random_access_iterator_tag_for_concept =
+        !use_traits_iterator_concept_for_concept<I>
+        && !use_traits_iterator_category_for_concept<I>
+        && requires { typename ITER_TRAITS<I>; };
 
     template<class I, class = void>
     struct iter_concept;
 
     template<class I>
-    struct iter_concept<I, enable_if_t<use_traits_iterator_concept_for_concept<I>>>
+        requires use_traits_iterator_concept_for_concept<I>
+    struct iter_concept<I, void>
     {
         using type = typename ITER_TRAITS<I>::iterator_concept;
     };
     template<class I>
-    struct iter_concept<I, enable_if_t<use_traits_iterator_category_for_concept<I>>>
+        requires use_traits_iterator_category_for_concept<I>
+    struct iter_concept<I, void>
     {
         using type = typename ITER_TRAITS<I>::iterator_category;
     };
 
     template<class I>
-    struct iter_concept<I, enable_if_t<use_random_access_iterator_tag_for_concept<I>>>
+        requires use_random_access_iterator_tag_for_concept<I>
+    struct iter_concept<I, void>
     {
         using type = random_access_iterator_tag;
     };
@@ -348,14 +318,10 @@ namespace AZStd::Internal
 
 namespace AZStd::Internal
 {
-    template<class I, class = void>
-    constexpr bool input_iterator_impl = false;
     template<class I>
-    constexpr bool input_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<input_or_output_iterator<I>>,
-        bool_constant<derived_from<iter_concept_t<I>, input_iterator_tag>>,
-        bool_constant<indirectly_readable<I>>
-        >>> = true;
+    concept input_iterator_impl = input_or_output_iterator<I>
+        && indirectly_readable<I>
+        && requires { requires derived_from<iter_concept_t<I>, input_iterator_tag>; };
 }
 
 namespace AZStd
@@ -366,14 +332,10 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template<class I, class T, class = void>
-    constexpr bool output_iterator_impl = false;
     template<class I, class T>
-    constexpr bool output_iterator_impl<I, T, enable_if_t<conjunction_v<
-        bool_constant<input_or_output_iterator<I>>,
-        bool_constant<indirectly_writable<I, T>>,
-        sfinae_trigger<decltype(*declval<I&>()++ = AZStd::declval<T>())>
-        >>> = true;
+    concept output_iterator_impl = input_or_output_iterator<I>
+        && indirectly_writable<I, T>
+        && requires(I& i) { *i++ = AZStd::declval<T>(); };
 }
 
 namespace AZStd
@@ -384,14 +346,11 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template<class I, class = void>
-    constexpr bool forward_iterator_impl = false;
     template<class I>
-    constexpr bool forward_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<input_iterator<I>>,
-        bool_constant<derived_from<Internal::iter_concept_t<I>, forward_iterator_tag>>,
-        bool_constant<incrementable<I>>,
-        bool_constant<sentinel_for<I, I>> >>> = true;
+    concept forward_iterator_impl = input_iterator<I>
+        && incrementable<I>
+        && sentinel_for<I, I>
+        && requires { requires derived_from<Internal::iter_concept_t<I>, forward_iterator_tag>; };
 }
 
 namespace AZStd
@@ -402,14 +361,13 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template<class I, class = void>
-    constexpr bool bidirectional_iterator_impl = false;
     template<class I>
-    constexpr bool bidirectional_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<forward_iterator<I>>,
-        bool_constant<derived_from<iter_concept_t<I>, bidirectional_iterator_tag>>,
-        bool_constant<same_as<decltype(--declval<I&>()), I&>>,
-        bool_constant<same_as<decltype(declval<I&>()--), I>> >>> = true;
+    concept bidirectional_iterator_impl = forward_iterator<I>
+        && requires(I& i) {
+            requires derived_from<iter_concept_t<I>, bidirectional_iterator_tag>;
+            { --i } -> same_as<I&>;
+            { i-- } -> same_as<I>;
+        };
 }
 
 namespace AZStd
@@ -420,21 +378,19 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template<class I, class = void>
-    constexpr bool random_access_iterator_impl = false;
     template<class I>
-    constexpr bool random_access_iterator_impl<I, enable_if_t < conjunction_v <
-        bool_constant<bidirectional_iterator<I>>,
-        bool_constant<derived_from<iter_concept_t<I>, random_access_iterator_tag>>,
-        bool_constant<totally_ordered<I>>,
-        bool_constant<sized_sentinel_for<I, I>>,
-        bool_constant<same_as<decltype(declval<I&>() += declval<const iter_difference_t<I>>()), I&>>,
-        bool_constant<same_as<decltype(declval<const I>() + declval<const iter_difference_t<I>>()), I>>,
-        bool_constant<same_as<decltype(declval<iter_difference_t<I>>() + declval<const I>()), I>>,
-        bool_constant<same_as<decltype(declval<I&>() -= declval<const iter_difference_t<I>>()), I&>>,
-        bool_constant<same_as<decltype(declval<const I>() - declval<const iter_difference_t<I>>()), I>>,
-        bool_constant<same_as<decltype(declval<const I&>()[declval<iter_difference_t<I>>()]), iter_reference_t<I>>>
-        >>> = true;
+    concept random_access_iterator_impl = bidirectional_iterator<I>
+        && totally_ordered<I>
+        && sized_sentinel_for<I, I>
+        && requires(I i, const I j, const iter_difference_t<I> n) {
+            requires derived_from<iter_concept_t<I>, random_access_iterator_tag>;
+            { i += n } -> same_as<I&>;
+            { j + n } -> same_as<I>;
+            { n + j } -> same_as<I>;
+            { i -= n } -> same_as<I&>;
+            { j - n } -> same_as<I>;
+            { j[n] } -> same_as<iter_reference_t<I>>;
+        };
 }
 
 namespace AZStd
@@ -445,133 +401,21 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template<class I, class = void>
-    constexpr bool contiguous_iterator_impl = false;
     template<class I>
-    constexpr bool contiguous_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<random_access_iterator<I>>,
-        bool_constant<derived_from<iter_concept_t<I>, contiguous_iterator_tag>>,
-        bool_constant<is_lvalue_reference_v<iter_reference_t<I>>>,
-        bool_constant<indirectly_readable<I>>,
-        bool_constant<same_as<iter_value_t<I>, remove_cvref_t<iter_reference_t<I>>>>,
-        bool_constant<same_as<decltype(to_address(declval<const I&>())), add_pointer_t<iter_reference_t<I>>>>
-        >>> = true;
+    concept contiguous_iterator_impl = random_access_iterator<I>
+        && indirectly_readable<I>
+        && requires {
+            requires derived_from<iter_concept_t<I>, contiguous_iterator_tag>;
+            requires is_lvalue_reference_v<iter_reference_t<I>>;
+            requires same_as<iter_value_t<I>, remove_cvref_t<iter_reference_t<I>>>;
+            requires same_as<decltype(to_address(declval<const I&>())), add_pointer_t<iter_reference_t<I>>>;
+        };
 }
 
 namespace AZStd
 {
     template<class I>
     concept contiguous_iterator = Internal::contiguous_iterator_impl<I>;
-}
-
-namespace AZStd::Internal
-{
-    // cpp17 iterator concepts
-    // https://eel.is/c++draft/iterator.traits#2
-    template<class I, class = void>
-    constexpr bool cpp17_iterator_impl = false;
-    template<class I>
-    constexpr bool cpp17_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<can_reference<decltype(*declval<I&>())>>,
-        bool_constant<same_as<decltype(++declval<I&>()), I&>>,
-        bool_constant<can_reference<decltype(*declval<I&>()++)>>,
-        bool_constant<copyable<I>>
-        >>> = true;
-}
-
-namespace AZStd
-{
-    template<class I>
-    concept cpp17_iterator = Internal::cpp17_iterator_impl<I>;
-}
-
-namespace AZStd::Internal
-{
-    template<class I, class = void>
-    constexpr bool cpp17_input_iterator_impl = false;
-    template<class I>
-    constexpr bool cpp17_input_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<cpp17_iterator<I>>,
-        bool_constant<equality_comparable<I>>,
-        sfinae_trigger<typename incrementable_traits<I>::difference_type>,
-        sfinae_trigger<typename indirectly_readable_traits<I>::value_type>,
-        sfinae_trigger<typename incrementable_traits<I>::difference_type>,
-        sfinae_trigger<common_reference_t<iter_reference_t<I>&&,
-            typename indirectly_readable_traits<I>::value_type&>>,
-        sfinae_trigger<common_reference_t<decltype(*declval<I&>()++)&&,
-            typename indirectly_readable_traits<I>::value_type&>>,
-        bool_constant<signed_integral<typename incrementable_traits<I>::difference_type>>
-        >>> = true;
-}
-
-namespace AZStd
-{
-    template<class I>
-    concept cpp17_input_iterator = Internal::cpp17_input_iterator_impl<I>;
-}
-
-namespace AZStd::Internal
-{
-    template<class I, class = void>
-    constexpr bool cpp17_forward_iterator_impl = false;
-    template<class I>
-    constexpr bool cpp17_forward_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<cpp17_input_iterator<I>>,
-        bool_constant<constructible_from<I>>,
-        bool_constant<is_lvalue_reference_v<iter_reference_t<I>>>,
-        bool_constant<same_as<remove_cvref_t<iter_reference_t<I>>, typename indirectly_readable_traits<I>::value_type>>,
-        bool_constant<convertible_to<decltype(declval<I&>()++), const I&>>,
-        bool_constant<same_as<decltype(*declval<I&>()++), iter_reference_t<I>>>
-        >>> = true;
-}
-
-namespace AZStd
-{
-    template<class I>
-    concept cpp17_forward_iterator = Internal::cpp17_forward_iterator_impl<I>;
-}
-
-namespace AZStd::Internal
-{
-    template<class I, class = void>
-    constexpr bool cpp17_bidirectional_iterator_impl = false;
-    template<class I>
-    constexpr bool cpp17_bidirectional_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<cpp17_forward_iterator<I>>,
-        bool_constant<same_as<decltype(--declval<I&>()), I&>>,
-        bool_constant<convertible_to<decltype(declval<I&>()--), const I&>>,
-        bool_constant<same_as<decltype(*declval<I&>()--), iter_reference_t<I>>>
-        >>> = true;
-}
-
-namespace AZStd
-{
-    template<class I>
-    concept cpp17_bidirectional_iterator = Internal::cpp17_bidirectional_iterator_impl<I>;
-}
-
-namespace AZStd::Internal
-{
-    template<class I, class = void>
-    constexpr bool cpp17_random_access_iterator_impl = false;
-    template<class I>
-    constexpr bool cpp17_random_access_iterator_impl<I, enable_if_t<conjunction_v<
-        bool_constant<cpp17_bidirectional_iterator<I>>,
-        bool_constant<totally_ordered<I>>,
-        bool_constant<same_as<decltype(declval<I&>() += declval<typename incrementable_traits<I>::difference_type>()), I&>>,
-        bool_constant<same_as<decltype(declval<I&>() -= declval<typename incrementable_traits<I>::difference_type>()), I&>>,
-        bool_constant<same_as<decltype(declval<I>() + declval<typename incrementable_traits<I>::difference_type>()), I>>,
-        bool_constant<same_as<decltype(declval<typename incrementable_traits<I>::difference_type>() + declval<I>()), I>>,
-        bool_constant<same_as<decltype(declval<I>() - declval<typename incrementable_traits<I>::difference_type>()), I>>,
-        bool_constant<same_as<decltype(declval<I>() - declval<I>()), typename incrementable_traits<I>::difference_type>>,
-        bool_constant<same_as<decltype(declval<I&>()[declval<typename incrementable_traits<I>::difference_type>()]), iter_reference_t<I>>>
-        >>> = true;
-}
-
-namespace AZStd
-{
-    template<class I>
-    concept cpp17_random_access_iterator = Internal::cpp17_random_access_iterator_impl<I>;
 }
 
 namespace AZStd
@@ -602,9 +446,8 @@ namespace AZStd
         };
     }
     template<class F, class... Is>
-    using indirect_result_t = typename Internal::indirect_result<conjunction_v<
-            bool_constant<indirectly_readable<Is>>...,
-            bool_constant<AZStd::invocable<F, iter_reference_t<Is>...>>>,
+    using indirect_result_t = typename Internal::indirect_result<
+            ((indirectly_readable<Is> && ...) && AZStd::invocable<F, iter_reference_t<Is>...>),
         F, Is...>::type;
 
     // https://eel.is/c++draft/iterators#projected
@@ -612,17 +455,17 @@ namespace AZStd
     struct projected;
 
     template<class I, class Proj>
-    struct projected<
-        I,
-        Proj,
-        enable_if_t<conjunction_v<bool_constant<indirectly_readable<I>>, bool_constant<indirectly_regular_unary_invocable<Proj, I>>>>>
+        requires indirectly_readable<I>
+            && indirectly_regular_unary_invocable<Proj, I>
+    struct projected<I, Proj, void>
     {
         using value_type = remove_cvref_t<indirect_result_t<Proj&, I>>;
         indirect_result_t<Proj&, I> operator*() const; // not defined
     };
 
     template <class I, class Proj>
-    struct incrementable_traits<projected<I, Proj>, enable_if_t<weakly_incrementable<I>>>
+        requires weakly_incrementable<I>
+    struct incrementable_traits<projected<I, Proj>, void>
     {
         using difference_type = iter_difference_t<I>;
     };

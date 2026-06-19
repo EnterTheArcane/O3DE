@@ -121,13 +121,16 @@ namespace AZStd
             assign(count, ch);
         }
 
-        template<class InputIt, typename = enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_t>>>
+        template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_t>)
         inline basic_string(InputIt first, InputIt last, const Allocator& alloc = Allocator())
             : m_storage{ skip_element_tag{}, alloc }
         {   // construct from [first, last)
             assign(first, last);
         }
-        template<class R, class = enable_if_t<Internal::container_compatible_range<R, value_type>>>
+        template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         basic_string(from_range_t, R&& rg, const Allocator& alloc = Allocator())
             : m_storage{ skip_element_tag{}, alloc }
         {
@@ -267,8 +270,10 @@ namespace AZStd
         }
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_type>)
         inline auto append(InputIt first, InputIt last)
-            -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, this_type&>
+            -> this_type&
         {   // append [first, last)
             if constexpr (contiguous_iterator<InputIt>
                 && is_same_v<iter_value_t<InputIt>, value_type>)
@@ -314,7 +319,8 @@ namespace AZStd
             return replace(end(), end(), first, last);
         }
         template<class R>
-        auto append_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_string&>
+            requires Internal::container_compatible_range<R, value_type>
+        auto append_range(R&& rg) -> basic_string&
         {
             return append(basic_string(from_range, AZStd::forward<R>(rg), get_allocator()));
         }
@@ -422,8 +428,10 @@ namespace AZStd
         }
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_type>)
         auto assign(InputIt first, InputIt last)
-            -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, this_type&>
+            -> this_type&
         {
             if constexpr (contiguous_iterator<InputIt>
                 && is_same_v<iter_value_t<InputIt>, value_type>)
@@ -463,7 +471,8 @@ namespace AZStd
             }
         }
         template<class R>
-        auto assign_range(R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_string&>
+            requires Internal::container_compatible_range<R, value_type>
+        auto assign_range(R&& rg) -> basic_string&
         {
             if constexpr (is_lvalue_reference_v<R>)
             {
@@ -586,8 +595,10 @@ namespace AZStd
         }
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_type>)
         auto insert(const_iterator insertPos, InputIt first, InputIt last)
-            -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, iterator>
+            -> iterator
         {   // insert [_First, _Last) at _Where
             size_type insertOffset = ranges::distance(cbegin(), insertPos);
             if constexpr (contiguous_iterator<InputIt>
@@ -632,7 +643,8 @@ namespace AZStd
         }
 
         template<class R>
-        auto insert_range(const_iterator insertPos, R&& rg) -> enable_if_t<Internal::container_compatible_range<R, value_type>, iterator>
+            requires Internal::container_compatible_range<R, value_type>
+        auto insert_range(const_iterator insertPos, R&& rg) -> iterator
         {
             size_t offset = insertPos - begin();
             insert(offset, basic_string(from_range, AZStd::forward<R>(rg), get_allocator()));
@@ -894,8 +906,10 @@ namespace AZStd
         }
 
         template<class InputIt>
+            requires input_iterator<InputIt>
+                && (!is_convertible_v<InputIt, size_type>)
         inline auto replace(const_iterator first, const_iterator last, InputIt replaceFirst, InputIt replaceLast)
-            -> enable_if_t<input_iterator<InputIt> && !is_convertible_v<InputIt, size_type>, this_type&>
+            -> this_type&
         {
             if constexpr (contiguous_iterator<InputIt>
                 && is_same_v<iter_value_t<InputIt>, value_type>)
@@ -942,8 +956,9 @@ namespace AZStd
         }
 
         template<class R>
+            requires Internal::container_compatible_range<R, value_type>
         auto replace_with_range(const_iterator first, const_iterator last, R&& rg)
-            -> enable_if_t<Internal::container_compatible_range<R, value_type>, basic_string&>
+            -> basic_string&
         {
             return replace(first, last, basic_string(from_range, AZStd::forward<R>(rg), get_allocator()));
         }
@@ -1927,7 +1942,8 @@ namespace AZStd
         AZStd::char_traits<iter_value_t<InputIt>>,
         Alloc>;
 
-    template<class R, class Alloc = allocator, class = enable_if_t<ranges::input_range<R>>>
+    template<class R, class Alloc = allocator>
+        requires ranges::input_range<R>
     basic_string(from_range_t, R&&, Alloc = Alloc())
         -> basic_string<ranges::range_value_t<R>, char_traits<ranges::range_value_t<R>>, Alloc>;
 

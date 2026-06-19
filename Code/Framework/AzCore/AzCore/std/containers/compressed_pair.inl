@@ -11,71 +11,73 @@
 
 namespace AZStd
 {
-    template <typename T, size_t Index, bool CanBeEmptyBase>
-    template <typename U, typename>
-    inline constexpr compressed_pair_element<T, Index, CanBeEmptyBase>::compressed_pair_element(U&& value)
+    template <typename T, size_t Index>
+    template <typename U>
+        requires (!AZStd::is_same_v<AZStd::remove_cvref_t<U>, compressed_pair_element<T, Index>>)
+    inline constexpr compressed_pair_element<T, Index>::compressed_pair_element(U&& value)
         : m_element{ AZStd::forward<U>(value) }
     {
     }
 
-    template <typename T, size_t Index, bool CanBeEmptyBase>
+    template <typename T, size_t Index>
     template <template <typename...> class TupleType, class... Args, size_t... Indices>
-    inline constexpr compressed_pair_element<T, Index, CanBeEmptyBase>::compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>)
+    inline constexpr compressed_pair_element<T, Index>::compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>)
         : m_element{ AZStd::forward<Args>(AZStd::get<Indices>(AZStd::forward<TupleType<Args...>>(args) ))... }
     {
         (void)args;
     }
 
 
-    template <typename T, size_t Index, bool CanBeEmptyBase>
-    inline constexpr T& compressed_pair_element<T, Index, CanBeEmptyBase>::get()
+    template <typename T, size_t Index>
+    inline constexpr T& compressed_pair_element<T, Index>::get()
     {
         return m_element;
     }
 
-    template <typename T, size_t Index, bool CanBeEmptyBase>
-    inline constexpr const T& compressed_pair_element<T, Index, CanBeEmptyBase>::get() const
+    template <typename T, size_t Index>
+    inline constexpr const T& compressed_pair_element<T, Index>::get() const
     {
         return m_element;
     }
 
     // compressed_pair_element specialization for a non-final empty base class.
     template <typename T, size_t Index>
-    template <typename U, typename>
-    inline constexpr compressed_pair_element<T, Index, true>::compressed_pair_element(U&& value)
-        : T{ AZStd::forward<U>(value) }
-    {
-    }
-
-    template <typename T, size_t Index>
+        requires std::is_empty_v<T>
+            && (!std::is_final_v<T>)
     template <template <typename...> class TupleType, class... Args, size_t... Indices>
-    inline constexpr compressed_pair_element<T, Index, true>::compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>)
+    inline constexpr compressed_pair_element<T, Index>::compressed_pair_element(AZStd::piecewise_construct_t, TupleType<Args...>&& args, AZStd::index_sequence<Indices...>)
         : T{ AZStd::forward<Args>(AZStd::get<Indices>(AZStd::forward<TupleType<Args...>>(args) ))... }
     {
         (void)args;
     }
 
     template <typename T, size_t Index>
-    inline constexpr T& compressed_pair_element<T, Index, true>::get()
+        requires std::is_empty_v<T>
+            && (!std::is_final_v<T>)
+    inline constexpr T& compressed_pair_element<T, Index>::get()
     {
         return *this;
     }
 
     template <typename T, size_t Index>
-    inline constexpr const T& compressed_pair_element<T, Index, true>::get() const
+        requires std::is_empty_v<T>
+            && (!std::is_final_v<T>)
+    inline constexpr const T& compressed_pair_element<T, Index>::get() const
     {
         return *this;
     }
 
     // compressed_pair implementation
     template <typename T1, typename T2>
-    template <typename, typename>
     inline constexpr compressed_pair<T1, T2>::compressed_pair()
+        requires AZStd::is_default_constructible_v<T1>
+            && AZStd::is_default_constructible_v<T2>
     {
     }
 
     template <typename T1, typename T2>
-    template <typename T, AZStd::enable_if_t<!is_same_v<remove_cvref_t<T>, compressed_pair<T1, T2>>, bool>>
+    template <typename T>
+        requires (!is_same_v<remove_cvref_t<T>, compressed_pair<T1, T2>>)
     inline constexpr compressed_pair<T1, T2>::compressed_pair(T&& firstElement)
         : first_base_type{ AZStd::forward<T>(firstElement) }
         , second_base_type{}

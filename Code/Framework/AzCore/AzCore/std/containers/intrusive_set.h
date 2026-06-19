@@ -506,16 +506,20 @@ namespace AZStd
         AZ_FORCE_INLINE iterator lower_bound(const KeyType& key) { return iterator(DoLowerBound(key)); }
         AZ_FORCE_INLINE const_iterator lower_bound(const KeyType& key) const { return const_iterator(DoLowerBound(key)); }
         template<class ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, iterator> lower_bound(const ComparableToKey& key) { return iterator(DoLowerBound(key)); }
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        iterator lower_bound(const ComparableToKey& key) { return iterator(DoLowerBound(key)); }
         template<class ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_iterator> lower_bound(const ComparableToKey& key) const { return const_iterator(DoLowerBound(key)); }
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        const_iterator lower_bound(const ComparableToKey& key) const { return const_iterator(DoLowerBound(key)); }
 
         AZ_FORCE_INLINE iterator upper_bound(const KeyType& key) { return iterator(DoUpperBound(key)); }
         AZ_FORCE_INLINE const_iterator upper_bound(const KeyType& key) const { return const_iterator(DoUpperBound(key)); }
         template<class ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, iterator> upper_bound(const ComparableToKey& key) { return iterator(DoUpperBound(key)); }
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        iterator upper_bound(const ComparableToKey& key) { return iterator(DoUpperBound(key)); }
         template<class ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_iterator> upper_bound(const ComparableToKey& key) const { return const_iterator(DoUpperBound(key)); }
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        const_iterator upper_bound(const ComparableToKey& key) const { return const_iterator(DoUpperBound(key)); }
         AZ_FORCE_INLINE iterator find(const KeyType& key)
         {
             T* found = DoLowerBound(key);
@@ -808,7 +812,8 @@ namespace AZStd
         }
 
         template<typename ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, node_ptr_type> DoLowerBound(const ComparableToKey& key)
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        node_ptr_type DoLowerBound(const ComparableToKey& key)
         {
             node_ptr_type endNode = get_head();
             node_ptr_type bestNode = get_head();
@@ -829,7 +834,8 @@ namespace AZStd
         }
 
         template<typename ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_node_ptr_type> DoLowerBound(const ComparableToKey& key) const
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        const_node_ptr_type DoLowerBound(const ComparableToKey& key) const
         {
             return const_cast<const_node_ptr_type>(const_cast<intrusive_multiset*>(this)->DoLowerBound(key));
         }
@@ -875,7 +881,8 @@ namespace AZStd
         }
 
         template<typename ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, node_ptr_type> DoUpperBound(const ComparableToKey& key)
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        node_ptr_type DoUpperBound(const ComparableToKey& key)
         {
             node_ptr_type endNode = get_head();
             node_ptr_type bestNode = get_head();
@@ -896,7 +903,8 @@ namespace AZStd
         }
 
         template<typename ComparableToKey>
-        enable_if_t<Internal::is_transparent<Compare, ComparableToKey>::value, const_node_ptr_type> DoUpperBound(const ComparableToKey& key) const
+            requires Internal::is_transparent_v<Compare, ComparableToKey>
+        const_node_ptr_type DoUpperBound(const ComparableToKey& key) const
         {
             return const_cast<const_node_ptr_type>(const_cast<intrusive_multiset*>(this)->DoUpperBound(key));
         }
@@ -1118,7 +1126,7 @@ namespace AZStd
          * So at this stage we consider the wasting a memory for a fake head node as the best solution, while we can debug the container.
          * This can change internally at any moment if needed, no interface change will occur.
          */
-        typename aligned_storage<sizeof(node_type), alignment_of<node_type>::value>::type m_head;
+        typename aligned_storage<sizeof(node_type), alignment_of_v<node_type>>::type m_head;
 
         AZStd::size_t   m_numElements;
         KeyCompare      m_keyCompare;

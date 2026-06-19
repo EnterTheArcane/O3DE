@@ -13,13 +13,11 @@
 
 namespace AZStd::ranges
 {
-    template<class View, class Pred, class = enable_if_t<conjunction_v<
-        bool_constant<input_range<View>>,
-        bool_constant<view<View>>,
-        is_object<Pred>,
-        bool_constant<indirect_unary_predicate<Pred, iterator_t<View>>>
-        >
-        >>
+    template<class View, class Pred>
+        requires input_range<View>
+            && view<View>
+            && is_object_v<Pred>
+            && indirect_unary_predicate<Pred, iterator_t<View>>
     class filter_view;
 
 
@@ -31,16 +29,16 @@ namespace AZStd::ranges
             struct filter_fn
                 : Internal::range_adaptor_closure<filter_fn>
             {
-                template <class View, class Pred, class = enable_if_t<conjunction_v<
-                    bool_constant<viewable_range<View>>
-                    >>>
+                template <class View, class Pred>
+                    requires viewable_range<View>
                 constexpr auto operator()(View&& view, Pred&& func) const
                 {
                     return filter_view(AZStd::forward<View>(view), AZStd::forward<Pred>(func));
                 }
 
                 // Create a range_adaptor forwarder which binds the pattern for later
-                template <class Pred, class = enable_if_t<constructible_from<decay_t<Pred>, Pred>>>
+                template <class Pred>
+                    requires constructible_from<decay_t<Pred>, Pred>
                 constexpr auto operator()(Pred&& func) const
                 {
                     return range_adaptor_closure_forwarder(
@@ -59,7 +57,11 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View, class Pred, class>
+    template<class View, class Pred>
+        requires input_range<View>
+            && view<View>
+            && is_object_v<Pred>
+            && indirect_unary_predicate<Pred, iterator_t<View>>
     class filter_view
         : public view_interface<filter_view<View, Pred>>
     {
@@ -67,9 +69,10 @@ namespace AZStd::ranges
         struct sentinel;
 
     public:
-        template <bool Enable = default_initializable<View> && default_initializable<Pred>,
-            class = enable_if_t<Enable>>
-        filter_view() {}
+        filter_view()
+            requires default_initializable<View>
+                && default_initializable<Pred>
+        {}
 
          constexpr filter_view(View base, Pred func)
             : m_base(AZStd::move(base))
@@ -77,8 +80,8 @@ namespace AZStd::ranges
         {
         }
 
-        template <bool Enable = copy_constructible<View>, class = enable_if_t<Enable>>
         constexpr View base() const&
+            requires copy_constructible<View>
         {
             return m_base;
         }
@@ -118,12 +121,12 @@ namespace AZStd::ranges
     template<class R, class Pred>
     filter_view(R&&, Pred) -> filter_view<views::all_t<R>, Pred>;
 
-    template<class View, class Pred, class = void>
+    template<class View, class Pred>
     struct filter_view_iterator_category {};
 
     template<class View, class Pred>
-    struct filter_view_iterator_category<View, Pred,
-        enable_if_t<forward_range<View> >>
+        requires forward_range<View>
+    struct filter_view_iterator_category<View, Pred>
     {
     private:
         // Use a "function" to check the type traits of the View iterator type
@@ -153,15 +156,13 @@ namespace AZStd::ranges
         using iterator_category = decltype(get_iterator_category());
     };
 
-    template<class View, class Pred, class ViewEnable>
-    struct filter_view<View, Pred, ViewEnable>::iterator
-        : enable_if_t<conjunction_v<
-        bool_constant<input_range<View>>,
-        bool_constant<view<View>>,
-        is_object<Pred>,
-        bool_constant<indirect_unary_predicate<Pred, iterator_t<View>>>
-        >, filter_view_iterator_category<View, Pred>
-       >
+    template<class View, class Pred>
+        requires input_range<View>
+            && view<View>
+            && is_object_v<Pred>
+            && indirect_unary_predicate<Pred, iterator_t<View>>
+    struct filter_view<View, Pred>::iterator
+        : filter_view_iterator_category<View, Pred>
     {
     private:
         friend struct sentinel;
@@ -193,8 +194,9 @@ namespace AZStd::ranges
         using reference = range_reference_t<View>;
     #endif
 
-        template<bool Enable = default_initializable<iterator_t<View>>, class = enable_if_t<Enable>>
-        iterator() {}
+        iterator()
+            requires default_initializable<iterator_t<View>>
+        {}
 
         constexpr iterator(Parent& parent, iterator_t<View> current)
             : m_current(AZStd::move(current))
@@ -217,8 +219,9 @@ namespace AZStd::ranges
             return *m_current;
         }
 
-        template<bool Enable = Internal::has_arrow<iterator_t<View>> && copyable<iterator_t<View>>, class = enable_if_t<Enable>>
         constexpr iterator_t<View> operator->() const
+            requires Internal::has_arrow<iterator_t<View>>
+                && copyable<iterator_t<View>>
         {
             return m_current;
         }
@@ -243,8 +246,8 @@ namespace AZStd::ranges
             }
         }
 
-        template<bool Enable = bidirectional_range<View>, class = enable_if_t<Enable>>
         constexpr iterator& operator--()
+            requires bidirectional_range<View>
         {
             do
             {
@@ -253,8 +256,8 @@ namespace AZStd::ranges
             return *this;
         }
 
-        template<bool Enable = bidirectional_range<View>, class = enable_if_t<Enable>>
         constexpr iterator operator--(int)
+            requires bidirectional_range<View>
         {
             auto tmp = *this;
             --(*this);
@@ -262,7 +265,8 @@ namespace AZStd::ranges
         }
 
         // equality_comparable
-        template<class ViewIter = iterator_t<View>, class = enable_if_t<equality_comparable<ViewIter>>>
+        template<class ViewIter = iterator_t<View>>
+            requires equality_comparable<ViewIter>
         friend constexpr bool operator==(const iterator& x, const iterator& y)
         {
             return x.m_current == y.m_current;
@@ -301,14 +305,12 @@ namespace AZStd::ranges
         struct requirements_fulfilled {};
     }
 
-    template<class View, class Pred, class ViewEnable>
-    struct filter_view<View, Pred, ViewEnable>::sentinel
-        : enable_if_t<conjunction_v<
-        bool_constant<input_range<View>>,
-        bool_constant<view<View>>,
-        is_object<Pred>,
-        bool_constant<indirect_unary_predicate<Pred, iterator_t<View>>>
-        >, FilterViewInternal::requirements_fulfilled>
+    template<class View, class Pred>
+        requires input_range<View>
+            && view<View>
+            && is_object_v<Pred>
+            && indirect_unary_predicate<Pred, iterator_t<View>>
+    struct filter_view<View, Pred>::sentinel
     {
     public:
         sentinel() = default;

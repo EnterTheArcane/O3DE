@@ -15,12 +15,11 @@ namespace AZStd::ranges
 {
     //! Generates a sequence of elements by repeating incrementing an initial element W
     //! up to Bound
-    template<class W, class Bound = unreachable_sentinel_t, class = enable_if_t<conjunction_v<
-        bool_constant<weakly_incrementable<W>>,
-        bool_constant<semiregular<Bound>>,
-        bool_constant<::AZStd::Internal::weakly_equality_comparable_with<W, Bound>>,
-        bool_constant<copyable<W>>
-    > >>
+    template<class W, class Bound = unreachable_sentinel_t>
+        requires weakly_incrementable<W>
+            && semiregular<Bound>
+            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+            && copyable<W>
     class iota_view;
 
     template<class W, class Bound>
@@ -79,7 +78,11 @@ namespace AZStd::ranges::Internal
 
 namespace AZStd::ranges
 {
-    template<class W, class Bound, class>
+    template<class W, class Bound>
+        requires weakly_incrementable<W>
+            && semiregular<Bound>
+            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+            && copyable<W>
     class iota_view
         : public view_interface<iota_view<W, Bound>>
     {
@@ -87,9 +90,9 @@ namespace AZStd::ranges
         struct sentinel;
 
     public:
-        template <bool Enable = default_initializable<W>,
-            class = enable_if_t<Enable>>
-        constexpr iota_view() {}
+        constexpr iota_view()
+            requires default_initializable<W>
+        {}
 
         explicit constexpr iota_view(W value)
             : m_value(AZStd::move(value))
@@ -108,14 +111,15 @@ namespace AZStd::ranges
 
         //! iterator and sentinel are not complete types at this point,
         //! so these construtors are defined after those types are defined
-        template<bool Enable = same_as<W, Bound>, class = enable_if_t<Enable>>
-        constexpr iota_view(iterator first, iterator last);
+        constexpr iota_view(iterator first, iterator last)
+            requires same_as<W, Bound>;
 
-        template<bool Enable = same_as<Bound, unreachable_sentinel_t>, class = enable_if_t<Enable>>
-        constexpr iota_view(iterator first, Bound last);
+        constexpr iota_view(iterator first, Bound last)
+            requires same_as<Bound, unreachable_sentinel_t>;
 
-        template<bool Enable = !same_as<W, Bound> && !same_as<Bound, unreachable_sentinel_t>, class = enable_if_t<Enable>>
-        constexpr iota_view(iterator first, sentinel last);
+        constexpr iota_view(iterator first, sentinel last)
+            requires (!same_as<W, Bound>)
+                && (!same_as<Bound, unreachable_sentinel_t>);
 
         constexpr auto begin() const
         {
@@ -138,11 +142,11 @@ namespace AZStd::ranges
             }
         }
 
-        template<bool Enable = (same_as<W, Bound> && Internal::advanceable<W>)
-            || (::AZStd::Internal::is_integer_like<W> && ::AZStd::Internal::is_integer_like<Bound>)
-            || sized_sentinel_for<Bound, W>,
-            class = enable_if_t<Enable>>
         constexpr auto size() const
+            requires same_as<W, Bound>
+                && Internal::advanceable<W>
+                || (::AZStd::Internal::is_integer_like<W> && ::AZStd::Internal::is_integer_like<Bound>)
+                || sized_sentinel_for<Bound, W>
         {
             if constexpr (::AZStd::Internal::is_integer_like<W> && ::AZStd::Internal::is_integer_like<Bound>)
             {
@@ -163,31 +167,28 @@ namespace AZStd::ranges
     };
 
     // deduction guides
-    template<class W, class Bound, class = enable_if_t<disjunction_v<
-        bool_constant<!::AZStd::Internal::is_integer_like<W>>,
-        bool_constant<!::AZStd::Internal::is_integer_like<Bound>>,
-        bool_constant<::AZStd::Internal::is_signed_integer_like<W> == ::AZStd::Internal::is_signed_integer_like<Bound>>
-        >>>
+    template<class W, class Bound>
+        requires (!::AZStd::Internal::is_integer_like<W>)
+            || (!::AZStd::Internal::is_integer_like<Bound>)
+            || (::AZStd::Internal::is_signed_integer_like<W> == ::AZStd::Internal::is_signed_integer_like<Bound>)
     iota_view(W, Bound) -> iota_view<W, Bound>;
 }
 
 namespace AZStd::ranges::Internal
 {
-    // Use for base class type in enable_if_t checks in iterator and sentinel
+    // Used as base type for iota_view iterator and sentinel
     struct iota_view_requirements_fulfilled {};
 }
 
 namespace AZStd::ranges
 {
     // iota iterator
-    template<class W, class Bound, class ViewEnable>
-    struct iota_view<W, Bound, ViewEnable>::iterator
-        : enable_if_t<conjunction_v<
-        bool_constant<weakly_incrementable<W>>,
-        bool_constant<semiregular<Bound>>,
-        bool_constant<::AZStd::Internal::weakly_equality_comparable_with<W, Bound>>,
-        bool_constant<copyable<W>>
-        >, Internal::iota_view_requirements_fulfilled>
+    template<class W, class Bound>
+        requires weakly_incrementable<W>
+            && semiregular<Bound>
+            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+            && copyable<W>
+    struct iota_view<W, Bound>::iterator
     {
     private:
         friend class iota_view;
@@ -217,9 +218,9 @@ namespace AZStd::ranges
         using reference = W;
 #endif
 
-        template<bool Enable = default_initializable<W>,
-            class = enable_if_t<Enable>>
-        constexpr iterator() {}
+        constexpr iterator()
+            requires default_initializable<W>
+        {}
 
         constexpr explicit iterator(W value)
             : m_value(value)
@@ -251,23 +252,23 @@ namespace AZStd::ranges
             }
         }
 
-        template<bool Enable = Internal::decrementable<W>, class = enable_if_t<Enable>>
         constexpr iterator& operator--()
+            requires Internal::decrementable<W>
         {
             --m_value;
             return *this;
         }
 
-        template<bool Enable = Internal::decrementable<W>, class = enable_if_t<Enable>>
         constexpr iterator operator--(int)
+            requires Internal::decrementable<W>
         {
             auto tmp = *this;
             --m_value;
             return tmp;
         }
 
-        template<bool Enable = Internal::advanceable<W>, class = enable_if_t<Enable>>
         constexpr iterator& operator+=(difference_type n)
+            requires Internal::advanceable<W>
         {
             if constexpr (AZStd::Internal::is_integer_like<W>)
             {
@@ -297,8 +298,8 @@ namespace AZStd::ranges
             return *this;
         }
 
-        template<bool Enable = Internal::advanceable<W>, class = enable_if_t<Enable>>
         constexpr iterator& operator-=(difference_type n)
+            requires Internal::advanceable<W>
         {
             if constexpr (AZStd::Internal::is_integer_like<W>)
             {
@@ -328,8 +329,8 @@ namespace AZStd::ranges
             return *this;
         }
 
-        template<bool Enable = Internal::advanceable<W>, class = enable_if_t<Enable>>
         constexpr W operator[](difference_type n) const
+            requires Internal::advanceable<W>
         {
             if constexpr (AZStd::Internal::is_integer_like<W>)
             {
@@ -341,60 +342,60 @@ namespace AZStd::ranges
             }
         }
 
-        template<bool Enable = equality_comparable<W>, class = enable_if_t<Enable>>
         friend constexpr bool operator==(const iterator& x, const iterator& y)
+            requires equality_comparable<W>
         {
             return x.m_value == y.m_value;
         }
-        template<bool Enable = equality_comparable<W>, class = enable_if_t<Enable>>
         friend constexpr bool operator!=(const iterator& x, const iterator& y)
+            requires equality_comparable<W>
         {
             return !operator==(x, y);
         }
 
-        template<bool Enable = totally_ordered<W>, class = enable_if_t<Enable>>
         friend constexpr bool operator<(const iterator& x, const iterator& y)
+            requires totally_ordered<W>
         {
             return x.m_value < y.m_value;
         }
-        template<bool Enable = totally_ordered<W>, class = enable_if_t<Enable>>
         friend constexpr bool operator>(const iterator& x, const iterator& y)
+            requires totally_ordered<W>
         {
             return operator<(y, x);
         }
-        template<bool Enable = totally_ordered<W>, class = enable_if_t<Enable>>
         friend constexpr bool operator<=(const iterator& x, const iterator& y)
+            requires totally_ordered<W>
         {
             return !operator<(y, x);
         }
-        template<bool Enable = totally_ordered<W>, class = enable_if_t<Enable>>
         friend constexpr bool operator>=(const iterator& x, const iterator& y)
+            requires totally_ordered<W>
         {
             return !operator<(x, y);
         }
 
-        template<bool Enable = Internal::advanceable<W>, class = enable_if_t<Enable>>
         friend constexpr iterator operator+(iterator i, difference_type n)
+            requires Internal::advanceable<W>
         {
             i += n;
             return i;
         }
-        template<bool Enable = Internal::advanceable<W>, class = enable_if_t<Enable>>
         friend constexpr iterator operator+(difference_type n, iterator i)
+            requires Internal::advanceable<W>
         {
             i += n;
             return i;
         }
 
-        template<bool Enable = Internal::advanceable<W>, class = enable_if_t<Enable>>
         friend constexpr iterator operator-(iterator i, difference_type n)
+            requires Internal::advanceable<W>
         {
             i -= n;
             return i;
         }
 
-        template<bool Enable = Internal::advanceable<W>, class = enable_if_t<Enable>>
         friend constexpr difference_type operator-(const iterator& x, const iterator& y)
+            requires Internal::advanceable<W>
         {
             if constexpr (::AZStd::Internal::is_integer_like<W>)
             {
@@ -420,14 +421,12 @@ namespace AZStd::ranges
     };
 
     // sentinel type for iota
-    template<class W, class Bound, class ViewEnable>
-    struct iota_view<W, Bound, ViewEnable>::sentinel
-        : enable_if_t<conjunction_v<
-        bool_constant<weakly_incrementable<W>>,
-        bool_constant<semiregular<Bound>>,
-        bool_constant<::AZStd::Internal::weakly_equality_comparable_with<W, Bound>>,
-        bool_constant<copyable<W>>
-        >, Internal::iota_view_requirements_fulfilled>
+    template<class W, class Bound>
+        requires weakly_incrementable<W>
+            && semiregular<Bound>
+            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+            && copyable<W>
+    struct iota_view<W, Bound>::sentinel
     {
     private:
         friend class iota_view;
@@ -456,14 +455,14 @@ namespace AZStd::ranges
             return !operator==(x, y);
         }
 
-        template<bool Enable = sized_sentinel_for<Bound, W>, class = enable_if_t<Enable>>
         friend constexpr iter_difference_t<W> operator-(const iterator& x, const sentinel& y)
+            requires sized_sentinel_for<Bound, W>
         {
             return iterator_accessor(x) - y.m_bound;
         }
 
-        template<bool Enable = sized_sentinel_for<Bound, W>, class = enable_if_t<Enable>>
         friend constexpr iter_difference_t<W> operator-(const sentinel& x, const iterator& y)
+            requires sized_sentinel_for<Bound, W>
         {
             return -(y - x);
         }
@@ -482,23 +481,36 @@ namespace AZStd::ranges
     };
 
     //! iota_view iterator and sentinel constructor definitions
-    template<class W, class Bound, class ViewEnable>
-    template<bool, class>
-    constexpr iota_view<W, Bound, ViewEnable>::iota_view(iterator first, iterator last)
+    template<class W, class Bound>
+        requires weakly_incrementable<W>
+            && semiregular<Bound>
+            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+            && copyable<W>
+    constexpr iota_view<W, Bound>::iota_view(iterator first, iterator last)
+        requires same_as<W, Bound>
         : m_value(AZStd::move(first.m_value))
         , m_bound(AZStd::move(last.m_value))
     {}
 
-    template<class W, class Bound, class ViewEnable>
-    template<bool, class>
-    constexpr iota_view<W, Bound, ViewEnable>::iota_view(iterator first, Bound last)
+    template<class W, class Bound>
+        requires weakly_incrementable<W>
+            && semiregular<Bound>
+            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+            && copyable<W>
+    constexpr iota_view<W, Bound>::iota_view(iterator first, Bound last)
+        requires same_as<Bound, unreachable_sentinel_t>
         : m_value(AZStd::move(first.m_value))
         , m_bound(unreachable_sentinel)
     {}
 
-    template<class W, class Bound, class ViewEnable>
-    template<bool, class>
-    constexpr iota_view<W, Bound, ViewEnable>::iota_view(iterator first, sentinel last)
+    template<class W, class Bound>
+        requires weakly_incrementable<W>
+            && semiregular<Bound>
+            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+            && copyable<W>
+    constexpr iota_view<W, Bound>::iota_view(iterator first, sentinel last)
+        requires (!same_as<W, Bound>)
+            && (!same_as<Bound, unreachable_sentinel_t>)
         : m_value(AZStd::move(first.m_value))
         , m_bound(AZStd::move(last.m_boundSentinel))
     {}

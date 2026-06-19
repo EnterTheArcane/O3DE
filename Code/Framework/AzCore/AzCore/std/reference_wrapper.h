@@ -16,7 +16,7 @@ namespace AZStd
     using std::reference_wrapper;
     using std::ref;
     using std::cref;
-    
+
     template<typename T>
     class is_reference_wrapper
         : public AZStd::false_type
@@ -60,4 +60,7 @@ namespace AZStd
     AUX_REFERENCE_WRAPPER_METAFUNCTIONS_DEF(reference_wrapper<T> volatile)
     AUX_REFERENCE_WRAPPER_METAFUNCTIONS_DEF(reference_wrapper<T> const volatile)
 #undef AUX_REFERENCE_WRAPPER_METAFUNCTIONS_DEF
+
+    template<class T>
+    inline constexpr bool is_reference_wrapper_v = is_reference_wrapper<T>::value;
 }

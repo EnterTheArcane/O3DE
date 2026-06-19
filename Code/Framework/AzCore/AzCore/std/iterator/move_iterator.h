@@ -24,7 +24,8 @@ namespace AZStd::Internal
     struct move_iterator_iter_category {};
 
     template<class I>
-    struct move_iterator_iter_category<I, void_t<typename ITER_TRAITS<I>::iterator_category>>
+        requires requires { typename ITER_TRAITS<I>::iterator_category; }
+    struct move_iterator_iter_category<I>
     {
         using iterator_category = conditional_t<
             derived_from<typename ITER_TRAITS<I>::iterator_category, random_access_iterator_tag>,
@@ -38,7 +39,7 @@ namespace AZStd
 {
     // C++20 compliant move_iterator implementation
     // https://eel.is/c++draft/iterators#move.iterators
-    template<class I>
+    template<input_or_output_iterator I>
     class move_iterator
         : public Internal::move_iterator_iter_category<I>
     {
@@ -54,19 +55,25 @@ namespace AZStd
         using pointer = I;
         using reference = iter_rvalue_reference_t<I>;
 
-        constexpr move_iterator() = default;
+        constexpr move_iterator()
+            requires default_initializable<I>
+        = default;
         constexpr move_iterator(I i)
             : m_current{ AZStd::move(i) }
         {
         }
 
-        template<class I2, class = enable_if_t<!same_as<I2, I> && convertible_to<const I2&, I>>>
+        template<class I2>
+            requires (!same_as<I2, I>)
+                && convertible_to<const I2&, I>
         constexpr move_iterator(const move_iterator<I2>& other)
             : m_current{ other.m_current }
         {
         }
 
-        template<class I2, class = enable_if_t<!same_as<I2, I>&& convertible_to<const I2&, I>>>
+        template<class I2>
+            requires (!same_as<I2, I>)
+                && convertible_to<const I2&, I>
         constexpr move_iterator& operator=(const move_iterator<I2>& other)
         {
             m_current = other.m_current;
@@ -146,40 +153,40 @@ namespace AZStd
 
         // comparison
         template<class I2>
-        friend constexpr auto operator==(const move_iterator& x, const move_iterator<I2>& y)
-            -> enable_if_t<equality_comparable_with<I, I2>, bool>
+            requires equality_comparable_with<I, I2>
+        friend constexpr bool operator==(const move_iterator& x, const move_iterator<I2>& y)
         {
             return x.base() == y.base();
 
         }
         template<class I2>
-        friend constexpr auto operator!=(const move_iterator& x, const move_iterator<I2>& y)
-            -> enable_if_t<equality_comparable_with<I, I2>, bool>
+            requires equality_comparable_with<I, I2>
+        friend constexpr bool operator!=(const move_iterator& x, const move_iterator<I2>& y)
         {
             return !operator==(x, y);
         }
 
         template<class I2>
-        friend constexpr auto operator<(const move_iterator& x, const move_iterator<I2>& y)
-            -> enable_if_t<convertible_to<decltype(declval<I>() < declval<I2>()), bool>, bool>
+            requires requires { { declval<I>() < declval<I2>() } -> convertible_to<bool>; }
+        friend constexpr bool operator<(const move_iterator& x, const move_iterator<I2>& y)
         {
             return x.base() < y.base();
         }
         template<class I2>
-        friend constexpr auto operator>(const move_iterator& x, const move_iterator<I2>& y)
-            ->enable_if_t<convertible_to<decltype(declval<I>() < declval<I2>()), bool>, bool>
+            requires requires { { declval<I>() < declval<I2>() } -> convertible_to<bool>; }
+        friend constexpr bool operator>(const move_iterator& x, const move_iterator<I2>& y)
         {
             return operator<(y, x);
         }
         template<class I2>
-        friend constexpr auto operator<=(const move_iterator& x, const move_iterator<I2>& y)
-            ->enable_if_t<convertible_to<decltype(declval<I>() < declval<I2>()), bool>, bool>
+            requires requires { { declval<I>() < declval<I2>() } -> convertible_to<bool>; }
+        friend constexpr bool operator<=(const move_iterator& x, const move_iterator<I2>& y)
         {
             return !operator<(y, x);
         }
         template<class I2>
-        friend constexpr auto operator>=(const move_iterator& x, const move_iterator<I2>& y)
-            ->enable_if_t<convertible_to<decltype(declval<I>() < declval<I2>()), bool>, bool>
+            requires requires { { declval<I>() < declval<I2>() } -> convertible_to<bool>; }
+        friend constexpr bool operator>=(const move_iterator& x, const move_iterator<I2>& y)
         {
             return !operator<(x, y);
         }
@@ -197,7 +204,8 @@ namespace AZStd
             return ranges::iter_move(i.base());
         }
 
-        template<class I2, enable_if_t<indirectly_swappable<I2, I>>>
+        template<class I2>
+            requires indirectly_swappable<I2, I>
         friend constexpr void iter_swap(const move_iterator& x, const move_iterator<I2>& y)
             noexcept(noexcept(ranges::iter_swap(declval<const I&>(), declval<const I2&>())))
         {

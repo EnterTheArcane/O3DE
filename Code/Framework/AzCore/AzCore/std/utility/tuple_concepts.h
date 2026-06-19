@@ -63,32 +63,34 @@ namespace AZStd
 namespace std
 {
     template<class... TTypes, class... UTypes, template<class> class TQual, template<class> class UQual>
+        requires requires { typename AZStd::tuple<AZStd::common_reference_t<TQual<TTypes>, UQual<UTypes>>...>; }
     struct basic_common_reference<AZStd::tuple<TTypes...>, AZStd::tuple<UTypes...>, TQual, UQual>
-        : AZStd::enable_if_t<AZStd::Internal::sfinae_trigger_v<AZStd::tuple<AZStd::common_reference_t<TQual<TTypes>, UQual<UTypes>>...>>,
-        AZStd::Internal::requirements_fulfilled>
     {
         using type = AZStd::tuple<AZStd::common_reference_t<TQual<TTypes>, UQual<UTypes>>...>;
     };
 
     template<class T1, class T2, class U1, class U2, template<class> class TQual, template<class> class UQual>
+        requires requires {
+            typename AZStd::common_reference_t<TQual<T1>, UQual<U1>>;
+            typename AZStd::common_reference_t<TQual<T2>, UQual<U2>>;
+        }
     struct basic_common_reference<AZStd::pair<T1, T2>, AZStd::pair<U1, U2>, TQual, UQual>
-        : AZStd::enable_if_t<AZStd::Internal::sfinae_trigger_v<AZStd::common_reference_t<TQual<T1>, UQual<U1>>, AZStd::common_reference_t<TQual<T2>, UQual<U2>>>,
-        AZStd::Internal::requirements_fulfilled>
     {
         using type = AZStd::pair<AZStd::common_reference_t<TQual<T1>, UQual<U1>>, AZStd::common_reference_t<TQual<T2>, UQual<U2>>>;
     };
 
     template<class... TTypes, class... UTypes>
+        requires requires { typename tuple<common_type_t<TTypes, UTypes>...>; }
     struct common_type<tuple<TTypes...>, tuple<UTypes...>>
-        : AZStd::enable_if_t<AZStd::Internal::sfinae_trigger_v<tuple<common_type_t<TTypes, UTypes>...>>,
-        AZStd::Internal::requirements_fulfilled>
     {
         using type = tuple<common_type_t<TTypes, UTypes>...>;
     };
     template<class T1, class T2, class U1, class U2>
+        requires requires {
+            typename common_type_t<T1, U1>;
+            typename common_type_t<T2, U2>;
+        }
     struct common_type<AZStd::pair<T1, T2>, AZStd::pair<U1, U2>>
-        : AZStd::enable_if_t<AZStd::Internal::sfinae_trigger_v<common_type_t<T1, U1>, common_type_t<T2, U2>>,
-        AZStd::Internal::requirements_fulfilled>
     {
         using type = AZStd::pair<common_type_t<T1, U1>, common_type_t<T2, U2>>;
     };
