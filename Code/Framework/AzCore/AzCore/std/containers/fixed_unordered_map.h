@@ -116,8 +116,7 @@ namespace AZStd
             base_type::rehash(numBucketsHint);
             base_type::insert(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_map(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal())
             : base_type(hash, keyEqual)
@@ -147,8 +146,7 @@ namespace AZStd
             : fixed_unordered_map(f, l, n, hf, key_equal())
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_map(from_range_t, R&& rg, size_type n, const hasher& hf)
             : fixed_unordered_map(from_range, AZStd::forward<R>(rg), n, hf, key_equal())
         {
@@ -281,8 +279,7 @@ namespace AZStd
             base_type::rehash(numBucketsHint);
             base_type::insert(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_multimap(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal())
             : base_type(hash, keyEqual)
@@ -312,8 +309,7 @@ namespace AZStd
             : fixed_unordered_multimap(f, l, n, hf, key_equal())
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_multimap(from_range_t, R&& rg, size_type n, const hasher& hf)
             : fixed_unordered_multimap(from_range, AZStd::forward<R>(rg), n, hf, key_equal())
         {

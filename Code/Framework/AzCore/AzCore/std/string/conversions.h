@@ -547,9 +547,8 @@ namespace AZStd
         }
     }
 
-    template<class Range>
-        requires ranges::range<Range>
-            && indirectly_copyable<ranges::iterator_t<Range>, ranges::iterator_t<Range>>
+    template<ranges::range Range>
+        requires indirectly_copyable<ranges::iterator_t<Range>, ranges::iterator_t<Range>>
     auto to_lower(Range&& r, const std::locale& loc = {})
         -> void
     {
@@ -566,9 +565,8 @@ namespace AZStd
         }
     }
 
-    template<class Range>
-        requires ranges::range<Range>
-            && indirectly_copyable<ranges::iterator_t<Range>, ranges::iterator_t<Range>>
+    template<ranges::range Range>
+        requires indirectly_copyable<ranges::iterator_t<Range>, ranges::iterator_t<Range>>
     auto to_upper(Range&& r, const std::locale& loc = {})
         -> void
     {

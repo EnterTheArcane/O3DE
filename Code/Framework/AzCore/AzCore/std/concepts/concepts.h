@@ -300,21 +300,18 @@ namespace AZStd::Internal
     template<class I, class = void>
     struct iter_concept;
 
-    template<class I>
-        requires use_traits_iterator_concept_for_concept<I>
+    template<use_traits_iterator_concept_for_concept I>
     struct iter_concept<I, void>
     {
         using type = typename ITER_TRAITS<I>::iterator_concept;
     };
-    template<class I>
-        requires use_traits_iterator_category_for_concept<I>
+    template<use_traits_iterator_category_for_concept I>
     struct iter_concept<I, void>
     {
         using type = typename ITER_TRAITS<I>::iterator_category;
     };
 
-    template<class I>
-        requires use_random_access_iterator_tag_for_concept<I>
+    template<use_random_access_iterator_tag_for_concept I>
     struct iter_concept<I, void>
     {
         using type = random_access_iterator_tag;

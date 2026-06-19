@@ -12,9 +12,8 @@
 
 namespace AZStd::ranges
 {
-    template<class T>
-        requires move_constructible<T>
-            && is_object_v<T>
+    template<move_constructible T>
+        requires is_object_v<T>
     class single_view;
 
     namespace views
@@ -36,16 +35,14 @@ namespace AZStd::ranges
         }
     }
 
-    template<class T>
-        requires move_constructible<T>
-            && is_object_v<T>
+    template<move_constructible T>
+        requires is_object_v<T>
     class single_view
         : public view_interface<single_view<T>>
     {
     public:
 
-        template<class T2 = T>
-            requires default_initializable<T2>
+        template<default_initializable T2 = T>
         single_view() {}
         constexpr explicit single_view(const T& t)
             : m_value(in_place, t)

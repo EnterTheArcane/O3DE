@@ -14,9 +14,8 @@
 
 namespace AZStd::ranges
 {
-    template<class View, class Pred>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pred>
+        requires view<View>
             && is_object_v<Pred>
             && indirect_unary_predicate<Pred, iterator_t<View>>
     class filter_view;
@@ -30,8 +29,7 @@ namespace AZStd::ranges
             struct filter_fn
                 : Internal::range_adaptor_closure<filter_fn>
             {
-                template <class View, class Pred>
-                    requires viewable_range<View>
+                template <viewable_range View, class Pred>
                 constexpr auto operator()(View&& view, Pred&& func) const
                 {
                     return filter_view(AZStd::forward<View>(view), AZStd::forward<Pred>(func));
@@ -58,9 +56,8 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View, class Pred>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pred>
+        requires view<View>
             && is_object_v<Pred>
             && indirect_unary_predicate<Pred, iterator_t<View>>
     class filter_view
@@ -125,8 +122,7 @@ namespace AZStd::ranges
     template<class View, class Pred>
     struct filter_view_iterator_category {};
 
-    template<class View, class Pred>
-        requires forward_range<View>
+    template<forward_range View, class Pred>
     struct filter_view_iterator_category<View, Pred>
     {
     private:
@@ -157,9 +153,8 @@ namespace AZStd::ranges
         using iterator_category = decltype(get_iterator_category());
     };
 
-    template<class View, class Pred>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pred>
+        requires view<View>
             && is_object_v<Pred>
             && indirect_unary_predicate<Pred, iterator_t<View>>
     struct filter_view<View, Pred>::iterator
@@ -266,8 +261,7 @@ namespace AZStd::ranges
         }
 
         // equality_comparable
-        template<class ViewIter = iterator_t<View>>
-            requires equality_comparable<ViewIter>
+        template<equality_comparable ViewIter = iterator_t<View>>
         friend constexpr bool operator==(const iterator& x, const iterator& y)
         {
             return x.m_current == y.m_current;
@@ -306,9 +300,8 @@ namespace AZStd::ranges
         struct requirements_fulfilled {};
     }
 
-    template<class View, class Pred>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pred>
+        requires view<View>
             && is_object_v<Pred>
             && indirect_unary_predicate<Pred, iterator_t<View>>
     struct filter_view<View, Pred>::sentinel

@@ -14,9 +14,8 @@
 
 namespace AZStd::ranges
 {
-    template<class View>
-        requires bidirectional_range<View>
-            && view<View>
+    template<bidirectional_range View>
+        requires view<View>
     class reverse_view;
 
 
@@ -43,8 +42,7 @@ namespace AZStd::ranges
             struct reverse_fn
                 : Internal::range_adaptor_closure<reverse_fn>
             {
-                template <class View>
-                    requires viewable_range<View>
+                template <viewable_range View>
                 constexpr auto operator()(View&& view) const
                 {
                     if constexpr (is_reverse_view<AZStd::remove_cvref_t<View>>)
@@ -73,9 +71,8 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View>
-        requires bidirectional_range<View>
-            && view<View>
+    template<bidirectional_range View>
+        requires view<View>
     class reverse_view
         : public view_interface<reverse_view<View>>
     {

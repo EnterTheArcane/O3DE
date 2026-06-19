@@ -107,8 +107,7 @@ namespace AZStd::Internal
         //! Invokes destructor on all elements in range
         //! No-op on empty container
         //! Nothing to destroy since the storage is empty.
-        template <typename InputIt>
-            requires input_iterator<InputIt>
+        template <input_iterator InputIt>
         static constexpr void unsafe_destroy(InputIt, InputIt) noexcept
         {
         }
@@ -223,8 +222,7 @@ namespace AZStd::Internal
         //!  Destructs elements in the range [begin, end).
         //! This does not modify the size of the storage
         //! This is a no-op for trivial types
-        template <typename InputIt>
-            requires input_iterator<InputIt>
+        template <input_iterator InputIt>
         void unsafe_destroy(InputIt, InputIt) noexcept
         {
         }
@@ -346,8 +344,7 @@ namespace AZStd::Internal
         //! Destructs elements in the range [begin, end).
         //! This does not modify the size of the storage
         //! Invokes the destuctor via the AZStd::destroy method
-        template <typename InputIt>
-            requires input_iterator<InputIt>
+        template <input_iterator InputIt>
         void unsafe_destroy(InputIt first, InputIt last) noexcept(is_nothrow_destructible_v<value_type>)
         {
             AZSTD_CONTAINER_ASSERT(first >= data() && first <= data() + size(), "begin iterator is not in range of storage");
@@ -423,8 +420,7 @@ namespace AZStd
             AZStd::uninitialized_fill_n(data(), numElements, value);
         }
 
-        template <class InputIt>
-            requires input_iterator<InputIt>
+        template <input_iterator InputIt>
         fixed_vector(InputIt first, InputIt last)
         {
             resize_no_construct(AZStd::ranges::distance(first, last));
@@ -450,8 +446,7 @@ namespace AZStd
             rhs.clear();
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_vector(from_range_t, R&& rg)
         {
             assign_range(AZStd::forward<R>(rg));
@@ -522,8 +517,7 @@ namespace AZStd
         // extension method
         using base_type::resize_no_construct;
 
-        template<class R>
-            requires Internal::container_compatible_range<R, T>
+        template<Internal::container_compatible_range<T> R>
         void append_range(R&& rg)
         {
             insert_range(end(), AZStd::forward<R>(rg));
@@ -630,8 +624,7 @@ namespace AZStd
             insert(end(), numElements, value);
         }
 
-        template <class InputIt>
-            requires input_iterator<InputIt>
+        template <input_iterator InputIt>
         void assign(InputIt first, InputIt last)
         {
             clear();
@@ -643,8 +636,7 @@ namespace AZStd
             assign(ilist.begin(), ilist.end());
         }
 
-        template <typename R>
-            requires Internal::container_compatible_range<R, value_type>
+        template <Internal::container_compatible_range<value_type> R>
         void assign_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -750,8 +742,7 @@ namespace AZStd
             }
         }
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
+        template<input_iterator InputIt>
         iterator insert(const_iterator insertPos, InputIt first, InputIt last)
         {
             // specialize for iterator categories.
@@ -759,8 +750,7 @@ namespace AZStd
             return insert_iter(insertPos, first, last);
         };
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         iterator insert_range(const_iterator insertPos, R&& rg)
         {
             // specialize for iterator categories.

@@ -12,17 +12,15 @@
 
 namespace AZStd::ranges
 {
-    template<class R>
-        requires ranges::range<R>
-            && movable<R>
+    template<ranges::range R>
+        requires movable<R>
             && (!Internal::is_initializer_list<remove_cvref_t<R>>)
     class owning_view
         : public ranges::view_interface<owning_view<R>>
     {
     public:
 
-        template<class T = R>
-            requires default_initializable<T>
+        template<default_initializable T = R>
         constexpr owning_view() {}
 
         constexpr owning_view(R&& t)

@@ -16,9 +16,8 @@ namespace AZStd::ranges
 {
     //! presents a view of the underlying sequence as a constant.
     //! Elements of const_view cannot be modified
-    template<class View>
-        requires input_range<View>
-            && view<View>
+    template<input_range View>
+        requires view<View>
     class as_const_view;
 }
 
@@ -87,9 +86,8 @@ namespace AZStd::ranges::Internal
 
 namespace AZStd::ranges
 {
-    template<class View>
-        requires input_range<View>
-            && view<View>
+    template<input_range View>
+        requires view<View>
     class as_const_view
         : public view_interface<as_const_view<View>>
     {

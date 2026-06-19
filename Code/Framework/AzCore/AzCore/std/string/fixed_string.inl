@@ -68,9 +68,8 @@ namespace AZStd
 
     // #6
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class InputIt>
-        requires input_iterator<InputIt>
-            && (!is_convertible_v<InputIt, size_t>)
+    template<input_iterator InputIt>
+        requires (!is_convertible_v<InputIt, size_t>)
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(InputIt first, InputIt last)
     {   // construct from [first, last)
         assign(first, last);
@@ -78,8 +77,7 @@ namespace AZStd
 
     // https://eel.is/c++draft/strings#string.cons-18
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class R>
-        requires Internal::container_compatible_range<R, Element>
+    template<Internal::container_compatible_range<Element> R>
     inline constexpr basic_fixed_string<Element, MaxElementCount, Traits>::basic_fixed_string(from_range_t, R&& rg)
     {
         assign_range(AZStd::forward<R>(rg));
@@ -341,9 +339,8 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class InputIt>
-        requires input_iterator<InputIt>
-            && (!is_convertible_v<InputIt, size_t>)
+    template<input_iterator InputIt>
+        requires (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::append(InputIt first, InputIt last)
         -> basic_fixed_string&
     {
@@ -385,8 +382,7 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class R>
-        requires Internal::container_compatible_range<R, Element>
+    template<Internal::container_compatible_range<Element> R>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::append_range(R&& rg)
         -> basic_fixed_string&
     {
@@ -490,9 +486,8 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class InputIt>
-        requires input_iterator<InputIt>
-            && (!is_convertible_v<InputIt, size_t>)
+    template<input_iterator InputIt>
+        requires (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::assign(InputIt first, InputIt last)
         -> basic_fixed_string&
     {
@@ -534,8 +529,7 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class R>
-        requires Internal::container_compatible_range<R, Element>
+    template<Internal::container_compatible_range<Element> R>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::assign_range(R&& rg)
         -> basic_fixed_string&
     {
@@ -678,9 +672,8 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class InputIt>
-        requires input_iterator<InputIt>
-            && (!is_convertible_v<InputIt, size_t>)
+    template<input_iterator InputIt>
+        requires (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::insert(const_iterator insertPos,
         InputIt first, InputIt last) -> iterator
     {   // insert [_First, _Last) at _Where
@@ -725,8 +718,7 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class R>
-        requires Internal::container_compatible_range<R, Element>
+    template<Internal::container_compatible_range<Element> R>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::insert_range(const_iterator insertPos, R&& rg)
         -> iterator
     {
@@ -994,9 +986,8 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class InputIt>
-        requires input_iterator<InputIt>
-            && (!is_convertible_v<InputIt, size_t>)
+    template<input_iterator InputIt>
+        requires (!is_convertible_v<InputIt, size_t>)
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace(const_iterator first, const_iterator last,
         InputIt replaceFirst, InputIt replaceLast) -> basic_fixed_string&
     {   // replace [first, last) with [replaceFirst,replaceLast)
@@ -1043,8 +1034,7 @@ namespace AZStd
     }
 
     template<class Element, size_t MaxElementCount, class Traits>
-    template<class R>
-        requires Internal::container_compatible_range<R, Element>
+    template<Internal::container_compatible_range<Element> R>
     inline constexpr auto basic_fixed_string<Element, MaxElementCount, Traits>::replace_with_range(
         const_iterator first, const_iterator last, R&& rg)
         -> basic_fixed_string&

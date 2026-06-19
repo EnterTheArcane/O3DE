@@ -84,8 +84,7 @@ namespace AZStd
         {
             m_tree.insert_unique(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         set(from_range_t, R&& rg, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
@@ -120,8 +119,7 @@ namespace AZStd
             : set(first, last, Compare(), alloc)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         set(from_range_t, R&& rg, const Allocator& a)
             : set(from_range, AZStd::forward<R>(rg), Compare(), a)
         {
@@ -155,8 +153,7 @@ namespace AZStd
         {
             m_tree.insert_unique(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         void insert_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -389,8 +386,7 @@ namespace AZStd
         ->set<iter_value_type<InputIterator>,
         less<iter_value_type<InputIterator>>, Allocator>;
 
-    template<class R, class Allocator>
-        requires ranges::input_range<R>
+    template<ranges::input_range R, class Allocator>
     set(from_range_t, R&&, Allocator)
         ->set<ranges::range_value_t<R>, less<ranges::range_value_t<R>>, Allocator>;
 
@@ -448,8 +444,7 @@ namespace AZStd
         {
             m_tree.insert_equal(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         multiset(from_range_t, R&& rg, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
@@ -484,8 +479,7 @@ namespace AZStd
             : multiset(first, last, Compare(), alloc)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         multiset(from_range_t, R&& rg, const Allocator& a)
             : multiset(from_range, AZStd::forward<R>(rg), Compare(), a)
         {
@@ -519,8 +513,7 @@ namespace AZStd
         {
             m_tree.insert_equal(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         void insert_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -754,8 +747,7 @@ namespace AZStd
         ->multiset<iter_value_type<InputIterator>,
         less<iter_value_type<InputIterator>>, Allocator>;
 
-    template<class R, class Allocator>
-        requires ranges::input_range<R>
+    template<ranges::input_range R, class Allocator>
     multiset(from_range_t, R&&, Allocator)
         ->multiset<ranges::range_value_t<R>, less<ranges::range_value_t<R>>, Allocator>;
 

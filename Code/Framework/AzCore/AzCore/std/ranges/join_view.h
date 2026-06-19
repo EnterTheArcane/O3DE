@@ -15,9 +15,8 @@
 
 namespace AZStd::ranges
 {
-    template<class View>
-        requires input_range<View>
-            && view<View>
+    template<input_range View>
+        requires view<View>
             && input_range<range_reference_t<View>>
     class join_view;
 
@@ -29,8 +28,7 @@ namespace AZStd::ranges
             struct join_view_fn
                 : Internal::range_adaptor_closure<join_view_fn>
             {
-                template <class View>
-                    requires viewable_range<View>
+                template <viewable_range View>
                 constexpr auto operator()(View&& view) const
                 {
                     return join_view(views::all(AZStd::forward<View>(view)));
@@ -43,9 +41,8 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View>
-        requires input_range<View>
-            && view<View>
+    template<input_range View>
+        requires view<View>
             && input_range<range_reference_t<View>>
     class join_view
         : public view_interface<join_view<View>>
@@ -81,9 +78,8 @@ namespace AZStd::ranges
             return iterator<UseConst>{ *this, ranges::begin(m_base) };
         }
 
-        template<class ConstView = const View>
-            requires input_range<ConstView>
-                && is_reference_v<range_reference_t<ConstView>>
+        template<input_range ConstView = const View>
+            requires is_reference_v<range_reference_t<ConstView>>
         constexpr auto begin() const
         {
             return iterator<true>{ *this, ranges::begin(m_base) };
@@ -101,9 +97,8 @@ namespace AZStd::ranges
                 return sentinel<Internal::simple_view<View>>{ *this };
             }
         }
-        template<class ConstView = const View>
-            requires input_range<ConstView>
-                && is_reference_v<range_reference_t<ConstView>>
+        template<input_range ConstView = const View>
+            requires is_reference_v<range_reference_t<ConstView>>
         constexpr auto end() const
         {
             if constexpr (forward_range<const View> && forward_range<range_reference_t<const View>> &&
@@ -177,9 +172,8 @@ namespace AZStd::ranges
     template<class R>
     join_view(R&&) -> join_view<views::all_t<R>>;
 
-    template<class View>
-        requires input_range<View>
-            && view<View>
+    template<input_range View>
+        requires view<View>
             && input_range<range_reference_t<View>>
     template<bool Const>
     struct join_view<View>::iterator
@@ -410,9 +404,8 @@ namespace AZStd::ranges
         struct requirements_fulfilled {};
     }
 
-    template<class View>
-        requires input_range<View>
-            && view<View>
+    template<input_range View>
+        requires view<View>
             && input_range<range_reference_t<View>>
     template<bool Const>
     struct join_view<View>::sentinel

@@ -16,10 +16,8 @@ namespace AZStd::ranges
 {
     //! Generates a sequence of elements by repeating incrementing an initial element W
     //! up to Bound
-    template<class W, class Bound = unreachable_sentinel_t>
-        requires move_constructible<W>
-            && semiregular<Bound>
-            && is_object_v<W>
+    template<move_constructible W, semiregular Bound = unreachable_sentinel_t>
+        requires is_object_v<W>
             && same_as<W, remove_cv_t<W>>
             && (::AZStd::Internal::is_integer_like<Bound> || same_as<Bound, unreachable_sentinel_t>)
     class repeat_view;
@@ -54,10 +52,8 @@ namespace AZStd::ranges::views
 
 namespace AZStd::ranges
 {
-    template<class W, class Bound>
-        requires move_constructible<W>
-            && semiregular<Bound>
-            && is_object_v<W>
+    template<move_constructible W, semiregular Bound>
+        requires is_object_v<W>
             && same_as<W, remove_cv_t<W>>
             && (::AZStd::Internal::is_integer_like<Bound> || same_as<Bound, unreachable_sentinel_t>)
     class repeat_view
@@ -136,10 +132,8 @@ namespace AZStd::ranges
 namespace AZStd::ranges
 {
     // repeat iterator
-    template<class W, class Bound>
-        requires move_constructible<W>
-            && semiregular<Bound>
-            && is_object_v<W>
+    template<move_constructible W, semiregular Bound>
+        requires is_object_v<W>
             && same_as<W, remove_cv_t<W>>
             && (::AZStd::Internal::is_integer_like<Bound> || same_as<Bound, unreachable_sentinel_t>)
     struct repeat_view<W, Bound>::iterator

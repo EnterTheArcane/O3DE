@@ -588,9 +588,8 @@ namespace AZStd
         }
 
         // START UNIQUE
-        template<class Iterator>
-            requires input_iterator<Iterator>
-                && (!is_convertible_v<Iterator, size_type>)
+        template<input_iterator Iterator>
+            requires (!is_convertible_v<Iterator, size_type>)
         void insert(Iterator first, Iterator last)
         {
             // insert [first, last) one at a time
@@ -623,8 +622,7 @@ namespace AZStd
 
             m_data.rehash_if_needed(this);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         void insert_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)

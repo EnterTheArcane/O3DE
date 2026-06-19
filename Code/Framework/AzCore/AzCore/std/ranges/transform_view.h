@@ -13,9 +13,8 @@
 
 namespace AZStd::ranges
 {
-    template<class View, class Func>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Func>
+        requires view<View>
             && move_constructible<Func>
             && is_object_v<Func>
             && regular_invocable<Func&, range_reference_t<View>>
@@ -31,8 +30,7 @@ namespace AZStd::ranges
             struct transform_fn
                 : Internal::range_adaptor_closure<transform_fn>
             {
-                template <class View, class Func>
-                    requires viewable_range<View>
+                template <viewable_range View, class Func>
                 constexpr auto operator()(View&& view, Func&& func) const
                 {
                     return transform_view(AZStd::forward<View>(view), AZStd::forward<Func>(func));
@@ -59,9 +57,8 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View, class Func>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Func>
+        requires view<View>
             && move_constructible<Func>
             && is_object_v<Func>
             && regular_invocable<Func&, range_reference_t<View>>
@@ -194,9 +191,8 @@ namespace AZStd::ranges
         using iterator_category = decltype(get_iterator_category());
     };
 
-    template<class View, class Func>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Func>
+        requires view<View>
             && move_constructible<Func>
             && is_object_v<Func>
             && regular_invocable<Func&, range_reference_t<View>>
@@ -326,8 +322,7 @@ namespace AZStd::ranges
         }
 
         // equality_comparable
-        template<class BaseIter = iterator_t<Base>>
-            requires equality_comparable<BaseIter>
+        template<equality_comparable BaseIter = iterator_t<Base>>
         friend constexpr bool operator==(const iterator& x, const iterator& y)
         {
             return x.m_current == y.m_current;
@@ -391,9 +386,8 @@ namespace AZStd::ranges
         Parent* m_parent{};
     };
 
-    template<class View, class Func>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Func>
+        requires view<View>
             && move_constructible<Func>
             && is_object_v<Func>
             && regular_invocable<Func&, range_reference_t<View>>

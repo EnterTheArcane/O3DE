@@ -21,8 +21,7 @@ namespace AZStd
     //! basic_const_iterator is an iterator adapter that behaves the same as the underlying iterator type
     //! except its indirection operator converts the value returned by the underlying iterators'
     //! indirection operator to a type such that this iterator is a constant_iterator
-    template<class I>
-        requires input_or_output_iterator<I>
+    template<input_or_output_iterator I>
     class basic_const_iterator;
 }
 
@@ -41,8 +40,7 @@ namespace AZStd::Internal
     template<class I, class = void>
     struct basic_const_iterator_iter_category {};
 
-    template<class I>
-        requires forward_iterator<I>
+    template<forward_iterator I>
     struct basic_const_iterator_iter_category<I>
     {
         using iterator_category = typename ITER_TRAITS<I>::iterator_category;
@@ -89,8 +87,7 @@ namespace AZStd
         && random_access_iterator<I>
         && Internal::partially_ordered_with_impl<I, I2>;
 
-    template<class I>
-        requires input_or_output_iterator<I>
+    template<input_or_output_iterator I>
     class basic_const_iterator
         : public Internal::basic_const_iterator_iter_category<I>
     {
@@ -120,16 +117,14 @@ namespace AZStd
         {
         }
 
-        template<class I2>
-            requires convertible_to<I2, I>
+        template<convertible_to<I> I2>
         constexpr basic_const_iterator(basic_const_iterator<I2> other)
             : m_current(AZStd::move(other.m_current))
         {
         }
 
-        template<class T>
-            requires Internal::different_from<T, basic_const_iterator>
-                && convertible_to<T, I>
+        template<Internal::different_from<basic_const_iterator> T>
+            requires convertible_to<T, I>
         constexpr basic_const_iterator(T&& current)
             : m_current(AZStd::forward<T>(current))
         {
@@ -402,24 +397,21 @@ namespace AZStd
             return basic_const_iterator(i.base() - n);
         }
 
-        template<class I2>
-            requires sized_sentinel_for<I2, I>
+        template<sized_sentinel_for<I> I2>
         friend constexpr difference_type operator-(const basic_const_iterator& i, const basic_const_iterator<I2>& s)
         {
             return i.base() - s.base();
         }
 
         // friend navigation operators
-        template<class S>
-            requires basic_const_iterator_sized_sentinel_for<S, I>
+        template<basic_const_iterator_sized_sentinel_for<I> S>
         friend constexpr difference_type operator-(const basic_const_iterator& i, const S& s)
         {
             return i.base() - s;
         }
 
-        template<class S>
-            requires basic_const_iterator_sized_sentinel_for<S, I>
-                && Internal::different_from<S, basic_const_iterator>
+        template<basic_const_iterator_sized_sentinel_for<I> S>
+            requires Internal::different_from<S, basic_const_iterator>
         friend constexpr difference_type operator-(const S& s, const basic_const_iterator& i)
         {
             return s - i.base();
@@ -446,20 +438,17 @@ namespace AZStd
 namespace std
 {
     // As AZStd aliases std::common_type, the specializations need to be put in the std namespace
-    template<class T, class U>
-        requires AZStd::common_with<U, T>
+    template<class T, AZStd::common_with<T> U>
     struct common_type<AZStd::basic_const_iterator<T>, U>
     {
         using type = AZStd::basic_const_iterator<common_type_t<T, U>>;
     };
-    template<class T, class U>
-        requires AZStd::common_with<U, T>
+    template<class T, AZStd::common_with<T> U>
     struct common_type<U, AZStd::basic_const_iterator<T>>
     {
         using type = AZStd::basic_const_iterator<common_type_t<T, U>>;
     };
-    template<class T, class U>
-        requires AZStd::common_with<U, T>
+    template<class T, AZStd::common_with<T> U>
     struct common_type<AZStd::basic_const_iterator<T>, AZStd::basic_const_iterator<U>>
     {
         using type = AZStd::basic_const_iterator<common_type_t<T, U>>;

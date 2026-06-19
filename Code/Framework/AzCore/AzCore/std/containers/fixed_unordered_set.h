@@ -100,8 +100,7 @@ namespace AZStd
             base_type::rehash(numBuckets);
             base_type::insert(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_set(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal())
             : base_type(hash, keyEqual)
@@ -137,8 +136,7 @@ namespace AZStd
             : fixed_unordered_set(f, l, n, hf, key_equal())
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_set(from_range_t, R&& rg, size_type n, const hasher& hf)
             : fixed_unordered_set(from_range, AZStd::forward<R>(rg), n, hf, key_equal())
         {
@@ -225,8 +223,7 @@ namespace AZStd
             base_type::rehash(numBuckets);
             base_type::insert(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_multiset(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal())
             : base_type(hash, keyEqual)
@@ -260,8 +257,7 @@ namespace AZStd
             : fixed_unordered_multiset(f, l, n, hf, key_equal())
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         fixed_unordered_multiset(from_range_t, R&& rg, size_type n, const hasher& hf)
             : fixed_unordered_multiset(from_range, AZStd::forward<R>(rg), n, hf, key_equal())
         {

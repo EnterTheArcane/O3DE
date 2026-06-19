@@ -32,9 +32,8 @@ namespace AZStd::ranges
             || move_constructible<tuple_element_t<N, T>>;
     }
 
-    template<class View, size_t N>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, size_t N>
+        requires view<View>
             && Internal::has_tuple_element<range_value_t<View>, N>
             && Internal::has_tuple_element<remove_reference_t<range_reference_t<View>>, N>
             && Internal::returnable_element<range_reference_t<View>, N>
@@ -59,8 +58,7 @@ namespace AZStd::ranges
             struct elements_fn
                 : Internal::range_adaptor_closure<elements_fn<N>>
             {
-                template <class View>
-                    requires viewable_range<View>
+                template <viewable_range View>
                 constexpr auto operator()(View&& view) const
                 {
                     return elements_view<views::all_t<View>, N>(AZStd::forward<View>(view));
@@ -77,9 +75,8 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View, size_t N>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, size_t N>
+        requires view<View>
             && Internal::has_tuple_element<range_value_t<View>, N>
             && Internal::has_tuple_element<remove_reference_t<range_reference_t<View>>, N>
             && Internal::returnable_element<range_reference_t<View>, N>
@@ -201,9 +198,8 @@ namespace AZStd::ranges
         using iterator_category = decltype(get_iterator_category());
     };
 
-    template<class View, size_t N>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, size_t N>
+        requires view<View>
             && Internal::has_tuple_element<range_value_t<View>, N>
             && Internal::has_tuple_element<remove_reference_t<range_reference_t<View>>, N>
             && Internal::returnable_element<range_reference_t<View>, N>
@@ -256,8 +252,7 @@ namespace AZStd::ranges
         using reference = decltype(get_element(declval<iterator_t<Base>>()));
     #endif
 
-        template<class BaseIter = iterator_t<Base>>
-            requires default_initializable<BaseIter>
+        template<default_initializable BaseIter = iterator_t<Base>>
         iterator() {}
 
         constexpr iterator(iterator_t<Base> current)
@@ -343,8 +338,7 @@ namespace AZStd::ranges
         }
 
         // equality_comparable
-        template<class BaseIter = iterator_t<Base>>
-            requires equality_comparable<BaseIter>
+        template<equality_comparable BaseIter = iterator_t<Base>>
         friend constexpr bool operator==(const iterator& x, const iterator& y)
         {
             return x.m_current == y.m_current;
@@ -415,9 +409,8 @@ namespace AZStd::ranges
         struct requirements_fulfilled {};
     }
 
-    template<class View, size_t N>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, size_t N>
+        requires view<View>
             && Internal::has_tuple_element<range_value_t<View>, N>
             && Internal::has_tuple_element<remove_reference_t<range_reference_t<View>>, N>
             && Internal::returnable_element<range_reference_t<View>, N>

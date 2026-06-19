@@ -30,9 +30,8 @@ namespace AZStd::ranges
             && common_range<R>;
     }
 
-    template<class View, class Pattern>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pattern>
+        requires view<View>
             && input_range<range_reference_t<View>>
             && forward_range<Pattern>
             && view<Pattern>
@@ -47,8 +46,7 @@ namespace AZStd::ranges
             struct join_with_view_fn
                 : Internal::range_adaptor_closure<join_with_view_fn>
             {
-                template <class View, class Pattern>
-                    requires viewable_range<View>
+                template <viewable_range View, class Pattern>
                 constexpr auto operator()(View&& view, Pattern&& pattern) const
                 {
                     return join_with_view(AZStd::forward<View>(view), AZStd::forward<Pattern>(pattern));
@@ -70,9 +68,8 @@ namespace AZStd::ranges
         }
     }
 
-    template<class View, class Pattern>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pattern>
+        requires view<View>
             && input_range<range_reference_t<View>>
             && forward_range<Pattern>
             && view<Pattern>
@@ -98,9 +95,8 @@ namespace AZStd::ranges
             , m_pattern(AZStd::move(pattern))
         {}
 
-        template<class R>
-            requires forward_range<R>
-                && constructible_from<View, views::all_t<R>>
+        template<forward_range R>
+            requires constructible_from<View, views::all_t<R>>
                 && constructible_from<Pattern, single_view<range_value_t<InnerRange>>>
         constexpr join_with_view(R&& range, range_value_t<InnerRange> elem)
             : m_base{ views::all(AZStd::forward<R>(range)) }
@@ -125,9 +121,8 @@ namespace AZStd::ranges
             return iterator<UseConst>{ *this, ranges::begin(m_base) };
         }
 
-        template<class ConstView = const View>
-            requires input_range<ConstView>
-                && is_reference_v<range_reference_t<ConstView>>
+        template<input_range ConstView = const View>
+            requires is_reference_v<range_reference_t<ConstView>>
                 && forward_range<const Pattern>
         constexpr auto begin() const
         {
@@ -146,9 +141,8 @@ namespace AZStd::ranges
                 return sentinel<Internal::simple_view<View> && Internal::simple_view<Pattern>>{ *this };
             }
         }
-        template<class ConstView = const View>
-            requires input_range<ConstView>
-                && is_reference_v<range_reference_t<ConstView>>
+        template<input_range ConstView = const View>
+            requires is_reference_v<range_reference_t<ConstView>>
                 && forward_range<const Pattern>
         constexpr auto end() const
         {
@@ -179,8 +173,7 @@ namespace AZStd::ranges
     template<class R, class P>
     join_with_view(R&&, P&&) -> join_with_view<views::all_t<R>, views::all_t<P>>;
 
-    template<class R>
-        requires input_range<R>
+    template<input_range R>
     join_with_view(R&&, range_value_t<range_reference_t<R>>)
         -> join_with_view<views::all_t<R>, single_view<range_value_t<range_reference_t<R>>>>;
 
@@ -241,9 +234,8 @@ namespace AZStd::ranges
         using iterator_category = decltype(get_iterator_category());
     };
 
-    template<class View, class Pattern>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pattern>
+        requires view<View>
             && input_range<range_reference_t<View>>
             && forward_range<Pattern>
             && view<Pattern>
@@ -707,9 +699,8 @@ namespace AZStd::ranges
         struct requirements_fulfilled {};
     }
 
-    template<class View, class Pattern>
-        requires input_range<View>
-            && view<View>
+    template<input_range View, class Pattern>
+        requires view<View>
             && input_range<range_reference_t<View>>
             && forward_range<Pattern>
             && view<Pattern>

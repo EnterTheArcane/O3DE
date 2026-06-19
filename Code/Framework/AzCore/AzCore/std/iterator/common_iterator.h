@@ -37,10 +37,8 @@ namespace AZStd
     template<class I, class S, class = void>
     class common_iterator;
 
-    template<class I, class S>
-        requires input_or_output_iterator<I>
-            && sentinel_for<S, I>
-            && (!same_as<I, S>)
+    template<input_or_output_iterator I, sentinel_for<I> S>
+        requires (!same_as<I, S>)
             && copyable<I>
     class common_iterator<I, S>
     {
@@ -198,9 +196,8 @@ namespace AZStd
             }
         }
 
-        template<class I2, class S2>
-            requires sentinel_for<S2, I>
-                && sentinel_for<S, I2>
+        template<class I2, sentinel_for<I> S2>
+            requires sentinel_for<S, I2>
                 && (!equality_comparable_with<I, I2>)
         friend constexpr bool operator==(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
@@ -222,18 +219,16 @@ namespace AZStd
                 return get<1>(x.m_iterSentinel) == get<0>(y.m_iterSentinel);
             }
         }
-        template<class I2, class S2>
-            requires sentinel_for<S2, I>
-                && sentinel_for<S, I2>
+        template<class I2, sentinel_for<I> S2>
+            requires sentinel_for<S, I2>
                 && (!equality_comparable_with<I, I2>)
         friend constexpr bool operator!=(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
             return !operator==(x, y);
         }
 
-        template<class I2, class S2>
-            requires sentinel_for<S2, I>
-                && sentinel_for<S, I2>
+        template<class I2, sentinel_for<I> S2>
+            requires sentinel_for<S, I2>
                 && equality_comparable_with<I, I2>
         friend constexpr bool operator==(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
@@ -264,19 +259,16 @@ namespace AZStd
                 return get<1>(x.m_iterSentinel) == get<0>(y.m_iterSentinel);
             }
         }
-        template<class I2, class S2>
-            requires sentinel_for<S2, I>
-                && sentinel_for<S, I2>
+        template<class I2, sentinel_for<I> S2>
+            requires sentinel_for<S, I2>
                 && equality_comparable_with<I, I2>
         friend constexpr bool operator!=(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
             return !operator==(x, y);
         }
 
-        template<class I2, class S2>
-            requires sized_sentinel_for<I2, I>
-                && sized_sentinel_for<S2, I>
-                && sized_sentinel_for<S, I2>
+        template<sized_sentinel_for<I> I2, sized_sentinel_for<I> S2>
+            requires sized_sentinel_for<S, I2>
         friend constexpr iter_difference_t<I2> operator-(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
         #if __cpp_constexpr_dynamic_alloc >= 201907L
@@ -314,8 +306,7 @@ namespace AZStd
             return ranges::iter_move(get<I>(i.m_iterSentinel));
         }
 
-        template<class I2, class S2>
-            requires indirectly_swappable<I2, I>
+        template<indirectly_swappable<I> I2, class S2>
         friend constexpr void iter_swap(const common_iterator& x, const common_iterator<I2, S2>& y)
             noexcept(noexcept(ranges::iter_swap(declval<const I&>(), declval<const I2&>())))
         {
@@ -592,8 +583,7 @@ namespace AZStd::Internal
 
 namespace AZStd
 {
-    template<class I, class S>
-        requires input_iterator<I>
+    template<input_iterator I, class S>
     struct iterator_traits<common_iterator<I, S>>
         : Internal::common_iterator_iterator_trait_requirements_fulfilled
     {
@@ -603,8 +593,7 @@ namespace AZStd
         {
             using type = void;
         };
-        template<class I2>
-            requires Internal::has_operator_arrow<I2>
+        template<Internal::has_operator_arrow I2>
         struct get_pointer_type_alias<I2>
         {
             using type = decltype(declval<I>().operator->());

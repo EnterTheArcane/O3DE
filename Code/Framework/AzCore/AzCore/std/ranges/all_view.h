@@ -57,8 +57,7 @@ namespace AZStd::ranges::views
     {
         template <class R>
         struct all_view {};
-        template <class R>
-            requires ranges::viewable_range<R>
+        template <ranges::viewable_range R>
         struct all_view<R>
         {
             using type = decltype(views::all(declval<R>()));

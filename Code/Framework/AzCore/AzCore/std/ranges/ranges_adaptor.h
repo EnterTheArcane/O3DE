@@ -80,9 +80,8 @@ namespace AZStd::ranges::views::Internal
     struct range_adaptor_argument_forwarder
         : range_adaptor_closure<range_adaptor_argument_forwarder<Adaptor, Args...>>
     {
-        template<class UAdaptor, class... UArgs>
-            requires convertible_to<UAdaptor, Adaptor>
-                && convertible_to<tuple<UArgs...>, tuple<Args...>>
+        template<convertible_to<Adaptor> UAdaptor, class... UArgs>
+            requires convertible_to<tuple<UArgs...>, tuple<Args...>>
         constexpr explicit range_adaptor_argument_forwarder(UAdaptor adaptor, UArgs&&... args)
             : m_adaptor{ AZStd::forward<UAdaptor>(adaptor) }
             , m_forwardArgs{ AZStd::forward<UArgs>(args)... }
@@ -182,14 +181,12 @@ namespace AZStd::ranges::Internal
     class movable_box;
 
 
-    template<class T>
-        requires move_constructible<T>
-            && is_object_v<T>
+    template<move_constructible T>
+        requires is_object_v<T>
     class movable_box<T>
     {
     public:
-        template<class U = T>
-            requires default_initializable<U>
+        template<default_initializable U = T>
         constexpr movable_box() noexcept(is_nothrow_constructible_v<T>)
             : movable_box{ in_place }
         {}
@@ -319,8 +316,7 @@ namespace AZStd::ranges::Internal
     class non_propagating_cache<T>
     {
     public:
-        template<class U = T>
-            requires default_initializable<U>
+        template<default_initializable U = T>
         constexpr non_propagating_cache() noexcept(is_nothrow_constructible_v<T>)
             : non_propagating_cache{ in_place }
         {}

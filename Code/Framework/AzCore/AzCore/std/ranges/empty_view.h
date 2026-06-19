@@ -12,7 +12,8 @@
 
 namespace AZStd::ranges
 {
-    template<is_object_v T>
+    template<class T>
+        requires is_object_v<T>
     class empty_view
         : public view_interface<empty_view<T>>
     {

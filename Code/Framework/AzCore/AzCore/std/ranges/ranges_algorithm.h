@@ -558,10 +558,8 @@ namespace AZStd::ranges
     {
         struct find_fn
         {
-            template<class I, class S, class T, class Proj = identity>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_binary_predicate<ranges::equal_to, projected<I, Proj>, const T*>
+            template<input_iterator I, sentinel_for<I> S, class T, class Proj = identity>
+                requires indirect_binary_predicate<ranges::equal_to, projected<I, Proj>, const T*>
             constexpr I operator()(I first, S last, const T& value, Proj proj = {}) const
             {
                 for (; first != last; ++first)
@@ -574,9 +572,8 @@ namespace AZStd::ranges
 
                 return first;
             }
-            template<class R, class T, class Proj = identity>
-                requires input_range<R>
-                    && indirect_binary_predicate<equal_to, projected<iterator_t<R>, Proj>, const T*>
+            template<input_range R, class T, class Proj = identity>
+                requires indirect_binary_predicate<equal_to, projected<iterator_t<R>, Proj>, const T*>
             constexpr borrowed_iterator_t<R> operator()(R&& r, const T& value, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r),
@@ -593,10 +590,7 @@ namespace AZStd::ranges
     {
         struct find_if_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<input_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr I operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 for (; first != last; ++first)
@@ -609,9 +603,7 @@ namespace AZStd::ranges
 
                 return first;
             }
-            template<class R,  class Proj = identity, class Pred>
-                requires input_range<R>
-                    && indirect_unary_predicate<Pred, projected<iterator_t<R>, Proj>>
+            template<input_range R, class Proj = identity, indirect_unary_predicate<projected<iterator_t<R>, Proj>> Pred>
             constexpr borrowed_iterator_t<R> operator()(R&& r, Pred pred, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r),
@@ -628,10 +620,7 @@ namespace AZStd::ranges
     {
         struct find_if_not_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<input_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr I operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 for (; first != last; ++first)
@@ -644,9 +633,7 @@ namespace AZStd::ranges
 
                 return first;
             }
-            template<class R, class Proj = identity, class Pred>
-                requires input_range<R>
-                    && indirect_unary_predicate<Pred, projected<iterator_t<R>, Proj>>
+            template<input_range R, class Proj = identity, indirect_unary_predicate<projected<iterator_t<R>, Proj>> Pred>
             constexpr borrowed_iterator_t<R>
                 operator()(R&& r, Pred pred, Proj proj = {}) const
             {
@@ -664,12 +651,8 @@ namespace AZStd::ranges
     {
         struct find_first_of_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && forward_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<input_iterator I1, sentinel_for<I1> S1, forward_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
                 constexpr I1 operator()(I1 first1, S1 last1, I2 first2, S2 last2,
                     Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
@@ -687,10 +670,8 @@ namespace AZStd::ranges
 
                 return first1;
             }
-            template<class R1, class R2,class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_range<R1>
-                    && forward_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<input_range R1, forward_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
             constexpr borrowed_iterator_t<R1> operator()(R1&& r1, R2&& r2,
                     Pred pred = {}, Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -710,10 +691,8 @@ namespace AZStd::ranges
     {
         struct find_last_fn
         {
-            template<class I, class S, class T, class Proj = identity>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_binary_predicate<ranges::equal_to, projected<I, Proj>, const T*>
+            template<forward_iterator I, sentinel_for<I> S, class T, class Proj = identity>
+                requires indirect_binary_predicate<ranges::equal_to, projected<I, Proj>, const T*>
             constexpr subrange<I> operator()(I first, S last, const T& value, Proj proj = {}) const
             {
                 if constexpr (bidirectional_iterator<I> && same_as<I, S>)
@@ -745,9 +724,8 @@ namespace AZStd::ranges
                 }
 
             }
-            template<class R, class T, class Proj = identity>
-                requires forward_range<R>
-                    && indirect_binary_predicate<equal_to, projected<iterator_t<R>, Proj>, const T*>
+            template<forward_range R, class T, class Proj = identity>
+                requires indirect_binary_predicate<equal_to, projected<iterator_t<R>, Proj>, const T*>
             constexpr borrowed_subrange_t<R> operator()(R&& r, const T& value, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r),
@@ -764,10 +742,7 @@ namespace AZStd::ranges
     {
         struct find_last_if_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<forward_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr subrange<I> operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 if constexpr (bidirectional_iterator<I> && same_as<I, S>)
@@ -796,9 +771,7 @@ namespace AZStd::ranges
                     return foundIter ? subrange<I>{ *foundIter, first } : subrange<I>{ first, first };
                 }
             }
-            template<class R, class Proj = identity, class Pred>
-                requires forward_range<R>
-                    && indirect_unary_predicate<Pred, projected<iterator_t<R>, Proj>>
+            template<forward_range R, class Proj = identity, indirect_unary_predicate<projected<iterator_t<R>, Proj>> Pred>
             constexpr borrowed_subrange_t<R> operator()(R&& r, Pred pred, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r),
@@ -815,10 +788,7 @@ namespace AZStd::ranges
     {
         struct find_last_if_not_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<forward_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr subrange<I> operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 if constexpr (bidirectional_iterator<I> && same_as<I, S>)
@@ -847,9 +817,7 @@ namespace AZStd::ranges
                     return foundIter ? subrange<I>{ *foundIter, first } : subrange<I>{ first, first };
                 }
             }
-            template<class R, class Proj = identity, class Pred>
-                requires forward_range<R>
-                    && indirect_unary_predicate<Pred, projected<iterator_t<R>, Proj>>
+            template<forward_range R, class Proj = identity, indirect_unary_predicate<projected<iterator_t<R>, Proj>> Pred>
             constexpr borrowed_subrange_t<R>
                 operator()(R&& r, Pred pred, Proj proj = {}) const
             {
@@ -871,12 +839,8 @@ namespace AZStd::ranges
     {
         struct mismatch_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && input_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<input_iterator I1, sentinel_for<I1> S1, input_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
             constexpr mismatch_result<I1, I2> operator()(I1 first1, S1 last1, I2 first2, S2 last2,
                 Pred pred = {}, Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -891,10 +855,8 @@ namespace AZStd::ranges
                 return { first1, first2 };
             }
 
-            template<class R1, class R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_range<R1>
-                    && input_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<input_range R1, input_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
             constexpr mismatch_result<borrowed_iterator_t<R1>, borrowed_iterator_t<R2>> operator()(R1&& r1, R2&& r2,
                 Pred pred = {}, Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -913,12 +875,8 @@ namespace AZStd::ranges
     {
         struct equal_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && input_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<input_iterator I1, sentinel_for<I1> S1, input_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
                 constexpr bool operator()(I1 first1, S1 last1, I2 first2, S2 last2,
                     Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
@@ -942,10 +900,8 @@ namespace AZStd::ranges
                 return first1 == last1 && first2 == last2;
             }
 
-            template<class R1, class R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_range<R1>
-                    && input_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<input_range R1, input_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
                 constexpr bool operator()(R1&& r1, R2&& r2, Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -964,12 +920,8 @@ namespace AZStd::ranges
     {
         struct lexicographical_compare_fn
         {
-            template<class I1, class S1, class I2, class S2, class Comp = ranges::less, class Proj1 = identity, class Proj2 = identity>
-                requires input_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && input_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirect_strict_weak_order<Comp, projected<I1, Proj1>, projected<I2, Proj2>>
+            template<input_iterator I1, sentinel_for<I1> S1, input_iterator I2, sentinel_for<I2> S2, class Comp = ranges::less, class Proj1 = identity, class Proj2 = identity>
+                requires indirect_strict_weak_order<Comp, projected<I1, Proj1>, projected<I2, Proj2>>
                 constexpr bool operator()(I1 first1, S1 last1, I2 first2, S2 last2,
                     Comp compd = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
@@ -991,11 +943,9 @@ namespace AZStd::ranges
                 return first1 == last1 && first2 != last2;
             }
 
-            template<class R1, class R2, class Comp = ranges::less, class Proj1 = identity, class Proj2 = identity>
-                requires input_range<R1>
-                    && input_range<R2>
-                    && indirect_strict_weak_order<Comp, projected<iterator_t<R1>, Proj1>, projected<iterator_t<R2>, Proj2>>
-                constexpr bool operator()(R1&& r1, R2&& r2, Comp compd = {},
+            template<input_range R1, input_range R2, class Comp = ranges::less, class Proj1 = identity, class Proj2 = identity>
+                requires indirect_strict_weak_order<Comp, projected<iterator_t<R1>, Proj1>, projected<iterator_t<R2>, Proj2>>
+            constexpr bool operator()(R1&& r1, R2&& r2, Comp compd = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
                 return operator()(ranges::begin(r1), ranges::end(r1),
@@ -1013,12 +963,8 @@ namespace AZStd::ranges
     {
         struct search_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires forward_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && forward_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<forward_iterator I1, sentinel_for<I1> S1, forward_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
             constexpr subrange<I1> operator()(I1 first1, S1 last1, I2 first2, S2 last2, Pred pred = {},
                 Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -1050,10 +996,8 @@ namespace AZStd::ranges
                 } while (true);
             }
 
-            template<class R1, class R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires forward_range<R1>
-                    && forward_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<forward_range R1, forward_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
             constexpr borrowed_subrange_t<R1>
                 operator()(R1&& r1, R2&& r2, Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
@@ -1074,10 +1018,8 @@ namespace AZStd::ranges
     {
         struct search_n_fn
         {
-            template<class I, class S, class T, class Pred = equal_to, class Proj = identity>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirectly_comparable<I, const T*, Pred, Proj>
+            template<forward_iterator I, sentinel_for<I> S, class T, class Pred = equal_to, class Proj = identity>
+                requires indirectly_comparable<I, const T*, Pred, Proj>
                 constexpr subrange<I> operator()(I first, S last, iter_difference_t<I> count,
                     const T& value, Pred pred = {}, Proj proj = {}) const
             {
@@ -1106,9 +1048,8 @@ namespace AZStd::ranges
 
                 return { last, last };
             }
-            template<class R, class T, class Pred = equal_to, class Proj = identity>
-                requires forward_range<R>
-                    && indirectly_comparable<iterator_t<R>, const T*, Pred, Proj>
+            template<forward_range R, class T, class Pred = equal_to, class Proj = identity>
+                requires indirectly_comparable<iterator_t<R>, const T*, Pred, Proj>
                 constexpr borrowed_subrange_t<R> operator()(R&& r, range_difference_t<R> count,
                     const T& value, Pred pred = {}, Proj proj = {}) const
             {
@@ -1128,12 +1069,8 @@ namespace AZStd::ranges
     {
         struct find_end_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires forward_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && forward_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<forward_iterator I1, sentinel_for<I1> S1, forward_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
                 constexpr subrange<I1> operator()(I1 first1, S1 last1, I2 first2, S2 last2, Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -1159,10 +1096,8 @@ namespace AZStd::ranges
 
                 } while (true);
             }
-            template<class R1, class R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires forward_range<R1>
-                    && forward_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<forward_range R1, forward_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
                 constexpr borrowed_subrange_t<R1> operator()(R1&& r1, R2&& r2, Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -1184,18 +1119,13 @@ namespace AZStd::ranges
     {
         struct all_of_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<input_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr bool operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 return ranges::find_if_not(first, last, AZStd::ref(pred), AZStd::ref(proj)) == last;
             }
 
-            template<class R, class Proj = identity, class Pred>
-                requires input_range<R>
-                    && indirect_unary_predicate<Pred, projected<ranges::iterator_t<R>, Proj>>
+            template<input_range R, class Proj = identity, indirect_unary_predicate<projected<ranges::iterator_t<R>, Proj>> Pred>
             constexpr bool operator()(R&& r, Pred pred, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), AZStd::ref(pred), AZStd::ref(proj));
@@ -1212,18 +1142,13 @@ namespace AZStd::ranges
     {
         struct any_of_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<input_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr bool operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 return ranges::find_if(first, last, AZStd::ref(pred), AZStd::ref(proj)) != last;
             }
 
-            template<class R, class Proj = identity, class Pred>
-                requires input_range<R>
-                    && indirect_unary_predicate<Pred, projected<ranges::iterator_t<R>, Proj>>
+            template<input_range R, class Proj = identity, indirect_unary_predicate<projected<ranges::iterator_t<R>, Proj>> Pred>
             constexpr bool operator()(R&& r, Pred pred, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), AZStd::ref(pred), AZStd::ref(proj));
@@ -1241,18 +1166,13 @@ namespace AZStd::ranges
     {
         struct none_of_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<input_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr bool operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 return ranges::find_if(first, last, AZStd::ref(pred), AZStd::ref(proj)) == last;
             }
 
-            template<class R, class Proj = identity, class Pred>
-                requires input_range<R>
-                    && indirect_unary_predicate<Pred, projected<ranges::iterator_t<R>, Proj>>
+            template<input_range R, class Proj = identity, indirect_unary_predicate<projected<ranges::iterator_t<R>, Proj>> Pred>
             constexpr bool operator()(R&& r, Pred pred, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), AZStd::ref(pred), AZStd::ref(proj));
@@ -1276,10 +1196,7 @@ namespace AZStd::ranges
     {
         struct for_each_fn
         {
-            template<class I, class S, class Proj = identity, class Fun>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirectly_unary_invocable<Fun, projected<I, Proj>>
+            template<input_iterator I, sentinel_for<I> S, class Proj = identity, indirectly_unary_invocable<projected<I, Proj>> Fun>
             constexpr for_each_result<I, Fun> operator()(I first, S last, Fun f, Proj proj = {}) const
             {
                 for (; first != last; ++first)
@@ -1290,9 +1207,7 @@ namespace AZStd::ranges
                 return { AZStd::move(first), AZStd::move(f) };
             }
 
-            template<class R, class Proj = identity, class Fun>
-                requires input_range<R>
-                    && indirectly_unary_invocable<Fun, projected<iterator_t<R>, Proj>>
+            template<input_range R, class Proj = identity, indirectly_unary_invocable<projected<iterator_t<R>, Proj>> Fun>
             constexpr for_each_result<borrowed_iterator_t<R>, Fun> operator()(R&& r, Fun f, Proj proj = {}) const
             {
                 return operator()(AZStd::ranges::begin(r), AZStd::ranges::end(r), AZStd::move(f), AZStd::move(proj));
@@ -1301,9 +1216,7 @@ namespace AZStd::ranges
 
         struct for_each_n_fn
         {
-            template<class I, class Proj = identity, class Fun>
-                requires input_iterator<I>
-                    && indirectly_unary_invocable<Fun, projected<I, Proj>>
+            template<input_iterator I, class Proj = identity, indirectly_unary_invocable<projected<I, Proj>> Fun>
             constexpr for_each_n_result<I, Fun> operator()(I first, iter_difference_t<I> n, Fun f, Proj proj = {}) const
             {
                 for (; n > 0; ++first, --n)
@@ -1329,10 +1242,8 @@ namespace AZStd::ranges
     {
         struct count_fn
         {
-            template<class I, class S, class T, class Proj = identity>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_binary_predicate<ranges::equal_to, projected<I, Proj>, const T*>
+            template<input_iterator I, sentinel_for<I> S, class T, class Proj = identity>
+                requires indirect_binary_predicate<ranges::equal_to, projected<I, Proj>, const T*>
             constexpr iter_difference_t<I> operator()(I first, S last, const T& value, Proj proj = {}) const
             {
                 iter_difference_t<I> counter{};
@@ -1347,9 +1258,8 @@ namespace AZStd::ranges
                 return counter;
             }
 
-            template<class R, class T, class Proj = identity>
-                requires input_range<R>
-                    && indirect_binary_predicate<ranges::equal_to, projected<iterator_t<R>, Proj>, const T*>
+            template<input_range R, class T, class Proj = identity>
+                requires indirect_binary_predicate<ranges::equal_to, projected<iterator_t<R>, Proj>, const T*>
             constexpr range_difference_t<R> operator()(R&& r, const T& value, Proj proj = {}) const
             {
                 return operator()(AZStd::ranges::begin(r), AZStd::ranges::end(r), value, AZStd::move(proj));
@@ -1358,10 +1268,7 @@ namespace AZStd::ranges
 
         struct count_if_fn
         {
-            template<class I, class S, class Proj = identity, class Pred>
-                requires input_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_unary_predicate<Pred, projected<I, Proj>>
+            template<input_iterator I, sentinel_for<I> S, class Proj = identity, indirect_unary_predicate<projected<I, Proj>> Pred>
             constexpr iter_difference_t<I> operator()(I first, S last, Pred pred, Proj proj = {}) const
             {
                 iter_difference_t<I> counter{};
@@ -1376,9 +1283,7 @@ namespace AZStd::ranges
                 return counter;
             }
 
-            template<class R, class Proj = identity, class Pred>
-                requires input_range<R>
-                    && indirect_unary_predicate<Pred, projected<iterator_t<R>, Proj>>
+            template<input_range R, class Proj = identity, indirect_unary_predicate<projected<iterator_t<R>, Proj>> Pred>
             constexpr range_difference_t<R> operator()(R&& r, Pred pred, Proj proj = {}) const
             {
                 return operator()(AZStd::ranges::begin(r), AZStd::ranges::end(r), AZStd::move(pred), AZStd::move(proj));
@@ -1892,12 +1797,8 @@ namespace AZStd::ranges
 
         struct contains_subrange_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires forward_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && forward_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<forward_iterator I1, sentinel_for<I1> S1, forward_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
             constexpr bool operator()(I1 first1, S1 last1, I2 first2, S2 last2, Pred pred = {},
                 Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -1906,10 +1807,8 @@ namespace AZStd::ranges
                     AZStd::move(pred), AZStd::move(proj1), AZStd::move(proj2)).empty();
             }
 
-            template<class R1, class R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires forward_range<R1>
-                    && forward_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<forward_range R1, forward_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
             constexpr bool operator()(R1&& r1, R2&& r2, Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -1931,12 +1830,8 @@ namespace AZStd::ranges
     {
         struct starts_with_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && input_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<input_iterator I1, sentinel_for<I1> S1, input_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
             constexpr bool operator()(I1 first1, S1 last1, I2 first2, S2 last2,
                     Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
@@ -1946,10 +1841,8 @@ namespace AZStd::ranges
                     AZStd::move(pred), AZStd::move(proj1), AZStd::move(proj2)).in2 == last2;
             }
 
-            template<class R1, class R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_range<R1>
-                    && input_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<input_range R1, input_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
             constexpr bool operator()(R1&& r1, R2&& r2, Pred pred = {},
                     Proj1 proj1 = {}, Proj2 proj2 = {}) const
             {
@@ -1961,12 +1854,8 @@ namespace AZStd::ranges
 
         struct ends_with_fn
         {
-            template<class I1, class S1, class I2, class S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && input_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
+            template<input_iterator I1, sentinel_for<I1> S1, input_iterator I2, sentinel_for<I2> S2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<I1, I2, Pred, Proj1, Proj2>
             constexpr auto operator()(I1 first1, S1 last1, I2 first2, S2 last2,
                     Pred pred = {}, Proj1 proj1 = {}, Proj2 proj2 = {}) const
                 -> bool
@@ -1981,10 +1870,8 @@ namespace AZStd::ranges
                     AZStd::move(pred), AZStd::move(proj1), AZStd::move(proj2));
             }
 
-            template<class R1, class R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
-                requires input_range<R1>
-                    && input_range<R2>
-                    && indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
+            template<input_range R1, input_range R2, class Pred = equal_to, class Proj1 = identity, class Proj2 = identity>
+                requires indirectly_comparable<iterator_t<R1>, iterator_t<R2>, Pred, Proj1, Proj2>
             constexpr auto operator()(R1&& r1, R2&& r2,
                     Pred pred = {}, Proj1 proj1 = {}, Proj2 proj2 = {}) const
                 -> bool
@@ -2009,10 +1896,8 @@ namespace AZStd::ranges
     {
         struct lower_bound_fn
         {
-            template<class I, class S, class T, class Proj = identity, class Comp = ranges::less>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
+            template<forward_iterator I, sentinel_for<I> S, class T, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
             constexpr I operator()(I first, S last, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 I iter = first;
@@ -2044,9 +1929,8 @@ namespace AZStd::ranges
                 return first;
             }
 
-            template<class T, class R, class Proj = identity, class Comp = ranges::less>
-                requires forward_range<R>
-                    && indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
+            template<class T, forward_range R, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
             constexpr borrowed_iterator_t<R> operator()(R&& r, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), value,
@@ -2064,10 +1948,8 @@ namespace AZStd::ranges
     {
         struct upper_bound_fn
         {
-            template<class I, class S, class T, class Proj = identity, class Comp = ranges::less>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
+            template<forward_iterator I, sentinel_for<I> S, class T, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
             constexpr I operator()(I first, S last, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 I iter = first;
@@ -2099,9 +1981,8 @@ namespace AZStd::ranges
                 return first;
             }
 
-            template<class T, class R, class Proj = identity, class Comp = ranges::less>
-                requires forward_range<R>
-                    && indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
+            template<class T, forward_range R, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
             constexpr borrowed_iterator_t<R> operator()(R&& r, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), value,
@@ -2119,19 +2000,16 @@ namespace AZStd::ranges
     {
         struct equal_range_fn
         {
-            template<class I, class S, class T, class Proj = identity, class Comp = ranges::less>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
+            template<forward_iterator I, sentinel_for<I> S, class T, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
             constexpr subrange<I> operator()(I first, S last, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 return { ranges::lower_bound(first, last, value, comp, proj),
                     ranges::upper_bound(first, last, value, comp, proj) };
             }
 
-            template<class T, class R, class Proj = identity, class Comp = ranges::less>
-                requires forward_range<R>
-                    && indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
+            template<class T, forward_range R, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
             constexpr borrowed_subrange_t<R> operator()(R&& r, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), value,
@@ -2149,19 +2027,16 @@ namespace AZStd::ranges
     {
         struct binary_search_fn
         {
-            template<class I, class S, class T, class Proj = identity, class Comp = ranges::less>
-                requires forward_iterator<I>
-                    && sentinel_for<S, I>
-                    && indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
+            template<forward_iterator I, sentinel_for<I> S, class T, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<I, Proj>>
             constexpr bool operator()(I first, S last, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 auto lowerBoundIter = ranges::lower_bound(first, last, value, comp, proj);
                     return lowerBoundIter != last && !AZStd::invoke(comp, value, AZStd::invoke(proj, *lowerBoundIter));
             }
 
-            template<class T, class R, class Proj = identity, class Comp = ranges::less>
-                requires forward_range<R>
-                    && indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
+            template<class T, forward_range R, class Proj = identity, class Comp = ranges::less>
+                requires indirect_strict_weak_order<Comp, const T*, projected<iterator_t<R>, Proj>>
             constexpr bool operator()(R&& r, const T& value, Comp comp = {}, Proj proj = {}) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), value,
@@ -2184,11 +2059,8 @@ namespace AZStd::ranges
     {
         struct iota_fn
         {
-            template<class O, class S, class T>
-                requires input_or_output_iterator<O>
-                    && sentinel_for<S, O>
-                    && weakly_incrementable<T>
-                    && indirectly_writable<O, const T&>
+            template<input_or_output_iterator O, sentinel_for<O> S, weakly_incrementable T>
+                requires indirectly_writable<O, const T&>
             constexpr iota_result<O, T> operator()(O first, S last, T value) const
             {
                 while( first != last)
@@ -2201,9 +2073,8 @@ namespace AZStd::ranges
                 return { AZStd::move(first), AZStd::move(value) };
             }
 
-            template<class T, class R>
-                requires weakly_incrementable<T>
-                    && output_range<R, const T&>
+            template<weakly_incrementable T, class R>
+                requires output_range<R, const T&>
             constexpr iota_result<borrowed_iterator_t<R>, T> operator()(R&& r, T value) const
             {
                 return operator()(ranges::begin(r), ranges::end(r), AZStd::move(value));

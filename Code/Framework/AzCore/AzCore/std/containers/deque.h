@@ -246,8 +246,7 @@ namespace AZStd
             construct_iter(first, last, is_integral<InputIterator>{});
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         deque(from_range_t, R&& rg, const Allocator& alloc = Allocator())
             : m_allocator(alloc)
         {
@@ -402,8 +401,7 @@ namespace AZStd
             ++m_size;
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, T>
+        template<Internal::container_compatible_range<T> R>
         void prepend_range(R&& rg)
         {
             insert_range(begin(), AZStd::forward<R>(rg));
@@ -429,8 +427,7 @@ namespace AZStd
             }
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, T>
+        template<Internal::container_compatible_range<T> R>
         void append_range(R&& rg)
         {
             insert_range(end(), AZStd::forward<R>(rg));
@@ -449,8 +446,7 @@ namespace AZStd
             assign_iter(first, last, is_integral<InputIterator>());
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         void assign_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -581,8 +577,7 @@ namespace AZStd
             return insert_iter(insertPos, first, last, is_integral<InputIterator>());
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         iterator insert_range(const_iterator insertPos, R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -1147,8 +1142,7 @@ namespace AZStd
     template <class InputIt, class Alloc = allocator>
     deque(InputIt, InputIt, Alloc = Alloc()) -> deque<iter_value_t<InputIt>, Alloc>;
 
-    template<class R, class Alloc = allocator>
-        requires ranges::input_range<R>
+    template<ranges::input_range R, class Alloc = allocator>
     deque(from_range_t, R&&, Alloc = Alloc()) -> deque<ranges::range_value_t<R>, Alloc>;
 
     template <class T, class Allocator, AZStd::size_t NumElementsPerBlock, AZStd::size_t MinMapSize>

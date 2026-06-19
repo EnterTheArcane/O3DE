@@ -651,10 +651,8 @@ namespace AZStd
             , m_size(count)
         {}
 
-        template <typename It, typename End>
-            requires contiguous_iterator<It>
-                && sized_sentinel_for<End, It>
-                && is_same_v<iter_value_t<It>, value_type>
+        template <contiguous_iterator It, sized_sentinel_for<It> End>
+            requires is_same_v<iter_value_t<It>, value_type>
                 && (!is_convertible_v<End, size_type>)
         constexpr basic_string_view(It first, End last)
             : m_begin(AZStd::to_address(first))

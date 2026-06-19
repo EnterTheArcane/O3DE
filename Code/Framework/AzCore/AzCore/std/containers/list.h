@@ -220,8 +220,7 @@ namespace AZStd
             insert_iter(begin(), first, last, is_integral<InputIterator>());
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         list(from_range_t, R&& rg, const allocator_type& alloc = Allocator())
             : m_allocator(alloc)
         {
@@ -274,8 +273,7 @@ namespace AZStd
         }
 
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         void assign_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -331,16 +329,14 @@ namespace AZStd
 
         // 23.2.2.3 modifiers
         AZ_FORCE_INLINE void push_front(const_reference value) { insert(begin(), value); }
-        template<class R>
-            requires Internal::container_compatible_range<R, T>
+        template<Internal::container_compatible_range<T> R>
         void prepend_range(R&& rg)
         {
             insert_range(begin(), AZStd::forward<R>(rg));
         }
         AZ_FORCE_INLINE void pop_front() { erase(begin()); }
         AZ_FORCE_INLINE void push_back(const_reference value) { insert(end(), value); }
-        template<class R>
-            requires Internal::container_compatible_range<R, T>
+        template<Internal::container_compatible_range<T> R>
         void append_range(R&& rg)
         {
             insert_range(end(), AZStd::forward<R>(rg));
@@ -472,8 +468,7 @@ namespace AZStd
             return insert_iter(insertPos, first, last, is_integral<InputIterator>());
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         iterator insert_range(const_iterator insertPos, R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -1303,8 +1298,7 @@ namespace AZStd
     template <class InputIt, class Alloc = allocator>
     list(InputIt, InputIt, Alloc = Alloc()) -> list<iter_value_t<InputIt>, Alloc>;
 
-    template<class R, class Alloc = allocator>
-        requires ranges::input_range<R>
+    template<ranges::input_range R, class Alloc = allocator>
     list(from_range_t, R&&, Alloc = Alloc()) -> list<ranges::range_value_t<R>, Alloc>;
 
     template< class T, class Allocator >

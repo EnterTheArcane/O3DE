@@ -16,8 +16,7 @@ namespace AZStd::ranges
 {
     //! view which provides the same behavior of the underlying sequenence, except
     //! that its elements are rvalues
-    template<class View>
-        requires input_range<View>
+    template<input_range View>
     class as_rvalue_view;
 }
 
@@ -58,8 +57,7 @@ namespace AZStd::ranges::Internal
 
 namespace AZStd::ranges
 {
-    template<class View>
-        requires input_range<View>
+    template<input_range View>
     class as_rvalue_view
         : public view_interface<as_rvalue_view<View>>
     {

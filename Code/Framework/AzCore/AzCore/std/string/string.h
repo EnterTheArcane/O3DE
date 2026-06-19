@@ -121,16 +121,14 @@ namespace AZStd
             assign(count, ch);
         }
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_t>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_t>)
         inline basic_string(InputIt first, InputIt last, const Allocator& alloc = Allocator())
             : m_storage{ alloc }
         {   // construct from [first, last)
             assign(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         basic_string(from_range_t, R&& rg, const Allocator& alloc = Allocator())
             : m_storage{ alloc }
         {
@@ -269,9 +267,8 @@ namespace AZStd
             return *this;
         }
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_type>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_type>)
         inline auto append(InputIt first, InputIt last)
             -> this_type&
         {   // append [first, last)
@@ -318,8 +315,7 @@ namespace AZStd
         {   // append [first, last), const pointers
             return replace(end(), end(), first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         auto append_range(R&& rg) -> basic_string&
         {
             return append(basic_string(from_range, AZStd::forward<R>(rg), get_allocator()));
@@ -427,9 +423,8 @@ namespace AZStd
             return *this;
         }
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_type>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_type>)
         auto assign(InputIt first, InputIt last)
             -> this_type&
         {
@@ -470,8 +465,7 @@ namespace AZStd
                 return assign(AZStd::move(inputCopy));
             }
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         auto assign_range(R&& rg) -> basic_string&
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -594,9 +588,8 @@ namespace AZStd
             return begin() + offset;
         }
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_type>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_type>)
         auto insert(const_iterator insertPos, InputIt first, InputIt last)
             -> iterator
         {   // insert [_First, _Last) at _Where
@@ -642,8 +635,7 @@ namespace AZStd
             return begin() + insertOffset;
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         auto insert_range(const_iterator insertPos, R&& rg) -> iterator
         {
             size_t offset = insertPos - begin();
@@ -905,9 +897,8 @@ namespace AZStd
             return replace(firstPtr - data, lastPtr - firstPtr, count, ch);
         }
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_type>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_type>)
         inline auto replace(const_iterator first, const_iterator last, InputIt replaceFirst, InputIt replaceLast)
             -> this_type&
         {
@@ -955,8 +946,7 @@ namespace AZStd
             }
         }
 
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         auto replace_with_range(const_iterator first, const_iterator last, R&& rg)
             -> basic_string&
         {
@@ -1969,8 +1959,7 @@ namespace AZStd
         AZStd::char_traits<iter_value_t<InputIt>>,
         Alloc>;
 
-    template<class R, class Alloc = allocator>
-        requires ranges::input_range<R>
+    template<ranges::input_range R, class Alloc = allocator>
     basic_string(from_range_t, R&&, Alloc = Alloc())
         -> basic_string<ranges::range_value_t<R>, char_traits<ranges::range_value_t<R>>, Alloc>;
 

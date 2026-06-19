@@ -183,24 +183,21 @@ namespace AZStd::ranges
 
         struct rbegin_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_member_rbegin<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_member_rbegin<T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::forward<T>(t).rbegin()))
             {
                 return AZStd::forward<T>(t).rbegin();
             }
 
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_unqualified_rbegin<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_unqualified_rbegin<T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(rbegin(AZStd::forward<T>(t))))
             {
                 return rbegin(AZStd::forward<T>(t));
             }
 
-            template<class T>
-                requires has_bidirectional_rbegin<T>
+            template<has_bidirectional_rbegin T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::make_reverse_iterator(ranges::end(AZStd::forward<T>(t)))))
             {
                 return AZStd::make_reverse_iterator(ranges::end(AZStd::forward<T>(t)));
@@ -243,24 +240,21 @@ namespace AZStd::ranges
 
         struct rend_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_member_rend<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_member_rend<T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::forward<T>(t).rend()))
             {
                 return AZStd::forward<T>(t).rend();
             }
 
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_unqualified_rend<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_unqualified_rend<T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(rend(AZStd::forward<T>(t))))
             {
                 return rend(AZStd::forward<T>(t));
             }
 
-            template<class T>
-                requires has_bidirectional_rend<T>
+            template<has_bidirectional_rend T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::make_reverse_iterator(ranges::begin(AZStd::forward<T>(t)))))
             {
                 return AZStd::make_reverse_iterator(ranges::begin(AZStd::forward<T>(t)));
@@ -334,9 +328,8 @@ namespace AZStd::ranges
                 return size(AZStd::forward<T>(t));
             }
 
-            template<class T>
-                requires has_end_subtract_begin<T>
-                    && sized_sentinel_for<decltype(ranges::end(declval<T&>())), decltype(ranges::begin(declval<T&>()))>
+            template<has_end_subtract_begin T>
+                requires sized_sentinel_for<decltype(ranges::end(declval<T&>())), decltype(ranges::begin(declval<T&>()))>
                     && forward_iterator<decltype(ranges::begin(declval<T&>()))>
             constexpr auto operator()(T&& t) const
                 noexcept(noexcept(ranges::end(AZStd::forward<T>(t)) - ranges::begin(AZStd::forward<T>(t))))
@@ -398,25 +391,22 @@ namespace AZStd::ranges
 
         struct empty_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_member_empty<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_member_empty<T>
             [[nodiscard]] constexpr bool operator()(T&& t) const noexcept(noexcept(AZStd::forward<T>(t).empty()))
             {
                 return AZStd::forward<T>(t).empty();
             }
 
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_size_compare_to_0<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_size_compare_to_0<T>
             [[nodiscard]] constexpr bool operator()(T&& t) const noexcept(noexcept(ranges::size(AZStd::forward<T>(t)) == 0))
             {
                 return ranges::size(AZStd::forward<T>(t)) == 0;
             }
 
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_begin_compare_to_end<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_begin_compare_to_end<T>
             [[nodiscard]] constexpr bool operator()(T&& t) const noexcept(noexcept(ranges::begin(AZStd::forward<T>(t)) == ranges::end(AZStd::forward<T>(t))))
             {
                 return ranges::begin(AZStd::forward<T>(t)) == ranges::end(AZStd::forward<T>(t));
@@ -442,18 +432,16 @@ namespace AZStd::ranges
 
         struct data_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_member_data<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_member_data<T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::forward<T>(t).data()))
                 -> decltype(AZStd::forward<T>(t).data())
             {
                 return AZStd::forward<T>(t).data();
             }
 
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
-                    && has_qualified_ranges_begin<T>
+            template<is_lvalue_or_borrowable T>
+                requires has_qualified_ranges_begin<T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(AZStd::to_address(ranges::begin(AZStd::forward<T>(t)))))
                 -> decltype(AZStd::to_address(ranges::begin(AZStd::forward<T>(t))))
             {
@@ -499,14 +487,12 @@ namespace AZStd::ranges
     using std::ranges::range;
 
     // sentinel type can now be defined after the range concept has been modeled
-    template<class R>
-        requires range<R>
+    template<range R>
     using sentinel_t = decltype(ranges::end(declval<R&>()));
 
 
     // const_iterator concept is now definable, with the range concept and iterator_t type alias available
-    template<class R>
-        requires range<R>
+    template<range R>
     using const_iterator_t = const_iterator<iterator_t<R>>;
 
     template<class T>
@@ -516,12 +502,10 @@ namespace AZStd::ranges
 
     using std::ranges::dangling;
 
-    template<class R>
-        requires range<R>
+    template<range R>
     using borrowed_iterator_t = conditional_t<borrowed_range<R>, iterator_t<R>, dangling>;
 
-    template<class R>
-        requires range<R>
+    template<range R>
     using borrowed_subrange_t = conditional_t<borrowed_range<R>, subrange<iterator_t<R>>, dangling>;
 
     using std::ranges::sized_range;
@@ -581,20 +565,15 @@ namespace AZStd::ranges
     template<class T>
     concept random_access_range = Internal::random_access_range_impl<T>;
 
-    template<class R>
-        requires sized_range<R>
+    template<sized_range R>
     using range_size_t = decltype(ranges::size(declval<R&>()));
-    template<class R>
-        requires range<R>
+    template<range R>
     using range_difference_t = iter_difference_t<iterator_t<R>>;
-    template<class R>
-        requires range<R>
+    template<range R>
     using range_value_t = iter_value_t<iterator_t<R>>;
-    template<class R>
-        requires range<R>
+    template<range R>
     using range_reference_t = iter_reference_t<iterator_t<R>>;
-    template<class R>
-        requires range<R>
+    template<range R>
     using range_rvalue_reference_t = iter_rvalue_reference_t<iterator_t<R>>;
 
 
@@ -624,8 +603,7 @@ namespace AZStd::ranges
 
     namespace Internal
     {
-        template<class R>
-            requires input_range<R>
+        template<input_range R>
         constexpr auto& possibly_const_range(R& r)
         {
             if constexpr (constant_range<const R> && !constant_range<R>)
@@ -648,8 +626,7 @@ namespace AZStd::ranges
         //! cbegin
         struct cbegin_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
+            template<is_lvalue_or_borrowable T>
             constexpr decltype(auto) operator()(T&& t) const noexcept(noexcept(ranges::begin(possibly_const_range(declval<T&>()))))
             {
                 using iterator_type = decltype(ranges::begin(possibly_const_range(t)));
@@ -667,8 +644,7 @@ namespace AZStd::ranges
         //! cend
         struct cend_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
+            template<is_lvalue_or_borrowable T>
             constexpr decltype(auto) operator()(T&& t) const noexcept(noexcept(ranges::end(possibly_const_range(declval<T&>()))))
             {
                 using sentinel_type = decltype(ranges::end(possibly_const_range(t)));
@@ -686,8 +662,7 @@ namespace AZStd::ranges
         //! crbegin
         struct crbegin_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
+            template<is_lvalue_or_borrowable T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(ranges::rbegin(possibly_const_range(declval<T&>()))))
             {
                 using iterator_type = decltype(ranges::rbegin(possibly_const_range(t)));
@@ -705,8 +680,7 @@ namespace AZStd::ranges
         //! crend
         struct crend_fn
         {
-            template<class T>
-                requires is_lvalue_or_borrowable<T>
+            template<is_lvalue_or_borrowable T>
             constexpr auto operator()(T&& t) const noexcept(noexcept(ranges::rend(possibly_const_range(declval<T&>()))))
             {
                 using sentinel_type = decltype(ranges::rend(possibly_const_range(t)));
@@ -728,8 +702,7 @@ namespace AZStd::ranges
     {
         struct advance_fn
         {
-            template<class I>
-                requires input_or_output_iterator<I>
+            template<input_or_output_iterator I>
             constexpr void operator()(I& i, iter_difference_t<I> n) const
             {
                 if constexpr (random_access_iterator<I>)
@@ -748,9 +721,7 @@ namespace AZStd::ranges
                 }
             }
 
-            template<class I, class S>
-                requires input_or_output_iterator<I>
-                    && sentinel_for<S, I>
+            template<input_or_output_iterator I, sentinel_for<I> S>
             constexpr void operator()(I& i, S bound) const
             {
                 if constexpr (assignable_from<I&, S>)
@@ -767,9 +738,7 @@ namespace AZStd::ranges
                 }
             }
 
-            template<class I, class S>
-                requires input_or_output_iterator<I>
-                    && sentinel_for<S, I>
+            template<input_or_output_iterator I, sentinel_for<I> S>
             constexpr iter_difference_t<I> operator()(I& i, iter_difference_t<I> n, S bound) const
             {
                 if constexpr (sized_sentinel_for<S, I>)
@@ -814,10 +783,8 @@ namespace AZStd::ranges
     {
         struct distance_fn
         {
-            template<class I, class S>
-                requires input_or_output_iterator<I>
-                    && sentinel_for<S, I>
-                    && (!sized_sentinel_for<S, I>)
+            template<input_or_output_iterator I, sentinel_for<I> S>
+                requires (!sized_sentinel_for<S, I>)
             constexpr iter_difference_t<I> operator()(I first, S last) const
             {
                 // Since S is not a sized sentinel, can only increment from first to last
@@ -827,17 +794,14 @@ namespace AZStd::ranges
                 return result;
             }
 
-            template<class I, class S>
-                requires input_or_output_iterator<I>
-                    && sentinel_for<S, I>
-                    && sized_sentinel_for<S, I>
+            template<input_or_output_iterator I, sentinel_for<I> S>
+                requires sized_sentinel_for<S, I>
             constexpr iter_difference_t<I> operator()(const I& first, const S& last) const
             {
                 return last - first;
             }
 
-            template<class R>
-                requires range<R>
+            template<range R>
             constexpr range_difference_t<R> operator()(R&& r) const
             {
                 if constexpr (sized_range<R>)
@@ -862,34 +826,28 @@ namespace AZStd::ranges
     {
         struct next_fn
         {
-            template<class I>
-                requires input_or_output_iterator<I>
+            template<input_or_output_iterator I>
             constexpr I operator()(I x) const
             {
                 ++x;
                 return x;
             }
 
-            template<class I>
-                requires input_or_output_iterator<I>
+            template<input_or_output_iterator I>
             constexpr I operator()(I x, iter_difference_t<I> n) const
             {
                 ranges::advance(x, n);
                 return x;
             }
 
-            template<class I, class S>
-                requires input_or_output_iterator<I>
-                    && sentinel_for<S, I>
+            template<input_or_output_iterator I, sentinel_for<I> S>
             constexpr I operator()(I x, S bound) const
             {
                 ranges::advance(x, bound);
                 return x;
             }
 
-            template<class I, class S>
-                requires input_or_output_iterator<I>
-                    && sentinel_for<S, I>
+            template<input_or_output_iterator I, sentinel_for<I> S>
             constexpr I operator()(I x, iter_difference_t<I> n, S bound) const
             {
                 ranges::advance(x, n, bound);
@@ -908,25 +866,21 @@ namespace AZStd::ranges
     {
         struct prev_fn
         {
-            template<class I>
-                requires bidirectional_iterator<I>
+            template<bidirectional_iterator I>
             constexpr I operator()(I x) const
             {
                 --x;
                 return x;
             }
 
-            template<class I>
-                requires bidirectional_iterator<I>
+            template<bidirectional_iterator I>
             constexpr I operator()(I x, iter_difference_t<I> n) const
             {
                 ranges::advance(x, -n);
                 return x;
             }
 
-            template<class I, class S>
-                requires input_or_output_iterator<I>
-                    && sentinel_for<S, I>
+            template<input_or_output_iterator I, sentinel_for<I> S>
             constexpr I operator()(I x, iter_difference_t<I> n, S bound) const
             {
                 ranges::advance(x, -n, bound);
@@ -1003,8 +957,7 @@ namespace AZStd::ranges
         }
 
     public:
-        template <class Derived = D>
-            requires forward_range<Derived>
+        template <forward_range Derived = D>
         constexpr bool empty()
         {
             return ranges::begin(derived()) == ranges::end(derived());
@@ -1038,9 +991,8 @@ namespace AZStd::ranges
             return to_address(ranges::begin(derived()));
         }
 
-        template <class Derived = D>
-            requires forward_range<Derived>
-                && sized_sentinel_for<sentinel_t<Derived>, iterator_t<Derived>>
+        template <forward_range Derived = D>
+            requires sized_sentinel_for<sentinel_t<Derived>, iterator_t<Derived>>
         constexpr auto size()
             -> decltype(ranges::end(static_cast<Derived&>(*this)) - ranges::begin(static_cast<Derived&>(*this)))
         {
@@ -1055,8 +1007,7 @@ namespace AZStd::ranges
             return ranges::end(derived()) - ranges::begin(derived());
         }
 
-        template <class Derived = D>
-            requires forward_range<Derived>
+        template <forward_range Derived = D>
         constexpr auto front()
             -> decltype(*ranges::begin(static_cast<Derived&>(*this)))
         {
@@ -1070,9 +1021,8 @@ namespace AZStd::ranges
             return *ranges::begin(derived());
         }
 
-        template <class Derived = D>
-            requires bidirectional_range<Derived>
-                && common_range<Derived>
+        template <bidirectional_range Derived = D>
+            requires common_range<Derived>
         constexpr auto back()
             -> decltype(*ranges::prev(ranges::end(static_cast<Derived&>(*this))))
         {
@@ -1088,15 +1038,13 @@ namespace AZStd::ranges
             return *ranges::prev(ranges::end(derived()));
         }
 
-        template<class R = D>
-            requires random_access_range<R>
+        template<random_access_range R = D>
         constexpr auto operator[](range_difference_t<R> n)
             -> decltype(ranges::begin(static_cast<R&>(*this))[n])
         {
             return ranges::begin(derived())[n];
         }
-        template<class R = const D>
-            requires random_access_range<R>
+        template<random_access_range R = const D>
         constexpr auto operator[](range_difference_t<R> n) const
             -> decltype(ranges::begin(static_cast<R&>(*this))[n])
         {
@@ -1139,12 +1087,8 @@ namespace AZStd::ranges
     {
         struct swap_ranges_fn
         {
-            template<class I1, class S1, class I2, class S2>
-                requires input_iterator<I1>
-                    && sentinel_for<S1, I1>
-                    && input_iterator<I2>
-                    && sentinel_for<S2, I2>
-                    && indirectly_swappable<I1, I2>
+            template<input_iterator I1, sentinel_for<I1> S1, input_iterator I2, sentinel_for<I2> S2>
+                requires indirectly_swappable<I1, I2>
             constexpr swap_ranges_result<I1, I2> operator()(I1 first1, S1 last1, I2 first2, S2 last2) const
             {
                 for (; !(first1 == last1 or first2 == last2); ++first1, ++first2)
@@ -1154,10 +1098,8 @@ namespace AZStd::ranges
                 return { AZStd::move(first1), AZStd::move(first2) };
             }
 
-            template<class R1, class R2>
-                requires input_range<R1>
-                    && input_range<R2>
-                    && indirectly_swappable<iterator_t<R1>, iterator_t<R2>>
+            template<input_range R1, input_range R2>
+                requires indirectly_swappable<iterator_t<R1>, iterator_t<R2>>
             constexpr swap_ranges_result<borrowed_iterator_t<R1>, borrowed_iterator_t<R2>>
             operator()(R1&& r1, R2&& r2) const
             {

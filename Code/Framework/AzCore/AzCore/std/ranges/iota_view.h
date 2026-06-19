@@ -16,10 +16,8 @@ namespace AZStd::ranges
 {
     //! Generates a sequence of elements by repeating incrementing an initial element W
     //! up to Bound
-    template<class W, class Bound = unreachable_sentinel_t>
-        requires weakly_incrementable<W>
-            && semiregular<Bound>
-            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+    template<weakly_incrementable W, semiregular Bound = unreachable_sentinel_t>
+        requires ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
             && copyable<W>
     class iota_view;
 
@@ -79,10 +77,8 @@ namespace AZStd::ranges::Internal
 
 namespace AZStd::ranges
 {
-    template<class W, class Bound>
-        requires weakly_incrementable<W>
-            && semiregular<Bound>
-            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+    template<weakly_incrementable W, semiregular Bound>
+        requires ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
             && copyable<W>
     class iota_view
         : public view_interface<iota_view<W, Bound>>
@@ -184,10 +180,8 @@ namespace AZStd::ranges::Internal
 namespace AZStd::ranges
 {
     // iota iterator
-    template<class W, class Bound>
-        requires weakly_incrementable<W>
-            && semiregular<Bound>
-            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+    template<weakly_incrementable W, semiregular Bound>
+        requires ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
             && copyable<W>
     struct iota_view<W, Bound>::iterator
     {
@@ -422,10 +416,8 @@ namespace AZStd::ranges
     };
 
     // sentinel type for iota
-    template<class W, class Bound>
-        requires weakly_incrementable<W>
-            && semiregular<Bound>
-            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+    template<weakly_incrementable W, semiregular Bound>
+        requires ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
             && copyable<W>
     struct iota_view<W, Bound>::sentinel
     {
@@ -482,10 +474,8 @@ namespace AZStd::ranges
     };
 
     //! iota_view iterator and sentinel constructor definitions
-    template<class W, class Bound>
-        requires weakly_incrementable<W>
-            && semiregular<Bound>
-            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+    template<weakly_incrementable W, semiregular Bound>
+        requires ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
             && copyable<W>
     constexpr iota_view<W, Bound>::iota_view(iterator first, iterator last)
         requires same_as<W, Bound>
@@ -493,10 +483,8 @@ namespace AZStd::ranges
         , m_bound(AZStd::move(last.m_value))
     {}
 
-    template<class W, class Bound>
-        requires weakly_incrementable<W>
-            && semiregular<Bound>
-            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+    template<weakly_incrementable W, semiregular Bound>
+        requires ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
             && copyable<W>
     constexpr iota_view<W, Bound>::iota_view(iterator first, Bound last)
         requires same_as<Bound, unreachable_sentinel_t>
@@ -504,10 +492,8 @@ namespace AZStd::ranges
         , m_bound(unreachable_sentinel)
     {}
 
-    template<class W, class Bound>
-        requires weakly_incrementable<W>
-            && semiregular<Bound>
-            && ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
+    template<weakly_incrementable W, semiregular Bound>
+        requires ::AZStd::Internal::weakly_equality_comparable_with<W, Bound>
             && copyable<W>
     constexpr iota_view<W, Bound>::iota_view(iterator first, sentinel last)
         requires (!same_as<W, Bound>)

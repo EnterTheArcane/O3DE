@@ -120,8 +120,7 @@ namespace AZStd
             base_type::rehash(numBucketsHint);
             base_type::insert(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         unordered_map(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),
             const allocator_type& alloc = allocator_type())
@@ -169,14 +168,12 @@ namespace AZStd
             : unordered_map(f, l, n, hf, key_equal(), a)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         unordered_map(from_range_t, R&& rg, size_type n, const allocator_type& a)
             : unordered_map(from_range, AZStd::forward<R>(rg), n, hasher(), key_equal(), a)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         unordered_map(from_range_t, R&& rg, size_type n, const hasher& hf, const allocator_type& a)
             : unordered_map(from_range, AZStd::forward<R>(rg), n, hf, key_equal(), a)
         {
@@ -509,8 +506,7 @@ namespace AZStd
             base_type::rehash(numBucketsHint);
             base_type::insert(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         unordered_multimap(from_range_t, R&& rg, size_type numBucketsHint = {},
             const hasher& hash = hasher(), const key_equal& keyEqual = key_equal(),
             const allocator_type& alloc = allocator_type())
@@ -558,14 +554,12 @@ namespace AZStd
             : unordered_multimap(f, l, n, hf, key_equal(), a)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         unordered_multimap(from_range_t, R&& rg, size_type n, const allocator_type& a)
             : unordered_multimap(from_range, AZStd::forward<R>(rg), n, hasher(), key_equal(), a)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         unordered_multimap(from_range_t, R&& rg, size_type n, const hasher& hf, const allocator_type& a)
             : unordered_multimap(from_range, AZStd::forward<R>(rg), n, hf, key_equal(), a)
         {

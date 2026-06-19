@@ -217,8 +217,7 @@ namespace AZStd::ranges
         }
     }
 
-    template<template<class...> class C, class R, class... Args>
-        requires input_range<R>
+    template<template<class...> class C, input_range R, class... Args>
     [[nodiscard]] constexpr auto to(R&& r, Args&&... args)
     {
         return to<Internal::DEDUCE_EXPR<C, R, Args...>>(AZStd::forward<R>(r), AZStd::forward<Args>(args)...);

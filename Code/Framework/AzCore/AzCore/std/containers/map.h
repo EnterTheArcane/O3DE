@@ -94,8 +94,7 @@ namespace AZStd
         {
             m_tree.insert_unique(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         map(from_range_t, R&& rg, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
@@ -133,8 +132,7 @@ namespace AZStd
             : map(first, last, Compare(), alloc)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         map(from_range_t, R&& rg, const Allocator& a)
             : map(from_range, AZStd::forward<R>(rg), Compare(), a)
         {
@@ -188,8 +186,7 @@ namespace AZStd
         {
             m_tree.insert_unique(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         void insert_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -482,8 +479,7 @@ namespace AZStd
         ->map<iter_key_type<InputIterator>, iter_mapped_type<InputIterator>,
         less<iter_key_type<InputIterator>>, Allocator>;
 
-    template<class R, class Allocator>
-        requires ranges::input_range<R>
+    template<ranges::input_range R, class Allocator>
     map(from_range_t, R&&, Allocator)
         ->map<range_key_type<R>, range_mapped_type<R>, less<range_key_type<R>>, Allocator>;
 
@@ -549,8 +545,7 @@ namespace AZStd
         {
             m_tree.insert_equal(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         multimap(from_range_t, R&& rg, const Compare& comp = Compare(), const Allocator& alloc = Allocator())
             : m_tree(comp, alloc)
         {
@@ -588,8 +583,7 @@ namespace AZStd
             : multimap(first, last, Compare(), alloc)
         {
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         multimap(from_range_t, R&& rg, const Allocator& a)
             : multimap(from_range, AZStd::forward<R>(rg), Compare(), a)
         {
@@ -625,8 +619,7 @@ namespace AZStd
         {
             m_tree.insert_equal(first, last);
         }
-        template<class R>
-            requires Internal::container_compatible_range<R, value_type>
+        template<Internal::container_compatible_range<value_type> R>
         void insert_range(R&& rg)
         {
             if constexpr (is_lvalue_reference_v<R>)
@@ -869,8 +862,7 @@ namespace AZStd
         ->multimap<iter_key_type<InputIterator>, iter_mapped_type<InputIterator>,
         less<iter_key_type<InputIterator>>, Allocator>;
 
-    template<class R, class Allocator>
-        requires ranges::input_range<R>
+    template<ranges::input_range R, class Allocator>
     multimap(from_range_t, R&&, Allocator)
         ->multimap<range_key_type<R>, range_mapped_type<R>, less<range_key_type<R>>, Allocator>;
 

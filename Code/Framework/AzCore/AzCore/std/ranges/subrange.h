@@ -82,30 +82,25 @@ namespace AZStd::ranges
             && convertible_to<V, tuple_element_t<1, T>>;
     }
 
-    template<class I, class S, subrange_kind K>
-        requires input_or_output_iterator<I>
-            && sentinel_for<S, I>
-            && (K == subrange_kind::sized || !sized_sentinel_for<S, I>)
+    template<input_or_output_iterator I, sentinel_for<I> S, subrange_kind K>
+        requires (K == subrange_kind::sized || !sized_sentinel_for<S, I>)
     class subrange<I, S, K, void> : public view_interface<subrange<I, S, K>>
     {
         static constexpr bool StoreSize = K == subrange_kind::sized && !sized_sentinel_for<S, I>;
 
     public:
-        template<class I2 = I>
-            requires default_initializable<I2>
+        template<default_initializable I2 = I>
         constexpr subrange() {}
 
-        template<class I2>
-            requires Internal::convertible_to_non_slicing<I2, I>
-                && (!StoreSize)
+        template<Internal::convertible_to_non_slicing<I> I2>
+            requires (!StoreSize)
         constexpr subrange(I2 i, S s)
             : m_begin(AZStd::move(i))
             , m_end(s)
         {
         }
-        template<class I2>
-            requires Internal::convertible_to_non_slicing<I2, I>
-                && (K == subrange_kind::sized)
+        template<Internal::convertible_to_non_slicing<I> I2>
+            requires (K == subrange_kind::sized)
         constexpr subrange(I2 i, S s, make_unsigned_t<iter_difference_t<I>> n)
             : m_begin(AZStd::move(i))
             , m_end(s)
@@ -116,9 +111,8 @@ namespace AZStd::ranges
             }
         }
 
-        template<class R>
-            requires Internal::different_from<R, subrange>
-                && borrowed_range<R>
+        template<Internal::different_from<subrange> R>
+            requires borrowed_range<R>
                 && Internal::convertible_to_non_slicing<iterator_t<R>, I>
                 && convertible_to<sentinel_t<R>, S>
                 && (!StoreSize || sized_range<R>)
@@ -132,9 +126,8 @@ namespace AZStd::ranges
             }
         }
 
-        template<class R>
-            requires borrowed_range<R>
-                && Internal::convertible_to_non_slicing<iterator_t<R>, I>
+        template<borrowed_range R>
+            requires Internal::convertible_to_non_slicing<iterator_t<R>, I>
                 && convertible_to<sentinel_t<R>, S>
                 && (K == subrange_kind::sized)
         constexpr subrange(R&& r, make_unsigned_t<iter_difference_t<I>> n)
@@ -142,9 +135,8 @@ namespace AZStd::ranges
         {
         }
 
-        template<class PairLike>
-            requires Internal::different_from<PairLike, subrange>
-                && Internal::pair_like_convertible_from<PairLike, const I&, const S&>
+        template<Internal::different_from<subrange> PairLike>
+            requires Internal::pair_like_convertible_from<PairLike, const I&, const S&>
         constexpr operator PairLike() const
         {
             return PairLike{ m_begin, m_end };
@@ -244,24 +236,18 @@ namespace AZStd::ranges
         AZ_NO_UNIQUE_ADDRESS size_type m_size{};
     };
 
-    template<class I, class S>
-        requires input_or_output_iterator<I>
-            && sentinel_for<S, I>
+    template<input_or_output_iterator I, sentinel_for<I> S>
     subrange(I, S) -> subrange<I, S>;
 
-    template<class I, class S>
-        requires input_or_output_iterator<I>
-            && sentinel_for<S, I>
+    template<input_or_output_iterator I, sentinel_for<I> S>
     subrange(I, S, make_unsigned_t<iter_difference_t<I>>) -> subrange<I, S, subrange_kind::sized>;
 
-    template<class R>
-        requires borrowed_range<R>
+    template<borrowed_range R>
     subrange(R&&) -> subrange<iterator_t<R>, sentinel_t<R>,
         (sized_range<R> || sized_sentinel_for<sentinel_t<R>, iterator_t<R>>)
         ? subrange_kind::sized : subrange_kind::unsized>;
 
-    template<class R>
-        requires borrowed_range<R>
+    template<borrowed_range R>
     subrange(R&&, make_unsigned_t<range_difference_t<R>>) ->
         subrange<iterator_t<R>, sentinel_t<R>, subrange_kind::sized>;
 

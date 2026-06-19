@@ -84,14 +84,12 @@ namespace AZStd
         constexpr basic_fixed_string(const_pointer ptr);
 
         // #6
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_t>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_t>)
         constexpr basic_fixed_string(InputIt first, InputIt last);
 
         // https://eel.is/c++draft/strings#string.cons-18
-        template<class R>
-            requires Internal::container_compatible_range<R, Element>
+        template<Internal::container_compatible_range<Element> R>
         constexpr basic_fixed_string(from_range_t, R&& rg);
 
         // #7
@@ -162,14 +160,12 @@ namespace AZStd
         constexpr auto append(const_pointer ptr) -> basic_fixed_string&;
         constexpr auto append(size_type count, Element ch) -> basic_fixed_string&;
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_t>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_t>)
         constexpr auto append(InputIt first, InputIt last)
             -> basic_fixed_string&;
 
-        template<class R>
-            requires Internal::container_compatible_range<R, Element>
+        template<Internal::container_compatible_range<Element> R>
         constexpr auto append_range(R&& rg)
             -> basic_fixed_string&;
 
@@ -186,14 +182,12 @@ namespace AZStd
         constexpr auto assign(const_pointer ptr) -> basic_fixed_string&;
         constexpr auto assign(size_type count, Element ch) -> basic_fixed_string&;
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_t>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_t>)
         constexpr auto assign(InputIt first, InputIt last)
             -> basic_fixed_string&;
 
-        template<class R>
-            requires Internal::container_compatible_range<R, Element>
+        template<Internal::container_compatible_range<Element> R>
         constexpr auto assign_range(R&& rg)
             -> basic_fixed_string&;
 
@@ -212,14 +206,12 @@ namespace AZStd
         constexpr auto insert(const_iterator insertPos, Element ch) -> iterator;
         constexpr auto insert(const_iterator insertPos, size_type count, Element ch) -> iterator;
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_t>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_t>)
         constexpr auto insert(const_iterator insertPos, InputIt first, InputIt last)
             -> iterator;
 
-        template<class R>
-            requires Internal::container_compatible_range<R, Element>
+        template<Internal::container_compatible_range<Element> R>
         constexpr auto insert_range(const_iterator insertPos, R&& rg)
             -> iterator;
 
@@ -256,14 +248,12 @@ namespace AZStd
             -> basic_fixed_string&;
         constexpr auto replace(const_iterator first, const_iterator last, size_type count, Element ch) -> basic_fixed_string&;
 
-        template<class InputIt>
-            requires input_iterator<InputIt>
-                && (!is_convertible_v<InputIt, size_t>)
+        template<input_iterator InputIt>
+            requires (!is_convertible_v<InputIt, size_t>)
         constexpr auto replace(const_iterator first, const_iterator last, InputIt first2, InputIt last2)
             -> basic_fixed_string&;
 
-        template<class R>
-            requires Internal::container_compatible_range<R, Element>
+        template<Internal::container_compatible_range<Element> R>
         constexpr auto replace_with_range(const_iterator first, const_iterator last, R&& rg)
             -> basic_fixed_string&;
 

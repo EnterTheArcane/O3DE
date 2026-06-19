@@ -218,14 +218,11 @@ namespace AZStd
         >;
 
         // range deduction guide helpers
-        template<class Range>
-            requires ranges::input_range<Range>
+        template<ranges::input_range Range>
         using range_key_type = remove_const_t<typename ranges::range_value_t<Range>::first_type>;
-        template<class Range>
-            requires ranges::input_range<Range>
+        template<ranges::input_range Range>
         using range_mapped_type = typename ranges::range_value_t<Range>::second_type;
-        template<class Range>
-            requires ranges::input_range<Range>
+        template<ranges::input_range Range>
         using range_to_alloc_type = pair<
             add_const_t<typename ranges::range_value_t<Range>::first_type>,
             typename ranges::range_value_t<Range>::second_type

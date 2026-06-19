@@ -13,9 +13,8 @@
 
 namespace AZStd::ranges
 {
-    template<class R>
-        requires ranges::range<R>
-            && is_object_v<R>
+    template<ranges::range R>
+        requires is_object_v<R>
     class ref_view
         : public ranges::view_interface<ref_view<R>>
     {
@@ -23,9 +22,8 @@ namespace AZStd::ranges
         static void bindable_to_range(R&);
         static void bindable_to_range(R&&) = delete;
     public:
-        template<class T>
-            requires Internal::different_from<T, ref_view>
-                && convertible_to<T, R&>
+        template<Internal::different_from<ref_view> T>
+            requires convertible_to<T, R&>
                 && requires { bindable_to_range(declval<T>()); }
         constexpr ref_view(T&& t)
             : m_range{ addressof(static_cast<R&>(AZStd::forward<T>(t))) }
