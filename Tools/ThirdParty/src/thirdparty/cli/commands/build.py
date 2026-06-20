@@ -12,7 +12,6 @@ from collections import OrderedDict
 from pathlib import Path
 
 from thirdparty.api.model.refs import RecipeReference
-from thirdparty.cps.cps import CPS
 from thirdparty.internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
 from thirdparty.internal.model.conan_file import ConanFile
 from thirdparty.internal.model.conanfile_interface import ConanFileInterface
@@ -434,65 +433,6 @@ def _build_dep_graph(
 _COMPLETE_MARKER = ".complete"
 
 
-class _CPSDepProxy:
-    """Minimal duck-type proxy satisfying CPS.from_conan()'s attribute requirements."""
-
-    class _EmptyHost:
-        def values(self):
-            return []
-        def items(self):
-            return []
-        def __bool__(self):
-            return False
-
-    class _EmptyDependencies:
-        def __init__(self):
-            self.host = _CPSDepProxy._EmptyHost()
-        def __bool__(self):
-            return False
-
-    def __init__(self, recipe, name: str, version: str):
-        self.ref = RecipeReference(name, version)
-        self.package_folder = recipe.package_folder
-        self.license = getattr(recipe, "license", None)
-        self.description = getattr(recipe, "description", None)
-        self.homepage = getattr(recipe, "homepage", None)
-        self.settings = recipe.settings
-        self.cpp_info = recipe.cpp_info
-        self.languages = getattr(recipe, "languages", [])
-        try:
-            from thirdparty.internal.model.pkg_type import PackageType as _PT
-            _PT.compute_package_type(recipe)
-        except Exception:
-            pass
-        self.package_type = getattr(recipe, "package_type", None)
-        self.dependencies = _CPSDepProxy._EmptyDependencies()
-
-    def __str__(self):
-        return str(self.ref)
-
-
-def _cps_file(pkg_dir: Path, name: str) -> Path:
-    return pkg_dir / "cps" / name / f"{name}.cps"
-
-
-def _generate_cps(recipe, name: str, version: str, pkg_dir: Path) -> None:
-    from ...cmake.cmake_config import generate as generate_cmake_config
-    try:
-        if hasattr(recipe, "package_info"):
-            recipe.package_info()
-        recipe.cpp_info.set_relative_base_folder(str(pkg_dir))
-        proxy = _CPSDepProxy(recipe, name, version)
-        cps = CPS.from_conan(proxy)
-        cps.cps_path = f"@prefix@/cps"
-        cps_dir = pkg_dir / "cps"
-        cps_dir.mkdir(parents=True, exist_ok=True)
-        cps.save(str(cps_dir))
-        #generate_cmake_config(cps, pkg_dir)
-    except Exception as exc:
-        print(f"[thirdparty] warn: CPS generation failed for {name}: {exc}")
-
-
 def _is_built(build_root: Path, name: str, version: str) -> bool:
     return (build_root / name / version / "build" / _COMPLETE_MARKER).is_file()
 
@@ -627,10 +567,6 @@ def _build_ordered(
         if not force and _is_built(build_root, name, version):
             skipped.append(name)
             visited.add(name)
-            pkg_dir = build_root / name / version / "package"
-            if not _cps_file(pkg_dir, name).exists():
-                probe_cps = _instantiate(cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
-                _generate_cps(probe_cps, name, version, pkg_dir)
             continue
         t0 = time.time()
         try:
@@ -724,9 +660,6 @@ def _build_recipe(
 
     if not generate_only and not force and _is_built(build_root, name, version):
         print(f"[thirdparty] {name}/{version} already built — skipping")
-        pkg_dir_cps = build_root / name / version / "package"
-        if not _cps_file(pkg_dir_cps, name).exists():
-            _generate_cps(probe, name, version, pkg_dir_cps)
         return transitive
 
     # Build the dependency graph for this recipe from all transitive deps.
@@ -872,7 +805,6 @@ def _build_recipe(
         build_dir.mkdir(parents=True, exist_ok=True)
         (build_dir / _COMPLETE_MARKER).write_text("")
 
-    _generate_cps(recipe, name, version, pkg_dir)
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive
 
