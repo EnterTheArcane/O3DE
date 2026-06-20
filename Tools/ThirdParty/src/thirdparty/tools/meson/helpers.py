@@ -1,6 +1,6 @@
 from thirdparty.api.output import ConanOutput
 from thirdparty.tools.build.flags import cppstd_msvc_flag, disable_flag
-from conan2.internal.model.options import _PackageOption
+from thirdparty.internal.model.options import _PackageOption
 
 # https://mesonbuild.com/Reference-tables.html#operating-system-names
 _meson_system_map = {
@@ -137,3 +137,4 @@ def to_cstd_flag(conanfile, cstd):
     if disable_flag(conanfile, "cppstd"):
         return None
     return cstd if cstd.startswith("gnu") else f"c{cstd}"
+

@@ -5,9 +5,9 @@ import jinja2
 from jinja2 import Template
 
 from thirdparty.errors import ConanException
-from conan2.internal.api.install.generators import relativize_path
-from conan2.internal.model.pkg_type import PackageType
-from conan2.internal.graph.graph import CONTEXT_BUILD
+from thirdparty.internal.api.install.generators import relativize_path
+from thirdparty.internal.model.pkg_type import PackageType
+from thirdparty.internal.graph.graph import CONTEXT_BUILD
 from thirdparty.tools.cmake.utils import cmake_escape_value
 
 
@@ -510,3 +510,4 @@ class TargetConfigurationTemplate2:
         set_property(TARGET {{exe}} PROPERTY CONAN_CONTEXT "{{context}}")
         {% endfor %}
         """)
+

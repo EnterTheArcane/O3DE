@@ -7,11 +7,11 @@ from typing import Iterable, Tuple, Dict
 
 from thirdparty.api.model import RecipeReference, PkgReference
 from thirdparty.errors import ConanException
-from conan2.internal.errors import NotFoundException
-from conan2.internal.model.version_range import VersionRange
-from conan2.internal.graph.graph import RECIPE_EDITABLE, RECIPE_CONSUMER, RECIPE_PLATFORM, \
+from thirdparty.internal.errors import NotFoundException
+from thirdparty.internal.model.version_range import VersionRange
+from thirdparty.internal.graph.graph import RECIPE_EDITABLE, RECIPE_CONSUMER, RECIPE_PLATFORM, \
     RECIPE_VIRTUAL, BINARY_SKIP, BINARY_MISSING, BINARY_INVALID
-from conan2.internal.util.files import load
+from thirdparty.internal.util.files import load
 
 
 class MultiPackagesList:
@@ -448,3 +448,4 @@ class ListPattern:
             if "*" not in refs_str:
                 raise ConanException(f"Package revision '{self.raw}' not found")
         return prevs
+

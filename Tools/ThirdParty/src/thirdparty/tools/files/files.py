@@ -10,10 +10,10 @@ from fnmatch import fnmatch
 from shutil import which
 
 
-from conan2.internal.rest.caching_file_downloader import SourcesCachingDownloader
+from thirdparty.internal.rest.caching_file_downloader import SourcesCachingDownloader
 from thirdparty.errors import ConanException
-from conan2.internal.rest.file_uploader import FileProgress
-from conan2.internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
+from thirdparty.internal.rest.file_uploader import FileProgress
+from thirdparty.internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
 
 
 def load(conanfile, path, encoding="utf-8"):
@@ -639,3 +639,4 @@ def move_folder_contents(conanfile, src_folder, dst_folder):
         os.rmdir(src_folder)
     except OSError:
         pass
+

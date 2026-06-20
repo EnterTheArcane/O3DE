@@ -33,7 +33,7 @@ from jinja2 import Template, StrictUndefined
 from typing import Optional
 
 from thirdparty.api.output import ConanOutput
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.tools.files import save
 
 
@@ -685,3 +685,4 @@ class MakeDeps:
 
         save(self._conanfile, CONAN_MAKEFILE_FILENAME, content_buffer)
         self._conanfile.output.info(f"Generated {CONAN_MAKEFILE_FILENAME}")
+

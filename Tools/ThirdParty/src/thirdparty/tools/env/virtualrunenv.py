@@ -1,6 +1,6 @@
 import os
 
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.tools.env import Environment
 
 
@@ -98,3 +98,4 @@ class VirtualRunEnv:
         check_duplicated_generator(self, self._conanfile)
         run_env = self.environment()
         run_env.vars(self._conanfile, scope=scope).save_script(self._filename)
+

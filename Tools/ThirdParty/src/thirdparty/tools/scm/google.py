@@ -5,7 +5,7 @@ from functools import cached_property
 
 import requests
 
-from conan2.internal.model.version import Version
+from thirdparty.internal.model.version import Version
 
 
 class GoogleSourceRepository:
@@ -43,3 +43,4 @@ class GoogleSourceRepository:
         if best_tag is None:
             raise RuntimeError(f"no version-like tags found at {self._url}")
         return best_tag
+

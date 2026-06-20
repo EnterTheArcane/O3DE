@@ -5,7 +5,7 @@
 
 from thirdparty.tools.apple.apple import is_apple_os
 from thirdparty.tools.microsoft import is_msvc
-from conan2.internal.subsystems import subsystem_path, deduce_subsystem
+from thirdparty.internal.subsystems import subsystem_path, deduce_subsystem
 
 
 class GnuDepsFlags:
@@ -93,3 +93,4 @@ class GnuDepsFlags:
 
         path = subsystem_path(self._subsystem, path)
         return '"%s"' % path if ' ' in path else path
+

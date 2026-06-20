@@ -9,8 +9,8 @@ from pathlib import Path
 import colorama
 from colorama import Fore, Style
 
-from conan2.internal.model.conan_file import ConanFile
-from conan2.internal.model.version import Version
+from thirdparty.internal.model.conan_file import ConanFile
+from thirdparty.internal.model.version import Version
 from thirdparty.cli.command import command
 
 _BUMP_COLOR = {
@@ -183,3 +183,4 @@ def _print_table(rows: list[tuple[str, str, str, str, str | None]]) -> None:
             status_col = f"{Style.DIM}{status}{Style.RESET_ALL}"
 
         print(f"{name:<{name_w}}  {current:<{cur_w}}  {latest_col}  {status_col}")
+

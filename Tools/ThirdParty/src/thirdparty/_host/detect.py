@@ -5,9 +5,9 @@ import subprocess
 import sys
 from multiprocessing import cpu_count
 
-from conan2.internal.default_settings import default_settings_yml
-from conan2.internal.model.settings import Settings
-from conan2.internal.model.conf import Conf
+from thirdparty.internal.default_settings import default_settings_yml
+from thirdparty.internal.model.settings import Settings
+from thirdparty.internal.model.conf import Conf
 
 
 def _detect_msvc_version():
@@ -146,3 +146,4 @@ def make_conf(jobs=None):
     conf.define("tools.cmake:configure_args", ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"])
     conf.define("user.openssl:windows_use_jom", True)
     return conf
+

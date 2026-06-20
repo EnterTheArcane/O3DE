@@ -6,8 +6,8 @@ import patch_ng
 import yaml
 
 from thirdparty.errors import ConanException
-from conan2.internal.paths import DATA_YML
-from conan2.internal.util.files import mkdir, load, save
+from thirdparty.internal.paths import DATA_YML
+from thirdparty.internal.util.files import mkdir, load, save
 
 
 class PatchLogHandler(logging.Handler):
@@ -181,3 +181,4 @@ def export_conandata_patches(conanfile):
         conanfile_data_path = os.path.join(conanfile.export_folder, DATA_YML)
         new_conandata_yml = yaml.safe_dump(conanfile.conan_data, default_flow_style=False)
         save(conanfile_data_path, new_conandata_yml)
+

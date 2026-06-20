@@ -5,7 +5,7 @@ from collections import OrderedDict
 from jinja2 import Template
 
 from thirdparty.api.output import ConanOutput
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.tools.build import use_win_mingw
 from thirdparty.tools.cmake.layout import is_consumer
 from thirdparty.tools.cmake.presets import write_cmake_presets
@@ -26,9 +26,9 @@ from thirdparty.tools.intel import IntelCC
 from thirdparty.tools.microsoft import VCVars
 from thirdparty.tools.microsoft.visual import vs_ide_version
 from thirdparty.errors import ConanException
-from conan2.internal.model.options import _PackageOption
-from conan2.internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
-from conan2.internal.util.files import save
+from thirdparty.internal.model.options import _PackageOption
+from thirdparty.internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
+from thirdparty.internal.util.files import save
 
 
 class Variables(OrderedDict):
@@ -270,3 +270,4 @@ class CMakeToolchain:
             return "MinGW Makefiles"
 
         return "Unix Makefiles"
+

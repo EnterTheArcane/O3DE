@@ -4,9 +4,9 @@ import textwrap
 from jinja2 import Template, StrictUndefined
 
 from thirdparty.errors import ConanException
-from conan2.internal import check_duplicated_generator
-from conan2.internal.internal_tools import raise_on_universal_arch
-from conan2.internal.model.pkg_type import PackageType
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.internal_tools import raise_on_universal_arch
+from thirdparty.internal.model.pkg_type import PackageType
 from thirdparty.tools.apple.apple import is_apple_os, apple_min_version_flag, \
     resolve_apple_flags, apple_extra_flags
 from thirdparty.tools.build.cross_building import cross_building, can_run
@@ -16,7 +16,7 @@ from thirdparty.tools.env import VirtualBuildEnv
 from thirdparty.tools.meson.helpers import get_apple_subsystem, to_cppstd_flag, to_cstd_flag, \
     to_meson_machine, to_meson_value
 from thirdparty.tools.microsoft import VCVars, msvc_runtime_flag
-from conan2.internal.util.files import save
+from thirdparty.internal.util.files import save
 
 
 class MesonToolchain:
@@ -606,3 +606,4 @@ class MesonToolchain:
         save(self._filename, self._content)
         # FIXME: Should we check the OS and compiler to call VCVars?
         VCVars(self._conanfile).generate()
+

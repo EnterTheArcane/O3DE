@@ -19,7 +19,7 @@ import os
 import platform
 import textwrap
 
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.errors import ConanException
 
 
@@ -150,3 +150,4 @@ class IntelCC:
             raise ConanException("don't know how to call %s for %s" % (svars, self.arch))
 
         return command
+

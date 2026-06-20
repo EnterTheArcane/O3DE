@@ -10,7 +10,7 @@ from thirdparty.tools.cmake.utils import is_multi_configuration
 from thirdparty.tools.build import build_jobs
 from thirdparty.tools.microsoft import is_msvc
 from thirdparty.errors import ConanException
-from conan2.internal.util.files import save, load
+from thirdparty.internal.util.files import save, load
 
 
 def write_cmake_presets(conanfile, toolchain_file, generator, cache_variables,
@@ -400,3 +400,4 @@ def load_cmake_presets(folder):
                              f"are using CMakeToolchain as generator to ensure its correct "
                              f"initialization.")
     return json.loads(tmp)
+
