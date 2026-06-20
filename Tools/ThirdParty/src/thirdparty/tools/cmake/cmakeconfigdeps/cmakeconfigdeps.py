@@ -1,4 +1,3 @@
-import glob
 import os
 import re
 import textwrap
@@ -326,17 +325,6 @@ class _PathGenerator:
             pkg_names = set([cmake_filename] + extra_variants)
             # https://cmake.org/cmake/help/v3.22/guide/using-dependencies/index.html
             if cmake_find_mode == FIND_MODE_NONE:
-                cps = glob.glob(os.path.join(dep.package_folder, f"**/{cmake_filename}.cps"),
-                                recursive=True)
-                if cps:
-                    loc = os.path.dirname(os.path.join(dep.package_folder, cps[0]))
-                    loc = loc.replace("\\", "/")
-                    relative_path = relativize_path(loc, self._conanfile,
-                                                    "${CMAKE_CURRENT_LIST_DIR}")
-                    for pkg_name in pkg_names:
-                        pkg_paths[pkg_name] = relative_path
-                    continue
-
                 try:
                     # This is irrespective of the components, it should be in the root cpp_info
                     # To define the location of the pkg-config.cmake file
