@@ -20,7 +20,7 @@ from thirdparty.internal.model.requires import Requirement
 from thirdparty.internal.rest.conan_requester import ConanRequester
 from thirdparty.tools.env import Environment
 from thirdparty.tools.env.environment import generate_aggregated_env
-from thirdparty._host.detect import detect_settings, make_conf
+from thirdparty.internal.detect import detect_settings, make_conf
 from thirdparty.cli.command import command
 
 
