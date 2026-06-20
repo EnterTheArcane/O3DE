@@ -4,7 +4,7 @@ import os
 import shutil
 
 from thirdparty.errors import ConanException
-from conan2.internal.util.files import mkdir
+from thirdparty.internal.util.files import mkdir
 
 
 def copy(conanfile, pattern, src, dst, keep_path=True, excludes=None,
@@ -164,3 +164,4 @@ def _copy_files_symlinked_to_folders(files_symlinked_to_folders, src, dst):
         os.symlink(link_dst, symlink_path)
         copied_files.append(symlink_path)
     return copied_files
+

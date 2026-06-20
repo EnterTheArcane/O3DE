@@ -4,10 +4,10 @@ import textwrap
 
 from jinja2 import Template, StrictUndefined
 
-from conan2.internal import check_duplicated_generator
-from conan2.internal.model.dependencies import get_transitive_requires
-from conan2.internal.model.pkg_type import PackageType
-from conan2.internal.util.files import save
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.model.dependencies import get_transitive_requires
+from thirdparty.internal.model.pkg_type import PackageType
+from thirdparty.internal.util.files import save
 
 
 def _relativize_path(path, start_folder):
@@ -571,3 +571,4 @@ class BazelDeps:
 
         for name, content in _BazelPathsGenerator.items(dependencies_context):
             save(name, content)
+

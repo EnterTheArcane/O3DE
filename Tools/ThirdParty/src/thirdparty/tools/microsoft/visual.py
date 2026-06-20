@@ -1,12 +1,12 @@
 import os
 import textwrap
 
-from conan2.internal import check_duplicated_generator
-from conan2.internal.api.detect.detect_vs import vs_installation_path
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.api.detect.detect_vs import vs_installation_path
 from thirdparty.errors import ConanException, ConanInvalidConfiguration
 from thirdparty.tools.scm import Version
 from thirdparty.tools.intel.intel_cc import IntelCC
-from conan2.internal.util.files import save
+from thirdparty.internal.util.files import save
 
 CONAN_VCVARS = "conanvcvars"
 
@@ -414,3 +414,4 @@ def msvs_toolset(conanfile):
         return "ClangCl"
     if compiler == "intel-cc":
         return IntelCC(conanfile).ms_toolset
+

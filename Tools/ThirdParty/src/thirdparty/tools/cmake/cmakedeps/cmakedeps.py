@@ -4,7 +4,7 @@ import jinja2
 from jinja2 import Template
 
 from thirdparty.api.output import Color
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.tools.cmake.cmakedeps import FIND_MODE_CONFIG, FIND_MODE_NONE, FIND_MODE_BOTH, \
     FIND_MODE_MODULE
 from thirdparty.tools.cmake.cmakedeps.templates.config import ConfigTemplate
@@ -15,7 +15,7 @@ from thirdparty.tools.cmake.cmakedeps.templates.target_data import ConfigDataTem
 from thirdparty.tools.cmake.cmakedeps.templates.targets import TargetsTemplate
 from thirdparty.tools.files import save
 from thirdparty.errors import ConanException
-from conan2.internal.model.dependencies import get_transitive_requires
+from thirdparty.internal.model.dependencies import get_transitive_requires
 
 
 class CMakeDeps:
@@ -226,3 +226,4 @@ class CMakeDeps:
     def get_transitive_requires(self, conanfile):
         # Prepared to filter transitive tool-requires with visible=True
         return get_transitive_requires(self._conanfile, conanfile)
+

@@ -1,4 +1,4 @@
-from conan2.internal.subsystems import deduce_subsystem, subsystem_path
+from thirdparty.internal.subsystems import deduce_subsystem, subsystem_path
 
 
 def unix_path(conanfile, path, scope="build"):
@@ -12,3 +12,4 @@ def unix_path_package_info_legacy(conanfile, path, path_flavor=None):
               "and will be removed in a future version."
     conanfile.output.warning(message, warn_tag="deprecated")
     return path
+

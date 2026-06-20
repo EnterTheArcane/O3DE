@@ -4,9 +4,9 @@ import os
 from thirdparty.api.output import Color
 from thirdparty.tools.files import chdir, update_conandata
 from thirdparty.errors import ConanException
-from conan2.internal.model.conf import ConfDefinition
-from conan2.internal.util.files import mkdir
-from conan2.internal.util.runners import check_output_runner
+from thirdparty.internal.model.conf import ConfDefinition
+from thirdparty.internal.util.files import mkdir
+from thirdparty.internal.util.runners import check_output_runner
 
 
 class Git:
@@ -293,3 +293,4 @@ class Git:
         self.clone(url=sources["url"], target=".", args=["--origin=origin"])
         self.run(f"fetch origin {sources['commit']}")
         self.checkout(commit=sources["commit"])
+

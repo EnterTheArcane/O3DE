@@ -2,7 +2,7 @@ import os
 import tempfile
 
 from thirdparty.errors import ConanException
-from conan2.internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
+from thirdparty.internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
 
 
 def is_consumer(conanfile):
@@ -109,3 +109,4 @@ def get_build_folder_custom_vars(conanfile):
 
     user_defined_build = "settings.build_type" in build_vars
     return "-".join(ret), user_defined_build
+

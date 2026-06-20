@@ -2,8 +2,8 @@ import itertools
 import glob
 import re
 
-from conan2.internal import check_duplicated_generator
-from conan2.internal.util.files import save
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.util.files import save
 from thirdparty.tools.premake.constants import CONAN_TO_PREMAKE_ARCH
 
 # Filename format strings
@@ -299,3 +299,4 @@ class PremakeDeps:
         ])
 
         return self.output_files
+

@@ -7,15 +7,15 @@ from jinja2 import Template
 
 from thirdparty.api.output import Color, ConanOutput
 from thirdparty.errors import ConanException
-from conan2.internal import check_duplicated_generator
-from conan2.internal.api.install.generators import relativize_path
-from conan2.internal.model.dependencies import get_transitive_requires
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.api.install.generators import relativize_path
+from thirdparty.internal.model.dependencies import get_transitive_requires
 from thirdparty.tools.cmake.cmakeconfigdeps.config import ConfigTemplate2
 from thirdparty.tools.cmake.cmakeconfigdeps.config_version import ConfigVersionTemplate2
 from thirdparty.tools.cmake.cmakeconfigdeps.target_configuration import TargetConfigurationTemplate2
 from thirdparty.tools.cmake.cmakeconfigdeps.targets import TargetsTemplate2
 from thirdparty.tools.files import save
-from conan2.internal.util.files import load
+from thirdparty.internal.util.files import load
 
 FIND_MODE_MODULE = "module"
 FIND_MODE_CONFIG = "config"
@@ -411,3 +411,4 @@ class _PathGenerator:
                     existing.append(d)
 
         return ' '.join(f'"$<$<CONFIG:{c}>:{i}>"' for c, v in host_runtime_dirs.items() for i in v)
+

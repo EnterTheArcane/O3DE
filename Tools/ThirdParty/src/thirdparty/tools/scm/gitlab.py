@@ -7,7 +7,7 @@ from functools import cached_property
 import gitlab
 import gitlab.exceptions
 
-from conan2.internal.model.version import Version
+from thirdparty.internal.model.version import Version
 
 
 def _tag_version(tag: str) -> Version | None:
@@ -125,3 +125,4 @@ class GitlabRepository:
                 f"no version-like tags found for {self._slug} on {self._host}"
             )
         return best_tag
+

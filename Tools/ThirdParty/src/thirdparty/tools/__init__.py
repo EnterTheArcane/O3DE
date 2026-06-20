@@ -1,4 +1,4 @@
-from conan2.internal.model.cpp_info import CppInfo as _CppInfo
+from thirdparty.internal.model.cpp_info import CppInfo as _CppInfo
 
 
 def CppInfo(conanfile):
@@ -6,3 +6,4 @@ def CppInfo(conanfile):
     # that at the moment doesn't require a ``conanfile`` argument, but might require in the future
     # and allow us to refactor the location of conans.model.build_info import CppInfo
     return _CppInfo()
+

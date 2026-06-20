@@ -2,7 +2,7 @@ import json
 import os
 from enum import Enum
 
-from conan2.internal.model.cpp_info import CppInfo
+from thirdparty.internal.model.cpp_info import CppInfo
 
 
 class CPSComponentType(Enum):
@@ -307,3 +307,4 @@ class CPS:
                     else:
                         base.components[comp] = comp_def
         return base
+

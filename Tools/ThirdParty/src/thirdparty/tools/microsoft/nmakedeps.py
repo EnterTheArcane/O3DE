@@ -1,6 +1,6 @@
 import os
 
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.tools import CppInfo
 from thirdparty.tools.env import Environment
 
@@ -86,3 +86,4 @@ class NMakeDeps:
     def generate(self, scope="build"):
         check_duplicated_generator(self, self._conanfile)
         self.vars(scope).save_script("conannmakedeps")
+

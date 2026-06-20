@@ -3,7 +3,7 @@ import re
 
 from thirdparty.errors import ConanException
 from thirdparty.tools.build import build_jobs, cmd_args_to_string, load_toolchain_args
-from conan2.internal.subsystems import subsystem_path, deduce_subsystem
+from thirdparty.internal.subsystems import subsystem_path, deduce_subsystem
 from thirdparty.tools.files import chdir
 from thirdparty.tools.microsoft import unix_path
 
@@ -141,3 +141,4 @@ class Autotools:
                     return False
                 return True
         return False
+

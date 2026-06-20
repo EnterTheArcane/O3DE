@@ -1,5 +1,5 @@
 
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.tools.build.flags import build_type_flags, cppstd_flag, build_type_link_flags
 from thirdparty.tools.env import Environment
 from thirdparty.tools.microsoft.nmakedeps import format_defines
@@ -115,3 +115,4 @@ class NMakeToolchain:
         env = env or self.environment()
         env.vars(self._conanfile, scope=scope).save_script("conannmaketoolchain")
         VCVars(self._conanfile).generate(scope=scope)
+

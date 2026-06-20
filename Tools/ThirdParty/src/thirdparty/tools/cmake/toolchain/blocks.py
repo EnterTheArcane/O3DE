@@ -4,7 +4,7 @@ import textwrap
 
 from jinja2 import Template
 
-from conan2.internal.internal_tools import universal_arch_separator, is_universal_arch
+from thirdparty.internal.internal_tools import universal_arch_separator, is_universal_arch
 from thirdparty.tools.apple.apple import get_apple_sdk_fullname, _to_apple_arch
 from thirdparty.tools.android.utils import android_abi
 from thirdparty.tools.apple.apple import is_apple_os, to_apple_arch
@@ -15,11 +15,11 @@ from thirdparty.tools.cmake.toolchain import CONAN_TOOLCHAIN_FILENAME
 from thirdparty.tools.cmake.utils import is_multi_configuration
 from thirdparty.tools.intel import IntelCC
 from thirdparty.tools.microsoft.visual import msvc_version_to_toolset_version, msvc_platform_from_arch
-from conan2.internal.api.install.generators import relativize_path
-from conan2.internal.subsystems import deduce_subsystem, WINDOWS
+from thirdparty.internal.api.install.generators import relativize_path
+from thirdparty.internal.subsystems import deduce_subsystem, WINDOWS
 from thirdparty.errors import ConanException
-from conan2.internal.model.version import Version
-from conan2.internal.util.files import load
+from thirdparty.internal.model.version import Version
+from thirdparty.internal.util.files import load
 
 
 class Block:
@@ -1450,3 +1450,4 @@ class ToolchainBlocks:
             if content:
                 result.append(content)
         return result
+

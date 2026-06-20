@@ -25,8 +25,8 @@ import textwrap
 
 from jinja2 import Template
 
-from conan2.internal import check_duplicated_generator
-from conan2.internal.internal_tools import raise_on_universal_arch
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.internal_tools import raise_on_universal_arch
 from thirdparty.tools.apple import to_apple_arch, is_apple_os
 from thirdparty.tools.build.cross_building import cross_building
 from thirdparty.tools.build.flags import cppstd_flag
@@ -166,3 +166,4 @@ class BazelToolchain:
         """
         check_duplicated_generator(self, self._conanfile)
         save(self._conanfile, BazelToolchain.bazelrc_name, self._content)
+

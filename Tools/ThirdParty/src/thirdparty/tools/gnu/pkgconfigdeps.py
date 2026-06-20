@@ -5,9 +5,9 @@ import textwrap
 from jinja2 import Template, StrictUndefined
 
 from thirdparty.errors import ConanException
-from conan2.internal import check_duplicated_generator
-from conan2.internal.model.dependencies import get_transitive_requires
-from conan2.internal.util.files import save
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.model.dependencies import get_transitive_requires
+from thirdparty.internal.util.files import save
 
 
 class _PCFilesDeps:
@@ -400,3 +400,4 @@ class PkgConfigDeps:
          upstream recipe.
         """
         self._properties.setdefault(dep, {}).update({prop: value})
+

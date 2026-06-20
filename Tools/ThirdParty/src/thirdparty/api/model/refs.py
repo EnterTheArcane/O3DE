@@ -4,8 +4,8 @@ import re
 from functools import total_ordering
 
 from thirdparty.errors import ConanException
-from conan2.internal.model.version import Version
-from conan2.internal.util.dates import timestamp_to_str
+from thirdparty.internal.model.version import Version
+from thirdparty.internal.util.dates import timestamp_to_str
 
 
 @total_ordering
@@ -302,3 +302,4 @@ class PkgReference:
             raise ConanException(
                 f"{pkg_ref} is not a valid package reference, provide a reference"
                 f" in the form name/version[@user/channel:package_id]")
+
