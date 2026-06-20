@@ -14,6 +14,12 @@ from thirdparty.errors import ConanException
 from thirdparty.internal.util.files import mkdir, set_dirty_context_manager, remove_if_dirty, human_size
 
 
+def _o3de_download_cache_folder() -> str:
+    """Default source cache folder used when no Conan cache is configured."""
+    base = os.environ.get("O3DE_THIRDPARTY_CACHE", str(Path.home() / ".o3de" / "ThirdParty"))
+    return str(Path(base) / "Downloads")
+
+
 class SourcesCachingDownloader:
     """ Class for downloading recipe download() urls
     if the config is active, it can use caching/backup-sources
@@ -45,11 +51,9 @@ class SourcesCachingDownloader:
             raise ConanException(f"Incorrect 'core.sources:download_urls' contains invalid 'None'"
                                  f"url: {source_origins}")
 
-        # O3DE fallback: when no conan download cache is configured, use the local O3DE cache.
-        # Defaults to ~/.o3de/ThirdParty/Downloads; override with O3DE_THIRDPARTY_CACHE env var.
+        # O3DE fallback: when no Conan download cache is configured, use the local O3DE cache.
         if not download_cache_folder and sha256:
-            _base = os.environ.get("O3DE_THIRDPARTY_CACHE", str(Path.home() / ".o3de" / "ThirdParty"))
-            download_cache_folder = str(Path(_base) / "Downloads")
+            download_cache_folder = _o3de_download_cache_folder()
 
         # First, see if it is already in the download cache
         if download_cache_folder:
