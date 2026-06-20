@@ -1,8 +1,8 @@
 import operator
 
 from thirdparty.errors import ConanInvalidConfiguration, ConanException
-from conan2.internal.api.detect.detect_api import default_cstd as default_cstd_
-from conan2.internal.model.version import Version
+from thirdparty.internal.api.detect.detect_api import default_cstd as default_cstd_
+from thirdparty.internal.model.version import Version
 
 
 def check_min_cstd(conanfile, cstd, gnu_extensions=False):
@@ -207,5 +207,6 @@ def _emcc_supported_cstd(version):
         return _clang_supported_cstd(Version("20"))
     # Since emcc 4.0.2 clang version is 21
     return _clang_supported_cstd(Version("21"))
+
 
 

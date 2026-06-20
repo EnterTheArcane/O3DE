@@ -1,8 +1,8 @@
 import os
 from io import StringIO
 
-from conan2.internal.internal_tools import universal_arch_separator
-from conan2.internal.util.runners import check_output_runner
+from thirdparty.internal.internal_tools import universal_arch_separator
+from thirdparty.internal.util.runners import check_output_runner
 from thirdparty.tools.build import cmd_args_to_string
 from thirdparty.errors import ConanException
 
@@ -374,3 +374,4 @@ def apple_extra_flags(conanfile):
     if enable_visibility is False:
         flags.extend(["-fvisibility=hidden", "-fvisibility-inlines-hidden"])
     return flags
+

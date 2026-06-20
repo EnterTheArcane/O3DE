@@ -1,5 +1,5 @@
-from conan2.internal import check_duplicated_generator
-from conan2.internal.model.version_range import required_conan_version_policy
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.model.version_range import required_conan_version_policy
 from thirdparty.tools.env import Environment
 from thirdparty.tools.env.virtualrunenv import runenv_from_cpp_info
 
@@ -92,3 +92,4 @@ class VirtualBuildEnv:
         check_duplicated_generator(self, self._conanfile)
         build_env = self.environment()
         build_env.vars(self._conanfile, scope=scope).save_script(self._filename)
+

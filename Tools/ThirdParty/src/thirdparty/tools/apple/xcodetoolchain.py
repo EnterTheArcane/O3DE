@@ -1,10 +1,10 @@
 import textwrap
 
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.tools.apple.apple import to_apple_arch, xcodebuild_deployment_target_key
 from thirdparty.tools.apple.xcodedeps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, \
     _add_includes_to_file_or_create, _xcconfig_settings_filename, _xcconfig_conditional
-from conan2.internal.util.files import save
+from thirdparty.internal.util.files import save
 
 
 class XcodeToolchain:
@@ -128,3 +128,4 @@ class XcodeToolchain:
     @property
     def _flags_xcconfig_filename(self):
         return "conan_global_flags" + self.extension
+

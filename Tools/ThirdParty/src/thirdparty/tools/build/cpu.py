@@ -1,4 +1,4 @@
-from conan2.internal.util import cpu_count
+from thirdparty.internal.util import cpu_count
 
 
 def build_jobs(conanfile):
@@ -19,3 +19,4 @@ def build_jobs(conanfile):
     :return: ``int`` with the number of jobs
     """
     return conanfile.conf.get("tools.build:jobs", default=cpu_count(), check_type=int)
+

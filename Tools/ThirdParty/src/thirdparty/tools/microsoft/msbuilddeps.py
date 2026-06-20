@@ -6,12 +6,12 @@ from xml.dom import minidom
 
 from jinja2 import Template
 
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.errors import ConanException
-from conan2.internal.api.install.generators import relativize_path
-from conan2.internal.model.dependencies import get_transitive_requires
+from thirdparty.internal.api.install.generators import relativize_path
+from thirdparty.internal.model.dependencies import get_transitive_requires
 from thirdparty.tools.microsoft.visual import msvc_platform_from_arch
-from conan2.internal.util.files import load, save
+from thirdparty.internal.util.files import load, save
 
 VALID_LIB_EXTENSIONS = (".so", ".lib", ".a", ".dylib", ".bc")
 
@@ -444,3 +444,4 @@ class MSBuildDeps:
         result["conan_dedup.props"] = self._conan_dedup_props
 
         return result
+

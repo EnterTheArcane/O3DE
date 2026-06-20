@@ -1,5 +1,5 @@
 from thirdparty.errors import ConanException
-from conan2.internal.model.version import Version
+from thirdparty.internal.model.version import Version
 
 
 def disable_flag(conanfile, flag):
@@ -622,3 +622,4 @@ def cstd_msvc_flag(visual_version, cstd):
 def _cstd_msvc(visual_version, cstd):
     flag = cstd_msvc_flag(visual_version, cstd)
     return f'/std:{flag}' if flag else None
+

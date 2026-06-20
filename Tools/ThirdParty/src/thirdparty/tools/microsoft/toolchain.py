@@ -4,14 +4,14 @@ from xml.dom import minidom
 
 from jinja2 import Template
 
-from conan2.internal import check_duplicated_generator
-from conan2.internal.api.detect.detect_vs import vs_installation_path
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.api.detect.detect_vs import vs_installation_path
 from thirdparty.tools.build import build_jobs
 from thirdparty.tools.intel.intel_cc import IntelCC
 from thirdparty.tools.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
     msvc_platform_from_arch, vs_ide_version
 from thirdparty.errors import ConanException
-from conan2.internal.util.files import save, load
+from thirdparty.internal.util.files import save, load
 
 
 class MSBuildToolchain:
@@ -257,3 +257,4 @@ def _get_toolset_props(conanfile):
         if folder.startswith(vcvars_ver):
             result = folder
             return os.path.join(basebuild, result, f"Microsoft.VCToolsVersion.{result}.props")
+

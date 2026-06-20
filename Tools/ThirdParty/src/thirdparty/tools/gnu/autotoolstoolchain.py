@@ -1,8 +1,8 @@
 import os
 
 from thirdparty.errors import ConanException
-from conan2.internal import check_duplicated_generator
-from conan2.internal.internal_tools import is_universal_arch
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.internal_tools import is_universal_arch
 from thirdparty.tools.apple.apple import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.tools.build import cmd_args_to_string, save_toolchain_args
 from thirdparty.tools.build.cross_building import cross_building
@@ -11,7 +11,7 @@ from thirdparty.tools.build.flags import architecture_flag, architecture_link_fl
 from thirdparty.tools.env import Environment, VirtualBuildEnv
 from thirdparty.tools.gnu.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.tools.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
-from conan2.internal.model.pkg_type import PackageType
+from thirdparty.internal.model.pkg_type import PackageType
 
 
 class AutotoolsToolchain:
@@ -433,3 +433,4 @@ class AutotoolsToolchain:
                 "make_args":  cmd_args_to_string(self.make_args),
                 "autoreconf_args": cmd_args_to_string(self.autoreconf_args)}
         save_toolchain_args(args, namespace=self._namespace)
+

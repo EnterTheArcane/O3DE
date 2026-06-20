@@ -8,7 +8,7 @@ from github import Auth, Github
 from github.GithubException import GithubException
 from github.Repository import Repository
 
-from conan2.internal.model.version import Version
+from thirdparty.internal.model.version import Version
 
 
 def _tag_version(tag: str) -> Version | None:
@@ -161,3 +161,4 @@ class GithubRepository:
         if best_tag is None:
             raise RuntimeError(f"no version-like tags found for {self._slug}")
         return best_tag
+

@@ -1,5 +1,5 @@
-from conan2.internal import check_duplicated_generator
-from conan2.internal.model.pkg_type import PackageType
+from thirdparty.internal import check_duplicated_generator
+from thirdparty.internal.model.pkg_type import PackageType
 from thirdparty.tools import CppInfo
 from thirdparty.tools.env import Environment
 from thirdparty.tools.gnu.gnudeps_flags import GnuDepsFlags
@@ -84,3 +84,4 @@ class AutotoolsDeps:
     def generate(self, scope="build"):
         check_duplicated_generator(self, self._conanfile)
         self.vars(scope).save_script("conanautotoolsdeps")
+

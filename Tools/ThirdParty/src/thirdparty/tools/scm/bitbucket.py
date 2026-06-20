@@ -5,7 +5,7 @@ from functools import cached_property
 
 import requests
 
-from conan2.internal.model.version import Version
+from thirdparty.internal.model.version import Version
 
 
 class BitbucketRepository:
@@ -45,3 +45,4 @@ class BitbucketRepository:
         if best_tag is None:
             raise RuntimeError(f"no version-like tags found for {self._slug}")
         return best_tag
+

@@ -5,10 +5,10 @@ from collections import OrderedDict
 from contextlib import contextmanager
 
 from thirdparty.api.output import ConanOutput
-from conan2.internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
+from thirdparty.internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
 from thirdparty.errors import ConanException
-from conan2.internal.model.recipe_ref import ref_matches
-from conan2.internal.util.files import save
+from thirdparty.internal.model.recipe_ref import ref_matches
+from thirdparty.internal.util.files import save
 
 
 class _EnvVarPlaceHolder:
@@ -963,3 +963,4 @@ def _relativize_paths(conanfile, placeholder):
     new_path = placeholder if rel_path == "." else os.path.join(placeholder, rel_path)
     new_path = os.path.join(new_path, "")  # For the trailing / to dissambiguate matches
     return abs_base_path, new_path
+

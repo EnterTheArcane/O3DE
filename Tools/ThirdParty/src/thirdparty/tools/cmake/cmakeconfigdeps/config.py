@@ -3,7 +3,7 @@ import textwrap
 import jinja2
 from jinja2 import Template
 from thirdparty.tools.cmake.utils import parse_extra_variable, cmake_escape_value
-from conan2.internal.api.install.generators import relativize_path
+from thirdparty.internal.api.install.generators import relativize_path
 
 
 class ConfigTemplate2:
@@ -174,3 +174,4 @@ class ConfigTemplate2:
         set({{ key }} {{ value }})
         {% endfor %}
         """)
+

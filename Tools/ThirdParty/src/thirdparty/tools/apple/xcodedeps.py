@@ -3,9 +3,9 @@ import re
 import textwrap
 from jinja2 import Template
 
-from conan2.internal import check_duplicated_generator
+from thirdparty.internal import check_duplicated_generator
 from thirdparty.errors import ConanException
-from conan2.internal.util.files import load, save
+from thirdparty.internal.util.files import load, save
 from thirdparty.tools.apple.apple import _to_apple_arch
 
 GLOBAL_XCCONFIG_TEMPLATE = textwrap.dedent("""\
@@ -355,3 +355,4 @@ class XcodeDeps:
         result[GLOBAL_XCCONFIG_FILENAME] = self._global_xconfig_content
 
         return result
+

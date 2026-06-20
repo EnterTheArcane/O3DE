@@ -5,7 +5,7 @@ from thirdparty.tools.cmake.cmakedeps import FIND_MODE_NONE, FIND_MODE_CONFIG, F
     FIND_MODE_BOTH
 from thirdparty.tools.cmake.cmakedeps.templates import CMakeDepsFileTemplate
 from thirdparty.errors import ConanException
-from conan2.internal.api.install.generators import relativize_path
+from thirdparty.internal.api.install.generators import relativize_path
 from thirdparty.tools.cmake.utils import cmake_escape_value
 
 """
@@ -360,3 +360,4 @@ class _TargetDataContext:
         # SONAME flag only makes sense for SHARED libraries
         nosoname = cmakedeps.get_property("nosoname", conanfile, comp_name, check_type=bool)
         self.no_soname = str((nosoname if self.library_type == "SHARED" else False) or False).upper()
+
