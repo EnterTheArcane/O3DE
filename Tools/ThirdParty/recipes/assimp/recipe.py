@@ -2,12 +2,12 @@ import os
 from pathlib import Path
 
 from thirdparty import RecipeBase
-from thirdparty.tools.build import stdcpp_library
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.files import collect_libs, copy, get, replace_in_file, rmdir, save
-from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.build import stdcpp_library
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.files import collect_libs, copy, get, replace_in_file, rmdir, save
+from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

@@ -1,9 +1,9 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.files import apply_patches, get, copy
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.files import apply_patches, get, copy
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

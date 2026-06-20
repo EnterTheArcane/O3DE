@@ -1,14 +1,14 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
-from thirdparty.tools.build import cross_building
-from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
-from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
-from thirdparty.tools.microsoft import NMakeDeps, NMakeToolchain, is_msvc
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
+from thirdparty.build import cross_building
+from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
+from thirdparty.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
+from thirdparty.microsoft import NMakeDeps, NMakeToolchain, is_msvc
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

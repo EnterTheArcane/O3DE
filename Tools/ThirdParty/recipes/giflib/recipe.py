@@ -1,9 +1,9 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get
-from thirdparty.tools.microsoft import is_msvc
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.files import apply_patches, copy, get
+from thirdparty.microsoft import is_msvc
 
 
 class Recipe(RecipeBase):

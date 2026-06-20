@@ -1,8 +1,8 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.files import copy, get
 
 
 class Recipe(RecipeBase):

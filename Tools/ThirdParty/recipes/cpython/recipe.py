@@ -3,12 +3,12 @@ import re
 import textwrap
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
-from thirdparty.tools.env import VirtualRunEnv
-from thirdparty.tools.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
-from thirdparty.tools.microsoft import MSBuildDeps, MSBuildToolchain, MSBuild, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, msvs_toolset
-from thirdparty.tools.scm import Version
+from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
+from thirdparty.env import VirtualRunEnv
+from thirdparty.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
+from thirdparty.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
+from thirdparty.microsoft import MSBuildDeps, MSBuildToolchain, MSBuild, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, msvs_toolset
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):

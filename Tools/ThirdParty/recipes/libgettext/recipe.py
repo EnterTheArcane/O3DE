@@ -2,13 +2,13 @@ import glob
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
-from thirdparty.tools.build import cross_building
-from thirdparty.tools.env import VirtualRunEnv, Environment
-from thirdparty.tools.files import copy, get, rename
-from thirdparty.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, GnuFtp
-from thirdparty.tools.microsoft import is_msvc, unix_path
-from thirdparty.tools.scm import Version
+from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
+from thirdparty.build import cross_building
+from thirdparty.env import VirtualRunEnv, Environment
+from thirdparty.files import copy, get, rename
+from thirdparty.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, GnuFtp
+from thirdparty.microsoft import is_msvc, unix_path
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):

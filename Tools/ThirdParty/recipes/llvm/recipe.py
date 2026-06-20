@@ -2,9 +2,9 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.errors import InvalidConfiguration
-from thirdparty.tools.files import copy, get
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.files import copy, get
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 _BASE_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.6"

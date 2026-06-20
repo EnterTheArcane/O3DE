@@ -1,8 +1,8 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, get, load, save
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.files import apply_patches, get, load, save
 
 
 class Recipe(RecipeBase):

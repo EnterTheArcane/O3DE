@@ -4,12 +4,12 @@ import shutil
 
 from thirdparty import RecipeBase
 from thirdparty.errors import RecipeException
-from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
-from thirdparty.tools.env import Environment
-from thirdparty.tools.files import apply_patches, copy, get, rename, replace_in_file, rmdir, save
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, GnuFtp
-from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
+from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
+from thirdparty.env import Environment
+from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir, save
+from thirdparty.gnu import Autotools, AutotoolsToolchain, GnuFtp
+from thirdparty.microsoft import is_msvc
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):

@@ -1,13 +1,13 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name
-from thirdparty.tools.build import stdcpp_library
-from thirdparty.tools.env import Environment
-from thirdparty.tools.files import copy, get
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, PkgConfigDeps
-from thirdparty.tools.microsoft import is_msvc, unix_path
-from thirdparty.tools.scm import Version
+from thirdparty.apple import fix_apple_shared_install_name
+from thirdparty.build import stdcpp_library
+from thirdparty.env import Environment
+from thirdparty.files import copy, get
+from thirdparty.gnu import Autotools, AutotoolsToolchain, PkgConfigDeps
+from thirdparty.microsoft import is_msvc, unix_path
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):

@@ -2,14 +2,14 @@ import os
 import re
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os, fix_apple_shared_install_name
-from thirdparty.tools.build import stdcpp_library
-from thirdparty.tools.env import Environment, VirtualBuildEnv
-from thirdparty.tools.files import apply_patches, copy, get, rename, replace_in_file, rmdir, save
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
-from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
+from thirdparty.build import stdcpp_library
+from thirdparty.env import Environment, VirtualBuildEnv
+from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir, save
+from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

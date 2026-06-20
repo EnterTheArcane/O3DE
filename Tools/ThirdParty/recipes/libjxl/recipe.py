@@ -1,13 +1,13 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.build import cross_building, stdcpp_library
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.tools.files import copy, get, rmdir, save, rm, replace_in_file
-from thirdparty.tools.gnu import PkgConfigDeps
-from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.build import cross_building, stdcpp_library
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.files import copy, get, rmdir, save, rm, replace_in_file
+from thirdparty.gnu import PkgConfigDeps
+from thirdparty.microsoft import is_msvc
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

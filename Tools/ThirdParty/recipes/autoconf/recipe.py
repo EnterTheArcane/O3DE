@@ -1,12 +1,12 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, rmdir, replace_in_file, apply_patches, save
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
-from thirdparty.tools.microsoft import unix_path, is_msvc
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import copy, get, rmdir, replace_in_file, apply_patches, save
+from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.microsoft import unix_path, is_msvc
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
