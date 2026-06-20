@@ -150,13 +150,19 @@ namespace AZStd
         template <class T, class... Args,
             size_t Index = find_type::find_exactly_one_alternative_v<T, Types...>>
             requires is_constructible_v<T, Args...>
-        explicit constexpr variant(in_place_type_t<T>, Args&&... args);
+        explicit constexpr variant(in_place_type_t<T>, Args&&... args)
+            : m_impl(in_place_index_t<Index>{}, AZStd::forward<Args>(args)...)
+        {
+        }
 
         // Variant constructor #6
         template <class T, class U, class... Args,
             size_t Index = find_type::find_exactly_one_alternative_v<T, Types...>>
             requires is_constructible_v<T, std::initializer_list<U>&, Args...>
-        explicit constexpr variant(in_place_type_t<T>, std::initializer_list<U> il, Args&&... args);
+        explicit constexpr variant(in_place_type_t<T>, std::initializer_list<U> il, Args&&... args)
+            : m_impl(in_place_index_t<Index>{}, il, AZStd::forward<Args>(args)...)
+        {
+        }
 
         // Variant constructor #7
         template <size_t Index, class... Args>
@@ -198,13 +204,19 @@ namespace AZStd
         template <class T, class... Args,
             size_t Index = find_type::find_exactly_one_alternative_v<T, Types...>>
             requires is_constructible_v<T, Args...>
-        constexpr T& emplace(Args&&... args);
+        constexpr T& emplace(Args&&... args)
+        {
+            return m_impl.template emplace<Index>(AZStd::forward<Args>(args)...);
+        }
 
         // Variant emplace #2
         template <class T, class U, class... Args,
             size_t Index = find_type::find_exactly_one_alternative_v<T, Types...>>
             requires is_constructible_v<T, std::initializer_list<U>&, Args...>
-        constexpr T& emplace(std::initializer_list<U> il, Args&&... args);
+        constexpr T& emplace(std::initializer_list<U> il, Args&&... args)
+        {
+            return m_impl.template emplace<Index>(il, AZStd::forward<Args>(args)...);
+        }
 
         // Variant emplace #3
         template <size_t Index, class... Args>
@@ -225,10 +237,17 @@ namespace AZStd
         }
 
         /// Returns false if and only if the variant holds a value.
-        constexpr bool valueless_by_exception() const;
+        constexpr bool valueless_by_exception() const
+        {
+            return m_impl.valueless_by_exception();
+        }
+
         /// Returns the zero-based index of the alternative that is currently held by the variant.
         /// If the variant is valueless_by_exception, returns variant_npos.
-        constexpr size_t index() const;
+        constexpr size_t index() const
+        {
+            return m_impl.index();
+        }
 
         /// Overloads the std::swap algorithm for std::variant. Effectively calls lhs.swap(rhs).
         template <bool Placeholder = true>
@@ -245,71 +264,171 @@ namespace AZStd
     };
 
     template <class T, class... Types>
-    constexpr bool holds_alternative(const variant<Types...>& variantInst);
+    constexpr bool holds_alternative(const variant<Types...>& variantInst)
+    {
+        return variant_detail::holds_alternative_at_index<find_type::find_exactly_one_alternative_v<T, Types...>>(variantInst);
+    }
 
     template <size_t Index, class... Types>
-    constexpr variant_alternative_t<Index, variant<Types...>>& get(variant<Types...>& variantInst);
+    constexpr variant_alternative_t<Index, variant<Types...>>& get(variant<Types...>& variantInst)
+    {
+        static_assert(Index < sizeof...(Types), "index is out of bounds of variant alternatives");
+        static_assert(!is_void_v<variant_alternative_t<Index, variant<Types...>>>, "Cannot retrieve a variant with alternative void type");
+        return variant_detail::generic_get<Index>(variantInst);
+    }
 
     template <size_t Index, class... Types>
-    constexpr variant_alternative_t<Index, variant<Types...>>&& get(variant<Types...>&& variantInst);
+    constexpr variant_alternative_t<Index, variant<Types...>>&& get(variant<Types...>&& variantInst)
+    {
+        static_assert(Index < sizeof...(Types), "index is out of bounds of variant alternatives");
+        static_assert(!is_void_v<variant_alternative_t<Index, variant<Types...>>>, "Cannot retrieve a variant with alternative void type");
+        return variant_detail::generic_get<Index>(AZStd::move(variantInst));
+    }
 
     template <size_t Index, class... Types>
-    constexpr const variant_alternative_t<Index, variant<Types...>>& get(const variant<Types...>& variantInst);
+    constexpr const variant_alternative_t<Index, variant<Types...>>& get(const variant<Types...>& variantInst)
+    {
+        static_assert(Index < sizeof...(Types), "index is out of bounds of variant alternatives");
+        static_assert(!is_void_v<variant_alternative_t<Index, variant<Types...>>>, "Cannot retrieve a variant with alternative void type");
+        return variant_detail::generic_get<Index>(variantInst);
+    }
 
     template <size_t Index, class... Types>
-    constexpr const variant_alternative_t<Index, variant<Types...>>&& get(const variant<Types...>&& variantInst);
+    constexpr const variant_alternative_t<Index, variant<Types...>>&& get(const variant<Types...>&& variantInst)
+    {
+        static_assert(Index < sizeof...(Types), "index is out of bounds of variant alternatives");
+        static_assert(!is_void_v<variant_alternative_t<Index, variant<Types...>>>, "Cannot retrieve a variant with alternative void type");
+        return variant_detail::generic_get<Index>(AZStd::move(variantInst));
+    }
 
     template <class T, class... Types>
-    constexpr T& get(variant<Types...>& variantInst);
+    constexpr T& get(variant<Types...>& variantInst)
+    {
+        static_assert(!is_void_v<T>, "Cannot retrieve a variant with alternative void type");
+        return get<find_type::find_exactly_one_alternative_v<T, Types...>>(variantInst);
+    }
 
     template <class T, class... Types>
-    constexpr T&& get(variant<Types...>&& variantInst);
+    constexpr T&& get(variant<Types...>&& variantInst)
+    {
+        static_assert(!is_void_v<T>, "Cannot retrieve a variant with alternative void type");
+        return get<find_type::find_exactly_one_alternative_v<T, Types...>>(AZStd::move(variantInst));
+    }
 
     template <class T, class... Types>
-    constexpr const T& get(const variant<Types...>& variantInst);
+    constexpr const T& get(const variant<Types...>& variantInst)
+    {
+        static_assert(!is_void_v<T>, "Cannot retrieve a variant with alternative void type");
+        return get<find_type::find_exactly_one_alternative_v<T, Types...>>(variantInst);
+    }
 
     template <class T, class... Types>
-    constexpr const T&& get(const variant<Types...>&& variantInst);
+    constexpr const T&& get(const variant<Types...>&& variantInst)
+    {
+        static_assert(!is_void_v<T>, "Cannot retrieve a variant with alternative void type");
+        return get<find_type::find_exactly_one_alternative_v<T, Types...>>(AZStd::move(variantInst));
+    }
 
     template <size_t Index, class... Types>
-    constexpr add_pointer_t<variant_alternative_t<Index, variant<Types...>>> get_if(variant<Types...>* variantInst);
+    constexpr add_pointer_t<variant_alternative_t<Index, variant<Types...>>> get_if(variant<Types...>* variantInst)
+    {
+        static_assert(Index < sizeof...(Types), "index is out of bounds of variant");
+        static_assert(!is_void_v<variant_alternative_t<Index, variant<Types...>>>, "Cannot retrieve a variant with alternative void type");
+        return variant_detail::generic_get_if<Index>(variantInst);
+    }
 
     template <size_t Index, class... Types>
-    constexpr add_pointer_t<const variant_alternative_t<Index, variant<Types...>>> get_if(const variant<Types...>* variantInst);
+    constexpr add_pointer_t<const variant_alternative_t<Index, variant<Types...>>> get_if(const variant<Types...>* variantInst)
+    {
+        static_assert(Index < sizeof...(Types), "index is out of bounds of variant");
+        static_assert(!is_void_v<variant_alternative_t<Index, variant<Types...>>>, "Cannot retrieve a variant with alternative void type");
+        return variant_detail::generic_get_if<Index>(variantInst);
+    }
 
     template <class T, class... Types>
-    constexpr add_pointer_t<T> get_if(variant<Types...>* variantInst);
+    constexpr add_pointer_t<T> get_if(variant<Types...>* variantInst)
+    {
+        static_assert(!is_void_v<T>, "Cannot retrieve a variant with alternative void type");
+        return get_if<find_type::find_exactly_one_alternative_v<T, Types...>>(variantInst);
+    }
 
     template <class T, class... Types>
-    constexpr add_pointer_t<const T> get_if(const variant<Types...>* variantInst);
+    constexpr add_pointer_t<const T> get_if(const variant<Types...>* variantInst)
+    {
+        static_assert(!is_void_v<T>, "Cannot retrieve a variant with alternative void type");
+        return get_if<find_type::find_exactly_one_alternative_v<T, Types...>>(variantInst);
+    }
 
     template <class... Types>
-    constexpr bool operator==(const variant<Types...>& lhs, const variant<Types...>& rhs);
+    constexpr bool operator==(const variant<Types...>& lhs, const variant<Types...>& rhs)
+    {
+        return lhs.index() == rhs.index() && (lhs.valueless_by_exception()
+            || variant_detail::visitor::variant::visit_value_at(lhs.index(),
+                [](auto&& altLeft, auto&& altRight) -> bool
+                {
+                    return altLeft == altRight;
+                },
+                lhs, rhs));
+    }
 
     template <class... Types>
-    constexpr bool operator!=(const variant<Types...>& lhs, const variant<Types...>& rhs);
+    constexpr bool operator!=(const variant<Types...>& lhs, const variant<Types...>& rhs)
+    {
+        return !operator==(lhs, rhs);
+    }
 
     template <class... Types>
-    constexpr bool operator<(const variant<Types...>& lhs, const variant<Types...>& rhs);
+    constexpr bool operator<(const variant<Types...>& lhs, const variant<Types...>& rhs)
+    {
+        return !rhs.valueless_by_exception() && (lhs.valueless_by_exception() || lhs.index() < rhs.index()
+            || (lhs.index() == rhs.index() && variant_detail::visitor::variant::visit_value_at(lhs.index(),
+                [](auto&& altLeft, auto&& altRight) -> bool
+                {
+                    return altLeft < altRight;
+                },
+                lhs, rhs)));
+    }
 
     template <class... Types>
-    constexpr bool operator>(const variant<Types...>& lhs, const variant<Types...>& rhs);
+    constexpr bool operator>(const variant<Types...>& lhs, const variant<Types...>& rhs)
+    {
+        return operator<(rhs, lhs);
+    }
 
     template <class... Types>
-    constexpr bool operator<=(const variant<Types...>& lhs, const variant<Types...>& rhs);
+    constexpr bool operator<=(const variant<Types...>& lhs, const variant<Types...>& rhs)
+    {
+        return !operator>(lhs, rhs);
+    }
 
     template <class... Types>
-    constexpr bool operator>=(const variant<Types...>& lhs, const variant<Types...>& rhs);
+    constexpr bool operator>=(const variant<Types...>& lhs, const variant<Types...>& rhs)
+    {
+        return !operator<(lhs, rhs);
+    }
 
 
     template <typename... Types>
-    constexpr void swap(variant<Types...>& lhs, variant<Types...>& rhs);
+    constexpr void swap(variant<Types...>& lhs, variant<Types...>& rhs)
+    {
+        lhs.swap(rhs);
+    }
 
     template <class Visitor, class... Variants>
-    constexpr decltype(auto) visit(Visitor&& visitor, Variants&&... variants);
+    constexpr decltype(auto) visit(Visitor&& visitor, Variants&&... variants)
+    {
+        // The following code validates that a variant that is valueless due to an exception
+        // being thrown in one of the alternative constructor is not being supplied to Visit
+        return variant_detail::visitor::variant::visit_value(AZStd::forward<Visitor>(visitor), AZStd::forward<Variants>(variants)...);
+    }
 
     template <class R, class Visitor, class... Variants>
-    constexpr R visit(Visitor&& visitor, Variants&&... variants);
+    constexpr R visit(Visitor&& visitor, Variants&&... variants)
+    {
+        // The following code validates that a variant that is valueless due to an exception
+        // being thrown in one of the alternative constructor is not being supplied to Visit
+        return variant_detail::visitor::variant::visit_value_r<R>(AZStd::forward<Visitor>(visitor), AZStd::forward<Variants>(variants)...);
+    }
 
     /* monostate is a unit type intended to act as an empty alternative for an AZStd::variant.
      * It can be used to make a variant default constructible when every alternative
@@ -317,12 +436,30 @@ namespace AZStd
      */
     struct monostate {};
 
-    constexpr bool operator<(monostate, monostate);
-    constexpr bool operator>(monostate, monostate);
-    constexpr bool operator<=(monostate, monostate);
-    constexpr bool operator>=(monostate, monostate);
-    constexpr bool operator==(monostate, monostate);
-    constexpr bool operator!=(monostate, monostate);
+    constexpr bool operator<(monostate, monostate)
+    {
+        return false;
+    }
+    constexpr bool operator>(monostate, monostate)
+    {
+        return false;
+    }
+    constexpr bool operator<=(monostate, monostate)
+    {
+        return true;
+    }
+    constexpr bool operator>=(monostate, monostate)
+    {
+        return true;
+    }
+    constexpr bool operator==(monostate, monostate)
+    {
+        return true;
+    }
+    constexpr bool operator!=(monostate, monostate)
+    {
+        return false;
+    }
 
     template <>
     struct hash<monostate>
@@ -354,8 +491,6 @@ namespace AZStd
     };
 
 } // namespace AZStd
-
-#include <AzCore/std/containers/variant.inl>
 
 // undefine Visual Studio Empty Base Class Optimization Macro
 #undef AZSTD_VARIANT_EMPTY_BASE_OPTIMIZATION
