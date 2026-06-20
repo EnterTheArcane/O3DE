@@ -1,13 +1,13 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.build import can_run
-from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir, save
-from thirdparty.tools.gnu import PkgConfigDeps
-from thirdparty.tools.meson import Meson, MesonToolchain
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.gitlab import GitlabRepository
+from thirdparty.build import can_run
+from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.gnu import PkgConfigDeps
+from thirdparty.meson import Meson, MesonToolchain
+from thirdparty.scm import Version
+from thirdparty.scm.gitlab import GitlabRepository
 
 
 class Recipe(RecipeBase):

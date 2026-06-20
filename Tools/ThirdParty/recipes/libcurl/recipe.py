@@ -1,13 +1,13 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.cmake import CMake, CMakeToolchain, CMakeConfigDeps
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, download, get, replace_in_file, rmdir, save
-from thirdparty.tools.github import GithubRepository
-from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
+from thirdparty.apple import is_apple_os
+from thirdparty.cmake import CMake, CMakeToolchain, CMakeConfigDeps
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import copy, download, get, replace_in_file, rmdir, save
+from thirdparty.github import GithubRepository
+from thirdparty.microsoft import is_msvc
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):

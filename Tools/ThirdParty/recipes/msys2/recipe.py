@@ -7,7 +7,7 @@ import subprocess
 
 from thirdparty import RecipeBase
 from thirdparty.errors import InvalidConfiguration
-from thirdparty.tools.files import chdir, get, replace_in_file, copy, trim_conandata
+from thirdparty.files import chdir, get, replace_in_file, copy, trim_conandata
 
 
 class OpLock:

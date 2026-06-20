@@ -1,12 +1,12 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, rm, rmdir
-from thirdparty.tools.meson import Meson, MesonToolchain
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import fix_apple_shared_install_name
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import copy, get, rm, rmdir
+from thirdparty.meson import Meson, MesonToolchain
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

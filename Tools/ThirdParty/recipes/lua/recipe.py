@@ -1,9 +1,9 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.tools.files import get, load, save, apply_patches, collect_libs
+from thirdparty.apple import fix_apple_shared_install_name
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.files import get, load, save, apply_patches, collect_libs
 
 
 class Recipe(RecipeBase):

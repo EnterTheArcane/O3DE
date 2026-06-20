@@ -2,11 +2,11 @@ import os
 import re
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_patches, chdir, copy, get, load, replace_in_file, rm, rmdir, save
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
-from thirdparty.tools.microsoft import MSBuild, MSBuildToolchain
+from thirdparty.apple import fix_apple_shared_install_name
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import apply_patches, chdir, copy, get, load, replace_in_file, rm, rmdir, save
+from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.microsoft import MSBuild, MSBuildToolchain
 
 
 class Recipe(RecipeBase):

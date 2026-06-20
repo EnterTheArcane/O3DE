@@ -1,8 +1,8 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os, XCRun
-from thirdparty.tools.files import copy, get, rm, rmdir
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps
-from thirdparty.tools.scm import Version
+from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
+from thirdparty.files import copy, get, rm, rmdir
+from thirdparty.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps
+from thirdparty.scm import Version
 import os
 
 

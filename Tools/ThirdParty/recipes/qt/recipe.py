@@ -5,14 +5,14 @@ import platform
 import textwrap
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.build import cross_building, default_cppstd
-from thirdparty.tools.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.tools.env import Environment, VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
-from thirdparty.tools.gnu import PkgConfigDeps
-from thirdparty.tools.microsoft import msvc_runtime_flag, is_msvc
-from thirdparty.tools.scm import Version
+from thirdparty.apple import is_apple_os
+from thirdparty.build import cross_building, default_cppstd
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
+from thirdparty.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
+from thirdparty.gnu import PkgConfigDeps
+from thirdparty.microsoft import msvc_runtime_flag, is_msvc
+from thirdparty.scm import Version
 
 
 SUBMODULES = [

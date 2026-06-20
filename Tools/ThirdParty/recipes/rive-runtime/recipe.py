@@ -1,11 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.env import Environment, VirtualBuildEnv
-from thirdparty.tools.files import copy, get
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
-from thirdparty.tools.premake import Premake, PremakeDeps, PremakeToolchain
+from thirdparty.env import Environment, VirtualBuildEnv
+from thirdparty.files import copy, get
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
+from thirdparty.premake import Premake, PremakeDeps, PremakeToolchain
 
 
 class Recipe(RecipeBase):

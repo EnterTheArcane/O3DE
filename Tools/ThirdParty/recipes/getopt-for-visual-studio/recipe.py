@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.files import apply_patches, copy, get, load, save
+from thirdparty.files import apply_patches, copy, get, load, save
 
 
 class Recipe(RecipeBase):

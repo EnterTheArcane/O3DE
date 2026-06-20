@@ -1,8 +1,8 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.scm import Version
+from thirdparty.files import copy, get, rmdir
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):

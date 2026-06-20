@@ -3,14 +3,14 @@ import os
 import textwrap
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os, XCRun
-from thirdparty.tools.build import build_jobs
-from thirdparty.tools.files import chdir, copy, get, replace_in_file, rm, rmdir, save
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.gnu import AutotoolsToolchain
-from thirdparty.tools.microsoft import is_msvc, msvc_runtime_flag, unix_path
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
+from thirdparty.build import build_jobs
+from thirdparty.files import chdir, copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.gnu import AutotoolsToolchain
+from thirdparty.microsoft import is_msvc, msvc_runtime_flag, unix_path
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

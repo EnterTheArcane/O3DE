@@ -1,11 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_patches, copy, get, rmdir
-from thirdparty.tools.gnu import Autotools, AutotoolsToolchain
-from thirdparty.tools.microsoft import is_msvc
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import apply_patches, copy, get, rmdir
+from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.microsoft import is_msvc
 
 
 class Recipe(RecipeBase):

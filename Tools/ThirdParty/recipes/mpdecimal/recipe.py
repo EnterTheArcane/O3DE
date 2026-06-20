@@ -1,11 +1,11 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.gnu import AutotoolsToolchain, Autotools
-from thirdparty.tools.files import get, chdir, copy, apply_patches, mkdir, rename
-from thirdparty.tools.build import cross_building
-from thirdparty.tools.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.tools.microsoft import VCVars, is_msvc, NMakeDeps, NMakeToolchain
-from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.scm import Version
+from thirdparty.gnu import AutotoolsToolchain, Autotools
+from thirdparty.files import get, chdir, copy, apply_patches, mkdir, rename
+from thirdparty.build import cross_building
+from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.microsoft import VCVars, is_msvc, NMakeDeps, NMakeToolchain
+from thirdparty.apple import is_apple_os
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):
