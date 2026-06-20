@@ -83,7 +83,7 @@ class _Component:
         self._exelinkflags = None  # linker flags
         self._objects = None  # linker flags
         self._sources = None  # source files
-        self._exe = None  # application executable, only 1 allowed, following CPS
+        self._exe = None  # application executable, only 1 allowed
         self._languages = None
 
         self._sysroot = None
@@ -101,7 +101,6 @@ class _Component:
             self.libdirs = ["lib"]
             self.bindirs = ["bin"]
 
-        # CPS
         self._type = None
         self._location = None
         self._link_location = None
