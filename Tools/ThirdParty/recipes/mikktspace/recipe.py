@@ -1,9 +1,9 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import get, save
-from thirdparty.tools.scm import Version
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.files import get, save
+from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):

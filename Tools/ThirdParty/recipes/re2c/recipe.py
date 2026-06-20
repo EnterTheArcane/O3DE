@@ -1,10 +1,10 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMakeToolchain, CMake
-from thirdparty.tools.files import copy, get, rmdir
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.cmake import CMakeToolchain, CMake
+from thirdparty.files import copy, get, rmdir
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

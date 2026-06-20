@@ -2,9 +2,9 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.errors import InvalidConfiguration
-from thirdparty.tools.files import copy, get
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.files import copy, get
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.files import get, copy
+from thirdparty.files import get, copy
 
 
 class Recipe(RecipeBase):

@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.tools.gnu import PkgConfig
+from thirdparty.gnu import PkgConfig
 
 
 _COMPONENTS = [

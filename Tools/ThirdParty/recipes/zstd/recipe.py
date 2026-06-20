@@ -2,10 +2,10 @@ import glob
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, collect_libs, copy, get, replace_in_file, rmdir, rm, save
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.files import apply_patches, collect_libs, copy, get, replace_in_file, rmdir, rm, save
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

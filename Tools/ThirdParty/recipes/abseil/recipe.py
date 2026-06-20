@@ -3,11 +3,11 @@ import os
 import re
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, load, rmdir, save
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import is_apple_os
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.files import apply_patches, copy, get, load, rmdir, save
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

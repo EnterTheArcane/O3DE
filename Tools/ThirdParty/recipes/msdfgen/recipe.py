@@ -1,11 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, rm, rmdir
-from thirdparty.tools.microsoft import is_msvc, is_msvc_static_runtime
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.files import apply_patches, copy, get, rm, rmdir
+from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

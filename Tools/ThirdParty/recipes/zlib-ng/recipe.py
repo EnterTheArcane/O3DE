@@ -2,12 +2,12 @@ import os
 import re
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import copy, get, rmdir, load
-from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import fix_apple_shared_install_name
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.files import copy, get, rmdir, load
+from thirdparty.microsoft import is_msvc
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

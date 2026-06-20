@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.errors import InvalidConfiguration
-from thirdparty.tools.files import copy, get
+from thirdparty.files import copy, get
 
 
 class Recipe(RecipeBase):

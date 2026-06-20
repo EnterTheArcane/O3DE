@@ -1,11 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import is_apple_os
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.tools.files import copy, get, replace_in_file, rmdir
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import is_apple_os
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.files import copy, get, replace_in_file, rmdir
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

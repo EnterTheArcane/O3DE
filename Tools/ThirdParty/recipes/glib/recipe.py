@@ -2,14 +2,14 @@ import os
 import shutil
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name, is_apple_os
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rm, rmdir, save
-from thirdparty.tools.gnu import PkgConfigDeps
-from thirdparty.tools.meson import Meson, MesonToolchain
-from thirdparty.tools.microsoft import is_msvc
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.gnu import PkgConfigDeps
+from thirdparty.meson import Meson, MesonToolchain
+from thirdparty.microsoft import is_msvc
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
@@ -275,7 +275,7 @@ class Recipe(RecipeBase):
 
 def fix_msvc_libname(conanfile, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
-    from thirdparty.tools.files import rename
+    from thirdparty.files import rename
     import glob
     if not conanfile.settings.get_safe("compiler.runtime"):
         return

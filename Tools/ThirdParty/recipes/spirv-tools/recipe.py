@@ -1,12 +1,12 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.build import stdcpp_library
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, replace_in_file, rm, rmdir, apply_patches, save
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.build import stdcpp_library
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import copy, get, replace_in_file, rm, rmdir, apply_patches, save
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

@@ -1,11 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.build import stdcpp_library
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.files import apply_patches, copy, get, replace_in_file, rmdir, save
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.build import stdcpp_library
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

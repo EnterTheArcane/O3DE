@@ -1,13 +1,13 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.apple import fix_apple_shared_install_name
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import copy, get, rm, rmdir
-from thirdparty.tools.gnu import PkgConfigDeps
-from thirdparty.tools.meson import Meson, MesonToolchain
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.gitlab import GitlabRepository
+from thirdparty.apple import fix_apple_shared_install_name
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import copy, get, rm, rmdir
+from thirdparty.gnu import PkgConfigDeps
+from thirdparty.meson import Meson, MesonToolchain
+from thirdparty.scm import Version
+from thirdparty.scm.gitlab import GitlabRepository
 
 
 class Recipe(RecipeBase):
@@ -104,7 +104,7 @@ def fix_msvc_libname(conanfile, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     if not conanfile.settings.get_safe("compiler.runtime"):
         return
-    from thirdparty.tools.files import rename
+    from thirdparty.files import rename
     import glob
     libdirs = getattr(conanfile.cpp.package, "libdirs")
     for libdir in libdirs:

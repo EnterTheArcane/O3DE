@@ -1,11 +1,11 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.tools.files import copy, get, rename, rm, replace_in_file
-from thirdparty.tools.gnu import PkgConfigDeps
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.files import copy, get, rename, rm, replace_in_file
+from thirdparty.gnu import PkgConfigDeps
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

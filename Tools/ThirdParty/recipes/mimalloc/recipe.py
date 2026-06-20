@@ -2,12 +2,12 @@ import os
 import shutil
 
 from thirdparty import RecipeBase
-from thirdparty.tools.cmake import CMake, CMakeToolchain
-from thirdparty.tools.env import VirtualBuildEnv
-from thirdparty.tools.files import apply_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
-from thirdparty.tools.microsoft import is_msvc, VCVars
-from thirdparty.tools.scm import Version
-from thirdparty.tools.scm.github import GithubRepository
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.env import VirtualBuildEnv
+from thirdparty.files import apply_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
+from thirdparty.microsoft import is_msvc, VCVars
+from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
