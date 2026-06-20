@@ -2,7 +2,6 @@ import os
 import platform
 import re
 import subprocess
-import sys
 from multiprocessing import cpu_count
 
 from thirdparty.internal.default_settings import default_settings_yml
@@ -36,7 +35,7 @@ def _detect_msvc_version():
             full_ver = f.read().strip()
         parts = full_ver.split(".")
         minor = int(parts[1])
-        # VCTools 14.Nx.x → conan msvc "19N" (14.3x=193, 14.4x=194, …)
+        # VCTools 14.Nx.x -> conan msvc "19N" (14.3x=193, 14.4x=194, ...)
         return str(190 + minor // 10)
     except Exception:
         return None
@@ -111,11 +110,9 @@ def detect_settings(build_type="Release"):
                 ("compiler.cppstd", "17"),
             ], raise_undefined=False)
         # Set os.version so that CMakeToolchain emits CMAKE_OSX_DEPLOYMENT_TARGET.
-        # platform.mac_ver() returns e.g. "15.4.0" or "26.5.0"; strip the patch component.
-        _raw_ver = platform.mac_ver()[0]  # e.g. "26.5.0"
+        _raw_ver = platform.mac_ver()[0]
         if _raw_ver:
             _parts = _raw_ver.split(".")
-            # Use major.minor (e.g. "26.5"), falling back to just major if needed.
             _os_version = ".".join(_parts[:2]) if len(_parts) >= 2 else _parts[0]
             settings.update_values([("os.version", _os_version)], raise_undefined=False)
     else:
@@ -146,4 +143,3 @@ def make_conf(jobs=None):
     conf.define("tools.cmake:configure_args", ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"])
     conf.define("user.openssl:windows_use_jom", True)
     return conf
-

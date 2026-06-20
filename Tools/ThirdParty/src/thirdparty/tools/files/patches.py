@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import shutil
 
 import patch_ng
@@ -22,6 +23,14 @@ class PatchLogHandler(logging.Handler):
             self._scoped_output.warning("%s: %s" % (self.patchname, logstr))
         else:
             self._scoped_output.info("%s: %s" % (self.patchname, logstr))
+
+
+def _patch_applies_to_version(filename: str, version: str) -> bool:
+    """Match version-prefixed patch names like ``1.2.3-0001-fix.patch``."""
+    match = re.match(r"^([\d][^\s/\\]*?)-\d{4}-", filename)
+    if match:
+        return match.group(1) == version
+    return True
 
 
 def patch(conanfile, base_path=None, patch_file=None, patch_string=None, strip=0, fuzz=False, **kwargs):
@@ -68,6 +77,30 @@ def patch(conanfile, base_path=None, patch_file=None, patch_string=None, strip=0
     root = os.path.join(conanfile.source_folder, base_path) if base_path else conanfile.source_folder
     if not patchset.apply(strip=strip, root=root, fuzz=fuzz):
         raise ConanException("Failed to apply patch: %s" % patch_file)
+
+
+def apply_patches(conanfile):
+    """Apply all recipe-local ``patches/*.patch`` files for the active version."""
+    patches_dir = os.path.join(conanfile.recipe_folder, "patches")
+    if not os.path.isdir(patches_dir):
+        return
+
+    version = str(getattr(conanfile, "version", None) or "")
+    for patch_name in sorted(name for name in os.listdir(patches_dir) if name.endswith(".patch")):
+        if not _patch_applies_to_version(patch_name, version):
+            conanfile.output.info(f"Skip patch (wrong version): {patch_name}")
+            continue
+
+        patch_path = os.path.join(patches_dir, patch_name)
+        conanfile.output.info(f"Apply patch: {patch_name}")
+        patchlog = logging.getLogger("patch_ng")
+        patchlog.handlers = []
+        patchlog.addHandler(PatchLogHandler(conanfile.output, patch_name))
+        patchset = patch_ng.fromfile(patch_path)
+        if not patchset:
+            raise ConanException(f"Failed to parse patch: {patch_name}")
+        if not patchset.apply(root=conanfile.source_folder):
+            raise ConanException(f"Failed to apply patch: {patch_name}")
 
 
 def apply_conandata_patches(conanfile):
