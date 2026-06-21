@@ -644,7 +644,15 @@ def _build_recipe(
             # Wipe any partial state from a previous failed source() attempt
             shutil.rmtree(src_folder, ignore_errors=True)
             src_folder.mkdir(parents=True, exist_ok=True)
-            recipe.source()
+            # Run source() with CWD = source_folder (as Conan does) so that downloads/extracts
+            # (e.g. get()'s transient archive) land in the build tree, not the directory the
+            # user invoked the build from.
+            _orig_cwd_src = os.getcwd()
+            try:
+                os.chdir(src_folder)
+                recipe.source()
+            finally:
+                os.chdir(_orig_cwd_src)
             (src_folder / _COMPLETE_MARKER).write_text("")
     gen_folder = recipe.generators_folder if hasattr(recipe, "generate") else None
     if hasattr(recipe, "generate"):
