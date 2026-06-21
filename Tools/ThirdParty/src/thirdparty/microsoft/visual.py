@@ -3,6 +3,7 @@ import textwrap
 
 from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.detect_vs import vs_installation_path
+from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.scm import Version
 from thirdparty._internal.util.files import save
@@ -11,11 +12,10 @@ RECIPE_VCVARS = "vcvars_env"
 
 
 def msvc_platform_from_arch(arch):
-    return {"x86": "Win32",
-            "x86_64": "x64",
-            "armv7": "ARM",
-            "armv8": "ARM64",
-            "arm64ec": "ARM64EC"}.get(arch)
+    return {
+        "X64": "x64",
+        "ARM": "ARM64",
+    }.get(arch)
 
 
 def check_min_vs(recipe, version, raise_invalid=True):
@@ -341,22 +341,12 @@ def _vcvars_arch(recipe):
     arch_build = str(settings_build.arch)
 
     arch = None
-    if arch_build == 'x86_64':
-        arch = {'x86': "amd64_x86",
-                'x86_64': 'amd64',
-                'armv7': 'amd64_arm',
-                'armv8': 'amd64_arm64',
-                'arm64ec': 'amd64_arm64'}.get(arch_host)
-    elif arch_build == 'x86':
-        arch = {'x86': 'x86',
-                'x86_64': 'x86_amd64',
-                'armv7': 'x86_arm',
-                'armv8': 'x86_arm64'}.get(arch_host)
-    elif arch_build == 'armv8':
-        arch = {'x86': 'arm64_x86',
-                'x86_64': 'arm64_x64',
-                'armv7': 'arm64_arm',
-                'armv8': 'arm64'}.get(arch_host)
+    if arch_build == 'X64':
+        arch = {'X64': 'amd64',
+                'ARM': 'amd64_arm64'}.get(arch_host)
+    elif arch_build == 'ARM':
+        arch = {'X64': 'arm64_x64',
+                'ARM': 'arm64'}.get(arch_host)
 
     if not arch:
         raise RecipeException('vcvars unsupported architectures %s-%s' % (arch_build, arch_host))
@@ -364,7 +354,7 @@ def _vcvars_arch(recipe):
     return arch
 
 
-def is_msvc(recipe, build_context=False):
+def is_msvc(recipe: RecipeBase, build_context=False) -> bool:
     """
     Validates if the current compiler is ``msvc``.
 

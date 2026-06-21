@@ -30,10 +30,6 @@ class Recipe(RecipeBase):
         if self.options.shared:
             self.options.rm_safe("fPIC")
 
-    def latest_version(self):
-        repo = GithubRepository(self, "OpenMesh/OpenMesh")
-        return Version(repo.latest_release.removeprefix("OpenMesh-"))
-
     def source(self):
         get(
             self,

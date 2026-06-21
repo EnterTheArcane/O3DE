@@ -179,7 +179,7 @@ class Recipe(RecipeBase):
             # CPython 3.12 _decimal.c still checks the old names; provide compat defines.
             if Version(str(self.dependencies["mpdecimal"].ref.version)) >= "4.0":
                 _arch = str(self.settings.arch)
-                if _arch in ("x86_64", "armv8", "armv8.3", "armv8.4", "mips64", "ppc64", "ppc64le"):
+                if _arch in ("X64", "ARM"):
                     tc.extra_defines.append("CONFIG_64")
                 else:
                     tc.extra_defines.append("CONFIG_32")
@@ -483,11 +483,8 @@ class Recipe(RecipeBase):
     @property
     def _msvc_archs(self):
         archs = {
-            "x86": "Win32",
-            "x86_64": "x64",
-            "armv7": "ARM",
-            "armv8_32": "ARM",
-            "armv8": "ARM64",
+            "X64": "x64",
+            "ARM": "ARM64",
         }
         return archs
 
@@ -515,11 +512,8 @@ class Recipe(RecipeBase):
     @property
     def _msvc_artifacts_path(self):
         build_subdir_lut = {
-            "x86_64": "amd64",
-            "x86": "win32",
-            "armv7": "arm32",
-            "armv8_32": "arm32",
-            "armv8": "arm64",
+            "X64": "amd64",
+            "ARM": "arm64",
         }
         return os.path.join(self.source_folder, "PCbuild", build_subdir_lut[str(self.settings.arch)])
 

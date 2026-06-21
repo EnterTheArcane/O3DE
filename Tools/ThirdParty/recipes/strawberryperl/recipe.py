@@ -18,8 +18,8 @@ class Recipe(RecipeBase):
             raise RecipeInvalidConfiguration("Strawberry Perl is only supported on Windows")
 
     def compatibility(self):
-        if self.settings.arch == "armv8":
-            return [{"settings": [("arch", "x86_64")]}]
+        if self.settings.arch == "ARM":
+            return [{"settings": [("arch", "X64")]}]
 
     def latest_version(self):
         repo = GithubRepository(self, "StrawberryPerl/Perl-Dist-Strawberry")

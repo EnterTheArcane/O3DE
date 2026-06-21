@@ -94,6 +94,6 @@ class Recipe(RecipeBase):
             self.cpp_info.system_libs.extend(["m", "pthread"])
         if self.settings.os == "Linux":
             self.cpp_info.system_libs.append("dl")
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             self.cpp_info.frameworks.extend(["CoreFoundation", "CoreAudio", "AudioUnit"])
             self.cpp_info.defines.append("MA_NO_RUNTIME_LINKING=1")

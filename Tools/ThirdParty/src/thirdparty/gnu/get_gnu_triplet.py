@@ -3,14 +3,8 @@ from thirdparty.errors import RecipeException
 
 def _get_gnu_arch(os_, arch):
     # Calculate the arch
-    machine = {"x86": "i686",
-               "x86_64": "x86_64",
-               "armv8": "aarch64",
-               "armv8_32": "aarch64",  # https://wiki.linaro.org/Platform/arm64-ilp32
-               "armv8.3": "aarch64",
-               "asm.js": "asmjs",
-               "wasm": "wasm32",
-               "wasm64": "wasm64",
+    machine = {"X64": "x86_64",
+               "ARM": "aarch64",
                }.get(arch, None)
 
     if not machine:
@@ -70,9 +64,8 @@ def _get_gnu_os(os_, arch, compiler=None):
                  "Linux": "linux-gnu",
                  "Darwin": "apple-darwin",
                  "Android": "linux-android",
-                 "Macos": "apple-darwin",
+                 "Mac": "apple-darwin",
                  "iOS": "apple-ios",
-                 "watchOS": "apple-watchos",
                  "tvOS": "apple-tvos",
                  "visionOS": "apple-xros",
                  # NOTE: it technically must be "asmjs-unknown-emscripten" or
@@ -81,15 +74,6 @@ def _get_gnu_os(os_, arch, compiler=None):
                  "AIX": "ibm-aix",
                  "Neutrino": "nto-qnx"}.get(os_, os_.lower())
 
-    if os_ in ("Linux", "Android"):
-        if "arm" in arch and "armv8" not in arch:
-            op_system += "eabi"
-
-        if (arch == "armv5hf" or arch == "armv7hf") and os_ == "Linux":
-            op_system += "hf"
-
-        if arch == "armv8_32" and os_ == "Linux":
-            op_system += "_ilp32"  # https://wiki.linaro.org/Platform/arm64-ilp32
     return op_system
 
 

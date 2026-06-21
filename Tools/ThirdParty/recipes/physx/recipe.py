@@ -158,13 +158,13 @@ class Recipe(RecipeBase):
             replace_in_file(self, os.path.join(physx_source_cmake_dir, cmake_os, "CMakeLists.txt"),
                                   "-Werror", "")
 
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             mac_cmake = os.path.join(physx_source_cmake_dir, "mac", "CMakeLists.txt")
             # Remove hardcoded deployment target so the recipe toolchain value is used
             replace_in_file(self, mac_cmake,
                             'SET(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")', "")
             # Fix hardcoded x86_64 arch — use the target arch from recipe settings
-            _recipe_to_osx_arch = {"armv8": "arm64", "x86_64": "x86_64", "x86": "i386"}
+            _recipe_to_osx_arch = {"ARM": "arm64", "X64": "x86_64"}
             _osx_arch = _recipe_to_osx_arch.get(str(self.settings.arch), str(self.settings.arch))
             replace_in_file(self, mac_cmake,
                             'SET(OSX_BITNESS "-arch x86_64")',
@@ -198,7 +198,7 @@ class Recipe(RecipeBase):
         return {
             "Windows" : "windows",
             "Linux" : "linux",
-            "Macos" : "mac",
+            "Mac" : "mac",
             "Android" : "android",
             "iOS" : "ios"
         }.get(str(self.settings.os))
@@ -238,15 +238,15 @@ class Recipe(RecipeBase):
         physx_build_type = self._get_physx_build_type()
         compiler_version = self.settings.compiler.version
 
-        if self.settings.os == "Linux" and self.settings.arch == "x86_64":
+        if self.settings.os == "Linux" and self.settings.arch == "X64":
             package_dst_lib_dir = os.path.join(self.package_folder, "lib")
             physx_gpu_dir = os.path.join(external_bin_dir, "linux.clang", physx_build_type)
             copy(self, pattern="*PhysXGpu*.so", dst=package_dst_lib_dir, src=physx_gpu_dir, keep_path=False)
         elif self.settings.os == "Windows" and is_msvc(self):
-            physx_arch = {"x86": "x86_32", "x86_64": "x86_64"}.get(str(self.settings.arch))
+            physx_arch = {"X64": "x86_64"}.get(str(self.settings.arch))
             dll_info_list = [{
                 "pattern": "PhysXGpu*.dll",
-                "vc_ver": {"x86": "vc120", "x86_64": "vc140"}.get(str(self.settings.arch))
+                "vc_ver": {"X64": "vc140"}.get(str(self.settings.arch))
             }, {
                 "pattern": "PhysXDevice*.dll",
                 "vc_ver": {"180": "vc120", "190": "vc140", "191": "vc141"}.get(str(compiler_version), "vc142")
@@ -289,7 +289,7 @@ class Recipe(RecipeBase):
         self.cpp_info.components["physxmain"].libs = ["PhysX"]
         if self.settings.os == "Linux":
             self.cpp_info.components["physxmain"].system_libs = ["m"]
-            if self.settings.arch == "x86_64":
+            if self.settings.arch == "X64":
                 self.cpp_info.components["physxmain"].system_libs.append("dl")
         self.cpp_info.components["physxmain"].requires = ["physxpvdsdk", "physxcommon", "physxfoundation"]
 

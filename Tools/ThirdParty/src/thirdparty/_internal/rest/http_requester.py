@@ -12,7 +12,6 @@ from requests.adapters import HTTPAdapter
 from thirdparty._internal.output import Output
 from thirdparty._internal.cache.home_paths import HomePaths
 
-from thirdparty import __version__
 from thirdparty._internal.loader import load_python_file
 from thirdparty._internal.errors import scoped_traceback
 from thirdparty.errors import RecipeException
@@ -112,7 +111,7 @@ class HttpRequester:
         platform_info = "; ".join([" ".join([platform.system(), platform.release()]),
                                    "Python " + platform.python_version(),
                                    platform.machine()])
-        self._user_agent = "O3DE-ThirdParty/%s (%s)" % (__version__, platform_info)
+        self._user_agent = "O3DE-ThirdParty/1.0 (%s)" % (platform_info)
 
     @staticmethod
     def _get_retries(max_retries):

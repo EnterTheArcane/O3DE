@@ -115,7 +115,7 @@ class GnuToolchain:
         self.configure_args.update(extra_configure_args)
         # Apple stuff
         is_cross_building_osx = (self._is_cross_building
-                                 and recipe.settings_build.get_safe('os') == "Macos"
+                                 and recipe.settings_build.get_safe('os') == "Mac"
                                  and is_apple_os(recipe)
                                  and not self._is_universal_arch)
 
@@ -153,10 +153,8 @@ class GnuToolchain:
             return ret
         # Setting host if it was not already defined yet
         arch = self._recipe.settings.get_safe("arch")
-        android_target = {'armv7': 'armv7a-linux-androideabi',
-                          'armv8': 'aarch64-linux-android',
-                          'x86': 'i686-linux-android',
-                          'x86_64': 'x86_64-linux-android'}.get(arch)
+        android_target = {'ARM': 'aarch64-linux-android',
+                          'X64': 'x86_64-linux-android'}.get(arch)
         if self.triplets_info["host"]["triplet"] is None:
             self.triplets_info["host"]["triplet"] = android_target
         # Automatic guessing made by Recipe (need the NDK path variable defined)
@@ -165,12 +163,10 @@ class GnuToolchain:
         if ndk_path:
             os_build = self._recipe.settings_build.get_safe("os")
             ndk_os_folder = {
-                'Macos': 'darwin',
+                'Mac': 'darwin',
                 'iOS': 'darwin',
-                'watchOS': 'darwin',
                 'tvOS': 'darwin',
                 'visionOS': 'darwin',
-                'FreeBSD': 'linux',
                 'Linux': 'linux',
                 'Windows': 'windows',
                 'WindowsCE': 'windows',

@@ -220,7 +220,7 @@ class Recipe(RecipeBase):
             self.cpp_info.components["gio-unix-2.0"].requires += ["gobject-2.0", "gio-2.0"]
             self.cpp_info.components["gio-unix-2.0"].includedirs = [os.path.join("include", "gio-unix-2.0")]
 
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             self.cpp_info.components["glib-2.0"].system_libs.append("resolv")
             self.cpp_info.components["glib-2.0"].frameworks += ["Foundation", "CoreServices", "CoreFoundation"]
             self.cpp_info.components["gio-2.0"].frameworks.append("AppKit")

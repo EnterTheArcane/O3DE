@@ -92,7 +92,7 @@ class _SettingsAccessor:
         if self._recipe.is_windows:
             return "Windows"
         if self._recipe.is_macos:
-            return "Macos"
+            return "Mac"
         return "Linux"
 
     @property
@@ -198,7 +198,7 @@ class RecipeBase:
     @property
     def arch(self) -> str:
         machine = platform.machine().lower()
-        return "arm64" if machine in ("arm64", "aarch64") else "x86_64"
+        return "ARM" if machine in ("arm64", "aarch64") else "X64"
 
     # --- Lifecycle methods (override in subclasses) ---
 

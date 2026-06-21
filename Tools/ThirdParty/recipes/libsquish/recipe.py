@@ -27,7 +27,7 @@ class Recipe(RecipeBase):
 
     @property
     def _sse2_compliant_archs(self):
-        return ["x86", "x86_64"]
+        return ["X64"]
 
     @property
     def _altivec_compliant_archs(self):

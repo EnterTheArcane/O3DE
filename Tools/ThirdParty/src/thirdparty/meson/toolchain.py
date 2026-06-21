@@ -411,10 +411,8 @@ class MesonToolchain:
         ndk_bin = os.path.join(ndk_path, "toolchains",
                                "llvm", "prebuilt", "{}-x86_64".format(os_build), "bin")
         android_api_level = self._recipe.settings.get_safe("os.api_level")
-        android_target = {'armv7': 'armv7a-linux-androideabi',
-                          'armv8': 'aarch64-linux-android',
-                          'x86': 'i686-linux-android',
-                          'x86_64': 'x86_64-linux-android'}.get(arch)
+        android_target = {'ARM': 'aarch64-linux-android',
+                          'X64': 'x86_64-linux-android'}.get(arch)
         os_build = self._recipe.settings_build.get_safe('os')
         compile_ext = ".cmd" if os_build == "Windows" else ""
         # User has more prio than Recipe

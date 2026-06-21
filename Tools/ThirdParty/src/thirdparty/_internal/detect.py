@@ -72,18 +72,59 @@ def _detect_linux_compiler():
     return None, None
 
 
-def detect_settings(build_type="Release"):
+# Canonical platform names used by this system (deliberately simpler than Conan's full set).
+_OS_NAMES = ("Windows", "Linux", "Mac", "Android", "iOS", "tvOS")
+_ARCH_NAMES = ("X64", "ARM")
+
+
+def normalize_os(name):
+    """Case-insensitively match *name* to a canonical OS name (e.g. ``mac`` -> ``Mac``).
+
+    Unknown names are returned unchanged (settings validation handles the rest).
+    """
+    if name is None:
+        return None
+    for canon in _OS_NAMES:
+        if name.strip().lower() == canon.lower():
+            return canon
+    return name
+
+
+def normalize_arch(name):
+    """Case-insensitively match *name* to a canonical arch name (e.g. ``arm`` -> ``ARM``)."""
+    if name is None:
+        return None
+    for canon in _ARCH_NAMES:
+        if name.strip().lower() == canon.lower():
+            return canon
+    return name
+
+
+def _machine_os():
+    the_os = platform.system()
+    return "Mac" if the_os == "Darwin" else the_os
+
+
+def _machine_arch():
+    machine = platform.machine().lower()
+    return "ARM" if ("arm64" in machine or "aarch64" in machine) else "X64"
+
+
+def detect_settings(build_type="Release", target_os=None, target_arch=None):
+    """Detect build settings for the *target* platform.
+
+    ``target_os``/``target_arch`` select the HOST/target platform the package will run
+    on (defaulting to the build machine).  The compiler, however, is always detected from
+    the BUILD MACHINE — it is the toolchain that exists locally and does the compiling.
+    For same-OS cross-architecture builds (e.g. X64 -> ARM) this is exactly right;
+    the target arch flows into the toolchain via ``settings.arch`` (and, for MSVC + Ninja,
+    into the vcvars argument computed from ``settings_build.arch`` vs ``settings.arch``).
+    """
     settings = Settings.loads(default_settings_yml)
 
-    the_os = platform.system()
-    if the_os == "Darwin":
-        the_os = "Macos"
-
-    machine = platform.machine().lower()
-    if "arm64" in machine or "aarch64" in machine:
-        arch = "armv8"
-    else:
-        arch = "x86_64"
+    machine_os = _machine_os()
+    the_os = normalize_os(target_os) or machine_os
+    arch = normalize_arch(target_arch) or _machine_arch()
 
     settings.update_values([
         ("os", the_os),
@@ -91,7 +132,8 @@ def detect_settings(build_type="Release"):
         ("build_type", build_type),
     ], raise_undefined=False)
 
-    if the_os == "Windows":
+    # Compiler detection is keyed on the BUILD MACHINE os (the locally available toolchain).
+    if machine_os == "Windows":
         msvc_ver = _detect_msvc_version()
         if msvc_ver:
             settings.update_values([
@@ -100,7 +142,7 @@ def detect_settings(build_type="Release"):
                 ("compiler.runtime", "dynamic"),
                 ("compiler.cppstd", "17"),
             ], raise_undefined=False)
-    elif the_os == "Macos":
+    elif machine_os == "Mac":
         ver = _detect_apple_clang_version()
         if ver:
             settings.update_values([
@@ -109,12 +151,6 @@ def detect_settings(build_type="Release"):
                 ("compiler.libcxx", "libc++"),
                 ("compiler.cppstd", "17"),
             ], raise_undefined=False)
-        # Set os.version so that CMakeToolchain emits CMAKE_OSX_DEPLOYMENT_TARGET.
-        _raw_ver = platform.mac_ver()[0]
-        if _raw_ver:
-            _parts = _raw_ver.split(".")
-            _os_version = ".".join(_parts[:2]) if len(_parts) >= 2 else _parts[0]
-            settings.update_values([("os.version", _os_version)], raise_undefined=False)
     else:
         compiler, ver = _detect_linux_compiler()
         if compiler == "gcc":
@@ -132,11 +168,22 @@ def detect_settings(build_type="Release"):
                 ("compiler.cppstd", "17"),
             ], raise_undefined=False)
 
+    # os.version (deployment target) applies to the TARGET os; only known when the build
+    # machine is itself a Mac.
+    if the_os == "Mac" and machine_os == "Mac":
+        _raw_ver = platform.mac_ver()[0]
+        if _raw_ver:
+            _parts = _raw_ver.split(".")
+            _os_version = ".".join(_parts[:2]) if len(_parts) >= 2 else _parts[0]
+            settings.update_values([("os.version", _os_version)], raise_undefined=False)
+
     return settings
 
 
+
+
 def platform_tag(settings) -> str:
-    """Return the output-folder platform tag for *settings*, e.g. ``windows-x86_64``.
+    """Return the output-folder platform tag for *settings*, e.g. ``windows-x64``.
 
     Build outputs are grouped by OS and architecture so that packages built for
     different platforms never share an output folder.  The tag is derived from the
@@ -154,20 +201,16 @@ def platform_tag(settings) -> str:
     return f"{os_name}-{arch}"
 
 
-def detect_platform_tag() -> str:
-    """Lightweight platform tag for the current machine (no compiler probing).
+def detect_platform_tag(target_os=None, target_arch=None) -> str:
+    """Lightweight platform tag for a target (no compiler probing).
 
-    Produces the same string as :func:`platform_tag` applied to
-    :func:`detect_settings`, but without shelling out to detect the compiler — cheap
-    enough to call for status display (e.g. the ``list`` command).
+    Defaults to the current machine.  Produces the same string as :func:`platform_tag`
+    applied to :func:`detect_settings` with the same overrides, but without shelling out
+    to detect the compiler — cheap enough to call for status display and folder paths.
     """
-    the_os = platform.system()
-    os_name = {"Darwin": "macos", "Windows": "windows", "Linux": "linux"}.get(
-        the_os, the_os.lower()
-    )
-    machine = platform.machine().lower()
-    arch = "armv8" if ("arm64" in machine or "aarch64" in machine) else "x86_64"
-    return f"{os_name}-{arch}"
+    the_os = normalize_os(target_os) or _machine_os()
+    arch = normalize_arch(target_arch) or _machine_arch()
+    return f"{the_os}-{arch}".lower()
 
 
 def make_conf(jobs=None):

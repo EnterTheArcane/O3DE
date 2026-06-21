@@ -5,12 +5,10 @@ from thirdparty._internal.model.options import _PackageOption
 # https://mesonbuild.com/Reference-tables.html#operating-system-names
 _meson_system_map = {
     'Android': 'android',
-    'Macos': 'darwin',
+    'Mac': 'darwin',
     'iOS': 'darwin',
-    'watchOS': 'darwin',
     'tvOS': 'darwin',
     'visionOS': 'darwin',
-    'FreeBSD': 'freebsd',
     'Emscripten': 'emscripten',
     'Linux': 'linux',
     'SunOS': 'sunos',
@@ -21,37 +19,8 @@ _meson_system_map = {
 
 # https://mesonbuild.com/Reference-tables.html#cpu-families
 _meson_cpu_family_map = {
-    'armv4': ('arm', 'armv4', 'little'),
-    'armv4i': ('arm', 'armv4i', 'little'),
-    'armv5el': ('arm', 'armv5el', 'little'),
-    'armv5hf': ('arm', 'armv5hf', 'little'),
-    'armv6': ('arm', 'armv6', 'little'),
-    'armv7': ('arm', 'armv7', 'little'),
-    'armv7hf': ('arm', 'armv7hf', 'little'),
-    'armv7s': ('arm', 'armv7s', 'little'),
-    'armv7k': ('arm', 'armv7k', 'little'),
-    'armv8': ('aarch64', 'armv8', 'little'),
-    'armv8_32': ('aarch64', 'armv8_32', 'little'),
-    'armv8.3': ('aarch64', 'armv8.3', 'little'),
-    'arm64ec': ('aarch64', 'arm64ec', 'little'),
-    'avr': ('avr', 'avr', 'little'),
-    'mips': ('mips', 'mips', 'big'),
-    'mips64': ('mips64', 'mips64', 'big'),
-    'ppc32be': ('ppc', 'ppc', 'big'),
-    'ppc32': ('ppc', 'ppc', 'little'),
-    'ppc64le': ('ppc64', 'ppc64', 'little'),
-    'ppc64': ('ppc64', 'ppc64', 'big'),
-    's390': ('s390', 's390', 'big'),
-    's390x': ('s390x', 's390x', 'big'),
-    'sh4le': ('sh4', 'sh4', 'little'),
-    'sparc': ('sparc', 'sparc', 'big'),
-    'sparcv9': ('sparc64', 'sparc64', 'big'),
-    'wasm': ('wasm32', 'wasm32', 'little'),
-    'wasm64': ('wasm64', 'wasm64', 'little'),
-    'x86': ('x86', 'x86', 'little'),
-    'x86_64': ('x86_64', 'x86_64', 'little'),
-    'riscv32': ('riscv32', 'riscv32', 'little'),
-    'riscv64': ('riscv64', 'riscv64', 'little')
+    'X64': ('x86_64', 'x86_64', 'little'),
+    'ARM': ('aarch64', 'aarch64', 'little'),
 }
 
 

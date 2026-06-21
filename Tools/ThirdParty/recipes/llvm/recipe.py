@@ -11,27 +11,27 @@ _BASE_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1
 
 _SOURCES = {
     "Windows": {
-        "x86_64": {
+        "X64": {
             "url": f"{_BASE_URL}/clang+llvm-22.1.6-x86_64-pc-windows-msvc.tar.xz",
             "sha256": "657343edf361ca463bd642e39c74b251c6338b96cdbd55ff277555298b027696",
         },
-        "armv8": {
+        "ARM": {
             "url": f"{_BASE_URL}/clang+llvm-22.1.6-aarch64-pc-windows-msvc.tar.xz",
             "sha256": "841278d0f7e091653af22cea7643fbeba587f702edf19247713180036c5b4cdb",
         },
     },
     "Linux": {
-        "x86_64": {
+        "X64": {
             "url": f"{_BASE_URL}/LLVM-22.1.6-Linux-X64.tar.xz",
             "sha256": "c5ac8ef89ca39d30cb32e9b83772f995dd891c685ebc188d593c943a64d5f8b5",
         },
-        "armv8": {
+        "ARM": {
             "url": f"{_BASE_URL}/LLVM-22.1.6-Linux-ARM64.tar.xz",
             "sha256": "b67817634e8e1c2632dfc056af14d61b94f8e6502f4e557560eea227aa22ce37",
         },
     },
-    "Macos": {
-        "armv8": {
+    "Mac": {
+        "ARM": {
             "url": f"{_BASE_URL}/LLVM-22.1.6-macOS-ARM64.tar.xz",
             "sha256": "8059d9d9eeb059c30d812b4a37291888f8dcba04d2b5ace61fd12d2904eaa0e9",
         },

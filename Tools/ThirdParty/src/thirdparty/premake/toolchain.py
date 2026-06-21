@@ -270,7 +270,7 @@ class PremakeToolchain:
 
         macho_to_amd64 = (
             self._recipe.settings.arch
-            if cross_building(self._recipe) and self._recipe.settings.os == "Macos"
+            if cross_building(self._recipe) and self._recipe.settings.os == "Mac"
             else None
         )
 
@@ -299,6 +299,6 @@ class PremakeToolchain:
 
     def _target_build_os(self):
         recipe_os = str(self._recipe.settings.os)
-        if recipe_os == "Macos":
+        if recipe_os == "Mac":
             return "macosx"
         return recipe_os.lower()

@@ -9,22 +9,22 @@ from thirdparty.scm.github import GithubRepository
 
 
 _SOURCES = {
-    "Windows": {
-        "x86_64": {
-            "url": "https://dl.google.com/android/repository/android-ndk-r29-windows.zip",
-            "sha256": "4f83a1a87ea0d33ae2b43812ce27b768be949bc78acf90b955134d19e3068f1c",
-        },
-    },
     "Linux": {
-        "x86_64": {
+        "X64": {
             "url": "https://dl.google.com/android/repository/android-ndk-r29-linux.zip",
             "sha256": "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf",
         },
     },
-    "Macos": {
-        "x86_64": {
+    "Mac": {
+        "X64": {
             "url": "https://dl.google.com/android/repository/android-ndk-r29-darwin.zip",
             "sha256": "ce5e4b100ec5fe5be4eb3edcb2c02528824ff9cda3860f5304619be6c3da34d3",
+        },
+    },
+    "Windows": {
+        "X64": {
+            "url": "https://dl.google.com/android/repository/android-ndk-r29-windows.zip",
+            "sha256": "4f83a1a87ea0d33ae2b43812ce27b768be949bc78acf90b955134d19e3068f1c",
         },
     },
 }
@@ -54,14 +54,14 @@ class Recipe(RecipeBase):
     def _platform(self):
         return {
             "Linux": "linux",
-            "Macos": "darwin",
+            "Mac": "darwin",
             "Windows": "windows",
         }.get(str(self.settings.os))
 
     @property
     def _arch(self):
-        if self.settings.os == "Macos":
-            return "x86_64"
+        if self.settings.os == "Mac":
+            return "X64"
         return str(self.settings.arch)
 
     @property
@@ -79,32 +79,25 @@ class Recipe(RecipeBase):
     @property
     def _android_abi(self):
         return {
-            "armv7": "armeabi-v7a",
-            "armv8": "arm64-v8a",
-            "x86": "x86",
-            "x86_64": "x86_64",
+            "ARM": "arm64-v8a",
+            "X64": "x86_64",
         }.get(str(self.settings_target.arch))
 
     @property
     def _llvm_triplet(self):
         arch = {
-            "armv7": "arm",
-            "armv8": "aarch64",
-            "x86": "i686",
-            "x86_64": "x86_64",
+            "ARM": "aarch64",
+            "X64": "x86_64",
         }.get(str(self.settings_target.arch))
-        abi = "androideabi" if self.settings_target.arch == "armv7" else "android"
-        return f"{arch}-linux-{abi}"
+        return f"{arch}-linux-android"
 
     @property
     def _clang_triplet(self):
         arch = {
-            "armv7": "armv7a",
-            "armv8": "aarch64",
-            "x86": "i686",
-            "x86_64": "x86_64",
+            "ARM": "aarch64",
+            "X64": "x86_64",
         }.get(str(self.settings_target.arch))
-        abi = "androideabi" if self.settings_target.arch == "armv7" else "android"
+        abi = "android"
         return f"{arch}-linux-{abi}"
 
     def _wrap_executable(self, tool):

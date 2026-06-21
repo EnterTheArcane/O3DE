@@ -102,7 +102,7 @@ class Recipe(RecipeBase):
 
         if is_msvc(self) or self._is_clang_cl:
             target = None
-            if self.settings.arch == "x86_64":
+            if self.settings.arch == "X64":
                 target = "x86_64-w64-mingw32"
             elif self.settings.arch == "x86":
                 target = "i686-w64-mingw32"
@@ -114,7 +114,7 @@ class Recipe(RecipeBase):
                (str(self.settings.compiler) == "msvc" and Version(self.settings.compiler.version) >= "180"):
                 tc.extra_cflags += ["-FS"]
            
-            if cross_building(self) or self.settings.arch == "armv8":
+            if cross_building(self) or self.settings.arch == "ARM":
                 # override guesses with known good values from a native build
                 tc.configure_args.extend([
                     "gl_cv_func_frexpl_works=yes",
@@ -139,7 +139,7 @@ class Recipe(RecipeBase):
         if is_msvc(self) or self._is_clang_cl:
             def programs():
                 rc = None
-                if self.settings.arch == "x86_64":
+                if self.settings.arch == "X64":
                     rc = "windres --target=pe-x86-64"
                 elif self.settings.arch == "x86":
                     rc = "windres --target=pe-i386"

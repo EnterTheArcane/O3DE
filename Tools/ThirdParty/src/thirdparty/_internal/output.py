@@ -3,6 +3,7 @@ import os
 import sys
 import time
 from threading import Lock
+from typing import TextIO
 
 import colorama
 from colorama import Fore, Style
@@ -50,7 +51,7 @@ if os.environ.get("O3DE_PACKAGE_COLOR_DARK"):
     Color.BRIGHT_GREEN = Fore.GREEN
 
 
-def init_colorama(stream):
+def init_colorama(stream: TextIO):
     import colorama
     if _color_enabled(stream):
         if os.getenv("CLICOLOR_FORCE", "0") != "0":
@@ -60,7 +61,7 @@ def init_colorama(stream):
             colorama.init()
 
 
-def _color_enabled(stream):
+def _color_enabled(stream: TextIO) -> bool:
     """
     NO_COLOR: No colors
 

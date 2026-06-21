@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if str(self.settings.arch) not in ["x86", "x86_64"]:
+        if str(self.settings.arch) not in ["X64"]:
             for name in self._arch_options:
                 delattr(self.options, name)
 
@@ -50,7 +50,7 @@ class Recipe(RecipeBase):
             self.package_type = "static-library"
 
     def build_requirements(self):
-        if self.settings.arch in ["x86", "x86_64"]:
+        if self.settings.arch in ["X64"]:
             self.tool_requires("yasm")
         if self.settings.os == "Windows":
             self.win_bash = True
@@ -75,14 +75,8 @@ class Recipe(RecipeBase):
 
     @property
     def _target_name(self):
-        arch = {"x86": "x86",
-                "x86_64": "x86_64",
-                "armv7": "armv7",
-                "armv7s": "armv7s",
-                "armv8": "arm64",
-                "mips": "mips32",
-                "mips64": "mips64",
-                "sparc": "sparc"}.get(str(self.settings.arch))
+        arch = {"X64": "x86_64",
+                "ARM": "arm64"}.get(str(self.settings.arch))
         if arch is None:
             # Fallback for unknown architectures. This is supported by upstream to be used
             # when no specific target set is provided by the configure script.
@@ -101,14 +95,14 @@ class Recipe(RecipeBase):
             compiler = "gcc"
         host_os = str(self.settings.os)
         if host_os == "Windows":
-            os_name = "win32" if self.settings.arch == "x86" else "win64"
+            os_name = "win64"
         elif is_apple_os(self):
-            if self.settings.arch in ["x86", "x86_64"]:
-                if self.settings.os == "Macos":
+            if self.settings.arch in ["X64"]:
+                if self.settings.os == "Mac":
                     os_name = f"darwin11"
                 else:
                     os_name = "iphonesimulator"
-            elif self.settings.arch == "armv8":
+            elif self.settings.arch == "ARM":
                 os_name = "darwin21"
             else:
                 os_name = "darwin"
@@ -147,7 +141,7 @@ class Recipe(RecipeBase):
             ])
         if is_msvc(self) and is_msvc_static_runtime(self):
             tc.configure_args.append("--enable-static-msvcrt")
-        if str(self.settings.arch) in ["x86", "x86_64"]:
+        if str(self.settings.arch) in ["X64"]:
             for name in self._arch_options:
                 if not self.options.get_safe(name):
                     tc.configure_args.append(f"--disable-{name}")
@@ -235,7 +229,7 @@ class Recipe(RecipeBase):
         if is_msvc(self):
             # Libs are still in the build folder, get from there directly.
             # The makefile cannot correctly install the debug libs (see note about --enable-debug_libs)
-            system = {"x86": "Win32", "armv8": "ARM64", "arm64ec": "ARM64EC"}
+            system = {"ARM": "ARM64"}
             libs_from = os.path.join(
                     self.build_folder,
                     system.get(str(self.settings.arch), "x64"),

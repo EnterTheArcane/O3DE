@@ -76,7 +76,7 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.cpp_info.libs = ["MoltenVK"]
         self.cpp_info.frameworks = ["Metal", "Foundation", "CoreFoundation", "QuartzCore", "IOSurface", "CoreGraphics"]
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             self.cpp_info.frameworks.extend(["AppKit", "IOKit"])
         elif self.settings.os in ["iOS", "tvOS"]:
             self.cpp_info.frameworks.append("UIKit")
