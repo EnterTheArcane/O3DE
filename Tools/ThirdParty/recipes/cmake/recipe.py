@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             url = "https://github.com/Kitware/CMake/releases/download/v4.3.3/cmake-4.3.3-macos-universal.tar.gz"
             sha256 = "5221a13450c7a0219a2a0d1b6c9085eb06489721fafd8488ccebc1584175d2fb"
         else:
-            raise ConanException(f"Unsupported OS: {self.settings.os}")
+            raise RecipeException(f"Unsupported OS: {self.settings.os}")
         get(
             self,
             url=url,

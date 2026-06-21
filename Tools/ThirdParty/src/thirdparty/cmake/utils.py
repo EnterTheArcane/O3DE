@@ -1,4 +1,4 @@
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 def is_multi_configuration(generator):
@@ -18,16 +18,16 @@ def parse_extra_variable(source, key, value):
         is_force = value.get("force")
         if is_force:
             if not isinstance(is_force, bool):
-                raise ConanException(f'{source} "{key}" "force" must be a boolean')
+                raise RecipeException(f'{source} "{key}" "force" must be a boolean')
         is_cache = value.get("cache")
         if is_cache:
             if not isinstance(is_cache, bool):
-                raise ConanException(f'{source} "{key}" "cache" must be a boolean')
+                raise RecipeException(f'{source} "{key}" "cache" must be a boolean')
             var_type = value.get("type")
             if not var_type:
-                raise ConanException(f'{source} "{key}" needs "type" defined for cache variable')
+                raise RecipeException(f'{source} "{key}" needs "type" defined for cache variable')
             if var_type not in CMAKE_CACHE_TYPES:
-                raise ConanException(f'{source} "{key}" invalid type "{var_type}" for cache variable.'
+                raise RecipeException(f'{source} "{key}" invalid type "{var_type}" for cache variable.'
                                      f' Possible types: {", ".join(CMAKE_CACHE_TYPES)}')
             # Set docstring as variable name if not defined
             docstring = value.get("docstring") or key
@@ -35,9 +35,9 @@ def parse_extra_variable(source, key, value):
             return f"{var_value} CACHE {var_type} \"{docstring}\"{force_str}"
         else:
             if is_force:
-                raise ConanException(f'{source} "{key}" "force" is only allowed for cache variables')
+                raise RecipeException(f'{source} "{key}" "force" is only allowed for cache variables')
             return var_value
-    raise ConanException(f'{source} "{key}" has invalid type. Allowed types: str, int, float, dict,'
+    raise RecipeException(f'{source} "{key}" has invalid type. Allowed types: str, int, float, dict,'
                          f' got {type(value)}')
 
 

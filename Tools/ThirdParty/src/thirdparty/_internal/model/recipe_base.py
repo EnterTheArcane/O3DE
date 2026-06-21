@@ -2,19 +2,19 @@ import os
 import subprocess
 from pathlib import Path
 
-from thirdparty._internal.api.output import ConanOutput, Color, LEVEL_QUIET
+from thirdparty._internal.api.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.cpp_info import MockInfoProperty
 from thirdparty._internal.model.conf import Conf
-from thirdparty._internal.model.dependencies import ConanFileDependencies
+from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.layout import Folders, Infos, Layouts
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.requires import Requirements
 from thirdparty._internal.model.settings import Settings
 
 
-class ConanFile:
+class RecipeBase:
     """
     The base class for all package recipes
     """
@@ -58,8 +58,7 @@ class ConanFile:
     win_bash = None
     win_bash_run = None  # For run scope
 
-    _conan_is_consumer = False
-    _conan_required_version = None
+    _is_consumer_recipe = False
 
     # #### Requirements
     requires = None
@@ -78,29 +77,29 @@ class ConanFile:
     conf_info = None
     conf = None
     generator_info = None
-    conan_data = None
+    recipe_data = None
 
     def __init__(self, display_name=""):
         self.display_name = display_name
         # something that can run commands, as os.sytem
 
-        self._conan_helpers = None
+        self._recipe_runtime = None
         from thirdparty.env import Environment
         self.buildenv_info = Environment()
         self.runenv_info = Environment()
         # At the moment only for build_requires, others will be ignored
         self.conf_info = Conf()
         self.info = None
-        self._conan_buildenv = None  # The profile buildenv, will be assigned initialize()
-        self._conan_runenv = None
-        self._conan_node = None  # access to container Node object, to access info, context, deps...
+        self._recipe_buildenv = None  # The profile buildenv, will be assigned initialize()
+        self._recipe_runenv = None
+        self._recipe_node = None  # access to container Node object, to access info, context, deps...
 
         if isinstance(self.generators, str):
             self.generators = [self.generators]
         if isinstance(self.languages, str):
             self.languages = [self.languages]
         if not all(lang == "C" or lang == "C++" for lang in self.languages):
-            raise ConanException("Only 'C' and 'C++' languages are allowed in 'languages' attribute")
+            raise RecipeException("Only 'C' and 'C++' languages are allowed in 'languages' attribute")
         if isinstance(self.settings, str):
             self.settings = [self.settings]
         self.requires = Requirements(self.requires, self.build_requires, self.test_requires,
@@ -120,7 +119,7 @@ class ConanFile:
         # user declared variables
         self.user_info = MockInfoProperty("user_info")
         self.env_info = MockInfoProperty("env_info")
-        self._conan_dependencies = None
+        self._recipe_dependencies = None
 
         if not hasattr(self, "virtualbuildenv"):  # Allow the user to override it with True or False
             self.virtualbuildenv = True
@@ -184,8 +183,8 @@ class ConanFile:
         if self.info is not None:
             result["info"] = self.info.serialize()
         result["vendor"] = self.vendor
-        if self.conan_data:
-            result["conandata"] = self.conan_data
+        if self.recipe_data:
+            result["recipe_data"] = self.recipe_data
         return result
 
     @property
@@ -193,49 +192,49 @@ class ConanFile:
         # an output stream (writeln, info, warn error)
         scope = self.display_name
         if not scope:
-            scope = self.ref if self._conan_node else ""
-        return ConanOutput(scope=scope)
+            scope = self.ref if self._recipe_node else ""
+        return Output(scope=scope)
 
     @property
     def context(self):
-        return self._conan_node.context
+        return self._recipe_node.context
 
     @property
     def subgraph(self):
-        return self._conan_node.subgraph()
+        return self._recipe_node.subgraph()
 
     @property
     def dependencies(self):
         # Caching it, this object is requested many times
-        if self._conan_dependencies is None:
-            self._conan_dependencies = ConanFileDependencies.from_node(self._conan_node)
-        return self._conan_dependencies
+        if self._recipe_dependencies is None:
+            self._recipe_dependencies = RecipeDependencies.from_node(self._recipe_node)
+        return self._recipe_dependencies
 
     @property
     def ref(self):
-        return self._conan_node.ref
+        return self._recipe_node.ref
 
     @property
     def pref(self):
-        return self._conan_node.pref
+        return self._recipe_node.pref
 
     @property
     def buildenv(self):
         # Lazy computation of the package buildenv based on the profileone
         from thirdparty.env import Environment
-        if not isinstance(self._conan_buildenv, Environment):
-            self._conan_buildenv = self._conan_buildenv.get_profile_env(self.ref,
-                                                                        self._conan_is_consumer)
-        return self._conan_buildenv
+        if not isinstance(self._recipe_buildenv, Environment):
+            self._recipe_buildenv = self._recipe_buildenv.get_profile_env(self.ref,
+                                                                        self._is_consumer_recipe)
+        return self._recipe_buildenv
 
     @property
     def runenv(self):
         # Lazy computation of the package runenv based on the profile one
         from thirdparty.env import Environment
-        if not isinstance(self._conan_runenv, Environment):
-            self._conan_runenv = self._conan_runenv.get_profile_env(self.ref,
-                                                                    self._conan_is_consumer)
-        return self._conan_runenv
+        if not isinstance(self._recipe_runenv, Environment):
+            self._recipe_runenv = self._recipe_runenv.get_profile_env(self.ref,
+                                                                    self._is_consumer_recipe)
+        return self._recipe_runenv
 
     @property
     def cpp_info(self):
@@ -376,8 +375,8 @@ class ConanFile:
         :parameter cwd: The current working directory to run the command in.
         :parameter ignore_errors: If ``True``, do not raise an error if the command returns a
             non-zero exit code.
-        :parameter env: The environment file to use. If empty, it defaults to ``"conanbuild"`` for
-            when ``scope`` is ``build`` or ``"conanrun"`` for ``run``.
+        :parameter env: The environment file to use. If empty, it defaults to ``"buildenv"`` for
+            when ``scope`` is ``build`` or ``"runenv"`` for ``run``.
             If set to ``None`` explicitly, no environment file will be applied,
             which is useful for commands that do not require any environment.
         :parameter quiet: If ``True``, suppress the output of the command.
@@ -385,30 +384,29 @@ class ConanFile:
             underlying ``Popen`` function.
         :parameter scope: The scope of the command, either ``"build"`` or ``"run"``.
         """
-        # NOTE: "self.win_bash" is the new parameter "win_bash" for Conan 2.0
-        command = self._conan_helpers.cmd_wrapper.wrap(command, conanfile=self)
+        command = self._recipe_runtime.cmd_wrapper.wrap(command, recipe=self)
         if env == "":  # This default allows not breaking for users with ``env=None`` indicating
             # they don't want any env-file applied
-            env = "conanbuild" if scope == "build" else "conanrun"
+            env = "buildenv" if scope == "build" else "runenv"
 
         env = [env] if env and isinstance(env, str) else (env or [])
-        assert isinstance(env, list), "env argument to ConanFile.run() should be a list"
+        assert isinstance(env, list), "env argument to RecipeBase.run() should be a list"
         envfiles_folder = self.generators_folder or os.getcwd()
         wrapped_cmd = command_env_wrapper(self, command, env, envfiles_folder=envfiles_folder,
                                           scope=scope)
-        from thirdparty._internal.util.runners import conan_run
+        from thirdparty._internal.util.runners import run_command
         if not quiet:
             self.output.info(f"RUN: {command}", fg=Color.BRIGHT_BLUE)
         self.output.debug(f"Full command: {wrapped_cmd}")
-        if quiet or ConanOutput.get_output_level() == LEVEL_QUIET:
+        if quiet or Output.get_output_level() == LEVEL_QUIET:
             stdout = subprocess.DEVNULL if stdout is None else stdout
             stderr = subprocess.DEVNULL if stderr is None else stderr
-        retcode = conan_run(wrapped_cmd, cwd=cwd, stdout=stdout, stderr=stderr, shell=shell)
+        retcode = run_command(wrapped_cmd, cwd=cwd, stdout=stdout, stderr=stderr, shell=shell)
         if not quiet:
             self.output.writeln("")
 
         if not ignore_errors and retcode != 0:
-            raise ConanException("Error %d while executing" % retcode)
+            raise RecipeException("Error %d while executing" % retcode)
 
         return retcode
 

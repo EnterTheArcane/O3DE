@@ -6,13 +6,13 @@ import shutil
 import subprocess
 
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
-from thirdparty.files import chdir, get, replace_in_file, copy, trim_conandata
+from thirdparty.errors import RecipeInvalidConfiguration
+from thirdparty.files import chdir, get, replace_in_file, copy, trim_recipe_data
 
 
 class OpLock:
     def __init__(self):
-        self.handle = ctypes.windll.kernel32.CreateMutexA(None, 0, "Global\\ConanMSYS2".encode())
+        self.handle = ctypes.windll.kernel32.CreateMutexA(None, 0, "Global\\RecipeMSYS2".encode())
         if not self.handle:
             raise ctypes.WinError()
 
@@ -52,8 +52,8 @@ class Recipe(RecipeBase):
 
     def export(self):
         # this will ensure locally-exported recipes match the recipe revision from
-        # the Conan Center remote
-        trim_conandata(self)
+        # the recipe data
+        trim_recipe_data(self)
 
     def config_options(self):
         default_packages = "base-devel,binutils,gcc"
@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os != "Windows":
-            raise InvalidConfiguration("msys2 is only supported on Windows")
+            raise RecipeInvalidConfiguration("msys2 is only supported on Windows")
 
     def compatibility(self):
         if self.settings.arch == "armv8":
@@ -90,7 +90,7 @@ class Recipe(RecipeBase):
                 self.run('bash -l -c "pacman --debug --noconfirm --ask 20 -Syuu"')  # Normal update
                 self._kill_pacman()
                 self.run('bash -l -c "pacman --debug -Rc dash --noconfirm"')
-            except ConanException:
+            except RecipeException:
                 self.run('bash -l -c "cat /var/log/pacman.log || echo nolog"')
                 self._kill_pacman()
                 raise
@@ -123,7 +123,7 @@ class Recipe(RecipeBase):
                         proc.wait()
                     except OSError as e:
                         if e.errno == errno.ENOENT:
-                            raise ConanException("Cannot kill pacman") from e
+                            raise RecipeException("Cannot kill pacman") from e
 
     @property
     def _msys_dir(self):
@@ -163,7 +163,7 @@ class Recipe(RecipeBase):
             os.utime(tmp_name, None)
 
         # Prepend the PKG_CONFIG_PATH environment variable with an eventual PKG_CONFIG_PATH environment variable
-        # Note: this is no longer needed when we exclusively support Conan 2 integrations
+        # Note: this is no longer needed when we exclusively support Recipe 2 integrations
         replace_in_file(self, os.path.join(self._msys_dir, "etc", "profile"),
                               'PKG_CONFIG_PATH="', 'PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}')
 
@@ -177,7 +177,7 @@ class Recipe(RecipeBase):
                     fullname = os.path.join(root, filename)
                     if fnmatch.fnmatch(fullname, exclude):
                         os.unlink(fullname)
-        # See https://github.com/conan-io/conan-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
+        # See https://github.com/recipe-io/recipe-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
         copy(self, "*", dst=os.path.join(self.package_folder, "bin", "msys64"), src=self._msys_dir, excludes=excludes)
         shutil.copytree(os.path.join(self._msys_dir, "usr", "share", "licenses"),
                         os.path.join(self.package_folder, "licenses"))

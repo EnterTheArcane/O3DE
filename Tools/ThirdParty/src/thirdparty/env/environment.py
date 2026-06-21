@@ -4,9 +4,9 @@ from shlex import quote
 from collections import OrderedDict
 from contextlib import contextmanager
 
-from thirdparty._internal.api.output import ConanOutput
+from thirdparty._internal.api.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.recipe_ref import ref_matches
 from thirdparty._internal.util.files import save
 
@@ -15,7 +15,7 @@ class _EnvVarPlaceHolder:
     pass
 
 
-def environment_wrap_command(conanfile, env_filenames, env_folder, cmd, subsystem=None,
+def environment_wrap_command(recipe, env_filenames, env_folder, cmd, subsystem=None,
                              accepted_extensions=None):
     if not env_filenames:
         return cmd
@@ -36,7 +36,7 @@ def environment_wrap_command(conanfile, env_filenames, env_folder, cmd, subsyste
         elif f.lower().endswith(".ps1") and "ps1" in accept:
             if os.path.isfile(f):
                 ps1s.append(f)
-        else:  # Simple name like "conanrunenv"
+        else:  # Simple name like "runenvenv"
             path_bat = "{}.bat".format(f)
             path_sh = "{}.sh".format(f)
             path_ps1 = "{}.ps1".format(f)
@@ -49,10 +49,10 @@ def environment_wrap_command(conanfile, env_filenames, env_folder, cmd, subsyste
                 shs.append(path_sh)
 
     if bool(bats + ps1s) + bool(shs) > 1:
-        raise ConanException("Cannot wrap command with different envs,"
+        raise RecipeException("Cannot wrap command with different envs,"
                              "{} - {}".format(bats+ps1s, shs))
 
-    powershell = conanfile.conf.get("tools.env.virtualenv:powershell", default="powershell.exe")
+    powershell = recipe.conf.get("tools.env.virtualenv:powershell", default="powershell.exe")
 
     if bats:
         launchers = " && ".join('"{}"'.format(b) for b in bats)
@@ -319,13 +319,13 @@ class Environment:
         """
         return other._values == self._values
 
-    def vars(self, conanfile, scope="build"):
+    def vars(self, recipe, scope="build"):
         """
-        :param conanfile: Instance of a conanfile, usually ``self`` in a recipe
+        :param recipe: Instance of a recipe, usually ``self`` in a recipe
         :param scope: Determine the scope of the declared variables.
         :return: An EnvVars object from the current Environment object
         """
-        return EnvVars(conanfile, self._values, scope)
+        return EnvVars(recipe, self._values, scope)
 
     def deploy_base_folder(self, package_folder, deploy_folder):
         """Make the paths relative to the deploy_folder"""
@@ -342,12 +342,12 @@ class EnvVars:
     Represents an instance of environment variables for a given system. It is obtained from the generic Environment class.
 
     """
-    def __init__(self, conanfile, values, scope):
+    def __init__(self, recipe, values, scope):
         self._values = values  # {var_name: _EnvValue}, just a reference to the Environment
-        self._conanfile = conanfile
+        self._recipe = recipe
         self._scope = scope
-        self._subsystem = deduce_subsystem(conanfile, scope)
-        self._deactivation_mode = conanfile.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
+        self._subsystem = deduce_subsystem(recipe, scope)
+        self._deactivation_mode = recipe.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
 
     @property
     def _pathsep(self):
@@ -418,7 +418,7 @@ class EnvVars:
         _, filename = os.path.split(file_location)
         deactivate_file = "deactivate_{}".format(filename)
         is_function = self._deactivation_mode == "function"
-        deactivates_variable = f"_CONAN_{self._scope}_DEACTIVATES_DIR"
+        deactivates_variable = f"_RECIPE_{self._scope}_DEACTIVATES_DIR"
         dest_variable = f"%{deactivates_variable}%" if is_function else "%~dp0"
 
         function_preamble = textwrap.dedent(f"""
@@ -426,7 +426,7 @@ class EnvVars:
             if defined {deactivates_variable} goto skip_deactivate_variable
 
             set "local_defined=1"
-            set "{deactivates_variable}=%TEMP%\\conan_{self._scope}_%RANDOM%"
+            set "{deactivates_variable}=%TEMP%\\recipe_{self._scope}_%RANDOM%"
             mkdir "%{deactivates_variable}%"
             set "PATH=%{deactivates_variable}%;%PATH%"
 
@@ -471,7 +471,7 @@ class EnvVars:
             {deactivate}
             """).format(deactivate=deactivate if generate_deactivate else "")
         result = [capture]
-        abs_base_path, new_path = _relativize_paths(self._conanfile, "%~dp0")
+        abs_base_path, new_path = _relativize_paths(self._recipe, "%~dp0")
         for varname, varvalues in self._values.items():
             value = varvalues.get_str("%{name}%", subsystem=self._subsystem, pathsep=self._pathsep,
                                       root_path=abs_base_path, script_path=new_path)
@@ -489,7 +489,7 @@ class EnvVars:
             result.append(set_value)
 
         content = "\n".join(result)
-        # It is very important to save it correctly with utf-8, the Conan util save() is broken
+        # It is very important to save it correctly with utf-8, the Recipe util save() is broken
         os.makedirs(os.path.dirname(os.path.abspath(file_location)), exist_ok=True)
         with open(file_location, "w", encoding="utf-8") as f:
             f.write(content)
@@ -500,7 +500,7 @@ class EnvVars:
         result = []
         if generate_deactivate:
             result.append(_ps1_deactivate_contents(self._deactivation_mode, self._values, filename))
-        abs_base_path, new_path = _relativize_paths(self._conanfile, "$PSScriptRoot")
+        abs_base_path, new_path = _relativize_paths(self._recipe, "$PSScriptRoot")
         for varname, varvalues in self._values.items():
             value = varvalues.get_str("$env:{name}", subsystem=self._subsystem, pathsep=self._pathsep,
                                       root_path=abs_base_path, script_path=new_path)
@@ -530,7 +530,7 @@ class EnvVars:
                 result.append('if (Test-Path env:{0}) {{ Remove-Item env:{0} }}'.format(varname))
 
         content = "\n".join(result)
-        # It is very important to save it correctly with utf-16, the Conan util save() is broken
+        # It is very important to save it correctly with utf-16, the Recipe util save() is broken
         # and powershell uses utf-16 files!!!
         os.makedirs(os.path.dirname(os.path.abspath(file_location)), exist_ok=True)
         with open(file_location, "w", encoding="utf-16") as f:
@@ -541,7 +541,7 @@ class EnvVars:
         result = []
         if generate_deactivate:
             result.append(_sh_deactivate_contents(self._deactivation_mode, self._values, filename))
-        abs_base_path, new_path = _relativize_paths(self._conanfile, "$script_folder")
+        abs_base_path, new_path = _relativize_paths(self._recipe, "$script_folder")
         for varname, varvalues in self._values.items():
             value = varvalues.get_str("${name}", self._subsystem, pathsep=self._pathsep,
                                       root_path=abs_base_path, script_path=new_path)
@@ -585,14 +585,14 @@ class EnvVars:
             is_ps1 = ext == ".ps1"
         else:  # Need to deduce it automatically
             is_bat = self._subsystem == WINDOWS
-            is_ps1 = self._conanfile.conf.get("tools.env.virtualenv:powershell", check_type=str)
+            is_ps1 = self._recipe.conf.get("tools.env.virtualenv:powershell", check_type=str)
             if is_ps1:
                 filename = filename + ".ps1"
                 is_bat = False
             else:
                 filename = filename + (".bat" if is_bat else ".sh")
 
-        path = os.path.join(self._conanfile.generators_folder, filename)
+        path = os.path.join(self._recipe.generators_folder, filename)
         if is_bat:
             self.save_bat(path)
         elif is_ps1:
@@ -600,19 +600,19 @@ class EnvVars:
         else:
             self.save_sh(path)
 
-        if self._conanfile.conf.get("tools.env:dotenv", check_type=bool):
-            bt = self._conanfile.settings.get_safe("build_type")
-            arch = self._conanfile.settings.get_safe("arch")
+        if self._recipe.conf.get("tools.env:dotenv", check_type=bool):
+            bt = self._recipe.settings.get_safe("build_type")
+            arch = self._recipe.settings.get_safe("arch")
             name = name.replace(bt.lower(), bt) if bt else name
             name = name.replace(arch.lower(), arch) if arch else name
-            ConanOutput().warning(f"Creating dotenv file: {name}.env\n"
+            Output().warning(f"Creating dotenv file: {name}.env\n"
                                   "Files generated with absolute paths, not interpolated.\n"
                                   "When https://github.com/microsoft/vscode-cpptools/issues/13781 "
                                   "solved, it will get interpolation", warn_tag="experimental")
             self.save_dotenv(f"{name}.env")
 
         if self._scope:
-            register_env_script(self._conanfile, path, self._scope)
+            register_env_script(self._recipe, path, self._scope)
 
 
 def _deactivate_func_name(filename):
@@ -620,7 +620,7 @@ def _deactivate_func_name(filename):
 
 
 def _old_env_prefix(filename):
-    return f"_CONAN_OLD_{_deactivate_func_name(filename).upper()}"
+    return f"_RECIPE_OLD_{_deactivate_func_name(filename).upper()}"
 
 
 def _ps1_deactivate_contents(deactivation_mode, values, filename):
@@ -720,7 +720,7 @@ class ProfileEnvironment:
 
     def get_profile_env(self, ref, is_consumer=False):
         """ computes package-specific Environment
-        it is only called when conanfile.buildenv is called
+        it is only called when recipe.buildenv is called
         the last one found in the profile file has top priority
         """
         result = Environment()
@@ -787,7 +787,7 @@ class ProfileEnvironment:
                     value = value[7:]
                     if value.strip().startswith("(path)"):
                         msg = f"Cannot use (sep) and (path) qualifiers simultaneously: {line}"
-                        raise ConanException(msg)
+                        raise RecipeException(msg)
                     getattr(env, method)(name, value, separator=sep)
                 else:
                     if value.strip().startswith("(path)"):
@@ -803,44 +803,44 @@ class ProfileEnvironment:
                     result._environments[pattern] = env.compose_env(existing)
                 break
             else:
-                raise ConanException("Bad env definition: {}".format(line))
+                raise RecipeException("Bad env definition: {}".format(line))
         return result
 
 
-def create_env_script(conanfile, content, filename, scope="build"):
+def create_env_script(recipe, content, filename, scope="build"):
     """
     Create a file with any content which will be registered as a new script for the defined "scope".
 
     Args:
-        conanfile: The Conanfile instance.
+        recipe: The Recipefile instance.
         content (str): The content of the script to write into the file.
         filename (str): The name of the file to be created in the generators folder.
         scope (str): The scope or environment group for which the script will be registered.
     """
-    path = os.path.join(conanfile.generators_folder, filename)
+    path = os.path.join(recipe.generators_folder, filename)
     save(path, content)
 
     if scope:
-        register_env_script(conanfile, path, scope)
+        register_env_script(recipe, path, scope)
 
 
-def register_env_script(conanfile, env_script_path, scope="build"):
+def register_env_script(recipe, env_script_path, scope="build"):
     """
     Add the "env_script_path" to the current list of registered scripts for defined "scope"
     These will be mapped to files:
-    - conan{group}.bat|sh = calls env_script_path1,... env_script_pathN
+    - env_{group}.bat|sh = calls env_script_path1,... env_script_pathN
 
     Args:
-        conanfile: The Conanfile instance.
+        recipe: The Recipefile instance.
         env_script_path (str): The full path of the script to register.
         scope (str): The scope ('build' or 'host') for which the script will be registered.
     """
-    existing = conanfile.env_scripts.setdefault(scope, [])
+    existing = recipe.env_scripts.setdefault(scope, [])
     if env_script_path not in existing:
         existing.append(env_script_path)
 
 
-def generate_aggregated_env(conanfile):
+def generate_aggregated_env(recipe):
 
     def deactivates(filenames):
         # FIXME: Probably the order needs to be reversed
@@ -854,56 +854,56 @@ def generate_aggregated_env(conanfile):
         return [os.path.splitext(os.path.basename(s))[0].replace("-", "_")
                 for s in reversed(filenames)]
 
-    deactivation_mode = conanfile.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
+    deactivation_mode = recipe.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
     generated = []
-    for group, env_scripts in conanfile.env_scripts.items():
-        subsystem = deduce_subsystem(conanfile, group)
+    for group, env_scripts in recipe.env_scripts.items():
+        subsystem = deduce_subsystem(recipe, group)
         bats = []
         shs = []
         ps1s = []
         for env_script in env_scripts:
-            path = os.path.join(conanfile.generators_folder, env_script)
+            path = os.path.join(recipe.generators_folder, env_script)
             # Only the .bat and .ps1 are made relative to current script
             if env_script.endswith(".bat"):
-                path = os.path.relpath(path, conanfile.generators_folder)
+                path = os.path.relpath(path, recipe.generators_folder)
                 bats.append("%~dp0/"+path)
             elif env_script.endswith(".sh"):
                 shs.append(subsystem_path(subsystem, path))
             elif env_script.endswith(".ps1"):
-                path = os.path.relpath(path, conanfile.generators_folder)
+                path = os.path.relpath(path, recipe.generators_folder)
                 # This $PSScriptRoot uses the current script directory
                 ps1s.append("$PSScriptRoot/"+path)
         if shs:
             def sh_content(files):
                 content = ". " + " && . ".join('"{}"'.format(s) for s in files)
                 if deactivation_mode == "function":
-                    content += f"\n\ndeactivate_conan{group}() {{\n"
+                    content += f"\n\ndeactivate_env_{group}() {{\n"
                     for deactivate_name in deactivate_function_names(shs):
                         content += f"    deactivate_{deactivate_name}\n"
-                    content += f"    unset -f deactivate_conan{group}\n}}\n"
+                    content += f"    unset -f deactivate_env_{group}\n}}\n"
                 return content
-            filename = "conan{}.sh".format(group)
+            filename = "env_{}.sh".format(group)
             generated.append(filename)
-            save(os.path.join(conanfile.generators_folder, filename), sh_content(shs))
+            save(os.path.join(recipe.generators_folder, filename), sh_content(shs))
             if not deactivation_mode:
-                save(os.path.join(conanfile.generators_folder, "deactivate_{}".format(filename)),
+                save(os.path.join(recipe.generators_folder, "deactivate_{}".format(filename)),
                      sh_content(deactivates(shs)))
         if bats:
-            filename = f"conan{group}.bat"
+            filename = f"env_{group}.bat"
             deactivate_filename = f"deactivate_{filename}"
 
             def bat_content(files):
                 content = ["@echo off"]
 
                 if deactivation_mode == "function":
-                    from thirdparty.microsoft.visual import CONAN_VCVARS
-                    deactivates_var = f"_CONAN_{group}_DEACTIVATES_DIR"
+                    from thirdparty.microsoft.visual import RECIPE_VCVARS
+                    deactivates_var = f"_RECIPE_{group}_DEACTIVATES_DIR"
                     content += [
-                        f'set "{deactivates_var}=%TEMP%\\conan_{group}_%RANDOM%"',
+                        f'set "{deactivates_var}=%TEMP%\\recipe_{group}_%RANDOM%"',
                         f'mkdir "%{deactivates_var}%"'
                     ]
                     # TODO: Find a better way to get rid of vcvars deactivation
-                    f = [f for f in files if f != f"%~dp0/{CONAN_VCVARS}.bat"]
+                    f = [f for f in files if f != f"%~dp0/{RECIPE_VCVARS}.bat"]
                     deactivate_filenames = [f.replace("%~dp0\\", "")
                                             for f in deactivates(f)]
 
@@ -923,39 +923,39 @@ def generate_aggregated_env(conanfile):
                 return "\r\n".join(content)
 
             generated.append(filename)
-            save(os.path.join(conanfile.generators_folder, filename), bat_content(bats))
+            save(os.path.join(recipe.generators_folder, filename), bat_content(bats))
             if not deactivation_mode:
-                save(os.path.join(conanfile.generators_folder, deactivate_filename),
+                save(os.path.join(recipe.generators_folder, deactivate_filename),
                      bat_content(deactivates(bats)))
 
         if ps1s:
             def ps1_content(files):
                 content = "\r\n".join(['& "{}"'.format(b) for b in files])
                 if deactivation_mode == "function":
-                    content += f"\n\nfunction global:deactivate_conan{group} {{\n"
+                    content += f"\n\nfunction global:deactivate_env_{group} {{\n"
                     for deactivate_name in deactivate_function_names(ps1s):
                         content += f"    deactivate_{deactivate_name}\n"
-                    content += (f"    Remove-Item -Path function:deactivate_conan{group} "
+                    content += (f"    Remove-Item -Path function:deactivate_env_{group} "
                                 "-ErrorAction SilentlyContinue"
                                 "\n}\n")
                 return content
-            filename = "conan{}.ps1".format(group)
+            filename = "env_{}.ps1".format(group)
             generated.append(filename)
-            save(os.path.join(conanfile.generators_folder, filename), ps1_content(ps1s))
+            save(os.path.join(recipe.generators_folder, filename), ps1_content(ps1s))
             if not deactivation_mode:
-                save(os.path.join(conanfile.generators_folder, "deactivate_{}".format(filename)),
+                save(os.path.join(recipe.generators_folder, "deactivate_{}".format(filename)),
                      ps1_content(deactivates(ps1s)))
     if generated:
-        conanfile.output.highlight("Generating aggregated env files")
-        conanfile.output.info(f"Generated aggregated env files: {generated}")
+        recipe.output.highlight("Generating aggregated env files")
+        recipe.output.info(f"Generated aggregated env files: {generated}")
 
 
-def _relativize_paths(conanfile, placeholder):
-    abs_base_path = conanfile.folders._base_generators  # noqa
+def _relativize_paths(recipe, placeholder):
+    abs_base_path = recipe.folders._base_generators  # noqa
     if not abs_base_path or not os.path.isabs(abs_base_path):
         return None, None
     abs_base_path = os.path.join(abs_base_path, "")  # For the trailing / to dissambiguate matches
-    generators_folder = conanfile.generators_folder
+    generators_folder = recipe.generators_folder
     try:
         rel_path = os.path.relpath(abs_base_path, generators_folder)
     except ValueError:  # In case the unit in Windows is different, path cannot be made relative

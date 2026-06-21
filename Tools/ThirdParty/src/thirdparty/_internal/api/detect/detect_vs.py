@@ -3,7 +3,7 @@ import os
 from shutil import which
 
 from thirdparty.build import cmd_args_to_string
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 def vs_installation_path(version):
@@ -27,7 +27,7 @@ def _vs_installation_path(version):
         legacy_products = vswhere(legacy=True)
         products = vswhere(products=["*"])
         products.extend(p for p in legacy_products if p not in products)
-    except ConanException:
+    except RecipeException:
         products = None
 
     if products:  # First matching
@@ -64,7 +64,7 @@ def vswhere(all_=False, prerelease=True, products=None, requires=None, version="
     requires = list() if requires is None else requires
 
     if legacy and (products or requires):
-        raise ConanException("The 'legacy' parameter cannot be specified with either the "
+        raise RecipeException("The 'legacy' parameter cannot be specified with either the "
                              "'products' or 'requires' parameter")
 
     installer_path = None
@@ -77,7 +77,7 @@ def vswhere(all_=False, prerelease=True, products=None, requires=None, version="
     vswhere_path = installer_path or which("vswhere")
 
     if not vswhere_path:
-        raise ConanException("Cannot locate vswhere in 'Program Files'/'Program Files (x86)' "
+        raise RecipeException("Cannot locate vswhere in 'Program Files'/'Program Files (x86)' "
                              "directory nor in PATH")
 
     arguments = list()
@@ -129,7 +129,7 @@ def vswhere(all_=False, prerelease=True, products=None, requires=None, version="
                             if not line.strip().startswith('"description"')])
 
     except (ValueError, UnicodeDecodeError) as e:
-        raise ConanException("vswhere error: %s" % str(e))
+        raise RecipeException("vswhere error: %s" % str(e))
 
     return json.loads(output)
 

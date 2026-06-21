@@ -5,8 +5,8 @@ import subprocess
 import tempfile
 import textwrap
 
-from thirdparty._internal.api.output import ConanOutput
-from thirdparty.errors import ConanException
+from thirdparty._internal.api.output import Output
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.util.files import load
 from thirdparty._internal.util.runners import check_output_runner, detect_runner
@@ -95,7 +95,7 @@ def _get_aix_conf(options=None):
         ret = check_output_runner("getconf%s" % options).strip()
         return ret
     except Exception as e:
-        ConanOutput(scope="detect_api").warning(f"Couldn't get aix getconf {e}")
+        Output(scope="detect_api").warning(f"Couldn't get aix getconf {e}")
         return None
 
 
@@ -133,20 +133,20 @@ def _parse_gnu_libc(ldd_output):
 
 def _detect_gnu_libc(ldd="/usr/bin/ldd"):
     if platform.system() != "Linux":
-        ConanOutput(scope="detect_api").warning("detect_gnu_libc() only works on Linux")
+        Output(scope="detect_api").warning("detect_gnu_libc() only works on Linux")
         return None
     try:
         ldd_output = check_output_runner(f"{ldd} --version")
         version = _parse_gnu_libc(ldd_output)
         if version is None:
             first_line = ldd_output.partition("\n")[0]
-            ConanOutput(scope="detect_api").warning(
+            Output(scope="detect_api").warning(
                 f"detect_gnu_libc() did not detect glibc in the first line of output from '{ldd} --version': '{first_line}'"
             )
             return None
         return version
     except Exception as e:
-        ConanOutput(scope="detect_api").debug(
+        Output(scope="detect_api").debug(
             f"Couldn't determine the glibc version from the output of the '{ldd} --version' command {e}"
         )
     return None
@@ -161,7 +161,7 @@ def _parse_musl_libc(ldd_output):
 
 def _detect_musl_libc(ldd="/usr/bin/ldd"):
     if platform.system() != "Linux":
-        ConanOutput(scope="detect_api").warning(
+        Output(scope="detect_api").warning(
             "detect_musl_libc() only works on Linux"
         )
         return None
@@ -175,13 +175,13 @@ def _detect_musl_libc(ldd="/usr/bin/ldd"):
         version = _parse_musl_libc(ldd_output)
         if version is None:
             first_line = ldd_output.partition("\n")[0]
-            ConanOutput(scope="detect_api").warning(
+            Output(scope="detect_api").warning(
                 f"detect_musl_libc() did not detect musl libc in the first line of output from '{ldd}': '{first_line}'"
             )
             return None
         return version
     except Exception as e:
-        ConanOutput(scope="detect_api").debug(
+        Output(scope="detect_api").debug(
             f"Couldn't determine the musl libc version from the output of the '{ldd}' command {e}"
         )
     finally:
@@ -194,7 +194,7 @@ def _detect_musl_libc(ldd="/usr/bin/ldd"):
 
 def detect_libc(ldd="/usr/bin/ldd"):
     if platform.system() != "Linux":
-        ConanOutput(scope="detect_api").warning(
+        Output(scope="detect_api").warning(
             f"detect_libc() is only supported on Linux currently"
         )
         return None, None
@@ -204,7 +204,7 @@ def detect_libc(ldd="/usr/bin/ldd"):
     version = _detect_musl_libc(ldd)
     if version is not None:
         return "musl", version
-    ConanOutput(scope="detect_api").warning(
+    Output(scope="detect_api").warning(
         f"Couldn't detect the libc provider and version"
     )
     return None, None
@@ -214,7 +214,7 @@ def detect_libcxx(compiler, version, compiler_exe=None):
     assert isinstance(version, Version)
 
     def _detect_gcc_libcxx(version_, executable):
-        output = ConanOutput(scope="detect_api")
+        output = Output(scope="detect_api")
         # Assumes a working g++ executable
         if executable == "g++":  # we can rule out old gcc versions
             new_abi_available = version_ >= "5.1"
@@ -274,8 +274,8 @@ def default_msvc_runtime(compiler):
         return None, None
     if compiler == "clang":
         # It could be LLVM/Clang with VS runtime or Msys2 with libcxx
-        ConanOutput(scope="detect_api").warning("Assuming LLVM/Clang in Windows with VS 17 2022")
-        ConanOutput(scope="detect_api").warning("If Msys2/Clang need to remove compiler.runtime* "
+        Output(scope="detect_api").warning("Assuming LLVM/Clang in Windows with VS 17 2022")
+        Output(scope="detect_api").warning("If Msys2/Clang need to remove compiler.runtime* "
                                                 "and define compiler.libcxx")
         return "dynamic", "v143"
     elif compiler == "msvc":
@@ -328,7 +328,7 @@ def default_cppstd(compiler, compiler_version):
 def detect_cppstd(compiler, compiler_version):
     cppstd = default_cppstd(compiler, compiler_version)
     if compiler == "apple-clang" and compiler_version >= "11":
-        # Conan does not detect the default cppstd for apple-clang,
+        # Recipe does not detect the default cppstd for apple-clang,
         # because it's still 98/14 for the compiler (even though xcode uses newer in projects)
         # and having it be so old would be annoying for users
         cppstd = "gnu17"
@@ -391,7 +391,7 @@ def detect_default_compiler():
         5. gcc executable
         6. clang executable
         """
-    output = ConanOutput(scope="detect_api")
+    output = Output(scope="detect_api")
     cc = os.environ.get("CC", "")
     cxx = os.environ.get("CXX", "")
     if cc or cxx:  # Env defined, use them
@@ -455,7 +455,7 @@ def _detect_vs_ide_version():
         vs_path = os.getenv('vs%s0comntools' % version)
         path = vs_path or vs_installation_path(version)
         if path:
-            ConanOutput(scope="detect_api").info("Found msvc %s" % version)
+            Output(scope="detect_api").info("Found msvc %s" % version)
             return Version(version)
     return None
 
@@ -476,7 +476,7 @@ def _cc_compiler(compiler_exe="cc"):
         installed_version = installed_version or re.search(r"([0-9]+(\.[0-9]+)*)", out)
         if installed_version and installed_version.group(1):
             installed_version = installed_version.group(1)
-            ConanOutput(scope="detect_api").info("Found cc=%s-%s" % (compiler, installed_version))
+            Output(scope="detect_api").info("Found cc=%s-%s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
@@ -497,7 +497,7 @@ def detect_gcc_compiler(compiler_exe="gcc"):
         compiler = "gcc"
         installed_version = re.search(r"([0-9]+(\.[0-9]+)?)", out).group()
         if installed_version:
-            ConanOutput(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
+            Output(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
@@ -513,7 +513,7 @@ def detect_suncc_compiler(compiler_exe="cc"):
         else:
             installed_version = re.search(r"([0-9]+\.[0-9]+)", out).group()
         if installed_version:
-            ConanOutput(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
+            Output(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
@@ -532,7 +532,7 @@ def detect_clang_compiler(compiler_exe="clang"):
             return None, None, None
         installed_version = re.search(r"([0-9]+\.[0-9])", out).group()
         if installed_version:
-            ConanOutput(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
+            Output(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
@@ -586,17 +586,17 @@ def detect_emcc_compiler(compiler_exe="emcc"):
     if not version_match:
         return None, None, None
     version = version_match.group()
-    ConanOutput(scope="detect_api").info("Found %s %s" % (compiler, version))
+    Output(scope="detect_api").info("Found %s %s" % (compiler, version))
     return compiler, Version(version), compiler_exe
 
 
 def default_compiler_version(compiler, version):
-    """ returns the default version that Conan uses in profiles, typically dropping some
+    """ returns the default version that Recipe uses in profiles, typically dropping some
     of the minor or patch digits, that do not affect binary compatibility
     """
-    output = ConanOutput(scope="detect_api")
+    output = Output(scope="detect_api")
     if not version:
-        raise ConanException(
+        raise RecipeException(
             f"No version provided to 'detect_api.default_compiler_version()' for {compiler} compiler")
     tokens = version.main
     major = tokens[0]

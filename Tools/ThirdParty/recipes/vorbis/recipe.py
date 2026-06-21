@@ -69,7 +69,7 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Vorbis")
-        # see https://github.com/conan-io/conan-center-index/pull/4173
+        # see https://github.com/recipe-io/recipe-center-index/pull/4173
         self.cpp_info.set_property("pkg_config_name", "vorbis-all-do-not-use")
 
         # vorbis
@@ -84,7 +84,7 @@ class Recipe(RecipeBase):
 
         # TODO: Upstream VorbisConfig.cmake defines components 'Enc' and 'File',
         # which are related to imported targets Vorbis::vorbisenc and Vorbis::vorbisfile
-        # Find a way to emulate this in CMakeConfigDeps. See https://github.com/conan-io/conan/issues/10258
+        # Find a way to emulate this in CMakeConfigDeps. See upstream issue 10258
 
         # vorbisenc
         self.cpp_info.components["vorbisenc"].set_property("cmake_target_name", "Vorbis::vorbisenc")

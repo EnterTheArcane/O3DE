@@ -137,7 +137,7 @@ class Recipe(RecipeBase):
             env.define("CXX", "cl -nologo")
             if cross_building(self):
                 env.define("icu_cv_host_frag", "mh-msys-msvc")
-            env.vars(self).save_script("conanbuild_icu_msvc")
+            env.vars(self).save_script("buildenv_icu_msvc")
 
     def _patch_sources(self):
 

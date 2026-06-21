@@ -14,16 +14,16 @@ from thirdparty.cmake.cmakedeps.templates.target_configuration import TargetConf
 from thirdparty.cmake.cmakedeps.templates.target_data import ConfigDataTemplate
 from thirdparty.cmake.cmakedeps.templates.targets import TargetsTemplate
 from thirdparty.files import save
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.dependencies import get_transitive_requires
 
 
 class CMakeDeps:
 
-    def __init__(self, conanfile):
-        self._conanfile = conanfile
-        self.arch = self._conanfile.settings.get_safe("arch")
-        self.configuration = str(self._conanfile.settings.build_type)
+    def __init__(self, recipe):
+        self._recipe = recipe
+        self.arch = self._recipe.settings.get_safe("arch")
+        self.configuration = str(self._recipe.settings.build_type)
 
         # Activate the build config files for the specified libraries
         self.build_context_activated = []
@@ -39,14 +39,14 @@ class CMakeDeps:
 
     def generate(self):
         """
-        This method will save the generated files to the ``conanfile.generators_folder`` folder
+        This method will save the generated files to the ``recipe.generators_folder`` folder
         """
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
 
         # Current directory is the generators_folder
         generator_files = self.content
         for generator_file, content in generator_files.items():
-            save(self._conanfile, generator_file, content)
+            save(self._recipe, generator_file, content)
         self.generate_aggregator()
 
     @property
@@ -54,9 +54,9 @@ class CMakeDeps:
         macros = MacrosTemplate()
         ret = {macros.filename: macros.render()}
 
-        host_req = self._conanfile.dependencies.host
-        build_req = self._conanfile.dependencies.direct_build
-        test_req = self._conanfile.dependencies.test
+        host_req = self._recipe.dependencies.host
+        build_req = self._recipe.dependencies.direct_build
+        test_req = self._recipe.dependencies.test
 
         # Check if the same package is at host and build and the same time
         activated_br = {r.ref.name for r in build_req.values()
@@ -65,7 +65,7 @@ class CMakeDeps:
         for common_name in common_names:
             suffix = self.build_context_suffix.get(common_name)
             if not suffix:
-                raise ConanException("The package '{}' exists both as 'require' and as "
+                raise RecipeException("The package '{}' exists both as 'require' and as "
                                      "'build require'. You need to specify a suffix using the "
                                      "'build_context_suffix' attribute at the CMakeDeps "
                                      "generator.".format(common_name))
@@ -74,7 +74,7 @@ class CMakeDeps:
         direct_configs = []
         for require, dep in list(host_req.items()) + list(build_req.items()) + list(test_req.items()):
             # Require is not used at the moment, but its information could be used,
-            # and will be used in Conan 2.0
+            # and will be used in Recipe 2.0
             # Filter the build_requires not activated with cmakedeps.build_context_activated
             if require.build and dep.ref.name not in self.build_context_activated:
                 continue
@@ -105,10 +105,10 @@ class CMakeDeps:
                 msg.append(f"    find_package({config.file_name})")
             targets = ' '.join(c.root_target_name for c in direct_configs)
             msg.append(f"    target_link_libraries(... {targets})")
-            if self._conanfile._conan_is_consumer:  # noqa
-                self._conanfile.output.info("\n".join(msg), fg=Color.CYAN)
+            if self._recipe._is_consumer_recipe:  # noqa
+                self._recipe.output.info("\n".join(msg), fg=Color.CYAN)
             else:
-                self._conanfile.output.verbose("\n".join(msg))
+                self._recipe.output.verbose("\n".join(msg))
 
         return ret
 
@@ -135,7 +135,7 @@ class CMakeDeps:
     def set_property(self, dep, prop, value, build_context=False):
         """
         Using this method you can overwrite the :ref:`property<CMakeDeps Properties>` values set by
-        the Conan recipes from the consumer. This can be done for ``cmake_file_name``, ``cmake_target_name``,
+        the Recipe recipes from the consumer. This can be done for ``cmake_file_name``, ``cmake_target_name``,
         ``cmake_find_mode``, ``cmake_module_file_name``, ``cmake_module_target_name``, ``cmake_additional_variables_prefixes``,
         ``cmake_config_version_compat``, ``system_package_version``,
         ``cmake_build_modules``, ``nosoname``, ``cmake_target_aliases`` and ``cmake_extra_variables``.
@@ -159,7 +159,7 @@ class CMakeDeps:
         try:
             value = self._properties[f"{dep_comp}{build_suffix}"][prop]
             if check_type is not None and not isinstance(value, check_type):
-                raise ConanException(
+                raise RecipeException(
                     f'The expected type for {prop} is "{check_type.__name__}", but "{type(value).__name__}" was found')
             return value
         except KeyError:
@@ -190,9 +190,9 @@ class CMakeDeps:
         return tmp.lower()
 
     def generate_aggregator(self):
-        host = self._conanfile.dependencies.host
-        build_req = self._conanfile.dependencies.direct_build
-        test_req = self._conanfile.dependencies.test
+        host = self._recipe.dependencies.host
+        build_req = self._recipe.dependencies.direct_build
+        test_req = self._recipe.dependencies.test
 
         configs = []
         for require, dep in list(host.items()) + list(build_req.items()) + list(test_req.items()):
@@ -208,22 +208,22 @@ class CMakeDeps:
             configs.append(config)
 
         template = textwrap.dedent("""\
-            message(STATUS "Conan: Using CMakeDeps conandeps_legacy.cmake aggregator via include()")
-            message(STATUS "Conan: It is recommended to use explicit find_package() per dependency instead")
+            message(STATUS "Recipe: Using CMakeDeps recipe_deps_legacy.cmake aggregator via include()")
+            message(STATUS "Recipe: It is recommended to use explicit find_package() per dependency instead")
 
             {% for config in configs %}
             find_package({{config.file_name}})
             {% endfor %}
 
-            set(CONANDEPS_LEGACY {% for t in configs %} {{t.root_target_name}} {% endfor %})
+            set(RECIPEDEPS_LEGACY {% for t in configs %} {{t.root_target_name}} {% endfor %})
             """)
 
         template = Template(template, trim_blocks=True, lstrip_blocks=True,
                             undefined=jinja2.StrictUndefined)
-        conandeps = template.render({"configs": configs})
-        save(self._conanfile, "conandeps_legacy.cmake", conandeps)
+        recipe_deps = template.render({"configs": configs})
+        save(self._recipe, "recipe_deps_legacy.cmake", recipe_deps)
 
-    def get_transitive_requires(self, conanfile):
+    def get_transitive_requires(self, recipe):
         # Prepared to filter transitive tool-requires with visible=True
-        return get_transitive_requires(self._conanfile, conanfile)
+        return get_transitive_requires(self._recipe, recipe)
 

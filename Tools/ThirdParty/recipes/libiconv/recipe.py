@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
         tc = AutotoolsToolchain(self)
         if cross_building(self) and is_msvc(self):
             triplet_arch_windows = {"x86_64": "x86_64", "x86": "i686", "armv8": "aarch64"}
-            # ICU doesn't like GNU triplet of conan for msvc (see https://github.com/conan-io/conan/issues/12546)
+            # ICU doesn't like GNU triplet of recipe for msvc (see upstream issue 12546)
             host_arch = triplet_arch_windows.get(str(self.settings.arch))
             build_arch = triplet_arch_windows.get(str(self.settings_build.arch))
 

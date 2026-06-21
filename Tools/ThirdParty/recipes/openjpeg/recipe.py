@@ -111,11 +111,11 @@ class Recipe(RecipeBase):
 
     @property
     def _module_vars_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
 
     @property
     def _module_target_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-targets.cmake")
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-targets.cmake")
 
     @property
     def _openjpeg_subdir(self):

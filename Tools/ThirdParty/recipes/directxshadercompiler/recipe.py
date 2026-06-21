@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os not in ["Windows", "Linux"]:
-            raise InvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
+            raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
 
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/DirectXShaderCompiler")
@@ -28,7 +28,7 @@ class Recipe(RecipeBase):
             url = "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/linux_dxc_2026_02_20.x86_64.tar.gz"
             sha256 = "a1d3e3b5e1c5685b3eb27d5e8890e41d87df45def05112a2d6f1a63a931f7d60"
         else:
-            raise InvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
+            raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
         get(self, url=url, sha256=sha256, destination=self.build_folder)
 
     def package(self):

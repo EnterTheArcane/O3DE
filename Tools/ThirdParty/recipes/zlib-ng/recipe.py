@@ -79,7 +79,7 @@ class Recipe(RecipeBase):
     def build(self):
         header_version = self._get_zlib_header_version()
         if header_version and header_version != self._zlib_compat_version:
-            raise ConanException(f"the zlib compatibility version ({header_version}) is not correctly recorded in the recipe for this zlib-ng version ({self.version})")
+            raise RecipeException(f"the zlib compatibility version ({header_version}) is not correctly recorded in the recipe for this zlib-ng version ({self.version})")
 
         cmake = CMake(self)
         cmake.configure()

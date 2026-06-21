@@ -87,7 +87,7 @@ class Recipe(RecipeBase):
 
     @property
     def _module_file_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "BZip2")

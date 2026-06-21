@@ -42,9 +42,9 @@ class Recipe(RecipeBase):
             self.options.rm_safe("with_libiconv")
 
     def validate(self):
-        from thirdparty.errors import InvalidConfiguration
+        from thirdparty.errors import RecipeInvalidConfiguration
         if self.settings.os == "Windows":
-            raise InvalidConfiguration(f"{self.name} is not supported on Windows")
+            raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def requirements(self):
         if self.options.get_safe("with_libiconv"):
@@ -101,7 +101,7 @@ class Recipe(RecipeBase):
             ])
         if is_apple_os(self):
             # Inject -headerpad_max_install_names, otherwise fix_apple_shared_install_name() may fail.
-            # See https://github.com/conan-io/conan-center-index/issues/20002
+            # See https://github.com/recipe-io/recipe-center-index/issues/20002
             tc.extra_ldflags.append("-headerpad_max_install_names")
         tc.generate()
         autotools_deps = AutotoolsDeps(self)

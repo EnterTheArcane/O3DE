@@ -83,7 +83,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
         deps = CMakeConfigDeps(self)
-        # Conan provides both under the same name, upstream only uses this one
+        # Recipe provides both under the same name, upstream only uses this one
         deps.set_property("spirv-tools", "cmake_file_name", "SPIRV-Tools-opt")
         deps.generate()
 

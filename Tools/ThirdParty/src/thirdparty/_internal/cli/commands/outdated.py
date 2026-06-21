@@ -9,7 +9,7 @@ from pathlib import Path
 import colorama
 from colorama import Fore, Style
 
-from thirdparty._internal.model.conan_file import ConanFile
+from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.cli.command import command
 
@@ -128,14 +128,14 @@ def _check_recipe(name: str, cls: type) -> tuple[str, str, str, str, str | None]
     return (name, str(cur_v), str(lat_v), "ahead", None)
 
 
-def _load_recipe_class(recipe_path: Path, name: str) -> type[ConanFile]:
+def _load_recipe_class(recipe_path: Path, name: str) -> type[RecipeBase]:
     spec = importlib.util.spec_from_file_location(f"_recipe_{name}", recipe_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"cannot load {recipe_path}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     cls = getattr(module, "Recipe", None)
-    if cls is None or not (isinstance(cls, type) and issubclass(cls, ConanFile)):
+    if cls is None or not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
         raise RuntimeError(f"{recipe_path} has no Recipe class")
     return cls
 

@@ -60,8 +60,8 @@ class GithubRepository:
     (subject to GitHub's 60 req/hour unauthenticated rate limit).
     """
 
-    def __init__(self, conanfile, slug: str) -> None:
-        self._conanfile = conanfile
+    def __init__(self, recipe, slug: str) -> None:
+        self._recipe = recipe
         self._slug = slug
 
     @cached_property

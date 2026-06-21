@@ -1,5 +1,5 @@
 # Source: https://premake.github.io/docs/architecture/
-CONAN_TO_PREMAKE_ARCH = {
+RECIPE_TO_PREMAKE_ARCH = {
     "x86": "x86",
     "x86_64": "x86_64",
 

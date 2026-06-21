@@ -1,27 +1,27 @@
-"""Makefile generator for Conan dependencies
+"""Makefile generator for Recipe dependencies
 
-This generator creates a Makefile (conandeps.mk) with variables for each dependency and consider their components.
+This generator creates a Makefile (recipe_deps.mk) with variables for each dependency and consider their components.
 To simplify its usage, it also creates global variables with aggregated values from all dependencies.
 This generator does not work like a toolchain, it does not include settings.
 
 For better customization, it allows appending prefixes as flags variables:
 
-- CONAN_LIB_FLAG: Add a prefix to all libs variables, e.g. -l
-- CONAN_DEFINE_FLAG: Add a prefix to all defines variables, e.g. -D
-- CONAN_SYSTEM_LIB_FLAG: Add a prefix to all system_libs variables, e.g. -l
-- CONAN_INCLUDE_DIR_FLAG: Add a prefix to all include dirs variables, e.g. -I
-- CONAN_LIB_DIR_FLAG: Add a prefix to all lib dirs variables, e.g. -L
-- CONAN_BIN_DIR_FLAG: Add a prefix to all bin dirs variables, e.g. -L
+- RECIPE_LIB_FLAG: Add a prefix to all libs variables, e.g. -l
+- RECIPE_DEFINE_FLAG: Add a prefix to all defines variables, e.g. -D
+- RECIPE_SYSTEM_LIB_FLAG: Add a prefix to all system_libs variables, e.g. -l
+- RECIPE_INCLUDE_DIR_FLAG: Add a prefix to all include dirs variables, e.g. -I
+- RECIPE_LIB_DIR_FLAG: Add a prefix to all lib dirs variables, e.g. -L
+- RECIPE_BIN_DIR_FLAG: Add a prefix to all bin dirs variables, e.g. -L
 
 
-The conandeps.mk file layout is as follows:
+The recipe_deps.mk file layout is as follows:
 
-- CONAN_DEPS: list all transitive and direct dependencies names without version (e.g. zlib)
+- RECIPE_DEPS: list all transitive and direct dependencies names without version (e.g. zlib)
 - Iterate over each dependency and its components:
     - Prints name, version, root folder, regular folders, libs and flags
     - Components are rootified to avoid repeating same prefix twice for the root folder
     - Components libs, folder and flags are solved as variables to avoid repeating same name twice
-- Aggregated global variables for simplification, sum all dependencies to common variables (e.g. CONAN_INCLUDE_DIRS)
+- Aggregated global variables for simplification, sum all dependencies to common variables (e.g. RECIPE_INCLUDE_DIRS)
 
 """
 
@@ -32,12 +32,12 @@ import textwrap
 from jinja2 import Template, StrictUndefined
 from typing import Optional
 
-from thirdparty._internal.api.output import ConanOutput
+from thirdparty._internal.api.output import Output
 from thirdparty._internal import check_duplicated_generator
 from thirdparty.files import save
 
 
-CONAN_MAKEFILE_FILENAME = "conandeps.mk"
+RECIPE_MAKEFILE_FILENAME = "recipe_deps.mk"
 
 
 def _get_formatted_dirs(folders: list, prefix_path_: str, name: str) -> list:
@@ -49,15 +49,15 @@ def _get_formatted_dirs(folders: list, prefix_path_: str, name: str) -> list:
     """
     ret = []
     for directory in folders:
-        if directory.startswith("$(CONAN"):  # already a variable
+        if directory.startswith("$(RECIPE"):  # already a variable
             ret.append(directory)
             continue
         directory = os.path.normpath(directory).replace("\\", "/")
         prefix = ""
         if not os.path.isabs(directory):
-            prefix = f"$(CONAN_ROOT_{name})/"
+            prefix = f"$(RECIPE_ROOT_{name})/"
         elif directory.startswith(prefix_path_):
-            prefix = f"$(CONAN_ROOT_{name})/"
+            prefix = f"$(RECIPE_ROOT_{name})/"
             directory = os.path.relpath(directory, prefix_path_).replace("\\", "/")
         ret.append(f"{prefix}{directory}")
     return ret
@@ -98,16 +98,16 @@ def _filter_properties(properties: Optional[dict], output) -> dict:
     return {name: value for name, value in properties.items() if _check_property_value(name, value, output)} if properties else {}
 
 
-def _conan_prefix_flag(variable: str) -> str:
+def _recipe_prefix_flag(variable: str) -> str:
     """
     Return a global flag to be used as prefix to any value in the makefile
     """
-    return f"$(CONAN_{variable.upper()}_FLAG)" if variable else ""
+    return f"$(RECIPE_{variable.upper()}_FLAG)" if variable else ""
 
 
 def _common_cppinfo_variables() -> dict:
     """
-    Regular cppinfo variables exported by any Conanfile and their Makefile prefixes
+    Regular cppinfo variables exported by any Recipefile and their Makefile prefixes
     """
     return {
         "objects": None,
@@ -125,7 +125,7 @@ def _common_cppinfo_variables() -> dict:
 
 def _common_cppinfo_dirs() -> dict:
     """
-    Regular cppinfo folders exported by any Conanfile and their Makefile prefixes
+    Regular cppinfo folders exported by any Recipefile and their Makefile prefixes
     """
     return {
         "includedirs": "include_dir",
@@ -240,39 +240,39 @@ class MakeInfo:
 
 class GlobalContentGenerator:
     """
-    Generates the formatted content for global variables (e.g. CONAN_DEPS, CONAN_LIBS)
+    Generates the formatted content for global variables (e.g. RECIPE_DEPS, RECIPE_LIBS)
     """
 
     template = textwrap.dedent("""\
 
             # Aggregated global variables
 
-            {{ define_variable_value("CONAN_INCLUDE_DIRS", deps_cpp_info_dirs.include_dirs) -}}
-            {{- define_variable_value("CONAN_LIB_DIRS", deps_cpp_info_dirs.lib_dirs) -}}
-            {{- define_variable_value("CONAN_BIN_DIRS", deps_cpp_info_dirs.bin_dirs) -}}
-            {{- define_variable_value("CONAN_SRC_DIRS", deps_cpp_info_dirs.src_dirs) -}}
-            {{- define_variable_value("CONAN_BUILD_DIRS", deps_cpp_info_dirs.build_dirs) -}}
-            {{- define_variable_value("CONAN_RES_DIRS", deps_cpp_info_dirs.res_dirs) -}}
-            {{- define_variable_value("CONAN_FRAMEWORK_DIRS", deps_cpp_info_dirs.framework_dirs) -}}
-            {{- define_variable_value("CONAN_OBJECTS", deps_cpp_info_flags.objects) -}}
-            {{- define_variable_value("CONAN_LIBS", deps_cpp_info_flags.libs) -}}
-            {{- define_variable_value("CONAN_DEFINES", deps_cpp_info_flags.defines) -}}
-            {{- define_variable_value("CONAN_CFLAGS", deps_cpp_info_flags.cflags) -}}
-            {{- define_variable_value("CONAN_CXXFLAGS", deps_cpp_info_flags.cxxflags) -}}
-            {{- define_variable_value("CONAN_SHAREDLINKFLAGS", deps_cpp_info_flags.sharedlinkflags) -}}
-            {{- define_variable_value("CONAN_EXELINKFLAGS", deps_cpp_info_flags.exelinkflags) -}}
-            {{- define_variable_value("CONAN_FRAMEWORKS", deps_cpp_info_flags.frameworks) -}}
-            {{- define_variable_value("CONAN_REQUIRES", deps_cpp_info_flags.requires) -}}
-            {{- define_variable_value("CONAN_SYSTEM_LIBS", deps_cpp_info_flags.system_libs) -}}
+            {{ define_variable_value("RECIPE_INCLUDE_DIRS", deps_cpp_info_dirs.include_dirs) -}}
+            {{- define_variable_value("RECIPE_LIB_DIRS", deps_cpp_info_dirs.lib_dirs) -}}
+            {{- define_variable_value("RECIPE_BIN_DIRS", deps_cpp_info_dirs.bin_dirs) -}}
+            {{- define_variable_value("RECIPE_SRC_DIRS", deps_cpp_info_dirs.src_dirs) -}}
+            {{- define_variable_value("RECIPE_BUILD_DIRS", deps_cpp_info_dirs.build_dirs) -}}
+            {{- define_variable_value("RECIPE_RES_DIRS", deps_cpp_info_dirs.res_dirs) -}}
+            {{- define_variable_value("RECIPE_FRAMEWORK_DIRS", deps_cpp_info_dirs.framework_dirs) -}}
+            {{- define_variable_value("RECIPE_OBJECTS", deps_cpp_info_flags.objects) -}}
+            {{- define_variable_value("RECIPE_LIBS", deps_cpp_info_flags.libs) -}}
+            {{- define_variable_value("RECIPE_DEFINES", deps_cpp_info_flags.defines) -}}
+            {{- define_variable_value("RECIPE_CFLAGS", deps_cpp_info_flags.cflags) -}}
+            {{- define_variable_value("RECIPE_CXXFLAGS", deps_cpp_info_flags.cxxflags) -}}
+            {{- define_variable_value("RECIPE_SHAREDLINKFLAGS", deps_cpp_info_flags.sharedlinkflags) -}}
+            {{- define_variable_value("RECIPE_EXELINKFLAGS", deps_cpp_info_flags.exelinkflags) -}}
+            {{- define_variable_value("RECIPE_FRAMEWORKS", deps_cpp_info_flags.frameworks) -}}
+            {{- define_variable_value("RECIPE_REQUIRES", deps_cpp_info_flags.requires) -}}
+            {{- define_variable_value("RECIPE_SYSTEM_LIBS", deps_cpp_info_flags.system_libs) -}}
             """)
 
     template_deps = textwrap.dedent("""\
-            {{ define_variable_value("CONAN_DEPS", deps) }}
+            {{ define_variable_value("RECIPE_DEPS", deps) }}
             """)
 
     def content(self, deps_cpp_info_dirs: dict, deps_cpp_info_flags: dict) -> str:
         """
-        Generate content for Cppinfo variables (e.g. CONAN_LIBS, CONAN_INCLUDE_DIRS)
+        Generate content for Cppinfo variables (e.g. RECIPE_LIBS, RECIPE_INCLUDE_DIRS)
         :param deps_cpp_info_dirs: Formatted dependencies folders
         :param deps_cpp_info_flags: Formatted dependencies variables
         """
@@ -284,7 +284,7 @@ class GlobalContentGenerator:
 
     def deps_content(self, dependencies_names: list) -> str:
         """
-        Generate content for CONAN_DEPS (e.g. CONAN_DEPS = zlib, openssl)
+        Generate content for RECIPE_DEPS (e.g. RECIPE_DEPS = zlib, openssl)
         :param dependencies_names: Non-formatted dependencies names
         """
         context = {"deps": dependencies_names}
@@ -298,8 +298,8 @@ class GlobalGenerator:
     Process all collected dependencies and parse to generate global content
     """
 
-    def __init__(self, conanfile, make_infos):
-        self._conanfile = conanfile
+    def __init__(self, recipe, make_infos):
+        self._recipe = recipe
         self._make_infos = make_infos
 
     def _get_dependency_dirs(self) -> dict:
@@ -309,7 +309,7 @@ class GlobalGenerator:
         dirs = {}
         for var in _common_cppinfo_dirs():
             key = var.replace("dirs", "_dirs")
-            dirs[key] = [f"$(CONAN_{key.upper()}_{_makefy(makeinfo.name)})"
+            dirs[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})"
                          for makeinfo in self._make_infos if var in makeinfo.dirs]
         return dirs
 
@@ -320,7 +320,7 @@ class GlobalGenerator:
         flags = {}
         for var in _common_cppinfo_variables():
             key = var.replace("dirs", "_dirs")
-            flags[key] = [f"$(CONAN_{key.upper()}_{_makefy(makeinfo.name)})"
+            flags[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})"
                           for makeinfo in self._make_infos if var in makeinfo.flags]
         return flags
 
@@ -339,7 +339,7 @@ class GlobalGenerator:
         It should be added as first variable in the Makefile.
         """
         dependencies = [makeinfo.name for makeinfo in self._make_infos
-                        if makeinfo.name != self._conanfile.name]
+                        if makeinfo.name != self._recipe.name]
         glob_content_gen = GlobalContentGenerator()
         return glob_content_gen.deps_content(dependencies)
 
@@ -352,24 +352,24 @@ class DepComponentContentGenerator:
     template = textwrap.dedent("""\
         # {{ dep.ref.name }}::{{ comp_name }}
 
-        {{  define_variable_value_safe("CONAN_INCLUDE_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'include_dirs') -}}
-        {{- define_variable_value_safe("CONAN_LIB_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'lib_dirs') -}}
-        {{- define_variable_value_safe("CONAN_BIN_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'bin_dirs') -}}
-        {{- define_variable_value_safe("CONAN_SRC_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'src_dirs') -}}
-        {{- define_variable_value_safe("CONAN_BUILD_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'build_dirs') -}}
-        {{- define_variable_value_safe("CONAN_RES_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'res_dirs') -}}
-        {{- define_variable_value_safe("CONAN_FRAMEWORK_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'framework_dirs') -}}
-        {{- define_variable_value_safe("CONAN_OBJECTS_{}_{}".format(dep_name, name), cpp_info_flags, 'objects') -}}
-        {{- define_variable_value_safe("CONAN_LIBS_{}_{}".format(dep_name, name), cpp_info_flags, 'libs') -}}
-        {{- define_variable_value_safe("CONAN_DEFINES_{}_{}".format(dep_name, name), cpp_info_flags, 'defines') -}}
-        {{- define_variable_value_safe("CONAN_CFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'cflags') -}}
-        {{- define_variable_value_safe("CONAN_CXXFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'cxxflags') -}}
-        {{- define_variable_value_safe("CONAN_SHAREDLINKFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'sharedlinkflags') -}}
-        {{- define_variable_value_safe("CONAN_EXELINKFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'exelinkflags') -}}
-        {{- define_variable_value_safe("CONAN_FRAMEWORKS_{}_{}".format(dep_name, name), cpp_info_flags, 'frameworks') -}}
-        {{- define_variable_value_safe("CONAN_REQUIRES_{}_{}".format(dep_name, name), cpp_info_flags, 'requires') -}}
-        {{- define_variable_value_safe("CONAN_SYSTEM_LIBS_{}_{}".format(dep_name, name), cpp_info_flags, 'system_libs') -}}
-        {{- define_multiple_variable_value("CONAN_PROPERTY_{}_{}".format(dep_name, name), properties) -}}
+        {{  define_variable_value_safe("RECIPE_INCLUDE_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'include_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_LIB_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'lib_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_BIN_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'bin_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_SRC_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'src_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_BUILD_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'build_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_RES_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'res_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_FRAMEWORK_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'framework_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_OBJECTS_{}_{}".format(dep_name, name), cpp_info_flags, 'objects') -}}
+        {{- define_variable_value_safe("RECIPE_LIBS_{}_{}".format(dep_name, name), cpp_info_flags, 'libs') -}}
+        {{- define_variable_value_safe("RECIPE_DEFINES_{}_{}".format(dep_name, name), cpp_info_flags, 'defines') -}}
+        {{- define_variable_value_safe("RECIPE_CFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'cflags') -}}
+        {{- define_variable_value_safe("RECIPE_CXXFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'cxxflags') -}}
+        {{- define_variable_value_safe("RECIPE_SHAREDLINKFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'sharedlinkflags') -}}
+        {{- define_variable_value_safe("RECIPE_EXELINKFLAGS_{}_{}".format(dep_name, name), cpp_info_flags, 'exelinkflags') -}}
+        {{- define_variable_value_safe("RECIPE_FRAMEWORKS_{}_{}".format(dep_name, name), cpp_info_flags, 'frameworks') -}}
+        {{- define_variable_value_safe("RECIPE_REQUIRES_{}_{}".format(dep_name, name), cpp_info_flags, 'requires') -}}
+        {{- define_variable_value_safe("RECIPE_SYSTEM_LIBS_{}_{}".format(dep_name, name), cpp_info_flags, 'system_libs') -}}
+        {{- define_multiple_variable_value("RECIPE_PROPERTY_{}_{}".format(dep_name, name), properties) -}}
         """)
 
     def __init__(self, dependency, component_name: str, dirs: dict, flags: dict, output):
@@ -412,32 +412,32 @@ class DepContentGenerator:
 
         # {{ dep.ref }}{% if not req.direct %} (indirect dependency){% endif +%}
 
-        CONAN_NAME_{{ name }} = {{ dep.ref.name }}
-        CONAN_VERSION_{{ name }} = {{ dep.ref.version }}
-        CONAN_REFERENCE_{{ name }} = {{ dep.ref }}
+        RECIPE_NAME_{{ name }} = {{ dep.ref.name }}
+        RECIPE_VERSION_{{ name }} = {{ dep.ref.version }}
+        RECIPE_REFERENCE_{{ name }} = {{ dep.ref }}
 
-        CONAN_ROOT_{{ name }} = {{ root }}
+        RECIPE_ROOT_{{ name }} = {{ root }}
 
-        {{  define_variable_value("CONAN_SYSROOT_{}".format(name), sysroot) -}}
-        {{- define_variable_value_safe("CONAN_INCLUDE_DIRS_{}".format(name), cpp_info_dirs, 'include_dirs') -}}
-        {{- define_variable_value_safe("CONAN_LIB_DIRS_{}".format(name), cpp_info_dirs, 'lib_dirs') -}}
-        {{- define_variable_value_safe("CONAN_BIN_DIRS_{}".format(name), cpp_info_dirs, 'bin_dirs') -}}
-        {{- define_variable_value_safe("CONAN_SRC_DIRS_{}".format(name), cpp_info_dirs, 'src_dirs') -}}
-        {{- define_variable_value_safe("CONAN_BUILD_DIRS_{}".format(name), cpp_info_dirs, 'build_dirs') -}}
-        {{- define_variable_value_safe("CONAN_RES_DIRS_{}".format(name), cpp_info_dirs, 'res_dirs') -}}
-        {{- define_variable_value_safe("CONAN_FRAMEWORK_DIRS_{}".format(name), cpp_info_dirs, 'framework_dirs') -}}
-        {{- define_variable_value_safe("CONAN_OBJECTS_{}".format(name), cpp_info_flags, 'objects') -}}
-        {{- define_variable_value_safe("CONAN_LIBS_{}".format(name), cpp_info_flags, 'libs') -}}
-        {{- define_variable_value_safe("CONAN_DEFINES_{}".format(name), cpp_info_flags, 'defines') -}}
-        {{- define_variable_value_safe("CONAN_CFLAGS_{}".format(name), cpp_info_flags, 'cflags') -}}
-        {{- define_variable_value_safe("CONAN_CXXFLAGS_{}".format(name), cpp_info_flags, 'cxxflags') -}}
-        {{- define_variable_value_safe("CONAN_SHAREDLINKFLAGS_{}".format(name), cpp_info_flags, 'sharedlinkflags') -}}
-        {{- define_variable_value_safe("CONAN_EXELINKFLAGS_{}".format(name), cpp_info_flags, 'exelinkflags') -}}
-        {{- define_variable_value_safe("CONAN_FRAMEWORKS_{}".format(name), cpp_info_flags, 'frameworks') -}}
-        {{- define_variable_value_safe("CONAN_REQUIRES_{}".format(name), cpp_info_flags, 'requires') -}}
-        {{- define_variable_value_safe("CONAN_SYSTEM_LIBS_{}".format(name), cpp_info_flags, 'system_libs') -}}
-        {{- define_variable_value("CONAN_COMPONENTS_{}".format(name), components) -}}
-        {{- define_multiple_variable_value("CONAN_PROPERTY_{}".format(name), properties) -}}
+        {{  define_variable_value("RECIPE_SYSROOT_{}".format(name), sysroot) -}}
+        {{- define_variable_value_safe("RECIPE_INCLUDE_DIRS_{}".format(name), cpp_info_dirs, 'include_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_LIB_DIRS_{}".format(name), cpp_info_dirs, 'lib_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_BIN_DIRS_{}".format(name), cpp_info_dirs, 'bin_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_SRC_DIRS_{}".format(name), cpp_info_dirs, 'src_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_BUILD_DIRS_{}".format(name), cpp_info_dirs, 'build_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_RES_DIRS_{}".format(name), cpp_info_dirs, 'res_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_FRAMEWORK_DIRS_{}".format(name), cpp_info_dirs, 'framework_dirs') -}}
+        {{- define_variable_value_safe("RECIPE_OBJECTS_{}".format(name), cpp_info_flags, 'objects') -}}
+        {{- define_variable_value_safe("RECIPE_LIBS_{}".format(name), cpp_info_flags, 'libs') -}}
+        {{- define_variable_value_safe("RECIPE_DEFINES_{}".format(name), cpp_info_flags, 'defines') -}}
+        {{- define_variable_value_safe("RECIPE_CFLAGS_{}".format(name), cpp_info_flags, 'cflags') -}}
+        {{- define_variable_value_safe("RECIPE_CXXFLAGS_{}".format(name), cpp_info_flags, 'cxxflags') -}}
+        {{- define_variable_value_safe("RECIPE_SHAREDLINKFLAGS_{}".format(name), cpp_info_flags, 'sharedlinkflags') -}}
+        {{- define_variable_value_safe("RECIPE_EXELINKFLAGS_{}".format(name), cpp_info_flags, 'exelinkflags') -}}
+        {{- define_variable_value_safe("RECIPE_FRAMEWORKS_{}".format(name), cpp_info_flags, 'frameworks') -}}
+        {{- define_variable_value_safe("RECIPE_REQUIRES_{}".format(name), cpp_info_flags, 'requires') -}}
+        {{- define_variable_value_safe("RECIPE_SYSTEM_LIBS_{}".format(name), cpp_info_flags, 'system_libs') -}}
+        {{- define_variable_value("RECIPE_COMPONENTS_{}".format(name), components) -}}
+        {{- define_multiple_variable_value("RECIPE_PROPERTY_{}".format(name), properties) -}}
         """)
 
     def __init__(self, dependency, require, root: str, sysroot, dirs: dict, flags: dict, output):
@@ -502,7 +502,7 @@ class DepComponentGenerator:
                 self._makeinfo.dirs_append(var)
                 var = var.replace("dirs", "_dirs")
                 formatted_dirs = self._rootify(self._root, self._dep.ref.name, cppinfo_value)
-                dirs[var] = [_conan_prefix_flag(flag) + it for it in formatted_dirs]
+                dirs[var] = [_recipe_prefix_flag(flag) + it for it in formatted_dirs]
         return dirs
 
     @staticmethod
@@ -516,7 +516,7 @@ class DepComponentGenerator:
         """
         root_len = len(root)
         root_with_sep = root + os.sep
-        root_var_ref = f"$(CONAN_ROOT_{_makefy(root_id)})"
+        root_var_ref = f"$(RECIPE_ROOT_{_makefy(root_id)})"
         return [root_var_ref + path[root_len:].replace("\\", "/") if path.startswith(root_with_sep)
                 else path for path in path_list]
 
@@ -533,7 +533,7 @@ class DepComponentGenerator:
             if "flags" in var:
                 cppinfo_value = [var.replace('"', '\\"') for var in cppinfo_value]
             if cppinfo_value:
-                flags[var] = [_conan_prefix_flag(prefix_var) + it for it in cppinfo_value]
+                flags[var] = [_recipe_prefix_flag(prefix_var) + it for it in cppinfo_value]
                 self._makeinfo.flags_append(var)
         return flags
 
@@ -578,14 +578,14 @@ class DepGenerator:
         for var, prefix in _common_cppinfo_dirs().items():
             cppinfo_value = getattr(dependency.cpp_info, var)
             if not cppinfo_value:  # The root value is not defined, there might be components
-                cppinfo_value = [f"$(CONAN_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})"
+                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})"
                                  for name, obj in dependency.cpp_info.components.items() if getattr(obj, var.lower())]
                 prefix = ""
             formatted_dirs = _get_formatted_dirs(cppinfo_value, root, _makefy(dependency.ref.name))
             if formatted_dirs:
                 self._info.dirs_append(var)
                 var = var.replace("dirs", "_dirs")
-                dirs[var] = [_conan_prefix_flag(prefix) + it for it in formatted_dirs]
+                dirs[var] = [_recipe_prefix_flag(prefix) + it for it in formatted_dirs]
         return dirs
 
     def _get_dependency_flags(self, dependency) -> dict:
@@ -598,14 +598,14 @@ class DepGenerator:
             cppinfo_value = getattr(dependency.cpp_info, var)
             # Use component cpp_info info when does not provide any value
             if not cppinfo_value:
-                cppinfo_value = [f"$(CONAN_{var.upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.cpp_info.components.items() if getattr(obj, var.lower())]
+                cppinfo_value = [f"$(RECIPE_{var.upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.cpp_info.components.items() if getattr(obj, var.lower())]
                 # avoid repeating same prefix twice
                 prefix_var = ""
             if "flags" in var:
                 cppinfo_value = [var.replace('"', '\\"') for var in cppinfo_value]
             if cppinfo_value:
                 self._info.flags_append(var)
-                flags[var] = [_conan_prefix_flag(prefix_var) + it for it in cppinfo_value]
+                flags[var] = [_recipe_prefix_flag(prefix_var) + it for it in cppinfo_value]
         return flags
 
     def _get_sysroot(self, root: str) -> list:
@@ -649,22 +649,22 @@ class MakeDeps:
     Generates a Makefile with the variables needed to build a project with the specified.
     """
 
-    _title = "# This Makefile has been generated by Conan. DO NOT EDIT!\n"
+    _title = "# This Makefile has been generated by Recipe. DO NOT EDIT!\n"
 
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
 
     def generate(self) -> None:
         """
         Collects all dependencies and components, then, generating a Makefile
         """
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
 
-        host_req = self._conanfile.dependencies.host
-        test_req = self._conanfile.dependencies.test
+        host_req = self._recipe.dependencies.host
+        test_req = self._recipe.dependencies.test
 
         content_buffer = f"{self._title}\n"
         deps_buffer = ""
@@ -675,14 +675,14 @@ class MakeDeps:
         make_infos = []
 
         for require, dep in dependencies:
-            output = ConanOutput(scope=f"{self._conanfile} MakeDeps: {dep}:")
+            output = Output(scope=f"{self._recipe} MakeDeps: {dep}:")
             dep_gen = DepGenerator(dep, require, output)
             make_infos.append(dep_gen.makeinfo)
             deps_buffer += dep_gen.generate()
 
-        glob_gen = GlobalGenerator(self._conanfile, make_infos)
+        glob_gen = GlobalGenerator(self._recipe, make_infos)
         content_buffer += glob_gen.deps_generate() + deps_buffer + glob_gen.generate()
 
-        save(self._conanfile, CONAN_MAKEFILE_FILENAME, content_buffer)
-        self._conanfile.output.info(f"Generated {CONAN_MAKEFILE_FILENAME}")
+        save(self._recipe, RECIPE_MAKEFILE_FILENAME, content_buffer)
+        self._recipe.output.info(f"Generated {RECIPE_MAKEFILE_FILENAME}")
 

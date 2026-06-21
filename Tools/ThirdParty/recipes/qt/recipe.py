@@ -181,7 +181,7 @@ class Recipe(RecipeBase):
             status = str(config.get(section, "status"))
             if status not in ["obsolete", "ignore", "additionalLibrary"]:
                 if status not in MODULE_STATUSES:
-                    raise ConanException(f"module {modulename} has status {status} which is not in MODULE_STATUSES {MODULE_STATUSES}")
+                    raise RecipeException(f"module {modulename} has status {status} which is not in MODULE_STATUSES {MODULE_STATUSES}")
                 assert modulename in SUBMODULES, f"module {modulename} not in SUBMODULES"
                 self._submodules_tree[modulename] = {"status": status,
                                 "path": str(config.get(section, "path")), "depends": []}
@@ -259,7 +259,7 @@ class Recipe(RecipeBase):
             required_by = set()
             for m in required_but_disabled:
                 required_by.update(required_modules[m])
-            raise InvalidConfiguration(f"Modules {required_but_disabled} are explicitly disabled, "
+            raise RecipeInvalidConfiguration(f"Modules {required_but_disabled} are explicitly disabled, "
                                             f"but are required by {list(required_by)}, enabled by other options")
 
         enabled_modules = requested_modules.union(set(required_modules.keys()))
@@ -410,14 +410,14 @@ class Recipe(RecipeBase):
         tc.set_property("wayland::wayland-cursor", "cmake_target_name", "Wayland::Cursor")
         tc.set_property("wayland::wayland-egl", "cmake_target_name", "Wayland::Egl")
 
-        # CMakeDeps generates EGL-config.cmake and sets EGL_DIR in conan_cmakedeps_paths.cmake,
-        # so find_package(EGL) prefers the Conan-installed config over Qt's bundled FindEGL.cmake.
+        # CMakeDeps generates EGL-config.cmake and sets EGL_DIR in recipe_cmakedeps_paths.cmake,
+        # so find_package(EGL) prefers the Recipe-installed config over Qt's bundled FindEGL.cmake.
         tc.set_property("egl", "cmake_file_name", "EGL")
         tc.set_property("egl", "cmake_find_mode", "config")
         tc.set_property("egl::egl", "cmake_target_name", "EGL::EGL")
 
         # Don't generate any file for gstreamer — let Qt's own FindGStreamer.cmake handle
-        # detection via CMAKE_PREFIX_PATH (same intent as the previous gstreamer_conan hack).
+        # detection via CMAKE_PREFIX_PATH (same intent as the previous gstreamer_recipe hack).
         tc.set_property("gstreamer", "cmake_find_mode", "none")
 
         tc.generate()
@@ -438,10 +438,10 @@ class Recipe(RecipeBase):
         env = Environment()
         # Tell Python to assume UTF-8 encoding to work around character encoding issues while building Qt WebEngine on Polish locale on Windows.
         env.define("PYTHONUTF8", "1")
-        # TODO: to remove when properly handled by conan (see https://github.com/conan-io/conan/issues/11962)
+        # TODO: to remove when properly handled by recipe (see upstream issue 11962)
         env.unset("VCPKG_ROOT")
         env.prepend_path("PKG_CONFIG_PATH", self.generators_folder)
-        env.vars(self).save_script("conanbuildenv_pkg_config_path")
+        env.vars(self).save_script("buildenvenv_pkg_config_path")
         if self.settings_build.os == "Macos":
             # On macOS, SIP resets DYLD_LIBRARY_PATH injected by VirtualBuildEnv & VirtualRunEnv
             dyld_library_path = "$DYLD_LIBRARY_PATH"
@@ -490,7 +490,7 @@ class Recipe(RecipeBase):
                 tc.variables["INPUT_openssl"] = "linked"
                 tc.variables["QT_FEATURE_openssl_linked"] = "ON"
 
-        # TODO: Remove after fixing https://github.com/conan-io/conan/issues/12012
+        # TODO: Remove after fixing upstream issue 12012
         # Required for qt_config_compile_test() calls against CMakeDeps targets to work correctly.
         tc.cache_variables["CMAKE_TRY_COMPILE_CONFIGURATION"] = str(self.settings.build_type)
 
@@ -508,7 +508,7 @@ class Recipe(RecipeBase):
 
         # Prevent finding LibClang from the system
         # this is needed by the QDoc tool inside Qt Tools
-        # See: https://github.com/conan-io/conan-center-index/issues/24729#issuecomment-2255291495
+        # See: https://github.com/recipe-io/recipe-center-index/issues/24729#issuecomment-2255291495
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_WrapLibClang"] = "ON"
 
         for opt, conf_arg in [("with_glib", "glib"),
@@ -597,9 +597,9 @@ class Recipe(RecipeBase):
         if self.settings.compiler == "gcc" and self.settings.get_safe("build_type") == "Debug" and not self.options.shared:
             tc.variables["BUILD_WITH_PCH"] = "OFF"  # disabling PCH to save disk space
 
-                               #"set(QT_EXTRA_INCLUDEPATHS ${CONAN_INCLUDE_DIRS})\n"
-                               #"set(QT_EXTRA_DEFINES ${CONAN_DEFINES})\n"
-                               #"set(QT_EXTRA_LIBDIRS ${CONAN_LIB_DIRS})\n"
+                               #"set(QT_EXTRA_INCLUDEPATHS ${RECIPE_INCLUDE_DIRS})\n"
+                               #"set(QT_EXTRA_DEFINES ${RECIPE_DEFINES})\n"
+                               #"set(QT_EXTRA_LIBDIRS ${RECIPE_LIB_DIRS})\n"
 
         current_cpp_std = self.settings.get_safe("compiler.cppstd", default_cppstd(self))
         current_cpp_std = str(current_cpp_std).replace("gnu", "")
@@ -776,18 +776,18 @@ class Recipe(RecipeBase):
 
     @property
     def _cmake_executables_file(self):
-        return os.path.join("lib", "cmake", "Qt6Core", "conan_qt_executables_variables.cmake")
+        return os.path.join("lib", "cmake", "Qt6Core", "recipe_qt_executables_variables.cmake")
 
     @property
     def _cmake_entry_point_file(self):
-        return os.path.join("lib", "cmake", "Qt6Core", "conan_qt_entry_point.cmake")
+        return os.path.join("lib", "cmake", "Qt6Core", "recipe_qt_entry_point.cmake")
 
     @property
     def _cmake_platform_target_setup_file(self):
-        return os.path.join("lib", "cmake", "Qt6", "conan_qt_platform_target_setup.cmake")
+        return os.path.join("lib", "cmake", "Qt6", "recipe_qt_platform_target_setup.cmake")
 
     def _cmake_qt6_private_file(self, module):
-        return os.path.join("lib", "cmake", f"Qt6{module}", f"conan_qt_qt6_{module.lower()}private.cmake")
+        return os.path.join("lib", "cmake", f"Qt6{module}", f"recipe_qt_qt6_{module.lower()}private.cmake")
 
     def package(self):
         if self.settings.os == "Macos":
@@ -864,7 +864,7 @@ class Recipe(RecipeBase):
             targets.extend(["qmlformat", "qml", "qmlprofiler", "qmlpreview", "qmltc"])
             targets.extend(["qmlaotstats"])
 
-            # Note: consider "qmltestrunner", see https://github.com/conan-io/conan-center-index/issues/24276
+            # Note: consider "qmltestrunner", see https://github.com/recipe-io/recipe-center-index/issues/24276
         if self.options.get_safe("qtremoteobjects"):
             targets.append("repc")
         if self.options.get_safe("qtscxml"):
@@ -926,7 +926,7 @@ class Recipe(RecipeBase):
 
         if self.options.qtdeclarative:
             _create_private_module("Qml", ["CorePrivate", "Qml"])
-            save(self, os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "conan_qt_qt6_policies.cmake"), textwrap.dedent("""\
+            save(self, os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"), textwrap.dedent("""\
                     set(QT_KNOWN_POLICY_QTP0001 TRUE)
                     set(QT_KNOWN_POLICY_QTP0004 TRUE)
                     set(QT_KNOWN_POLICY_QTP0005 TRUE)
@@ -1618,7 +1618,7 @@ class Recipe(RecipeBase):
         build_modules_list = []
 
         if self.options.qtdeclarative:
-            build_modules_list.append(os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "conan_qt_qt6_policies.cmake"))
+            build_modules_list.append(os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"))
 
         def _add_build_modules_for_component(component):
             for req in self.cpp_info.components[component].requires:

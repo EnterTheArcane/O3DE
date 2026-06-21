@@ -92,12 +92,12 @@ class Recipe(RecipeBase):
         if self._with_nasm:
             env = Environment()
             env.define("AS", unix_path(self, os.path.join(self.dependencies.build["nasm"].package_folder, "bin", "nasm{}".format(".exe" if self.settings.os == "Windows" else ""))))
-            env.vars(self).save_script("conanbuild_nasm")
+            env.vars(self).save_script("buildenv_nasm")
 
         if is_msvc(self):
             env = Environment()
             env.define("CC", "cl -nologo")
-            env.vars(self).save_script("conanbuild_msvc")
+            env.vars(self).save_script("buildenv_msvc")
 
         if is_msvc(self) or self.settings.os in ["iOS", "watchOS", "tvOS"]:
             # autotools does not know about the msvc and Apple embedded OS canonical name(s)

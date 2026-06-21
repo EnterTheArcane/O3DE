@@ -2,31 +2,7 @@ from functools import total_ordering
 from typing import Optional
 
 from thirdparty._internal.model.version import Version
-from thirdparty.errors import ConanException
-
-
-def required_conan_version_policy(conanfile, limit_version):
-    try:
-        global_conf = conanfile._conan_helpers.global_conf  # noqa
-    except AttributeError:
-        pass  # This can happen for PLATFORM deps without _conan_helpers
-    else:
-        policies = global_conf.get("core:policies")
-        # The global policy_conan_version one has priority
-        if policies:
-            policy = next(iter(p for p in policies if p.startswith("required_conan_version")), None)
-            if policy:
-                version = policy[len("required_conan_version"):]
-                version_range = VersionRange(version)
-                if not version_range.contains(Version(limit_version), resolve_prerelease=None):
-                    return True
-
-    conanfile_version = conanfile._conan_required_version # noqa
-    if conanfile_version:
-        version_range = VersionRange(conanfile_version)
-        if not version_range.contains(Version(limit_version), resolve_prerelease=None):
-            return True
-    return False
+from thirdparty.errors import RecipeException
 
 
 @total_ordering
@@ -104,7 +80,7 @@ class _ConditionSet:
         if expression in ("", "*"):
             return [_Condition(">=", Version("0.0.0"))]
         elif len(expression) == 1:
-            raise ConanException(f'Error parsing version range "{expression}"')
+            raise RecipeException(f'Error parsing version range "{expression}"')
 
         operator = expression[0]
         if operator not in (">", "<", "^", "~", "="):
@@ -121,10 +97,10 @@ class _ConditionSet:
                 operator += "="
                 index = 2
         elif expression[1] == "=":
-            raise ConanException(f"Invalid version range operator '{operator}=' in {expression}, you should probably use {operator} instead.")
+            raise RecipeException(f"Invalid version range operator '{operator}=' in {expression}, you should probably use {operator} instead.")
         version = expression[index:]
         if version == "":
-            raise ConanException(f'Error parsing version range "{expression}"')
+            raise RecipeException(f'Error parsing version range "{expression}"')
         if operator == "~":  # tilde minor
             if "-" not in version:
                 version += "-"
@@ -184,8 +160,8 @@ class VersionRange:
         for t in tokens[1:]:
             if "include_prerelease" in t:
                 if "include_prerelease=" in t:
-                    from thirdparty._internal.api.output import ConanOutput
-                    ConanOutput().warning(
+                    from thirdparty._internal.api.output import Output
+                    Output().warning(
                         f'include_prerelease version range option in "{expression}" does not take an attribute, '
                         'its presence unconditionally enables prereleases')
                 prereleases = True
@@ -193,10 +169,10 @@ class VersionRange:
             else:
                 t = t.strip()
                 if len(t) > 0 and t[0].isalpha():
-                    from thirdparty._internal.api.output import ConanOutput
-                    ConanOutput().warning(f'Unrecognized version range option "{t}" in "{expression}"')
+                    from thirdparty._internal.api.output import Output
+                    Output().warning(f'Unrecognized version range option "{t}" in "{expression}"')
                 else:
-                    raise ConanException(f'"{t}" in version range "{expression}" is not a valid option')
+                    raise RecipeException(f'"{t}" in version range "{expression}" is not a valid option')
         version_expr = tokens[0]
         self.condition_sets = []
         for alternative in version_expr.split("||"):
@@ -256,17 +232,5 @@ class VersionRange:
 
     def version(self):
         return Version(f"[{self._expression}]")
-
-
-def validate_conan_version(required_range):
-    from thirdparty import CONAN_COMPAT_VERSION  # To avoid circular imports
-    clientver = Version(CONAN_COMPAT_VERSION)
-    version_range = VersionRange(required_range)
-    for conditions in version_range.condition_sets:
-        conditions.prerelease = True
-    if not version_range.contains(clientver, resolve_prerelease=None):
-        raise ConanException("Current Conan version ({}) does not satisfy "
-                             "the defined one ({}).".format(clientver, required_range))
-
 
 

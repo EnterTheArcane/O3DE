@@ -4,32 +4,32 @@ import re
 
 from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.util.files import save
-from thirdparty.premake.constants import CONAN_TO_PREMAKE_ARCH
+from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 
 # Filename format strings
-PREMAKE_VAR_FILE = "conan_{pkgname}_vars_{config}.premake5.lua"
-PREMAKE_PKG_FILE = "conan_{pkgname}.premake5.lua"
-PREMAKE_ROOT_FILE = "conandeps.premake5.lua"
+PREMAKE_VAR_FILE = "recipe_{pkgname}_vars_{config}.premake5.lua"
+PREMAKE_PKG_FILE = "recipe_{pkgname}.premake5.lua"
+PREMAKE_ROOT_FILE = "recipe_deps.premake5.lua"
 
-PREMAKE_CONFIG_FILE = "conanconfig_{config}.premake5.lua"
-PREMAKE_CONFIG_ROOT_FILE = "conanconfig.premake5.lua"
+PREMAKE_CONFIG_FILE = "recipe_config_{config}.premake5.lua"
+PREMAKE_CONFIG_ROOT_FILE = "recipe_config.premake5.lua"
 
 # File template format strings
 PREMAKE_TEMPLATE_CONFIG = """
-include "conanutils.premake5.lua"
+include "recipe_utils.premake5.lua"
 
-t_conan_deps_order = {{}}
-t_conan_deps_order["{config}"] = {{{order}}}
+t_recipe_deps_order = {{}}
+t_recipe_deps_order["{config}"] = {{{order}}}
 
-if conan_deps_order == nil then conan_deps_order = {{}} end
-conan_premake_tmerge(conan_deps_order, t_conan_deps_order)
+if recipe_deps_order == nil then recipe_deps_order = {{}} end
+recipe_premake_tmerge(recipe_deps_order, t_recipe_deps_order)
 """
 PREMAKE_TEMPLATE_UTILS = """
-function conan_premake_tmerge(dst, src)
+function recipe_premake_tmerge(dst, src)
     for k, v in pairs(src) do
         if type(v) == "table" then
             if type(dst[k] or 0) == "table" then
-                conan_premake_tmerge(dst[k] or {}, src[k] or {})
+                recipe_premake_tmerge(dst[k] or {}, src[k] or {})
             else
                 dst[k] = v
             end
@@ -41,43 +41,43 @@ function conan_premake_tmerge(dst, src)
 end
 """
 PREMAKE_TEMPLATE_VAR = """
-include "conanutils.premake5.lua"
+include "recipe_utils.premake5.lua"
 
-t_conandeps = {{}}
-t_conandeps["{config}"] = {{}}
-t_conandeps["{config}"]["{pkgname}"] = {{}}
-t_conandeps["{config}"]["{pkgname}"]["includedirs"] = {{{deps.includedirs}}}
-t_conandeps["{config}"]["{pkgname}"]["libdirs"] = {{{deps.libdirs}}}
-t_conandeps["{config}"]["{pkgname}"]["bindirs"] = {{{deps.bindirs}}}
-t_conandeps["{config}"]["{pkgname}"]["libs"] = {{{deps.libs}}}
-t_conandeps["{config}"]["{pkgname}"]["system_libs"] = {{{deps.system_libs}}}
-t_conandeps["{config}"]["{pkgname}"]["defines"] = {{{deps.defines}}}
-t_conandeps["{config}"]["{pkgname}"]["cxxflags"] = {{{deps.cxxflags}}}
-t_conandeps["{config}"]["{pkgname}"]["cflags"] = {{{deps.cflags}}}
-t_conandeps["{config}"]["{pkgname}"]["sharedlinkflags"] = {{{deps.sharedlinkflags}}}
-t_conandeps["{config}"]["{pkgname}"]["exelinkflags"] = {{{deps.exelinkflags}}}
-t_conandeps["{config}"]["{pkgname}"]["frameworks"] = {{{deps.frameworks}}}
+t_recipe_deps = {{}}
+t_recipe_deps["{config}"] = {{}}
+t_recipe_deps["{config}"]["{pkgname}"] = {{}}
+t_recipe_deps["{config}"]["{pkgname}"]["includedirs"] = {{{deps.includedirs}}}
+t_recipe_deps["{config}"]["{pkgname}"]["libdirs"] = {{{deps.libdirs}}}
+t_recipe_deps["{config}"]["{pkgname}"]["bindirs"] = {{{deps.bindirs}}}
+t_recipe_deps["{config}"]["{pkgname}"]["libs"] = {{{deps.libs}}}
+t_recipe_deps["{config}"]["{pkgname}"]["system_libs"] = {{{deps.system_libs}}}
+t_recipe_deps["{config}"]["{pkgname}"]["defines"] = {{{deps.defines}}}
+t_recipe_deps["{config}"]["{pkgname}"]["cxxflags"] = {{{deps.cxxflags}}}
+t_recipe_deps["{config}"]["{pkgname}"]["cflags"] = {{{deps.cflags}}}
+t_recipe_deps["{config}"]["{pkgname}"]["sharedlinkflags"] = {{{deps.sharedlinkflags}}}
+t_recipe_deps["{config}"]["{pkgname}"]["exelinkflags"] = {{{deps.exelinkflags}}}
+t_recipe_deps["{config}"]["{pkgname}"]["frameworks"] = {{{deps.frameworks}}}
 
-if conandeps == nil then conandeps = {{}} end
-conan_premake_tmerge(conandeps, t_conandeps)
+if recipe_deps == nil then recipe_deps = {{}} end
+recipe_premake_tmerge(recipe_deps, t_recipe_deps)
 """
 PREMAKE_TEMPLATE_ROOT_BUILD = """
-        includedirs(conandeps[conf][pkg]["includedirs"])
-        bindirs(conandeps[conf][pkg]["bindirs"])
-        defines(conandeps[conf][pkg]["defines"])
+        includedirs(recipe_deps[conf][pkg]["includedirs"])
+        bindirs(recipe_deps[conf][pkg]["bindirs"])
+        defines(recipe_deps[conf][pkg]["defines"])
 """
 PREMAKE_TEMPLATE_ROOT_LINK = """
-        libdirs(conandeps[conf][pkg]["libdirs"])
-        links(conandeps[conf][pkg]["libs"])
-        links(conandeps[conf][pkg]["system_libs"])
-        links(conandeps[conf][pkg]["frameworks"])
+        libdirs(recipe_deps[conf][pkg]["libdirs"])
+        links(recipe_deps[conf][pkg]["libs"])
+        links(recipe_deps[conf][pkg]["system_libs"])
+        links(recipe_deps[conf][pkg]["frameworks"])
 """
 PREMAKE_TEMPLATE_ROOT_FUNCTION = """
 function {function_name}(conf, pkg)
     if conf == nil then
 {filter_call}
     elseif pkg == nil then
-        local order = conan_deps_order[conf]
+        local order = recipe_deps_order[conf]
         for index, lib in ipairs(order) do
             {function_name}(conf, lib)
         end
@@ -87,9 +87,9 @@ function {function_name}(conf, pkg)
 end
 """
 PREMAKE_TEMPLATE_ROOT_GLOBAL = """
-function conan_setup(conf, pkg)
-    conan_setup_build(conf, pkg)
-    conan_setup_link(conf, pkg)
+function recipe_setup(conf, pkg)
+    recipe_setup_build(conf, pkg)
+    recipe_setup_link(conf, pkg)
 end
 """
 
@@ -135,39 +135,39 @@ class _PremakeTemplate:
 class PremakeDeps:
     """
     PremakeDeps class generator
-    conandeps.premake5.lua: unconditional import of all *direct* dependencies only
+    recipe_deps.premake5.lua: unconditional import of all *direct* dependencies only
     """
 
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
 
-        self._conanfile = conanfile
+        self._recipe = recipe
 
         # Tab configuration
         self.tab = "    "
 
         # Return value buffer
         self.output_files = {}
-        # Extract configuration and architecture form conanfile
-        self.configuration = conanfile.settings.build_type
-        self.architecture = conanfile.settings.arch
+        # Extract configuration and architecture form recipe
+        self.configuration = recipe.settings.build_type
+        self.architecture = recipe.settings.arch
 
     def generate(self):
         """
-        Generates ``conan_<pkg>_vars_<config>.premake5.lua``, ``conan_<pkg>_<config>.premake5.lua``,
-        and ``conan_<pkg>.premake5.lua`` files into the ``conanfile.generators_folder``.
+        Generates ``recipe_<pkg>_vars_<config>.premake5.lua``, ``recipe_<pkg>_<config>.premake5.lua``,
+        and ``recipe_<pkg>.premake5.lua`` files into the ``recipe.generators_folder``.
         """
 
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         # Current directory is the generators_folder
         generator_files = self.content
         for generator_file, content in generator_files.items():
             save(generator_file, content)
 
     def _config_suffix(self):
-        return f"{self.configuration}_{CONAN_TO_PREMAKE_ARCH[str(self.architecture)]}".lower()
+        return f"{self.configuration}_{RECIPE_TO_PREMAKE_ARCH[str(self.architecture)]}".lower()
 
     def _output_lua_file(self, filename, content):
         self.output_files[filename] = "\n".join(["#!lua", *content])
@@ -196,21 +196,21 @@ class PremakeDeps:
 
     @property
     def content(self):
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
 
         self.output_files = {}
         conf_name = self._config_suffix()
 
         # Global utility file
-        self._output_lua_file("conanutils.premake5.lua", [PREMAKE_TEMPLATE_UTILS])
+        self._output_lua_file("recipe_utils.premake5.lua", [PREMAKE_TEMPLATE_UTILS])
 
         # Extract all dependencies in topological order: some linkers like ld or gold prunes the
         # functions which are not being used in the lookup table. If the less dependant libraries are
         # passed first, the linker will not be able to resolve the symbols in the dependent libraries
         # as they will have been removed
-        host_req = self._conanfile.dependencies.host.topological_sort
-        test_req = self._conanfile.dependencies.test.topological_sort
-        build_req = self._conanfile.dependencies.direct_build.topological_sort
+        host_req = self._recipe.dependencies.host.topological_sort
+        test_req = self._recipe.dependencies.test.topological_sort
+        build_req = self._recipe.dependencies.direct_build.topological_sort
 
         # Merge into one list
         full_req = list(host_req.items()) + list(test_req.items()) + list(build_req.items())
@@ -260,23 +260,23 @@ class PremakeDeps:
             # Includes
             *[f'include "{pkg_file}"' for pkg_file in pkg_files],
             # Global order for each configuration
-            'include "conanconfig.premake5.lua"',
+            'include "recipe_config.premake5.lua"',
             # Functions
             PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
-                function_name="conan_setup_build",
+                function_name="recipe_setup_build",
                 lua_content=PREMAKE_TEMPLATE_ROOT_BUILD,
                 filter_call="\n".join(
                     ["\n".join(self._premake_filtered(
-                        [f'conan_setup_build("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
+                        [f'recipe_setup_build("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
                     ) for config in config_sets]
                 )
             ),
             PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
-                function_name="conan_setup_link",
+                function_name="recipe_setup_link",
                 lua_content=PREMAKE_TEMPLATE_ROOT_LINK,
                 filter_call="\n".join(
                     ["\n".join(self._premake_filtered(
-                        [f'conan_setup_link("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
+                        [f'recipe_setup_link("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
                     ) for config in config_sets]
                 )
             ),

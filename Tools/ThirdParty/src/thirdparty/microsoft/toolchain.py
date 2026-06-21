@@ -9,7 +9,7 @@ from thirdparty._internal.api.detect.detect_vs import vs_installation_path
 from thirdparty.build import build_jobs
 from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
     msvc_platform_from_arch, vs_ide_version
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import save, load
 
 
@@ -18,7 +18,7 @@ class MSBuildToolchain:
     MSBuildToolchain class generator
     """
 
-    filename = "conantoolchain.props"
+    filename = "recipe_toolchain.props"
 
     _config_toolchain_props = textwrap.dedent("""\
         <?xml version="1.0" encoding="utf-8"?>
@@ -54,11 +54,11 @@ class MSBuildToolchain:
         </Project>
     """)
 
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
         #: Dict-like that defines the preprocessor definitions
         self.preprocessor_definitions = {}
         #: Dict with compile options that will be added as <key>value</key> in the ClCompile section
@@ -71,18 +71,18 @@ class MSBuildToolchain:
         self.ldflags = []
         #: List of all the RC (resource compiler) flags
         self.rcflags = []
-        #: The build type. By default, the ``conanfile.settings.build_type`` value
-        self.configuration = conanfile.settings.build_type
+        #: The build type. By default, the ``recipe.settings.build_type`` value
+        self.configuration = recipe.settings.build_type
         #: The runtime flag. By default, it'll be based on the `compiler.runtime` setting.
         self.runtime_library = self._runtime_library()
         #: cppstd value. By default, ``compiler.cppstd`` one.
-        self.cppstd = conanfile.settings.get_safe("compiler.cppstd")
-        self.cstd = conanfile.settings.get_safe("compiler.cstd")
+        self.cppstd = recipe.settings.get_safe("compiler.cppstd")
+        self.cstd = recipe.settings.get_safe("compiler.cstd")
         #: VS IDE Toolset, e.g., ``"v140"``. If ``compiler=msvc``, you can use ``compiler.toolset``
         #: setting, else, it'll be based on ``msvc`` version.
-        self.toolset = msvs_toolset(conanfile)
+        self.toolset = msvs_toolset(recipe)
         self.properties = {}
-        self.toolset_version_full_path = _get_toolset_props(conanfile)
+        self.toolset_version_full_path = _get_toolset_props(recipe)
 
     def _name_condition(self, settings):
         platform = msvc_platform_from_arch(settings.get_safe("arch"))
@@ -95,18 +95,18 @@ class MSBuildToolchain:
 
     def generate(self):
         """
-        Generates a ``conantoolchain.props``, a ``conantoolchain_<config>.props``, and,
-        if ``compiler=msvc``, a ``conanvcvars.bat`` files. In the first two cases, they'll have the
+        Generates a ``recipe_toolchain.props``, a ``recipe_toolchain_<config>.props``, and,
+        if ``compiler=msvc``, a ``vcvars_env.bat`` files. In the first two cases, they'll have the
         valid XML format with all the good settings like any other VS project ``*.props`` file. The
         last one emulates the ``vcvarsall.bat`` env script. See also :class:`VCVars`.
         """
-        check_duplicated_generator(self, self._conanfile)
-        name, condition = self._name_condition(self._conanfile.settings)
-        config_filename = "conantoolchain{}.props".format(name)
+        check_duplicated_generator(self, self._recipe)
+        name, condition = self._name_condition(self._recipe.settings)
+        config_filename = "recipe_toolchain{}.props".format(name)
         # Writing the props files
         self._write_config_toolchain(config_filename)
         self._write_main_toolchain(config_filename, condition)
-        VCVars(self._conanfile).generate()
+        VCVars(self._recipe).generate()
 
     def _runtime_library(self):
         return {
@@ -114,7 +114,7 @@ class MSBuildToolchain:
             "MTd": "MultiThreadedDebug",
             "MD": "MultiThreadedDLL",
             "MDd": "MultiThreadedDebugDLL",
-        }.get(msvc_runtime_flag(self._conanfile), "")
+        }.get(msvc_runtime_flag(self._recipe), "")
 
     @property
     def context_config_toolchain(self):
@@ -135,11 +135,11 @@ class MSBuildToolchain:
         cstd = f"stdc{self.cstd}" if self.cstd else ""
         runtime_library = self.runtime_library
         toolset = self.toolset or ""
-        conf_options = self._conanfile.conf.get("tools.microsoft.msbuildtoolchain:compile_options",
+        conf_options = self._recipe.conf.get("tools.microsoft.msbuildtoolchain:compile_options",
                                                 default={}, check_type=dict)
         self.compile_options.update(conf_options)
         parallel = ""
-        njobs = build_jobs(self._conanfile)
+        njobs = build_jobs(self._recipe)
         if njobs:
             parallel = "".join(
                 ["\n      <MultiProcessorCompilation>True</MultiProcessorCompilation>",
@@ -147,8 +147,8 @@ class MSBuildToolchain:
         compile_options = "".join("\n      <{k}>{v}</{k}>".format(k=k, v=v)
                                   for k, v in self.compile_options.items())
 
-        winsdk_version = self._conanfile.conf.get("tools.microsoft:winsdk_version", check_type=str)
-        winsdk_version = winsdk_version or self._conanfile.settings.get_safe("os.version")
+        winsdk_version = self._recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
+        winsdk_version = winsdk_version or self._recipe.settings.get_safe("os.version")
 
         return {
             'defines': defines,
@@ -167,14 +167,14 @@ class MSBuildToolchain:
         }
 
     def _write_config_toolchain(self, config_filename):
-        config_filepath = os.path.join(self._conanfile.generators_folder, config_filename)
+        config_filepath = os.path.join(self._recipe.generators_folder, config_filename)
         config_props = Template(self._config_toolchain_props, trim_blocks=True,
                                 lstrip_blocks=True).render(**self.context_config_toolchain)
-        self._conanfile.output.info("MSBuildToolchain created %s" % config_filename)
+        self._recipe.output.info("MSBuildToolchain created %s" % config_filename)
         save(config_filepath, config_props)
 
     def _write_main_toolchain(self, config_filename, condition):
-        main_toolchain_path = os.path.join(self._conanfile.generators_folder, self.filename)
+        main_toolchain_path = os.path.join(self._recipe.generators_folder, self.filename)
         if os.path.isfile(main_toolchain_path):
             content = load(main_toolchain_path)
         else:
@@ -184,22 +184,22 @@ class MSBuildToolchain:
                         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
                     <ImportGroup Label="PropertySheets" >
                     </ImportGroup>
-                    <PropertyGroup Label="ConanPackageInfo">
-                        <ConanPackageName>{}</ConanPackageName>
-                        <ConanPackageVersion>{}</ConanPackageVersion>
+                    <PropertyGroup Label="RecipePackageInfo">
+                        <RecipePackageName>{}</RecipePackageName>
+                        <RecipePackageVersion>{}</RecipePackageVersion>
                     </PropertyGroup>
                 </Project>
                 """)
 
-            conan_package_name = self._conanfile.name if self._conanfile.name else ""
-            conan_package_version = self._conanfile.version if self._conanfile.version else ""
-            content = content.format(conan_package_name, conan_package_version)
+            recipe_package_name = self._recipe.name if self._recipe.name else ""
+            recipe_package_version = self._recipe.version if self._recipe.version else ""
+            content = content.format(recipe_package_name, recipe_package_version)
 
         dom = minidom.parseString(content)
         try:
             import_group = dom.getElementsByTagName('ImportGroup')[0]
         except Exception:
-            raise ConanException("Broken {}. Remove the file and try again".format(self.filename))
+            raise RecipeException("Broken {}. Remove the file and try again".format(self.filename))
         children = import_group.getElementsByTagName("Import")
         for node in children:
             if (config_filename == node.getAttribute("Project") and
@@ -211,41 +211,41 @@ class MSBuildToolchain:
             import_node.setAttribute('Project', config_filename)
             import_group.appendChild(import_node)
 
-        conan_toolchain = dom.toprettyxml()
-        conan_toolchain = "\n".join(line for line in conan_toolchain.splitlines() if line.strip())
-        self._conanfile.output.info("MSBuildToolchain writing {}".format(self.filename))
-        save(main_toolchain_path, conan_toolchain)
+        recipe_toolchain = dom.toprettyxml()
+        recipe_toolchain = "\n".join(line for line in recipe_toolchain.splitlines() if line.strip())
+        self._recipe.output.info("MSBuildToolchain writing {}".format(self.filename))
+        save(main_toolchain_path, recipe_toolchain)
 
     def _get_extra_flags(self):
         # Now, it's time to get all the flags defined by the user
-        cxxflags = self._conanfile.conf.get("tools.build:cxxflags", default=[], check_type=list)
-        cflags = self._conanfile.conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._conanfile.conf.get("tools.build:sharedlinkflags", default=[],
+        cxxflags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
+        cflags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
+        sharedlinkflags = self._recipe.conf.get("tools.build:sharedlinkflags", default=[],
                                                    check_type=list)
-        exelinkflags = self._conanfile.conf.get("tools.build:exelinkflags", default=[],
+        exelinkflags = self._recipe.conf.get("tools.build:exelinkflags", default=[],
                                                 check_type=list)
-        rcflags = self._conanfile.conf.get("tools.build:rcflags", default=[], check_type=list)
-        defines = self._conanfile.conf.get("tools.build:defines", default=[], check_type=list)
+        rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
+        defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
         return cxxflags, cflags, defines, sharedlinkflags, exelinkflags, rcflags
 
 
-def _get_toolset_props(conanfile):
-    msvc_update = conanfile.conf.get("tools.microsoft:msvc_update")
-    compiler_update = msvc_update or conanfile.settings.get_safe("compiler.update")
+def _get_toolset_props(recipe):
+    msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
+    compiler_update = msvc_update or recipe.settings.get_safe("compiler.update")
     if compiler_update is None:
         return
 
-    vs_version = vs_ide_version(conanfile)
+    vs_version = vs_ide_version(recipe)
     if int(vs_version) <= 14:
         return
-    vs_install_path = conanfile.conf.get("tools.microsoft.msbuild:installation_path")
+    vs_install_path = recipe.conf.get("tools.microsoft.msbuild:installation_path")
     vs_path = vs_install_path or vs_installation_path(vs_version)
     if not vs_path or not os.path.isdir(vs_path):
         return
 
     basebuild = os.path.normpath(os.path.join(vs_path, "VC/Auxiliary/Build"))
     # The equivalent of compiler 19.26 is toolset 14.26
-    compiler_version = str(conanfile.settings.compiler.version)
+    compiler_version = str(recipe.settings.compiler.version)
     vcvars_ver = "14.{}{}".format(compiler_version[-1], compiler_update)
     for folder in os.listdir(basebuild):
         if not os.path.isdir(os.path.join(basebuild, folder)):

@@ -5,13 +5,13 @@ import yaml
 from thirdparty._internal.cache.home_paths import HomePaths
 from thirdparty._internal.default_settings import default_settings_yml
 from thirdparty._internal.internal_tools import is_universal_arch
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import save, load
 
 
 def bad_value_msg(name, value, value_range):
     return ("Invalid setting '%s' is not a valid '%s' value.\nPossible values are %s\n"
-            'Read "http://docs.conan.io/2/knowledge/faq.html#error-invalid-setting"'
+            'Read "http://docs.thirdparty.io/2/knowledge/faq.html#error-invalid-setting"'
             # value range can be either a list or a dict, we only want to list the keys
             % (value, name, [v for v in value_range if v is not None]))
 
@@ -20,7 +20,7 @@ def undefined_field(name, field, fields=None, value=None):
     value_str = " for '%s'" % value if value else ""
     result = ["'%s.%s' doesn't exist%s" % (name, field, value_str),
               "'%s' possible configurations are %s" % (name, fields or "none")]
-    return ConanException("\n".join(result))
+    return RecipeException("\n".join(result))
 
 
 class SettingsItem:
@@ -37,7 +37,7 @@ class SettingsItem:
     @staticmethod
     def new(definition, name):
         if definition is None:
-            raise ConanException(f"Definition of settings.yml '{name}' cannot be null")
+            raise RecipeException(f"Definition of settings.yml '{name}' cannot be null")
         if isinstance(definition, dict):
             parsed_definitions = {}
             # recursive
@@ -62,7 +62,7 @@ class SettingsItem:
             definition = {k: v.copy() for k, v in self._definition.items()}
         return SettingsItem(definition, self._name, self._value)
 
-    def copy_conaninfo_settings(self):
+    def copy_package_id_info_settings(self):
         """ deepcopy, recursive
         This function adds "ANY" to lists, to allow the ``package_id()`` method to modify some of
         values, but not all, just the "final" values without subsettings.
@@ -79,7 +79,7 @@ class SettingsItem:
         if not isinstance(self._definition, dict):
             definition = self._definition[:] + ["ANY"]
         else:
-            definition = {k: v.copy_conaninfo_settings() for k, v in self._definition.items()}
+            definition = {k: v.copy_package_id_info_settings() for k, v in self._definition.items()}
             definition["ANY"] = Settings()
         return SettingsItem(definition, self._name, self._value)
 
@@ -108,14 +108,14 @@ class SettingsItem:
         value = str(value) if value is not None else None
         is_universal = is_universal_arch(value, self._definition) if self._name == "settings.arch" else False
         if "ANY" not in self._definition and value not in self._definition and not is_universal:
-            raise ConanException(bad_value_msg(self._name, value, self._definition))
+            raise RecipeException(bad_value_msg(self._name, value, self._definition))
         return value
 
     def _get_child(self, item):
         if not isinstance(self._definition, dict):
             raise undefined_field(self._name, item, None, self._value)
         if self._value is None:
-            raise ConanException("'%s' value not defined" % self._name)
+            raise RecipeException("'%s' value not defined" % self._name)
         return self._get_definition()
 
     def _get_definition(self):
@@ -163,7 +163,7 @@ class SettingsItem:
 
     def validate(self):
         if self._value is None and None not in self._definition:
-            raise ConanException("'%s' value not defined" % self._name)
+            raise RecipeException("'%s' value not defined" % self._name)
         if isinstance(self._definition, dict):
             self._get_definition().validate()
 
@@ -188,11 +188,11 @@ class SettingsItem:
 class Settings:
     def __init__(self, definition=None, name="settings", parent_value="settings"):
         if parent_value is None and definition:
-            raise ConanException("settings.yml: null setting can't have subsettings")
+            raise RecipeException("settings.yml: null setting can't have subsettings")
         definition = definition or {}
         if not isinstance(definition, dict):
             val = "" if parent_value == "settings" else f"={parent_value}"
-            raise ConanException(f"Invalid settings.yml format: '{name}{val}' is not a dictionary")
+            raise RecipeException(f"Invalid settings.yml format: '{name}{val}' is not a dictionary")
         self._name = name  # settings, settings.compiler
         self._parent_value = parent_value  # gcc, x86
         self._data = {k: SettingsItem.new(v, f"{name}.{k}") for k, v in definition.items()}
@@ -219,7 +219,7 @@ class Settings:
             tmp = self
             for prop in name.split("."):
                 tmp = getattr(tmp, prop, None)
-        except ConanException:
+        except RecipeException:
             return default
         if tmp is not None and tmp.value is not None:  # In case of subsettings is None
             return tmp.value
@@ -249,9 +249,9 @@ class Settings:
         result._data = {k: v.copy() for k, v in self._data.items()}
         return result
 
-    def copy_conaninfo_settings(self):
+    def copy_package_id_info_settings(self):
         result = Settings({}, name=self._name, parent_value=self._parent_value)
-        result._data = {k: v.copy_conaninfo_settings() for k, v in self._data.items()}
+        result._data = {k: v.copy_package_id_info_settings() for k, v in self._data.items()}
         return result
 
     @staticmethod
@@ -259,7 +259,7 @@ class Settings:
         try:
             return Settings(yaml.safe_load(text) or {})
         except (yaml.YAMLError, AttributeError) as ye:
-            raise ConanException("Invalid settings.yml format: {}".format(ye))
+            raise RecipeException("Invalid settings.yml format: {}".format(ye))
 
     def validate(self):
         for child in self._data.values():
@@ -292,7 +292,7 @@ class Settings:
 
         self._check_field(field)
         if self._frozen:
-            raise ConanException(f"Tried to define '{field}' setting inside recipe")
+            raise RecipeException(f"Tried to define '{field}' setting inside recipe")
         self._data[field].value = value
 
     @property
@@ -322,7 +322,7 @@ class Settings:
                     attr = getattr(attr, setting)
                 value = str(value) if value is not None else None
                 setattr(attr, list_settings[-1], value)
-            except ConanException:  # fails if receiving settings doesn't have it defined
+            except RecipeException:  # fails if receiving settings doesn't have it defined
                 if raise_undefined:
                     raise
 
@@ -334,7 +334,7 @@ class Settings:
         """
         constraint_def = constraint_def or []
         if not isinstance(constraint_def, (list, tuple, set)):
-            raise ConanException("Please defines settings as a list or tuple")
+            raise RecipeException("Please defines settings as a list or tuple")
 
         for field in constraint_def:
             self._check_field(field)
@@ -379,7 +379,7 @@ def load_settings_yml(home_folder):
         try:
             return yaml.safe_load(load(path)) or {}
         except yaml.YAMLError as ye:
-            raise ConanException("Invalid settings.yml format: {}".format(ye))
+            raise RecipeException("Invalid settings.yml format: {}".format(ye))
 
     settings = _load_settings(settings_path)
     user_settings_file = _home_paths.settings_path_user
@@ -387,7 +387,7 @@ def load_settings_yml(home_folder):
         settings_user = _load_settings(user_settings_file)
 
         def appending_recursive_dict_update(d, u):
-            # Not the same behavior as conandata_update, because this append lists
+            # Not the same behavior as recipe_data_update, because this append lists
             for k, v in u.items():
                 if isinstance(v, list):
                     current = d.get(k) or []

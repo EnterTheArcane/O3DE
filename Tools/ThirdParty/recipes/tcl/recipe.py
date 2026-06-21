@@ -79,7 +79,7 @@ class Recipe(RecipeBase):
                 "--enable-64bit={}".format(yes_no(self.settings.arch == "x86_64")),
             ])
             if self.settings.os == "Linux":
-                # Ensure the library has a soname, fix https://github.com/conan-io/conan-center-index/issues/27691
+                # Ensure the library has a soname, fix https://github.com/recipe-io/recipe-center-index/issues/27691
                 # (mirror debian behavior)
                 tc.configure_args.append("TCL_SHLIB_LD_EXTRAS=-Wl,-soname,${TCL_LIB_FILE}")
             tc.generate()
@@ -128,7 +128,7 @@ class Recipe(RecipeBase):
         # do not treat nmake build warnings as errors
         replace_in_file(self, win_rules_vc, "cwarn = $(cwarn) -WX", "")
         # disable whole program optimization to be portable across different MSVC versions.
-        # See conan-io/conan-center-index#4811 conan-io/conan-center-index#4094
+        # See recipe-io/recipe-center-index#4811 recipe-io/recipe-center-index#4094
         replace_in_file(self,
                         win_rules_vc,
                         "OPTIMIZATIONS  = $(OPTIMIZATIONS) -GL",

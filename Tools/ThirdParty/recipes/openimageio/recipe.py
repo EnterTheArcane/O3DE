@@ -150,7 +150,7 @@ class Recipe(RecipeBase):
         tc.variables["USE_EXTERNAL_PUGIXML"] = True
         tc.variables["BUILD_MISSING_FMT"] = False
 
-        # Conan is normally not used for testing, so fixing this option to not build the tests
+        # Recipe is normally not used for testing, so fixing this option to not build the tests
         tc.variables["BUILD_TESTING"] = False
 
         # OIIO CMake files are patched to check USE_* flags to require or not use dependencies
@@ -215,7 +215,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_JXL"] = not self.options.get_safe("with_libjxl", False)
 
         if self.settings.os == "Linux":
-            # Workaround for: https://github.com/conan-io/conan/issues/13560
+            # Workaround for: upstream issue 13560
             # note: should not be needed if CMakeConfigDeps is used
             libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.cpp_info.aggregated_components().libdirs]
             tc.cache_variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
@@ -255,11 +255,11 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
 
     @staticmethod
-    def _conan_comp(name):
+    def _recipe_comp(name):
         return f"openimageio_{name.lower()}"
 
     def _add_component(self, name):
-        component = self.cpp_info.components[self._conan_comp(name)]
+        component = self.cpp_info.components[self._recipe_comp(name)]
         component.set_property("cmake_target_name", f"OpenImageIO::{name}")
         return component
 

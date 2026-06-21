@@ -9,12 +9,11 @@ RECIPE_INCACHE = "Cache"  # The previously installed recipe in cache is being us
 RECIPE_UPDATED = "Updated"
 RECIPE_INCACHE_DATE_UPDATED = "Cache (Updated date)"
 RECIPE_NEWER = "Newer"  # The local recipe is  modified and newer timestamp than server
-RECIPE_NOT_IN_REMOTE = "Not in remote"
-RECIPE_UPDATEABLE = "Update available"  # The update of recipe is available (only in conan info)
+RECIPE_UPDATEABLE = "Update available"  # The update of recipe is available (only in recipe info)
 # These recipes do not have a full reference, not in the cache
 RECIPE_EDITABLE = "Editable"
-RECIPE_CONSUMER = "Consumer"  # A conanfile from the user
-RECIPE_VIRTUAL = "Cli"  # A virtual conanfile (dynamic in memory conanfile)
+RECIPE_CONSUMER = "Consumer"  # A recipe from the user
+RECIPE_VIRTUAL = "Cli"  # A virtual recipe (dynamic in memory recipe)
 RECIPE_PLATFORM = "Platform"
 
 BINARY_CACHE = "Cache"
@@ -32,14 +31,14 @@ CONTEXT_HOST = "host"
 CONTEXT_BUILD = "build"
 
 
-def build_id(conan_file):
-    if hasattr(conan_file, "build_id"):
-        from thirdparty._internal.errors import conanfile_exception_formatter
+def build_id(recipe):
+    if hasattr(recipe, "build_id"):
+        from thirdparty._internal.errors import recipe_exception_formatter
 
-        build_id_info = conan_file.info.clone()
-        conan_file.info_build = build_id_info
-        with conanfile_exception_formatter(conan_file, "build_id"):
-            conan_file.build_id()
+        build_id_info = recipe.info.clone()
+        recipe.info_build = build_id_info
+        with recipe_exception_formatter(recipe, "build_id"):
+            recipe.build_id()
         return build_id_info.package_id()
     return None
 
@@ -55,20 +54,18 @@ class TransitiveRequirement:
 
 class Node:
 
-    def __init__(self, ref, conanfile, context, recipe=None, path=None, test=False):
+    def __init__(self, ref, recipe_instance, context, recipe_state=None, path=None, test=False):
         self.ref = ref
-        self.path = path  # path to the consumer conanfile.xx for consumer, None otherwise
+        self.path = path  # path to the consumer recipe.xx for consumer, None otherwise
         self._package_id = None
         self.prev = None
         self.pref_timestamp = None
-        if conanfile is not None:
-            conanfile._conan_node = self  # Reference to self, to access data
-        self.conanfile = conanfile
+        if recipe_instance is not None:
+            recipe_instance._recipe_node = self  # Reference to self, to access data
+        self.recipe = recipe_instance
 
         self.binary = None
-        self.recipe = recipe
-        self.remote = None
-        self.binary_remote = None
+        self.recipe_state = recipe_state
         self.context = context
         self.test = test
 
@@ -151,7 +148,7 @@ class Node:
                     e.dst = node
                     break
 
-        if self.conanfile.vendor:
+        if self.recipe.vendor:
             return
         # Check if need to propagate downstream
         if not self.dependants:
@@ -163,8 +160,8 @@ class Node:
             assert len(self.dependants) == 1
             d = self.dependants[0]
 
-        down_require = d.require.transform_downstream(self.conanfile.package_type, require,
-                                                      node.conanfile.package_type)
+        down_require = d.require.transform_downstream(self.recipe.package_type, require,
+                                                      node.recipe.package_type)
         if down_require is None:
             return
 
@@ -204,7 +201,7 @@ class Node:
         # Check if need to propagate downstream
         # Then propagate downstream
 
-        if self.conanfile.vendor:
+        if self.recipe.vendor:
             return result
         # Seems the algrithm depth-first, would only have 1 dependant at most to propagate down
         # at any given time
@@ -215,7 +212,7 @@ class Node:
 
         # TODO: Implement an optimization where the requires is checked against a graph global
         # print("    Lets check_downstream one more")
-        down_require = dependant.require.transform_downstream(self.conanfile.package_type,
+        down_require = dependant.require.transform_downstream(self.recipe.package_type,
                                                               require, None)
 
         if down_require is None:
@@ -269,11 +266,11 @@ class Node:
         return [edge.src for edge in self.dependants]
 
     def __repr__(self):
-        return repr(self.conanfile)
+        return repr(self.recipe)
 
     def serialize(self):
         result = OrderedDict()
-        result["ref"] = self.ref.repr_notime() if self.ref is not None else "conanfile"
+        result["ref"] = self.ref.repr_notime() if self.ref is not None else "recipe"
         result["id"] = getattr(self, "id")  # Must be assigned by graph.serialize()
         result["recipe"] = self.recipe
         result["package_id"] = self.package_id
@@ -281,15 +278,13 @@ class Node:
         result["rrev"] = self.ref.revision if self.ref is not None else None
         result["rrev_timestamp"] = self.ref.timestamp if self.ref is not None else None
         result["prev_timestamp"] = self.pref_timestamp
-        result["remote"] = self.remote.name if self.remote else None
-        result["binary_remote"] = self.binary_remote.name if self.binary_remote else None
-        result["build_id"] = build_id(self.conanfile)
+        result["build_id"] = build_id(self.recipe)
         result["binary"] = self.binary
         # TODO: This doesn't match the model, check it
-        result["invalid_build"] = getattr(getattr(self.conanfile, "info", None), "cant_build", False)
-        result["info_invalid"] = getattr(getattr(self.conanfile, "info", None), "invalid", None)
-        # Adding the conanfile information: settings, options, etc
-        result.update(self.conanfile.serialize())
+        result["invalid_build"] = getattr(getattr(self.recipe, "info", None), "cant_build", False)
+        result["info_invalid"] = getattr(getattr(self.recipe, "info", None), "invalid", None)
+        # Adding the recipe information: settings, options, etc
+        result.update(self.recipe.serialize())
         result.pop("requires", None)  # superseded by "dependencies" (graph.transitive_deps)
         result["dependencies"] = {d.node.id: d.require.serialize()
                                   for d in self.transitive_deps.values() if d.node is not None}
@@ -336,7 +331,7 @@ class Overrides:
     def create(nodes):
         overrides = {}
         for n in nodes:
-            for r in n.conanfile.requires.values():
+            for r in n.recipe.requires.values():
                 if r.override and not r.overriden_ref:  # overrides are not real graph edges
                     continue
                 if r.overriden_ref:

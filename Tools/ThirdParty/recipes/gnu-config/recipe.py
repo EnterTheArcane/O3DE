@@ -33,7 +33,7 @@ class Recipe(RecipeBase):
                 if "Please send patches" in line:
                     end_index = line_i
         if not all((start_index, end_index)):
-            raise ConanException("Failed to extract the license")
+            raise RecipeException("Failed to extract the license")
         return "\n".join(txt_lines[start_index:end_index])
 
     def package(self):

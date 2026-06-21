@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 
-from thirdparty._internal.paths import CONAN_MANIFEST, COMPRESSIONS, PACKAGE_FILE_NAME, EXPORT_FILE_NAME, \
+from thirdparty._internal.paths import RECIPE_MANIFEST, COMPRESSIONS, PACKAGE_FILE_NAME, EXPORT_FILE_NAME, \
     EXPORT_SOURCES_FILE_NAME
 from thirdparty._internal.util.dates import timestamp_now, timestamp_to_str
 from thirdparty._internal.util.files import load, md5, md5sum, save, gather_files
@@ -38,7 +38,7 @@ class FileTreeManifest:
 
     @staticmethod
     def load(folder):
-        text = load(os.path.join(folder, CONAN_MANIFEST))
+        text = load(os.path.join(folder, RECIPE_MANIFEST))
         return FileTreeManifest.loads(text)
 
     def __repr__(self):
@@ -61,14 +61,14 @@ class FileTreeManifest:
         content = "\n".join(ret)
         return content
 
-    def save(self, folder, filename=CONAN_MANIFEST):
+    def save(self, folder, filename=RECIPE_MANIFEST):
         path = os.path.join(folder, filename)
         save(path, repr(self))
 
     def report_summary(self, output, suffix="Copied"):
         ext_files = defaultdict(list)
         for f in self.file_sums:
-            if f == "conaninfo.txt":
+            if f == "package_id_info.txt":
                 continue
             _, ext = os.path.splitext(f)
             ext_files[ext].append(os.path.basename(f))
@@ -95,7 +95,7 @@ class FileTreeManifest:
         for f in (PACKAGE_FILE_NAME, EXPORT_FILE_NAME, EXPORT_SOURCES_FILE_NAME):
             for e in COMPRESSIONS:
                 files.pop(f + e, None)
-        files.pop(CONAN_MANIFEST, None)
+        files.pop(RECIPE_MANIFEST, None)
 
         file_dict = {}
         for name, filepath in files.items():

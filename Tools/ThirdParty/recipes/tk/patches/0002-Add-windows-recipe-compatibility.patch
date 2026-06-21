@@ -1,8 +1,8 @@
-Subject: [PATCH] Add windows conan compatibility
+Subject: [PATCH] Add windows recipe compatibility
 
 * Disable whole program optimization to be portable across different MSVC
-  versions. See conan-io/conan-center-index#4811 and
-  conan-io/conan-center-index#4094.
+  versions. See recipe-io/recipe-center-index#4811 and
+  recipe-io/recipe-center-index#4094.
 ---
  win/rules-ext.vc |  8 ++++----
  win/rules.vc     | 23 +++++++----------------

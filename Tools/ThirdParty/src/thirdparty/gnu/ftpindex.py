@@ -9,8 +9,8 @@ from thirdparty._internal.model.version import Version
 
 
 class GnuFtp:
-    def __init__(self, conanfile, package: str, url: str | None = None) -> None:
-        self._conanfile = conanfile
+    def __init__(self, recipe, package: str, url: str | None = None) -> None:
+        self._recipe = recipe
         self._package = package
         self._url = url or f"https://ftp.gnu.org/gnu/{package}/"
 

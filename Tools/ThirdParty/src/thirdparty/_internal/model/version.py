@@ -1,7 +1,7 @@
 from functools import total_ordering
 from typing import Optional
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 @total_ordering
@@ -96,7 +96,7 @@ class Version:
         try:
             items.append(self._items[index]+1)
         except TypeError:
-            raise ConanException(f"Cannot bump '{self._value} version index {index}, not an int")
+            raise RecipeException(f"Cannot bump '{self._value} version index {index}, not an int")
         items.extend([0] * (len(items) - index - 1))
         v = ".".join(str(i) for i in items)
         # prerelease and build are dropped while bumping digits
@@ -107,7 +107,7 @@ class Version:
         try:
             items.append(self._items[index] + 1)
         except TypeError:
-            raise ConanException(f"Cannot bump '{self._value} version index {index}, not an int")
+            raise RecipeException(f"Cannot bump '{self._value} version index {index}, not an int")
         items.extend([0] * (len(items) - index - 1))
         v = ".".join(str(i) for i in items)
         v += "-"  # Exclude prereleases

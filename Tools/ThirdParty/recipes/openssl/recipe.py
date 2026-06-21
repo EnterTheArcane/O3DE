@@ -147,7 +147,7 @@ class Recipe(RecipeBase):
 
     @property
     def _target(self):
-        target = f"conan-{self.settings.build_type}-{self.settings.os}-{self.settings.arch}-{self.settings.compiler}-{self.settings.compiler.version}"
+        target = f"recipe-{self.settings.build_type}-{self.settings.os}-{self.settings.arch}-{self.settings.compiler}-{self.settings.compiler.version}"
         if self._use_nmake:
             target = f"VC-{target}"  # VC- prefix is important as it's checked by Configure
         if self._is_mingw:
@@ -312,16 +312,16 @@ class Recipe(RecipeBase):
 
     @property
     def _ancestor_target(self):
-        if "CONAN_OPENSSL_CONFIGURATION" in os.environ:
-            return os.environ["CONAN_OPENSSL_CONFIGURATION"]
+        if "RECIPE_OPENSSL_CONFIGURATION" in os.environ:
+            return os.environ["RECIPE_OPENSSL_CONFIGURATION"]
         compiler = "Visual Studio" if self.settings.compiler == "msvc" else self.settings.compiler
         query = f"{self.settings.os}-{self.settings.arch}-{compiler}"
         ancestor = next((self._targets[i] for i in self._targets if fnmatch.fnmatch(query, i)), None)
         if not ancestor:
-            raise InvalidConfiguration(
+            raise RecipeInvalidConfiguration(
                 f"Unsupported configuration ({self.settings.os}/{self.settings.arch}/{self.settings.compiler}).\n"
                 f"Please open an issue at {self.url}.\n"
-                f"Alternatively, set the CONAN_OPENSSL_CONFIGURATION environment variable into your conan profile."
+                f"Alternatively, set the RECIPE_OPENSSL_CONFIGURATION environment variable into your recipe profile."
             )
         return ancestor
 
@@ -418,7 +418,7 @@ class Recipe(RecipeBase):
 
         if is_apple_os(self) and self.options.shared:
             # Inject -headerpad_max_install_names for shared library, otherwise fix_apple_shared_install_name() may fail.
-            # See https://github.com/conan-io/conan-center-index/issues/27424
+            # See https://github.com/recipe-io/recipe-center-index/issues/27424
             tc.extra_ldflags.append("-headerpad_max_install_names")
 
         self._create_targets(tc.cflags, tc.cxxflags, tc.defines, tc.ldflags)
@@ -483,7 +483,7 @@ class Recipe(RecipeBase):
         self.output.info(f"using target: {self._target} -> {self._ancestor_target}")
         self.output.info(config)
 
-        save(self, os.path.join(self.source_folder, "Configurations", "20-conan.conf"), config)
+        save(self, os.path.join(self.source_folder, "Configurations", "20-thirdparty.conf"), config)
 
     def _run_make(self, targets=None, parallel=True, install=False):
         command = [self._make_program]
@@ -493,7 +493,7 @@ class Recipe(RecipeBase):
             command.extend(targets)
         if self._make_program in ["make", "jom"]:
             command.append(f"-j{build_jobs(self)}" if parallel else "-j1")
-        self.run(" ".join(command), env="conanbuild")
+        self.run(" ".join(command), env="buildenv")
 
     @property
     def _perl(self):
@@ -508,7 +508,7 @@ class Recipe(RecipeBase):
             if self._use_nmake:
                 self._replace_runtime_in_file(os.path.join("Configurations", "10-main.conf"))
 
-            self.run(f"{self._perl} ./Configure {args}", env="conanbuild")
+            self.run(f"{self._perl} ./Configure {args}", env="buildenv")
             if self._use_nmake:
                 # When `--prefix=/`, the scripts derive `\` without escaping, which
                 # causes issues on Windows
@@ -622,7 +622,7 @@ class Recipe(RecipeBase):
     @property
     def _module_file_rel_path(self):
         return os.path.join(self._module_subfolder,
-                            f"conan-official-{self.name}-variables.cmake")
+                            f"recipe-official-{self.name}-variables.cmake")
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "OpenSSL")

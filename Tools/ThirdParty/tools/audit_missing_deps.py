@@ -4,11 +4,11 @@ audit_missing_deps.py — Find transitive dependencies our recipes will pull in
 from conan-center-index that we don't already ship under ``recipes/``.
 
 This is a static, AST-only analysis: nothing is imported and no network is
-touched. We walk each existing recipe's matching CCI conanfile, extract every
+touched. We walk each existing recipe's matching CCI recipe, extract every
 ``self.requires(...)``, ``self.tool_requires(...)``, and
 ``self.test_requires(...)`` call, climb the enclosing ``if`` chain to capture
 the gating expression, and then recurse into any unfamiliar dependency by
-looking up *its* CCI conanfile.
+looking up *its* CCI recipe.
 
 Each missing dependency is tagged with the conditions under which it would be
 pulled in, so platform-only or option-gated deps stand out from unconditional
@@ -230,10 +230,10 @@ REQ_METHODS = {
 }
 
 
-def extract_edges(pkg: str, conanfile: Path) -> list[Edge]:
-    """Return every requires/tool_requires/test_requires edge in *conanfile*."""
+def extract_edges(pkg: str, recipe: Path) -> list[Edge]:
+    """Return every requires/tool_requires/test_requires edge in *recipe*."""
     try:
-        tree = ast.parse(conanfile.read_text(encoding="utf-8"))
+        tree = ast.parse(recipe.read_text(encoding="utf-8"))
     except (OSError, SyntaxError):
         return []
 
@@ -306,20 +306,20 @@ def extract_edges(pkg: str, conanfile: Path) -> list[Edge]:
 # CCI lookup
 # ---------------------------------------------------------------------------
 
-def find_cci_conanfile(cci_root: Path, pkg: str) -> Optional[Path]:
-    """Best-effort: locate the most reasonable conanfile.py for *pkg*."""
+def find_cci_recipe(cci_root: Path, pkg: str) -> Optional[Path]:
+    """Best-effort: locate the most reasonable recipe.py for *pkg*."""
     pkg_dir = cci_root / "recipes" / pkg
     if not pkg_dir.is_dir():
         return None
 
-    # Prefer .../all/conanfile.py
-    all_cf = pkg_dir / "all" / "conanfile.py"
+    # Prefer .../all/recipe.py
+    all_cf = pkg_dir / "all" / "recipe.py"
     if all_cf.is_file():
         return all_cf
 
     # Otherwise pick the lexicographically largest sub-folder containing one.
     candidates = sorted(
-        (p / "conanfile.py" for p in pkg_dir.iterdir() if p.is_dir()),
+        (p / "recipe.py" for p in pkg_dir.iterdir() if p.is_dir()),
         key=lambda p: p.parent.name,
         reverse=True,
     )
@@ -385,11 +385,11 @@ def audit(
             continue
         visited.add(pkg)
 
-        conanfile = find_cci_conanfile(cci_root, pkg)
-        if conanfile is None:
+        recipe = find_cci_recipe(cci_root, pkg)
+        if recipe is None:
             continue
 
-        for edge in extract_edges(pkg, conanfile):
+        for edge in extract_edges(pkg, recipe):
             dep = edge.to_pkg
             if dep in have:
                 # Already shipped — keep walking through it.
@@ -498,7 +498,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 2
 
     # Sanity: warn about local recipes with no CCI counterpart.
-    no_cci = sorted(p for p in have if find_cci_conanfile(cci_root, p) is None)
+    no_cci = sorted(p for p in have if find_cci_recipe(cci_root, p) is None)
     if no_cci and not args.json:
         print(f"# {len(no_cci)} local recipes have no CCI counterpart "
               f"(skipped during walk):", file=sys.stderr)
@@ -509,11 +509,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     missing = audit(have, cci_root, args.include_host_tools,
                     full_transitive=args.full_transitive)
 
-    # Partition into buildable (has CCI conanfile) vs system-only.
+    # Partition into buildable (has CCI recipe) vs system-only.
     buildable = {k: v for k, v in missing.items()
-                 if find_cci_conanfile(cci_root, k) is not None}
+                 if find_cci_recipe(cci_root, k) is not None}
     system_only = {k: v for k, v in missing.items()
-                   if find_cci_conanfile(cci_root, k) is None}
+                   if find_cci_recipe(cci_root, k) is None}
 
     if args.json:
         print(render_json(missing))

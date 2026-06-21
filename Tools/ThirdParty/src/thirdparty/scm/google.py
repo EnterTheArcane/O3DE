@@ -9,8 +9,8 @@ from thirdparty._internal.model.version import Version
 
 
 class GoogleSourceRepository:
-    def __init__(self, conanfile, url: str) -> None:
-        self._conanfile = conanfile
+    def __init__(self, recipe, url: str) -> None:
+        self._recipe = recipe
         self._url = url.rstrip("/")
 
     @cached_property

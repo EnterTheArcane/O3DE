@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
 from thirdparty.scm import Version
@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
     
     def validate(self):
         if self.settings.os != "Windows":
-            raise InvalidConfiguration(f"{self.name} is only supported on Windows")
+            raise RecipeInvalidConfiguration(f"{self.name} is only supported on Windows")
 
     def build_requirements(self):
         self.tool_requires("cmake")
