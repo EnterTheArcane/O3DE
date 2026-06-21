@@ -68,6 +68,10 @@ class RecipeBase:
     no_copy_source = False
     recipe_folder = None
 
+    # Tools implied by the build-system helpers a recipe imports (e.g. CMake -> "cmake").
+    # Populated at load time by the recipe loader from the recipe module's direct imports.
+    _implicit_tool_requires = frozenset()
+
     # Package information
     cpp = None
     buildenv_info = None

@@ -32,9 +32,6 @@ class Recipe(RecipeBase):
         if self.options.shared:
             self.options.rm_safe("fPIC")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "abseil/abseil-cpp")
         return Version(repo.latest_release)

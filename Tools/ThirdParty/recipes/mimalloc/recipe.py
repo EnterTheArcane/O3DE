@@ -66,9 +66,6 @@ class Recipe(RecipeBase):
             self.options.rm_safe("single_object")
             self.options.rm_safe("inject")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/mimalloc")
         return Version(repo.latest_release.removeprefix("v"))

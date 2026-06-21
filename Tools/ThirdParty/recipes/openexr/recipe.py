@@ -11,7 +11,7 @@ class Recipe(RecipeBase):
     name = "openexr"
     version = "3.4.12"
     license = "BSD-3-Clause"
-
+                            
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

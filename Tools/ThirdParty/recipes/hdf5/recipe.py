@@ -39,9 +39,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("zlib")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "HDFGroup/hdf5")
         return Version(repo.latest_release)

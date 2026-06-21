@@ -13,9 +13,6 @@ class Recipe(RecipeBase):
     version = "1.619.1"
     license = "MIT"
 
-    def build_requirements(self):
-        self.tool_requires("meson")
-
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/DirectX-Headers")
         return Version(repo.latest_release.removeprefix("v"))

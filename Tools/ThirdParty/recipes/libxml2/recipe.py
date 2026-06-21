@@ -37,9 +37,6 @@ class Recipe(RecipeBase):
         self.requires("libiconv", transitive_headers=True, transitive_libs=True)
         self.requires("zlib")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "GNOME/libxml2")
         return Version(repo.latest_tag("v").removeprefix("v"))

@@ -13,9 +13,6 @@ class Recipe(RecipeBase):
     version = "1.48"
     license = "MIT"
 
-    def build_requirements(self):
-        self.tool_requires("meson")
-
     def latest_version(self):
         repo = GitlabRepository(self, "wayland/wayland-protocols", host="gitlab.freedesktop.org")
         return Version(repo.latest_release)

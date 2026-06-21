@@ -42,9 +42,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("fmt/[>=10 <12]", transitive_headers=True, transitive_libs=True)
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "gabime/spdlog")
         return Version(repo.latest_release.removeprefix("v"))

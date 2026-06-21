@@ -160,9 +160,6 @@ class Recipe(RecipeBase):
         if self._depends_on_openddlparser:
             self.requires("openddl-parser")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "assimp/assimp")
         return Version(repo.latest_release.removeprefix("v"))

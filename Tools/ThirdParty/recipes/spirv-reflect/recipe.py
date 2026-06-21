@@ -45,9 +45,6 @@ class Recipe(RecipeBase):
         tc.variables["SPIRV_REFLECT_BUILD_TESTS"] = False
         tc.generate()
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def build(self):
         cmake = CMake(self)
         cmake.configure()
