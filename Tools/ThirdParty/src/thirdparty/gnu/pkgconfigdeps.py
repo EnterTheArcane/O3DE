@@ -5,7 +5,6 @@ import textwrap
 from jinja2 import Template, StrictUndefined
 
 from thirdparty.errors import RecipeException
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
 
@@ -378,7 +377,6 @@ class PkgConfigDeps:
             # Issue: upstream issue 14935
             return f"{self.build_context_folder}/{name_}.pc" if build else f"{name_}.pc"
 
-        check_duplicated_generator(self, self._recipe)
         for require, dep in self._get_dependencies():
             suffix = self.build_context_suffix.get(require.ref.name, "") if require.build else ""
             # Save all the *.pc files and their contents

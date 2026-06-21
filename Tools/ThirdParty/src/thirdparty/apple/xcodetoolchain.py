@@ -1,6 +1,5 @@
 import textwrap
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.apple.apple import to_apple_arch, xcodebuild_deployment_target_key
 from thirdparty.apple.xcodedeps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, \
     _add_includes_to_file_or_create, _xcconfig_settings_filename, _xcconfig_conditional
@@ -47,7 +46,6 @@ class XcodeToolchain:
         self._global_ldflags = sharedlinkflags + exelinkflags
 
     def generate(self):
-        check_duplicated_generator(self, self._recipe)
         save(self._agreggated_xconfig_filename, self._agreggated_xconfig_content)
         save(self._vars_xconfig_filename, self._vars_xconfig_content)
         if self._check_if_extra_flags:

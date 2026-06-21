@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.build import cross_building, stdcpp_library
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, save, rm, replace_in_file
 from thirdparty.gnu import PkgConfigDeps
 from thirdparty.microsoft import is_msvc
@@ -65,6 +65,10 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
+        # libjxl's own find_package(HWY/Brotli/LCMS2) lives in third_party/CMakeLists.txt,
+        # which _patch_sources() empties. The deps are instead resolved by the CMakeDeps
+        # aggregator (recipe_deps.cmake), injected right after project() so the hwy::hwy /
+        # Brotli / LCMS2 targets exist before lib/CMakeLists.txt references them.
         tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = os.path.join(self.generators_folder, "recipe_deps.cmake").replace("\\", "/")
         tc.variables["BUILD_TESTING"] = False
         tc.variables["JPEGXL_STATIC"] = False
@@ -104,7 +108,7 @@ class Recipe(RecipeBase):
             tc.preprocessor_definitions["JXL_DEBUG_V_LEVEL"] = 1
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.set_property("brotli", "cmake_file_name", "Brotli")
         deps.set_property("brotli::brotlicommon", "cmake_target_name", "brotlicommon")
         deps.set_property("brotli::brotlidec", "cmake_target_name", "brotlidec")

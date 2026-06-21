@@ -6,7 +6,6 @@ from xml.dom import minidom
 
 from jinja2 import Template
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.errors import RecipeException
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.model.dependencies import get_transitive_requires
@@ -118,7 +117,6 @@ class MSBuildDeps:
         Generates ``recipe_<pkg>_<config>_vars.props``, ``recipe_<pkg>_<config>.props``,
         and ``recipe_<pkg>.props`` files into the ``recipe.generators_folder``.
         """
-        check_duplicated_generator(self, self._recipe)
         if self.configuration is None:
             raise RecipeException("MSBuildDeps.configuration is None, it should have a value")
         if self.platform is None:

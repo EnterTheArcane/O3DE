@@ -4,7 +4,6 @@ from xml.dom import minidom
 
 from jinja2 import Template
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.detect_vs import vs_installation_path
 from thirdparty.build import build_jobs
 from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
@@ -100,7 +99,6 @@ class MSBuildToolchain:
         valid XML format with all the good settings like any other VS project ``*.props`` file. The
         last one emulates the ``vcvarsall.bat`` env script. See also :class:`VCVars`.
         """
-        check_duplicated_generator(self, self._recipe)
         name, condition = self._name_condition(self._recipe.settings)
         config_filename = "recipe_toolchain{}.props".format(name)
         # Writing the props files

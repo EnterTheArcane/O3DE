@@ -227,9 +227,21 @@ def _build_dep_graph(
         if cache_key in _iface_cache:
             cached_req, cached_iface = _iface_cache[cache_key]
             # Add to the current level's deps_dict with the appropriate directness flag.
-            new_req = Requirement(cached_req.ref, build=is_build, direct=direct)
-            if not any(str(r.ref.name) == dep_name for r in deps_dict.keys()):
+            # Preserve run= so tool_requires keep run=True; VirtualBuildEnv only adds a
+            # build dep's bindir to PATH when its requirement has run=True.
+            existing = next((r for r in deps_dict if str(r.ref.name) == dep_name), None)
+            if existing is None:
+                new_req = Requirement(cached_req.ref, build=is_build, run=cached_req.run,
+                                      direct=direct)
                 deps_dict[new_req] = cached_iface
+            else:
+                # A dep reached both transitively (direct=False) and as a direct require must
+                # be marked direct so its buildenv_info propagates (e.g. pkgconf's PKG_CONFIG);
+                # OR-in run so its bindir lands on PATH.
+                if direct:
+                    existing.direct = True
+                if cached_req.run:
+                    existing.run = True
             return
 
         recipe_path = recipes_root / dep_name / "recipe.py"
@@ -332,7 +344,8 @@ def _build_dep_graph(
         for trans_req, trans_iface in dep._recipe_dependencies._data.items():
             trans_name = str(trans_req.ref.name)
             if not any(str(r.ref.name) == trans_name for r in deps_dict.keys()):
-                non_direct_req = Requirement(trans_req.ref, build=trans_req.build, direct=False)
+                non_direct_req = Requirement(trans_req.ref, build=trans_req.build,
+                                             run=trans_req.run, direct=False)
                 deps_dict[non_direct_req] = trans_iface
 
         if hasattr(dep, "package_info"):

@@ -2,7 +2,6 @@ import itertools
 import glob
 import re
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.util.files import save
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 
@@ -160,7 +159,6 @@ class PremakeDeps:
         and ``recipe_<pkg>.premake5.lua`` files into the ``recipe.generators_folder``.
         """
 
-        check_duplicated_generator(self, self._recipe)
         # Current directory is the generators_folder
         generator_files = self.content
         for generator_file, content in generator_files.items():
@@ -196,7 +194,6 @@ class PremakeDeps:
 
     @property
     def content(self):
-        check_duplicated_generator(self, self._recipe)
 
         self.output_files = {}
         conf_name = self._config_suffix()

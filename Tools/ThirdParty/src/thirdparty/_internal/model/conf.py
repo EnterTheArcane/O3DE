@@ -85,7 +85,6 @@ BUILT_IN_CONFS = {
     "tools.cmake.cmake_layout:build_folder": "(Experimental) Allow configuring the base folder of the build for local builds",
     "tools.cmake.cmake_layout:test_folder": "(Experimental) Allow configuring the base folder of the build for test_package",
     "tools.cmake:cmake_program": "Path to CMake executable",
-    "tools.cmake.cmakedeps:new": "Use the new CMakeDeps generator",
     "tools.cmake:ctest_args": "Add extra arguments to CMake.ctest() runner command line",
     "tools.cmake:configure_args": "Add extra arguments to CMake.configure() command line",
     "tools.cmake:install_strip": "(Deprecated) Add --strip to cmake.install(). Use tools.build:install_strip instead",

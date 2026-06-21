@@ -1,5 +1,4 @@
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.build.flags import build_type_flags, cppstd_flag, build_type_link_flags
 from thirdparty.env import Environment
 from thirdparty.microsoft.nmakedeps import format_defines
@@ -111,7 +110,6 @@ class NMakeToolchain:
         return self.environment().vars(self._recipe, scope="build")
 
     def generate(self, env=None, scope="build"):
-        check_duplicated_generator(self, self._recipe)
         env = env or self.environment()
         env.vars(self._recipe, scope=scope).save_script("nmaketoolchain")
         VCVars(self._recipe).generate(scope=scope)

@@ -198,7 +198,6 @@ class RecipeLoader:
 
             recipe.layout = types.MethodType(layout, recipe)
 
-        recipe.generators = parser.generators
         try:
             recipe.options = Options.loads(parser.options)
         except Exception:
@@ -228,13 +227,11 @@ class RecipeLoader:
                                                 update, check_updates)
 
         recipe._is_consumer_recipe = True
-        recipe.generators = []  # remove the default txt generator
         return recipe
 
 
 def _parse_module(recipe_module, module_id):
-    """ Parses a python in-memory module, to extract the classes, mainly the main
-    class defining the Recipe, but also process possible existing generators
+    """ Parses a python in-memory module, to extract the class defining the Recipe.
     @param recipe_module: the module to be processed
     @return: the main RecipeBase class from the module
     """
@@ -343,7 +340,7 @@ class RecipeTextLoader:
 
     def __init__(self, input_text):
         # Prefer composition over inheritance, the __getattr__ was breaking things
-        self._config_parser = TextINIParse(input_text,  ["requires", "generators", "options",
+        self._config_parser = TextINIParse(input_text,  ["requires", "options",
                                                          "imports", "tool_requires", "test_requires",
                                                          "layout"],
                                            strip_comments=True)
@@ -383,7 +380,3 @@ class RecipeTextLoader:
     @property
     def options(self):
         return self._config_parser.options
-
-    @property
-    def generators(self):
-        return self._config_parser.generators.splitlines()

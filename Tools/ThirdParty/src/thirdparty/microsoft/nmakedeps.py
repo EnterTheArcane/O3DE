@@ -1,6 +1,5 @@
 import os
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty import CppInfo
 from thirdparty.env import Environment
 
@@ -84,5 +83,4 @@ class NMakeDeps:
         return self.environment.vars(self._recipe, scope=scope)
 
     def generate(self, scope="build"):
-        check_duplicated_generator(self, self._recipe)
         self.vars(scope).save_script("nmakedeps")

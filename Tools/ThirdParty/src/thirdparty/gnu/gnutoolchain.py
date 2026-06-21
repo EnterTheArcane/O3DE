@@ -1,7 +1,6 @@
 import os
 
 from thirdparty.errors import RecipeException
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.apple.apple import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.build import cmd_args_to_string, save_toolchain_args
@@ -383,7 +382,6 @@ class GnuToolchain:
         return self.extra_env.compose_env(env)
 
     def generate(self):
-        check_duplicated_generator(self, self._recipe)
         # Composing both environments. User extra_env definitions has precedence
         env_vars = self._environment.vars(self._recipe)
         env_vars.save_script(GnuToolchain.script_name)

@@ -33,7 +33,6 @@ from jinja2 import Template, StrictUndefined
 from typing import Optional
 
 from thirdparty._internal.output import Output
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.files import save
 
 
@@ -661,7 +660,6 @@ class MakeDeps:
         """
         Collects all dependencies and components, then, generating a Makefile
         """
-        check_duplicated_generator(self, self._recipe)
 
         host_req = self._recipe.dependencies.host
         test_req = self._recipe.dependencies.test

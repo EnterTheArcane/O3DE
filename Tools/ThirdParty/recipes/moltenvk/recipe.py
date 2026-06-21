@@ -1,7 +1,9 @@
 import os
 
 from thirdparty import RecipeBase
+from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import apply_patches, copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -24,6 +26,11 @@ class Recipe(RecipeBase):
         "hide_vulkan_symbols": False,
         "tools": True,
     }
+
+    def validate(self):
+        if not is_apple_os(self):
+            raise RecipeInvalidConfiguration(
+                f"{self.name} is only supported on Apple platforms (Mac, iOS, tvOS)")
 
     def configure(self):
         if self.options.shared:
