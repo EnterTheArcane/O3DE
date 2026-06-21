@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
             del self.options.fPIC
         else:
             del self.options.with_dx
-        if self.settings.os != "Macos":
+        if self.settings.os != "Mac":
             del self.options.with_metal
         self.license = "DocumentRef-LICENSE.txt:LicenseRef-Tomorrow-Open-Source-Technology"
 
@@ -113,7 +113,7 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        if self.settings.os == "Macos" and not self._osd_gpu_enabled:
+        if self.settings.os == "Mac" and not self._osd_gpu_enabled:
             path = os.path.join(self.source_folder, "opensubdiv", "CMakeLists.txt")
             replace_in_file(self, path, "$<TARGET_OBJECTS:osd_gpu_obj>", "")
         # No warnings as errors

@@ -66,7 +66,7 @@ class Recipe(RecipeBase):
             self.tool_requires("pkgconf")
         if self.options.with_glib:
             self.tool_requires("glib")
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             # Ensure that the gettext we use at build time is compatible
             # with the libiconv that is transitively exposed by glib
             self.tool_requires("gettext")
@@ -102,7 +102,7 @@ class Recipe(RecipeBase):
 
         # Avoid conflicts with libiconv
         # see: https://github.com/recipe-io/recipe-center-index/pull/17046#issuecomment-1554629094
-        if self.settings_build.os == "Macos":
+        if self.settings_build.os == "Mac":
             env = Environment()
             env.define_path("DYLD_FALLBACK_LIBRARY_PATH", "$DYLD_LIBRARY_PATH")
             env.define_path("DYLD_LIBRARY_PATH", "")
@@ -171,7 +171,7 @@ class Recipe(RecipeBase):
             if self.options.with_directwrite:
                 self.cpp_info.components["core"].system_libs.append("dwrite")
         if is_apple_os(self) and self.options.get_safe("with_coretext", False):
-            if self.settings.os == "Macos":
+            if self.settings.os == "Mac":
                 self.cpp_info.components["core"].frameworks.append("ApplicationServices")
             else:
                 self.cpp_info.frameworks.extend(["CoreFoundation", "CoreGraphics", "CoreText"])

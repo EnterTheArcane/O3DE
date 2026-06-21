@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if self.settings.arch not in ["x86", "x86_64"]:
+        if self.settings.arch not in ["X64"]:
             del self.options.avx512
             del self.options.avx512_spr
             del self.options.avx512_zen4

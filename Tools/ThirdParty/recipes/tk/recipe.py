@@ -88,7 +88,7 @@ class Recipe(RecipeBase):
                 f"--enable-symbols={yes_no(self.settings.build_type == 'Debug')}"
             )
             tc.configure_args.append(
-                f"--enable-64bit={yes_no(self.settings.arch == 'x86_64')}"
+                f"--enable-64bit={yes_no(self.settings.arch == 'X64')}"
             )
             tc.configure_args.append(f"--enable-aqua={yes_no(is_apple_os(self))}")
             tc.configure_args.append(
@@ -227,7 +227,7 @@ class Recipe(RecipeBase):
         else:
             tk_suffix = ""
         self.cpp_info.libs = [f"tk{lib_infix}{tk_suffix}", f"tkstub{lib_infix}"]
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             self.cpp_info.frameworks = ["CoreFoundation", "Cocoa", "Carbon", "IOKit"]
         elif self.settings.os == "Windows":
             self.cpp_info.system_libs = [

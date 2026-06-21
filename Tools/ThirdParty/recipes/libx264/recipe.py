@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
 
     @property
     def _with_nasm(self):
-        return self.settings.arch in ("x86", "x86_64")
+        return self.settings.arch in ("X64",)
 
     def build_requirements(self):
         if self._with_nasm:
@@ -74,12 +74,12 @@ class Recipe(RecipeBase):
         if self.settings.build_type == "Debug":
             args["--enable-debug"] = ""
 
-        if is_apple_os(self) and self.settings.arch == "armv8":
+        if is_apple_os(self) and self.settings.arch == "ARM":
             # bitstream-a.S:29:18: error: unknown token in expression
             extra_asflags.append("-arch arm64")
             extra_ldflags.append("-arch arm64")
             args["--host"] = "aarch64-apple-darwin"
-            if self.settings.os != "Macos": # TODO not sure why this is != "Macos" ... shouldn't it be == ??
+            if self.settings.os != "Mac": # TODO not sure why this is != "Macos" ... shouldn't it be == ??
                 xcrun = XCRun(self)
                 platform_flags = ["-isysroot", xcrun.sdk_path]
                 apple_min_version_flag = AutotoolsToolchain(self).apple_min_version_flag

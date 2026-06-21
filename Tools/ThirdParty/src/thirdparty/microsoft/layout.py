@@ -25,11 +25,11 @@ def vs_layout(recipe):
     except RecipeException:
         raise RecipeException("The 'vs_layout' requires the 'arch' setting")
 
-    if arch != "None" and arch != "x86":
+    if arch != "None":
         msvc_arch = msvc_platform_from_arch(arch)
         if not msvc_arch:
             raise RecipeException(f"The 'vs_layout' doesn't work with the arch '{arch}'. "
-                                 "Accepted architectures: 'x86', 'x86_64', 'armv7', 'armv8'")
+                                 "Accepted architectures: 'X64', 'ARM'")
         bindirs = os.path.join(msvc_arch, build_type)
     else:
         bindirs = build_type

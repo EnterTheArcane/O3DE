@@ -43,7 +43,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             self.options.rm_safe("fPIC")
         del self.options.build_decoder
-        if self.settings.arch not in ("armv8", "armv8.3"):
+        if self.settings.arch not in ("ARM",):
             del self.options.with_neon
             del self.options.with_arm_crc32
             del self.options.with_neon_dotprod
@@ -60,7 +60,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("cmake")
-        if self.settings.arch in ("x86", "x86_64"):
+        if self.settings.arch in ("X64",):
             self.tool_requires("nasm")
 
     def latest_version(self):
@@ -80,7 +80,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["BUILD_APPS"] = False
         tc.cache_variables["BUILD_ENC"] = self.options.build_encoder
         tc.cache_variables["USE_EXTERNAL_CPUINFO"] = True
-        if self.settings.arch in ("x86", "x86_64"):
+        if self.settings.arch in ("X64",):
             tc.cache_variables["ENABLE_NASM"] = True
         tc.cache_variables["MINIMAL_BUILD"] = self.options.minimal_build
         if "with_neon" in self.options:

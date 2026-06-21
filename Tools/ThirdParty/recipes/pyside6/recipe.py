@@ -107,7 +107,7 @@ class Recipe(RecipeBase):
         # → WrapOpenSSL::WrapOpenSSL) which would cause "target not found" errors.
         tc.variables["QT_SKIP_AUTO_PLUGIN_INCLUSION"] = "ON"
 
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             llvm_lib = os.path.join(llvm_pkg, "lib").replace("\\", "/")
             # LLVM's libc++ does NOT re-export libc++abi symbols (unlike system libc++).
             # Without explicit -lc++abi, std::length_error and similar symbols are attributed
@@ -195,12 +195,12 @@ class Recipe(RecipeBase):
         deps.generate()
 
     def build(self):
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             self._patch_qtcore_cmake()
             self._patch_pyside_tools_cmake()
         cmake = CMake(self)
         cmake.configure()
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             self._patch_shiboken_wrapper()
         # Build shibokenmodule first and stage it to the package prefix.
         # PySide6's pyi stub generation (QtCore_pyi etc.) imports shiboken6 from

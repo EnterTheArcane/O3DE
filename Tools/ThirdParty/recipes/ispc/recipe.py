@@ -21,13 +21,13 @@ class Recipe(RecipeBase):
             url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-windows.zip"
             sha256 = "e126a78fd15f12475bac6204f2536b3986e07973127e4f8e7336c3d304c4a69f"
         elif self.settings.os == "Linux":
-            if self.settings.arch == "armv8":
+            if self.settings.arch == "ARM":
                 url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-linux.aarch64.tar.gz"
                 sha256 = "509399c399ec162d746889458a10cc13797a1aed1c0164b2bd3faddf7d023f13"
             else:
                 url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-linux.tar.gz"
                 sha256 = "63e7d61037849fa1ed644f0398d21740ee9f880b9bf81f017c65eebe1d42c02b"
-        elif self.settings.os == "Macos":
+        elif self.settings.os == "Mac":
             url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-macOS.universal.tar.gz"
             sha256 = "4a45b95d9cd590acbdcd158d287f9398d4a1961461e9456bda09181e7b34912e"
         else:

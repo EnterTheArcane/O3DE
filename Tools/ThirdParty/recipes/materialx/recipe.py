@@ -91,7 +91,7 @@ class Recipe(RecipeBase):
         ]
         if self.options.build_gen_msl:
             components.append(("MaterialXGenMsl", "MaterialX::MaterialXGenMsl"))
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             components.append(("MaterialXRenderMsl", "MaterialX::MaterialXRenderMsl"))
 
         for comp_name, target_name in components:

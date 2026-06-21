@@ -8,21 +8,15 @@ from thirdparty.errors import RecipeException
 
 
 def is_apple_os(recipe, build_context=False):
-    """returns True if OS is Apple one (Macos, iOS, watchOS, tvOS or visionOS)"""
+    """returns True if OS is Apple one (Mac, iOS, tvOS or visionOS)"""
     settings = recipe.settings_build if build_context else recipe.settings
-    return str(settings.get_safe("os")) in ['Macos', 'iOS', 'watchOS', 'tvOS', 'visionOS']
+    return str(settings.get_safe("os")) in ['Mac', 'iOS', 'tvOS', 'visionOS']
 
 
 def _to_apple_arch(arch, default=None):
     """converts recipe-style architecture into Apple-style arch"""
-    return {'x86': 'i386',
-            'x86_64': 'x86_64',
-            'armv7': 'armv7',
-            'armv8': 'arm64',
-            'armv8_32': 'arm64_32',
-            'armv8.3': 'arm64e',
-            'armv7s': 'armv7s',
-            'armv7k': 'armv7k'}.get(str(arch), default)
+    return {'X64': 'x86_64',
+            'ARM': 'arm64'}.get(str(arch), default)
 
 
 def to_apple_arch(recipe, default=None):
@@ -56,7 +50,7 @@ def get_apple_sdk_fullname(recipe):
     os_sdk_version = recipe.settings.get_safe('os.sdk_version') or ""
     if os_sdk:
         return "{}{}".format(os_sdk, os_sdk_version)
-    elif os_ == "Macos":  # it has only a single value for all the architectures
+    elif os_ == "Mac":  # it has only a single value for all the architectures
         return "{}{}".format("macosx", os_sdk_version)
     elif is_apple_os(recipe):
         raise RecipeException("Please, specify a suitable value for os.sdk.")
@@ -66,7 +60,7 @@ def apple_min_version_flag(recipe):
     """compiler flag name which controls deployment target"""
     os_ = recipe.settings.get_safe('os')
     os_sdk = recipe.settings.get_safe('os.sdk')
-    os_sdk = os_sdk or ("macosx" if os_ == "Macos" else None)
+    os_sdk = os_sdk or ("macosx" if os_ == "Mac" else None)
     os_version = recipe.settings.get_safe("os.version")
     if not os_sdk or not os_version:
         # Legacy behavior
@@ -123,10 +117,9 @@ def resolve_apple_flags(recipe, is_cross_building=False, is_universal=False):
 
 def xcodebuild_deployment_target_key(os_name):
     return {
-        "Macos": "MACOSX_DEPLOYMENT_TARGET",
+        "Mac": "MACOSX_DEPLOYMENT_TARGET",
         "iOS": "IPHONEOS_DEPLOYMENT_TARGET",
         "tvOS": "TVOS_DEPLOYMENT_TARGET",
-        "watchOS": "WATCHOS_DEPLOYMENT_TARGET",
         "visionOS": "XROS_DEPLOYMENT_TARGET",
     }.get(os_name) if os_name else None
 

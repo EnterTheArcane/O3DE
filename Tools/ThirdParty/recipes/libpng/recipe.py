@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
 
     @property
     def _has_sse_support(self):
-        return self.settings.arch in ["x86", "x86_64"]
+        return self.settings.arch in ["X64"]
 
     @property
     def _has_vsx_support(self):

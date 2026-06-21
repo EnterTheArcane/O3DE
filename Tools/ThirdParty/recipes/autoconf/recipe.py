@@ -49,11 +49,11 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             if is_msvc(self):
                 build = "{}-{}-{}".format(
-                    "x86_64" if self.settings.arch == "x86_64" else "i686",
+                    "x86_64" if self.settings.arch == "X64" else "i686",
                     "pc" if self.settings.arch == "x86" else "win64",
                     "mingw32")
                 host = "{}-{}-{}".format(
-                    "x86_64" if self.settings.arch == "x86_64" else "i686",
+                    "x86_64" if self.settings.arch == "X64" else "i686",
                     "pc" if self.settings.arch == "x86" else "win64",
                     "mingw32")
                 tc.configure_args.append(f"--build={build}")

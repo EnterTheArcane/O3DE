@@ -126,7 +126,7 @@ class Recipe(RecipeBase):
                 os.path.join(self.package_folder, "lib", self._obj_name))
 
         if self.settings.os == "Windows" and self.options.shared:
-            if self.settings.arch == "x86_64":
+            if self.settings.arch == "X64":
                 copy(self, "mimalloc-redirect.dll",
                     src=os.path.join(self.source_folder, "bin"),
                     dst=os.path.join(self.package_folder, "bin"))

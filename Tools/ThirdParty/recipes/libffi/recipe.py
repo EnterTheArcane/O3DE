@@ -92,11 +92,9 @@ class Recipe(RecipeBase):
 
             architecture_flag = ""
             if is_msvc(self):
-                if self.settings.arch == "x86_64":
+                if self.settings.arch == "X64":
                     architecture_flag = "-m64"
-                elif self.settings.arch == "x86":
-                    architecture_flag = "-m32"
-                elif self.settings.arch == "armv8":
+                elif self.settings.arch == "ARM":
                     architecture_flag = "-marm64"
             elif self.settings.compiler == "clang":
                 architecture_flag = "-clang-cl"

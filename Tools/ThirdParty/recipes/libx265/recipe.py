@@ -43,7 +43,7 @@ class Recipe(RecipeBase):
         # FIXME: Disable assembly by default if host is Android for the moment. It fails to build
         if (self.settings.compiler == "apple-clang" and "arm" in self.settings.arch) or self.settings.os == "Android":
             self.options.assembly = False
-        if is_msvc(self) and self.settings.arch == "armv8":
+        if is_msvc(self) and self.settings.arch == "ARM":
             # Build errors, possibly unsupported
             self.options.assembly = False
 
@@ -57,7 +57,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         if self.options.assembly:
-            if self.settings.arch in ["x86", "x86_64"]:
+            if self.settings.arch in ["X64"]:
                 self.tool_requires("nasm")
 
     def source(self):
@@ -76,7 +76,7 @@ class Recipe(RecipeBase):
         tc.variables["ENABLE_SHARED"] = self.options.shared
         tc.variables["ENABLE_ASSEMBLY"] = self.options.assembly
         tc.variables["ENABLE_LIBNUMA"] = self.options.get_safe("with_numa", False)
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             tc.variables["CMAKE_SHARED_LINKER_FLAGS"] = "-Wl,-read_only_relocs,suppress"
         tc.variables["HIGH_BIT_DEPTH"] = self.options.bit_depth != 8
         tc.variables["MAIN12"] = self.options.bit_depth == 12

@@ -58,6 +58,12 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
     )
     p.add_argument("--resume", metavar="NAME", default=None,
                    help="Skip all recipes before NAME in build order (multi-recipe builds)")
+    p.add_argument("--target-os", default=None, dest="target_os", metavar="<os>",
+                   help="Cross-compile target OS (e.g. Windows, Linux, Mac, Android); "
+                        "default: build machine")
+    p.add_argument("--target-arch", default=None, dest="target_arch", metavar="<arch>",
+                   help="Cross-compile target architecture (X64 or ARM); "
+                        "default: build machine")
     p.add_argument("--dry-run", action="store_true",
                    help="Print build plan without building")
     p.add_argument("--force", action="store_true",
@@ -76,6 +82,8 @@ def build(args: argparse.Namespace) -> None:
     resume: str | None = getattr(args, "resume", None)
     dry_run: bool = getattr(args, "dry_run", False)
     fail_fast: bool = getattr(args, "fail_fast", False)
+    target_os: str | None = getattr(args, "target_os", None)
+    target_arch: str | None = getattr(args, "target_arch", None)
 
     cwd = Path.cwd()
     recipes_root = cwd / "recipes"
@@ -109,20 +117,20 @@ def build(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     # Output folders are grouped by os+arch (the host/target platform) so that builds
-    # for different platforms never collide.  See detect.platform_tag / detect_platform_tag.
-    plat = detect_platform_tag()
-
+    # for different platforms never collide.  --target-os/--target-arch select the target
+    # (default: the build machine).  Tool deps (build context) always build for the build
+    # machine; see _build_recipe / _build_dep_graph for the host-vs-build split.
     if is_multi or resume or dry_run:
         _build_ordered(
             recipes_root, build_root, names, build_type,
             jobs=args.jobs, resume=resume, dry_run=dry_run,
             force=force, generate_only=generate_only, fail_fast=fail_fast,
-            platform_tag=plat,
+            target_os=target_os, target_arch=target_arch,
         )
     else:
         _build_recipe(recipes_root, build_root, names[0], build_type, set(),
                       jobs=args.jobs, generate_only=generate_only, force=force,
-                      platform_tag=plat)
+                      target_os=target_os, target_arch=target_arch)
 
 
 def _load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase]:
@@ -148,11 +156,17 @@ def _instantiate(
     name: str,
     version: str,
     build_type: str,
-    platform_tag: str,
+    target_os: str | None,
+    target_arch: str | None,
     jobs: int | None = None,
 ) -> RecipeBase:
-    recipe = make_probe_recipe(recipe_cls, recipes_root, name, version, build_type, jobs=jobs)
+    recipe = make_probe_recipe(recipe_cls, recipes_root, name, version, build_type, jobs=jobs,
+                               target_os=target_os, target_arch=target_arch)
+    # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeConfigDeps
+    # and anything reading ``recipe.ref`` rely on this being present.
+    recipe._recipe_node = _FakeNode(name, version)
 
+    platform_tag = detect_platform_tag(target_os, target_arch)
     pkg_root = build_root / name / version / platform_tag
     source_dir = str(pkg_root / "source")
     build_dir = str(pkg_root / "build")
@@ -176,22 +190,26 @@ def _build_dep_graph(
     build_root: Path,
     dep_names: list[str],
     build_type: str,
-    platform_tag: str,
+    target_os: str | None,
+    target_arch: str | None,
     jobs: int | None = None,
     tool_names: list[str] | None = None,
     _iface_cache: dict | None = None,
 ) -> RecipeDependencies:
     """Create a RecipeDependencies from a list of already-built packages.
 
-    dep_names  — host (non-build) deps (build=False)
-    tool_names — tool_requires (build=True); optional
+    dep_names  — host (non-build) deps (build=False); inherit the parent's effective
+                 target platform (``target_os``/``target_arch``).
+    tool_names — tool_requires (build=True); built for the BUILD MACHINE (target reset).
 
-    _iface_cache is a shared dict[dep_name → (Requirement, RecipeInterface)] passed through
-    recursive calls so that the *same* RecipeInterface object is reused whenever the same
-    package appears at multiple levels of the dep tree.  This is required for
-    get_transitive_requires() (used by CMakeDeps) to correctly resolve header-transitive deps:
-    it compares RecipeInterface objects by identity, so the object for e.g. fast_float must
-    be the same instance whether it appears in c4core's dep graph or in rapidyaml's.
+    _iface_cache is a shared dict[(dep_name, os, arch) → (Requirement, RecipeInterface)]
+    passed through recursive calls so that the *same* RecipeInterface object is reused
+    whenever the same package appears at multiple levels of the dep tree.  This is required
+    for get_transitive_requires() (used by CMakeDeps) to correctly resolve header-transitive
+    deps: it compares RecipeInterface objects by identity, so the object for e.g. fast_float
+    must be the same instance whether it appears in c4core's dep graph or in rapidyaml's.
+    The platform is part of the key so a package built for the host and for the build
+    machine (cross-compile) stay distinct.
     """
     deps_dict: OrderedDict = OrderedDict()
 
@@ -199,10 +217,15 @@ def _build_dep_graph(
         _iface_cache = {}
 
     def _add_dep(dep_name: str, is_build: bool, direct: bool = True) -> None:
-        # If we already created a RecipeInterface for this dep in this tree, reuse it.
+        # Host deps inherit the parent's target; tool_requires (build context) reset to the
+        # build machine.  Effective target fully determines the dep's settings + output folder.
+        dep_os = None if is_build else target_os
+        dep_arch = None if is_build else target_arch
+        cache_key = (dep_name, dep_os, dep_arch)
+        # If we already created a RecipeInterface for this dep+platform, reuse it.
         # This ensures object identity holds across all levels (needed by transitive_requires).
-        if dep_name in _iface_cache:
-            cached_req, cached_iface = _iface_cache[dep_name]
+        if cache_key in _iface_cache:
+            cached_req, cached_iface = _iface_cache[cache_key]
             # Add to the current level's deps_dict with the appropriate directness flag.
             new_req = Requirement(cached_req.ref, build=is_build, direct=direct)
             if not any(str(r.ref.name) == dep_name for r in deps_dict.keys()):
@@ -216,19 +239,19 @@ def _build_dep_graph(
 
         dep_cls = _load_recipe_class(recipes_root, dep_name)
         dep_version = _resolve_version(dep_cls)
-        # NOTE (host vs build context): tool_requires (is_build=True) run on the build
-        # machine and should resolve to the build-machine platform folder; host deps use
-        # the target platform folder.  Today build == host == platform_tag, so one tag
-        # suffices — revisit here when cross-compilation lands.
-        pkg_dir = str((build_root / dep_name / dep_version / platform_tag / "package").resolve())
+        dep_plat = detect_platform_tag(dep_os, dep_arch)
+        pkg_dir = str((build_root / dep_name / dep_version / dep_plat / "package").resolve())
 
         dep = dep_cls(display_name=dep_name)
         dep.version = dep_version
         dep.recipe_folder = str(recipes_root / dep_name)
         dep.folders.set_base_package(pkg_dir)
 
-        dep.settings = detect_settings(build_type)
-        dep.settings_build = dep.settings
+        dep.settings = detect_settings(build_type, dep_os, dep_arch)
+        if dep_os is None and dep_arch is None:
+            dep.settings_build = dep.settings
+        else:
+            dep.settings_build = detect_settings(build_type)
         dep.settings_target = None
         conf = make_conf(jobs=jobs)
         dep.conf = conf
@@ -261,19 +284,20 @@ def _build_dep_graph(
         else:
             # Set run=True if the package contains shared libraries so that
             # VirtualRunEnv adds its lib dir to DYLD_LIBRARY_PATH / LD_LIBRARY_PATH.
-            import platform as _platform
+            # Pattern is keyed on the dep's TARGET os (not the build machine).
+            from thirdparty._internal.detect import normalize_os, _machine_os
+            _dep_os = normalize_os(dep_os) or _machine_os()
             _lib_path = Path(pkg_dir) / "lib"
-            _sys = _platform.system()
-            if _sys == "Darwin":
+            if _dep_os == "Mac":
                 _pattern = "*.dylib"
-            elif _sys == "Windows":
+            elif _dep_os in ("Windows", "WindowsStore"):
                 _pattern = "*.dll"
             else:
                 _pattern = "*.so*"
             _is_shared = _lib_path.is_dir() and any(_lib_path.glob(_pattern))
             req = Requirement(ref, build=False, run=_is_shared, direct=direct)
         iface = RecipeInterface(dep, None)
-        _iface_cache[dep_name] = (req, iface)
+        _iface_cache[cache_key] = (req, iface)
         deps_dict[req] = iface
 
         # Populate dep's own transitive dep graph so generators can resolve
@@ -295,7 +319,7 @@ def _build_dep_graph(
             _sub_tools = [str(r.ref.name) for r in dep.requires.values() if r.build]
             dep._recipe_dependencies = _build_dep_graph(
                 recipes_root, build_root, _sub_host, build_type,
-                platform_tag, jobs=jobs, tool_names=_sub_tools,
+                dep_os, dep_arch, jobs=jobs, tool_names=_sub_tools,
                 _iface_cache=_iface_cache,
             )
         except Exception:
@@ -349,6 +373,22 @@ def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
             shutil.copytree(item, dst, dirs_exist_ok=True)
 
 
+def _build_only_tools(rgraph) -> set[str]:
+    """Recipes that are *only* ever a ``tool_requires`` (never a regular ``requires``).
+
+    These are pure build tools (cmake, ninja, nasm, ...) and are built for the BUILD
+    MACHINE.  A recipe used as a regular dependency anywhere is host-context (built for the
+    target), even if it is also used as a tool somewhere.  When not cross-compiling the host
+    and build platforms are identical, so this classification is a no-op.
+    """
+    host_required: set[str] = set()
+    tool_required: set[str] = set()
+    for node in rgraph.nodes.values():
+        host_required.update(node.host_deps)
+        tool_required.update(node.tool_deps)
+    return {n for n in tool_required if n not in host_required}
+
+
 def _build_ordered(
     recipes_root: Path,
     build_root: Path,
@@ -359,10 +399,12 @@ def _build_ordered(
     dry_run: bool,
     force: bool,
     generate_only: bool,
-    platform_tag: str,
+    target_os: str | None,
+    target_arch: str | None,
     fail_fast: bool = False,
 ) -> None:
-    rgraph = build_recipe_graph(recipes_root, names, build_type, jobs=jobs)
+    rgraph = build_recipe_graph(recipes_root, names, build_type, jobs=jobs,
+                                target_os=target_os, target_arch=target_arch)
     order = rgraph.topo_order()
 
     if resume:
@@ -372,19 +414,33 @@ def _build_ordered(
             sys.exit(1)
         order = order[order.index(resume):]
 
-    print(f"\n=== Build Plan: {len(order)} recipes ({build_type}) ===")
+    # Classify each node: pure build tools build for the build machine; everything else
+    # builds for the target.  (When not cross-compiling these are the same platform.)
+    build_only = _build_only_tools(rgraph)
+
+    def _node_target(name: str) -> tuple[str | None, str | None]:
+        return (None, None) if name in build_only else (target_os, target_arch)
+
+    cross = bool(target_os or target_arch)
+    label = f"{build_type}"
+    if cross:
+        label += f" -> {detect_platform_tag(target_os, target_arch)}"
+    print(f"\n=== Build Plan: {len(order)} recipes ({label}) ===")
     for i, name in enumerate(order, 1):
         version = rgraph[name].version
-        built = _is_built(build_root, name, version, platform_tag)
+        n_to, n_ta = _node_target(name)
+        n_plat = detect_platform_tag(n_to, n_ta)
+        built = _is_built(build_root, name, version, n_plat)
         status = "[force]" if force else ("[built]" if built else "[pending]")
-        print(f"  {i:3d}. {name}/{version}  {status}")
+        ctx = "" if not cross else f"  ({n_plat})"
+        print(f"  {i:3d}. {name}/{version}  {status}{ctx}")
 
     if dry_run:
         return
 
     print()
 
-    visited: set[str] = set()
+    visited: set = set()
     results: list[tuple[str, str, float, str | None]] = []
     skipped: list[str] = []
 
@@ -395,15 +451,16 @@ def _build_ordered(
             skipped.append(name)
             continue
         version = _resolve_version(cls)
-        if not force and _is_built(build_root, name, version, platform_tag):
+        n_to, n_ta = _node_target(name)
+        n_plat = detect_platform_tag(n_to, n_ta)
+        if not force and _is_built(build_root, name, version, n_plat):
             skipped.append(name)
-            visited.add(name)
+            visited.add((name, n_to, n_ta))
             continue
         t0 = time.time()
         try:
             _build_recipe(recipes_root, build_root, name, build_type, visited,
-                          jobs=jobs, generate_only=generate_only, force=force,
-                          platform_tag=platform_tag)
+                          n_to, n_ta, jobs=jobs, generate_only=generate_only, force=force)
             elapsed = time.time() - t0
             results.append((name, version, elapsed, None))
         except Exception as exc:
@@ -441,43 +498,55 @@ def _build_recipe(
     build_root: Path,
     name: str,
     build_type: str,
-    visited: set[str],
-    platform_tag: str,
+    visited: set,
+    target_os: str | None,
+    target_arch: str | None,
     jobs: int | None = None,
     generate_only: bool = False,
     force: bool = False,
 ) -> list[str]:
     """Build *name* and all its transitive dependencies.
 
+    ``target_os``/``target_arch`` are this recipe's *effective* target platform (the host
+    context).  Tool dependencies (build context) are built for the BUILD MACHINE by resetting
+    the target to ``(None, None)``; regular host dependencies inherit this recipe's target.
+
     Returns the ordered list of all transitive dep names for *name* (deepest
     first) so that the caller can populate its own dep graph.
     """
-    if name in visited:
+    # visited is keyed by (name, target) so the same recipe can be built both for the host
+    # target and (as a tool) for the build machine when cross-compiling.
+    key = (name, target_os, target_arch)
+    if key in visited:
         return []
-    visited.add(name)
+    visited.add(key)
+
+    platform_tag = detect_platform_tag(target_os, target_arch)
 
     recipe_cls = _load_recipe_class(recipes_root, name)
     version = _resolve_version(recipe_cls)
 
     # Probe the recipe to discover its direct dependencies (even when pre-built,
     # so we can return the correct transitive dep list to our caller).
-    probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, platform_tag, jobs=jobs)
+    probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type,
+                         target_os, target_arch, jobs=jobs)
     direct_deps, direct_tools = _get_requires(probe)
 
-    # Recursively build tool dependencies that have local recipes.
+    # Recursively build tool dependencies that have local recipes — for the BUILD MACHINE.
     for tool_name in direct_tools:
         if (recipes_root / tool_name / "recipe.py").exists():
             _build_recipe(recipes_root, build_root, tool_name, build_type, visited,
-                          platform_tag, jobs=jobs, generate_only=generate_only, force=force)
+                          None, None, jobs=jobs, generate_only=generate_only, force=force)
 
-    # Recursively build deps and collect their full transitive dep lists.
+    # Recursively build deps (inheriting this recipe's target) and collect their dep lists.
     transitive: list[str] = []
     for dep_name in direct_deps:
         if not (recipes_root / dep_name / "recipe.py").exists():
             print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
             continue
         sub = _build_recipe(recipes_root, build_root, dep_name, build_type, visited,
-                            platform_tag, jobs=jobs, generate_only=generate_only, force=force)
+                            target_os, target_arch, jobs=jobs,
+                            generate_only=generate_only, force=force)
         for d in sub:
             if d not in transitive:
                 transitive.append(d)
@@ -491,12 +560,13 @@ def _build_recipe(
         return transitive
 
     # Build the dependency graph for this recipe from all transitive deps.
-    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type, platform_tag,
-                                 jobs=jobs, tool_names=direct_tools)
+    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type,
+                                 target_os, target_arch, jobs=jobs, tool_names=direct_tools)
 
     print(f"\n[thirdparty] === Building {name}/{version} ({build_type}) ===\n")
 
-    recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, platform_tag, jobs=jobs)
+    recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type,
+                          target_os, target_arch, jobs=jobs)
     recipe._recipe_dependencies = dep_graph
 
     # Propagate conf_info from tool dependencies into recipe.conf so that, e.g.,

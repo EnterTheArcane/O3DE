@@ -36,7 +36,7 @@ def _xcconfig_conditional(settings, configuration):
     sdk_condition = "*"
     arch = settings.get_safe("arch")
     architecture = _to_apple_arch(arch) or arch
-    sdk = settings.get_safe("os.sdk") if settings.get_safe("os") != "Macos" else "macosx"
+    sdk = settings.get_safe("os.sdk") if settings.get_safe("os") != "Mac" else "macosx"
     if sdk:
         sdk_condition = "{}{}".format(sdk, settings.get_safe("os.sdk_version") or "*")
 

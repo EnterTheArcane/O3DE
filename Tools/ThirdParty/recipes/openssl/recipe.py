@@ -124,7 +124,7 @@ class Recipe(RecipeBase):
         if self.settings_build.os == "Windows":
             if self.conf.get("user.openssl:windows_use_jom", False):
                 self.tool_requires("jom")
-            if not self.options.no_asm and self.settings.arch in ["x86", "x86_64"]:
+            if not self.options.no_asm and self.settings.arch == "X64":
                 self.tool_requires("nasm")
             if self._use_nmake:
                 self.tool_requires("strawberryperl")
@@ -157,63 +157,33 @@ class Recipe(RecipeBase):
     @property
     def _perlasm_scheme(self):
         # right now, we need to tweak this for iOS & Android only, as they inherit from generic targets
-        if self.settings.os in ("iOS", "watchOS", "tvOS"):
+        if self.settings.os in ("iOS", "tvOS"):
             return {
-                "armv7": "ios32",
-                "armv7s": "ios32",
-                "armv8": "ios64",
-                "armv8_32": "ios64",
-                "armv8.3": "ios64",
-                "armv7k": "ios32",
+                "ARM": "ios64",
             }.get(str(self.settings.arch), None)
         elif self.settings.os == "Android":
             return {
-                "armv7": "void",
-                "armv8": "linux64",
-                "mips": "o32",
-                "mips64": "64",
-                "x86": "android",
-                "x86_64": "elf",
+                "ARM": "linux64",
+                "X64": "elf",
             }.get(str(self.settings.arch), None)
         return None
 
     @property
     def _asm_target(self):
-        if self.settings.os in ("Android", "iOS", "watchOS", "tvOS"):
+        if self.settings.os in ("Android", "iOS", "tvOS"):
             return {
-                "x86": "x86_asm" if self.settings.os == "Android" else None,
-                "x86_64": "x86_64_asm" if self.settings.os == "Android" else None,
-                "armv5el": "armv4_asm",
-                "armv5hf": "armv4_asm",
-                "armv6": "armv4_asm",
-                "armv7": "armv4_asm",
-                "armv7hf": "armv4_asm",
-                "armv7s": "armv4_asm",
-                "armv7k": "armv4_asm",
-                "armv8": "aarch64_asm",
-                "armv8_32": "aarch64_asm",
-                "armv8.3": "aarch64_asm",
-                "mips": "mips32_asm",
-                "mips64": "mips64_asm",
-                "sparc": "sparcv8_asm",
-                "sparcv9": "sparcv9_asm",
-                "ia64": "ia64_asm",
-                "ppc32be": "ppc32_asm",
-                "ppc32": "ppc32_asm",
-                "ppc64le": "ppc64_asm",
-                "ppc64": "ppc64_asm",
-                "s390": "s390x_asm",
-                "s390x": "s390x_asm"
-            }.get(str(self.settings.os), None)
+                "X64": "x86_64_asm" if self.settings.os == "Android" else None,
+                "ARM": "aarch64_asm",
+            }.get(str(self.settings.arch), None)
 
     @property
     def _targets(self):
         is_cygwin = self.settings.get_safe("os.subsystem") == "cygwin"
         return {
             "Linux-x86-clang": "linux-x86-clang",
-            "Linux-x86_64-clang": "linux-x86_64-clang",
+            "Linux-X64-clang": "linux-x86_64-clang",
             "Linux-x86-*": "linux-x86",
-            "Linux-x86_64-*": "linux-x86_64",
+            "Linux-X64-*": "linux-x86_64",
             "Linux-armv4-*": "linux-armv4",
             "Linux-armv4i-*": "linux-armv4",
             "Linux-armv5el-*": "linux-armv4",
@@ -223,7 +193,7 @@ class Recipe(RecipeBase):
             "Linux-armv7hf-*": "linux-armv4",
             "Linux-armv7s-*": "linux-armv4",
             "Linux-armv7k-*": "linux-armv4",
-            "Linux-armv8-*": "linux-aarch64",
+            "Linux-ARM-*": "linux-aarch64",
             "Linux-armv8.3-*": "linux-aarch64",
             "Linux-armv8-32-*": "linux-arm64ilp32",
             "Linux-mips-*": "linux-mips32",
@@ -240,40 +210,40 @@ class Recipe(RecipeBase):
             "Linux-sparcv9-*": "linux64-sparcv9",
             "Linux-*-*": "linux-generic32",
             "Macos-x86-*": "darwin-i386-cc",
-            "Macos-x86_64-*": "darwin64-x86_64-cc",
+            "Mac-X64-*": "darwin64-x86_64-cc",
             "Macos-ppc32-*": "darwin-ppc-cc",
             "Macos-ppc32be-*": "darwin-ppc-cc",
             "Macos-ppc64-*": "darwin64-ppc-cc",
             "Macos-ppc64be-*": "darwin64-ppc-cc",
-            "Macos-armv8-*": "darwin64-arm64-cc",
-            "Macos-*-*": "darwin-common",
-            "iOS-x86_64-*": "darwin64-x86_64-cc",
+            "Mac-ARM-*": "darwin64-arm64-cc",
+            "Mac-*-*": "darwin-common",
+            "iOS-X64-*": "darwin64-x86_64-cc",
             "iOS-*-*": "iphoneos-cross",
             "watchOS-*-*": "iphoneos-cross",
             "tvOS-*-*": "iphoneos-cross",
             # Android targets are very broken, see https://github.com/openssl/openssl/issues/7398
             "Android-armv7-*": "linux-generic32",
             "Android-armv7hf-*": "linux-generic32",
-            "Android-armv8-*": "linux-generic64",
+            "Android-ARM-*": "linux-generic64",
             "Android-x86-*": "linux-x86-clang",
-            "Android-x86_64-*": "linux-x86_64-clang",
+            "Android-X64-*": "linux-x86_64-clang",
             "Android-mips-*": "linux-generic32",
             "Android-mips64-*": "linux-generic64",
             "Android-*-*": "linux-generic32",
             "Windows-x86-gcc": "Cygwin-x86" if is_cygwin else "mingw",
-            "Windows-x86_64-gcc": "Cygwin-x86_64" if is_cygwin else "mingw64",
+            "Windows-X64-gcc": "Cygwin-x86_64" if is_cygwin else "mingw64",
             "Windows-*-gcc": "Cygwin-common" if is_cygwin else "mingw-common",
             "Windows-ia64-Visual Studio": "VC-WIN64I",  # Itanium
             "Windows-x86-Visual Studio": "VC-WIN32",
-            "Windows-x86_64-Visual Studio": "VC-WIN64A",
+            "Windows-X64-Visual Studio": "VC-WIN64A",
             "Windows-armv7-Visual Studio": "VC-WIN32-ARM",
-            "Windows-armv8-Visual Studio": "VC-WIN64-CLANGASM-ARM",
+            "Windows-ARM-Visual Studio": "VC-WIN64-CLANGASM-ARM",
             "Windows-*-Visual Studio": "VC-noCE-common",
             "Windows-ia64-clang": "VC-WIN64I",  # Itanium
             "Windows-x86-clang": "VC-WIN32",
-            "Windows-x86_64-clang": "VC-WIN64A",
+            "Windows-X64-clang": "VC-WIN64A",
             "Windows-armv7-clang": "VC-WIN32-ARM",
-            "Windows-armv8-clang": "VC-WIN64-ARM",
+            "Windows-ARM-clang": "VC-WIN64-ARM",
             "Windows-*-clang": "VC-noCE-common",
             "WindowsStore-x86-*": "VC-WIN32-UWP",
             "WindowsStore-x86_64-*": "VC-WIN64A-UWP",
@@ -560,7 +530,7 @@ class Recipe(RecipeBase):
         if not self.options.no_fips:
             provdir = os.path.join(self.source_folder, "providers")
             modules_dir = os.path.join(self.package_folder, "lib", "ossl-modules")
-            if self.settings.os == "Macos":
+            if self.settings.os == "Mac":
                 copy(self, "fips.dylib", src=provdir, dst=modules_dir)
             elif self.settings.os == "Windows":
                 copy(self, "fips.dll", src=provdir, dst=modules_dir)

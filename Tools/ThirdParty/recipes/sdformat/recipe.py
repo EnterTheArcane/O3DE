@@ -68,7 +68,7 @@ class Recipe(RecipeBase):
         tc.variables["TINYXML2_INCLUDE_DIRS"] = f"{tinyxml2_pkg}/include"
         if self.settings.os == "Windows":
             tc.variables["TINYXML2_LIBRARIES"] = f"{tinyxml2_pkg}/lib/{tinyxml2_lib}.lib"
-        elif self.settings.os == "Macos":
+        elif self.settings.os == "Mac":
             if self.dependencies["tinyxml2"].options.shared:
                 tc.variables["TINYXML2_LIBRARIES"] = f"{tinyxml2_pkg}/lib/lib{tinyxml2_lib}.dylib"
             else:

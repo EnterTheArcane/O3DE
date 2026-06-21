@@ -103,7 +103,7 @@ class Recipe(RecipeBase):
         apply_patches(self)
         cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
         # Avoid CMP0006 error (macos bundle)
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             replace_in_file(self, cmakelists,
                                   "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}",
                                   "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}")

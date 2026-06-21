@@ -57,7 +57,7 @@ class Recipe(RecipeBase):
 
     def config_options(self):
         default_packages = "base-devel,binutils,gcc"
-        if self.settings_target is not None and self.settings_target.arch == "armv8":
+        if self.settings_target is not None and self.settings_target.arch == "ARM":
             # The mingw-w64-cross-mingwarm64-gcc contains tools required to target arm64
             default_packages += ",mingw-w64-cross-mingwarm64-gcc"
         self.options.packages = default_packages
@@ -67,9 +67,9 @@ class Recipe(RecipeBase):
             raise RecipeInvalidConfiguration("msys2 is only supported on Windows")
 
     def compatibility(self):
-        if self.settings.arch == "armv8":
+        if self.settings.arch == "ARM":
             # Fallback on x86_64 package when natively on Windows arm64
-            return [{"settings": [("arch", "x86_64")]}]
+            return [{"settings": [("arch", "X64")]}]
 
     def source(self):
         get(
@@ -198,7 +198,7 @@ class Recipe(RecipeBase):
 
         if self.settings_target is not None and \
             self.settings_target.os == "Windows" and \
-            self.settings_target.arch == "armv8":
+            self.settings_target.arch == "ARM":
             # Expose /opt/bin to PATH, so that aarch64-w64-mingw32- prefixed tools can be found
             # Define autotools host/build triplet so that the right tools are used
             self.cpp_info.bindirs.insert(0, os.path.join(msys_root, "opt", "bin"))

@@ -104,7 +104,7 @@ class Recipe(RecipeBase):
             with chdir(self, build_dir):
                 self.run("""nmake -f Makefile.vc {target} MACHINE={machine} DEBUG={debug} DLL={dll}""".format(
                     target=target,
-                    machine={"x86": "ppro", "x86_64": "x64"}[str(self.settings.arch)],
+                    machine={"X64": "x64"}[str(self.settings.arch)],
                     # FIXME: else, use ansi32 and ansi64
                     debug="1" if self.settings.build_type == "Debug" else "0",
                     dll="1" if self.options.shared else "0",
