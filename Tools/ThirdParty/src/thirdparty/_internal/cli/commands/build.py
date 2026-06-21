@@ -6,7 +6,6 @@ import os
 import shutil
 import sys
 import time
-import yaml
 from collections import OrderedDict
 from pathlib import Path
 
@@ -320,17 +319,6 @@ def _is_sourced(build_root: Path, name: str, version: str) -> bool:
     return (build_root / name / version / "source" / _COMPLETE_MARKER).is_file()
 
 
-def _load_recipe_data(recipe) -> None:
-    """If the recipe directory contains a recipe_data.yml, load it and expose it via
-    recipe.recipe_data so that recipes can access custom version-keyed data beyond
-    sources/patches (e.g. zlib-ng's ``zlib_compat`` field)."""
-    recipe_data_path = Path(recipe.recipe_folder) / "recipe_data.yml"
-    if recipe_data_path.is_file():
-        with open(recipe_data_path, "r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh) or {}
-        recipe.recipe_data = data
-
-
 _RECIPE_SKIP_NAMES = {"recipe.py", "__pycache__"}
 
 def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
@@ -521,10 +509,6 @@ def _build_recipe(
             recipe.build_requirements()
         except Exception:
             pass
-
-    # Load recipe_data.yml from the recipe folder if present.  Some recipes access
-    # self.recipe_data for custom version data (e.g. zlib-ng's "zlib_compat" field).
-    _load_recipe_data(recipe)
 
     pkg_dir = Path(recipe.package_folder)
     build_dir = Path(recipe.build_folder)
