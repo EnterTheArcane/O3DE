@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, replace_in_file, rmdir, save
+from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

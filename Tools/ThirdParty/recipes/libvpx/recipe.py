@@ -5,7 +5,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
 from thirdparty.env import Environment, VirtualBuildEnv
-from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir, save
+from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir
 from thirdparty.gnu import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag
 from thirdparty.scm import Version
@@ -31,7 +31,6 @@ class Recipe(RecipeBase):
     options.update({name: [True, False] for name in _arch_options})
     default_options.update({name: "avx" not in name for name in _arch_options})
 
- 
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -75,8 +74,10 @@ class Recipe(RecipeBase):
 
     @property
     def _target_name(self):
-        arch = {"X64": "x86_64",
-                "ARM": "arm64"}.get(str(self.settings.arch))
+        arch = {
+            "X64": "x86_64",
+            "ARM": "arm64",
+        }.get(str(self.settings.arch))
         if arch is None:
             # Fallback for unknown architectures. This is supported by upstream to be used
             # when no specific target set is provided by the configure script.
@@ -123,22 +124,24 @@ class Recipe(RecipeBase):
             # special case, as gcc/g++ is hard-coded in makefile, it implicitly assumes -lstdc++
             tc.extra_ldflags.append("-stdlib=libc++")
 
-        tc.configure_args.extend([
-            "--disable-examples",
-            "--disable-unit-tests",
-            "--disable-tools",
-            "--disable-docs",
-            "--enable-vp9-highbitdepth",
-            "--as=yasm",
-        ])
+        tc.configure_args.extend(
+            [
+                "--disable-examples",
+                "--disable-unit-tests",
+                "--disable-tools",
+                "--disable-docs",
+                "--enable-vp9-highbitdepth",
+                "--as=yasm",
+            ])
         # Note for MSVC: release libs are always built, we just avoid keeping the release lib
         # Note2: Can't use --enable-debug_libs (to help install on Windows),
         #     the makefile's install step fails as it wants to install a library that doesn't exist.
         #     Instead, we will copy the desired library manually in the package step.
         if self.settings.build_type == "Debug":
-            tc.configure_args.extend([
-                "--enable-debug"
-            ])
+            tc.configure_args.extend(
+                [
+                    "--enable-debug",
+                ])
         if is_msvc(self) and is_msvc_static_runtime(self):
             tc.configure_args.append("--enable-static-msvcrt")
         if str(self.settings.arch) in ["X64"]:
@@ -146,22 +149,23 @@ class Recipe(RecipeBase):
                 if not self.options.get_safe(name):
                     tc.configure_args.append(f"--disable-{name}")
 
-        tc.update_configure_args({
-            # libvpx does not like --prefix=/ as it fails the test for "libdir
-            # must be a subfolder of prefix" libvpx src/build/make/configure.sh:683
-            "--prefix": f"/{self._install_tmp_folder}",
-            "--libdir": f"/{self._install_tmp_folder}/lib",
-            # Needed to let libvpx use the correct toolchain for the target platform
-            "--target": self._target_name,
-            # several options must not be injected as custom configure doesn't like them
-            "--host": None,
-            "--build": None,
-            "--bindir": None,
-            "--sbindir": None,
-            "--includedir": None,
-            "--oldincludedir": None,
-            "--datarootdir": None,
-        })
+        tc.update_configure_args(
+            {
+                # libvpx does not like --prefix=/ as it fails the test for "libdir
+                # must be a subfolder of prefix" libvpx src/build/make/configure.sh:683
+                "--prefix": f"/{self._install_tmp_folder}",
+                "--libdir": f"/{self._install_tmp_folder}/lib",
+                # Needed to let libvpx use the correct toolchain for the target platform
+                "--target": self._target_name,
+                # several options must not be injected as custom configure doesn't like them
+                "--host": None,
+                "--build": None,
+                "--bindir": None,
+                "--sbindir": None,
+                "--includedir": None,
+                "--oldincludedir": None,
+                "--datarootdir": None,
+            })
 
         if is_msvc(self):
             # gen_msvs_vcxproj.sh doesn't like custom flags
@@ -180,18 +184,20 @@ class Recipe(RecipeBase):
             lto = any(re.finditer("(^| )[/-]GL($| )", cflags))
             if not lto:
                 self.output.info("Disabling LTO")
-                replace_in_file(self,
+                replace_in_file(
+                    self,
                     os.path.join(self.source_folder, "build", "make", "gen_msvs_vcxproj.sh"),
                     "tag_content WholeProgramOptimization true",
                     "tag_content WholeProgramOptimization false",
-                )
+                    )
             else:
                 self.output.info("Enabling LTO")
 
         # The compile script wants to use CC for some of the platforms (Linux, etc),
         # but incorrectly assumes gcc is the compiler for those platforms.
         # This can fail some of the configure tests, and -lpthread isn't added to the link command.
-        replace_in_file(self,
+        replace_in_file(
+            self,
             os.path.join(self.source_folder, "build", "make", "configure.sh"),
             "  LD=${LD:-${CROSS}${link_with_cc:-ld}}",
             """
@@ -221,20 +227,21 @@ class Recipe(RecipeBase):
         autotools.install()
 
         # The workaround requires us to move the outputs into place now
-        rename(self,
-                os.path.join(self.package_folder, self._install_tmp_folder, "include"),
-                os.path.join(self.package_folder, "include")
-                )
+        rename(
+            self,
+            os.path.join(self.package_folder, self._install_tmp_folder, "include"),
+            os.path.join(self.package_folder, "include")
+            )
 
         if is_msvc(self):
             # Libs are still in the build folder, get from there directly.
             # The makefile cannot correctly install the debug libs (see note about --enable-debug_libs)
             system = {"ARM": "ARM64"}
             libs_from = os.path.join(
-                    self.build_folder,
-                    system.get(str(self.settings.arch), "x64"),
-                    "Debug" if self.settings.build_type == "Debug" else "Release"
-                    )
+                self.build_folder,
+                system.get(str(self.settings.arch), "x64"),
+                "Debug" if self.settings.build_type == "Debug" else "Release"
+            )
             # Copy for msvc, as it will generate a release and debug library, so take what we want
             # Note that libvpx's configure/make doesn't support shared lib builds on windows yet.
             copy(self, f"{self._lib_name}.lib", libs_from, os.path.join(self.package_folder, "lib"))

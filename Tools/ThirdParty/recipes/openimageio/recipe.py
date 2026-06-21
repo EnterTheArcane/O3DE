@@ -32,7 +32,7 @@ class Recipe(RecipeBase):
         "with_openvdb": [True, False],
         "with_ptex": [True, False],
         "with_libwebp": [True, False],
-        "with_libultrahdr": [True, False]
+        "with_libultrahdr": [True, False],
     }
     default_options = {
         "shared": False,
@@ -54,7 +54,7 @@ class Recipe(RecipeBase):
         "with_openvdb": False,  # FIXME: broken on M1
         "with_ptex": True,
         "with_libwebp": True,
-        "with_libultrahdr": True
+        "with_libultrahdr": True,
     }
 
     def config_options(self):
@@ -155,7 +155,7 @@ class Recipe(RecipeBase):
 
         # OIIO CMake files are patched to check USE_* flags to require or not use dependencies
         tc.variables["USE_JPEGTURBO"] = (
-            self.options.with_libjpeg == "libjpeg-turbo"
+                self.options.with_libjpeg == "libjpeg-turbo"
         )
         tc.variables[
             "USE_JPEG"
@@ -185,7 +185,6 @@ class Recipe(RecipeBase):
         if self.options.with_ffmpeg:
             tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_FFmpeg"] = True
             tc.cache_variables["FFMPEG_VERSION"] = f'"{str(self.dependencies["ffmpeg"].ref.version)}"'
-
 
         tc.cache_variables["BUILD_MISSING_ROBINMAP"] = False
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Robinmap"] = True

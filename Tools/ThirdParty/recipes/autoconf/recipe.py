@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, rmdir, replace_in_file, apply_patches, save
+from thirdparty.files import copy, get, rmdir, replace_in_file, apply_patches
 from thirdparty.gnu import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import unix_path, is_msvc
 from thirdparty.scm import Version
@@ -13,9 +13,9 @@ class Recipe(RecipeBase):
     name = "autoconf"
     version = "2.72"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
- 
+
     def requirements(self):
-        self.requires("m4") # Needed at runtime by downstream clients as well
+        self.requires("m4")  # Needed at runtime by downstream clients as well
 
     def build_requirements(self):
         self.tool_requires("m4")
@@ -42,9 +42,10 @@ class Recipe(RecipeBase):
         env.generate()
 
         tc = AutotoolsToolchain(self)
-        tc.configure_args.extend([
-            "--datarootdir=${prefix}/res",
-        ])
+        tc.configure_args.extend(
+            [
+                "--datarootdir=${prefix}/res",
+            ])
 
         if self.settings.os == "Windows":
             if is_msvc(self):

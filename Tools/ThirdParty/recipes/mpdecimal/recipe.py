@@ -1,10 +1,10 @@
 from thirdparty import RecipeBase
-from thirdparty.gnu import AutotoolsToolchain, Autotools
-from thirdparty.files import get, chdir, copy, apply_patches, mkdir, rename
+from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.files import get, chdir, copy, apply_patches, mkdir, rename
+from thirdparty.gnu import AutotoolsToolchain, Autotools
 from thirdparty.microsoft import VCVars, is_msvc, NMakeDeps, NMakeToolchain
-from thirdparty.apple import is_apple_os
 from thirdparty.scm import Version
 
 
@@ -102,13 +102,14 @@ class Recipe(RecipeBase):
 
         for build_dir, target in builds:
             with chdir(self, build_dir):
-                self.run("""nmake -f Makefile.vc {target} MACHINE={machine} DEBUG={debug} DLL={dll}""".format(
-                    target=target,
-                    machine={"X64": "x64"}[str(self.settings.arch)],
-                    # FIXME: else, use ansi32 and ansi64
-                    debug="1" if self.settings.build_type == "Debug" else "0",
-                    dll="1" if self.options.shared else "0",
-                ))
+                self.run(
+                    """nmake -f Makefile.vc {target} MACHINE={machine} DEBUG={debug} DLL={dll}""".format(
+                        target=target,
+                        machine={"X64": "x64"}[str(self.settings.arch)],
+                        # FIXME: else, use ansi32 and ansi64
+                        debug="1" if self.settings.build_type == "Debug" else "0",
+                        dll="1" if self.options.shared else "0",
+                    ))
 
         dist_folder = self._dist_folder
         mkdir(self, dist_folder)

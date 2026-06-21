@@ -67,7 +67,7 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "libdeflate")
         target_suffix = "_shared" if self.options.shared else "_static"
         self.cpp_info.set_property("cmake_target_name", f"libdeflate::libdeflate{target_suffix}")
-        self.cpp_info.set_property("cmake_target_aliases", ["libdeflate::libdeflate"]) # not official, avoid to break users
+        self.cpp_info.set_property("cmake_target_aliases", ["libdeflate::libdeflate"])  # not official, avoid to break users
         self.cpp_info.set_property("pkg_config_name", "libdeflate")
         self.cpp_info.components["_libdeflate"].libs = collect_libs(self)
         if self.settings.os == "Windows" and self.options.shared:

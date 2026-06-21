@@ -23,7 +23,7 @@ class Recipe(RecipeBase):
         "fPIC": True,
         "assembly": False,
     }
- 
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC

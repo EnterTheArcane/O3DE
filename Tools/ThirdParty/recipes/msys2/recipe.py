@@ -31,6 +31,7 @@ class OpLock:
 
     __del__ = close
 
+
 class Recipe(RecipeBase):
     name = "msys2"
     version = "latest"
@@ -41,11 +42,11 @@ class Recipe(RecipeBase):
         "exclude_files": ["ANY"],
         "packages": ["ANY"],
         "additional_packages": [None, "ANY"],
-        "no_kill": [True, False]
+        "no_kill": [True, False],
     }
     default_options = {
         "exclude_files": "*/link.exe",
-        #"packages": "base-devel,binutils,gcc", # see config_options
+        # "packages": "base-devel,binutils,gcc", # see config_options
         "additional_packages": None,
         "no_kill": False,
     }
@@ -77,7 +78,7 @@ class Recipe(RecipeBase):
             url="https://github.com/msys2/msys2-installer/releases/download/2025-12-13/msys2-base-x86_64-20251213.tar.xz",
             sha256="999f63c2fc7525af5cd41b55e9ea704471a4f9d0278a257fff3b0d1183c441b9",
             destination=self.source_folder,
-            strip_root=False) # Preserve tarball root dir (msys64/)
+            strip_root=False)  # Preserve tarball root dir (msys64/)
 
     def _update_pacman(self):
         with chdir(self, os.path.join(self._msys_dir, "usr", "bin")):
@@ -127,7 +128,7 @@ class Recipe(RecipeBase):
 
     @property
     def _msys_dir(self):
-        subdir = "msys64" # top-level directoy in tarball
+        subdir = "msys64"  # top-level directoy in tarball
         return os.path.join(self.source_folder, subdir)
 
     def build(self):
@@ -164,8 +165,9 @@ class Recipe(RecipeBase):
 
         # Prepend the PKG_CONFIG_PATH environment variable with an eventual PKG_CONFIG_PATH environment variable
         # Note: this is no longer needed when we exclusively support Recipe 2 integrations
-        replace_in_file(self, os.path.join(self._msys_dir, "etc", "profile"),
-                              'PKG_CONFIG_PATH="', 'PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}')
+        replace_in_file(
+            self, os.path.join(self._msys_dir, "etc", "profile"),
+            'PKG_CONFIG_PATH="', 'PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}')
 
     def package(self):
         excludes = None
@@ -179,8 +181,9 @@ class Recipe(RecipeBase):
                         os.unlink(fullname)
         # See https://github.com/recipe-io/recipe-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
         copy(self, "*", dst=os.path.join(self.package_folder, "bin", "msys64"), src=self._msys_dir, excludes=excludes)
-        shutil.copytree(os.path.join(self._msys_dir, "usr", "share", "licenses"),
-                        os.path.join(self.package_folder, "licenses"))
+        shutil.copytree(
+            os.path.join(self._msys_dir, "usr", "share", "licenses"),
+            os.path.join(self.package_folder, "licenses"))
 
     def package_info(self):
         self.cpp_info.libdirs = []
@@ -197,8 +200,8 @@ class Recipe(RecipeBase):
         self.conf_info.define("tools.microsoft.bash:path", os.path.join(msys_bin, "bash.exe"))
 
         if self.settings_target is not None and \
-            self.settings_target.os == "Windows" and \
-            self.settings_target.arch == "ARM":
+                self.settings_target.os == "Windows" and \
+                self.settings_target.arch == "ARM":
             # Expose /opt/bin to PATH, so that aarch64-w64-mingw32- prefixed tools can be found
             # Define autotools host/build triplet so that the right tools are used
             self.cpp_info.bindirs.insert(0, os.path.join(msys_root, "opt", "bin"))

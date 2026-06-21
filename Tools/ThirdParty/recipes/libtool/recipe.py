@@ -3,10 +3,10 @@ import re
 import shutil
 
 from thirdparty import RecipeBase
-from thirdparty.errors import RecipeException
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.env import Environment
-from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir, save
+from thirdparty.errors import RecipeException
+from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir
 from thirdparty.gnu import Autotools, AutotoolsToolchain, GnuFtp
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
 
     def build_requirements(self):
         self.tool_requires("automake")
-        self.tool_requires("m4")               # Needed by configure
+        self.tool_requires("m4")  # Needed by configure
         self.tool_requires("gnu-config")
         if self.settings_build.os == "Windows":
             self.win_bash = True
@@ -69,12 +69,13 @@ class Recipe(RecipeBase):
             env.vars(self, scope="build").save_script("buildenv_vcvars_options.bat")
 
         tc = AutotoolsToolchain(self)
-        tc.configure_args.extend([
-            "--datarootdir=${prefix}/res",
-            "--enable-shared",
-            "--enable-static",
-            "--enable-ltdl-install",
-        ])
+        tc.configure_args.extend(
+            [
+                "--datarootdir=${prefix}/res",
+                "--enable-shared",
+                "--enable-static",
+                "--enable-ltdl-install",
+            ])
 
         env = tc.environment()
         if is_msvc(self):
@@ -91,7 +92,7 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        config_guess =  self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
+        config_guess = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
         config_sub = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_sub")
         shutil.copy(config_sub, os.path.join(self.source_folder, "build-aux", "config.sub"))
         shutil.copy(config_guess, os.path.join(self.source_folder, "build-aux", "config.guess"))
@@ -168,24 +169,29 @@ class Recipe(RecipeBase):
 
         binpath = os.path.join(self.package_folder, "bin")
         if self.settings.os == "Windows":
-            rename(self, os.path.join(binpath, "libtoolize"),
-                         os.path.join(binpath, "libtoolize.exe"))
-            rename(self, os.path.join(binpath, "libtool"),
-                         os.path.join(binpath, "libtool.exe"))
+            rename(
+                self, os.path.join(binpath, "libtoolize"),
+                os.path.join(binpath, "libtoolize.exe"))
+            rename(
+                self, os.path.join(binpath, "libtool"),
+                os.path.join(binpath, "libtool.exe"))
 
         if is_msvc(self) and self.options.shared:
-            rename(self, os.path.join(self.package_folder, "lib", "ltdl.dll.lib"),
-                         os.path.join(self.package_folder, "lib", "ltdl.lib"))
+            rename(
+                self, os.path.join(self.package_folder, "lib", "ltdl.dll.lib"),
+                os.path.join(self.package_folder, "lib", "ltdl.lib"))
 
         # allow libtool to link static libs into shared for more platforms
         libtool_m4 = os.path.join(self._datarootdir, "aclocal", "libtool.m4")
         method_pass_all = "lt_cv_deplibs_check_method=pass_all"
-        replace_in_file(self, libtool_m4,
-                              "lt_cv_deplibs_check_method='file_magic ^x86 archive import|^x86 DLL'",
-                              method_pass_all)
-        replace_in_file(self, libtool_m4,
-                              "lt_cv_deplibs_check_method='file_magic file format (pei*-i386(.*architecture: i386)?|pe-arm-wince|pe-x86-64)'",
-                              method_pass_all)
+        replace_in_file(
+            self, libtool_m4,
+            "lt_cv_deplibs_check_method='file_magic ^x86 archive import|^x86 DLL'",
+            method_pass_all)
+        replace_in_file(
+            self, libtool_m4,
+            "lt_cv_deplibs_check_method='file_magic file format (pei*-i386(.*architecture: i386)?|pe-arm-wince|pe-x86-64)'",
+            method_pass_all)
 
     def package_info(self):
         self.cpp_info.libs = ["ltdl"]

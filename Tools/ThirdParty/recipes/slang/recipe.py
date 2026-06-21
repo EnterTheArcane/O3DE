@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("lz4")
-        self.requires("lua") # TODO
+        self.requires("lua")  # TODO
         self.requires("miniz")
         self.requires("spirv-headers")
         self.requires("unordered-dense")

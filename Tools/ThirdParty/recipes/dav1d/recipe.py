@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version

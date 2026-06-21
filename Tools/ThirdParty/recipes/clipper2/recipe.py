@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import get, copy, rmdir, apply_patches, replace_in_file, save
+from thirdparty.files import get, copy, rmdir, apply_patches, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -61,7 +61,7 @@ class Recipe(RecipeBase):
         if "with_max_precision" in self.options:
             tc.variables["CLIPPER2_MAX_PRECISION"] = self.options.with_max_precision
         tc.generate()
-    
+
     def build(self):
         cmake = CMake(self)
         cmake.configure(build_script_folder=os.path.join(self.source_folder, "CPP"))

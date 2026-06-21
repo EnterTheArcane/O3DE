@@ -372,9 +372,9 @@ class Recipe(RecipeBase):
             os.path.join(src_dir, "*.py"),
             os.path.join(src_dir, "*.pyi"),
             os.path.join(src_dir, "py.typed"),
-            os.path.join(src_dir, "Shiboken*.so"),    # macOS / Linux Python extension
+            os.path.join(src_dir, "Shiboken*.so"),  # macOS / Linux Python extension
             os.path.join(src_dir, "Shiboken*.dylib"),  # alternate macOS extension name
-            os.path.join(src_dir, "Shiboken*.pyd"),    # Windows Python extension
+            os.path.join(src_dir, "Shiboken*.pyd"),  # Windows Python extension
         ]
         for pattern in patterns:
             for src_file in glob.glob(pattern):

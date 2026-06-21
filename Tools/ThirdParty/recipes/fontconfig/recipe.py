@@ -64,14 +64,15 @@ class Recipe(RecipeBase):
         deps.generate()
 
         tc = MesonToolchain(self)
-        tc.project_options.update({
-            "doc": "disabled",
-            "nls": "disabled",
-            "tests": "disabled",
-            "tools": "disabled",
-            "sysconfdir": os.path.join("res", "etc"),
-            "datadir": os.path.join("res", "share"),
-        })
+        tc.project_options.update(
+            {
+                "doc": "disabled",
+                "nls": "disabled",
+                "tests": "disabled",
+                "tools": "disabled",
+                "sysconfdir": os.path.join("res", "etc"),
+                "datadir": os.path.join("res", "share"),
+            })
         tc.generate()
 
     def build(self):
@@ -99,6 +100,7 @@ class Recipe(RecipeBase):
 
         fontconfig_path = os.path.join(self.package_folder, "res", "etc", "fonts")
         self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
+
 
 def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""

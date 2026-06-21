@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.build import valid_min_cppstd
 from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -77,13 +77,14 @@ class Recipe(RecipeBase):
 
     @property
     def _osd_gpu_enabled(self):
-        return any([
-            self.options.with_opengl,
-            self.options.with_opencl,
-            self.options.with_cuda,
-            self.options.get_safe("with_dx"),
-            self.options.get_safe("with_metal"),
-        ])
+        return any(
+            [
+                self.options.with_opengl,
+                self.options.with_opencl,
+                self.options.with_cuda,
+                self.options.get_safe("with_dx"),
+                self.options.get_safe("with_metal"),
+            ])
 
     def generate(self):
         tc = CMakeToolchain(self)

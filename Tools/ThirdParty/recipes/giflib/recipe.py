@@ -14,12 +14,12 @@ class Recipe(RecipeBase):
     options = {
         "shared": [True, False],
         "fPIC": [True, False],
-        "utils" : [True, False],
+        "utils": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
-        "utils" : True,
+        "utils": True,
     }
 
     def config_options(self):

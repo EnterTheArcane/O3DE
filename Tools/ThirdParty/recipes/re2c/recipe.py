@@ -40,18 +40,21 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE",
-             src=self.source_folder,
-             dst=os.path.join(self.package_folder, "licenses"),
-             keep_path=False)
-        copy(self, "NO_WARRANTY",
-             src=self.source_folder,
-             dst=os.path.join(self.package_folder, "licenses"),
-             keep_path=False)
-        copy(self, "*.re",
-             src=os.path.join(self.source_folder, "include"),
-             dst=os.path.join(self.package_folder, "include"),
-             keep_path=False)
+        copy(
+            self, "LICENSE",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+            keep_path=False)
+        copy(
+            self, "NO_WARRANTY",
+            src=self.source_folder,
+            dst=os.path.join(self.package_folder, "licenses"),
+            keep_path=False)
+        copy(
+            self, "*.re",
+            src=os.path.join(self.source_folder, "include"),
+            dst=os.path.join(self.package_folder, "include"),
+            keep_path=False)
 
         cmake = CMake(self)
         cmake.install()

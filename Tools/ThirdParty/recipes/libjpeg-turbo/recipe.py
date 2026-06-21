@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, replace_in_file, rm, rmdir, apply_patches, save
+from thirdparty.files import copy, get, replace_in_file, rm, rmdir, apply_patches
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -89,12 +89,12 @@ class Recipe(RecipeBase):
     @property
     def _is_arithmetic_encoding_enabled(self):
         return self.options.get_safe("arithmetic_encoder", False) or \
-               self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
+            self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
 
     @property
     def _is_arithmetic_decoding_enabled(self):
         return self.options.get_safe("arithmetic_decoder", False) or \
-               self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
+            self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -112,7 +112,7 @@ class Recipe(RecipeBase):
         tc.variables["WITH_JAVA"] = self.options.get_safe("java", False)
         tc.cache_variables["WITH_TOOLS"] = False
         if is_msvc(self):
-            tc.variables["WITH_CRT_DLL"] = True # avoid replacing /MD by /MT in compiler flags
+            tc.variables["WITH_CRT_DLL"] = True  # avoid replacing /MD by /MT in compiler flags
         if self.options.get_safe("java", False):
             tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = os.path.join(self.package_folder, "lib", "java")
         tc.generate()

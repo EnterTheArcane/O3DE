@@ -4,10 +4,10 @@ from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, download, get, replace_in_file, rmdir, save
-from thirdparty.scm.github import GithubRepository
+from thirdparty.files import copy, download, get, replace_in_file, rmdir
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
+from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
@@ -170,7 +170,7 @@ class Recipe(RecipeBase):
             self.tool_requires("libtool")
             if not self.conf.get("tools.gnu:pkg_config", check_type=str):
                 self.tool_requires("pkgconf")
-            if self.settings.os in [ "tvOS", "watchOS" ]:
+            if self.settings.os in ["tvOS", "watchOS"]:
                 self.tool_requires("gnu-config")
             if self.settings_build.os == "Windows":
                 self.win_bash = True
@@ -286,13 +286,13 @@ class Recipe(RecipeBase):
         if self.options.with_brotli:
             deps.set_property("brotli", "cmake_file_name", "Brotli")
             deps.set_property("brotli", "cmake_target_name", "CURL::brotli")
-            deps.set_property("brotli", "cmake_additional_variables_prefixes", ["BROTLI",])
+            deps.set_property("brotli", "cmake_additional_variables_prefixes", ["BROTLI", ])
             deps.set_property("brotli", "cmake_extra_variables", {"BROTLI_FOUND": "1"})
 
         if self.options.with_zstd:
             deps.set_property("zstd", "cmake_file_name", "Zstd")
             deps.set_property("zstd", "cmake_target_name", "CURL::zstd")
-            deps.set_property("zstd", "cmake_additional_variables_prefixes", ["ZSTD",])
+            deps.set_property("zstd", "cmake_additional_variables_prefixes", ["ZSTD", ])
             deps.set_property("zstd", "cmake_extra_variables", {"ZSTD_FOUND": "1", "ZSTD_VERSION": str(self.dependencies["zstd"].ref.version)})
 
         if self.options.with_c_ares:

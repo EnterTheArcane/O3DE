@@ -41,13 +41,12 @@ class Recipe(RecipeBase):
             self.requires("fontconfig")
             self.requires("xorg")
 
- 
     def build_requirements(self):
         if not is_msvc(self):
             if (
-                self.settings.os == "Windows"
-                and not self.conf.get("tools.microsoft.bash:path")
-                and not self.conf.get("tools.microsoft.bash:subsystem")
+                    self.settings.os == "Windows"
+                    and not self.conf.get("tools.microsoft.bash:path")
+                    and not self.conf.get("tools.microsoft.bash:subsystem")
             ):
                 self.build_requires("msys2")
 
@@ -154,7 +153,7 @@ class Recipe(RecipeBase):
             if lib.startswith("tcl{}".format("".join(self.version.split(".")[:2]))):
                 tclimplib = os.path.join(tcl_lib_path, lib)
             elif lib.startswith(
-                "tclstub{}".format("".join(self.version.split(".")[:2]))
+                    "tclstub{}".format("".join(self.version.split(".")[:2]))
             ):
                 tclstublib = os.path.join(tcl_lib_path, lib)
 
@@ -211,7 +210,7 @@ class Recipe(RecipeBase):
             # This can only be modified after build since the value being replaced is a result
             # of variable substitution in tkConfig.sh.in
             replace_in_file(self, tkConfigShPath, "//", "${TK_ROOT}/")
-        
+
         fix_apple_shared_install_name(self)
 
     def package_info(self):

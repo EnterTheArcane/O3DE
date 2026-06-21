@@ -6,7 +6,7 @@ from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import (
     collect_libs, copy, load,
-    get, rename, replace_in_file, rmdir, save
+    get, replace_in_file, rmdir, save,
 )
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -85,17 +85,17 @@ class Recipe(RecipeBase):
         replace_in_file(self, cmakelists, "find_package(HarfBuzz ${HARFBUZZ_MIN_VERSION})", "", strict=False)
         replace_in_file(self, cmakelists, if_harfbuzz_found, "if(0)", strict=False)
         # the custom FindBrotliDec of upstream is too fragile
-        replace_in_file(self, cmakelists,
-                              "find_package(BrotliDec REQUIRED)",
-                              "find_package(Brotli REQUIRED)\n"
-                              "set(BROTLIDEC_FOUND 1)\n"
-                              "set(BROTLIDEC_LIBRARIES \"brotli::brotli\")",
-                              strict=False)
+        replace_in_file(
+            self, cmakelists,
+            "find_package(BrotliDec REQUIRED)",
+            "find_package(Brotli REQUIRED)\n"
+            "set(BROTLIDEC_FOUND 1)\n"
+            "set(BROTLIDEC_LIBRARIES \"brotli::brotli\")",
+            strict=False)
 
         config_h = os.path.join(self.source_folder, "include", "freetype", "config", "ftoption.h")
         if self.options.subpixel:
             replace_in_file(self, config_h, "/* #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING */", "#define FT_CONFIG_OPTION_SUBPIXEL_RENDERING", strict=False)
-
 
     def build(self):
         self._patch_sources()
@@ -119,16 +119,18 @@ class Recipe(RecipeBase):
         replace_in_file(self, freetype_config, r"%ft_version%", r"$recipe_ftversion")
         replace_in_file(self, freetype_config, r"%LIBSSTATIC_CONFIG%", r"$recipe_staticlibs")
         replace_in_file(self, freetype_config, r"-lfreetype", libs)
-        replace_in_file(self, freetype_config, r"export LC_ALL", textwrap.dedent("""\
-            export LC_ALL
-            BINDIR=$(dirname $0)
-            recipe_prefix=$(dirname $BINDIR)
-            recipe_exec_prefix=${{recipe_prefix}}/bin
-            recipe_includedir=${{recipe_prefix}}/include
-            recipe_libdir=${{recipe_prefix}}/lib
-            recipe_ftversion={version}
-            recipe_staticlibs="{staticlibs}"
-        """).format(version=version, staticlibs=staticlibs))
+        replace_in_file(
+            self, freetype_config, r"export LC_ALL", textwrap.dedent(
+                """\
+                            export LC_ALL
+                            BINDIR=$(dirname $0)
+                            recipe_prefix=$(dirname $BINDIR)
+                            recipe_exec_prefix=${{recipe_prefix}}/bin
+                            recipe_includedir=${{recipe_prefix}}/include
+                            recipe_libdir=${{recipe_prefix}}/lib
+                            recipe_ftversion={version}
+                            recipe_staticlibs="{staticlibs}"
+                        """).format(version=version, staticlibs=staticlibs))
 
     def _extract_libtool_version(self):
         conf_raw = load(self, os.path.join(self.source_folder, "builds", "unix", "configure.raw"))
@@ -163,7 +165,8 @@ class Recipe(RecipeBase):
         )
 
     def _create_cmake_module_variables(self, module_file):
-        content = textwrap.dedent(f"""\
+        content = textwrap.dedent(
+            f"""\
             set(FREETYPE_FOUND TRUE)
             if(DEFINED Freetype_INCLUDE_DIRS)
                 set(FREETYPE_INCLUDE_DIRS ${{Freetype_INCLUDE_DIRS}})
@@ -178,12 +181,13 @@ class Recipe(RecipeBase):
     def _create_cmake_module_alias_targets(self, module_file, targets):
         content = ""
         for alias, aliased in targets.items():
-            content += textwrap.dedent("""\
-                if(TARGET {aliased} AND NOT TARGET {alias})
-                    add_library({alias} INTERFACE IMPORTED)
-                    set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
-                endif()
-            """.format(alias=alias, aliased=aliased))
+            content += textwrap.dedent(
+                """\
+                                if(TARGET {aliased} AND NOT TARGET {alias})
+                                    add_library({alias} INTERFACE IMPORTED)
+                                    set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
+                                endif()
+                            """.format(alias=alias, aliased=aliased))
         save(self, module_file, content)
 
     @property
@@ -204,7 +208,7 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_module_file_name", "Freetype")
         self.cpp_info.set_property("cmake_file_name", "freetype")
         self.cpp_info.set_property("cmake_target_name", "Freetype::Freetype")
-        self.cpp_info.set_property("cmake_target_aliases", ["freetype"]) # other possible target name in upstream config file
+        self.cpp_info.set_property("cmake_target_aliases", ["freetype"])  # other possible target name in upstream config file
         self.cpp_info.set_property("cmake_build_modules", [self._module_vars_rel_path])
         self.cpp_info.set_property("pkg_config_name", "freetype2")
         self.cpp_info.libs = collect_libs(self)

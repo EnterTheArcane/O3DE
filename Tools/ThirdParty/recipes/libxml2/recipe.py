@@ -98,14 +98,16 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         rmdir(self, os.path.join(self.package_folder, "share"))
         for header in ["win32config.h", "wsockcompat.h"]:
-            copy(self, pattern=header, src=os.path.join(self.source_folder, "include"),
-                 dst=os.path.join(self.package_folder, "include", "libxml2"), keep_path=False)
+            copy(
+                self, pattern=header, src=os.path.join(self.source_folder, "include"),
+                dst=os.path.join(self.package_folder, "include", "libxml2"), keep_path=False)
         self._create_cmake_module_variables(
             os.path.join(self.package_folder, self._module_file_rel_path)
         )
 
     def _create_cmake_module_variables(self, module_file):
-        content = textwrap.dedent(f"""\
+        content = textwrap.dedent(
+            f"""\
             set(LibXml2_FOUND TRUE)
             set(LIBXML2_FOUND TRUE)
             if(DEFINED LibXml2_INCLUDE_DIRS)

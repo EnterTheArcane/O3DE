@@ -104,9 +104,9 @@ class Recipe(RecipeBase):
                     if property_type == "INTERFACE_LINK_LIBRARIES":
                         values_list = target_property[1].replace('"', "").split(";")
                         for dependency in values_list:
-                            if dependency.startswith("absl::"): # abseil targets
+                            if dependency.startswith("absl::"):  # abseil targets
                                 components[potential_lib_name].setdefault("requires", []).append(dependency.replace("absl::", "absl_"))
-                            else: # system libs or frameworks
+                            else:  # system libs or frameworks
                                 if self.settings.os in ["Linux", "FreeBSD"]:
                                     if dependency == "Threads::Threads":
                                         components[potential_lib_name].setdefault("system_libs", []).append("pthread")

@@ -78,11 +78,12 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
         rmdir(self, os.path.join(self.package_folder, "share"))
         for cmake_file in ["ParseAndAddCatchTests.cmake", "Catch.cmake", "CatchAddTests.cmake"]:
-            copy(self,
+            copy(
+                self,
                 cmake_file,
                 src=os.path.join(self.source_folder, "extras"),
                 dst=os.path.join(self.package_folder, "lib", "cmake", "Catch2"),
-            )
+                )
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Catch2")

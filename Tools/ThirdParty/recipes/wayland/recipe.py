@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.build import can_run
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.gnu import PkgConfigDeps
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.scm import Version
@@ -120,7 +120,7 @@ class Recipe(RecipeBase):
         }
         self.cpp_info.components["wayland-scanner"].set_property(
             "pkg_config_custom_content",
-            "\n".join(f"{key}={value}" for key,value in pkgconfig_variables.items()))
+            "\n".join(f"{key}={value}" for key, value in pkgconfig_variables.items()))
 
         if self.options.enable_libraries:
             self.cpp_info.components["wayland-server"].libs = ["wayland-server"]

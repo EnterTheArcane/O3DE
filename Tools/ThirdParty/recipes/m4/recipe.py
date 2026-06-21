@@ -46,27 +46,29 @@ class Recipe(RecipeBase):
             # https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions
             # Because the %n format is inherently insecure, it is disabled by default. If %n is encountered in a format string,
             # the invalid parameter handler is invoked, as described in Parameter Validation. To enable %n support, see _set_printf_count_output.
-            tc.configure_args.extend([
-                "gl_cv_func_printf_directive_n=no",
-                "gl_cv_func_snprintf_directive_n=no",
-                "gl_cv_func_snprintf_directive_n=no",
-            ])
+            tc.configure_args.extend(
+                [
+                    "gl_cv_func_printf_directive_n=no",
+                    "gl_cv_func_snprintf_directive_n=no",
+                    "gl_cv_func_snprintf_directive_n=no",
+                ])
             if self.settings.build_type in ("Debug", "RelWithDebInfo"):
                 tc.extra_ldflags.append("-PDB")
 
         if cross_building(self) and is_msvc(self):
             triplet_arch_windows = {"X64": "x86_64", "ARM": "aarch64"}
-            
+
             host_arch = triplet_arch_windows.get(str(self.settings.arch))
             build_arch = triplet_arch_windows.get(str(self.settings_build.arch))
 
             if host_arch and build_arch:
                 host = f"{host_arch}-w64-mingw32"
                 build = f"{build_arch}-w64-mingw32"
-                tc.configure_args.extend([
-                    f"--host={host}",
-                    f"--build={build}",
-                ])
+                tc.configure_args.extend(
+                    [
+                        f"--host={host}",
+                        f"--build={build}",
+                    ])
         if self.settings.os == "Windows":
             tc.configure_args.append("ac_cv_func__set_invalid_parameter_handler=yes")
         env = tc.environment()

@@ -111,20 +111,21 @@ class Recipe(RecipeBase):
         backend, cxxflags = meson_backend_and_flags()
         tc = MesonToolchain(self, backend=backend)
         tc.project_options["auto_features"] = "disabled"
-        tc.project_options.update({
-            "glib": is_enabled(self.options.with_glib),
-            "icu": is_enabled(True),
-            "freetype": is_enabled(True),
-            "gdi": is_enabled(self.options.get_safe("with_gdi")),
-            "coretext": is_enabled(self.options.get_safe("with_coretext")),
-            "directwrite": is_enabled(self.options.get_safe("with_directwrite")),
-            "gobject": is_enabled(self.options.with_glib),
-            "introspection": is_enabled(False),
-            "tests": "disabled",
-            "docs": "disabled",
-            "benchmark": "disabled",
-            "icu_builtin": "false"
-        })
+        tc.project_options.update(
+            {
+                "glib": is_enabled(self.options.with_glib),
+                "icu": is_enabled(True),
+                "freetype": is_enabled(True),
+                "gdi": is_enabled(self.options.get_safe("with_gdi")),
+                "coretext": is_enabled(self.options.get_safe("with_coretext")),
+                "directwrite": is_enabled(self.options.get_safe("with_directwrite")),
+                "gobject": is_enabled(self.options.with_glib),
+                "introspection": is_enabled(False),
+                "tests": "disabled",
+                "docs": "disabled",
+                "benchmark": "disabled",
+                "icu_builtin": "false",
+            })
         tc.cpp_args += cxxflags
         tc.generate()
 
@@ -196,6 +197,7 @@ class Recipe(RecipeBase):
             self.cpp_info.components["gobject"].set_property("cmake_target_name", "harfbuzz::gobject")
             self.cpp_info.components["gobject"].set_property("pkg_config_name", "harfbuzz-gobject")
             self.cpp_info.components["gobject"].requires = ["core", "glib::glib"]
+
 
 def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""

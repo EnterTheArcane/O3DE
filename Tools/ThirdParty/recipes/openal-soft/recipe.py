@@ -78,7 +78,8 @@ class Recipe(RecipeBase):
         )
 
     def _create_cmake_module_variables(self, module_file):
-        content = textwrap.dedent(f"""\
+        content = textwrap.dedent(
+            f"""\
             set(OPENAL_FOUND TRUE)
             if(DEFINED OpenAL_INCLUDE_DIR)
                 set(OPENAL_INCLUDE_DIR ${{OpenAL_INCLUDE_DIR}})

@@ -37,10 +37,13 @@ class Recipe(RecipeBase):
             sha256="a8dd82f0f52714a2a1c9deae1e3b21553a7e312aae50445ee9ab7f2dfc1b90c6",
             destination=self.source_folder,
             strip_root=True)
-        for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)",
-                     "set(CMAKE_POSITION_INDEPENDENT_CODE ON)"]:
-            replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                            text, "")
+        for text in [
+            "set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)",
+            "set(CMAKE_POSITION_INDEPENDENT_CODE ON)",
+        ]:
+            replace_in_file(
+                self, os.path.join(self.source_folder, "CMakeLists.txt"),
+                text, "")
 
     def generate(self):
         tc = CMakeToolchain(self)

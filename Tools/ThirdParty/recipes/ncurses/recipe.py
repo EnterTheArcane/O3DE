@@ -209,9 +209,10 @@ class Recipe(RecipeBase):
         autotools = Autotools(self)
         autotools.install()
         os.unlink(os.path.join(self.package_folder, "bin", f"ncurses{self._suffix}{Version(self.version).major}-config"))
-        copy(self, "*.cmake",
-             src=os.path.join(self.export_sources_folder, "cmake"),
-             dst=os.path.join(self.package_folder, self._module_subfolder))
+        copy(
+            self, "*.cmake",
+            src=os.path.join(self.export_sources_folder, "cmake"),
+            dst=os.path.join(self.package_folder, self._module_subfolder))
         fix_apple_shared_install_name(self)
 
     @property
@@ -283,7 +284,7 @@ class Recipe(RecipeBase):
             ]
             if self.options.get_safe("with_extended_colors"):
                 self.cpp_info.components["libcurses"].requires += [
-                    "naive-tsearch::naive-tsearch"
+                    "naive-tsearch::naive-tsearch",
                 ]
         if self.options.with_pcre2:
             self.cpp_info.components["form"].requires.append("pcre2::pcre2")

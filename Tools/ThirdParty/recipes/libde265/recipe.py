@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir, save
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -56,8 +56,9 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                              "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
+        replace_in_file(
+            self, os.path.join(self.source_folder, "CMakeLists.txt"),
+            "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
 
     def build(self):
         cmake = CMake(self)

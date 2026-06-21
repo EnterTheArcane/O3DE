@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, replace_in_file, rmdir, save
+from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.scm import Version
 from thirdparty.scm.gitlab import GitlabRepository

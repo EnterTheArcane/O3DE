@@ -12,7 +12,7 @@ from thirdparty.scm.github import GithubRepository
 class Recipe(RecipeBase):
     name = "xz_utils"
     version = "5.8.3"
-    license = "Unlicense", "LGPL-2.1-or-later",  "GPL-2.0-or-later", "GPL-3.0-or-later"
+    license = "Unlicense", "LGPL-2.1-or-later", "GPL-2.0-or-later", "GPL-3.0-or-later"
 
     options = {
         "shared": [True, False],
@@ -87,7 +87,7 @@ class Recipe(RecipeBase):
         is_msvc_modern = check_min_vs(self, 191)
         build_script_folder = os.path.join(self.source_folder, "windows", "vs2017" if is_msvc_modern else "vs2013")
 
-        #==============================
+        # ==============================
         # TODO: to remove once upstream PR 12817 available in recipe client.
         vcxproj_files = [
             os.path.join(build_script_folder, "liblzma.vcxproj"),
@@ -115,7 +115,7 @@ class Recipe(RecipeBase):
         if self.settings.arch == "ARM":
             replace_in_file(self, solution_file, "x64", "ARM64")
 
-        #==============================
+        # ==============================
 
         msbuild = MSBuild(self)
         msbuild.build_type = self._effective_msbuild_type
@@ -124,7 +124,7 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        rmdir(self, os.path.join(self.source_folder, "tests")) # optionally included
+        rmdir(self, os.path.join(self.source_folder, "tests"))  # optionally included
         cmake.configure()
         cmake.build()
 
@@ -139,7 +139,8 @@ class Recipe(RecipeBase):
 
     def _create_cmake_module_variables(self, module_file):
         # TODO: also add LIBLZMA_HAS_AUTO_DECODER, LIBLZMA_HAS_EASY_ENCODER & LIBLZMA_HAS_LZMA_PRESET
-        content = textwrap.dedent(f"""\
+        content = textwrap.dedent(
+            f"""\
             set(LIBLZMA_FOUND TRUE)
             if(DEFINED LibLZMA_INCLUDE_DIRS)
                 set(LIBLZMA_INCLUDE_DIRS ${{LibLZMA_INCLUDE_DIRS}})
