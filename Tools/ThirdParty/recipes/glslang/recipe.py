@@ -37,9 +37,6 @@ class Recipe(RecipeBase):
         if self.options.enable_optimizer:
             self.requires("spirv-tools")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/glslang")
         return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))

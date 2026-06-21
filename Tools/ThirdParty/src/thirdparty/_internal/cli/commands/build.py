@@ -448,11 +448,6 @@ def _build_recipe(
     probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
     direct_deps, direct_tools = _get_requires(probe)
 
-    # Implicitly inject ninja for recipes that use cmake or meson as build tools.
-    if any(t in direct_tools for t in ("cmake", "meson")) and "ninja" not in direct_tools:
-        if (recipes_root / "ninja" / "recipe.py").exists():
-            direct_tools.append("ninja")
-
     # Recursively build tool dependencies that have local recipes.
     for tool_name in direct_tools:
         if (recipes_root / tool_name / "recipe.py").exists():

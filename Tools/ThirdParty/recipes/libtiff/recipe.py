@@ -69,9 +69,6 @@ class Recipe(RecipeBase):
         if self.options.webp:
             self.requires("libwebp")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GitlabRepository(self, "libtiff/libtiff")
         return Version(repo.latest_release.removeprefix("v"))

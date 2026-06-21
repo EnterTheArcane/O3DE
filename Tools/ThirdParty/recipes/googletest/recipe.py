@@ -49,9 +49,6 @@ class Recipe(RecipeBase):
         tc.variables["gtest_disable_pthreads"] = False
         tc.generate()
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def build(self):
         cmake = CMake(self)
         cmake.configure()

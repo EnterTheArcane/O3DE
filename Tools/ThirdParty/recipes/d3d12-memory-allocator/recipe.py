@@ -24,9 +24,6 @@ class Recipe(RecipeBase):
         if self.settings.os != "Windows":
             raise RecipeInvalidConfiguration(f"{self.name} is only supported on Windows")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator")
         return Version(repo.latest_release.removeprefix("v"))

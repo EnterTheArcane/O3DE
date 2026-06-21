@@ -51,11 +51,6 @@ class Recipe(RecipeBase):
         if self.options.with_tcmalloc:
             self.requires("gperftools")
 
-    def build_requirements(self):
-        # Require newer CMake, which allows INCLUDE_DIRECTORIES to be set on INTERFACE targets
-        # Also, v0.9+ require CMake 3.16
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "libjxl/libjxl")
         return Version(repo.latest_release.removeprefix("v"))

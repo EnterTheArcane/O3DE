@@ -97,8 +97,17 @@ def try_load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase] | N
         return None
     try:
         from thirdparty._internal.loader import _parse_recipe
-        _module, cls = _parse_recipe(str(recipe_path))
-        return cls if (isinstance(cls, type) and issubclass(cls, RecipeBase)) else None
+        module, cls = _parse_recipe(str(recipe_path))
+        if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
+            return None
+        # Collect implicit tool_requires from the recipe's DIRECT imports only.  A module's
+        # namespace contains only the names it imported/defined itself, so build-system
+        # helpers pulled in transitively by thirdparty.* are never counted here.
+        implicit: set[str] = set()
+        for obj in vars(module).values():
+            implicit.update(getattr(obj, "_implicit_tool_requires", ()))
+        cls._implicit_tool_requires = frozenset(implicit)
+        return cls
     except Exception:
         return None
 
@@ -184,6 +193,12 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
             tool_names.append(dep_name)
         else:
             host_names.append(dep_name)
+    # Add tools implied by the recipe's imported build-system helpers (e.g. CMakeToolchain
+    # -> "cmake"), skipping any already declared or the recipe's own name.
+    own_name = getattr(recipe, "name", None)
+    for tool in getattr(type(recipe), "_implicit_tool_requires", ()):
+        if tool != own_name and tool not in tool_names:
+            tool_names.append(tool)
     return host_names, tool_names
 
 

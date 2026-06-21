@@ -25,9 +25,6 @@ class Recipe(RecipeBase):
         self.requires("abseil", transitive_headers=True)
         self.requires("icu")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "google/re2")
         return Version(repo.latest_release.replace("-", ""))

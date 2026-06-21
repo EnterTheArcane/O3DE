@@ -33,9 +33,6 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
-    def build_requirements(self):
-        self.tool_requires("meson")
-
     def latest_version(self):
         repo = GithubRepository(self, "mm2/Little-CMS")
         return Version(repo.latest_release.removeprefix("lcms"))

@@ -39,11 +39,6 @@ class Recipe(RecipeBase):
         elif self.options.with_jpeg == "mozjpeg":
             self.requires("mozjpeg")
 
-    def build_requirements(self):
-        # The project requires cmake 3.15 but the use of CMAKE_REQUIRE_FIND_PACKAGE_JPEG below
-        # requires 3.22.
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "google/libultrahdr")
         return Version(repo.latest_release.removeprefix("v"))
