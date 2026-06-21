@@ -68,12 +68,6 @@ def architecture_flag(conanfile):
                 return '-maix32'
             elif arch in ['ppc64']:
                 return '-maix64'
-    elif compiler == "intel-cc":
-        # https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-m32-m64-qm32-qm64
-        if arch == "x86":
-            return "/Qm32" if the_os == "Windows" else "-m32"
-        elif arch == "x86_64":
-            return "/Qm64" if the_os == "Windows" else "-m64"
     elif compiler == "mcst-lcc":
         return {"e2k-v2": "-march=elbrus-v2",
                 "e2k-v3": "-march=elbrus-v3",
@@ -114,7 +108,7 @@ def libcxx_flags(conanfile):
     if compiler == "apple-clang":
         # In apple-clang 2 only values atm are "libc++" and "libstdc++"
         lib = f'-stdlib={libcxx}'
-    elif compiler in ("clang", "intel-cc", "emcc"):
+    elif compiler in ("clang", "emcc"):
         if libcxx == "libc++":
             lib = "-stdlib=libc++"
         elif libcxx == "libstdc++" or libcxx == "libstdc++11":
@@ -273,7 +267,6 @@ def cppstd_flag(conanfile) -> str:
             "clang": _cppstd_clang,
             "apple-clang": _cppstd_apple_clang,
             "msvc": _cppstd_msvc,
-            "intel-cc": _cppstd_intel_cc,
             "mcst-lcc": _cppstd_mcst_lcc}.get(compiler)
     flag = None
     if func:
@@ -512,39 +505,6 @@ def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
             "14": v14, "gnu14": vgnu14,
             "17": v17, "gnu17": vgnu17,
             "20": v20, "gnu20": vgnu20}.get(cppstd)
-    return f'-std={flag}' if flag else None
-
-
-def _cppstd_intel_cc(_, cppstd):
-    """
-    Inspired in:
-    https://software.intel.com/content/www/us/en/develop/documentation/
-    oneapi-dpcpp-cpp-compiler-dev-guide-and-reference/top/compiler-reference/
-    compiler-options/compiler-option-details/language-options/std-qstd.html
-    """
-    # Note: for now, we don't care about compiler version
-    v98 = "c++98"
-    vgnu98 = "gnu++98"
-    v03 = "c++03"
-    vgnu03 = "gnu++03"
-    v11 = "c++11"
-    vgnu11 = "gnu++11"
-    v14 = "c++14"
-    vgnu14 = "gnu++14"
-    v17 = "c++17"
-    vgnu17 = "gnu++17"
-    v20 = "c++20"
-    vgnu20 = "gnu++20"
-    v23 = "c++2b"
-    vgnu23 = "gnu++2b"
-
-    flag = {"98": v98, "gnu98": vgnu98,
-            "03": v03, "gnu03": vgnu03,
-            "11": v11, "gnu11": vgnu11,
-            "14": v14, "gnu14": vgnu14,
-            "17": v17, "gnu17": vgnu17,
-            "20": v20, "gnu20": vgnu20,
-            "23": v23, "gnu23": vgnu23}.get(cppstd)
     return f'-std={flag}' if flag else None
 
 

@@ -1,4 +1,5 @@
 import gzip
+import io
 import os
 import stat
 import platform
@@ -11,9 +12,27 @@ from shutil import which
 
 
 from thirdparty._internal.rest.caching_file_downloader import SourcesCachingDownloader
+from thirdparty._internal.api.output import TimedOutput
 from thirdparty.errors import ConanException
-from thirdparty._internal.rest.file_uploader import FileProgress
 from thirdparty._internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
+
+
+class FileProgress(io.FileIO):
+    def __init__(self, path: str, msg: str = "Uploading", interval: float = 10, *args, **kwargs):
+        super().__init__(path, *args, **kwargs)
+        self._size = os.path.getsize(path)
+        self._filename = os.path.basename(path)
+        self._reporter = TimedOutput(interval=interval) if self._size > 100_000_000 else None
+        self._bytes_read = 0
+        self.msg = msg
+
+    def read(self, size: int = -1) -> bytes:
+        block = super().read(size)
+        self._bytes_read += len(block)
+        if self._reporter:
+            current_percentage = int(self._bytes_read * 100.0 / self._size) if self._size != 0 else 0
+            self._reporter.info(f"{self.msg} {self._filename}: {current_percentage}%")
+        return block
 
 
 def load(conanfile, path, encoding="utf-8"):

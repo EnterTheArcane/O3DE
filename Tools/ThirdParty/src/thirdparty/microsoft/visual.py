@@ -5,7 +5,6 @@ from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.api.detect.detect_vs import vs_installation_path
 from thirdparty.errors import ConanException, ConanInvalidConfiguration
 from thirdparty.scm import Version
-from thirdparty.intel.intel_cc import IntelCC
 from thirdparty._internal.util.files import save
 
 CONAN_VCVARS = "conanvcvars"
@@ -396,7 +395,7 @@ def msvs_toolset(conanfile):
     In case no toolset is configured in the profile, it will return a toolset based on the
     compiler version, otherwise, it will return the toolset from the profile.
     When there is no compiler version neither toolset configured, it will return None
-    It supports msvc, intel-cc and clang compilers. For clang, is assumes the ClangCl toolset,
+    It supports msvc and clang compilers. For clang, it assumes the ClangCl toolset,
     as provided by the Visual Studio installer.
 
     :param conanfile: Conanfile instance to access settings.compiler
@@ -412,6 +411,4 @@ def msvs_toolset(conanfile):
         return msvc_version_to_toolset_version(compiler_version)
     if compiler == "clang":
         return "ClangCl"
-    if compiler == "intel-cc":
-        return IntelCC(conanfile).ms_toolset
 

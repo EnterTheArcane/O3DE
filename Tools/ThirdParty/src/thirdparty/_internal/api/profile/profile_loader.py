@@ -16,7 +16,7 @@ from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.profile import Profile
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.util.config_parser import TextINIParse
-from thirdparty._internal.util.files import mkdir, load_user_encoded
+from thirdparty._internal.util.files import mkdir, load_user_encoded, update_file
 
 
 def _unquote(text):
@@ -436,8 +436,6 @@ def _profile_parse_args(settings, options, conf):
 
 
 def migrate_profile_plugin(cache_folder):
-    from thirdparty._internal.api.migrations import update_file
-
     profile_plugin_file = HomePaths(cache_folder).profile_plugin_path
     update_file(profile_plugin_file, _default_profile_plugin)
 

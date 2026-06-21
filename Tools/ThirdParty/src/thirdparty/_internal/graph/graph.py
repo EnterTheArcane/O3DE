@@ -32,6 +32,18 @@ CONTEXT_HOST = "host"
 CONTEXT_BUILD = "build"
 
 
+def build_id(conan_file):
+    if hasattr(conan_file, "build_id"):
+        from thirdparty._internal.errors import conanfile_exception_formatter
+
+        build_id_info = conan_file.info.clone()
+        conan_file.info_build = build_id_info
+        with conanfile_exception_formatter(conan_file, "build_id"):
+            conan_file.build_id()
+        return build_id_info.package_id()
+    return None
+
+
 class TransitiveRequirement:
     def __init__(self, require, node):
         self.require = require
@@ -271,7 +283,6 @@ class Node:
         result["prev_timestamp"] = self.pref_timestamp
         result["remote"] = self.remote.name if self.remote else None
         result["binary_remote"] = self.binary_remote.name if self.binary_remote else None
-        from thirdparty._internal.graph.installer import build_id
         result["build_id"] = build_id(self.conanfile)
         result["binary"] = self.binary
         # TODO: This doesn't match the model, check it
