@@ -3,18 +3,18 @@ import re
 import time
 
 
-from thirdparty._internal.api.output import ConanOutput, TimedOutput
+from thirdparty._internal.api.output import Output, TimedOutput
 from thirdparty._internal.rest import response_to_str
-from thirdparty._internal.errors import (ConanConnectionError, RequestErrorException,
+from thirdparty._internal.errors import (ConnectionErrorException, RequestErrorException,
                                    AuthenticationException, ForbiddenException, NotFoundException)
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import human_size, check_with_algorithm_sum
 
 
 class FileDownloader:
 
     def __init__(self, requester, scope=None, source_credentials=None):
-        self._output = ConanOutput(scope=scope)
+        self._output = Output(scope=scope)
         self._requester = requester
         self._source_credentials = source_credentials
 
@@ -22,7 +22,7 @@ class FileDownloader:
                  overwrite=False, headers=None, md5=None, sha1=None, sha256=None):
         """ in order to make the download concurrent, the folder for file_path MUST exist
         """
-        assert file_path, "Conan 2.0 always downloads files to disk, not to memory"
+        assert file_path, "Recipe 2.0 always downloads files to disk, not to memory"
         assert os.path.isabs(file_path), "Target file_path must be absolute"
 
         if os.path.exists(file_path):
@@ -31,7 +31,7 @@ class FileDownloader:
             else:
                 # Should not happen, better to raise, probably we had to remove
                 # the dest folder before
-                raise ConanException("Error, the file to download already exists: '%s'" % file_path)
+                raise RecipeException("Error, the file to download already exists: '%s'" % file_path)
 
         try:
             for counter in range(retry + 1):
@@ -41,7 +41,7 @@ class FileDownloader:
                 except (NotFoundException, ForbiddenException, AuthenticationException,
                         RequestErrorException):
                     raise
-                except ConanException as exc:
+                except RecipeException as exc:
                     if counter == retry:
                         raise
                     else:
@@ -78,7 +78,7 @@ class FileDownloader:
                                            headers=headers,
                                            source_credentials=self._source_credentials)
         except Exception as exc:
-            raise ConanException("Error downloading file %s: '%s'" % (url, exc))
+            raise RecipeException("Error downloading file %s: '%s'" % (url, exc))
 
         if not response.ok:
             if response.status_code == 404:
@@ -90,14 +90,14 @@ class FileDownloader:
                 raise ForbiddenException(response_to_str(response))
             elif response.status_code == 401:
                 raise AuthenticationException(response_to_str(response))
-            raise ConanException("Error %d downloading file %s" % (response.status_code, url))
+            raise RecipeException("Error %d downloading file %s" % (response.status_code, url))
 
         def get_total_length():
             if range_start:
                 content_range = response.headers.get("Content-Range", "")
                 match = re.match(r"^bytes (\d+)-(\d+)/(\d+)", content_range)
                 if not match or range_start != int(match.group(1)):
-                    raise ConanException("Error in resumed download from %s\n"
+                    raise RecipeException("Error in resumed download from %s\n"
                                          "Incorrect Content-Range header %s" % (url, content_range))
                 return int(match.group(3))
             else:
@@ -137,12 +137,12 @@ class FileDownloader:
                         and response.headers.get("Accept-Ranges") == "bytes"):
                     self._download_file(url, auth, headers, file_path, verify_ssl, try_resume=True)
                 else:
-                    raise ConanException("Transfer interrupted before complete: %s < %s"
+                    raise RecipeException("Transfer interrupted before complete: %s < %s"
                                          % (total_downloaded_size, total_length))
         except Exception as e:
             # If this part failed, it means problems with the connection to server
-            raise ConanConnectionError("Download failed, check server, possibly try again\n%s"
-                                       % str(e))
+            raise ConnectionErrorException("Download failed, check server, possibly try again\n%s"
+                                           % str(e))
 
 
 

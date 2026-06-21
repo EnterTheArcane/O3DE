@@ -1,7 +1,7 @@
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
-class GraphError(ConanException):
+class GraphError(RecipeException):
     def serialize(self):
         return
 
@@ -32,7 +32,7 @@ class GraphConflictError(GraphError):
         return f"Version conflict: " \
                f"Conflict between {self.require.ref} and {self.prev_require.ref} in the graph." \
                f"{conflicting_node_msg}" \
-               f"\nRun 'conan graph info ... --format=html > graph.html' " \
+               f"\nRun 'recipe graph info ... --format=html > graph.html' " \
                f"and open 'graph.html' to inspect the conflict graphically."
 
 
@@ -87,10 +87,10 @@ class GraphProvidesError(GraphError):
                 "node": {"id": self.node.id, "ref": str(self.node.ref)},
                 "conflicting_node": {"id": self.conflicting_node.id,
                                      "ref": str(self.conflicting_node.ref)},
-                "provided": self.node.conanfile.provides or self.conflicting_node.conanfile.provides}
+                "provided": self.node.recipe.provides or self.conflicting_node.recipe.provides}
 
     def __str__(self):
-        provides = self.node.conanfile.provides or self.conflicting_node.conanfile.provides
+        provides = self.node.recipe.provides or self.conflicting_node.recipe.provides
         return f"Provide Conflict: Both '{self.node.ref}' and '{self.conflicting_node.ref}' " \
                f"provide '{provides}'."
 

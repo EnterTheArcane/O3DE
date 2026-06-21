@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir
@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os == "Windows":
-            raise InvalidConfiguration(f"{self.name} is not supported on Windows")
+            raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def config_options(self):
         if self.settings.os == "Windows":

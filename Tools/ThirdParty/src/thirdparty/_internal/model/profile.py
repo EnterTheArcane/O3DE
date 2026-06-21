@@ -1,7 +1,7 @@
 import copy
 from collections import OrderedDict, defaultdict
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty.env.environment import ProfileEnvironment
 from thirdparty._internal.model.conf import ConfDefinition
 from thirdparty._internal.model.options import Options
@@ -154,7 +154,7 @@ class Profile:
         runner_type = self.runner.get("type")
         other_runner_type = other.runner.get("type")
         if runner_type and other_runner_type and runner_type != other_runner_type:
-            raise ConanException(f"Found different runner types in profile composition "
+            raise RecipeException(f"Found different runner types in profile composition "
                                  f"({runner_type} and {other_runner_type})")
         self.runner.update(other.runner)
 

@@ -1,11 +1,11 @@
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.version_range import VersionRange
 
 
 class Requirement:
-    """ A user definition of a requires in a conanfile
+    """ A user definition of a requires in a recipe
     """
     def __init__(self, ref, *, headers=None, libs=None, build=False, run=None, visible=None,
                  transitive_headers=None, transitive_libs=None, test=None, package_id_mode=None,
@@ -42,7 +42,7 @@ class Requirement:
         # computed ones, not default ones
         self.consistent_policy_new = False
         if self.visible and not self.consistent:
-            raise ConanException(f"Requirement {ref} with visible=True and consistent=False is not"
+            raise RecipeException(f"Requirement {ref} with visible=True and consistent=False is not"
                                  f" supported. Please open a Github ticket to report it")
 
     @property
@@ -208,7 +208,7 @@ class Requirement:
         """If the requirement traits have not been adjusted, then complete them with package type
         definition"""
 
-        pkg_type = node.conanfile.package_type
+        pkg_type = node.recipe.package_type
 
         def set_if_none(field, value):
             if getattr(self, field) is None:
@@ -233,7 +233,7 @@ class Requirement:
             set_if_none("_headers", False)
             set_if_none("_visible", False)  # Conflicts might be allowed for this kind of package
 
-        src_pkg_type = src_node.conanfile.package_type
+        src_pkg_type = src_node.recipe.package_type
         if src_pkg_type is PackageType.HEADER:
             set_if_none("_transitive_headers", True)
             set_if_none("_transitive_libs", True)
@@ -331,7 +331,7 @@ class Requirement:
                 downstream_require = Requirement(require.ref, headers=require.headers, libs=require.libs, run=require.run)
             else:
                 if pkg_type != PackageType.UNKNOWN:
-                    raise ConanException(f"Package '{self.ref}' with type '{pkg_type}' cannot have "
+                    raise RecipeException(f"Package '{self.ref}' with type '{pkg_type}' cannot have "
                                          f"a '{dep_pkg_type}' dependency to '{require.ref}'")
                 # TODO: This is undertested, changing it did not break tests
                 downstream_require = require.copy_requirement()
@@ -385,7 +385,7 @@ class Requirement:
         downstream_require.direct = False
         return downstream_require
 
-    def deduce_package_id_mode(self, conanfile, dep_node, non_embed_mode, embed_mode, build_mode,
+    def deduce_package_id_mode(self, recipe, dep_node, non_embed_mode, embed_mode, build_mode,
                                unknown_mode, fix_transitive_static):
         # If defined by the ``require(package_id_mode=xxx)`` trait, that is higher priority
         # The "conf" values are defaults, no hard overrides
@@ -394,23 +394,23 @@ class Requirement:
 
         if self.test:
             return  # test_requires never affect the binary_id
-        dep_conanfile = dep_node.conanfile
-        dep_pkg_type = dep_conanfile.package_type
+        dep_recipe = dep_node.recipe
+        dep_pkg_type = dep_recipe.package_type
         if self.build:
-            build_mode = getattr(dep_conanfile, "build_mode", build_mode)
+            build_mode = getattr(dep_recipe, "build_mode", build_mode)
             if build_mode and self.direct:
                 self.package_id_mode = build_mode
             return
 
-        pkg_type = conanfile.package_type
+        pkg_type = recipe.package_type
         if pkg_type is PackageType.HEADER:
             self.package_id_mode = "unrelated_mode"
             return
 
         # If the dependency defines the mode, that has priority over default
-        embed_mode = getattr(dep_conanfile, "package_id_embed_mode", embed_mode)
-        non_embed_mode = getattr(dep_conanfile, "package_id_non_embed_mode", non_embed_mode)
-        unknown_mode = getattr(dep_conanfile, "package_id_unknown_mode", unknown_mode)
+        embed_mode = getattr(dep_recipe, "package_id_embed_mode", embed_mode)
+        non_embed_mode = getattr(dep_recipe, "package_id_non_embed_mode", non_embed_mode)
+        unknown_mode = getattr(dep_recipe, "package_id_unknown_mode", unknown_mode)
         if self.headers or self.libs:  # only if linked
             if pkg_type is PackageType.SHARED or pkg_type is PackageType.APP:
                 if dep_pkg_type is PackageType.SHARED:
@@ -422,15 +422,6 @@ class Requirement:
                     self.package_id_mode = embed_mode
                 elif self.headers or not fix_transitive_static:
                     self.package_id_mode = non_embed_mode
-                    if not self.headers and not fix_transitive_static:
-                        # Just to avoid multiple repeated warnings
-                        warned = getattr(conanfile, "_conan_fix_transitive_static", False)
-                        if not warned:
-                            msg = ("Transitive dependencies with 'headers=False' effect in "
-                                   "'package_id' is not necessary and suboptimal. Use "
-                                   "required_conan_version='>=2.28' to activate it")
-                            conanfile.output.warning(msg, warn_tag="risk")
-                            conanfile._conan_fix_transitive_static = True
                 else:
                     self.package_id_mode = None
                 return
@@ -478,7 +469,7 @@ class TestRequirements:
 
 
 class Requirements:
-    """ User definitions of all requires in a conanfile
+    """ User definitions of all requires in a recipe
     """
     def __init__(self, declared=None, declared_build=None, declared_test=None,
                  declared_build_tool=None):
@@ -492,10 +483,10 @@ class Requirements:
                     for item in declared:
                         if not isinstance(item, str):
                             # TODO (2.X): Remove protection after transition from 1.X
-                            raise ConanException(f"Incompatible 1.X requires declaration '{item}'")
+                            raise RecipeException(f"Incompatible 1.X requires declaration '{item}'")
                         self.__call__(item)
                 except TypeError:
-                    raise ConanException("Wrong 'requires' definition, "
+                    raise RecipeException("Wrong 'requires' definition, "
                                          "did you mean 'requirements()'?")
         if declared_build is not None:
             if isinstance(declared_build, str):
@@ -505,7 +496,7 @@ class Requirements:
                     for item in declared_build:
                         self.build_require(item)
                 except TypeError:
-                    raise ConanException("Wrong 'build_requires' definition, "
+                    raise RecipeException("Wrong 'build_requires' definition, "
                                          "did you mean 'build_requirements()'?")
         if declared_test is not None:
             if isinstance(declared_test, str):
@@ -515,7 +506,7 @@ class Requirements:
                     for item in declared_test:
                         self.test_require(item)
                 except TypeError:
-                    raise ConanException("Wrong 'test_requires' definition, "
+                    raise RecipeException("Wrong 'test_requires' definition, "
                                          "did you mean 'build_requirements()'?")
         if declared_build_tool is not None:
             if isinstance(declared_build_tool, str):
@@ -525,7 +516,7 @@ class Requirements:
                     for item in declared_build_tool:
                         self.build_require(item, run=True)
                 except TypeError:
-                    raise ConanException("Wrong 'tool_requires' definition, "
+                    raise RecipeException("Wrong 'tool_requires' definition, "
                                          "did you mean 'build_requirements()'?")
 
     def reindex(self, require, new_name):
@@ -550,7 +541,7 @@ class Requirements:
         ref = RecipeReference.loads(str_ref)
         req = Requirement(ref, **kwargs)
         if self._requires.get(req):
-            raise ConanException("Duplicated requirement: {}".format(ref))
+            raise RecipeException("Duplicated requirement: {}".format(ref))
         self._requires[req] = req
 
     def build_require(self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
@@ -573,7 +564,7 @@ class Requirements:
                           package_id_mode=package_id_mode, options=options, override=override)
 
         if raise_if_duplicated and self._requires.get(req):
-            raise ConanException("Duplicated requirement: {}".format(ref))
+            raise RecipeException("Duplicated requirement: {}".format(ref))
         self._requires[req] = req
 
     def test_require(self, ref, run=None, options=None, force=None):
@@ -594,7 +585,7 @@ class Requirements:
         req = Requirement(ref, headers=True, libs=True, build=False, run=run, visible=False,
                           test=True, package_id_mode=None, options=options, force=force)
         if self._requires.get(req):
-            raise ConanException("Duplicated requirement: {}".format(ref))
+            raise RecipeException("Duplicated requirement: {}".format(ref))
         self._requires[req] = req
 
     def tool_require(self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
@@ -614,7 +605,7 @@ class Requirements:
         req = Requirement(ref, headers=False, libs=False, build=True, run=run, visible=visible,
                           package_id_mode=package_id_mode, options=options, override=override)
         if raise_if_duplicated and self._requires.get(req):
-            raise ConanException("Duplicated requirement: {}".format(ref))
+            raise RecipeException("Duplicated requirement: {}".format(ref))
         self._requires[req] = req
 
     def __repr__(self):

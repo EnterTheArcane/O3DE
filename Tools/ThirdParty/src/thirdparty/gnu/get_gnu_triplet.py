@@ -1,4 +1,4 @@
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 def _get_gnu_arch(os_, arch):
@@ -53,9 +53,9 @@ def _get_gnu_arch(os_, arch):
             machine = "riscv32"
 
     if machine is None:
-        raise ConanException("Unknown '%s' machine, Conan doesn't know how to "
-                             "translate it to the GNU triplet, please report at "
-                             " https://github.com/conan-io/conan/issues" % arch)
+        raise RecipeException("Unknown '%s' machine, Recipe doesn't know how to "
+                             "translate it to the GNU triplet, please report this "
+                             "to the ThirdParty maintainers" % arch)
     return machine
 
 
@@ -102,7 +102,7 @@ def _get_gnu_triplet(os_, arch, compiler=None):
     :param compiler: compiler used to create the triplet (only needed fo windows)
     """
     if os_ == "Windows" and compiler is None:
-        raise ConanException("'compiler' parameter for 'get_gnu_triplet()' is not specified and "
+        raise RecipeException("'compiler' parameter for 'get_gnu_triplet()' is not specified and "
                              "needed for os=Windows")
     machine = _get_gnu_arch(os_, arch)
     op_system = _get_gnu_os(os_, arch, compiler=compiler)

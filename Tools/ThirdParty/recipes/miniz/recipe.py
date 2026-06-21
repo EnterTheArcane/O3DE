@@ -51,7 +51,7 @@ class Recipe(RecipeBase):
         tc.variables["BUILD_HEADER_ONLY"] = False
         tc.variables["INSTALL_PROJECT"] = True
         tc.cache_variables["BUILD_TESTS"] = False
-        # Honor BUILD_SHARED_LIBS from conan_toolchain (see https://github.com/conan-io/conan/issues/11840)
+        # Honor BUILD_SHARED_LIBS from recipe_toolchain (see upstream issue 11840)
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0077"] = "NEW"
         tc.generate()
 

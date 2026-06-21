@@ -1,4 +1,4 @@
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.recipe_ref import ref_matches
 
 _falsey_options = ["false", "none", "0", "off", ""]
@@ -34,7 +34,7 @@ class _PackageOption:
         else:
             return "%s%s=%s" % (self._name, important, self._value)
 
-    def copy_conaninfo_option(self):
+    def copy_package_id_info_option(self):
         # To generate a copy without validation, for package_id info.options value
         assert self._possible_values is not None  # this should always come from recipe, with []
         return _PackageOption(self._name, self._value, self._possible_values + ["ANY"])
@@ -61,7 +61,7 @@ class _PackageOption:
             return
         msg = ("'%s' is not a valid 'options.%s' value.\nPossible values are %s"
                % (value, self._name, self._possible_values))
-        raise ConanException(msg)
+        raise RecipeException(msg)
 
     def __eq__(self, other):
         # To promote the other to string, and always compare as strings
@@ -93,7 +93,7 @@ class _PackageOption:
         if self._value is not None:
             return
         if None not in self._possible_values:
-            raise ConanException("'options.%s' value not defined" % self._name)
+            raise RecipeException("'options.%s' value not defined" % self._name)
 
 
 class _PackageOptions:
@@ -148,23 +148,23 @@ class _PackageOptions:
         for child in self._data.values():
             child.validate()
 
-    def copy_conaninfo_options(self):
+    def copy_package_id_info_options(self):
         # To generate a copy without validation, for package_id info.options value
         result = _PackageOptions()
         for k, v in self._data.items():
-            result._data[k] = v.copy_conaninfo_option()
+            result._data[k] = v.copy_package_id_info_option()
         return result
 
     def _ensure_exists(self, field):
         if self._constrained and field not in self._data:
-            raise ConanException(option_not_exist_msg(field, list(self._data.keys())))
+            raise RecipeException(option_not_exist_msg(field, list(self._data.keys())))
 
     def __getattr__(self, field):
         assert field[0] != "_", "ERROR %s" % field
         try:
             return self._data[field]
         except KeyError:
-            raise ConanException(option_not_exist_msg(field, list(self._data.keys())))
+            raise RecipeException(option_not_exist_msg(field, list(self._data.keys())))
 
     def __delattr__(self, field):
         assert field[0] != "_", "ERROR %s" % field
@@ -183,13 +183,13 @@ class _PackageOptions:
         self._set(item, value)
 
     def _set(self, item, value):
-        # programmatic way to define values, for Conan codebase
+        # programmatic way to define values, for Recipe codebase
         important = item[-1] == "!"
         item = item[:-1] if important else item
 
         current_value = self._data.get(item)
         if self._freeze and current_value.value is not None and current_value != value:
-            raise ConanException(f"Incorrect attempt to modify option '{item}' "
+            raise RecipeException(f"Incorrect attempt to modify option '{item}' "
                                  f"from '{current_value}' to '{value}'")
         self._ensure_exists(item)
         v = self._data.setdefault(item, _PackageOption(item, None))
@@ -235,23 +235,23 @@ class Options:
                     if len(tokens) == 2:
                         package, option = tokens
                         if not package:
-                            raise ConanException("Invalid empty package name in options. "
+                            raise RecipeException("Invalid empty package name in options. "
                                                  f"Use a pattern like `mypkg/*:{option}`")
                         if "/" not in package and "*" not in package and "&" not in package:
                             msg = "The usage of package names `{}` in options is " \
                                   "deprecated, use a pattern like `{}/*:{}` " \
                                   "instead".format(k, package, option)
-                            raise ConanException(msg)
+                            raise RecipeException(msg)
                         if "[" in package:
                             msg = (f"Options pattern {package} contains a version range, which has no effect. "
                                    f"Only '&' for consumer and '*' as wildcard are supported in this context.")
-                            from thirdparty._internal.api.output import ConanOutput
-                            ConanOutput().warning(msg, warn_tag="risk")
+                            from thirdparty._internal.api.output import Output
+                            Output().warning(msg, warn_tag="risk")
                         self._deps_package_options.setdefault(package, _PackageOptions())[option] = v
                     else:
                         self._package_options[k] = v
         except Exception as e:
-            raise ConanException("Error while initializing options. %s" % str(e))
+            raise RecipeException("Error while initializing options. %s" % str(e))
 
     def __repr__(self):
         return self.dumps()
@@ -290,17 +290,17 @@ class Options:
                 name, value = line.split("=", 1)
                 values[name] = value
             except ValueError:
-                raise ConanException(f"Error while parsing option '{line}'. "
+                raise RecipeException(f"Error while parsing option '{line}'. "
                                      f"Options should be specified as 'pkg/*:option=value'")
         return Options(options_values=values)
 
     def serialize(self):
-        # used by ConanInfo serialization, involved in "list package-ids" output
+        # used by PackageIdInfo serialization, involved in "list package-ids" output
         # we need to maintain the "options" and "req_options" first level or servers will break
-        # This happens always after reading from conaninfo.txt => all str and not None
+        # This happens always after reading from package_id_info.txt => all str and not None
         result = {k: v for k, v in self._package_options.items()}
         # Include the dependencies ones, in case they have been explicitly added in package_id()
-        # to the conaninfo.txt, we want to report them
+        # to the package_id_info.txt, we want to report them
         for pkg_pattern, pkg_option in sorted(self._deps_package_options.items()):
             for key, value in pkg_option.items():
                 result["%s:%s" % (pkg_pattern, key)] = value
@@ -339,13 +339,13 @@ class Options:
         package_options.update_options(self._package_options)
         self._package_options = _PackageOptions()
 
-    def copy_conaninfo_options(self):
+    def copy_package_id_info_options(self):
         # To generate the package_id info.options copy, that can destroy, change and remove things
         result = Options()
-        result._package_options = self._package_options.copy_conaninfo_options()
+        result._package_options = self._package_options.copy_package_id_info_options()
         # In most scenarios this should be empty at this stage, because it was cleared
         if self._deps_package_options:
-            raise ConanException("Dependencies options were defined incorrectly. Maybe you"
+            raise RecipeException("Dependencies options were defined incorrectly. Maybe you"
                                  " tried to define options values in 'requirements()' or other"
                                  " invalid place")
         return result

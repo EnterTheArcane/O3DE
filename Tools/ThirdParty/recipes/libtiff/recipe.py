@@ -122,7 +122,7 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         apply_patches(self)
 
-        # remove FindXXXX for conan dependencies
+        # remove FindXXXX for recipe dependencies
         for module in ["Deflate", "JBIG", "JPEG", "LERC", "WebP", "ZSTD", "liblzma", "LibLZMA"]:
             rm(self, f"Find{module}.cmake", os.path.join(self.source_folder, "cmake"))
 

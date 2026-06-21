@@ -1,15 +1,15 @@
 import operator
 
-from thirdparty.errors import ConanInvalidConfiguration, ConanException
+from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 from thirdparty._internal.api.detect.detect_api import default_cstd as default_cstd_
 from thirdparty._internal.model.version import Version
 
 
-def check_min_cstd(conanfile, cstd, gnu_extensions=False):
+def check_min_cstd(recipe, cstd, gnu_extensions=False):
     """ Check if current cstd fits the minimal version required.
 
         In case the current cstd doesn't fit the minimal version required
-        by cstd, a ConanInvalidConfiguration exception will be raised.
+        by cstd, a RecipeInvalidConfiguration exception will be raised.
 
         1. If settings.compiler.cstd, the tool will use settings.compiler.cstd to compare
         2. It not settings.compiler.cstd, the tool will use compiler to compare (reading the
@@ -18,18 +18,18 @@ def check_min_cstd(conanfile, cstd, gnu_extensions=False):
            cannot compare.
         4. If can not detect the default cstd for settings.compiler, a exception will be raised.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param cstd: Minimal cstd version required
     :param gnu_extensions: GNU extension is required (e.g gnu17)
     """
-    _check_cstd(conanfile, cstd, operator.lt, gnu_extensions)
+    _check_cstd(recipe, cstd, operator.lt, gnu_extensions)
 
 
-def check_max_cstd(conanfile, cstd, gnu_extensions=False):
+def check_max_cstd(recipe, cstd, gnu_extensions=False):
     """ Check if current cstd fits the maximum version required.
 
         In case the current cstd doesn't fit the maximum version required
-        by cstd, a ConanInvalidConfiguration exception will be raised.
+        by cstd, a RecipeInvalidConfiguration exception will be raised.
 
         1. If settings.compiler.cstd, the tool will use settings.compiler.cstd to compare
         2. It not settings.compiler.cstd, the tool will use compiler to compare (reading the
@@ -38,75 +38,75 @@ def check_max_cstd(conanfile, cstd, gnu_extensions=False):
            cannot compare.
         4. If can not detect the default cstd for settings.compiler, a exception will be raised.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param cstd: Maximum cstd version required
     :param gnu_extensions: GNU extension is required (e.g gnu17)
     """
-    _check_cstd(conanfile, cstd, operator.gt, gnu_extensions)
+    _check_cstd(recipe, cstd, operator.gt, gnu_extensions)
 
 
-def valid_min_cstd(conanfile, cstd, gnu_extensions=False):
+def valid_min_cstd(recipe, cstd, gnu_extensions=False):
     """ Validate if current cstd fits the minimal version required.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param cstd: Minimal cstd version required
     :param gnu_extensions: GNU extension is required (e.g gnu17). This option ONLY works on Linux.
     :return: True, if current cstd matches the required cstd version. Otherwise, False.
     """
     try:
-        check_min_cstd(conanfile, cstd, gnu_extensions)
-    except ConanInvalidConfiguration:
+        check_min_cstd(recipe, cstd, gnu_extensions)
+    except RecipeInvalidConfiguration:
         return False
     return True
 
 
-def valid_max_cstd(conanfile, cstd, gnu_extensions=False):
+def valid_max_cstd(recipe, cstd, gnu_extensions=False):
     """ Validate if current cstd fits the maximum version required.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param cstd: Maximum cstd version required
     :param gnu_extensions: GNU extension is required (e.g gnu17). This option ONLY works on Linux.
     :return: True, if current cstd matches the required cstd version. Otherwise, False.
     """
     try:
-        check_max_cstd(conanfile, cstd, gnu_extensions)
-    except ConanInvalidConfiguration:
+        check_max_cstd(recipe, cstd, gnu_extensions)
+    except RecipeInvalidConfiguration:
         return False
     return True
 
 
-def default_cstd(conanfile, compiler=None, compiler_version=None):
+def default_cstd(recipe, compiler=None, compiler_version=None):
     """
-    Get the default ``compiler.cstd`` for the "conanfile.settings.compiler" and "conanfile
+    Get the default ``compiler.cstd`` for the "recipe.settings.compiler" and "recipe
     settings.compiler_version" or for the parameters "compiler" and "compiler_version" if specified.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param compiler: Name of the compiler e.g. gcc
     :param compiler_version: Version of the compiler e.g. 12
     :return: The default ``compiler.cstd`` for the specified compiler
     """
-    compiler = compiler or conanfile.settings.get_safe("compiler")
-    compiler_version = compiler_version or conanfile.settings.get_safe("compiler.version")
+    compiler = compiler or recipe.settings.get_safe("compiler")
+    compiler_version = compiler_version or recipe.settings.get_safe("compiler.version")
     if not compiler or not compiler_version:
-        raise ConanException("Called default_cppstd with no compiler or no compiler.version")
+        raise RecipeException("Called default_cppstd with no compiler or no compiler.version")
     return default_cstd_(compiler, Version(compiler_version))
 
 
-def supported_cstd(conanfile, compiler=None, compiler_version=None):
+def supported_cstd(recipe, compiler=None, compiler_version=None):
     """
-    Get a list of supported ``compiler.cstd`` for the "conanfile.settings.compiler" and
-    "conanfile.settings.compiler_version" or for the parameters "compiler" and "compiler_version"
+    Get a list of supported ``compiler.cstd`` for the "recipe.settings.compiler" and
+    "recipe.settings.compiler_version" or for the parameters "compiler" and "compiler_version"
     if specified.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param compiler: Name of the compiler e.g: gcc
     :param compiler_version: Version of the compiler e.g: 12
     :return: a list of supported ``cstd`` values.
     """
-    compiler = compiler or conanfile.settings.get_safe("compiler")
-    compiler_version = compiler_version or conanfile.settings.get_safe("compiler.version")
+    compiler = compiler or recipe.settings.get_safe("compiler")
+    compiler_version = compiler_version or recipe.settings.get_safe("compiler.version")
     if not compiler or not compiler_version:
-        raise ConanException("Called supported_cstd with no compiler or no compiler.version")
+        raise RecipeException("Called supported_cstd with no compiler or no compiler.version")
 
     func = {"apple-clang": _apple_clang_supported_cstd,
             "gcc": _gcc_supported_cstd,
@@ -119,11 +119,11 @@ def supported_cstd(conanfile, compiler=None, compiler_version=None):
     return None
 
 
-def _check_cstd(conanfile, cstd, comparator, gnu_extensions):
+def _check_cstd(recipe, cstd, comparator, gnu_extensions):
     """ Check if current cstd fits the version required according to a given comparator.
 
         In case the current cstd doesn't fit the maximum version required
-        by cstd, a ConanInvalidConfiguration exception will be raised.
+        by cstd, a RecipeInvalidConfiguration exception will be raised.
 
         1. If settings.compiler.cstd, the tool will use settings.compiler.cstd to compare
         2. It not settings.compiler.cstd, the tool will use compiler to compare (reading the
@@ -132,13 +132,13 @@ def _check_cstd(conanfile, cstd, comparator, gnu_extensions):
            cannot compare.
         4. If can not detect the default cstd for settings.compiler, a exception will be raised.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param cstd: Required cstd version.
     :param comparator: Operator to use to compare the detected and the required cstd versions.
     :param gnu_extensions: GNU extension is required (e.g gnu17)
     """
     if not str(cstd).isdigit():
-        raise ConanException("cstd parameter must be a number")
+        raise RecipeException("cstd parameter must be a number")
 
     def compare(lhs, rhs, comp):
         def extract_cpp_version(_cstd):
@@ -151,15 +151,15 @@ def _check_cstd(conanfile, cstd, comparator, gnu_extensions):
         rhs = add_millennium(extract_cpp_version(rhs))
         return not comp(lhs, rhs)
 
-    current_cstd = conanfile.settings.get_safe("compiler.cstd")
+    current_cstd = recipe.settings.get_safe("compiler.cstd")
     if current_cstd is None:
-        raise ConanInvalidConfiguration("The compiler.cstd is not defined for this configuration")
+        raise RecipeInvalidConfiguration("The compiler.cstd is not defined for this configuration")
 
     if gnu_extensions and "gnu" not in current_cstd:
-        raise ConanInvalidConfiguration("The cstd GNU extension is required")
+        raise RecipeInvalidConfiguration("The cstd GNU extension is required")
 
     if not compare(current_cstd, cstd, comparator):
-        raise ConanInvalidConfiguration(
+        raise RecipeInvalidConfiguration(
             "Current cstd ({}) is {} than the required C standard ({}).".format(
                 current_cstd, "higher" if comparator == operator.gt else "lower", cstd))
 

@@ -58,7 +58,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
 
-        # Needed. See https://github.com/conan-io/conan-center-index/pull/16583#discussion_r1188548265 for details
+        # Needed. See https://github.com/recipe-io/recipe-center-index/pull/16583#discussion_r1188548265 for details
         tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.get_safe("fPIC", True)
 
         # Options defined in physx/compiler/public/CMakeLists.txt
@@ -96,10 +96,10 @@ class Recipe(RecipeBase):
 
         if self.settings.os == "Windows":
             # Options defined in physx/source/compiler/cmake/windows/CMakeLists.txt
-            tc.cache_variables["PX_COPY_EXTERNAL_DLL"] = False # External dll copy disabled, PhysXDevice dll copy is handled afterward during conan packaging
+            tc.cache_variables["PX_COPY_EXTERNAL_DLL"] = False # External dll copy disabled, PhysXDevice dll copy is handled afterward during recipe packaging
             tc.cache_variables["PX_FLOAT_POINT_PRECISE_MATH"] = self.options.enable_float_point_precise_math
             tc.cache_variables["PX_USE_NVTX"] = False # Could be controlled by an option if NVTX had a recipe, disabled for the moment
-            tc.cache_variables["GPU_DLL_COPIED"] = True # PhysXGpu dll copy disabled, this copy is handled afterward during conan packaging
+            tc.cache_variables["GPU_DLL_COPIED"] = True # PhysXGpu dll copy disabled, this copy is handled afterward during recipe packaging
 
             # Options used in physx/source/compiler/cmake/windows/PhysX.cmake
             tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = False
@@ -126,7 +126,7 @@ class Recipe(RecipeBase):
         physx_source_cmake_dir = os.path.join(self.source_folder, "physx", "source", "compiler", "cmake")
 
         # Remove global and specifics hard-coded PIC settings
-        # (conan's CMake build helper properly sets CMAKE_POSITION_INDEPENDENT_CODE
+        # (the recipe system CMake build helper properly sets CMAKE_POSITION_INDEPENDENT_CODE
         # depending on options)
         replace_in_file(self, os.path.join(physx_source_cmake_dir, "CMakeLists.txt"),
                               "SET(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
@@ -160,12 +160,12 @@ class Recipe(RecipeBase):
 
         if self.settings.os == "Macos":
             mac_cmake = os.path.join(physx_source_cmake_dir, "mac", "CMakeLists.txt")
-            # Remove hardcoded deployment target so the conan toolchain value is used
+            # Remove hardcoded deployment target so the recipe toolchain value is used
             replace_in_file(self, mac_cmake,
                             'SET(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")', "")
-            # Fix hardcoded x86_64 arch — use the target arch from conan settings
-            _conan_to_osx_arch = {"armv8": "arm64", "x86_64": "x86_64", "x86": "i386"}
-            _osx_arch = _conan_to_osx_arch.get(str(self.settings.arch), str(self.settings.arch))
+            # Fix hardcoded x86_64 arch — use the target arch from recipe settings
+            _recipe_to_osx_arch = {"armv8": "arm64", "x86_64": "x86_64", "x86": "i386"}
+            _osx_arch = _recipe_to_osx_arch.get(str(self.settings.arch), str(self.settings.arch))
             replace_in_file(self, mac_cmake,
                             'SET(OSX_BITNESS "-arch x86_64")',
                             'SET(OSX_BITNESS "-arch {}")'.format(_osx_arch))

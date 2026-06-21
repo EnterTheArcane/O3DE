@@ -11,19 +11,19 @@ from thirdparty.apple.apple import is_apple_os, to_apple_arch
 from thirdparty.build import build_jobs
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, libcxx_flags, threads_flags
 from thirdparty.build.cross_building import cross_building
-from thirdparty.cmake.toolchain import CONAN_TOOLCHAIN_FILENAME
+from thirdparty.cmake.toolchain import RECIPE_TOOLCHAIN_FILENAME
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.microsoft.visual import msvc_version_to_toolset_version, msvc_platform_from_arch
 from thirdparty._internal.api.install.generators import relativize_path
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.util.files import load
 
 
 class Block:
-    def __init__(self, conanfile, toolchain, name):
-        self._conanfile = conanfile
+    def __init__(self, recipe, toolchain, name):
+        self._recipe = recipe
         self._toolchain = toolchain
         self._context_values = None
         self._name = name
@@ -69,13 +69,13 @@ class VSRuntimeBlock(Block):
         if(NOT "${POLICY_CMP0091}" STREQUAL NEW)
             message(FATAL_ERROR "The CMake policy CMP0091 must be NEW, but is '${POLICY_CMP0091}'")
         endif()
-        message(STATUS "Conan toolchain: Setting CMAKE_MSVC_RUNTIME_LIBRARY={{ genexpr.str  }}")
+        message(STATUS "Recipe toolchain: Setting CMAKE_MSVC_RUNTIME_LIBRARY={{ genexpr.str  }}")
         set(CMAKE_MSVC_RUNTIME_LIBRARY "{{ genexpr.str }}")
         """)
 
     def context(self):
         # Parsing existing toolchain file to get existing configured runtimes
-        settings = self._conanfile.settings
+        settings = self._recipe.settings
         if settings.get_safe("os") != "Windows":
             return
 
@@ -88,8 +88,8 @@ class VSRuntimeBlock(Block):
             return
 
         config_dict = {}
-        if os.path.exists(CONAN_TOOLCHAIN_FILENAME):
-            existing_include = load(CONAN_TOOLCHAIN_FILENAME)
+        if os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
+            existing_include = load(RECIPE_TOOLCHAIN_FILENAME)
             msvc_runtime_value = re.search(r"set\(CMAKE_MSVC_RUNTIME_LIBRARY \"([^)]*)\"\)",
                                            existing_include)
             if msvc_runtime_value:
@@ -125,7 +125,7 @@ class VSDebuggerEnvironment(Block):
 
         {% if vs_debugger_path %}
         # if the file exists it will be loaded by FindFiles block and the variable defined there
-        if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/conan_cmakedeps_paths.cmake")
+        if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/recipe_cmakedeps_paths.cmake")
         # This variable requires CMake>=3.27 to work
         set(CMAKE_VS_DEBUGGER_ENVIRONMENT "{{ vs_debugger_path }}")
         endif()
@@ -133,8 +133,8 @@ class VSDebuggerEnvironment(Block):
         """)
 
     def context(self):
-        os_ = self._conanfile.settings.get_safe("os")
-        build_type = self._conanfile.settings.get_safe("build_type")
+        os_ = self._recipe.settings.get_safe("os")
+        build_type = self._recipe.settings.get_safe("build_type")
 
         if (os_ and "Windows" not in os_) or not build_type:
             return None
@@ -143,8 +143,8 @@ class VSDebuggerEnvironment(Block):
             return None
 
         config_dict = {}
-        if os.path.exists(CONAN_TOOLCHAIN_FILENAME):
-            existing_include = load(CONAN_TOOLCHAIN_FILENAME)
+        if os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
+            existing_include = load(RECIPE_TOOLCHAIN_FILENAME)
             pattern = r"set\(CMAKE_VS_DEBUGGER_ENVIRONMENT \"PATH=([^)]*);%PATH%\"\)"
             vs_debugger_environment = re.search(pattern, existing_include)
             if vs_debugger_environment:
@@ -152,12 +152,12 @@ class VSDebuggerEnvironment(Block):
                 matches = re.findall(r"\$<\$<CONFIG:([A-Za-z]*)>:([^>]*)>", capture)
                 config_dict = dict(matches)
 
-        host_deps = self._conanfile.dependencies.host.values()
-        test_deps = self._conanfile.dependencies.test.values()
+        host_deps = self._recipe.dependencies.host.values()
+        test_deps = self._recipe.dependencies.test.values()
         bin_dirs = [p for dep in host_deps for p in dep.cpp_info.aggregated_components().bindirs]
         test_bindirs = [p for dep in test_deps for p in dep.cpp_info.aggregated_components().bindirs]
         bin_dirs.extend(test_bindirs)
-        bin_dirs = [relativize_path(p, self._conanfile, "${CMAKE_CURRENT_LIST_DIR}")
+        bin_dirs = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
                     for p in bin_dirs]
         bin_dirs = [p.replace("\\", "/") for p in bin_dirs]
         bin_dirs = ";".join(bin_dirs) if bin_dirs else None
@@ -179,18 +179,18 @@ class FPicBlock(Block):
         # Defining CMAKE_POSITION_INDEPENDENT_CODE for static libraries when necessary
 
         {% if fpic %}
-        message(STATUS "Conan toolchain: Setting CMAKE_POSITION_INDEPENDENT_CODE={{ fpic }} (options.fPIC)")
+        message(STATUS "Recipe toolchain: Setting CMAKE_POSITION_INDEPENDENT_CODE={{ fpic }} (options.fPIC)")
         set(CMAKE_POSITION_INDEPENDENT_CODE {{ fpic }} CACHE BOOL "Position independent code")
         {% endif %}
         """)
 
     def context(self):
-        fpic = self._conanfile.options.get_safe("fPIC")
+        fpic = self._recipe.options.get_safe("fPIC")
         if fpic is None:
             return None
-        os_ = self._conanfile.settings.get_safe("os")
+        os_ = self._recipe.settings.get_safe("os")
         if os_ and "Windows" in os_:
-            self._conanfile.output.warning("Toolchain: Ignoring fPIC option defined for Windows")
+            self._recipe.output.warning("Toolchain: Ignoring fPIC option defined for Windows")
             return None
         return {"fpic": "ON" if fpic else "OFF"}
 
@@ -201,17 +201,17 @@ class GLibCXXBlock(Block):
         # right CXX_FLAGS for that libcxx
 
         {% if set_libcxx %}
-        message(STATUS "Conan toolchain: Defining libcxx as C++ flags: {{ set_libcxx }}")
-        string(APPEND CONAN_CXX_FLAGS " {{ set_libcxx }}")
+        message(STATUS "Recipe toolchain: Defining libcxx as C++ flags: {{ set_libcxx }}")
+        string(APPEND RECIPE_CXX_FLAGS " {{ set_libcxx }}")
         {% endif %}
         {% if glibcxx %}
-        message(STATUS "Conan toolchain: Adding glibcxx compile definition: {{ glibcxx }}")
+        message(STATUS "Recipe toolchain: Adding glibcxx compile definition: {{ glibcxx }}")
         add_compile_definitions({{ glibcxx }})
         {% endif %}
         """)
 
     def context(self):
-        libcxx, stdlib11 = libcxx_flags(self._conanfile)
+        libcxx, stdlib11 = libcxx_flags(self._recipe)
         return {"set_libcxx": libcxx, "glibcxx": stdlib11}
 
 
@@ -237,31 +237,31 @@ class ArchitectureBlock(Block):
     template = textwrap.dedent("""\
         {% if arch_flag %}
         # Define C++ flags, C flags and linker flags from 'settings.arch'
-        message(STATUS "Conan toolchain: Defining architecture flag: {{ arch_flag }}")
-        string(APPEND CONAN_CXX_FLAGS " {{ arch_flag }}")
-        string(APPEND CONAN_C_FLAGS " {{ arch_flag }}")
-        string(APPEND CONAN_SHARED_LINKER_FLAGS " {{ arch_flag }}")
-        string(APPEND CONAN_EXE_LINKER_FLAGS " {{ arch_flag }}")
+        message(STATUS "Recipe toolchain: Defining architecture flag: {{ arch_flag }}")
+        string(APPEND RECIPE_CXX_FLAGS " {{ arch_flag }}")
+        string(APPEND RECIPE_C_FLAGS " {{ arch_flag }}")
+        string(APPEND RECIPE_SHARED_LINKER_FLAGS " {{ arch_flag }}")
+        string(APPEND RECIPE_EXE_LINKER_FLAGS " {{ arch_flag }}")
         {% endif %}
         {% if arch_link_flag %}
-        message(STATUS "Conan toolchain: Defining architecture linker flag: {{ arch_link_flag }}")
-        string(APPEND CONAN_SHARED_LINKER_FLAGS " {{ arch_link_flag }}")
-        string(APPEND CONAN_EXE_LINKER_FLAGS " {{ arch_link_flag }}")
+        message(STATUS "Recipe toolchain: Defining architecture linker flag: {{ arch_link_flag }}")
+        string(APPEND RECIPE_SHARED_LINKER_FLAGS " {{ arch_link_flag }}")
+        string(APPEND RECIPE_EXE_LINKER_FLAGS " {{ arch_link_flag }}")
         {% endif %}
         {% if thread_flags_list %}
         # Define C++ flags, C flags and linker flags from 'compiler.threads'
-        message(STATUS "Conan toolchain: Defining thread flags: {{ thread_flags_list }}")
-        string(APPEND CONAN_CXX_FLAGS " {{ thread_flags_list }}")
-        string(APPEND CONAN_C_FLAGS " {{ thread_flags_list }}")
-        string(APPEND CONAN_SHARED_LINKER_FLAGS " {{ thread_flags_list }}")
-        string(APPEND CONAN_EXE_LINKER_FLAGS " {{ thread_flags_list }}")
+        message(STATUS "Recipe toolchain: Defining thread flags: {{ thread_flags_list }}")
+        string(APPEND RECIPE_CXX_FLAGS " {{ thread_flags_list }}")
+        string(APPEND RECIPE_C_FLAGS " {{ thread_flags_list }}")
+        string(APPEND RECIPE_SHARED_LINKER_FLAGS " {{ thread_flags_list }}")
+        string(APPEND RECIPE_EXE_LINKER_FLAGS " {{ thread_flags_list }}")
         {% endif %}
         """)
 
     def context(self):
-        arch_flag = architecture_flag(self._conanfile)
-        arch_link_flag = architecture_link_flag(self._conanfile)
-        thread_flags_list = " ".join(threads_flags(self._conanfile))
+        arch_flag = architecture_flag(self._recipe)
+        arch_link_flag = architecture_link_flag(self._recipe)
+        thread_flags_list = " ".join(threads_flags(self._recipe))
         if not arch_flag and not arch_link_flag and not thread_flags_list:
             return
         return {"arch_flag": arch_flag, "arch_link_flag": arch_link_flag,
@@ -272,16 +272,16 @@ class RpathLinkFlagsBlock(Block):
     template = textwrap.dedent("""\
         # Pass -rpath-link pointing to all directories with runtime libraries
         {% if rpath_link_flags %}
-        string(APPEND CONAN_EXE_LINKER_FLAGS " {{ rpath_link_flags }}")
-        string(APPEND CONAN_SHARED_LINKER_FLAGS " {{ rpath_link_flags }}")
+        string(APPEND RECIPE_EXE_LINKER_FLAGS " {{ rpath_link_flags }}")
+        string(APPEND RECIPE_SHARED_LINKER_FLAGS " {{ rpath_link_flags }}")
         {% endif %}
         """)
 
     def context(self):
-        add_rpath_link = self._toolchain.add_rpath_link or self._conanfile.conf.get("tools.build:add_rpath_link", check_type=bool)
+        add_rpath_link = self._toolchain.add_rpath_link or self._recipe.conf.get("tools.build:add_rpath_link", check_type=bool)
         if add_rpath_link:
             runtime_dirs = []
-            host_req = self._conanfile.dependencies.filter({"build": False}).values()
+            host_req = self._recipe.dependencies.filter({"build": False}).values()
             for req in host_req:
                 cppinfo = req.cpp_info.aggregated_components()
                 runtime_dirs.extend(cppinfo.libdirs)
@@ -297,17 +297,17 @@ class LinkerScriptsBlock(Block):
     template = textwrap.dedent("""\
         # Add linker flags from tools.build:linker_scripts conf
 
-        message(STATUS "Conan toolchain: Defining linker script flag: {{ linker_script_flags }}")
-        string(APPEND CONAN_EXE_LINKER_FLAGS " {{ linker_script_flags }}")
+        message(STATUS "Recipe toolchain: Defining linker script flag: {{ linker_script_flags }}")
+        string(APPEND RECIPE_EXE_LINKER_FLAGS " {{ linker_script_flags }}")
         """)
 
     def context(self):
-        linker_scripts = self._conanfile.conf.get(
+        linker_scripts = self._recipe.conf.get(
             "tools.build:linker_scripts", check_type=list, default=[])
         if not linker_scripts:
             return
         linker_scripts = [linker_script.replace('\\', '/') for linker_script in linker_scripts]
-        linker_scripts = [relativize_path(p, self._conanfile, "${CMAKE_CURRENT_LIST_DIR}")
+        linker_scripts = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
                           for p in linker_scripts]
         linker_script_flags = [r'-T\"' + linker_script + r'\"' for linker_script in linker_scripts]
         return {"linker_script_flags": " ".join(linker_script_flags)}
@@ -317,36 +317,36 @@ class CppStdBlock(Block):
     template = textwrap.dedent("""\
         # Define the C++ and C standards from 'compiler.cppstd' and 'compiler.cstd'
 
-        function(conan_modify_std_watch variable access value current_list_file stack)
-            set(conan_watched_std_variable "{{ cppstd }}")
+        function(recipe_modify_std_watch variable access value current_list_file stack)
+            set(recipe_watched_std_variable "{{ cppstd }}")
             if (${variable} STREQUAL "CMAKE_C_STANDARD")
-                set(conan_watched_std_variable "{{ cstd }}")
+                set(recipe_watched_std_variable "{{ cstd }}")
             endif()
-            if ("${access}" STREQUAL "MODIFIED_ACCESS" AND NOT "${value}" STREQUAL "${conan_watched_std_variable}")
-                message(STATUS "Warning: Standard ${variable} value defined in conan_toolchain.cmake to ${conan_watched_std_variable} has been modified to ${value} by ${current_list_file}")
+            if ("${access}" STREQUAL "MODIFIED_ACCESS" AND NOT "${value}" STREQUAL "${recipe_watched_std_variable}")
+                message(STATUS "Warning: Standard ${variable} value defined in recipe_toolchain.cmake to ${recipe_watched_std_variable} has been modified to ${value} by ${current_list_file}")
             endif()
-            unset(conan_watched_std_variable)
+            unset(recipe_watched_std_variable)
         endfunction()
 
         {% if cppstd %}
-        message(STATUS "Conan toolchain: C++ Standard {{ cppstd }} with extensions {{ cppstd_extensions }}")
+        message(STATUS "Recipe toolchain: C++ Standard {{ cppstd }} with extensions {{ cppstd_extensions }}")
         set(CMAKE_CXX_STANDARD {{ cppstd }})
         set(CMAKE_CXX_EXTENSIONS {{ cppstd_extensions }})
         set(CMAKE_CXX_STANDARD_REQUIRED ON)
-        variable_watch(CMAKE_CXX_STANDARD conan_modify_std_watch)
+        variable_watch(CMAKE_CXX_STANDARD recipe_modify_std_watch)
         {% endif %}
         {% if cstd %}
-        message(STATUS "Conan toolchain: C Standard {{ cstd }} with extensions {{ cstd_extensions }}")
+        message(STATUS "Recipe toolchain: C Standard {{ cstd }} with extensions {{ cstd_extensions }}")
         set(CMAKE_C_STANDARD {{ cstd }})
         set(CMAKE_C_EXTENSIONS {{ cstd_extensions }})
         set(CMAKE_C_STANDARD_REQUIRED ON)
-        variable_watch(CMAKE_C_STANDARD conan_modify_std_watch)
+        variable_watch(CMAKE_C_STANDARD recipe_modify_std_watch)
         {% endif %}
         """)
 
     def context(self):
-        compiler_cppstd = self._conanfile.settings.get_safe("compiler.cppstd")
-        compiler_cstd = self._conanfile.settings.get_safe("compiler.cstd")
+        compiler_cppstd = self._recipe.settings.get_safe("compiler.cppstd")
+        compiler_cstd = self._recipe.settings.get_safe("compiler.cstd")
         result = {}
         if compiler_cppstd is not None:
             if compiler_cppstd.startswith("gnu"):
@@ -369,15 +369,15 @@ class SharedLibBock(Block):
     template = textwrap.dedent("""\
         # Define BUILD_SHARED_LIBS for shared libraries
 
-        message(STATUS "Conan toolchain: Setting BUILD_SHARED_LIBS = {{ shared_libs }}")
+        message(STATUS "Recipe toolchain: Setting BUILD_SHARED_LIBS = {{ shared_libs }}")
         set(BUILD_SHARED_LIBS {{ shared_libs }} CACHE BOOL "Build shared libraries")
         """)
 
     def context(self):
         try:
-            shared_libs = "ON" if self._conanfile.options.shared else "OFF"
+            shared_libs = "ON" if self._recipe.options.shared else "OFF"
             return {"shared_libs": shared_libs}
-        except ConanException:
+        except RecipeException:
             return None
 
 
@@ -385,18 +385,18 @@ class ParallelBlock(Block):
     template = textwrap.dedent("""\
         # Define VS paralell build /MP flags
 
-        string(APPEND CONAN_CXX_FLAGS " /MP{{ parallel }}")
-        string(APPEND CONAN_C_FLAGS " /MP{{ parallel }}")
+        string(APPEND RECIPE_CXX_FLAGS " /MP{{ parallel }}")
+        string(APPEND RECIPE_C_FLAGS " /MP{{ parallel }}")
         """)
 
     def context(self):
         # TODO: Check this conf
 
-        compiler = self._conanfile.settings.get_safe("compiler")
+        compiler = self._recipe.settings.get_safe("compiler")
         if compiler != "msvc" or "Visual" not in self._toolchain.generator:
             return
 
-        jobs = build_jobs(self._conanfile)
+        jobs = build_jobs(self._recipe)
         if jobs:
             return {"parallel": jobs}
 
@@ -408,13 +408,13 @@ class AndroidSystemBlock(Block):
         # and include(.../android.toolchain.cmake) from NDK toolchain file
 
         # New Android toolchain definitions
-        message(STATUS "Conan toolchain: Setting Android platform: {{ android_platform }}")
+        message(STATUS "Recipe toolchain: Setting Android platform: {{ android_platform }}")
         set(ANDROID_PLATFORM {{ android_platform }})
         {% if android_stl %}
-        message(STATUS "Conan toolchain: Setting Android stl: {{ android_stl }}")
+        message(STATUS "Recipe toolchain: Setting Android stl: {{ android_stl }}")
         set(ANDROID_STL {{ android_stl }})
         {% endif %}
-        message(STATUS "Conan toolchain: Setting Android abi: {{ android_abi }}")
+        message(STATUS "Recipe toolchain: Setting Android abi: {{ android_abi }}")
         set(ANDROID_ABI {{ android_abi }})
         {% if android_use_legacy_toolchain_file %}
         set(ANDROID_USE_LEGACY_TOOLCHAIN_FILE {{ android_use_legacy_toolchain_file }})
@@ -423,29 +423,29 @@ class AndroidSystemBlock(Block):
         """)
 
     def context(self):
-        os_ = self._conanfile.settings.get_safe("os")
+        os_ = self._recipe.settings.get_safe("os")
         if os_ != "Android":
             return
 
         # TODO: only 'c++_shared' y 'c++_static' supported?
         #  https://developer.android.com/ndk/guides/cpp-support
-        libcxx_str = self._conanfile.settings.get_safe("compiler.libcxx")
+        libcxx_str = self._recipe.settings.get_safe("compiler.libcxx")
 
-        android_ndk_path = self._conanfile.conf.get("tools.android:ndk_path")
+        android_ndk_path = self._recipe.conf.get("tools.android:ndk_path")
         if not android_ndk_path:
-            raise ConanException('CMakeToolchain needs tools.android:ndk_path configuration defined')
+            raise RecipeException('CMakeToolchain needs tools.android:ndk_path configuration defined')
         android_ndk_path = android_ndk_path.replace("\\", "/")
-        android_ndk_path = relativize_path(android_ndk_path, self._conanfile,
+        android_ndk_path = relativize_path(android_ndk_path, self._recipe,
                                            "${CMAKE_CURRENT_LIST_DIR}")
 
-        use_cmake_legacy_toolchain = self._conanfile.conf.get("tools.android:cmake_legacy_toolchain",
+        use_cmake_legacy_toolchain = self._recipe.conf.get("tools.android:cmake_legacy_toolchain",
                                                               check_type=bool)
         if use_cmake_legacy_toolchain is not None:
             use_cmake_legacy_toolchain = "ON" if use_cmake_legacy_toolchain else "OFF"
 
         ctxt_toolchain = {
-            'android_platform': 'android-' + str(self._conanfile.settings.os.api_level),
-            'android_abi': android_abi(self._conanfile),
+            'android_platform': 'android-' + str(self._recipe.settings.os.api_level),
+            'android_abi': android_abi(self._recipe),
             'android_stl': libcxx_str,
             'android_ndk_path': android_ndk_path,
             'android_use_legacy_toolchain_file': use_cmake_legacy_toolchain,
@@ -463,7 +463,7 @@ class AppleSystemBlock(Block):
         # but full path is necessary for others
         set(CMAKE_OSX_SYSROOT {{ cmake_osx_sysroot }} CACHE STRING "" FORCE)
         {% if cmake_osx_deployment_target is defined %}
-        # Setting CMAKE_OSX_DEPLOYMENT_TARGET if "os.version" is defined by the used conan profile
+        # Setting CMAKE_OSX_DEPLOYMENT_TARGET if "os.version" is defined by the used recipe profile
         set(CMAKE_OSX_DEPLOYMENT_TARGET "{{ cmake_osx_deployment_target }}" CACHE STRING "")
         {% endif %}
         set(BITCODE "")
@@ -504,23 +504,23 @@ class AppleSystemBlock(Block):
         if(CMAKE_GENERATOR MATCHES "Xcode")
           message(DEBUG "Not setting any manual command-line buildflags, since Xcode is selected as generator.")
         else()
-            string(APPEND CONAN_C_FLAGS " ${BITCODE} ${VISIBILITY}")
-            string(APPEND CONAN_CXX_FLAGS " ${BITCODE} ${VISIBILITY}")
+            string(APPEND RECIPE_C_FLAGS " ${BITCODE} ${VISIBILITY}")
+            string(APPEND RECIPE_CXX_FLAGS " ${BITCODE} ${VISIBILITY}")
             # Objective-C/C++ specific flags
-            string(APPEND CONAN_OBJC_FLAGS " ${BITCODE} ${VISIBILITY} ${FOBJC_ARC}")
-            string(APPEND CONAN_OBJCXX_FLAGS " ${BITCODE} ${VISIBILITY} ${FOBJC_ARC}")
+            string(APPEND RECIPE_OBJC_FLAGS " ${BITCODE} ${VISIBILITY} ${FOBJC_ARC}")
+            string(APPEND RECIPE_OBJCXX_FLAGS " ${BITCODE} ${VISIBILITY} ${FOBJC_ARC}")
         endif()
         """)
 
     def context(self):
-        if not is_apple_os(self._conanfile):
+        if not is_apple_os(self._recipe):
             return None
 
-        def to_apple_archs(conanfile):
-            f"""converts conan-style architectures into Apple-style archs
+        def to_apple_archs(recipe):
+            f"""converts recipe-style architectures into Apple-style archs
             to be used by CMake also supports multiple architectures
             separated by '{universal_arch_separator}'"""
-            arch_ = conanfile.settings.get_safe("arch") if conanfile else None
+            arch_ = recipe.settings.get_safe("arch") if recipe else None
             if arch_ is not None:
                 return ";".join([_to_apple_arch(arch, default=arch) for arch in
                                  arch_.split(universal_arch_separator)])
@@ -528,18 +528,18 @@ class AppleSystemBlock(Block):
         # check valid combinations of architecture - os ?
         # for iOS a FAT library valid for simulator and device can be generated
         # if multiple archs are specified "-DCMAKE_OSX_ARCHITECTURES=armv7;armv7s;arm64;i386;x86_64"
-        host_architecture = to_apple_archs(self._conanfile)
+        host_architecture = to_apple_archs(self._recipe)
 
-        host_os_version = self._conanfile.settings.get_safe("os.version")
-        host_sdk_name = self._conanfile.conf.get("tools.apple:sdk_path") or get_apple_sdk_fullname(self._conanfile)
-        is_debug = self._conanfile.settings.get_safe('build_type') == "Debug"
+        host_os_version = self._recipe.settings.get_safe("os.version")
+        host_sdk_name = self._recipe.conf.get("tools.apple:sdk_path") or get_apple_sdk_fullname(self._recipe)
+        is_debug = self._recipe.settings.get_safe('build_type') == "Debug"
 
         # Reading some configurations to enable or disable some Xcode toolchain flags and variables
-        # Issue related: https://github.com/conan-io/conan/issues/9448
+        # Issue related: upstream issue 9448
         # Based on https://github.com/leetal/ios-cmake repository
-        enable_bitcode = self._conanfile.conf.get("tools.apple:enable_bitcode", check_type=bool)
-        enable_arc = self._conanfile.conf.get("tools.apple:enable_arc", check_type=bool)
-        enable_visibility = self._conanfile.conf.get("tools.apple:enable_visibility", check_type=bool)
+        enable_bitcode = self._recipe.conf.get("tools.apple:enable_bitcode", check_type=bool)
+        enable_arc = self._recipe.conf.get("tools.apple:enable_arc", check_type=bool)
+        enable_visibility = self._recipe.conf.get("tools.apple:enable_visibility", check_type=bool)
 
         ctxt_toolchain = {
             "enable_bitcode": enable_bitcode,
@@ -548,7 +548,7 @@ class AppleSystemBlock(Block):
             "enable_visibility": enable_visibility
         }
         if host_sdk_name:
-            host_sdk_name = relativize_path(host_sdk_name, self._conanfile,
+            host_sdk_name = relativize_path(host_sdk_name, self._recipe,
                                             "${CMAKE_CURRENT_LIST_DIR}")
             ctxt_toolchain["cmake_osx_sysroot"] = host_sdk_name
         # this is used to initialize the OSX_ARCHITECTURES property on each target as it is created
@@ -567,9 +567,9 @@ class AppleSystemBlock(Block):
 class FindFiles(Block):
     template = textwrap.dedent("""\
         # Define paths to find packages, programs, libraries, etc.
-        if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/conan_cmakedeps_paths.cmake")
-          message(STATUS "Conan toolchain: Including CMakeConfigDeps generated conan_cmakedeps_paths.cmake")
-          include("${CMAKE_CURRENT_LIST_DIR}/conan_cmakedeps_paths.cmake")
+        if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/recipe_cmakedeps_paths.cmake")
+          message(STATUS "Recipe toolchain: Including CMakeConfigDeps generated recipe_cmakedeps_paths.cmake")
+          include("${CMAKE_CURRENT_LIST_DIR}/recipe_cmakedeps_paths.cmake")
         else()
 
         {% if find_package_prefer_config %}
@@ -581,7 +581,7 @@ class FindFiles(Block):
         list(PREPEND CMAKE_MODULE_PATH {{ build_paths }})
         {% endif %}
         {% if generators_folder %}
-        # the generators folder (where conan generates files, like this toolchain)
+        # the generators folder (where recipe generates files, like this toolchain)
         list(PREPEND CMAKE_MODULE_PATH {{ generators_folder }})
         {% endif %}
 
@@ -591,7 +591,7 @@ class FindFiles(Block):
         list(PREPEND CMAKE_PREFIX_PATH {{ build_paths }})
         {% endif %}
         {% if generators_folder %}
-        # The Conan local "generators" folder, where this toolchain is saved.
+        # The Recipe local "generators" folder, where this toolchain is saved.
         list(PREPEND CMAKE_PREFIX_PATH {{ generators_folder }} )
         {% endif %}
         {% if cmake_program_path %}
@@ -607,7 +607,7 @@ class FindFiles(Block):
         list(PREPEND CMAKE_INCLUDE_PATH {{ cmake_include_path }})
         {% endif %}
         {% if host_runtime_dirs %}
-        set(CONAN_RUNTIME_LIB_DIRS {{ host_runtime_dirs }} )
+        set(RECIPE_RUNTIME_LIB_DIRS {{ host_runtime_dirs }} )
         {% endif %}
 
         {% if cross_building %}
@@ -639,14 +639,14 @@ class FindFiles(Block):
             return ' '.join(f'"{item}"' for _, items in dirs.items() for item in items)
 
     def _get_host_runtime_dirs(self, host_req):
-        settings = self._conanfile.settings
+        settings = self._recipe.settings
         host_runtime_dirs = {}
-        is_win = self._conanfile.settings.get_safe("os") == "Windows"
+        is_win = self._recipe.settings.get_safe("os") == "Windows"
 
         # Get the previous configuration
-        if is_multi_configuration(self._toolchain.generator) and os.path.exists(CONAN_TOOLCHAIN_FILENAME):
-            existing_toolchain = load(CONAN_TOOLCHAIN_FILENAME)
-            pattern_lib_dirs = r"set\(CONAN_RUNTIME_LIB_DIRS ([^)]*)\)"
+        if is_multi_configuration(self._toolchain.generator) and os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
+            existing_toolchain = load(RECIPE_TOOLCHAIN_FILENAME)
+            pattern_lib_dirs = r"set\(RECIPE_RUNTIME_LIB_DIRS ([^)]*)\)"
             variable_match = re.search(pattern_lib_dirs, existing_toolchain)
             if variable_match:
                 capture = variable_match.group(1)
@@ -668,23 +668,23 @@ class FindFiles(Block):
 
     def _join_paths(self, paths):
         paths = [p.replace('\\', '/').replace('$', '\\$').replace('"', '\\"') for p in paths]
-        paths = [relativize_path(p, self._conanfile, "${CMAKE_CURRENT_LIST_DIR}") for p in paths]
+        paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in paths]
         return " ".join([f'"{p}"' for p in paths])
 
     def context(self):
         # To find the generated cmake_find_package finders
         # TODO: Change this for parameterized output location of CMakeDeps
         find_package_prefer_config = "ON"  # assume ON by default if not specified in conf
-        prefer_config = self._conanfile.conf.get("tools.cmake.cmaketoolchain:find_package_prefer_config",
+        prefer_config = self._recipe.conf.get("tools.cmake.cmaketoolchain:find_package_prefer_config",
                                                  check_type=bool)
         if prefer_config is False:
             find_package_prefer_config = "OFF"
 
-        is_apple_ = is_apple_os(self._conanfile)
+        is_apple_ = is_apple_os(self._recipe)
 
         # Read information from host context
         # TODO: Add here in 2.0 the "skip": False trait
-        host_req = self._conanfile.dependencies.filter({"build": False}).values()
+        host_req = self._recipe.dependencies.filter({"build": False}).values()
         build_paths = []
         host_lib_paths = []
         host_runtime_dirs = self._get_host_runtime_dirs(host_req)
@@ -699,7 +699,7 @@ class FindFiles(Block):
             host_include_paths.extend(cppinfo.includedirs)
 
         # Read information from build context
-        build_req = self._conanfile.dependencies.build.values()
+        build_req = self._recipe.dependencies.build.values()
         build_bin_paths = []
         for req in build_req:
             cppinfo = req.cpp_info.aggregated_components()
@@ -715,7 +715,7 @@ class FindFiles(Block):
             "cmake_framework_path": self._join_paths(host_framework_paths),
             "cmake_include_path": self._join_paths(host_include_paths),
             "is_apple": is_apple_,
-            "cross_building": cross_building(self._conanfile),
+            "cross_building": cross_building(self._recipe),
             "host_runtime_dirs": self._runtime_dirs_value(host_runtime_dirs)
         }
 
@@ -737,10 +737,10 @@ class PkgConfigBlock(Block):
         """)
 
     def context(self):
-        pkg_config = self._conanfile.conf.get("tools.gnu:pkg_config", check_type=str)
+        pkg_config = self._recipe.conf.get("tools.gnu:pkg_config", check_type=str)
         if pkg_config:
             pkg_config = pkg_config.replace("\\", "/")
-        subsystem = deduce_subsystem(self._conanfile, "build")
+        subsystem = deduce_subsystem(self._recipe, "build")
         pathsep = ":" if subsystem != WINDOWS else ";"
         pkg_config_path = "${CMAKE_CURRENT_LIST_DIR}" + pathsep
         return {"pkg_config": pkg_config,
@@ -752,16 +752,16 @@ class UserToolchain(Block):
         # Include one or more CMake user toolchain from tools.cmake.cmaketoolchain:user_toolchain
 
         {% for user_toolchain in paths %}
-        message(STATUS "Conan toolchain: Including user_toolchain: {{user_toolchain}}")
+        message(STATUS "Recipe toolchain: Including user_toolchain: {{user_toolchain}}")
         include("{{user_toolchain}}")
         {% endfor %}
         """)
 
     def context(self):
         # This is global [conf] injection of extra toolchain files
-        user_toolchain = self._conanfile.conf.get("tools.cmake.cmaketoolchain:user_toolchain",
+        user_toolchain = self._recipe.conf.get("tools.cmake.cmaketoolchain:user_toolchain",
                                                   default=[], check_type=list)
-        paths = [relativize_path(p, self._conanfile, "${CMAKE_CURRENT_LIST_DIR}")
+        paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
                  for p in user_toolchain]
         paths = [p.replace("\\", "/") for p in paths]
         return {"paths": paths}
@@ -774,21 +774,21 @@ class ExtraFlagsBlock(Block):
         # Include extra C++, C and linker flags from configuration tools.build:<type>flags
         # and from CMakeToolchain.extra_<type>_flags
 
-        # Conan conf flags start: {{config}}
+        # Recipe conf flags start: {{config}}
         {% if cxxflags %}
-        string(APPEND CONAN_CXX_FLAGS{{suffix}} "{% for cxxflag in cxxflags %} {{ cxxflag }}{% endfor %}")
+        string(APPEND RECIPE_CXX_FLAGS{{suffix}} "{% for cxxflag in cxxflags %} {{ cxxflag }}{% endfor %}")
         {% endif %}
         {% if cflags %}
-        string(APPEND CONAN_C_FLAGS{{suffix}} "{% for cflag in cflags %} {{ cflag }}{% endfor %}")
+        string(APPEND RECIPE_C_FLAGS{{suffix}} "{% for cflag in cflags %} {{ cflag }}{% endfor %}")
         {% endif %}
         {% if sharedlinkflags %}
-        string(APPEND CONAN_SHARED_LINKER_FLAGS{{suffix}} "{% for sharedlinkflag in sharedlinkflags %} {{ sharedlinkflag }}{% endfor %}")
+        string(APPEND RECIPE_SHARED_LINKER_FLAGS{{suffix}} "{% for sharedlinkflag in sharedlinkflags %} {{ sharedlinkflag }}{% endfor %}")
         {% endif %}
         {% if exelinkflags %}
-        string(APPEND CONAN_EXE_LINKER_FLAGS{{suffix}} "{% for exelinkflag in exelinkflags %} {{ exelinkflag }}{% endfor %}")
+        string(APPEND RECIPE_EXE_LINKER_FLAGS{{suffix}} "{% for exelinkflag in exelinkflags %} {{ exelinkflag }}{% endfor %}")
         {% endif %}
         {% if rcflags %}
-        string(APPEND CONAN_RC_FLAGS{{suffix}} "{% for rcflag in rcflags %} {{ rcflag }}{% endfor %}")
+        string(APPEND RECIPE_RC_FLAGS{{suffix}} "{% for rcflag in rcflags %} {{ rcflag }}{% endfor %}")
         {% endif %}
         {% if defines %}
         {% if config %}
@@ -799,7 +799,7 @@ class ExtraFlagsBlock(Block):
         add_compile_definitions({% for define in defines %} "{{ define }}"{% endfor %})
         {% endif %}
         {% endif %}
-        # Conan conf flags end
+        # Recipe conf flags end
     """)
 
     @property
@@ -808,23 +808,23 @@ class ExtraFlagsBlock(Block):
             return self._template
 
         sections = {}
-        if os.path.exists(CONAN_TOOLCHAIN_FILENAME):
-            existing_toolchain = load(CONAN_TOOLCHAIN_FILENAME)
+        if os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
+            existing_toolchain = load(RECIPE_TOOLCHAIN_FILENAME)
             lines = existing_toolchain.splitlines()
             current_section = None
             for line in lines:
-                if line.startswith("# Conan conf flags start: "):
+                if line.startswith("# Recipe conf flags start: "):
                     section_name = line.split(":", 1)[1].strip()
                     current_section = [line]
                     sections[section_name] = current_section
-                elif line == "# Conan conf flags end":
+                elif line == "# Recipe conf flags end":
                     current_section.append(line)
                     current_section = None
                 elif current_section is not None:
                     current_section.append(line)
             sections.pop("", None)  # Just in case it had a single config before
 
-        config = self._conanfile.settings.get_safe("build_type")
+        config = self._recipe.settings.get_safe("build_type")
         for k, v in sections.items():
             if k != config:
                 v.insert(0, "{% raw %}")
@@ -836,25 +836,25 @@ class ExtraFlagsBlock(Block):
 
     def context(self):
         # Now, it's time to get all the flags defined by the user
-        cxxflags = self._toolchain.extra_cxxflags + self._conanfile.conf.get("tools.build:cxxflags", default=[], check_type=list)
-        cflags = self._toolchain.extra_cflags + self._conanfile.conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._toolchain.extra_sharedlinkflags + self._conanfile.conf.get("tools.build:sharedlinkflags", default=[], check_type=list)
-        exelinkflags = self._toolchain.extra_exelinkflags + self._conanfile.conf.get("tools.build:exelinkflags", default=[], check_type=list)
-        rcflags = self._conanfile.conf.get("tools.build:rcflags", default=[], check_type=list)
-        defines = self._conanfile.conf.get("tools.build:defines", default=[], check_type=list)
+        cxxflags = self._toolchain.extra_cxxflags + self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
+        cflags = self._toolchain.extra_cflags + self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
+        sharedlinkflags = self._toolchain.extra_sharedlinkflags + self._recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list)
+        exelinkflags = self._toolchain.extra_exelinkflags + self._recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list)
+        rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
+        defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
 
-        # See https://github.com/conan-io/conan/issues/13374
-        android_ndk_path = self._conanfile.conf.get("tools.android:ndk_path")
-        android_legacy_toolchain = self._conanfile.conf.get("tools.android:cmake_legacy_toolchain",
+        # See upstream issue 13374
+        android_ndk_path = self._recipe.conf.get("tools.android:ndk_path")
+        android_legacy_toolchain = self._recipe.conf.get("tools.android:cmake_legacy_toolchain",
                                                             check_type=bool)
         if android_ndk_path and (cxxflags or cflags) and android_legacy_toolchain is not False:
-            self._conanfile.output.warning("tools.build:cxxflags or cflags are defined, but Android NDK toolchain may be overriding "
+            self._recipe.output.warning("tools.build:cxxflags or cflags are defined, but Android NDK toolchain may be overriding "
                                            "the values. Consider setting tools.android:cmake_legacy_toolchain to False.")
 
         config = ""
         suffix = ""
         if is_multi_configuration(self._toolchain.generator):
-            config = self._conanfile.settings.get_safe("build_type")
+            config = self._recipe.settings.get_safe("build_type")
             suffix = f"_{config.upper()}" if config else ""
         return {
             "config": config,
@@ -870,47 +870,47 @@ class ExtraFlagsBlock(Block):
 
 class CMakeFlagsInitBlock(Block):
     template = textwrap.dedent("""\
-        # Define CMAKE_<XXX>_FLAGS from CONAN_<XXX>_FLAGS
+        # Define CMAKE_<XXX>_FLAGS from RECIPE_<XXX>_FLAGS
 
         foreach(config IN LISTS CMAKE_CONFIGURATION_TYPES)
             string(TOUPPER ${config} config)
-            if(DEFINED CONAN_CXX_FLAGS_${config})
-              string(APPEND CMAKE_CXX_FLAGS_${config}_INIT " ${CONAN_CXX_FLAGS_${config}}")
+            if(DEFINED RECIPE_CXX_FLAGS_${config})
+              string(APPEND CMAKE_CXX_FLAGS_${config}_INIT " ${RECIPE_CXX_FLAGS_${config}}")
             endif()
-            if(DEFINED CONAN_C_FLAGS_${config})
-              string(APPEND CMAKE_C_FLAGS_${config}_INIT " ${CONAN_C_FLAGS_${config}}")
+            if(DEFINED RECIPE_C_FLAGS_${config})
+              string(APPEND CMAKE_C_FLAGS_${config}_INIT " ${RECIPE_C_FLAGS_${config}}")
             endif()
-            if(DEFINED CONAN_SHARED_LINKER_FLAGS_${config})
-              string(APPEND CMAKE_SHARED_LINKER_FLAGS_${config}_INIT " ${CONAN_SHARED_LINKER_FLAGS_${config}}")
+            if(DEFINED RECIPE_SHARED_LINKER_FLAGS_${config})
+              string(APPEND CMAKE_SHARED_LINKER_FLAGS_${config}_INIT " ${RECIPE_SHARED_LINKER_FLAGS_${config}}")
             endif()
-            if(DEFINED CONAN_EXE_LINKER_FLAGS_${config})
-              string(APPEND CMAKE_EXE_LINKER_FLAGS_${config}_INIT " ${CONAN_EXE_LINKER_FLAGS_${config}}")
+            if(DEFINED RECIPE_EXE_LINKER_FLAGS_${config})
+              string(APPEND CMAKE_EXE_LINKER_FLAGS_${config}_INIT " ${RECIPE_EXE_LINKER_FLAGS_${config}}")
             endif()
-            if(DEFINED CONAN_RC_FLAGS_${config})
-              string(APPEND CMAKE_RC_FLAGS_${config}_INIT " ${CONAN_RC_FLAGS_${config}}")
+            if(DEFINED RECIPE_RC_FLAGS_${config})
+              string(APPEND CMAKE_RC_FLAGS_${config}_INIT " ${RECIPE_RC_FLAGS_${config}}")
             endif()
         endforeach()
 
-        if(DEFINED CONAN_CXX_FLAGS)
-          string(APPEND CMAKE_CXX_FLAGS_INIT " ${CONAN_CXX_FLAGS}")
+        if(DEFINED RECIPE_CXX_FLAGS)
+          string(APPEND CMAKE_CXX_FLAGS_INIT " ${RECIPE_CXX_FLAGS}")
         endif()
-        if(DEFINED CONAN_C_FLAGS)
-          string(APPEND CMAKE_C_FLAGS_INIT " ${CONAN_C_FLAGS}")
+        if(DEFINED RECIPE_C_FLAGS)
+          string(APPEND CMAKE_C_FLAGS_INIT " ${RECIPE_C_FLAGS}")
         endif()
-        if(DEFINED CONAN_SHARED_LINKER_FLAGS)
-          string(APPEND CMAKE_SHARED_LINKER_FLAGS_INIT " ${CONAN_SHARED_LINKER_FLAGS}")
+        if(DEFINED RECIPE_SHARED_LINKER_FLAGS)
+          string(APPEND CMAKE_SHARED_LINKER_FLAGS_INIT " ${RECIPE_SHARED_LINKER_FLAGS}")
         endif()
-        if(DEFINED CONAN_EXE_LINKER_FLAGS)
-          string(APPEND CMAKE_EXE_LINKER_FLAGS_INIT " ${CONAN_EXE_LINKER_FLAGS}")
+        if(DEFINED RECIPE_EXE_LINKER_FLAGS)
+          string(APPEND CMAKE_EXE_LINKER_FLAGS_INIT " ${RECIPE_EXE_LINKER_FLAGS}")
         endif()
-        if(DEFINED CONAN_RC_FLAGS)
-          string(APPEND CMAKE_RC_FLAGS_INIT " ${CONAN_RC_FLAGS}")
+        if(DEFINED RECIPE_RC_FLAGS)
+          string(APPEND CMAKE_RC_FLAGS_INIT " ${RECIPE_RC_FLAGS}")
         endif()
-        if(DEFINED CONAN_OBJCXX_FLAGS)
-          string(APPEND CMAKE_OBJCXX_FLAGS_INIT " ${CONAN_OBJCXX_FLAGS}")
+        if(DEFINED RECIPE_OBJCXX_FLAGS)
+          string(APPEND CMAKE_OBJCXX_FLAGS_INIT " ${RECIPE_OBJCXX_FLAGS}")
         endif()
-        if(DEFINED CONAN_OBJC_FLAGS)
-          string(APPEND CMAKE_OBJC_FLAGS_INIT " ${CONAN_OBJC_FLAGS}")
+        if(DEFINED RECIPE_OBJC_FLAGS)
+          string(APPEND CMAKE_OBJC_FLAGS_INIT " ${RECIPE_OBJC_FLAGS}")
         endif()
         """)
 
@@ -932,11 +932,11 @@ class TryCompileBlock(Block):
 
     def context(self):
         # Only for well known CMake configurations, but not for custom ones
-        # Revert of https://github.com/conan-io/conan/pull/18559, even if it was correct, there are
+        # Revert of upstream PR 18559, even if it was correct, there are
         # legacy code using check_function_exists that breaks in CMake with MSVC, see
-        # https://github.com/conan-io/conan/issues/18689
+        # upstream issue 18689
         # TODO: Resume this effort when other try_compile things are sorted out
-        # bt = self._conanfile.settings.get_safe("build_type")
+        # bt = self._recipe.settings.get_safe("build_type")
         # config = bt if bt in ["Debug", "Release", "RelWithDebInfo", "MinSizeRel"] else None
         config = None  # Keep it defined but as `None` in case some user already customized it
         return {"config": config}
@@ -951,7 +951,7 @@ class CompilersBlock(Block):
 
     def context(self):
         # Reading configuration from "tools.build:compiler_executables" -> {"C": "/usr/bin/gcc"}
-        compilers_by_conf = self._conanfile.conf.get("tools.build:compiler_executables", default={},
+        compilers_by_conf = self._recipe.conf.get("tools.build:compiler_executables", default={},
                                                      check_type=dict)
         # Map the possible languages
         compilers = {}
@@ -963,7 +963,7 @@ class CompilersBlock(Block):
             # To set CMAKE_<LANG>_COMPILER
             if comp in compilers_by_conf:
                 compilers[lang] = compilers_by_conf[comp]
-        compiler = self._conanfile.settings.get_safe("compiler")
+        compiler = self._recipe.settings.get_safe("compiler")
         if compiler == "msvc" and "Ninja" in str(self._toolchain.generator):
             # None of them defined, if one is defined by user, user should define the other too
             if "c" not in compilers_by_conf and "cpp" not in compilers_by_conf:
@@ -1003,33 +1003,33 @@ class GenericSystemBlock(Block):
             cmake_policy(GET CMP0149 _POLICY_WINSDK_VERSION)
         endif()
         if(_POLICY_WINSDK_VERSION STREQUAL "NEW")
-            message(STATUS "Conan toolchain: CMAKE_GENERATOR_PLATFORM={{gen_platform_sdk_version}}")
+            message(STATUS "Recipe toolchain: CMAKE_GENERATOR_PLATFORM={{gen_platform_sdk_version}}")
             set(CMAKE_GENERATOR_PLATFORM "{{ gen_platform_sdk_version }}" CACHE STRING "" FORCE)
         else()
             # winsdk_version will be taken from above CMAKE_SYSTEM_VERSION
-            message(STATUS "Conan toolchain: CMAKE_GENERATOR_PLATFORM={{generator_platform}}")
+            message(STATUS "Recipe toolchain: CMAKE_GENERATOR_PLATFORM={{generator_platform}}")
             set(CMAKE_GENERATOR_PLATFORM "{{ generator_platform }}" CACHE STRING "" FORCE)
         endif()
         {% endif %}
 
         {% if toolset %}
-        message(STATUS "Conan toolchain: CMAKE_GENERATOR_TOOLSET={{ toolset }}")
+        message(STATUS "Recipe toolchain: CMAKE_GENERATOR_TOOLSET={{ toolset }}")
         set(CMAKE_GENERATOR_TOOLSET "{{ toolset }}" CACHE STRING "" FORCE)
         {% endif %}
         """)
 
     @staticmethod
-    def get_toolset(generator, conanfile):
+    def get_toolset(generator, recipe):
         toolset = None
         if generator is None or ("Visual" not in generator and "Xcode" not in generator):
             return None
-        settings = conanfile.settings
+        settings = recipe.settings
         compiler = settings.get_safe("compiler")
         if compiler == "msvc":
             toolset = settings.get_safe("compiler.toolset")
             if toolset is None:
                 compiler_version = str(settings.compiler.version)
-                msvc_update = conanfile.conf.get("tools.microsoft:msvc_update")
+                msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
                 compiler_update = msvc_update or settings.get_safe("compiler.update")
                 toolset = msvc_version_to_toolset_version(compiler_version)
                 if compiler_update is not None:  # It is full one(19.28), not generic 19.2X
@@ -1040,22 +1040,22 @@ class GenericSystemBlock(Block):
                 if any(f"Visual Studio {v}" in generator for v in ("16", "17", "18")):
                     toolset = "ClangCL"
                 else:
-                    raise ConanException("CMakeToolchain with compiler=clang and a CMake "
+                    raise RecipeException("CMakeToolchain with compiler=clang and a CMake "
                                          "'Visual Studio' generator requires VS16, VS17 or VS18")
-        toolset_arch = conanfile.conf.get("tools.cmake.cmaketoolchain:toolset_arch")
+        toolset_arch = recipe.conf.get("tools.cmake.cmaketoolchain:toolset_arch")
         if toolset_arch is not None:
             toolset_arch = "host={}".format(toolset_arch)
             toolset = toolset_arch if toolset is None else "{},{}".format(toolset, toolset_arch)
-        toolset_cuda = conanfile.conf.get("tools.cmake.cmaketoolchain:toolset_cuda")
+        toolset_cuda = recipe.conf.get("tools.cmake.cmaketoolchain:toolset_cuda")
         if toolset_cuda is not None:
-            toolset_cuda = relativize_path(toolset_cuda, conanfile, "${CMAKE_CURRENT_LIST_DIR}")
+            toolset_cuda = relativize_path(toolset_cuda, recipe, "${CMAKE_CURRENT_LIST_DIR}")
             toolset_cuda = f"cuda={toolset_cuda}"
             toolset = toolset_cuda if toolset is None else f"{toolset},{toolset_cuda}"
         return toolset
 
     @staticmethod
-    def get_generator_platform(generator, conanfile):
-        settings = conanfile.settings
+    def get_generator_platform(generator, recipe):
+        settings = recipe.settings
         # Returns the generator platform to be used by CMake
         compiler = settings.get_safe("compiler")
         arch = settings.get_safe("arch")
@@ -1068,10 +1068,10 @@ class GenericSystemBlock(Block):
         return None
 
     def _get_generic_system_name(self):
-        os_host = self._conanfile.settings.get_safe("os")
-        os_build = self._conanfile.settings_build.get_safe("os")
-        arch_host = self._conanfile.settings.get_safe("arch")
-        arch_build = self._conanfile.settings_build.get_safe("arch")
+        os_host = self._recipe.settings.get_safe("os")
+        os_build = self._recipe.settings_build.get_safe("os")
+        arch_host = self._recipe.settings.get_safe("arch")
+        arch_build = self._recipe.settings_build.get_safe("arch")
         cmake_system_name_map = {"Neutrino": "QNX",
                                  "": "Generic",
                                  "baremetal": "Generic",
@@ -1091,14 +1091,14 @@ class GenericSystemBlock(Block):
 
     def _is_apple_cross_building(self):
 
-        if is_universal_arch(self._conanfile.settings.get_safe("arch"),
-                             self._conanfile.settings.possible_values().get("arch")):
+        if is_universal_arch(self._recipe.settings.get_safe("arch"),
+                             self._recipe.settings.possible_values().get("arch")):
             return False
 
-        os_host = self._conanfile.settings.get_safe("os")
-        arch_host = self._conanfile.settings.get_safe("arch")
-        arch_build = self._conanfile.settings_build.get_safe("arch")
-        os_build = self._conanfile.settings_build.get_safe("os")
+        os_host = self._recipe.settings.get_safe("os")
+        arch_host = self._recipe.settings.get_safe("arch")
+        arch_build = self._recipe.settings_build.get_safe("arch")
+        os_build = self._recipe.settings_build.get_safe("os")
         return os_host in ('iOS', 'watchOS', 'tvOS', 'visionOS') or (
                 os_host == 'Macos' and (arch_host != arch_build or os_build != os_host))
 
@@ -1133,16 +1133,16 @@ class GenericSystemBlock(Block):
         return version_mapping.get(os_name, {}).get(str(os_version))
 
     def _get_cross_build(self):
-        system_name = self._conanfile.conf.get("tools.cmake.cmaketoolchain:system_name")
-        system_version = self._conanfile.conf.get("tools.cmake.cmaketoolchain:system_version")
-        system_processor = self._conanfile.conf.get("tools.cmake.cmaketoolchain:system_processor")
+        system_name = self._recipe.conf.get("tools.cmake.cmaketoolchain:system_name")
+        system_version = self._recipe.conf.get("tools.cmake.cmaketoolchain:system_version")
+        system_processor = self._recipe.conf.get("tools.cmake.cmaketoolchain:system_processor")
 
         # try to detect automatically
-        if not is_universal_arch(self._conanfile.settings.get_safe("arch"),
-                                 self._conanfile.settings.possible_values().get("arch")):
-            os_host = self._conanfile.settings.get_safe("os")
-            os_host_version = self._conanfile.settings.get_safe("os.version")
-            arch_host = self._conanfile.settings.get_safe("arch")
+        if not is_universal_arch(self._recipe.settings.get_safe("arch"),
+                                 self._recipe.settings.possible_values().get("arch")):
+            os_host = self._recipe.settings.get_safe("os")
+            os_host_version = self._recipe.settings.get_safe("os.version")
+            arch_host = self._recipe.settings.get_safe("arch")
             if arch_host == "armv8":
                 arch_host = {"Windows": "ARM64", "Macos": "arm64"}.get(os_host, "aarch64")
 
@@ -1154,7 +1154,7 @@ class GenericSystemBlock(Block):
                     system_name = {'Macos': 'Darwin'}.get(os_host, os_host)
                     #  CMAKE_SYSTEM_VERSION for Apple sets the Darwin version, not the os version
                     _system_version = self._get_darwin_version(os_host, os_host_version)
-                    _system_processor = to_apple_arch(self._conanfile)
+                    _system_processor = to_apple_arch(self._recipe)
                 elif os_host != 'Android':
                     system_name = self._get_generic_system_name()
                     if arch_host in ['tc131', 'tc16', 'tc161', 'tc162', 'tc18']:
@@ -1171,22 +1171,22 @@ class GenericSystemBlock(Block):
         return system_name, system_version, system_processor
 
     def _get_winsdk_version(self, system_version, generator_platform):
-        compiler = self._conanfile.settings.get_safe("compiler")
+        compiler = self._recipe.settings.get_safe("compiler")
         if compiler not in ("msvc", "clang") or "Visual" not in str(self._toolchain.generator):
             # Ninja will get it from VCVars, not from toolchain
             return system_version, None, None
 
-        winsdk_version = self._conanfile.conf.get("tools.microsoft:winsdk_version", check_type=str)
+        winsdk_version = self._recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
         if winsdk_version:
             if system_version:
-                self._conanfile.output.warning("Both cmake_system_version and winsdk_version confs"
+                self._recipe.output.warning("Both cmake_system_version and winsdk_version confs"
                                                " defined, prioritizing winsdk_version")
             system_version = winsdk_version
-        elif "Windows" in self._conanfile.settings.get_safe("os", ""):
-            winsdk_version = self._conanfile.settings.get_safe("os.version")
+        elif "Windows" in self._recipe.settings.get_safe("os", ""):
+            winsdk_version = self._recipe.settings.get_safe("os.version")
             if system_version:
                 if winsdk_version:
-                    self._conanfile.output.warning("Both cmake_system_version conf and os.version"
+                    self._recipe.output.warning("Both cmake_system_version conf and os.version"
                                                    " defined, prioritizing cmake_system_version")
                 winsdk_version = system_version
 
@@ -1198,15 +1198,15 @@ class GenericSystemBlock(Block):
 
     def context(self):
         generator = self._toolchain.generator
-        generator_platform = self.get_generator_platform(generator, self._conanfile)
-        toolset = self.get_toolset(generator, self._conanfile)
+        generator_platform = self.get_generator_platform(generator, self._recipe)
+        toolset = self.get_toolset(generator, self._recipe)
         system_name, system_version, system_processor = self._get_cross_build()
 
         # This is handled by the tools.apple:sdk_path and CMAKE_OSX_SYSROOT in Apple
-        cmake_sysroot = self._conanfile.conf.get("tools.build:sysroot")
+        cmake_sysroot = self._recipe.conf.get("tools.build:sysroot")
         cmake_sysroot = cmake_sysroot.replace("\\", "/") if cmake_sysroot is not None else None
         if cmake_sysroot is not None:
-            cmake_sysroot = relativize_path(cmake_sysroot, self._conanfile,
+            cmake_sysroot = relativize_path(cmake_sysroot, self._recipe,
                                             "${CMAKE_CURRENT_LIST_DIR}")
 
         result = self._get_winsdk_version(system_version, generator_platform)
@@ -1236,11 +1236,11 @@ class ExtraVariablesBlock(Block):
     def context(self):
         from thirdparty.cmake.utils import parse_extra_variable
         # Reading configuration from "tools.cmake.cmaketoolchain:extra_variables"
-        extra_variables = self._conanfile.conf.get("tools.cmake.cmaketoolchain:extra_variables",
+        extra_variables = self._recipe.conf.get("tools.cmake.cmaketoolchain:extra_variables",
                                                    default={}, check_type=dict)
-        compilation_verbosity = self._conanfile.conf.get("tools.compilation:verbosity",
+        compilation_verbosity = self._recipe.conf.get("tools.compilation:verbosity",
                                                          choices=("quiet", "verbose"))
-        build_verbosity = self._conanfile.conf.get("tools.build:verbosity",
+        build_verbosity = self._recipe.conf.get("tools.build:verbosity",
                                                    choices=("quiet", "verbose"))
         if build_verbosity == "quiet":
             build_verbosity = "error"
@@ -1299,11 +1299,11 @@ class OutputDirsBlock(Block):
     def _get_cpp_info_value(self, name):
         # Why not taking cpp.build? because this variables are used by the "cmake install"
         # that correspond to the package folder (even if the root is the build directory)
-        elements = getattr(self._conanfile.cpp.package, name)
+        elements = getattr(self._recipe.cpp.package, name)
         return elements[0] if elements else None
 
     def context(self):
-        pf = self._conanfile.package_folder
+        pf = self._recipe.package_folder
         return {"package_folder": pf.replace("\\", "/") if pf else None,
                 "default_bin": self._get_cpp_info_value("bindirs"),
                 "default_lib": self._get_cpp_info_value("libdirs"),
@@ -1321,25 +1321,25 @@ class VariablesBlock(Block):
             {% for it, values in var_config.items() %}
                 {% set genexpr = namespace(str='') %}
                 {% for conf, value in values -%}
-                set(CONAN_DEF_{{ conf }}{{ it }} "{{ value }}")
+                set(RECIPE_DEF_{{ conf }}{{ it }} "{{ value }}")
                 {% endfor %}
                 {% for conf, value in values -%}
                     {% set genexpr.str = genexpr.str +
-                                          '$<IF:$<CONFIG:' + conf + '>,${CONAN_DEF_' + conf|string + it|string + '},' %}
+                                          '$<IF:$<CONFIG:' + conf + '>,${RECIPE_DEF_' + conf|string + it|string + '},' %}
                     {% if loop.last %}{% set genexpr.str = genexpr.str + '""' -%}{%- endif -%}
                 {% endfor %}
                 {% for i in range(values|count) %}{% set genexpr.str = genexpr.str + '>' %}
                 {% endfor %}
             set({{ it }} {{ genexpr.str }} CACHE STRING
-                "Variable {{ it }} conan-toolchain defined")
+                "Variable {{ it }} recipe-toolchain defined")
             {% endfor %}
             {% endmacro %}
             # Variables
             {% for it, value in variables.items() %}
             {% if value is boolean %}
-            set({{ it }} {{ "ON" if value else "OFF"}} CACHE BOOL "Variable {{ it }} conan-toolchain defined")
+            set({{ it }} {{ "ON" if value else "OFF"}} CACHE BOOL "Variable {{ it }} recipe-toolchain defined")
             {% else %}
-            set({{ it }} "{{ value }}" CACHE STRING "Variable {{ it }} conan-toolchain defined")
+            set({{ it }} "{{ value }}" CACHE STRING "Variable {{ it }} recipe-toolchain defined")
             {% endif %}
             {% endfor %}
             # Variables  per configuration
@@ -1368,14 +1368,14 @@ class PreprocessorBlock(Block):
         {% for name, values in preprocessor_definitions_config.items() %}
         {%- for (conf, value) in values %}
         {% if value is none %}
-        set(CONAN_DEF_{{conf}}_{{name}} "{{name}}")
+        set(RECIPE_DEF_{{conf}}_{{name}} "{{name}}")
         {% else %}
-        set(CONAN_DEF_{{conf}}_{{name}} "{{name}}={{value}}")
+        set(RECIPE_DEF_{{conf}}_{{name}} "{{name}}={{value}}")
         {% endif %}
         {% endfor %}
         add_compile_definitions(
         {%- for (conf, value) in values %}
-        $<$<CONFIG:{{conf}}>:${CONAN_DEF_{{conf}}_{{name}}}>
+        $<$<CONFIG:{{conf}}>:${RECIPE_DEF_{{conf}}_{{name}}}>
         {%- endfor -%})
         {% endfor %}
         """)
@@ -1387,13 +1387,13 @@ class PreprocessorBlock(Block):
 
 
 class ToolchainBlocks:
-    def __init__(self, conanfile, toolchain, items=None):
+    def __init__(self, recipe, toolchain, items=None):
         self._blocks = {}
-        self._conanfile = conanfile
+        self._recipe = recipe
         self._toolchain = toolchain
         if items:
             for name, block in items:
-                self._blocks[name] = block(conanfile, toolchain, name)
+                self._blocks[name] = block(recipe, toolchain, name)
 
     def keys(self):
         return self._blocks.keys()
@@ -1411,7 +1411,7 @@ class ToolchainBlocks:
         keep the blocks provided as arguments, remove the others, except pre-existing "variables"
         and "preprocessor", to not break behavior
         """
-        self._conanfile.output.warning("CMakeToolchain.select is deprecated. Use blocks.enabled()"
+        self._recipe.output.warning("CMakeToolchain.select is deprecated. Use blocks.enabled()"
                                        " instead", warn_tag="deprecated")
         to_keep = [name] + list(args) + ["variables", "preprocessor"]
         self._blocks = {k: v for k, v in self._blocks.items() if k in to_keep}
@@ -1426,19 +1426,19 @@ class ToolchainBlocks:
     def __setitem__(self, name, block_type):
         # Create a new class inheriting Block with the elements of the provided one
         block_type = type('proxyUserBlock', (Block,), dict(block_type.__dict__))
-        self._blocks[name] = block_type(self._conanfile, self._toolchain, name)
+        self._blocks[name] = block_type(self._recipe, self._toolchain, name)
 
     def __getitem__(self, name):
         return self._blocks[name]
 
     def process_blocks(self):
-        blocks = self._conanfile.conf.get("tools.cmake.cmaketoolchain:enabled_blocks",
+        blocks = self._recipe.conf.get("tools.cmake.cmaketoolchain:enabled_blocks",
                                           check_type=list)
         if blocks is not None:
             try:
                 new_blocks = {b: self._blocks[b] for b in blocks}
             except KeyError as e:
-                raise ConanException(f"Block {e} defined in tools.cmake.cmaketoolchain"
+                raise RecipeException(f"Block {e} defined in tools.cmake.cmaketoolchain"
                                      f":enabled_blocks doesn't exist in {list(self._blocks.keys())}")
             self._blocks = new_blocks
         result = []

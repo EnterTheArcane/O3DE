@@ -161,7 +161,7 @@ class Recipe(RecipeBase):
         if self.options.with_tkinter and Version(self.version) < "3.11":
             tcltk_includes = []
             tcltk_libs = []
-            # FIXME: collect using some conan util (https://github.com/conan-io/conan/issues/7656)
+            # FIXME: collect using some recipe util (upstream issue 7656)
             for dep in ("tcl", "tk", "zlib"):
                 cpp_info = self.dependencies[dep].cpp_info.aggregated_components()
                 tcltk_includes += [f"-I{d}" for d in cpp_info.includedirs]
@@ -226,13 +226,13 @@ class Recipe(RecipeBase):
         content = re.sub(pattern, replacement, content)
         save(self, filename, content)
 
-    def _inject_conan_props_file(self, project_basename, dep_name, condition=True):
+    def _inject_recipe_props_file(self, project_basename, dep_name, condition=True):
         if condition:
             search = '<Import Project="python.props" />'
             replace_in_file(self,
                             self._msvc_project_path(project_basename),
                             search,
-                            search + f'<Import Project="{self.generators_folder}/conan_{dep_name}.props" />')
+                            search + f'<Import Project="{self.generators_folder}/recipe_{dep_name}.props" />')
 
     def _patch_setup_py(self):
         setup_py = os.path.join(self.source_folder, "setup.py")
@@ -352,20 +352,20 @@ class Recipe(RecipeBase):
                         r'<ClCompile Include="$(opensslIncludeDir)\applink.c">',
                         r'<ClCompile Include="$(opensslIncludeDir)\applink.c" Condition="False">')
 
-        self._inject_conan_props_file("_bz2", "bzip2", self.options.get_safe("with_bz2"))
-        self._inject_conan_props_file("_elementtree", "expat", self._supports_modules)
-        self._inject_conan_props_file("pyexpat", "expat", self._supports_modules)
-        self._inject_conan_props_file("_hashlib", "openssl", self._supports_modules)
-        self._inject_conan_props_file("_ssl", "openssl", self._supports_modules)
-        self._inject_conan_props_file("_sqlite3", "sqlite3", self.options.get_safe("with_sqlite3"))
-        self._inject_conan_props_file("_tkinter", "tk", self.options.get_safe("with_tkinter"))
-        self._inject_conan_props_file("pythoncore", "zlib")
-        self._inject_conan_props_file("python", "zlib")
-        self._inject_conan_props_file("pythonw", "zlib")
-        self._inject_conan_props_file("_ctypes", "libffi", self._supports_modules)
-        self._inject_conan_props_file("_decimal", "mpdecimal", self._supports_modules)
-        self._inject_conan_props_file("_lzma", "xz_utils", self.options.get_safe("with_lzma"))
-        self._inject_conan_props_file("_bsddb", "libdb", self.options.get_safe("with_bsddb"))
+        self._inject_recipe_props_file("_bz2", "bzip2", self.options.get_safe("with_bz2"))
+        self._inject_recipe_props_file("_elementtree", "expat", self._supports_modules)
+        self._inject_recipe_props_file("pyexpat", "expat", self._supports_modules)
+        self._inject_recipe_props_file("_hashlib", "openssl", self._supports_modules)
+        self._inject_recipe_props_file("_ssl", "openssl", self._supports_modules)
+        self._inject_recipe_props_file("_sqlite3", "sqlite3", self.options.get_safe("with_sqlite3"))
+        self._inject_recipe_props_file("_tkinter", "tk", self.options.get_safe("with_tkinter"))
+        self._inject_recipe_props_file("pythoncore", "zlib")
+        self._inject_recipe_props_file("python", "zlib")
+        self._inject_recipe_props_file("pythonw", "zlib")
+        self._inject_recipe_props_file("_ctypes", "libffi", self._supports_modules)
+        self._inject_recipe_props_file("_decimal", "mpdecimal", self._supports_modules)
+        self._inject_recipe_props_file("_lzma", "xz_utils", self.options.get_safe("with_lzma"))
+        self._inject_recipe_props_file("_bsddb", "libdb", self.options.get_safe("with_bsddb"))
 
     def _patch_sources(self):
         apply_patches(self)
@@ -430,11 +430,11 @@ class Recipe(RecipeBase):
                 "<ItemDefinitionGroup>",
                 "<ItemDefinitionGroup><ClCompile><PreprocessorDefinitions>Py_NO_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>")
 
-        conantoolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
+        recipe_toolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
         replace_in_file(
             self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
             '<Import Project="python.props" />',
-            f'<Import Project="{conantoolchain_props}" /><Import Project="python.props" />',
+            f'<Import Project="{recipe_toolchain_props}" /><Import Project="python.props" />',
         )
 
         if is_msvc(self):
@@ -642,32 +642,32 @@ class Recipe(RecipeBase):
     def _write_cmake_findpython_wrapper_file(self):
         template = textwrap.dedent("""
         if (DEFINED Python3_VERSION_STRING)
-            set(_CONAN_PYTHON_SUFFIX "3")
+            set(_RECIPE_PYTHON_SUFFIX "3")
         else()
-            set(_CONAN_PYTHON_SUFFIX "")
+            set(_RECIPE_PYTHON_SUFFIX "")
         endif()
-        set(Python${_CONAN_PYTHON_SUFFIX}_EXECUTABLE @PYTHON_EXECUTABLE@)
-        set(Python${_CONAN_PYTHON_SUFFIX}_LIBRARY @PYTHON_LIBRARY@)
+        set(Python${_RECIPE_PYTHON_SUFFIX}_EXECUTABLE @PYTHON_EXECUTABLE@)
+        set(Python${_RECIPE_PYTHON_SUFFIX}_LIBRARY @PYTHON_LIBRARY@)
 
         # Fails if these are set beforehand
-        unset(Python${_CONAN_PYTHON_SUFFIX}_INCLUDE_DIRS)
-        unset(Python${_CONAN_PYTHON_SUFFIX}_INCLUDE_DIR)
+        unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIRS)
+        unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIR)
 
-        include(${CMAKE_ROOT}/Modules/FindPython${_CONAN_PYTHON_SUFFIX}.cmake)
+        include(${CMAKE_ROOT}/Modules/FindPython${_RECIPE_PYTHON_SUFFIX}.cmake)
 
         # Sanity check: The former comes from FindPython(3), the latter comes from the injected find module
-        if(NOT Python${_CONAN_PYTHON_SUFFIX}_VERSION STREQUAL Python${_CONAN_PYTHON_SUFFIX}_VERSION_STRING)
-            message(FATAL_ERROR "CMake detected wrong cpython version - this is likely a bug with the cpython Conan package")
+        if(NOT Python${_RECIPE_PYTHON_SUFFIX}_VERSION STREQUAL Python${_RECIPE_PYTHON_SUFFIX}_VERSION_STRING)
+            message(FATAL_ERROR "CMake detected wrong cpython version - this is likely a bug with the cpython Recipe package")
         endif()
 
-        if (TARGET Python${_CONAN_PYTHON_SUFFIX}::Module)
-            set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::Module PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+        if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Module)
+            set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Module PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
         endif()
-        if (TARGET Python${_CONAN_PYTHON_SUFFIX}::SABIModule)
-            set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+        if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::SABIModule)
+            set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
         endif()
-        if (TARGET Python${_CONAN_PYTHON_SUFFIX}::Python)
-            set_target_properties(Python${_CONAN_PYTHON_SUFFIX}::Python PROPERTIES INTERFACE_LINK_LIBRARIES cpython::embed)
+        if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Python)
+            set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Python PROPERTIES INTERFACE_LINK_LIBRARIES cpython::embed)
         endif()
         """)
 
@@ -679,7 +679,7 @@ class Recipe(RecipeBase):
             python_exe = "${CMAKE_CURRENT_LIST_DIR}/../../bin/" + self._cpython_interpreter_name
             python_library = "${CMAKE_CURRENT_LIST_DIR}/../" + self._exact_lib_name
 
-        cmake_file = os.path.join(self.package_folder, self._cmake_module_path, "use_conan_python.cmake")
+        cmake_file = os.path.join(self.package_folder, self._cmake_module_path, "use_recipe_python.cmake")
         content = template.replace("@PYTHON_EXECUTABLE@", python_exe).replace("@PYTHON_LIBRARY@", python_library)
         save(self, cmake_file, content)
 
@@ -819,7 +819,7 @@ class Recipe(RecipeBase):
 
         # Transparent integration with CMake's FindPython(3)
         self.cpp_info.set_property("cmake_file_name", "Python3")
-        self.cpp_info.set_property("cmake_build_modules", [os.path.join(self._cmake_module_path, "use_conan_python.cmake")])
+        self.cpp_info.set_property("cmake_build_modules", [os.path.join(self._cmake_module_path, "use_recipe_python.cmake")])
         self.cpp_info.builddirs = [self._cmake_module_path]
 
         if self._supports_modules:
@@ -857,7 +857,7 @@ class Recipe(RecipeBase):
             self.runenv_info.append_path("PATH", bindir)
             self.buildenv_info.append_path("PATH", bindir)
 
-            # TODO remove once Conan 1.x is no longer supported
+            # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Appending PATH environment variable: {bindir}")
 
         python = self._cpython_interpreter_path
@@ -867,7 +867,7 @@ class Recipe(RecipeBase):
             self.runenv_info.append_path("PYTHON", python)
             self.buildenv_info.append_path("PYTHON", python)
 
-            # TODO remove once Conan 1.x is no longer supported
+            # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Appending PYTHON environment variable: {python}")
 
         if is_msvc(self):
@@ -892,7 +892,7 @@ class Recipe(RecipeBase):
                 #self.runenv_info.append_path("PYTHONHOME", pythonhome)
                 #self.buildenv_info.append_path("PYTHONHOME", pythonhome)
 
-                # TODO remove once Conan 1.x is no longer supported
+                # TODO remove once Recipe 1.x is no longer supported
                 self.output.info(f"Setting PYTHONHOME environment variable: {pythonhome}")
 
         python_root = self.package_folder
@@ -900,7 +900,7 @@ class Recipe(RecipeBase):
             self.runenv_info.append_path("PYTHON_ROOT", python_root)
             self.buildenv_info.append_path("PYTHON_ROOT", python_root)
 
-            # TODO remove once Conan 1.x is no longer supported
+            # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Setting PYTHON_ROOT environment variable: {python_root}")
         self.conf_info.define("user.cpython:python_root", python_root)
         self.user_info.python_root = python_root

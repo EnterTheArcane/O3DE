@@ -3,19 +3,19 @@ from thirdparty.build import cmd_args_to_string
 
 
 class XcodeBuild:
-    def __init__(self, conanfile):
-        self._conanfile = conanfile
-        self._build_type = conanfile.settings.get_safe("build_type")
-        self._arch = to_apple_arch(self._conanfile)
-        self._sdk = conanfile.settings.get_safe("os.sdk") or ""
-        self._sdk_version = conanfile.settings.get_safe("os.sdk_version") or ""
-        self._os = conanfile.settings.get_safe("os")
-        self._os_version = conanfile.settings.get_safe("os.version")
+    def __init__(self, recipe):
+        self._recipe = recipe
+        self._build_type = recipe.settings.get_safe("build_type")
+        self._arch = to_apple_arch(self._recipe)
+        self._sdk = recipe.settings.get_safe("os.sdk") or ""
+        self._sdk_version = recipe.settings.get_safe("os.sdk_version") or ""
+        self._os = recipe.settings.get_safe("os")
+        self._os_version = recipe.settings.get_safe("os.version")
 
     @property
     def _verbosity(self):
-        verbosity = self._conanfile.conf.get("tools.build:verbosity", choices=("quiet", "verbose")) \
-                    or self._conanfile.conf.get("tools.compilation:verbosity",
+        verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose")) \
+                    or self._recipe.conf.get("tools.compilation:verbosity",
                                                 choices=("quiet", "verbose"))
         return "-" + verbosity if verbosity is not None else ""
 
@@ -24,7 +24,7 @@ class XcodeBuild:
         # User's sdk_path has priority, then if specified try to compose sdk argument
         # with sdk/sdk_version settings, leave blank otherwise and the sdk will be automatically
         # chosen by the build system
-        sdk = self._conanfile.conf.get("tools.apple:sdk_path")
+        sdk = self._recipe.conf.get("tools.apple:sdk_path")
         if not sdk and self._sdk:
             sdk = "{}{}".format(self._sdk, self._sdk_version)
         return "SDKROOT={}".format(sdk) if sdk else ""
@@ -56,4 +56,4 @@ class XcodeBuild:
         if cli_args:
             cmd += " " + cmd_args_to_string(cli_args)
 
-        self._conanfile.run(cmd)
+        self._recipe.run(cmd)

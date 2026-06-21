@@ -4,7 +4,7 @@ import textwrap
 from thirdparty.cmake.cmakedeps import FIND_MODE_NONE, FIND_MODE_CONFIG, FIND_MODE_MODULE, \
     FIND_MODE_BOTH
 from thirdparty.cmake.cmakedeps.templates import CMakeDepsFileTemplate
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.api.install.generators import relativize_path
 from thirdparty.cmake.utils import cmake_escape_value
 
@@ -24,15 +24,15 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
         if self.arch:
             data_fname += "-{}".format(self.arch)
         data_fname += "-data.cmake"
-        # https://github.com/conan-io/conan/issues/17009
+        # upstream issue 17009
         return data_fname.replace("|", "_")
 
     @property
     def _build_modules_activated(self):
         if self.require.build:
-            return self.conanfile.ref.name in self.cmakedeps.build_context_build_modules
+            return self.recipe.ref.name in self.cmakedeps.build_context_build_modules
         else:
-            return self.conanfile.ref.name not in self.cmakedeps.build_context_build_modules
+            return self.recipe.ref.name not in self.cmakedeps.build_context_build_modules
 
     @property
     def context(self):
@@ -50,7 +50,7 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
 
         # For the build requires, we don't care about the transitive (only runtime for the br)
         # so as the xxx-conf.cmake files won't be generated, don't include them as find_dependency
-        # This is because in Conan 2.0 model, only the pure tools like CMake will be build_requires
+        # This is because in Recipe 2.0 model, only the pure tools like CMake will be build_requires
         # for example a framework test won't be a build require but a "test/not public" require.
         dependency_filenames = self._get_dependency_filenames()
         # Get the nodes that have the property cmake_find_mode=None (no files to generate)
@@ -60,11 +60,11 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
         root_folder = self._root_folder
         root_folder = root_folder.replace('\\', '/').replace('$', '\\$').replace('"', '\\"')
         # it is the relative path of the caller, not the dependency
-        root_folder = relativize_path(root_folder, self.cmakedeps._conanfile,
+        root_folder = relativize_path(root_folder, self.cmakedeps._recipe,
                                       "${CMAKE_CURRENT_LIST_DIR}")
 
         return {"global_cpp": global_cpp,
-                "has_components": self.conanfile.cpp_info.has_components,
+                "has_components": self.recipe.cpp_info.has_components,
                 "pkg_name": self.pkg_name,
                 "file_name": self.file_name,
                 "package_folder": root_folder,
@@ -77,12 +77,12 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
     @property
     def cmake_package_type(self):
         return {"shared-library": "SHARED",
-                "static-library": "STATIC"}.get(str(self.conanfile.package_type), "UNKNOWN")
+                "static-library": "STATIC"}.get(str(self.recipe.package_type), "UNKNOWN")
 
     @property
     def is_host_windows(self):
         # to account for all WindowsStore, WindowsCE and Windows OS in settings
-        return "Windows" in self.conanfile.settings.get_safe("os", "")
+        return "Windows" in self.recipe.settings.get_safe("os", "")
 
     @property
     def template(self):
@@ -190,36 +190,36 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
         return ret
 
     def _get_global_cpp_cmake(self):
-        global_cppinfo = self.conanfile.cpp_info.aggregated_components()
+        global_cppinfo = self.recipe.cpp_info.aggregated_components()
         pfolder_var_name = "{}_PACKAGE_FOLDER{}".format(self.pkg_name, self.config_suffix)
         return _TargetDataContext(global_cppinfo, pfolder_var_name, self._root_folder,
                                   self.require, self.cmake_package_type, self.is_host_windows,
-                                  self.conanfile, self.cmakedeps)
+                                  self.recipe, self.cmakedeps)
 
     @property
     def _root_folder(self):
-        return self.conanfile.recipe_folder if self.conanfile.package_folder is None \
-            else self.conanfile.package_folder
+        return self.recipe.recipe_folder if self.recipe.package_folder is None \
+            else self.recipe.package_folder
 
     def _get_required_components_cpp(self):
         """Returns a list of (component_name, DepsCppCMake)"""
         ret = []
-        sorted_comps = self.conanfile.cpp_info.get_sorted_components()
+        sorted_comps = self.recipe.cpp_info.get_sorted_components()
         pfolder_var_name = "{}_PACKAGE_FOLDER{}".format(self.pkg_name, self.config_suffix)
-        transitive_requires = self.cmakedeps.get_transitive_requires(self.conanfile)
+        transitive_requires = self.cmakedeps.get_transitive_requires(self.recipe)
         for comp_name, comp in sorted_comps.items():
             deps_cpp_cmake = _TargetDataContext(comp, pfolder_var_name, self._root_folder,
                                                 self.require, self.cmake_package_type,
-                                                self.is_host_windows, self.conanfile, self.cmakedeps,
+                                                self.is_host_windows, self.recipe, self.cmakedeps,
                                                 comp_name)
 
             public_comp_deps = []
             for required_pkg, required_comp in comp.parsed_requires():
                 if required_pkg is not None:  # Points to a component of a different package
                     try:  # Make sure the declared dependency is at least in the recipe requires
-                        self.conanfile.dependencies[required_pkg]
+                        self.recipe.dependencies[required_pkg]
                     except KeyError:
-                        raise ConanException(f"{self.conanfile}: component '{comp_name}' required "
+                        raise RecipeException(f"{self.recipe}: component '{comp_name}' required "
                                              f"'{required_pkg}::{required_comp}', "
                                              f"but '{required_pkg}' is not a direct dependency")
                     try:
@@ -229,9 +229,9 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
                     else:
                         public_comp_deps.append(self.get_component_alias(req, required_comp))
                 else:  # Points to a component of same package
-                    public_comp_deps.append(self.get_component_alias(self.conanfile, required_comp))
+                    public_comp_deps.append(self.get_component_alias(self.recipe, required_comp))
             deps_cpp_cmake.public_deps = " ".join(public_comp_deps)
-            component_target_name = self.get_component_alias(self.conanfile, comp_name)
+            component_target_name = self.get_component_alias(self.recipe, comp_name)
             ret.append((component_target_name, deps_cpp_cmake))
         ret.reverse()
         return ret
@@ -240,7 +240,7 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
         if self.require.build:
             return []
 
-        transitive_reqs = self.cmakedeps.get_transitive_requires(self.conanfile)
+        transitive_reqs = self.cmakedeps.get_transitive_requires(self.recipe)
         # Previously it was filtering here components, but not clear why the file dependency
         # should be skipped if components are not being required, why would it declare a
         # dependency to it?
@@ -252,7 +252,7 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
         ret = {}
         if self.require.build:
             return ret
-        deps = self.cmakedeps.get_transitive_requires(self.conanfile)
+        deps = self.cmakedeps.get_transitive_requires(self.recipe)
         for dep in deps.values():
             dep_file_name = self.cmakedeps.get_cmake_package_name(dep, self.generating_module)
             find_mode = self.cmakedeps.get_find_mode(dep)
@@ -272,7 +272,7 @@ class ConfigDataTemplate(CMakeDepsFileTemplate):
 class _TargetDataContext:
 
     def __init__(self, cpp_info, pfolder_var_name, package_folder, require, library_type,
-                 is_host_windows, conanfile, cmakedeps, comp_name=None):
+                 is_host_windows, recipe, cmakedeps, comp_name=None):
 
         def join_paths(paths):
             """
@@ -325,7 +325,7 @@ class _TargetDataContext:
         self.cflags_list = join_flags(";", cpp_info.cflags)
 
         # linker flags without magic: trying to mess with - and / =>
-        # https://github.com/conan-io/conan/issues/8811
+        # upstream issue 8811
         # frameworks should be declared with cppinfo.frameworks not "-framework Foundation"
         self.sharedlinkflags_list = '"{}"'.format(join_flags(";", cpp_info.sharedlinkflags)) \
             if cpp_info.sharedlinkflags else ''
@@ -355,9 +355,9 @@ class _TargetDataContext:
         if require and not require.run:
             self.bin_paths = ""
 
-        build_modules = cmakedeps.get_property("cmake_build_modules", conanfile, check_type=list) or []
+        build_modules = cmakedeps.get_property("cmake_build_modules", recipe, check_type=list) or []
         self.build_modules_paths = join_paths(build_modules)
         # SONAME flag only makes sense for SHARED libraries
-        nosoname = cmakedeps.get_property("nosoname", conanfile, comp_name, check_type=bool)
+        nosoname = cmakedeps.get_property("nosoname", recipe, comp_name, check_type=bool)
         self.no_soname = str((nosoname if self.library_type == "SHARED" else False) or False).upper()
 

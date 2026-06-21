@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
 
 
@@ -12,7 +12,7 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os != "Windows":
-            raise InvalidConfiguration("jom is only available on Windows")
+            raise RecipeInvalidConfiguration("jom is only available on Windows")
 
     def build(self):
         get(

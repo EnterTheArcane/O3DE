@@ -3,16 +3,16 @@ import textwrap
 import jinja2
 from jinja2 import Template
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 class ConfigVersionTemplate2:
     """
     foo-config-version.cmake
     """
-    def __init__(self, cmakedeps, conanfile):
+    def __init__(self, cmakedeps, recipe):
         self._cmakedeps = cmakedeps
-        self._conanfile = conanfile
+        self._recipe = recipe
 
     def content(self):
         t = Template(self._template, trim_blocks=True, lstrip_blocks=True,
@@ -21,18 +21,18 @@ class ConfigVersionTemplate2:
 
     @property
     def filename(self):
-        f = self._cmakedeps.get_cmake_filename(self._conanfile)
+        f = self._cmakedeps.get_cmake_filename(self._recipe)
         return f"{f}-config-version.cmake" if f == f.lower() else f"{f}ConfigVersion.cmake"
 
     @property
     def _context(self):
-        policy = self._cmakedeps.get_property("cmake_config_version_compat", self._conanfile)
+        policy = self._cmakedeps.get_property("cmake_config_version_compat", self._recipe)
         if policy is None:
             policy = "SameMajorVersion"
         if policy not in ("AnyNewerVersion", "SameMajorVersion", "SameMinorVersion", "ExactVersion"):
-            raise ConanException(f"Unknown cmake_config_version_compat={policy} in {self._conanfile}")
-        version = self._cmakedeps.get_property("system_package_version", self._conanfile)
-        version = version or self._conanfile.ref.version
+            raise RecipeException(f"Unknown cmake_config_version_compat={policy} in {self._recipe}")
+        version = self._cmakedeps.get_property("system_package_version", self._recipe)
+        version = version or self._recipe.ref.version
         return {"version": version,
                 "policy": policy}
 

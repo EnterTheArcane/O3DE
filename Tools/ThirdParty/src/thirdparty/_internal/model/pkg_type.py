@@ -1,6 +1,6 @@
 from enum import Enum
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 class PackageType(Enum):
@@ -22,22 +22,22 @@ class PackageType(Enum):
         return super().__eq__(PackageType(other))
 
     @staticmethod
-    def compute_package_type(conanfile):
+    def compute_package_type(recipe):
         # This doesnt implement the header_only option without shared one. Users should define
         # their package_type as they wish in the configure() method
 
         def deduce_from_options():
             try:
-                header = conanfile.options.header_only
-            except ConanException:
+                header = recipe.options.header_only
+            except RecipeException:
                 pass
             else:
                 if header:
                     return PackageType.HEADER
 
             try:
-                shared = conanfile.options.shared
-            except ConanException:
+                shared = recipe.options.shared
+            except RecipeException:
                 pass
             else:
                 if shared:
@@ -46,26 +46,26 @@ class PackageType(Enum):
                     return PackageType.STATIC
             return PackageType.UNKNOWN
 
-        conanfile_type = conanfile.package_type
-        if conanfile_type is not None:  # Explicit definition in recipe
+        recipe_type = recipe.package_type
+        if recipe_type is not None:  # Explicit definition in recipe
             try:
-                conanfile_type = PackageType(conanfile_type)
+                recipe_type = PackageType(recipe_type)
             except ValueError:
-                raise ConanException(f"{conanfile}: Invalid package type '{conanfile_type}'. "
+                raise RecipeException(f"{recipe}: Invalid package type '{recipe_type}'. "
                                      f"Valid types: {[i.value for i in PackageType]}")
-            if conanfile_type is PackageType.LIBRARY:
-                conanfile_type = deduce_from_options()
-                if conanfile_type is PackageType.UNKNOWN:
-                    raise ConanException(f"{conanfile}: Package type is 'library',"
+            if recipe_type is PackageType.LIBRARY:
+                recipe_type = deduce_from_options()
+                if recipe_type is PackageType.UNKNOWN:
+                    raise RecipeException(f"{recipe}: Package type is 'library',"
                                          " but no 'shared' option declared")
-            elif any(option in conanfile.options for option in ["shared", "header_only"]):
-                conanfile.output.warning(f"{conanfile}: package_type '{conanfile_type}' is defined, "
+            elif any(option in recipe.options for option in ["shared", "header_only"]):
+                recipe.output.warning(f"{recipe}: package_type '{recipe_type}' is defined, "
                                          "but 'shared' and/or 'header_only' options are present. "
                                          "The package_type will have precedence over the options "
                                          "regardless of their value.")
-            conanfile.package_type = conanfile_type
+            recipe.package_type = recipe_type
         else:  # automatic default detection with option shared/header-only
-            conanfile.package_type = deduce_from_options()
+            recipe.package_type = deduce_from_options()
 
 
 

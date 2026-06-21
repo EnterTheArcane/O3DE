@@ -96,16 +96,16 @@ class Recipe(RecipeBase):
         env.define("PREMAKE_PATH", os.path.join(self.source_folder, "build").replace("\\", "/"))
         env.define("DEPENDENCIES", os.path.join(self.source_folder, "dependencies").replace("\\", "/"))
 
-        # configure() injects --arch from CONAN_TO_PREMAKE_ARCH when the conan toolchain file exists,
+        # configure() injects --arch from RECIPE_TO_PREMAKE_ARCH when the recipe toolchain file exists,
         # but rive uses its own --arch option with different values (x64 not x86_64).
         # Hide the toolchain path so configure() takes the legacy code path and uses our arch arg.
-        _real_tc = premake._premake_conan_toolchain
-        premake._premake_conan_toolchain = _real_tc.parent / "_disabled_conantoolchain.premake5.lua"
+        _real_tc = premake._premake_recipe_toolchain
+        premake._premake_recipe_toolchain = _real_tc.parent / "_disabled_recipe_toolchain.premake5.lua"
         try:
             with env.vars(self).apply():
                 premake.configure()
         finally:
-            premake._premake_conan_toolchain = _real_tc
+            premake._premake_recipe_toolchain = _real_tc
 
         premake.build(workspace="rive", targets=["rive"], configuration="default")
 

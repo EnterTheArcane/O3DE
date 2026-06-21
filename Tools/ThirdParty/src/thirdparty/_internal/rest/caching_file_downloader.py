@@ -5,17 +5,17 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-from thirdparty._internal.api.output import ConanOutput
+from thirdparty._internal.api.output import Output
 from thirdparty._internal.cache.home_paths import HomePaths
 from thirdparty._internal.rest.file_downloader import FileDownloader
 from thirdparty._internal.rest.download_cache import DownloadCache
 from thirdparty._internal.errors import AuthenticationException, ForbiddenException, NotFoundException
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import mkdir, set_dirty_context_manager, remove_if_dirty, human_size
 
 
 def _o3de_download_cache_folder() -> str:
-    """Default source cache folder used when no Conan cache is configured."""
+    """Default source cache folder used when no Recipe cache is configured."""
     base = os.environ.get("O3DE_THIRDPARTY_CACHE", str(Path.home() / ".o3de" / "ThirdParty"))
     return str(Path(base) / "Downloads")
 
@@ -24,14 +24,14 @@ class SourcesCachingDownloader:
     """ Class for downloading recipe download() urls
     if the config is active, it can use caching/backup-sources
     """
-    def __init__(self, conanfile):
-        helpers = getattr(conanfile, "_conan_helpers")
+    def __init__(self, recipe):
+        helpers = getattr(recipe, "_recipe_runtime")
         self._global_conf = helpers.global_conf
-        self._file_downloader = FileDownloader(helpers.requester, scope=conanfile.display_name,
+        self._file_downloader = FileDownloader(helpers.requester, scope=recipe.display_name,
                                                source_credentials=True)
         self._home_folder = helpers.home_folder
-        self._output = conanfile.output
-        self._conanfile = conanfile
+        self._output = recipe.output
+        self._recipe = recipe
 
     def download(self, urls, file_path,
                  retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256):
@@ -41,17 +41,17 @@ class SourcesCachingDownloader:
             # If backups are defined, but the download cache is not defined, use a default one
             download_cache_folder = HomePaths(self._home_folder).default_sources_backup_folder
         if download_cache_folder and not os.path.isabs(download_cache_folder):
-            raise ConanException("core.sources:download_cache must be an absolute path")
+            raise RecipeException("core.sources:download_cache must be an absolute path")
         source_origins = source_origins or ["origin"]
         if download_cache_folder and not sha256:
             self._output.warning("Cannot cache download() without sha256 checksum")
             download_cache_folder = None  # Cannot cache
             source_origins = ["origin"]
         if None in source_origins:
-            raise ConanException(f"Incorrect 'core.sources:download_urls' contains invalid 'None'"
+            raise RecipeException(f"Incorrect 'core.sources:download_urls' contains invalid 'None'"
                                  f"url: {source_origins}")
 
-        # O3DE fallback: when no Conan download cache is configured, use the local O3DE cache.
+        # O3DE fallback: when no Recipe download cache is configured, use the local O3DE cache.
         if not download_cache_folder and sha256:
             download_cache_folder = _o3de_download_cache_folder()
 
@@ -89,7 +89,7 @@ class SourcesCachingDownloader:
                 # copy it to the package "source" folder
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 shutil.copy2(download_path, file_path)
-                download_cache.update_backup_sources_json(download_path, self._conanfile, urls)
+                download_cache.update_backup_sources_json(download_path, self._recipe, urls)
         else:
             # Not in local cache, check origins from core.sources:download_urls
             # This doesn't need to be dirty-protected, as the full "source" folder is protected
@@ -127,7 +127,7 @@ class SourcesCachingDownloader:
                     else:
                         self._output.warning(msg)
                 except (AuthenticationException, ForbiddenException) as e:
-                    raise ConanException(f"Authentication to source backup server '{backup_url}' "
+                    raise RecipeException(f"Authentication to source backup server '{backup_url}' "
                                          f"failed: {e}. "
                                          f"Please check your 'source_credentials.json'")
 
@@ -159,13 +159,13 @@ class SourcesCachingDownloader:
                     raise
 
 
-class ConanInternalCacheDownloader:
-    """ This is used for the download of Conan packages from server, not for sources/backup sources
+class PackageCacheDownloader:
+    """ This is used for the download of Recipe packages from server, not for sources/backup sources
     """
     def __init__(self, requester, config, scope=None):
         self._download_cache = config.get("core.download:download_cache")
         if self._download_cache and not os.path.isabs(self._download_cache):
-            raise ConanException("core.download:download_cache must be an absolute path")
+            raise RecipeException("core.download:download_cache must be an absolute path")
         self._file_downloader = FileDownloader(requester, scope=scope)
         self._scope = scope
 
@@ -191,7 +191,7 @@ class ConanInternalCacheDownloader:
                 if is_large_file:
                     base_name = os.path.basename(file_path)
                     hs = human_size(total_length)
-                    ConanOutput(scope=self._scope).info(f"Copying {hs} {base_name} from download "
+                    Output(scope=self._scope).info(f"Copying {hs} {base_name} from download "
                                                         f"cache, instead of downloading it")
 
             # Everything good, file in the cache, just copy it to final destination

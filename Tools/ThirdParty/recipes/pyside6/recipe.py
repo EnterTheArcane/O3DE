@@ -180,7 +180,7 @@ class Recipe(RecipeBase):
         helper_path = os.path.join(self.generators_folder, "qt_pyside6_internal_targets.cmake")
         with open(helper_path, "w") as f:
             f.write(helper_content)
-        toolchain_path = os.path.join(self.generators_folder, "conan_toolchain.cmake")
+        toolchain_path = os.path.join(self.generators_folder, "recipe_toolchain.cmake")
         with open(toolchain_path, "a") as f:
             f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
 

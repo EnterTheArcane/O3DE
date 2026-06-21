@@ -6,7 +6,7 @@ from threading import Lock
 
 import fasteners
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.dates import timestamp_now
 from thirdparty._internal.util.files import load, save, remove_if_dirty
 
@@ -14,12 +14,12 @@ from thirdparty._internal.util.files import load, save, remove_if_dirty
 class DownloadCache:
     """ The download cache has 3 folders
     - "s": SOURCE_BACKUP for the files.download(internet_url) backup sources feature
-    - "c": CONAN_CACHE: for caching Conan packages artifacts
+    - "c": RECIPE_CACHE: for caching Recipe packages artifacts
     - "locks": The LOCKS folder containing the file locks for concurrent access to the cache
     """
     _LOCKS = "locks"
     _SOURCE_BACKUP = "s"
-    _CONAN_CACHE = "c"
+    _RECIPE_CACHE = "c"
 
     def __init__(self, path: str):
         self._path: str = path
@@ -31,7 +31,7 @@ class DownloadCache:
         md = hashlib.sha256()
         md.update(url.encode())
         h = md.hexdigest()
-        return os.path.join(self._path, self._CONAN_CACHE, h), h
+        return os.path.join(self._path, self._RECIPE_CACHE, h), h
 
     _thread_locks = {}  # Needs to be shared among all instances
 
@@ -55,7 +55,7 @@ class DownloadCache:
         Will exclude the sources that come from URLs present in excluded_urls
 
         @param excluded_urls: a list of URLs to exclude backup sources files if they come from any of these URLs
-        @param package_list: a PackagesList object to filter backup files from (The files should have been downloaded form any of the references in the package_list)
+        @param package_list: optional package metadata used to filter backup files by reference
         @param only_upload: if True, only return the files for packages that are set to be uploaded"""
         path_backups = os.path.join(self._path, self._SOURCE_BACKUP)
 
@@ -98,7 +98,7 @@ class DownloadCache:
             blob_path = os.path.join(path_backups, path)
             metadata_path = os.path.join(blob_path + ".json")
             if not os.path.exists(metadata_path):
-                raise ConanException(f"Missing metadata file for backup source {blob_path}")
+                raise RecipeException(f"Missing metadata file for backup source {blob_path}")
             metadata = json.loads(load(metadata_path))
             refs = metadata["references"]
             for ref, urls in refs.items():
@@ -121,7 +121,7 @@ class DownloadCache:
         return {url for urls in refs.values() for url in urls}
 
     @staticmethod
-    def update_backup_sources_json(cached_path, conanfile, urls):
+    def update_backup_sources_json(cached_path, recipe, urls):
         """ create or update the sha256.json file with the references and new urls used
         """
         summary_path = cached_path + ".json"
@@ -131,15 +131,15 @@ class DownloadCache:
             summary = {"references": {}, "timestamp": timestamp_now()}
 
         try:
-            summary_key = str(conanfile.ref)
+            summary_key = str(recipe.ref)
         except AttributeError:
-            # If there's no node associated with the conanfile,
-            # try to construct a reference from the conanfile itself.
+            # If there's no node associated with the recipe,
+            # try to construct a reference from the recipe itself.
             # We accept it if we have a name and a version at least.
-            if conanfile.name and conanfile.version:
-                user = f"@{conanfile.user}" if conanfile.user else ""
-                channel = f"/{conanfile.channel}" if conanfile.channel else ""
-                summary_key = f"{conanfile.name}/{conanfile.version}{user}{channel}"
+            if recipe.name and recipe.version:
+                user = f"@{recipe.user}" if recipe.user else ""
+                channel = f"/{recipe.channel}" if recipe.channel else ""
+                summary_key = f"{recipe.name}/{recipe.version}{user}{channel}"
             else:
                 # The recipe path would be different between machines
                 # So best we can do is to set this as unknown
@@ -149,9 +149,9 @@ class DownloadCache:
             urls = [urls]
         existing_urls = summary["references"].setdefault(summary_key, [])
         existing_urls.extend(url for url in urls if url not in existing_urls)
-        conanfile.output.verbose(f"Updating {summary_path} summary file")
+        recipe.output.verbose(f"Updating {summary_path} summary file")
         summary_dump = json.dumps(summary)
-        conanfile.output.debug(f"New summary: ${summary_dump}")
+        recipe.output.debug(f"New summary: ${summary_dump}")
         save(summary_path, json.dumps(summary))
 
 

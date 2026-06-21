@@ -30,17 +30,17 @@ def format_defines(defines, toolchain=False):
 
 class NMakeDeps:
 
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
         self._environment = None
 
     # TODO: This is similar from AutotoolsDeps: Refactor and make common
     def _get_cpp_info(self):
-        ret = CppInfo(self._conanfile)
-        deps = self._conanfile.dependencies.host.topological_sort
+        ret = CppInfo(self._recipe)
+        deps = self._recipe.dependencies.host.topological_sort
         deps = [dep for dep in reversed(deps.values())]
         for dep in deps:
             dep_cppinfo = dep.cpp_info.aggregated_components()
@@ -81,9 +81,9 @@ class NMakeDeps:
         return self._environment
 
     def vars(self, scope="build"):
-        return self.environment.vars(self._conanfile, scope=scope)
+        return self.environment.vars(self._recipe, scope=scope)
 
     def generate(self, scope="build"):
-        check_duplicated_generator(self, self._conanfile)
-        self.vars(scope).save_script("conannmakedeps")
+        check_duplicated_generator(self, self._recipe)
+        self.vars(scope).save_script("nmakedeps")
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""port_data.py — Convert a conan-center-index conandata.yml to ThirdParty data.yml.
+"""port_data.py — Convert a conan-center-index recipe_data.yml to ThirdParty data.yml.
 
 Usage::
 
@@ -7,17 +7,17 @@ Usage::
 
 The script reads::
 
-    <cci_root>/recipes/<name>/all/conandata.yml
+    <cci_root>/recipes/<name>/all/recipe_data.yml
 
 and writes::
 
     <thirdparty_root>/recipes/<name>/data.yml
 
-It also copies any patch files referenced in the conandata.yml patches section
+It also copies any patch files referenced in the recipe_data.yml patches section
 to ``<thirdparty_root>/recipes/<name>/patches/``.
 
 By default only the **latest** (first) version is ported.  Use ``--all-versions``
-to include all versions found in conandata.yml.
+to include all versions found in recipe_data.yml.
 
 Options:
   --cci-root PATH       Path to conan-center-index (default: auto-detect)
@@ -54,24 +54,24 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 
 def _convert(
-    conandata: dict[str, Any],
+    recipe_data: dict[str, Any],
     all_versions: bool,
     source_dir: Path,
     out_dir: Path,
 ) -> dict[str, Any]:
-    """Convert conandata.yml dict → thirdparty data.yml dict.
+    """Convert recipe_data.yml dict → thirdparty data.yml dict.
 
     Also copies patch files from *source_dir*/patches/ to *out_dir*/patches/.
     """
-    sources: Any = conandata.get("sources", {})
-    patches_raw: Any = conandata.get("patches", {})
+    sources: Any = recipe_data.get("sources", {})
+    patches_raw: Any = recipe_data.get("patches", {})
 
     if not isinstance(sources, dict):
-        raise ValueError("conandata.yml 'sources' key is not a dict")
+        raise ValueError("recipe_data.yml 'sources' key is not a dict")
 
     version_keys = list(sources.keys())
     if not version_keys:
-        raise ValueError("conandata.yml has no versions under 'sources'")
+        raise ValueError("recipe_data.yml has no versions under 'sources'")
 
     selected = version_keys if all_versions else [version_keys[0]]
 
@@ -168,20 +168,20 @@ def port_data(
     dry_run: bool = False,
     overwrite: bool = False,
 ) -> None:
-    # Locate conandata.yml
+    # Locate recipe_data.yml
     recipe_dir = cci_root / "recipes" / name / "all"
     if not recipe_dir.is_dir():
         # Try first versioned folder
-        candidates = sorted((cci_root / "recipes" / name).glob("*/conandata.yml"))
+        candidates = sorted((cci_root / "recipes" / name).glob("*/recipe_data.yml"))
         if not candidates:
-            print(f"ERROR: conandata.yml not found for {name!r}", file=sys.stderr)
+            print(f"ERROR: recipe_data.yml not found for {name!r}", file=sys.stderr)
             sys.exit(1)
-        conandata_path = candidates[0]
-        recipe_dir = conandata_path.parent
+        recipe_data_path = candidates[0]
+        recipe_dir = recipe_data_path.parent
     else:
-        conandata_path = recipe_dir / "conandata.yml"
-        if not conandata_path.exists():
-            print(f"ERROR: {conandata_path} not found", file=sys.stderr)
+        recipe_data_path = recipe_dir / "recipe_data.yml"
+        if not recipe_data_path.exists():
+            print(f"ERROR: {recipe_data_path} not found", file=sys.stderr)
             sys.exit(1)
 
     out_dir = out_root / name
@@ -191,8 +191,8 @@ def port_data(
         print(f"[port_data] SKIP {name} — {out_path} already exists (use --overwrite)")
         return
 
-    conandata = _load_yaml(conandata_path)
-    converted = _convert(conandata, all_versions, recipe_dir, out_dir)
+    recipe_data = _load_yaml(recipe_data_path)
+    converted = _convert(recipe_data, all_versions, recipe_dir, out_dir)
     output = _dump_yaml(converted)
 
     if dry_run:
@@ -207,7 +207,7 @@ def port_data(
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Convert conandata.yml to ThirdParty data.yml format."
+        description="Convert recipe_data.yml to ThirdParty data.yml format."
     )
     parser.add_argument("name", help="Recipe name (e.g. zlib-ng)")
     parser.add_argument("--cci-root", default=None, metavar="PATH")

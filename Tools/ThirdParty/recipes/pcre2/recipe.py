@@ -75,7 +75,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         # Mandatory because upstream CMakeLists overrides BUILD_SHARED_LIBS as a CACHE variable
-        # (see https://github.com/conan-io/conan/issues/11840)
+        # (see upstream issue 11840)
         tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
         tc.variables["BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["PCRE2_BUILD_PCRE2GREP"] = self.options.build_pcre2grep
@@ -163,7 +163,7 @@ class Recipe(RecipeBase):
                 self.cpp_info.components["pcre2-32"].defines.append("PCRE2_STATIC")
 
         if self.options.build_pcre2grep:
-            # FIXME: This is a workaround to avoid ConanException. zlib and bzip2
+            # FIXME: This is a workaround to avoid RecipeException. zlib and bzip2
             # are optional requirements of pcre2grep executable, not of any pcre2 lib.
             if self.options.with_zlib:
                 self.cpp_info.components["pcre2-8"].requires.append("zlib::zlib")

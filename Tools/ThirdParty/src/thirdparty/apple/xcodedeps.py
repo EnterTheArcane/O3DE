@@ -4,7 +4,7 @@ import textwrap
 from jinja2 import Template
 
 from thirdparty._internal import check_duplicated_generator
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import load, save
 from thirdparty.apple.apple import _to_apple_arch
 
@@ -14,7 +14,7 @@ GLOBAL_XCCONFIG_TEMPLATE = textwrap.dedent("""\
 
     """)
 
-GLOBAL_XCCONFIG_FILENAME = "conan_config.xcconfig"
+GLOBAL_XCCONFIG_FILENAME = "recipe_config.xcconfig"
 
 
 def _format_name(name):
@@ -57,7 +57,7 @@ def _add_includes_to_file_or_create(filename, template, files_to_include):
 
 
 class XcodeDeps:
-    general_name = "conandeps.xcconfig"
+    general_name = "recipe_deps.xcconfig"
 
     _conf_xconfig = textwrap.dedent("""\
         PACKAGE_ROOT_{{pkg_name}}{{condition}} = {{root}}
@@ -74,7 +74,7 @@ class XcodeDeps:
         """)
 
     _dep_xconfig = textwrap.dedent("""\
-        // Conan XcodeDeps generated file for {{pkg_name}}::{{comp_name}}
+        // Recipe XcodeDeps generated file for {{pkg_name}}::{{comp_name}}
         // Includes all configurations for each dependency
         {% for include in deps_includes %}
         #include "{{include}}"
@@ -93,37 +93,37 @@ class XcodeDeps:
         """)
 
     _all_xconfig = textwrap.dedent("""\
-        // Conan XcodeDeps generated file
+        // Recipe XcodeDeps generated file
         // Includes all direct dependencies
         """)
 
     _pkg_xconfig = textwrap.dedent("""\
-        // Conan XcodeDeps generated file
+        // Recipe XcodeDeps generated file
         // Includes all components for the package
         """)
 
-    def __init__(self, conanfile):
-        self._conanfile = conanfile
-        self.configuration = conanfile.settings.get_safe("build_type")
-        arch = conanfile.settings.get_safe("arch")
+    def __init__(self, recipe):
+        self._recipe = recipe
+        self.configuration = recipe.settings.get_safe("build_type")
+        arch = recipe.settings.get_safe("arch")
         self.architecture = _to_apple_arch(arch, default=arch)
-        self.os_version = conanfile.settings.get_safe("os.version")
-        self.sdk = conanfile.settings.get_safe("os.sdk")
-        self.sdk_version = conanfile.settings.get_safe("os.sdk_version")
+        self.os_version = recipe.settings.get_safe("os.version")
+        self.sdk = recipe.settings.get_safe("os.sdk")
+        self.sdk_version = recipe.settings.get_safe("os.sdk_version")
 
     def generate(self):
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         if self.configuration is None:
-            raise ConanException("XcodeDeps.configuration is None, it should have a value")
+            raise RecipeException("XcodeDeps.configuration is None, it should have a value")
         if self.architecture is None:
-            raise ConanException("XcodeDeps.architecture is None, it should have a value")
+            raise RecipeException("XcodeDeps.architecture is None, it should have a value")
         generator_files = self._content()
         for generator_file, content in generator_files.items():
             save(generator_file, content)
 
     def _conf_xconfig_file(self, require, pkg_name, comp_name, package_folder, transitive_cpp_infos):
         """
-        content for conan_poco_x86_release.xcconfig, containing the activation
+        content for recipe_poco_x86_release.xcconfig, containing the activation
         """
         def _merged_vars(name):
             merged = [var for cpp_info in transitive_cpp_infos for var in getattr(cpp_info, name)]
@@ -145,7 +145,7 @@ class XcodeDeps:
             'cxx_compiler_flags': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("cxxflags")),
             'linker_flags': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("sharedlinkflags")),
             'exe_flags': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("exelinkflags")),
-            'condition': _xcconfig_conditional(self._conanfile.settings, self.configuration)
+            'condition': _xcconfig_conditional(self._recipe.settings, self.configuration)
         }
 
         if not require.headers:
@@ -178,10 +178,10 @@ class XcodeDeps:
             content_multi = self._dep_xconfig
 
             def _get_includes(components):
-                # if we require the root component dep::dep include conan_dep.xcconfig
-                # for components (dep::component) include conan_dep_component.xcconfig
-                return [f"conan_{_format_name(component[0])}.xcconfig" if component[0] == component[1]
-                        else f"conan_{_format_name(component[0])}_{_format_name(component[1])}.xcconfig"
+                # if we require the root component dep::dep include recipe_dep.xcconfig
+                # for components (dep::component) include recipe_dep_component.xcconfig
+                return [f"recipe_{_format_name(component[0])}.xcconfig" if component[0] == component[1]
+                        else f"recipe_{_format_name(component[0])}_{_format_name(component[1])}.xcconfig"
                         for component in components]
 
             content_multi = Template(content_multi).render({"pkg_name": pkg_name,
@@ -203,7 +203,7 @@ class XcodeDeps:
         content_multi = content or self._all_xconfig
 
         for dep in deps.values():
-            include_file = f'conan_{_format_name(dep.ref.name)}.xcconfig'
+            include_file = f'recipe_{_format_name(dep.ref.name)}.xcconfig'
             if include_file not in content_multi:
                 content_multi = content_multi + f'\n#include "{include_file}"\n'
         return content_multi
@@ -214,7 +214,7 @@ class XcodeDeps:
         """
         content_multi = self._pkg_xconfig
         for pkg_name, comp_name in components:
-            content_multi = content_multi + '\n#include "conan_{}_{}.xcconfig"\n'.format(pkg_name,
+            content_multi = content_multi + '\n#include "recipe_{}_{}.xcconfig"\n'.format(pkg_name,
                                                                                          comp_name)
         return content_multi
 
@@ -227,13 +227,13 @@ class XcodeDeps:
     def _get_content_for_component(self, require, pkg_name, component_name, package_folder, transitive_cpp_infos):
         result = {}
 
-        conf_name = _xcconfig_settings_filename(self._conanfile.settings, self.configuration)
+        conf_name = _xcconfig_settings_filename(self._recipe.settings, self.configuration)
 
-        props_name = "conan_{}_{}{}.xcconfig".format(pkg_name, component_name, conf_name)
+        props_name = "recipe_{}_{}{}.xcconfig".format(pkg_name, component_name, conf_name)
         result[props_name] = self._conf_xconfig_file(require, pkg_name, component_name, package_folder, transitive_cpp_infos)
 
         # The entry point for each package
-        file_dep_name = "conan_{}_{}.xcconfig".format(pkg_name, component_name)
+        file_dep_name = "recipe_{}_{}.xcconfig".format(pkg_name, component_name)
         dep_content = self._dep_xconfig_file(pkg_name, component_name, file_dep_name, props_name, [])
 
         result[file_dep_name] = dep_content
@@ -300,15 +300,15 @@ class XcodeDeps:
     def _content(self):
         result = {}
 
-        # Generate the config files for each component with name conan_pkgname_compname.xcconfig
-        # If a package has no components the name is conan_pkgname_pkgname.xcconfig
-        # All components are included in the conan_pkgname.xcconfig file
-        host_req = self._conanfile.dependencies.host
-        test_req = self._conanfile.dependencies.test
+        # Generate the config files for each component with name recipe_pkgname_compname.xcconfig
+        # If a package has no components the name is recipe_pkgname_pkgname.xcconfig
+        # All components are included in the recipe_pkgname.xcconfig file
+        host_req = self._recipe.dependencies.host
+        test_req = self._recipe.dependencies.test
         all_deps = {dep.ref.name: dep
                     for _, dep in list(host_req.items()) + list(test_req.items())}
 
-        direct_deps = self._conanfile.dependencies.filter({"direct": True,
+        direct_deps = self._recipe.dependencies.filter({"direct": True,
                                                            "build": False,
                                                            "skip": False})
         for require, dep in direct_deps.items():
@@ -344,12 +344,12 @@ class XcodeDeps:
                 include_components_names.append((dep_name, dep_name))
                 result.update(root_content)
 
-            result["conan_{}.xcconfig".format(dep_name)] = self._pkg_xconfig_file(include_components_names)
+            result["recipe_{}.xcconfig".format(dep_name)] = self._pkg_xconfig_file(include_components_names)
 
         all_file_content = ""
 
         # Include direct requires
-        direct_deps = self._conanfile.dependencies.filter({"direct": True, "build": False, "skip": False})
+        direct_deps = self._recipe.dependencies.filter({"direct": True, "build": False, "skip": False})
         result[self.general_name] = self._all_xconfig_file(direct_deps, all_file_content)
 
         result[GLOBAL_XCCONFIG_FILENAME] = self._global_xconfig_content

@@ -2,10 +2,10 @@ import os
 import platform
 from pathlib import Path
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 if platform.system() == "Windows":
-    def _conan_expand_user(path):
+    def _recipe_expand_user(path):
         """ wrapper to the original expanduser function, to workaround python returning
         verbatim %USERPROFILE% when some other app (git for windows) sets HOME envvar
         """
@@ -29,9 +29,9 @@ if platform.system() == "Windows":
                 os.environ["HOME"] = home
         return result
 else:
-    _conan_expand_user = os.path.expanduser
+    _recipe_expand_user = os.path.expanduser
 
-DEFAULT_CONAN_HOME = ".conan2"
+DEFAULT_O3DE_PACKAGE_HOME = os.path.join(".o3de", "ThirdParty")
 
 
 def find_file_walk_up(start, filename, end=None):
@@ -49,48 +49,48 @@ def find_file_walk_up(start, filename, end=None):
     return None
 
 
-def get_conan_user_home():
+def get_recipe_user_home():
 
-    def _user_home_from_conanrc_file():
+    def _user_home_from_rc_file():
         try:
-            conanrc_path = find_file_walk_up(os.getcwd(), ".conanrc")
+            rc_path = find_file_walk_up(os.getcwd(), ".thirdpartyrc")
 
-            with open(conanrc_path) as conanrc_file:
+            with open(rc_path) as rc_file:
                 values = {k: str(v) for k, v in
-                          (line.split('=') for line in conanrc_file.read().splitlines() if
+                          (line.split('=') for line in rc_file.read().splitlines() if
                            not line.startswith("#"))}
 
-            conan_home = values["conan_home"]
+            recipe_home = values["recipe_home"]
             # check if it's a local folder
-            if conan_home[:2] in ("./", ".\\") or conan_home.startswith(".."):
-                conan_home = conanrc_path.parent.absolute() / conan_home
-            return conan_home
+            if recipe_home[:2] in ("./", ".\\") or recipe_home.startswith(".."):
+                recipe_home = rc_path.parent.absolute() / recipe_home
+            return recipe_home
         except (OSError, KeyError, TypeError):
             return None
 
-    user_home = _user_home_from_conanrc_file() or os.getenv("CONAN_HOME")
+    user_home = _user_home_from_rc_file() or os.getenv("O3DE_PACKAGE_HOME")
     if user_home is None:
         # the default, in the user home
-        user_home = os.path.join(_conan_expand_user("~"), DEFAULT_CONAN_HOME)
+        user_home = os.path.join(_recipe_expand_user("~"), DEFAULT_O3DE_PACKAGE_HOME)
     else:  # Do an expansion, just in case the user is using ~/something/here
-        user_home = _conan_expand_user(user_home)
+        user_home = _recipe_expand_user(user_home)
     if not os.path.isabs(user_home):
-        raise ConanException("Invalid CONAN_HOME value '%s', "
+        raise RecipeException("Invalid O3DE_PACKAGE_HOME value '%s', "
                              "please specify an absolute or path starting with ~/ "
                              "(relative to user home)" % user_home)
     return user_home
 
 
 # Files
-CONANFILE = 'conanfile.py'
-CONANFILE_TXT = "conanfile.txt"
-CONAN_MANIFEST = "conanmanifest.txt"
-CONANINFO = "conaninfo.txt"
-PACKAGE_FILE_NAME = "conan_package.t"
-EXPORT_FILE_NAME = "conan_export.t"
-EXPORT_SOURCES_FILE_NAME = "conan_sources.t"
+RECIPE_FILE = 'recipe.py'
+RECIPE_TXT = "recipe.txt"
+RECIPE_MANIFEST = "manifest.txt"
+PACKAGE_INFO = "package_id_info.txt"
+PACKAGE_FILE_NAME = "recipe_package.t"
+EXPORT_FILE_NAME = "recipe_export.t"
+EXPORT_SOURCES_FILE_NAME = "recipe_sources.t"
 COMPRESSIONS = "gz", "xz", "zst"
-DATA_YML = "conandata.yml"
+DATA_YML = "data.yml"
 
 
 

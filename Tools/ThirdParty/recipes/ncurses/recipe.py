@@ -167,11 +167,11 @@ class Recipe(RecipeBase):
             env.define("OBJDUMP", ":")
             env.define("RANLIB", ":")
             env.define("STRIP", ":")
-            env.vars(self).save_script("conanbuild_msvc")
+            env.vars(self).save_script("buildenv_msvc")
 
         if is_msvc(self):
             # Custom AutotoolsDeps for cl like compilers
-            # workaround for https://github.com/conan-io/conan/issues/12784
+            # workaround for upstream issue 12784
             includedirs = []
             defines = []
             libs = []
@@ -194,7 +194,7 @@ class Recipe(RecipeBase):
             env.append("LDFLAGS", [f"-L{unix_path(self, p)}" for p in libdirs] + linkflags)
             env.append("CXXFLAGS", cxxflags)
             env.append("CFLAGS", cflags)
-            env.vars(self).save_script("conanautotoolsdeps_cl_workaround")
+            env.vars(self).save_script("autotoolsdeps_cl_workaround")
 
         deps = PkgConfigDeps(self)
         deps.generate()
@@ -239,7 +239,7 @@ class Recipe(RecipeBase):
 
     @property
     def _module_file(self):
-        return f"conan-official-{self.name}-targets.cmake"
+        return f"recipe-official-{self.name}-targets.cmake"
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Curses")

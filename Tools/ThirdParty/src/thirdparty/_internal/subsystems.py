@@ -6,10 +6,10 @@ Potential scenarios:
     - No need of bash (no conf at all)
     - Need to build in bash (tools.microsoft.bash:subsystem=xxx,
                              tools.microsoft.bash:path=<path>,
-                             conanfile.win_bash)
+                             recipe.win_bash)
     - Need to run (tests) in bash (tools.microsoft.bash:subsystem=xxx,
                                    tools.microsoft.bash:path=<path>,
-                                   conanfile.win_bash_run)
+                                   recipe.win_bash_run)
   - Targeting Subsystem (os.subsystem = msys2/cygwin)
     - Always builds and runs in bash (tools.microsoft.bash:path)
 
@@ -24,7 +24,7 @@ import platform
 import re
 
 from thirdparty.build import cmd_args_to_string
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 WINDOWS = "windows"
 MSYS2 = 'msys2'
@@ -33,50 +33,50 @@ CYGWIN = 'cygwin'
 WSL = 'wsl'  # Windows Subsystem for Linux
 
 
-def command_env_wrapper(conanfile, command, envfiles, envfiles_folder, scope="build"):
+def command_env_wrapper(recipe, command, envfiles, envfiles_folder, scope="build"):
     from thirdparty.env.environment import environment_wrap_command
-    if getattr(conanfile, "conf", None) is None:
+    if getattr(recipe, "conf", None) is None:
         # TODO: No conf, no profile defined!! This happens at ``export()`` time
         #  Is it possible to run a self.run() in export() in bash?
         #  Is it necessary? Shouldn't be
         return command
 
-    active = conanfile.conf.get("tools.microsoft.bash:active", check_type=bool)
-    subsystem = conanfile.conf.get("tools.microsoft.bash:subsystem")
+    active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
+    subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
     if platform.system() == "Windows" and (
-            (conanfile.win_bash and scope == "build") or
-            (conanfile.win_bash_run and scope == "run")):
+            (recipe.win_bash and scope == "build") or
+            (recipe.win_bash_run and scope == "run")):
         if subsystem is None:
-            raise ConanException("win_bash/win_bash_run defined but no "
+            raise RecipeException("win_bash/win_bash_run defined but no "
                                  "tools.microsoft.bash:subsystem")
         if active:
-            wrapped_cmd = environment_wrap_command(conanfile, envfiles, envfiles_folder, command)
+            wrapped_cmd = environment_wrap_command(recipe, envfiles, envfiles_folder, command)
         else:
-            wrapped_cmd = _windows_bash_wrapper(conanfile, command, envfiles, envfiles_folder)
+            wrapped_cmd = _windows_bash_wrapper(recipe, command, envfiles, envfiles_folder)
     else:
-        wrapped_cmd = environment_wrap_command(conanfile, envfiles, envfiles_folder, command)
+        wrapped_cmd = environment_wrap_command(recipe, envfiles, envfiles_folder, command)
     return wrapped_cmd
 
 
-def _windows_bash_wrapper(conanfile, command, env, envfiles_folder):
+def _windows_bash_wrapper(recipe, command, env, envfiles_folder):
     from thirdparty.env import Environment
     from thirdparty.env.environment import environment_wrap_command
     """ Will wrap a unix command inside a bash terminal It requires to have MSYS2, CYGWIN, or WSL"""
 
-    subsystem = conanfile.conf.get("tools.microsoft.bash:subsystem")
+    subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
     if not platform.system() == "Windows":
-        raise ConanException("Command only for Windows operating system")
+        raise RecipeException("Command only for Windows operating system")
 
-    shell_path = conanfile.conf.get("tools.microsoft.bash:path")
+    shell_path = recipe.conf.get("tools.microsoft.bash:path")
     if not shell_path:
-        raise ConanException("The config 'tools.microsoft.bash:path' is "
+        raise RecipeException("The config 'tools.microsoft.bash:path' is "
                              "needed to run commands in a Windows subsystem")
     shell_path = shell_path.replace("\\", "/")  # Should work in all terminals
     env = env or []
     if subsystem == MSYS2:
         # Configure MSYS2 to inherith the PATH
         msys2_mode_env = Environment()
-        _msystem = {"x86": "MINGW32"}.get(conanfile.settings.get_safe("arch"), "MINGW64")
+        _msystem = {"x86": "MINGW32"}.get(recipe.settings.get_safe("arch"), "MINGW64")
         # https://www.msys2.org/wiki/Launchers/ dictates that the shell should be launched with
         # - MSYSTEM defined
         # - CHERE_INVOKING is necessary to keep the CWD and not change automatically to the user home
@@ -85,20 +85,20 @@ def _windows_bash_wrapper(conanfile, command, env, envfiles_folder):
         msys2_mode_env.unset("ORIGINAL_PATH")
         # So --login do not change automatically to the user home
         msys2_mode_env.define("CHERE_INVOKING", "1")
-        path = os.path.join(conanfile.generators_folder, "msys2_mode.bat")
+        path = os.path.join(recipe.generators_folder, "msys2_mode.bat")
         # Make sure we save pure .bat files, without sh stuff
-        wb, conanfile.win_bash = conanfile.win_bash, None
-        msys2_mode_env.vars(conanfile, "build").save_bat(path)
-        conanfile.win_bash = wb
+        wb, recipe.win_bash = recipe.win_bash, None
+        msys2_mode_env.vars(recipe, "build").save_bat(path)
+        recipe.win_bash = wb
         env.append(path)
 
     wrapped_shell = '"%s"' % shell_path if " " in shell_path else shell_path
-    wrapped_shell = environment_wrap_command(conanfile, env, envfiles_folder, wrapped_shell,
+    wrapped_shell = environment_wrap_command(recipe, env, envfiles_folder, wrapped_shell,
                                              accepted_extensions=("bat", "ps1"))
 
     # Wrapping the inside_command enable to prioritize our environment, otherwise /usr/bin go
     # first and there could be commands that we want to skip
-    wrapped_user_cmd = environment_wrap_command(conanfile, env, envfiles_folder, command,
+    wrapped_user_cmd = environment_wrap_command(recipe, env, envfiles_folder, command,
                                                 accepted_extensions=("sh", ))
     wrapped_user_cmd = _escape_windows_cmd(wrapped_user_cmd)
     # according to https://www.msys2.org/wiki/Launchers/, it is necessary to use --login shell
@@ -118,7 +118,7 @@ def _escape_windows_cmd(command):
     return "".join(["^%s" % arg if arg in r'()%!^"<>&|' else arg for arg in quoted_arg])
 
 
-def deduce_subsystem(conanfile, scope):
+def deduce_subsystem(recipe, scope):
     """ used by:
     - EnvVars: to decide if using :  ; as path separator, translate paths to subsystem
                and decide to generate a .bat or .sh
@@ -129,33 +129,33 @@ def deduce_subsystem(conanfile, scope):
     """
     scope = "build" if scope is None else scope  # let's assume build context if scope=None
     if scope.startswith("build"):
-        the_os = conanfile.settings_build.get_safe("os")
+        the_os = recipe.settings_build.get_safe("os")
         if the_os is None:
-            raise ConanException("The 'build' profile must have a 'os' declared")
+            raise RecipeException("The 'build' profile must have a 'os' declared")
     else:
-        the_os = conanfile.settings.get_safe("os")
+        the_os = recipe.settings.get_safe("os")
 
     if not str(the_os).startswith("Windows"):
         return None
 
-    subsystem = conanfile.conf.get("tools.microsoft.bash:subsystem")
+    subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
     if not subsystem:
-        if conanfile.win_bash:
-            raise ConanException("win_bash=True but tools.microsoft.bash:subsystem "
+        if recipe.win_bash:
+            raise RecipeException("win_bash=True but tools.microsoft.bash:subsystem "
                                  "configuration not defined")
-        if conanfile.win_bash_run:
-            raise ConanException("win_bash_run=True but tools.microsoft.bash:subsystem "
+        if recipe.win_bash_run:
+            raise RecipeException("win_bash_run=True but tools.microsoft.bash:subsystem "
                                  "configuration not defined")
         return WINDOWS
-    active = conanfile.conf.get("tools.microsoft.bash:active", check_type=bool)
+    active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
     if active:
         return subsystem
 
     if scope.startswith("build"):  # "run" scope do not follow win_bash
-        if conanfile.win_bash:
+        if recipe.win_bash:
             return subsystem
     elif scope.startswith("run"):
-        if conanfile.win_bash_run:
+        if recipe.win_bash_run:
             return subsystem
 
     return WINDOWS

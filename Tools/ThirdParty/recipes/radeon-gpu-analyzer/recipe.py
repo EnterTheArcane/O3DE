@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -18,7 +18,7 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os not in ["Windows", "Linux"]:
-            raise InvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
+            raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
 
     def build(self):
         if self.settings.os == "Windows":
@@ -28,7 +28,7 @@ class Recipe(RecipeBase):
             url = "https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/2.14.1/rga-linux-2.14.1.tgz"
             sha256 = "34ab6ab30caf8cdd426cf7f5202bfda31f9ad6a87e96053e817a0656dffacc86"
         else:
-            raise InvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
+            raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
         get(self, url=url, sha256=sha256, destination=self.build_folder, strip_root=True)
 
     def package(self):

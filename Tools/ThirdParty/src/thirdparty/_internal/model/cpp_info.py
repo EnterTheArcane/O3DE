@@ -5,8 +5,8 @@ import os
 import re
 from collections import OrderedDict, defaultdict
 
-from thirdparty._internal.api.output import ConanOutput
-from thirdparty.errors import ConanException
+from thirdparty._internal.api.output import Output
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.util.files import load, save
 
@@ -33,10 +33,10 @@ class MockInfoProperty:
     def message():
         if not MockInfoProperty.counter:
             return
-        ConanOutput().warning("Usage of deprecated Conan 1.X features that will be removed in "
-                              "Conan 2.X:", warn_tag="deprecated")
+        Output().warning("Usage of deprecated Recipe 1.X features that will be removed in "
+                              "Recipe 2.X:", warn_tag="deprecated")
         for k, v in MockInfoProperty.counter.items():
-            ConanOutput().warning(f"    '{k}' used in: {', '.join(v)}", warn_tag="deprecated")
+            Output().warning(f"    '{k}' used in: {', '.join(v)}", warn_tag="deprecated")
         MockInfoProperty.counter = {}
 
     def __getitem__(self, key):
@@ -89,7 +89,7 @@ class _Component:
         self._sysroot = None
         self._requires = None
 
-        self._consumer_conanfile = None
+        self._consumer_recipe = None
 
         # LEGACY 1.X fields, can be removed in 2.X
         self.names = MockInfoProperty("cpp_info.names")
@@ -105,8 +105,8 @@ class _Component:
         self._location = None
         self._link_location = None
 
-    def set_consumer(self, conanfile):
-        self._consumer_conanfile = conanfile
+    def set_consumer(self, recipe):
+        self._consumer_recipe = recipe
 
     def serialize(self):
         return {
@@ -138,13 +138,13 @@ class _Component:
         }
 
     @staticmethod
-    def _evaluate_cond(item, flags, conanfile):
-        if conanfile is None:
+    def _evaluate_cond(item, flags, recipe):
+        if recipe is None:
             return flags
-        flags_map = conanfile._conan_helpers.flags_map  # noqa
+        flags_map = recipe._recipe_runtime.flags_map  # noqa
         if flags_map is None:
             return flags
-        return flags_map(conanfile=conanfile, item=item, flags=flags)
+        return flags_map(recipe=recipe, item=item, flags=flags)
 
     @staticmethod
     def deserialize(contents):
@@ -230,7 +230,7 @@ class _Component:
     def bindir(self):
         bindirs = self.bindirs
         if not bindirs or len(bindirs) != 1:
-            raise ConanException(f"The bindir property is undefined because bindirs "
+            raise RecipeException(f"The bindir property is undefined because bindirs "
                                  f"{'is empty' if not bindirs else 'has more than one element'}."
                                  f" Consider using the bindirs property.")
         return bindirs[0]
@@ -239,7 +239,7 @@ class _Component:
     def libdir(self):
         libdirs = self.libdirs
         if not libdirs or len(libdirs) != 1:
-            raise ConanException(f"The libdir property is undefined because libdirs "
+            raise RecipeException(f"The libdir property is undefined because libdirs "
                                  f"{'is empty' if not libdirs else 'has more than one element'}."
                                  f" Consider using the libdirs property.")
         return libdirs[0]
@@ -248,7 +248,7 @@ class _Component:
     def includedir(self):
         includedirs = self.includedirs
         if not includedirs or len(includedirs) != 1:
-            raise ConanException(f"The includedir property is undefined because includedirs "
+            raise RecipeException(f"The includedir property is undefined because includedirs "
                                  f"{'is empty' if not includedirs else 'has more than one element'}."
                                  f" Consider using the includedirs property.")
         return includedirs[0]
@@ -355,7 +355,7 @@ class _Component:
     def cflags(self):
         if self._cflags is None:
             self._cflags = []
-        return self._evaluate_cond("cflags", self._cflags, self._consumer_conanfile)
+        return self._evaluate_cond("cflags", self._cflags, self._consumer_recipe)
 
     @cflags.setter
     def cflags(self, value):
@@ -365,7 +365,7 @@ class _Component:
     def cxxflags(self):
         if self._cxxflags is None:
             self._cxxflags = []
-        return self._evaluate_cond("cxxflags", self._cxxflags, self._consumer_conanfile)
+        return self._evaluate_cond("cxxflags", self._cxxflags, self._consumer_recipe)
 
     @cxxflags.setter
     def cxxflags(self, value):
@@ -376,7 +376,7 @@ class _Component:
         if self._sharedlinkflags is None:
             self._sharedlinkflags = []
         return self._evaluate_cond("sharedlinkflags", self._sharedlinkflags,
-                                   self._consumer_conanfile)
+                                   self._consumer_recipe)
 
     @sharedlinkflags.setter
     def sharedlinkflags(self, value):
@@ -386,7 +386,7 @@ class _Component:
     def exelinkflags(self):
         if self._exelinkflags is None:
             self._exelinkflags = []
-        return self._evaluate_cond("exelinkflags", self._exelinkflags, self._consumer_conanfile)
+        return self._evaluate_cond("exelinkflags", self._exelinkflags, self._consumer_recipe)
 
     @exelinkflags.setter
     def exelinkflags(self, value):
@@ -450,7 +450,7 @@ class _Component:
         try:
             value = self._properties[property_name]
             if check_type is not None and not isinstance(value, check_type):
-                raise ConanException(
+                raise RecipeException(
                     f'The expected type for {property_name} is "{check_type.__name__}", but "{type(value).__name__}" was found')
             return value
         except KeyError:
@@ -534,7 +534,7 @@ class _Component:
     def parsed_requires(self):
         return [r.split("::", 1) if "::" in r else (None, r) for r in self.requires]
 
-    def _auto_deduce_locations(self, conanfile, library_name):
+    def _auto_deduce_locations(self, recipe, library_name):
 
         def _lib_match_by_glob(dir_, filename):
             # Run a glob.glob function to find the file given by the filename
@@ -549,7 +549,7 @@ class _Component:
             for file_name in files:
                 full_path = os.path.join(dir_, file_name)
                 if os.path.isfile(full_path) and pattern.match(file_name):
-                    # Issue: https://github.com/conan-io/conan/issues/17721 (stop resolving symlinks)
+                    # Issue: upstream issue 17721 (stop resolving symlinks)
                     ret.add(full_path)
             return list(ret)
 
@@ -571,8 +571,8 @@ class _Component:
                             out.warning(f"There were several matches for Lib {libname}: {lib_found}")
                     return lib_found[0].replace("\\", "/")
 
-        out = ConanOutput(scope=str(conanfile))
-        pkg_type = conanfile.package_type
+        out = Output(scope=str(recipe))
+        pkg_type = recipe.package_type
         libdirs = self.libdirs
         bindirs = self.bindirs
         libname = self.libs[0]
@@ -632,43 +632,43 @@ class _Component:
             self._location = dll_location
             deduced_type = PackageType.SHARED
         if not self._location:
-            raise ConanException(f"{conanfile}: Cannot obtain 'location' for library '{libname}' "
+            raise RecipeException(f"{recipe}: Cannot obtain 'location' for library '{libname}' "
                                  f"in {libdirs}. You can specify 'cpp_info.location' directly "
-                                 f"or report in github.com/conan-io/conan/issues if you think it "
+                                 f"or report this to the ThirdParty maintainers if you think it "
                                  f"should have been deduced correctly.")
         if self._type is not None and self._type != deduced_type:
-            ConanException(f"{conanfile}: Incorrect deduced type '{deduced_type}' for library"
+            RecipeException(f"{recipe}: Incorrect deduced type '{deduced_type}' for library"
                            f" '{libname}' that declared .type='{self._type}'")
         self._type = deduced_type
         if self._type != pkg_type:
             out.warning(f"Lib {libname} deduced as '{self._type}', but 'package_type={pkg_type}'")
 
-    def deduce_locations(self, conanfile, component_name=""):
-        name = f'{conanfile} cpp_info.components["{component_name}"]' if component_name \
-            else f'{conanfile} cpp_info'
+    def deduce_locations(self, recipe, component_name=""):
+        name = f'{recipe} cpp_info.components["{component_name}"]' if component_name \
+            else f'{recipe} cpp_info'
         # executable
         if self._exe:   # exe is a new field, it should have the correct location
             if self._type is None:
                 self._type = PackageType.APP
             if self._type is not PackageType.APP:
-                raise ConanException(f"{name} incorrect .type {self._type} for .exe {self._exe}")
+                raise RecipeException(f"{name} incorrect .type {self._type} for .exe {self._exe}")
             if self.libs:
-                raise ConanException(f"{name} has both .exe and .libs")
+                raise RecipeException(f"{name} has both .exe and .libs")
             if not self.location:
-                raise ConanException(f"{name} has .exe and no .location")
+                raise RecipeException(f"{name} has .exe and no .location")
             return
         if self._type is PackageType.APP:
-            # old school Conan application packages without defining an exe, not an error
+            # old school Recipe application packages without defining an exe, not an error
             return
 
         # libraries
         if len(self.libs) > 1:  # it could be 0, as the libs itself is not necessary
-            raise ConanException(f"{name} has more than 1 library in .libs: {self.libs}, "
+            raise RecipeException(f"{name} has more than 1 library in .libs: {self.libs}, "
                                  "cannot deduce locations")
-        # fully defined by user in conanfile, nothing to do.
+        # fully defined by user in recipe, nothing to do.
         if self._location or self._link_location:
             if self._type is None or self._type not in [PackageType.SHARED, PackageType.STATIC]:
-                raise ConanException(f"{name} location defined without defined library type")
+                raise RecipeException(f"{name} location defined without defined library type")
             return
 
         # possible header only, which allows also an empty header-only only for common flags
@@ -679,10 +679,10 @@ class _Component:
 
         # automatic location deduction from a single .lib=["lib"]
         if self._type is not None and self._type not in [PackageType.SHARED, PackageType.STATIC]:
-            raise ConanException(f"{name} has a library but .type {self._type} is not static/shared")
+            raise RecipeException(f"{name} has a library but .type {self._type} is not static/shared")
 
         # If no location is defined, it's time to guess the location
-        self._auto_deduce_locations(conanfile, library_name=component_name or conanfile.ref.name)
+        self._auto_deduce_locations(recipe, library_name=component_name or recipe.ref.name)
 
 
 class CppInfo:
@@ -692,10 +692,10 @@ class CppInfo:
         self.default_components = None
         self._package = _Component(set_defaults)
 
-    def set_consumer(self, conanfile):
-        self._package.set_consumer(conanfile)
+    def set_consumer(self, recipe):
+        self._package.set_consumer(recipe)
         for comp in self.components.values():
-            comp.set_consumer(conanfile)
+            comp.set_consumer(recipe)
 
     def __getattr__(self, attr):
         # all cpp_info.xxx of not defined things will go to the global package
@@ -782,7 +782,7 @@ class CppInfo:
                 for name, c in opened.items():
                     loop_reqs = ", ".join(n for n in c.required_component_names if n in opened)
                     msg.append(f"   {name} requires {loop_reqs}")
-                raise ConanException("\n".join(msg))
+                raise RecipeException("\n".join(msg))
             opened = new_open
         return result
 
@@ -791,7 +791,7 @@ class CppInfo:
         Used by many generators to obtain a unified, aggregated view of all components
         """
         # This method had caching before, but after a ``--deployer``, the package changes
-        # location, and this caching was invalid, still pointing to the Conan cache instead of
+        # location, and this caching was invalid, still pointing to the Recipe cache instead of
         # the deployed
         if self.has_components:
             result = _Component()
@@ -809,7 +809,7 @@ class CppInfo:
         aggregated._package = result
         return aggregated
 
-    def check_component_requires(self, conanfile):
+    def check_component_requires(self, recipe):
         """ quality check for component requires, called after package_info()
         - Check that all recipe ``requires`` are used if consumer recipe explicit opt-in to use
             component requires
@@ -823,30 +823,30 @@ class CppInfo:
         comps = self.required_components
         missing_internal = [c[1] for c in comps if c[0] is None and c[1] not in self.components]
         if missing_internal:
-            msg = f"{conanfile}: package_info(): There are '(cpp_info/components).requires' to " \
+            msg = f"{recipe}: package_info(): There are '(cpp_info/components).requires' to " \
                   f"other internal components that are not defined: {missing_internal}"
-            raise ConanException(msg)
+            raise RecipeException(msg)
         external = [c[0] for c in comps if c[0] is not None]
         if not external:
             return
         # Only direct host (not test) dependencies can define required components
-        # We use conanfile.dependencies to use the already replaced ones by "replace_requires"
+        # We use recipe.dependencies to use the already replaced ones by "replace_requires"
         # So consumers can keep their ``self.cpp_info.requires = ["pkg_name::comp"]``
-        direct_dependencies = [r.ref.name for r, d in conanfile.dependencies.items() if r.direct
+        direct_dependencies = [r.ref.name for r, d in recipe.dependencies.items() if r.direct
                                and not r.build and not r.is_test and r.visible and not r.override]
 
         for e in external:
             if e not in direct_dependencies:
-                msg = f"{conanfile}: package_info(): There are '(cpp_info/components).requires' " \
+                msg = f"{recipe}: package_info(): There are '(cpp_info/components).requires' " \
                       f"that includes package '{e}::', but such package is not a a direct " \
                       f"requirement of the recipe"
-                raise ConanException(msg)
+                raise RecipeException(msg)
         # TODO: discuss if there are cases that something is required but not transitive
         for e in direct_dependencies:
             if e not in external:
-                msg = f"{conanfile}: package_info(): The direct dependency '{e}' is not used by " \
+                msg = f"{recipe}: package_info(): The direct dependency '{e}' is not used by " \
                       f"any '(cpp_info/components).requires'."
-                raise ConanException(msg)
+                raise RecipeException(msg)
 
     @property
     def required_components(self):
@@ -863,22 +863,22 @@ class CppInfo:
         ret = [r.split("::", 1) if "::" in r else (None, r) for r in ret]
         return ret
 
-    def deduce_full_cpp_info(self, conanfile):
-        if conanfile.cpp_info.has_components and (conanfile.cpp_info.exe or conanfile.cpp_info.libs):
-            raise ConanException(f"{conanfile}: 'cpp_info' contains components and .exe or .libs")
+    def deduce_full_cpp_info(self, recipe):
+        if recipe.cpp_info.has_components and (recipe.cpp_info.exe or recipe.cpp_info.libs):
+            raise RecipeException(f"{recipe}: 'cpp_info' contains components and .exe or .libs")
 
         result = CppInfo()  # clone it
         if self.libs and len(self.libs) > 1:  # expand in multiple components
-            ConanOutput(scope=str(conanfile)).warning(
+            Output(scope=str(recipe)).warning(
                 "The 'cpp_info.libs' contain more than 1 library. "
                 "Define 'cpp_info.components' instead.", warn_tag="deprecated")
-            assert not self.components, f"{conanfile} cpp_info shouldn't have .libs and .components"
+            assert not self.components, f"{recipe} cpp_info shouldn't have .libs and .components"
             common = self._package.clone()
             common.libs = []
             common.type = str(PackageType.HEADER)  # the type of components is a string!
             if not common.requires:
                 common.requires = [f"{c.ref.name}::{c.ref.name}"
-                                   for c in conanfile.dependencies.direct_host.values()]
+                                   for c in recipe.dependencies.direct_host.values()]
             result.components["_common"] = common
 
             for lib in self.libs:
@@ -896,7 +896,7 @@ class CppInfo:
             new_components = {}
             for k, v in self.components.items():
                 if v.libs and len(v.libs) > 1:
-                    ConanOutput(scope=str(conanfile)).warning(
+                    Output(scope=str(recipe)).warning(
                         f"The 'cpp_info.components[{k}] contains more than 1 library. "
                         "Define 1 component for each library instead.", warn_tag="deprecated")
                     # Now the root, empty one
@@ -918,9 +918,9 @@ class CppInfo:
                     new_components[k] = v.clone()
             result.components = new_components
 
-        result._package.deduce_locations(conanfile)
+        result._package.deduce_locations(recipe)
         for comp_name, comp in result.components.items():
-            comp.deduce_locations(conanfile, component_name=comp_name)
+            comp.deduce_locations(recipe, component_name=comp_name)
 
         return result
 

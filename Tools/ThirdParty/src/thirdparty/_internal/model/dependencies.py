@@ -1,9 +1,9 @@
 from collections import OrderedDict
 
 from thirdparty._internal.model.refs import RecipeReference
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.graph.graph import RECIPE_PLATFORM
-from thirdparty._internal.model.conanfile_interface import ConanFileInterface
+from thirdparty._internal.model.recipe_interface import RecipeInterface
 
 
 class UserRequirementsDict:
@@ -52,7 +52,7 @@ class UserRequirementsDict:
         if len(ret) > 1:
             current_filters = data._require_filter or "{}"
             requires = "\n".join(["- {}".format(require) for require, _ in ret])
-            raise ConanException("There are more than one requires matching the specified filters:"
+            raise RecipeException("There are more than one requires matching the specified filters:"
                                  " {}\n{}".format(current_filters, requires))
         if not ret:
             raise KeyError("'{}' not found in the dependency set".format(ref))
@@ -79,8 +79,8 @@ class UserRequirementsDict:
             return True
         except KeyError:
             return False
-        except ConanException:
-            # ConanException is raised when there are more than one matching the filters
+        except RecipeException:
+            # RecipeException is raised when there are more than one matching the filters
             # so it's definitely in the dict
             return True
 
@@ -89,11 +89,11 @@ class UserRequirementsDict:
         return self._get(ref, build, **kwargs)
 
 
-class ConanFileDependencies(UserRequirementsDict):
+class RecipeDependencies(UserRequirementsDict):
 
     @staticmethod
     def from_node(node):
-        d = OrderedDict((require, ConanFileInterface(transitive.node.conanfile, node.conanfile))
+        d = OrderedDict((require, RecipeInterface(transitive.node.recipe, node.recipe))
                         for require, transitive in node.transitive_deps.items())
         if node.replaced_requires:
             cant_be_removed = set()
@@ -109,10 +109,10 @@ class ConanFileDependencies(UserRequirementsDict):
             for new_req in node.replaced_requires.values():
                 if new_req not in cant_be_removed:
                     d.pop(new_req, None)
-        return ConanFileDependencies(d)
+        return RecipeDependencies(d)
 
     def filter(self, require_filter, remove_system=True):
-        # FIXME: Copy of hte above, to return ConanFileDependencies class object
+        # FIXME: Copy of hte above, to return RecipeDependencies class object
         def filter_fn(require):
             for k, v in require_filter.items():
                 if getattr(require, k) != v:
@@ -122,18 +122,18 @@ class ConanFileDependencies(UserRequirementsDict):
         data = OrderedDict((k, v) for k, v in self._data.items() if filter_fn(k))
         if remove_system:
             data = OrderedDict((k, v) for k, v in data.items() if v.recipe != RECIPE_PLATFORM)
-        return ConanFileDependencies(data, require_filter)
+        return RecipeDependencies(data, require_filter)
 
     def transitive_requires(self, other):
         """
-        :type other: ConanFileDependencies
+        :type other: RecipeDependencies
         """
         data = OrderedDict()
         for k, v in self._data.items():
             for otherk, otherv in other._data.items():
                 if v == otherv:
                     data[otherk] = v  # Use otherk to respect original replace_requires
-        return ConanFileDependencies(data)
+        return RecipeDependencies(data)
 
     @property
     def topological_sort(self):
@@ -144,15 +144,15 @@ class ConanFileDependencies(UserRequirementsDict):
         while opened:
             opened_values = set(opened.values())
             new_opened = OrderedDict()
-            for req, conanfile in opened.items():
-                deps_in_opened = any(d in opened_values for d in conanfile.dependencies.values())
+            for req, recipe in opened.items():
+                deps_in_opened = any(d in opened_values for d in recipe.dependencies.values())
                 if deps_in_opened:
-                    new_opened[req] = conanfile  # keep it for next iteration
+                    new_opened[req] = recipe  # keep it for next iteration
                 else:
-                    result[req] = conanfile  # No dependencies in open set!
+                    result[req] = recipe  # No dependencies in open set!
 
             opened = new_opened
-        return ConanFileDependencies(result)
+        return RecipeDependencies(result)
 
     @property
     def direct_host(self):

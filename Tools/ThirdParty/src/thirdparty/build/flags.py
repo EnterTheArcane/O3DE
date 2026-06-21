@@ -1,27 +1,27 @@
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
 
 
-def disable_flag(conanfile, flag):
-    disable_flags = conanfile.conf.get("tools.gnu:disable_flags", check_type=list)
+def disable_flag(recipe, flag):
+    disable_flags = recipe.conf.get("tools.gnu:disable_flags", check_type=list)
     if disable_flags is None:
         return False
     valid = ["arch", "arch_link", "libcxx", "build_type", "build_type_link", "threads",
              "cppstd", "cstd"]
     for v in disable_flags:
         if v not in valid:
-            raise ConanException(f"tools.gnu:disable_flags value '{v}', must be one of: {valid}")
+            raise RecipeException(f"tools.gnu:disable_flags value '{v}', must be one of: {valid}")
     return flag in disable_flags
 
 
-def architecture_flag(conanfile):
+def architecture_flag(recipe):
     """
     returns flags specific to the target architecture and compiler
     Used by CMakeToolchain and AutotoolsToolchain
     """
-    if disable_flag(conanfile, "arch"):
+    if disable_flag(recipe, "arch"):
         return ""
-    settings = conanfile.settings
+    settings = recipe.settings
     from thirdparty.apple.apple import _to_apple_arch
     compiler = settings.get_safe("compiler")
     arch = settings.get_safe("arch")
@@ -35,7 +35,7 @@ def architecture_flag(conanfile):
         return ""
 
     if compiler == "clang" and the_os == "Windows":
-        comp_exes = conanfile.conf.get("tools.build:compiler_executables", check_type=dict,
+        comp_exes = recipe.conf.get("tools.build:compiler_executables", check_type=dict,
                                        default={})
         clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
         if clangcl:
@@ -81,14 +81,14 @@ def architecture_flag(conanfile):
     return ""
 
 
-def architecture_link_flag(conanfile):
+def architecture_link_flag(recipe):
     """
     returns exclusively linker flags specific to the target architecture and compiler
     """
-    if disable_flag(conanfile, "arch_link"):
+    if disable_flag(recipe, "arch_link"):
         return ""
-    compiler = conanfile.settings.get_safe("compiler")
-    arch = conanfile.settings.get_safe("arch")
+    compiler = recipe.settings.get_safe("compiler")
+    arch = recipe.settings.get_safe("arch")
     if compiler == "emcc":
         # Emscripten default output is WASM since 1.37.x (long time ago)
         # Deactivate WASM output forcing asm.js output instead
@@ -97,13 +97,13 @@ def architecture_link_flag(conanfile):
     return ""
 
 
-def libcxx_flags(conanfile):
-    libcxx = conanfile.settings.get_safe("compiler.libcxx")
+def libcxx_flags(recipe):
+    libcxx = recipe.settings.get_safe("compiler.libcxx")
     if not libcxx:
         return None, None
-    if disable_flag(conanfile, "libcxx"):
+    if disable_flag(recipe, "libcxx"):
         return None, None
-    compiler = conanfile.settings.get_safe("compiler")
+    compiler = recipe.settings.get_safe("compiler")
     lib = stdlib11 = None
     if compiler == "apple-clang":
         # In apple-clang 2 only values atm are "libc++" and "libstdc++"
@@ -126,7 +126,7 @@ def libcxx_flags(conanfile):
     if compiler in ['clang', 'apple-clang', 'gcc', 'emcc']:
         if libcxx == "libstdc++":
             stdlib11 = "_GLIBCXX_USE_CXX11_ABI=0"
-        elif libcxx == "libstdc++11" and conanfile.conf.get("tools.gnu:define_libcxx11_abi",
+        elif libcxx == "libstdc++11" and recipe.conf.get("tools.gnu:define_libcxx11_abi",
                                                             check_type=bool):
             stdlib11 = "_GLIBCXX_USE_CXX11_ABI=1"
     return lib, stdlib11
@@ -151,29 +151,29 @@ def build_type_link_flags(settings):
     return []
 
 
-def build_type_flags(conanfile):
+def build_type_flags(recipe):
     """
     returns flags specific to the build type (Debug, Release, etc.)
     (-s, -g, /Zi, etc.)
     Used only by AutotoolsToolchain
     """
-    if disable_flag(conanfile, "build_type"):
+    if disable_flag(recipe, "build_type"):
         return []
-    settings = conanfile.settings
+    settings = recipe.settings
     compiler = settings.get_safe("compiler")
     build_type = settings.get_safe("build_type")
     vs_toolset = settings.get_safe("compiler.toolset")
     if not compiler or not build_type:
         return []
 
-    comp_exes = conanfile.conf.get("tools.build:compiler_executables", check_type=dict,
+    comp_exes = recipe.conf.get("tools.build:compiler_executables", check_type=dict,
                                    default={})
     clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
 
     if compiler == "msvc" or clangcl:
         # https://github.com/Kitware/CMake/blob/d7af8a34b67026feaee558433db3a835d6007e06/
         # Modules/Platform/Windows-MSVC.cmake
-        # FIXME: This condition seems legacy, as no more "clang" exists in Conan toolsets
+        # FIXME: This condition seems legacy, as no more "clang" exists in Recipe toolsets
         if vs_toolset and "clang" in vs_toolset:
             flags = {"Debug": ["-gline-tables-only", "-fno-inline", "-O0"],
                      "Release": ["-O2"],
@@ -211,14 +211,14 @@ def build_type_flags(conanfile):
     return []
 
 
-def threads_flags(conanfile):
+def threads_flags(recipe):
     """
     returns flags specific to the threading model used by the compiler
     """
-    if disable_flag(conanfile, "threads"):
+    if disable_flag(recipe, "threads"):
         return []
-    compiler = conanfile.settings.get_safe("compiler")
-    threads = conanfile.settings.get_safe("compiler.threads")
+    compiler = recipe.settings.get_safe("compiler")
+    threads = recipe.settings.get_safe("compiler.threads")
     if compiler == "emcc":
         if threads == "posix":
             return ["-pthread"]
@@ -227,22 +227,22 @@ def threads_flags(conanfile):
     return []
 
 
-def llvm_clang_front(conanfile):
+def llvm_clang_front(recipe):
     # Only Windows clang with MSVC backend (LLVM/Clang, not MSYS2 clang)
-    if (conanfile.settings.get_safe("os") != "Windows" or
-            conanfile.settings.get_safe("compiler") != "clang" or
-            not conanfile.settings.get_safe("compiler.runtime")):
+    if (recipe.settings.get_safe("os") != "Windows" or
+            recipe.settings.get_safe("compiler") != "clang" or
+            not recipe.settings.get_safe("compiler.runtime")):
         return
-    compilers = conanfile.conf.get("tools.build:compiler_executables", default={})
+    compilers = recipe.conf.get("tools.build:compiler_executables", default={})
     if "clang-cl" in compilers.get("c", "") or "clang-cl" in compilers.get("cpp", ""):
         return "clang-cl"  # The MSVC-compatible front
     return "clang"  # The GNU-compatible front
 
 
-def cppstd_flag(conanfile) -> str:
+def cppstd_flag(recipe) -> str:
     """
-    Returns flags specific to the C++ standard based on the ``conanfile.settings.compiler``,
-    ``conanfile.settings.compiler.version`` and ``conanfile.settings.compiler.cppstd``.
+    Returns flags specific to the C++ standard based on the ``recipe.settings.compiler``,
+    ``recipe.settings.compiler.version`` and ``recipe.settings.compiler.cppstd``.
 
     It also considers when using GNU extension in ``settings.compiler.cppstd``, reflecting it in the
     compiler flag. Currently, it supports GCC, Clang, AppleClang, MSVC, Intel, MCST-LCC.
@@ -250,17 +250,17 @@ def cppstd_flag(conanfile) -> str:
     In case there is no ``settings.compiler`` or ``settings.cppstd`` in the profile, the result will
     be an **empty string**.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :return: ``str`` with the standard C++ flag used by the compiler. e.g. "-std=c++11", "/std:c++latest"
     """
-    compiler = conanfile.settings.get_safe("compiler")
-    compiler_version = conanfile.settings.get_safe("compiler.version")
-    cppstd = conanfile.settings.get_safe("compiler.cppstd")
+    compiler = recipe.settings.get_safe("compiler")
+    compiler_version = recipe.settings.get_safe("compiler.version")
+    cppstd = recipe.settings.get_safe("compiler.cppstd")
 
     if not compiler or not compiler_version or not cppstd:
         return ""
 
-    if disable_flag(conanfile, "cppstd"):
+    if disable_flag(recipe, "cppstd"):
         return ""
 
     func = {"gcc": _cppstd_gcc,
@@ -271,7 +271,7 @@ def cppstd_flag(conanfile) -> str:
     flag = None
     if func:
         flag = func(Version(compiler_version), str(cppstd))
-    if flag and llvm_clang_front(conanfile) == "clang-cl":
+    if flag and llvm_clang_front(recipe) == "clang-cl":
         flag = flag.replace("=", ":")
     return flag
 
@@ -508,10 +508,10 @@ def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
     return f'-std={flag}' if flag else None
 
 
-def cstd_flag(conanfile) -> str:
+def cstd_flag(recipe) -> str:
     """
-    Returns flags specific to the C+standard based on the ``conanfile.settings.compiler``,
-    ``conanfile.settings.compiler.version`` and ``conanfile.settings.compiler.cstd``.
+    Returns flags specific to the C+standard based on the ``recipe.settings.compiler``,
+    ``recipe.settings.compiler.version`` and ``recipe.settings.compiler.cstd``.
 
     It also considers when using GNU extension in ``settings.compiler.cstd``, reflecting it in the
     compiler flag. Currently, it supports GCC, Clang, AppleClang, MSVC, Intel, MCST-LCC.
@@ -519,17 +519,17 @@ def cstd_flag(conanfile) -> str:
     In case there is no ``settings.compiler`` or ``settings.cstd`` in the profile, the result will
     be an **empty string**.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :return: ``str`` with the standard C flag used by the compiler.
     """
-    compiler = conanfile.settings.get_safe("compiler")
-    compiler_version = conanfile.settings.get_safe("compiler.version")
-    cstd = conanfile.settings.get_safe("compiler.cstd")
+    compiler = recipe.settings.get_safe("compiler")
+    compiler_version = recipe.settings.get_safe("compiler.version")
+    cstd = recipe.settings.get_safe("compiler.cstd")
 
     if not compiler or not compiler_version or not cstd:
         return ""
 
-    if disable_flag(conanfile, "cstd"):
+    if disable_flag(recipe, "cstd"):
         return ""
 
     func = {"gcc": _cstd_gcc,

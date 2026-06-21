@@ -151,16 +151,16 @@ class _BazelDepBuildGenerator:
     {{ filegroup_bindirs_macro(root) }}
     """)
 
-    def __init__(self, conanfile, dep, require):
-        self._conanfile = conanfile
+    def __init__(self, recipe, dep, require):
+        self._recipe = recipe
         self._dep = dep
         self._is_build_require = require.build
-        self._transitive_reqs = get_transitive_requires(self._conanfile, dep)
+        self._transitive_reqs = get_transitive_requires(self._recipe, dep)
 
     @property
     def _build_file_path(self):
         """
-        Returns the absolute path to the BUILD file created by Conan
+        Returns the absolute path to the BUILD file created by Recipe
         """
         folder = os.path.join(self._get_repository_name(self._dep), self.dep_build_filename)
         return folder.replace("\\", "/")
@@ -168,9 +168,9 @@ class _BazelDepBuildGenerator:
     @property
     def _absolute_build_file_path(self):
         """
-        Returns the absolute path to the BUILD file created by Conan
+        Returns the absolute path to the BUILD file created by Recipe
         """
-        folder = os.path.join(self._conanfile.generators_folder, self._build_file_path)
+        folder = os.path.join(self._recipe.generators_folder, self._build_file_path)
         return folder.replace("\\", "/")
 
     @property
@@ -249,8 +249,8 @@ class _BazelDepBuildGenerator:
         For instance, those requirements could be coming from:
 
         ```python
-        from conan import ConanFile
-        class PkgConan(ConanFile):
+        from thirdparty import RecipeBase
+        class PkgRecipe(RecipeBase):
             requires = "other/1.0"
 
             def package_info(self):
@@ -270,14 +270,14 @@ class _BazelDepBuildGenerator:
             # For instance, dep == "hello/1.0" and req == "other::cmp1" -> hello != other
             if dep_ref_name != pkg_ref_name:
                 try:
-                    req_conanfile = self._transitive_reqs[pkg_ref_name]
+                    req_recipe = self._transitive_reqs[pkg_ref_name]
                     # Requirements declared in another dependency BUILD file
-                    prefix = f"@{self._get_repository_name(req_conanfile)}//:"
+                    prefix = f"@{self._get_repository_name(req_recipe)}//:"
                 except KeyError:
                     continue  # If the dependency is not in the transitive, might be skipped
             else:  # For instance, dep == "hello/1.0" and req == "hello::cmp1" -> hello == hello
-                req_conanfile = self._dep
-            comp_name = self._get_component_name(req_conanfile, comp_ref_name)
+                req_recipe = self._dep
+            comp_name = self._get_component_name(req_recipe, comp_ref_name)
             dep_name = f"{prefix}{comp_name}"
             if dep_name not in ret:
                 ret.append(dep_name)
@@ -294,8 +294,8 @@ class _BazelDepBuildGenerator:
                 "linkopts": []
             }
             if info['is_shared'] and info["lib_path"] and not info["lib_path"].endswith(".dll"):
-                # Issue: https://github.com/conan-io/conan/issues/19190
-                # Issue: https://github.com/conan-io/conan/issues/19135
+                # Issue: upstream issue 19190
+                # Issue: upstream issue 19135
                 # (UNIX) Adding the rpath flag as any application could link through the library
                 # which points out a symlink, but that name does not appear in the library location
                 info["linkopts"] = [f'"-Wl,-rpath,{libdir}"' for libdir in cpp_info.libdirs]
@@ -373,7 +373,7 @@ class _BazelDepBuildGenerator:
     @property
     def dep_context(self):
         """
-        Return the dependency context to fill later the conan_deps_module_extension.bzl and so on.
+        Return the dependency context to fill later the recipe_deps_module_extension.bzl and so on.
         """
         return {
             'repository_name': self._get_repository_name(self._dep),
@@ -391,8 +391,8 @@ class _BazelDepBuildGenerator:
 class _BazelPathsGenerator:
     """
     Bazel 6.0 needs to know all the dependencies for its current project. So, the only way
-    to do that is to tell the WORKSPACE file how to load all the Conan ones. This is the goal
-    of the function created by this class, the ``load_conan_dependencies`` one.
+    to do that is to tell the WORKSPACE file how to load all the Recipe ones. This is the goal
+    of the function created by this class, the ``load_recipe_dependencies`` one.
 
     More information:
         * https://bazel.build/reference/be/workspace#new_local_repository
@@ -402,15 +402,15 @@ class _BazelPathsGenerator:
     module extension, passing the package path and the BUILD file path to the repository rule.
     """
     repository_filename = "dependencies.bzl"
-    modules_filename = "conan_deps_module_extension.bzl"
-    repository_rules_filename = "conan_deps_repo_rules.bzl"
+    modules_filename = "recipe_deps_module_extension.bzl"
+    repository_rules_filename = "recipe_deps_repo_rules.bzl"
     repository_template = textwrap.dedent("""\
         # This Bazel module should be loaded by your WORKSPACE file.
         # Add these lines to your WORKSPACE one (assuming that you're using the "bazel_layout"):
-        # load("@//conan:dependencies.bzl", "load_conan_dependencies")
-        # load_conan_dependencies()
+        # load("@//recipe:dependencies.bzl", "load_recipe_dependencies")
+        # load_recipe_dependencies()
 
-        def load_conan_dependencies():
+        def load_recipe_dependencies():
         {% for dep_info in dependencies %}
             native.new_local_repository(
                 name="{{dep_info['repository_name']}}",
@@ -420,13 +420,13 @@ class _BazelPathsGenerator:
         {% endfor %}
         """)
     module_template = textwrap.dedent("""\
-        # This module provides a repo for each requires-dependency in your conanfile.
+        # This module provides a repo for each requires-dependency in your recipe.
         # It's generated by the BazelDeps, and should be used in your Module.bazel file.
-        load(":conan_deps_repo_rules.bzl", "conan_dependency_repo")
+        load(":recipe_deps_repo_rules.bzl", "recipe_dependency_repo")
 
         def _load_dependencies_impl(mctx):
         {% for dep_info in dependencies %}
-            conan_dependency_repo(
+            recipe_dependency_repo(
                 name = "{{dep_info['repository_name']}}",
                 package_path = "{{dep_info['package_folder']}}",
                 build_file_path = "{{dep_info['package_build_file_path']}}",
@@ -445,24 +445,24 @@ class _BazelPathsGenerator:
                 # Prevent writing function content to lockfiles:
                 # - https://bazel.build/rules/lib/builtins/module_ctx#extension_metadata
                 # Important for remote build. Actually it's not reproducible, as local paths will
-                # be different on different machines. But we assume that conan works correctly here.
+                # be different on different machines. But we assume that recipe works correctly here.
                 # IMPORTANT: Not compatible with bazel < 7.1
                 reproducible = True,
             )
 
-        conan_extension = module_extension(
+        recipe_extension = module_extension(
             implementation = _load_dependencies_impl,
             os_dependent = True,
             arch_dependent = True,
         )
         """)
     repository_rules_content = textwrap.dedent("""\
-        # This bazel repository rule is used to load Conan dependencies into the Bazel workspace.
-        # It's used by a generated module file that provides information about the conan packages.
-        # Each conan package is loaded into a bazel repository rule, with having the name of the
+        # This bazel repository rule is used to load Recipe dependencies into the Bazel workspace.
+        # It's used by a generated module file that provides information about the recipe packages.
+        # Each recipe package is loaded into a bazel repository rule, with having the name of the
         # package. The whole method is based on symlinks to not copy the whole package into the
         # Bazel workspace, which is expensive.
-        def _conan_dependency_repo(rctx):
+        def _recipe_dependency_repo(rctx):
             package_path = rctx.workspace_root.get_child(rctx.attr.package_path)
 
             child_packages = package_path.readdir()
@@ -471,12 +471,12 @@ class _BazelPathsGenerator:
 
             rctx.symlink(rctx.attr.build_file_path, "BUILD.bazel")
 
-        conan_dependency_repo = repository_rule(
-            implementation = _conan_dependency_repo,
+        recipe_dependency_repo = repository_rule(
+            implementation = _recipe_dependency_repo,
             attrs = {
                 "package_path": attr.string(
                     mandatory = True,
-                    doc = "The path to the Conan package in conan cache.",
+                    doc = "The path to the Recipe package in recipe cache.",
                 ),
                 "build_file_path": attr.string(
                     mandatory = True,
@@ -509,12 +509,12 @@ class _BazelPathsGenerator:
 
 class BazelDeps:
 
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
-        self._conanfile = conanfile
-        #: Activates the build context for the specified Conan package names.
+        self._recipe = recipe
+        #: Activates the build context for the specified Recipe package names.
         self.build_context_activated = []
 
     def _get_requirements(self, build_context_activated):
@@ -522,14 +522,14 @@ class BazelDeps:
         Simply save the activated requirements (host + build + test), and the deactivated ones
         """
         # All the requirements
-        host_req = self._conanfile.dependencies.host
-        build_req = self._conanfile.dependencies.direct_build  # tool_requires
-        test_req = self._conanfile.dependencies.test
+        host_req = self._recipe.dependencies.host
+        build_req = self._recipe.dependencies.direct_build  # tool_requires
+        test_req = self._recipe.dependencies.test
 
         for require, dep in (list(host_req.items()) + list(build_req.items())
                              + list(test_req.items())):
             # Require is not used at the moment, but its information could be used,
-            # and will be used in Conan 2.0
+            # and will be used in Recipe 2.0
             # Filter the build_requires not activated with self.build_context_activated
             if require.build and dep.ref.name not in build_context_activated:
                 continue
@@ -538,7 +538,7 @@ class BazelDeps:
     def generate(self):
         """
         Generates all the targets <DEP>/BUILD.bazel files, a dependencies.bzl (for bazel<7), a
-        conan_deps_repo_rules.bzl and a conan_deps_module_extension.bzl file (for bazel>=7.1) one in the
+        recipe_deps_repo_rules.bzl and a recipe_deps_module_extension.bzl file (for bazel>=7.1) one in the
         build folder.
 
         In case of bazel < 7, it's important to highlight that the ``dependencies.bzl`` file should
@@ -546,25 +546,25 @@ class BazelDeps:
 
         .. code-block:: python
 
-            load("@//[BUILD_FOLDER]:dependencies.bzl", "load_conan_dependencies")
-            load_conan_dependencies()
+            load("@//[BUILD_FOLDER]:dependencies.bzl", "load_recipe_dependencies")
+            load_recipe_dependencies()
 
-        In case of bazel >= 7.1, the ``conan_deps_module_extension.bzl`` file should be loaded by your
+        In case of bazel >= 7.1, the ``recipe_deps_module_extension.bzl`` file should be loaded by your
         Module.bazel file, e.g. like this:
 
         .. code-block:: python
 
-            load_conan_dependencies = use_extension(
-                "//build:conan_deps_module_extension.bzl",
-                "conan_extension"
+            load_recipe_dependencies = use_extension(
+                "//build:recipe_deps_module_extension.bzl",
+                "recipe_extension"
             )
-            use_repo(load_conan_dependencies, "dep-1", "dep-2", ...)
+            use_repo(load_recipe_dependencies, "dep-1", "dep-2", ...)
         """
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         dependencies_context = []
         for require, dep in self._get_requirements(self.build_context_activated):
             # Bazel info generator
-            dep_build_generator = _BazelDepBuildGenerator(self._conanfile, dep, require)
+            dep_build_generator = _BazelDepBuildGenerator(self._recipe, dep, require)
             dependencies_context.append(dep_build_generator.dep_context)
             for name, content in dep_build_generator.items():
                 save(name, content)

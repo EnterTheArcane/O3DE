@@ -35,7 +35,7 @@ def _detect_msvc_version():
             full_ver = f.read().strip()
         parts = full_ver.split(".")
         minor = int(parts[1])
-        # VCTools 14.Nx.x -> conan msvc "19N" (14.3x=193, 14.4x=194, ...)
+        # VCTools 14.Nx.x -> recipe msvc "19N" (14.3x=193, 14.4x=194, ...)
         return str(190 + minor // 10)
     except Exception:
         return None

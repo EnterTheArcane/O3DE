@@ -50,12 +50,12 @@ class TargetConfigurationTemplate(CMakeDepsFileTemplate):
         ########### VARIABLES #######################################################################
         #############################################################################################
         set({{ pkg_name }}_FRAMEWORKS_FOUND{{ config_suffix }} "") # Will be filled later
-        conan_find_apple_frameworks({{ pkg_name }}_FRAMEWORKS_FOUND{{ config_suffix }} "{{ pkg_var(pkg_name, 'FRAMEWORKS', config_suffix) }}" "{{ pkg_var(pkg_name, 'FRAMEWORK_DIRS', config_suffix) }}")
+        recipe_find_apple_frameworks({{ pkg_name }}_FRAMEWORKS_FOUND{{ config_suffix }} "{{ pkg_var(pkg_name, 'FRAMEWORKS', config_suffix) }}" "{{ pkg_var(pkg_name, 'FRAMEWORK_DIRS', config_suffix) }}")
 
         set({{ pkg_name }}_LIBRARIES_TARGETS "") # Will be filled later
 
 
-        ######## Create an interface target to contain all the dependencies (frameworks, system and conan deps)
+        ######## Create an interface target to contain all the dependencies (frameworks, system and recipe deps)
         if(NOT TARGET {{ pkg_name+'_DEPS_TARGET'}})
             add_library({{ pkg_name+'_DEPS_TARGET'}} INTERFACE IMPORTED)
         endif()
@@ -68,7 +68,7 @@ class TargetConfigurationTemplate(CMakeDepsFileTemplate):
 
         ####### Find the libraries declared in cpp_info.libs, create an IMPORTED target for each one and link the
         ####### {{pkg_name}}_DEPS_TARGET to all of them
-        conan_package_library_targets("{{ pkg_var(pkg_name, 'LIBS', config_suffix) }}"    # libraries
+        recipe_package_library_targets("{{ pkg_var(pkg_name, 'LIBS', config_suffix) }}"    # libraries
                                       "{{ pkg_var(pkg_name, 'LIB_DIRS', config_suffix) }}" # package_libdir
                                       "{{ pkg_var(pkg_name, 'BIN_DIRS', config_suffix) }}" # package_bindir
                                       "{{ pkg_var(pkg_name, 'LIBRARY_TYPE', config_suffix) }}"
@@ -125,11 +125,11 @@ class TargetConfigurationTemplate(CMakeDepsFileTemplate):
             ########## COMPONENT {{ comp_target_name }} #############
 
                 set({{ pkg_name }}_{{ comp_variable_name }}_FRAMEWORKS_FOUND{{ config_suffix }} "")
-                conan_find_apple_frameworks({{ pkg_name }}_{{ comp_variable_name }}_FRAMEWORKS_FOUND{{ config_suffix }} "{{ comp_var(pkg_name, comp_variable_name, 'FRAMEWORKS', config_suffix) }}" "{{ comp_var(pkg_name, comp_variable_name, 'FRAMEWORK_DIRS', config_suffix) }}")
+                recipe_find_apple_frameworks({{ pkg_name }}_{{ comp_variable_name }}_FRAMEWORKS_FOUND{{ config_suffix }} "{{ comp_var(pkg_name, comp_variable_name, 'FRAMEWORKS', config_suffix) }}" "{{ comp_var(pkg_name, comp_variable_name, 'FRAMEWORK_DIRS', config_suffix) }}")
 
                 set({{ pkg_name }}_{{ comp_variable_name }}_LIBRARIES_TARGETS "")
 
-                ######## Create an interface target to contain all the dependencies (frameworks, system and conan deps)
+                ######## Create an interface target to contain all the dependencies (frameworks, system and recipe deps)
                 if(NOT TARGET {{ pkg_name + '_' + comp_variable_name + '_DEPS_TARGET'}})
                     add_library({{ pkg_name + '_' + comp_variable_name + '_DEPS_TARGET'}} INTERFACE IMPORTED)
                 endif()
@@ -143,7 +143,7 @@ class TargetConfigurationTemplate(CMakeDepsFileTemplate):
 
                 ####### Find the libraries declared in cpp_info.component["xxx"].libs,
                 ####### create an IMPORTED target for each one and link the '{{pkg_name}}_{{comp_variable_name}}_DEPS_TARGET' to all of them
-                conan_package_library_targets("{{ comp_var(pkg_name, comp_variable_name, 'LIBS', config_suffix) }}"
+                recipe_package_library_targets("{{ comp_var(pkg_name, comp_variable_name, 'LIBS', config_suffix) }}"
                                       "{{ comp_var(pkg_name, comp_variable_name, 'LIB_DIRS', config_suffix) }}"
                                       "{{ comp_var(pkg_name, comp_variable_name, 'BIN_DIRS', config_suffix) }}" # package_bindir
                                       "{{ comp_var(pkg_name, comp_variable_name, 'LIBRARY_TYPE', config_suffix) }}"
@@ -202,9 +202,9 @@ class TargetConfigurationTemplate(CMakeDepsFileTemplate):
     def get_declared_components_targets_names(self):
         """Returns a list of component_name"""
         ret = []
-        sorted_comps = self.conanfile.cpp_info.get_sorted_components()
+        sorted_comps = self.recipe.cpp_info.get_sorted_components()
         for comp_name, comp in sorted_comps.items():
-            ret.append(self.get_component_alias(self.conanfile, comp_name))
+            ret.append(self.get_component_alias(self.recipe, comp_name))
         ret.reverse()
         return ret
 
@@ -216,12 +216,12 @@ class TargetConfigurationTemplate(CMakeDepsFileTemplate):
 
         # Get a list of dependencies target names
         # Declared cppinfo.requires or .components[].requires
-        transitive_reqs = self.cmakedeps.get_transitive_requires(self.conanfile)
-        if self.conanfile.cpp_info.required_components:
-            for dep_name, component_name in self.conanfile.cpp_info.required_components:
+        transitive_reqs = self.cmakedeps.get_transitive_requires(self.recipe)
+        if self.recipe.cpp_info.required_components:
+            for dep_name, component_name in self.recipe.cpp_info.required_components:
                 try:
-                    # if not dep_name, it is internal, from current self.conanfile
-                    req = transitive_reqs[dep_name] if dep_name is not None else self.conanfile
+                    # if not dep_name, it is internal, from current self.recipe
+                    req = transitive_reqs[dep_name] if dep_name is not None else self.recipe
                 except KeyError:
                     # if it raises it means the required component is not in the direct_host
                     # dependencies, maybe it has been filtered out by traits => Skip
@@ -230,6 +230,6 @@ class TargetConfigurationTemplate(CMakeDepsFileTemplate):
                     component_name = self.get_component_alias(req, component_name)
                     ret.append(component_name)
         elif transitive_reqs:
-            # Regular external "conanfile.requires" declared, not cpp_info requires
+            # Regular external "recipe.requires" declared, not cpp_info requires
             ret = [self.get_root_target_name(r) for r in transitive_reqs.values()]
         return ret

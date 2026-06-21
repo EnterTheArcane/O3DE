@@ -16,10 +16,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
-from thirdparty._conan.internal.model.conan_file import ConanFile
-from thirdparty._conan.internal.model.dependencies import ConanFileDependencies
-from thirdparty._conan.tools.env import Environment
-from thirdparty._host.detect import detect_settings, make_conf
+from thirdparty._internal.model.recipe_base import RecipeBase
+from thirdparty._internal.model.dependencies import RecipeDependencies
+from thirdparty.env import Environment
+from thirdparty._internal.detect import detect_settings, make_conf
 
 
 class _PassthroughWrapper:
@@ -27,24 +27,26 @@ class _PassthroughWrapper:
         return cmd
 
 
-class _ConanHelpers:
+class _RecipeRuntime:
     def __init__(self, conf):
         self.cmd_wrapper = _PassthroughWrapper()
         self.global_conf = conf
         self.requester = None
         self.cache = None
         self.home_folder = None
-        self.conan_api = None
+        self.api = None
 
 
-def _load(recipes_root: Path, name: str) -> type[ConanFile] | None:
+def _load(recipes_root: Path, name: str) -> type[RecipeBase] | None:
     recipe_path = recipes_root / name / "recipe.py"
+    if not recipe_path.exists():
+        return None
     try:
         spec = importlib.util.spec_from_file_location(f"_recipe_{name}", recipe_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         cls = getattr(mod, "Recipe", None)
-        if cls is None or not issubclass(cls, ConanFile):
+        if cls is None or not issubclass(cls, RecipeBase):
             return None
         return cls
     except Exception as exc:
@@ -52,7 +54,7 @@ def _load(recipes_root: Path, name: str) -> type[ConanFile] | None:
         return None
 
 
-def _probe(cls: type[ConanFile], name: str, recipes_root: Path) -> list[str]:
+def _probe(cls: type[RecipeBase], name: str, recipes_root: Path) -> list[str]:
     """Return list of direct dep names (best-effort)."""
     try:
         recipe = cls(display_name=name)
@@ -63,10 +65,10 @@ def _probe(cls: type[ConanFile], name: str, recipes_root: Path) -> list[str]:
         recipe.settings_target = None
         conf = make_conf()
         recipe.conf = conf
-        recipe._conan_helpers = _ConanHelpers(conf)
-        recipe._conan_dependencies = ConanFileDependencies(OrderedDict())
-        recipe._conan_buildenv = Environment()
-        recipe._conan_runenv = Environment()
+        recipe._recipe_runtime = _RecipeRuntime(conf)
+        recipe._recipe_dependencies = RecipeDependencies(OrderedDict())
+        recipe._recipe_buildenv = Environment()
+        recipe._recipe_runenv = Environment()
 
         if hasattr(recipe, "config_options"):
             try:
@@ -126,7 +128,7 @@ def main() -> None:
     args = ap.parse_args()
 
     recipes_root = REPO / "recipes"
-    names = sorted(d.name for d in recipes_root.iterdir() if d.is_dir())
+    names = sorted(d.name for d in recipes_root.iterdir() if d.is_dir() and (d / "recipe.py").exists())
 
     graph: dict[str, list[str]] = {}
     errors: list[str] = []

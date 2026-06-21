@@ -1,7 +1,7 @@
 import textwrap
 
 from thirdparty.cmake.cmakedeps.templates import CMakeDepsFileTemplate
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 """
     foo-config-version.cmake
@@ -20,13 +20,13 @@ class ConfigVersionTemplate(CMakeDepsFileTemplate):
 
     @property
     def context(self):
-        policy = self.cmakedeps.get_property("cmake_config_version_compat", self.conanfile)
+        policy = self.cmakedeps.get_property("cmake_config_version_compat", self.recipe)
         if policy is None:
             policy = "SameMajorVersion"
         if policy not in ("AnyNewerVersion", "SameMajorVersion", "SameMinorVersion", "ExactVersion"):
-            raise ConanException(f"Unknown cmake_config_version_compat={policy} in {self.conanfile}")
-        version = self.cmakedeps.get_property("system_package_version", self.conanfile)
-        version = version or self.conanfile.ref.version
+            raise RecipeException(f"Unknown cmake_config_version_compat={policy} in {self.recipe}")
+        version = self.cmakedeps.get_property("system_package_version", self.recipe)
+        version = version or self.recipe.ref.version
         return {"version": version,
                 "policy": policy}
 

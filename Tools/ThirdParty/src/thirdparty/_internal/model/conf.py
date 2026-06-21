@@ -9,7 +9,7 @@ import textwrap
 
 from jinja2 import Environment, FileSystemLoader
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.api.detect import detect_api
 from thirdparty._internal.cache.home_paths import HomePaths
 from thirdparty._internal.model.options import _PackageOption
@@ -18,18 +18,7 @@ from thirdparty._internal.model.settings import SettingsItem
 from thirdparty._internal.util.files import load, save
 
 
-policies_msg = """\
-A list of opt-in behaviors that can be defined in the configuration to control specific aspects of Conan's behavior,
-such as keeping deprecated behaviours:
-   - deprecated_build_order_args: Allow deprecated skipping of --order-by argument in conan graph build-order - To be removed in Conan 2.32
-   - deprecated_empty_version_range: Allow using deprecated empty version range expressions - To be removed in Conan 2.32
-If the policy 'required_conan_version>=version' is defined, different behaviors can be enabled:
-   - If required_conan_version>=2.28, bugfix https://github.com/conan-io/conan/pull/19705 for transitive static libraries package_id
-   - If required_conan_version>=2.28, bugfix https://github.com/conan-io/conan/pull/19849 for VirtualBuildEnv bindir path propagation based on requirement run trait
-   - If required_conan_version>=2.28, https://github.com/conan-io/conan/pull/19286 defaults the new 'consistent' trait to True for the host context, even when 'visible=False'"""
-
 BUILT_IN_CONFS = {
-    "core:required_conan_version": "Raise if current version does not match the defined range.",
     "core:non_interactive": "Disable interactive user input, raises error if input necessary",
     "core:warnings_as_errors": "Treat warnings matching any of the patterns in this list as errors and then raise an exception. "
                                "Current warning tags are 'network', 'deprecated'",
@@ -39,22 +28,14 @@ BUILT_IN_CONFS = {
     "core:default_build_profile": "Defines the default build profile ('default' by default)",
     "core:allow_uppercase_pkg_names": "Temporarily (will be removed in 2.X) allow uppercase names",
     "core.version_ranges:resolve_prereleases": "Whether version ranges can resolve to pre-releases or not",
-    "core.upload:retry": "(int, default: 1) Number of retries in case of failure when uploading to Conan server",
-    "core.upload:retry_wait": "(int, default: 5s) Seconds to wait between upload attempts to Conan server",
-    "core.upload:parallel": "Number of concurrent threads to upload packages",
-    "core.download:parallel": "Number of concurrent threads to download packages",
-    "core.download:retry": " (int, default: 2) Number of retries in case of failure when downloading from Conan server",
-    "core.download:retry_wait": "(int, default: 1s) Seconds to wait between download attempts from Conan server",
-    "core.download:download_cache": "Define path to a file download cache",
+    "core.download:download_cache": "Define path to a source file download cache",
     "core.cache:storage_path": "Absolute path where the packages and database are stored",
-    "core:update_policy": "(Legacy). If equal 'legacy' when multiple remotes, update based on order of remotes, only the timestamp of the first occurrence of each revision counts.",
-    "core:policies": policies_msg,
     # Sources backup
     "core.sources:download_cache": "Folder to store the sources backup",
     "core.sources:download_urls": "List of URLs to download backup sources from",
     "core.sources:upload_url": "Remote URL to upload backup sources to",
     "core.sources:exclude_urls": "URLs which will not be backed up",
-    "core.sources.patch:extra_path": "Extra path to search for patch files for conan create",
+    "core.sources.patch:extra_path": "Extra path to search for patch files for recipe create",
     # Package ID
     "core.package_id:default_unknown_mode": "By default, 'semver_mode'",
     "core.package_id:default_non_embed_mode": "By default, 'minor_mode'",
@@ -70,16 +51,11 @@ BUILT_IN_CONFS = {
     "core.net.http:cacert_path": "Path containing a custom Cacert file",
     "core.net.http:client_cert": "Path or tuple of files containing a client cert (and key)",
     "core.net.http:clean_system_proxy": "If defined, the proxies system env-vars will be discarded",
-    # Compression for `conan upload`
-    "core.upload:compression_format": "The compression format used when uploading Conan packages. "
-                                      "Possible values: 'zst', 'xz', 'gz' (default=gz)",
-    "core.gzip:compresslevel": "The Gzip compression level for Conan artifacts (default=9)",
-    "core:compresslevel": "The compression level for Conan artifacts (default zstd=3, gz=9)",
+    "core.gzip:compresslevel": "The Gzip compression level for Recipe artifacts (default=9)",
+    "core:compresslevel": "The compression level for Recipe artifacts (default zstd=3, gz=9)",
     # Excluded from revision_mode = "scm" dirty and Git().is_dirty() checks
     "core.scm:excluded": "List of excluded patterns for builtin git dirty checks",
     "core.scm:local_url": "By default allows to store local folders as remote url, but not upload them. Use 'allow' for allowing upload and 'block' to completely forbid it",
-    # Compatibility opt-in, to be removed in future versions as optimized behavior becomes default
-    "core.graph:compatibility_mode": "(Experimental) Set this to 'optimized' to enable the improved compatibility behaviour when querying multiple compatible binaries in remotes",
     # Tools
     "tools.android:ndk_path": "Argument for the CMAKE_ANDROID_NDK",
     "tools.android:cmake_legacy_toolchain": "Define to explicitly pass ANDROID_USE_LEGACY_TOOLCHAIN_FILE in CMake toolchain",
@@ -94,8 +70,8 @@ BUILT_IN_CONFS = {
     "tools.compilation:verbosity": "Verbosity of compilation tools if set. Possible values are 'quiet' and 'verbose'",
     "tools.cmake.cmaketoolchain:generator": "User defined CMake generator to use instead of default",
     "tools.cmake.cmaketoolchain:find_package_prefer_config": "Argument for the CMAKE_FIND_PACKAGE_PREFER_CONFIG",
-    "tools.cmake.cmaketoolchain:toolchain_file": "Use other existing file rather than conan_toolchain.cmake one",
-    "tools.cmake.cmaketoolchain:user_toolchain": "Inject existing user toolchains at the beginning of conan_toolchain.cmake",
+    "tools.cmake.cmaketoolchain:toolchain_file": "Use other existing file rather than recipe_toolchain.cmake one",
+    "tools.cmake.cmaketoolchain:user_toolchain": "Inject existing user toolchains at the beginning of recipe_toolchain.cmake",
     "tools.cmake.cmaketoolchain:system_name": "Define CMAKE_SYSTEM_NAME in CMakeToolchain",
     "tools.cmake.cmaketoolchain:system_version": "Define CMAKE_SYSTEM_VERSION in CMakeToolchain",
     "tools.cmake.cmaketoolchain:system_processor": "Define CMAKE_SYSTEM_PROCESSOR in CMakeToolchain",
@@ -103,7 +79,7 @@ BUILT_IN_CONFS = {
     "tools.cmake.cmaketoolchain:toolset_cuda": "(Experimental) Path to a CUDA toolset to use, or version if installed at the system level",
     "tools.cmake.cmaketoolchain:presets_environment": "String to define wether to add or not the environment section to the CMake presets. Empty by default, will generate the environment section in CMakePresets. Can take values: 'disabled'.",
     "tools.cmake.cmaketoolchain:extra_variables": "Dictionary with variables to be injected in CMakeToolchain (potential override of CMakeToolchain defined variables)",
-    "tools.cmake.cmaketoolchain:enabled_blocks": "Select the specific blocks to use in the conan_toolchain.cmake",
+    "tools.cmake.cmaketoolchain:enabled_blocks": "Select the specific blocks to use in the recipe_toolchain.cmake",
     "tools.cmake.cmaketoolchain:user_presets": "(Experimental) Select a different name instead of CMakeUserPresets.json, empty to disable",
     "tools.cmake.cmake_layout:build_folder_vars": "Settings and Options that will produce a different build folder and different CMake presets names",
     "tools.cmake.cmake_layout:build_folder": "(Experimental) Allow configuring the base folder of the build for local builds",
@@ -132,7 +108,7 @@ BUILT_IN_CONFS = {
     "tools.google.bazel:configs": "List of Bazel configurations to be used as 'bazel build --config=config1 ...'",
     "tools.google.bazel:bazelrc_path": "List of paths to bazelrc files to be used as 'bazel --bazelrc=rcpath1 ... build'",
     "tools.meson.mesontoolchain:backend": "Any Meson backend: ninja, vs, vs2010, vs2012, vs2013, vs2015, vs2017, vs2019, xcode",
-    "tools.meson.mesontoolchain:extra_machine_files": "List of paths for any additional native/cross file references to be appended to the existing Conan ones",
+    "tools.meson.mesontoolchain:extra_machine_files": "List of paths for any additional native/cross file references to be appended to the existing Recipe ones",
     "tools.microsoft:winsdk_version": "Use this winsdk_version in vcvars",
     "tools.microsoft:msvc_update": "Force the specific update irrespective of compiler.update (CMakeToolchain and VCVars)",
     "tools.microsoft.msbuild:vs_version": "Defines the IDE version (15, 16, 17) when using the msvc compiler. Necessary if compiler.version specifies a toolset that is not the IDE default",
@@ -140,9 +116,9 @@ BUILT_IN_CONFS = {
     "tools.microsoft.msbuild:installation_path": "VS install path, to avoid auto-detect via vswhere, like C:/Program Files (x86)/Microsoft Visual Studio/2019/Community. Use empty string to disable",
     "tools.microsoft.msbuilddeps:exclude_code_analysis": "Suppress MSBuild code analysis for patterns",
     "tools.microsoft.msbuildtoolchain:compile_options": "Dictionary with MSBuild compiler options",
-    "tools.microsoft.bash:subsystem": "The subsystem to be used when conanfile.win_bash==True. Possible values: msys2, msys, cygwin, wsl, sfu",
-    "tools.microsoft.bash:path": "The path to the shell to run when conanfile.win_bash==True",
-    "tools.microsoft.bash:active": "Set True only when Conan runs in a POSIX Bash (MSYS2/Cygwin) where Python's subprocess (shell=True) uses a POSIX-compatible shell (e.g., /bin/sh). Do not set when using Conan from cmd/PowerShell or with native Windows Python ('win32').",
+    "tools.microsoft.bash:subsystem": "The subsystem to be used when recipe.win_bash==True. Possible values: msys2, msys, cygwin, wsl, sfu",
+    "tools.microsoft.bash:path": "The path to the shell to run when recipe.win_bash==True",
+    "tools.microsoft.bash:active": "Set True only when Recipe runs in a POSIX Bash (MSYS2/Cygwin) where Python's subprocess (shell=True) uses a POSIX-compatible shell (e.g., /bin/sh). Do not set when using Recipe from cmd/PowerShell or with native Windows Python ('win32').",
     "tools.system.package_manager:tool": "Default package manager tool: 'apk', 'apt-get', 'yum', 'dnf', 'brew', 'pacman', 'choco', 'zypper', 'pkg' or 'pkgutil'",
     "tools.system.package_manager:mode": "Mode for package_manager tools: 'check', 'report', 'report-installed' or 'install'",
     "tools.system.package_manager:sudo": "Use 'sudo' when invoking the package manager tools in Linux (False by default)",
@@ -176,7 +152,6 @@ BUILT_IN_CONFS = {key: value for key, value in sorted(BUILT_IN_CONFS.items())}
 
 
 _BUILT_IN_CONFS_TYPES = {
-    "core:required_conan_version": str,
     "tools.microsoft:msvc_update": str
 }
 
@@ -191,7 +166,7 @@ def _is_profile_module(module_name):
 
 
 # FIXME: Refactor all the next classes because they are mostly the same as
-#        conan.tools.env.environment ones
+#        thirdparty.tools.env.environment ones
 class _ConfVarPlaceHolder:
     pass
 
@@ -209,10 +184,10 @@ class _ConfValue:
     @staticmethod
     def parse(name, value, path=False, update=None):
         if name != name.lower():
-            raise ConanException("Conf '{}' must be lowercase".format(name))
+            raise RecipeException("Conf '{}' must be lowercase".format(name))
         name, important = (name[:-1], True) if name[-1] == "!" else (name, False)
         if isinstance(value, (_PackageOption, SettingsItem)):
-            raise ConanException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
+            raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
         return _ConfValue(name, value, path=path, update=update, important=important)
 
     def __repr__(self):
@@ -267,24 +242,24 @@ class _ConfValue:
 
     def append(self, value):
         if self._value_type is not list:
-            raise ConanException("Only list-like values can append other values.")
+            raise RecipeException("Only list-like values can append other values.")
 
         if isinstance(value, list):
             self._value.extend(value)
         else:
             if isinstance(value, (_PackageOption, SettingsItem)):
-                raise ConanException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
+                raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
             self._value.append(value)
 
     def prepend(self, value):
         if self._value_type is not list:
-            raise ConanException("Only list-like values can prepend other values.")
+            raise RecipeException("Only list-like values can prepend other values.")
 
         if isinstance(value, list):
             self._value = value + self._value
         else:
             if isinstance(value, (_PackageOption, SettingsItem)):
-                raise ConanException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
+                raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
             self._value.insert(0, value)
 
     def compose_conf_value(self, other):
@@ -329,7 +304,7 @@ class _ConfValue:
                 self._value = other._value
                 self._value_type = other._value_type
         elif o_type != v_type:
-            raise ConanException("It's not possible to compose {} values "
+            raise RecipeException("It's not possible to compose {} values "
                                  "and {} ones.".format(v_type.__name__, o_type.__name__))
         # TODO: In case of any other object types?
         elif important:  # equal type, but just string
@@ -390,14 +365,14 @@ class Conf:
             if v is None:  # value was unset
                 return default
             if choices is not None and v not in choices:
-                raise ConanException(f"Unknown value '{v}' for '{conf_name}'")
+                raise RecipeException(f"Unknown value '{v}' for '{conf_name}'")
             # Some smart conversions
             if check_type is bool and not isinstance(v, bool):
                 if str(v).lower() in Conf.boolean_false_expressions:
                     return False
                 if str(v).lower() in Conf.boolean_true_expressions:
                     return True
-                raise ConanException(f"[conf] {conf_name} must be a boolean-like object "
+                raise RecipeException(f"[conf] {conf_name} must be a boolean-like object "
                                      f"(true/false, 1/0, on/off) and value '{v}' does not match it.")
             elif check_type is str and not isinstance(v, str):
                 # TODO: this would be converting things like lists to strings without
@@ -405,7 +380,7 @@ class Conf:
                 return str(v)
             elif (check_type is not None and not isinstance(v, check_type) or
                   check_type is int and isinstance(v, bool)):
-                raise ConanException(f"[conf] {conf_name} must be a "
+                raise RecipeException(f"[conf] {conf_name} must be a "
                                      f"{check_type.__name__}-like object. The value '{v}' "
                                      f"introduced is a {type(v).__name__} object")
             return v
@@ -531,7 +506,7 @@ class Conf:
         if conf_value:
             conf_value.remove(value)
         else:
-            raise ConanException("Conf {} does not exist.".format(name))
+            raise RecipeException("Conf {} does not exist.".format(name))
 
     def compose_conf(self, other):
         """
@@ -546,11 +521,11 @@ class Conf:
                 existing.compose_conf_value(v)
         return self
 
-    def copy_conaninfo_conf(self):
+    def copy_package_id_info_conf(self):
         """
         Get a new `Conf()` object with all the configurations required by the consumer
-        to be included in the final `ConanInfo().package_id()` computation. For instance, let's
-        suppose that we have this Conan `profile`:
+        to be included in the final `PackageIdInfo().package_id()` computation. For instance, let's
+        suppose that we have this Recipe `profile`:
 
         ```
         ...
@@ -589,10 +564,10 @@ class Conf:
     def _check_conf_name(conf):
         if conf.startswith("user"):
             if USER_CONF_PATTERN.match(conf) is None:
-                raise ConanException(f"User conf '{conf}' invalid format, not 'user.org.group:conf'")
+                raise RecipeException(f"User conf '{conf}' invalid format, not 'user.org.group:conf'")
         elif conf not in BUILT_IN_CONFS:
-            raise ConanException(f"[conf] '{conf}' does not exist in configuration list. "
-                                 "Run 'conan config list' to see all the available confs.")
+            raise RecipeException(f"[conf] '{conf}' does not exist in configuration list. "
+                                 "Run 'recipe config list' to see all the available confs.")
 
 
 class ConfDefinition:
@@ -647,9 +622,9 @@ class ConfDefinition:
             pattern, name = None, pattern_name
         return pattern, name
 
-    def get_conanfile_conf(self, ref, is_consumer=False):
+    def get_recipe_conf(self, ref, is_consumer=False):
         """ computes package-specific Conf
-        it is only called when conanfile.buildenv is called
+        it is only called when recipe.buildenv is called
         the last one found in the profile file has top priority
         """
         result = Conf()
@@ -696,9 +671,9 @@ class ConfDefinition:
 
         if not _is_profile_module(name):
             if profile:
-                raise ConanException("[conf] '{}' not allowed in profiles".format(key))
+                raise RecipeException("[conf] '{}' not allowed in profiles".format(key))
             if pattern is not None:
-                raise ConanException("Conf '{}' cannot have a package pattern".format(key))
+                raise RecipeException("Conf '{}' cannot have a package pattern".format(key))
 
         # strip whitespaces before/after =
         # values are not strip() unless they are a path, to preserve potential whitespaces
@@ -770,7 +745,7 @@ class ConfDefinition:
                 self.update(pattern_name, parsed_value, profile=profile, method=method)
                 break
             else:
-                raise ConanException("Bad conf definition: {}".format(line))
+                raise RecipeException("Bad conf definition: {}".format(line))
 
     def validate(self):
         for conf in self._pattern_confs.values():
@@ -791,16 +766,16 @@ def load_global_conf(home_folder):
             import distro
         template = Environment(loader=FileSystemLoader(home_folder)).from_string(text)
         home_folder = home_folder.replace("\\", "/")
-        from thirdparty import conan_version
+        from thirdparty import recipe_version
         content = template.render({"platform": platform, "os": os, "distro": distro,
-                                   "conan_version": conan_version,
-                                   "conan_home_folder": home_folder,
+                                   "recipe_version": recipe_version,
+                                   "recipe_home_folder": home_folder,
                                    "detect_api": detect_api,
                                    "hashlib": hashlib})
         new_config.loads(content)
     else:  # creation of a blank global.conf file for user convenience
         default_global_conf = textwrap.dedent("""\
-            # Core configuration (type 'conan config list' to list possible values)
+            # Core configuration (type 'recipe config list' to list possible values)
             # e.g, for CI systems, to raise if user input would block
             # core:non_interactive = True
             # some tools.xxx config also possible, though generally better in profiles
@@ -816,11 +791,11 @@ def load_global_conf(home_folder):
         if platform.system() in ["Linux", "FreeBSD"]:
             import distro
         template = Environment(loader=FileSystemLoader(home_folder)).from_string(text)
-        from thirdparty import conan_version
+        from thirdparty import recipe_version
         home_folder_fwd = home_folder.replace("\\", "/")
         content = template.render({"platform": platform, "os": os, "distro": distro,
-                                   "conan_version": conan_version,
-                                   "conan_home_folder": home_folder_fwd,
+                                   "recipe_version": recipe_version,
+                                   "recipe_home_folder": home_folder_fwd,
                                    "detect_api": detect_api,
                                    "hashlib": hashlib})
         user_conf = ConfDefinition()

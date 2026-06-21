@@ -1,2 +1,2 @@
-CONAN_TOOLCHAIN_FILENAME = "conan_toolchain.cmake"
+RECIPE_TOOLCHAIN_FILENAME = "recipe_toolchain.cmake"
 

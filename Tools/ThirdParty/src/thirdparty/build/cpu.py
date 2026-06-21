@@ -1,7 +1,7 @@
 from thirdparty._internal.util import cpu_count
 
 
-def build_jobs(conanfile):
+def build_jobs(recipe):
     """
     Returns the number of CPUs available for parallel builds.
     It returns the configuration value for ``tools.build:jobs`` if exists, otherwise,
@@ -15,8 +15,8 @@ def build_jobs(conanfile):
     In the case of cgroup v2, if no limit is set, processor detection is used. When the limit is set,
     the behavior is as described in cgroup v1.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :return: ``int`` with the number of jobs
     """
-    return conanfile.conf.get("tools.build:jobs", default=cpu_count(), check_type=int)
+    return recipe.conf.get("tools.build:jobs", default=cpu_count(), check_type=int)
 

@@ -1,4 +1,4 @@
-from thirdparty._internal.api.output import ConanOutput
+from thirdparty._internal.api.output import Output
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 from thirdparty._internal.model.options import _PackageOption
 
@@ -101,15 +101,15 @@ def to_meson_value(value):
     elif isinstance(value, list):
         return '[{}]'.format(', '.join([str(to_meson_value(val)) for val in value]))
     elif isinstance(value, _PackageOption):
-        ConanOutput().warning(f"Please, do not use a Conan option value directly. "
+        Output().warning(f"Please, do not use a Recipe option value directly. "
                               f"Convert 'options.{value.name}' into a valid Python"
                               f"data type, e.g, bool(self.options.shared)", warn_tag="deprecated")
     return value
 
 
-def to_cppstd_flag(conanfile, compiler, compiler_version, cppstd):
+def to_cppstd_flag(recipe, compiler, compiler_version, cppstd):
     """Gets a valid cppstd flag.
-    :param conanfile: ``ConanFile`` instance.
+    :param recipe: ``RecipeBase`` instance.
     :param compiler: ``str`` compiler name.
     :param compiler_version: ``str`` compiler version.
     :param cppstd: ``str`` cppstd version.
@@ -117,7 +117,7 @@ def to_cppstd_flag(conanfile, compiler, compiler_version, cppstd):
     """
     if cppstd is None:
         return None
-    if disable_flag(conanfile, "cppstd"):
+    if disable_flag(recipe, "cppstd"):
         return None
     if compiler == "msvc":
         # Meson's logic with 'vc++X' vs 'c++X' is possibly a little outdated.
@@ -129,12 +129,12 @@ def to_cppstd_flag(conanfile, compiler, compiler_version, cppstd):
         return f"gnu++{cppstd[3:]}" if cppstd.startswith("gnu") else f"c++{cppstd}"
 
 
-def to_cstd_flag(conanfile, cstd):
+def to_cstd_flag(recipe, cstd):
     """Gets a valid cstd flag.
     """
     if cstd is None:
         return None
-    if disable_flag(conanfile, "cppstd"):
+    if disable_flag(recipe, "cppstd"):
         return None
     return cstd if cstd.startswith("gnu") else f"c{cstd}"
 

@@ -6,20 +6,20 @@ from thirdparty.gnu.gnudeps_flags import GnuDepsFlags
 
 
 class AutotoolsDeps:
-    def __init__(self, conanfile):
-        self._conanfile = conanfile
+    def __init__(self, recipe):
+        self._recipe = recipe
         self._environment = None
         self._ordered_deps = None
 
     @property
     def ordered_deps(self):
         if self._ordered_deps is None:
-            deps = self._conanfile.dependencies.host.topological_sort
+            deps = self._recipe.dependencies.host.topological_sort
             self._ordered_deps = [dep for dep in reversed(deps.values())]
         return self._ordered_deps
 
     def _get_cpp_info(self):
-        ret = CppInfo(self._conanfile)
+        ret = CppInfo(self._recipe)
         for dep in self.ordered_deps:
             dep_cppinfo = dep.cpp_info.aggregated_components()
             # In case we have components, aggregate them, we do not support isolated
@@ -43,7 +43,7 @@ class AutotoolsDeps:
                  to modify some of the computed values you can access to the ``environment`` object.
         """
         if self._environment is None:
-            flags = GnuDepsFlags(self._conanfile, self._get_cpp_info())
+            flags = GnuDepsFlags(self._recipe, self._get_cpp_info())
 
             # cpp_flags
             cpp_flags = []
@@ -58,7 +58,7 @@ class AutotoolsDeps:
             ldflags.extend(flags.lib_paths)
 
             # set the rpath in Macos so that the library are found in the configure step
-            if self._conanfile.settings.get_safe("os") == "Macos":
+            if self._recipe.settings.get_safe("os") == "Macos":
                 ldflags.extend(self._rpaths_flags())
 
             # libs
@@ -79,9 +79,9 @@ class AutotoolsDeps:
         return self._environment
 
     def vars(self, scope="build"):
-        return self.environment.vars(self._conanfile, scope=scope)
+        return self.environment.vars(self._recipe, scope=scope)
 
     def generate(self, scope="build"):
-        check_duplicated_generator(self, self._conanfile)
-        self.vars(scope).save_script("conanautotoolsdeps")
+        check_duplicated_generator(self, self._recipe)
+        self.vars(scope).save_script("autotoolsdeps")
 

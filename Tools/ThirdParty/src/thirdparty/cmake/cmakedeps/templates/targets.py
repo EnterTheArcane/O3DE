@@ -26,20 +26,20 @@ class TargetsTemplate(CMakeDepsFileTemplate):
         target_pattern += "{}-Target-*.cmake".format(self.file_name)
 
         cmake_target_aliases = self.cmakedeps.get_property("cmake_target_aliases",
-                                                           self.conanfile,
+                                                           self.recipe,
                                                            check_type=list) or dict()
 
         target = self.root_target_name
         cmake_target_aliases = {alias: target for alias in cmake_target_aliases}
 
         cmake_component_target_aliases = dict()
-        for comp_name in self.conanfile.cpp_info.components:
+        for comp_name in self.recipe.cpp_info.components:
             if comp_name is not None:
                 aliases = self.cmakedeps.get_property("cmake_target_aliases",
-                                                      self.conanfile,
+                                                      self.recipe,
                                                       comp_name=comp_name,
                                                       check_type=list) or dict()
-                target = self.get_component_alias(self.conanfile, comp_name)
+                target = self.get_component_alias(self.recipe, comp_name)
                 cmake_component_target_aliases[comp_name] = {alias: target for alias in aliases}
 
         ret = {"pkg_name": self.pkg_name,
@@ -66,13 +66,13 @@ class TargetsTemplate(CMakeDepsFileTemplate):
         foreach(_COMPONENT {{ '${' + pkg_name + '_COMPONENT_NAMES' + '}' }} )
             if(NOT TARGET ${_COMPONENT})
                 add_library(${_COMPONENT} INTERFACE IMPORTED)
-                message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Conan: Component target declared '${_COMPONENT}'")
+                message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Recipe: Component target declared '${_COMPONENT}'")
             endif()
         endforeach()
 
         if(NOT TARGET {{ root_target_name }})
             add_library({{ root_target_name }} INTERFACE IMPORTED)
-            message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Conan: Target declared '{{ root_target_name }}'")
+            message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Recipe: Target declared '{{ root_target_name }}'")
         endif()
 
         {%- for alias, target in cmake_target_aliases.items() %}

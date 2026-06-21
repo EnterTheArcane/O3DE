@@ -101,12 +101,12 @@ class Recipe(RecipeBase):
         PkgConfigDeps(self).generate()
 
         # Avoid conflicts with libiconv
-        # see: https://github.com/conan-io/conan-center-index/pull/17046#issuecomment-1554629094
+        # see: https://github.com/recipe-io/recipe-center-index/pull/17046#issuecomment-1554629094
         if self.settings_build.os == "Macos":
             env = Environment()
             env.define_path("DYLD_FALLBACK_LIBRARY_PATH", "$DYLD_LIBRARY_PATH")
             env.define_path("DYLD_LIBRARY_PATH", "")
-            env.vars(self, scope="build").save_script("conanbuild_macos_runtimepath")
+            env.vars(self, scope="build").save_script("buildenv_macos_runtimepath")
 
         backend, cxxflags = meson_backend_and_flags()
         tc = MesonToolchain(self, backend=backend)
@@ -197,16 +197,16 @@ class Recipe(RecipeBase):
             self.cpp_info.components["gobject"].set_property("pkg_config_name", "harfbuzz-gobject")
             self.cpp_info.components["gobject"].requires = ["core", "glib::glib"]
 
-def fix_msvc_libname(conanfile, remove_lib_prefix=True):
+def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
     import glob
-    if not conanfile.settings.get_safe("compiler.runtime"):
+    if not recipe.settings.get_safe("compiler.runtime"):
         return
-    libdirs = getattr(conanfile.cpp.package, "libdirs")
+    libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(conanfile.package_folder, libdir)
+            full_folder = os.path.join(recipe.package_folder, libdir)
             for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
@@ -214,4 +214,4 @@ def fix_msvc_libname(conanfile, remove_lib_prefix=True):
                 dst = os.path.join(os.path.dirname(filepath), f"{libname}.lib")
                 if os.path.exists(dst):
                     os.remove(dst)
-                rename(conanfile, filepath, dst)
+                rename(recipe, filepath, dst)

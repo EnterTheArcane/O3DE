@@ -1,8 +1,8 @@
 Use GNUInstallDirs from CMake instead of custom one
 Also fix installation when using java support
 
-https://github.com/conan-io/conan-center-index/issues/27762
-https://github.com/conan-io/conan-center-index/pull/29891
+https://github.com/recipe-io/recipe-center-index/issues/27762
+https://github.com/recipe-io/recipe-center-index/pull/29891
 
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt

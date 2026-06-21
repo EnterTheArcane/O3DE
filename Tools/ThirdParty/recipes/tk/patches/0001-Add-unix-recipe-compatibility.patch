@@ -1,4 +1,4 @@
-Subject: [PATCH] Add unix conan compatibility
+Subject: [PATCH] Add unix recipe compatibility
 
 ---
  unix/Makefile.in | 11 +++++------

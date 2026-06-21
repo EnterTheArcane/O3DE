@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
             url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-macOS.universal.tar.gz"
             sha256 = "4a45b95d9cd590acbdcd158d287f9398d4a1961461e9456bda09181e7b34912e"
         else:
-            raise InvalidConfiguration("Unsupported platform")
+            raise RecipeInvalidConfiguration("Unsupported platform")
         get(self, url=url, sha256=sha256, destination=self.build_folder, strip_root=True)
 
     def package(self):
