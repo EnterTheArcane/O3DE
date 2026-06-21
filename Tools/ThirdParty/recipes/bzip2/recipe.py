@@ -69,7 +69,8 @@ class Recipe(RecipeBase):
         )
 
     def _create_cmake_module_variables(self, module_file):
-        content = textwrap.dedent(f"""\
+        content = textwrap.dedent(
+            f"""\
             set(BZIP2_NEED_PREFIX TRUE)
             set(BZIP2_FOUND TRUE)
             if(NOT DEFINED BZIP2_INCLUDE_DIRS AND DEFINED BZip2_INCLUDE_DIRS)

@@ -78,16 +78,16 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_file_name", "MaterialX")
 
         components = [
-            ("MaterialXCore",        "MaterialX::MaterialXCore"),
-            ("MaterialXFormat",      "MaterialX::MaterialXFormat"),
-            ("MaterialXGenGlsl",     "MaterialX::MaterialXGenGlsl"),
-            ("MaterialXGenMdl",      "MaterialX::MaterialXGenMdl"),
-            ("MaterialXGenOsl",      "MaterialX::MaterialXGenOsl"),
-            ("MaterialXGenShader",   "MaterialX::MaterialXGenShader"),
-            ("MaterialXRender",      "MaterialX::MaterialXRender"),
-            ("MaterialXRenderGlsl",  "MaterialX::MaterialXRenderGlsl"),
-            ("MaterialXRenderHw",    "MaterialX::MaterialXRenderHw"),
-            ("MaterialXRenderOsl",   "MaterialX::MaterialXRenderOsl"),
+            ("MaterialXCore", "MaterialX::MaterialXCore"),
+            ("MaterialXFormat", "MaterialX::MaterialXFormat"),
+            ("MaterialXGenGlsl", "MaterialX::MaterialXGenGlsl"),
+            ("MaterialXGenMdl", "MaterialX::MaterialXGenMdl"),
+            ("MaterialXGenOsl", "MaterialX::MaterialXGenOsl"),
+            ("MaterialXGenShader", "MaterialX::MaterialXGenShader"),
+            ("MaterialXRender", "MaterialX::MaterialXRender"),
+            ("MaterialXRenderGlsl", "MaterialX::MaterialXRenderGlsl"),
+            ("MaterialXRenderHw", "MaterialX::MaterialXRenderHw"),
+            ("MaterialXRenderOsl", "MaterialX::MaterialXRenderOsl"),
         ]
         if self.options.build_gen_msl:
             components.append(("MaterialXGenMsl", "MaterialX::MaterialXGenMsl"))

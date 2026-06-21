@@ -61,10 +61,10 @@ class Recipe(RecipeBase):
         args = {
             "--bit-depth": "all",
             "--disable-cli": "",
-            "--sbindir": None,          # Not understood by configure
-            "--oldincludedir": None     # Not understood by configure
+            "--sbindir": None,  # Not understood by configure
+            "--oldincludedir": None,  # Not understood by configure
         }
-        args["--disable-shared"] = None # --disable-shared is not understood
+        args["--disable-shared"] = None  # --disable-shared is not understood
         if self.options.shared:
             args["--enable-shared"] = ""
         else:
@@ -79,7 +79,7 @@ class Recipe(RecipeBase):
             extra_asflags.append("-arch arm64")
             extra_ldflags.append("-arch arm64")
             args["--host"] = "aarch64-apple-darwin"
-            if self.settings.os != "Mac": # TODO not sure why this is != "Macos" ... shouldn't it be == ??
+            if self.settings.os != "Mac":  # TODO not sure why this is != "Macos" ... shouldn't it be == ??
                 xcrun = XCRun(self)
                 platform_flags = ["-isysroot", xcrun.sdk_path]
                 apple_min_version_flag = AutotoolsToolchain(self).apple_min_version_flag
@@ -131,8 +131,9 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         if is_msvc(self):
             ext = ".dll.lib" if self.options.shared else ".lib"
-            rename(self, os.path.join(self.package_folder, "lib", f"libx264{ext}"),
-                         os.path.join(self.package_folder, "lib", "x264.lib"))
+            rename(
+                self, os.path.join(self.package_folder, "lib", f"libx264{ext}"),
+                os.path.join(self.package_folder, "lib", "x264.lib"))
         fix_apple_shared_install_name(self)
 
     def package_info(self):

@@ -1,8 +1,8 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -19,7 +19,7 @@ class Recipe(RecipeBase):
     default_options = {
         "shared": False,
     }
-    
+
     def validate(self):
         if self.settings.os != "Windows":
             raise RecipeInvalidConfiguration(f"{self.name} is only supported on Windows")

@@ -27,7 +27,6 @@ class Recipe(RecipeBase):
     def _is_clang_cl(self):
         return str(self.settings.compiler) in ["clang"] and str(self.settings.os) in ['Windows']
 
- 
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -119,15 +118,16 @@ class Recipe(RecipeBase):
             self._build_autotools()
 
     def package(self):
-        copy(self, pattern="LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder,"licenses"))
+        copy(self, pattern="LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
         if is_msvc(self) or self._is_clang_cl:
-            copy(self, pattern="*.h", src=os.path.join(self.source_folder, "include"), dst=os.path.join(self.package_folder,"include", "lame"))
+            copy(self, pattern="*.h", src=os.path.join(self.source_folder, "include"), dst=os.path.join(self.package_folder, "include", "lame"))
             name = "libmp3lame.lib" if self.options.shared else "libmp3lame-static.lib"
-            copy(self, name, src=os.path.join(self.source_folder, "output"), dst=os.path.join(self.package_folder,"lib"))
+            copy(self, name, src=os.path.join(self.source_folder, "output"), dst=os.path.join(self.package_folder, "lib"))
             if self.options.shared:
-                copy(self, pattern="*.dll", src=os.path.join(self.source_folder, "output"), dst=os.path.join(self.package_folder,"bin"))
-            rename(self, os.path.join(self.package_folder, "lib", name),
-                         os.path.join(self.package_folder, "lib", "mp3lame.lib"))
+                copy(self, pattern="*.dll", src=os.path.join(self.source_folder, "output"), dst=os.path.join(self.package_folder, "bin"))
+            rename(
+                self, os.path.join(self.package_folder, "lib", name),
+                os.path.join(self.package_folder, "lib", "mp3lame.lib"))
         else:
             autotools = Autotools(self)
             autotools.install()

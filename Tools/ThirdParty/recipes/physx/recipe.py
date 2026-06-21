@@ -77,7 +77,7 @@ class Recipe(RecipeBase):
 
         # Options defined in physx/source/compiler/cmake/CMakeLists.txt
         if self.settings.os in ["Windows", "Android"]:
-            tc.cache_variables["PX_SCALAR_MATH"] = not self.options.enable_simd # this value doesn't matter on other os
+            tc.cache_variables["PX_SCALAR_MATH"] = not self.options.enable_simd  # this value doesn't matter on other os
         tc.cache_variables["PX_GENERATE_STATIC_LIBRARIES"] = not self.options.shared
         tc.cache_variables["PX_EXPORT_LOWLEVEL_PDB"] = False
         tc.cache_variables["PXSHARED_PATH"] = os.path.join(self.source_folder, "pxshared").replace("\\", "/")
@@ -96,10 +96,10 @@ class Recipe(RecipeBase):
 
         if self.settings.os == "Windows":
             # Options defined in physx/source/compiler/cmake/windows/CMakeLists.txt
-            tc.cache_variables["PX_COPY_EXTERNAL_DLL"] = False # External dll copy disabled, PhysXDevice dll copy is handled afterward during recipe packaging
+            tc.cache_variables["PX_COPY_EXTERNAL_DLL"] = False  # External dll copy disabled, PhysXDevice dll copy is handled afterward during recipe packaging
             tc.cache_variables["PX_FLOAT_POINT_PRECISE_MATH"] = self.options.enable_float_point_precise_math
-            tc.cache_variables["PX_USE_NVTX"] = False # Could be controlled by an option if NVTX had a recipe, disabled for the moment
-            tc.cache_variables["GPU_DLL_COPIED"] = True # PhysXGpu dll copy disabled, this copy is handled afterward during recipe packaging
+            tc.cache_variables["PX_USE_NVTX"] = False  # Could be controlled by an option if NVTX had a recipe, disabled for the moment
+            tc.cache_variables["GPU_DLL_COPIED"] = True  # PhysXGpu dll copy disabled, this copy is handled afterward during recipe packaging
 
             # Options used in physx/source/compiler/cmake/windows/PhysX.cmake
             tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = False
@@ -119,66 +119,75 @@ class Recipe(RecipeBase):
 
         # There is no reason to force consumer of PhysX public headers to use one of
         # NDEBUG or _DEBUG, since none of them relies on NDEBUG or _DEBUG
-        replace_in_file(self, os.path.join(self.source_folder, "pxshared", "include", "foundation", "PxPreprocessor.h"),
-                              "#error Exactly one of NDEBUG and _DEBUG needs to be defined!",
-                              "// #error Exactly one of NDEBUG and _DEBUG needs to be defined!")
+        replace_in_file(
+            self, os.path.join(self.source_folder, "pxshared", "include", "foundation", "PxPreprocessor.h"),
+            "#error Exactly one of NDEBUG and _DEBUG needs to be defined!",
+            "// #error Exactly one of NDEBUG and _DEBUG needs to be defined!")
 
         physx_source_cmake_dir = os.path.join(self.source_folder, "physx", "source", "compiler", "cmake")
 
         # Remove global and specifics hard-coded PIC settings
         # (the recipe system CMake build helper properly sets CMAKE_POSITION_INDEPENDENT_CODE
         # depending on options)
-        replace_in_file(self, os.path.join(physx_source_cmake_dir, "CMakeLists.txt"),
-                              "SET(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
+        replace_in_file(
+            self, os.path.join(physx_source_cmake_dir, "CMakeLists.txt"),
+            "SET(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
         for cmake_file in (
-            "FastXml.cmake",
-            "LowLevel.cmake",
-            "LowLevelAABB.cmake",
-            "LowLevelDynamics.cmake",
-            "PhysX.cmake",
-            "PhysXCharacterKinematic.cmake",
-            "PhysXCommon.cmake",
-            "PhysXCooking.cmake",
-            "PhysXExtensions.cmake",
-            "PhysXFoundation.cmake",
-            "PhysXPvdSDK.cmake",
-            "PhysXTask.cmake",
-            "PhysXVehicle.cmake",
-            "SceneQuery.cmake",
-            "SimulationController.cmake",
+                "FastXml.cmake",
+                "LowLevel.cmake",
+                "LowLevelAABB.cmake",
+                "LowLevelDynamics.cmake",
+                "PhysX.cmake",
+                "PhysXCharacterKinematic.cmake",
+                "PhysXCommon.cmake",
+                "PhysXCooking.cmake",
+                "PhysXExtensions.cmake",
+                "PhysXFoundation.cmake",
+                "PhysXPvdSDK.cmake",
+                "PhysXTask.cmake",
+                "PhysXVehicle.cmake",
+                "SceneQuery.cmake",
+                "SimulationController.cmake",
         ):
             target, _ = os.path.splitext(os.path.basename(cmake_file))
-            replace_in_file(self, os.path.join(physx_source_cmake_dir, cmake_file),
-                            f"SET_TARGET_PROPERTIES({target} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)", "")
+            replace_in_file(
+                self, os.path.join(physx_source_cmake_dir, cmake_file),
+                f"SET_TARGET_PROPERTIES({target} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)", "")
 
         # No error for compiler warnings
-        replace_in_file(self, os.path.join(physx_source_cmake_dir, "windows", "CMakeLists.txt"),
-                              "/WX", "")
+        replace_in_file(
+            self, os.path.join(physx_source_cmake_dir, "windows", "CMakeLists.txt"),
+            "/WX", "")
         for cmake_os in ("linux", "mac", "android", "ios"):
-            replace_in_file(self, os.path.join(physx_source_cmake_dir, cmake_os, "CMakeLists.txt"),
-                                  "-Werror", "")
+            replace_in_file(
+                self, os.path.join(physx_source_cmake_dir, cmake_os, "CMakeLists.txt"),
+                "-Werror", "")
 
         if self.settings.os == "Mac":
             mac_cmake = os.path.join(physx_source_cmake_dir, "mac", "CMakeLists.txt")
             # Remove hardcoded deployment target so the recipe toolchain value is used
-            replace_in_file(self, mac_cmake,
-                            'SET(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")', "")
+            replace_in_file(
+                self, mac_cmake,
+                'SET(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")', "")
             # Fix hardcoded x86_64 arch — use the target arch from recipe settings
             _recipe_to_osx_arch = {"ARM": "arm64", "X64": "x86_64"}
             _osx_arch = _recipe_to_osx_arch.get(str(self.settings.arch), str(self.settings.arch))
-            replace_in_file(self, mac_cmake,
-                            'SET(OSX_BITNESS "-arch x86_64")',
-                            'SET(OSX_BITNESS "-arch {}")'.format(_osx_arch))
-            replace_in_file(self, mac_cmake,
-                            'SET(CMAKE_OSX_ARCHITECTURES "x86_64")',
-                            'SET(CMAKE_OSX_ARCHITECTURES "{}")'.format(_osx_arch))
+            replace_in_file(
+                self, mac_cmake,
+                'SET(OSX_BITNESS "-arch x86_64")',
+                'SET(OSX_BITNESS "-arch {}")'.format(_osx_arch))
+            replace_in_file(
+                self, mac_cmake,
+                'SET(CMAKE_OSX_ARCHITECTURES "x86_64")',
+                'SET(CMAKE_OSX_ARCHITECTURES "{}")'.format(_osx_arch))
             # -msse2 is x86-only; remove it for arm64
             if _osx_arch != "x86_64":
                 replace_in_file(self, mac_cmake, " -msse2", "")
                 # Newer Clang enforces NEON lane indices as compile-time constants even in dead
                 # code branches — use if constexpr so out-of-range instantiations are discarded.
-                neon_file = os.path.join(self.source_folder, "physx", "source", "foundation",
-                                         "include", "unix", "neon", "PsUnixNeonInlineAoS.h")
+                neon_file = os.path.join(
+                    self.source_folder, "physx", "source", "foundation",
+                    "include", "unix", "neon", "PsUnixNeonInlineAoS.h")
                 neon_content = load(self, neon_file)
                 neon_content = neon_content.replace("if(index < 2)", "if constexpr(index < 2)")
                 save(self, neon_file, neon_content)
@@ -196,11 +205,11 @@ class Recipe(RecipeBase):
 
     def _get_target_build_platform(self):
         return {
-            "Windows" : "windows",
-            "Linux" : "linux",
-            "Mac" : "mac",
-            "Android" : "android",
-            "iOS" : "ios"
+            "Windows": "windows",
+            "Linux": "linux",
+            "Mac": "mac",
+            "Android": "android",
+            "iOS": "ios",
         }.get(str(self.settings.os))
 
     def package(self):
@@ -244,13 +253,15 @@ class Recipe(RecipeBase):
             copy(self, pattern="*PhysXGpu*.so", dst=package_dst_lib_dir, src=physx_gpu_dir, keep_path=False)
         elif self.settings.os == "Windows" and is_msvc(self):
             physx_arch = {"X64": "x86_64"}.get(str(self.settings.arch))
-            dll_info_list = [{
-                "pattern": "PhysXGpu*.dll",
-                "vc_ver": {"X64": "vc140"}.get(str(self.settings.arch))
-            }, {
-                "pattern": "PhysXDevice*.dll",
-                "vc_ver": {"180": "vc120", "190": "vc140", "191": "vc141"}.get(str(compiler_version), "vc142")
-            }]
+            dll_info_list = [
+                {
+                    "pattern": "PhysXGpu*.dll",
+                    "vc_ver": {"X64": "vc140"}.get(str(self.settings.arch)),
+                }, {
+                    "pattern": "PhysXDevice*.dll",
+                    "vc_ver": {"180": "vc120", "190": "vc140", "191": "vc141"}.get(str(compiler_version), "vc142"),
+                },
+            ]
 
             package_dst_bin_dir = os.path.join(self.package_folder, "bin")
 

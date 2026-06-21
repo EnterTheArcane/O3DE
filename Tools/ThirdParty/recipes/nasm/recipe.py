@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
     name = "nasm"
     version = "3.01"
     license = "BSD-2-Clause"
- 
+
     @property
     def _nasm(self):
         suffix = "w.exe" if is_msvc(self) else ""

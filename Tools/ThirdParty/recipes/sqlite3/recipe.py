@@ -68,9 +68,9 @@ class Recipe(RecipeBase):
         "enable_unlock_notify": True,
         "enable_default_secure_delete": False,
         "disable_gethostuuid": False,
-        "max_column": None,             # Uses default value from source
-        "max_variable_number": None,    # Uses default value from source
-        "max_blob_size": None,          # Uses default value from source
+        "max_column": None,  # Uses default value from source
+        "max_variable_number": None,  # Uses default value from source
+        "max_blob_size": None,  # Uses default value from source
         "build_executable": True,
         "enable_default_vfs": True,
         "enable_dbpage_vtab": False,

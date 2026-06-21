@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.gitlab import GitlabRepository
@@ -23,7 +23,7 @@ class Recipe(RecipeBase):
         "zstd": [True, False],
         "jbig": [True, False],
         "webp": [True, False],
-        "cxx":  [True, False],
+        "cxx": [True, False],
     }
     default_options = {
         "shared": False,
@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
         "zstd": False,
         "jbig": False,
         "webp": False,
-        "cxx":  True,
+        "cxx": True,
     }
 
     def config_options(self):
@@ -92,7 +92,7 @@ class Recipe(RecipeBase):
         tc.variables["libdeflate"] = self.options.libdeflate
         tc.variables["zstd"] = self.options.zstd
         tc.variables["webp"] = self.options.webp
-        tc.variables["lerc"] = False # TODO: add lerc support for libtiff versions >= 4.3.0
+        tc.variables["lerc"] = False  # TODO: add lerc support for libtiff versions >= 4.3.0
 
         # Disable tools, test, contrib, man & html generation
         tc.variables["tiff-tools"] = False

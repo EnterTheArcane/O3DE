@@ -37,4 +37,4 @@ class Recipe(RecipeBase):
         self.cpp_info.libdirs = []
         self.cpp_info.set_property("cmake_file_name", "VulkanMemoryAllocator")
         self.cpp_info.set_property("cmake_target_name", "GPUOpen::VulkanMemoryAllocator")
-        self.cpp_info.set_property("cmake_target_aliases", ["VulkanMemoryAllocator",])
+        self.cpp_info.set_property("cmake_target_aliases", ["VulkanMemoryAllocator", ])

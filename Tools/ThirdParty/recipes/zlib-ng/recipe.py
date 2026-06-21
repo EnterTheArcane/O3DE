@@ -97,7 +97,7 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        #FIXME: CMake targets are https://github.com/zlib-ng/zlib-ng/blob/29fd4672a2279a0368be936d7cd44d013d009fae/CMakeLists.txt#L914
+        # FIXME: CMake targets are https://github.com/zlib-ng/zlib-ng/blob/29fd4672a2279a0368be936d7cd44d013d009fae/CMakeLists.txt#L914
         suffix = "" if self.options.zlib_compat else "-ng"
         self.cpp_info.set_property("pkg_config_name", f"zlib{suffix}")
         if self._is_windows:
@@ -111,7 +111,7 @@ class Recipe(RecipeBase):
             self.cpp_info.libs = [f"z{suffix}"]
         if self.options.zlib_compat:
             self.cpp_info.defines.append("ZLIB_COMPAT")
-            #copied from zlib
+            # copied from zlib
             self.cpp_info.set_property("cmake_file_name", "ZLIB")
             self.cpp_info.set_property("cmake_target_name", "ZLIB::ZLIB")
             self.cpp_info.set_property("system_package_version", self._zlib_compat_version)

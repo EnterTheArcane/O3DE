@@ -279,8 +279,9 @@ class Recipe(RecipeBase):
             (os.path.join("utf8cpp", "source", "utf8.h"), "utf8.h"),
             (os.path.join("zip", "src", "zip.h"), "zip/zip.h"),
         ]:
-            save(self, os.path.join(self.source_folder, "contrib", contrib_header),
-                 f"#include <{include}>\n")
+            save(
+                self, os.path.join(self.source_folder, "contrib", contrib_header),
+                f"#include <{include}>\n")
         rmdir(self, os.path.join(self.source_folder, "contrib", "utf8cpp"))
 
         # minizip is provided via recipe_deps.cmake, no need to use pkgconfig

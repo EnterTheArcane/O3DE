@@ -111,29 +111,31 @@ class Recipe(RecipeBase):
                 tc.configure_args += [f"--host={target}", f"--build={target}"]
 
             if (str(self.settings.compiler) == "Visual Studio" and Version(self.settings.compiler.version) >= "12") or \
-               (str(self.settings.compiler) == "msvc" and Version(self.settings.compiler.version) >= "180"):
+                    (str(self.settings.compiler) == "msvc" and Version(self.settings.compiler.version) >= "180"):
                 tc.extra_cflags += ["-FS"]
-           
+
             if cross_building(self) or self.settings.arch == "ARM":
                 # override guesses with known good values from a native build
-                tc.configure_args.extend([
-                    "gl_cv_func_frexpl_works=yes",
-                    "gl_cv_func_mbrtowc_empty_input=no",
-                    "gl_cv_func_snprintf_truncation_c99=yes",
-                    'gl_cv_func_printf_flag_zero=yes',
-                    'gl_cv_func_printf_precision=yes',
-                    'gl_cv_func_swprintf_works=yes',
-                    'gl_cv_func_swprintf_C_locale_sans_EILSEQ=yes',
-                ])
+                tc.configure_args.extend(
+                    [
+                        "gl_cv_func_frexpl_works=yes",
+                        "gl_cv_func_mbrtowc_empty_input=no",
+                        "gl_cv_func_snprintf_truncation_c99=yes",
+                        'gl_cv_func_printf_flag_zero=yes',
+                        'gl_cv_func_printf_precision=yes',
+                        'gl_cv_func_swprintf_works=yes',
+                        'gl_cv_func_swprintf_C_locale_sans_EILSEQ=yes',
+                    ])
 
             if self.settings.build_type == "Debug":
                 # Skip checking for the 'n' printf format directly
                 # in msvc, as it is known to not be available due to security concerns.
                 # Skipping it avoids a GUI prompt during ./configure for a debug build
                 # See https://github.com/recipe-io/recipe-center-index/issues/23698
-                tc.configure_args.extend([
-                    'gl_cv_func_printf_directive_n=no'
-                ])
+                tc.configure_args.extend(
+                    [
+                        'gl_cv_func_printf_directive_n=no',
+                    ])
         tc.make_args += ["-C", "intl"]
         env = tc.environment()
         if is_msvc(self) or self._is_clang_cl:
@@ -220,6 +222,7 @@ class Recipe(RecipeBase):
         self.cpp_info.libs = ["gnuintl"]
         if is_apple_os(self):
             self.cpp_info.frameworks.append("CoreFoundation")
+
 
 def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""

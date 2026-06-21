@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.build import cross_building, stdcpp_library
 from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import apply_patches, copy, get, replace_in_file, rename, rm, rmdir, save
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rename, rm, rmdir
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 
 
@@ -96,17 +96,19 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         apply_patches(self)
         cmakelists = os.path.join(self.source_folder, "source", "CMakeLists.txt")
-        replace_in_file(self, cmakelists,
-                                "if((WIN32 AND ENABLE_CLI) OR (WIN32 AND ENABLE_SHARED))",
-                                "if(FALSE)")
+        replace_in_file(
+            self, cmakelists,
+            "if((WIN32 AND ENABLE_CLI) OR (WIN32 AND ENABLE_SHARED))",
+            "if(FALSE)")
         if self.settings.os == "Android":
             replace_in_file(self, cmakelists, "list(APPEND PLATFORM_LIBS pthread)", "")
             replace_in_file(self, cmakelists, "list(APPEND PLATFORM_LIBS rt)", "")
         # The finite-math-only optimization has no effect and can cause linking errors
         # when linked against glibc >= 2.31
-        replace_in_file(self, cmakelists,
-                        "add_definitions(-ffast-math)",
-                        "add_definitions(-ffast-math -fno-finite-math-only)")
+        replace_in_file(
+            self, cmakelists,
+            "add_definitions(-ffast-math)",
+            "add_definitions(-ffast-math -fno-finite-math-only)")
 
     def build(self):
         self._patch_sources()
@@ -128,8 +130,9 @@ class Recipe(RecipeBase):
 
         if is_msvc(self):
             name = "libx265.lib" if self.options.shared else "x265-static.lib"
-            rename(self, os.path.join(self.package_folder, "lib", name),
-                         os.path.join(self.package_folder, "lib", "x265.lib"))
+            rename(
+                self, os.path.join(self.package_folder, "lib", name),
+                os.path.join(self.package_folder, "lib", "x265.lib"))
 
         if self.settings.os == "Windows" and self.options.shared:
             rm(self, "*[!.dll]", os.path.join(self.package_folder, "bin"))

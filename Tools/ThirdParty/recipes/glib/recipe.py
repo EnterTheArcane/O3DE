@@ -4,7 +4,7 @@ import shutil
 from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.gnu import PkgConfigDeps
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.microsoft import is_msvc
@@ -108,20 +108,23 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        replace_in_file(self,
+        replace_in_file(
+            self,
             os.path.join(self.source_folder, "meson.build"),
             "subdir('fuzzing')",
             "#subdir('fuzzing')",
-        )  # https://gitlab.gnome.org/GNOME/glib/-/issues/2152
+            )  # https://gitlab.gnome.org/GNOME/glib/-/issues/2152
         if self.settings.os != "Linux" and self.settings.os != "Neutrino":
             # allow to find gettext
-            replace_in_file(self,
+            replace_in_file(
+                self,
                 os.path.join(self.source_folder, "meson.build"),
                 "libintl = dependency('intl', required: false",
                 "libintl = dependency('libgettext', method : 'pkg-config', required : false",
-            )
+                )
 
-        replace_in_file(self,
+        replace_in_file(
+            self,
             os.path.join(
                 self.source_folder,
                 "gio",
@@ -131,7 +134,7 @@ class Recipe(RecipeBase):
             ),
             "'share'",
             "'res'",
-        )
+            )
 
     def build(self):
         self._patch_sources()
@@ -158,7 +161,7 @@ class Recipe(RecipeBase):
         self.cpp_info.components["glib-2.0"].libs = ["glib-2.0"]
         self.cpp_info.components["glib-2.0"].includedirs += [
             os.path.join("include", "glib-2.0"),
-            os.path.join("lib", "glib-2.0", "include")
+            os.path.join("lib", "glib-2.0", "include"),
         ]
         self.cpp_info.components["glib-2.0"].resdirs = ["res"]
 
@@ -257,21 +260,22 @@ class Recipe(RecipeBase):
             'gdbus': '${bindir}/gdbus',
             'gdbus_codegen': '${bindir}/gdbus-codegen',
             'gresource': '${bindir}/gresource',
-            'gsettings': '${bindir}/gsettings'
+            'gsettings': '${bindir}/gsettings',
         }
         self.cpp_info.components["gio-2.0"].set_property(
             "pkg_config_custom_content",
-            "\n".join(f"{key}={value}" for key,value in pkgconfig_variables.items()))
+            "\n".join(f"{key}={value}" for key, value in pkgconfig_variables.items()))
 
         pkgconfig_variables = {
             'bindir': '${prefix}/bin',
             'glib_genmarshal': '${bindir}/glib-genmarshal',
             'gobject_query': '${bindir}/gobject-query',
-            'glib_mkenums': '${bindir}/glib-mkenums'
+            'glib_mkenums': '${bindir}/glib-mkenums',
         }
         self.cpp_info.components["glib-2.0"].set_property(
             "pkg_config_custom_content",
             "\n".join(f"{key}={value}" for key, value in pkgconfig_variables.items()))
+
 
 def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""

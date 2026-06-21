@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
     @property
     def _is_clang_cl(self):
         return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
-               self.settings.compiler.get_safe("runtime")
+            self.settings.compiler.get_safe("runtime")
 
     @property
     def _has_neon_support(self):
@@ -112,7 +112,7 @@ class Recipe(RecipeBase):
             tc.cache_variables["PNG_INTEL_SSE"] = self._neon_msa_sse_vsx_mapping[str(self.options.sse)]
         if self._has_vsx_support:
             tc.cache_variables["PNG_POWERPC_VSX"] = self._neon_msa_sse_vsx_mapping[str(self.options.vsx)]
-        
+
         tc.generate()
         tc = CMakeConfigDeps(self)
         tc.generate()

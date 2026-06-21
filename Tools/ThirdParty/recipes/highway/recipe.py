@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get, replace_in_file, rmdir, save
+from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -51,16 +51,19 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         # No hardcoded CMAKE_CXX_STANDARD
-        replace_in_file(self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"),
-                        "set(CMAKE_CXX_STANDARD 11)", "")
-        replace_in_file(self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"),
-                        "unset(CMAKE_CXX_STANDARD)", "")
+        replace_in_file(
+            self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"),
+            "set(CMAKE_CXX_STANDARD 11)", "")
+        replace_in_file(
+            self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"),
+            "unset(CMAKE_CXX_STANDARD)", "")
         # Honor fPIC option
         cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
         replace_in_file(self, cmakelists, "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
-        replace_in_file(self, cmakelists,
-                              "set_property(TARGET hwy PROPERTY POSITION_INDEPENDENT_CODE ON)",
-                              "")
+        replace_in_file(
+            self, cmakelists,
+            "set_property(TARGET hwy PROPERTY POSITION_INDEPENDENT_CODE ON)",
+            "")
 
     def build(self):
         cmake = CMake(self)

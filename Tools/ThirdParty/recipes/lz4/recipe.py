@@ -81,7 +81,7 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "lz4")
         self.cpp_info.set_property("cmake_target_name", self._lz4_target)
-        self.cpp_info.set_property("cmake_target_aliases", ["lz4::lz4"]) # old unofficial target in CCI for lz4, kept for the moment to not break consumers
+        self.cpp_info.set_property("cmake_target_aliases", ["lz4::lz4"])  # old unofficial target in CCI for lz4, kept for the moment to not break consumers
         self.cpp_info.set_property("pkg_config_name", "liblz4")
         self.cpp_info.libs = ["lz4"]
         if is_msvc(self) and self.options.shared:

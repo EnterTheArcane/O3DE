@@ -12,7 +12,7 @@ class Recipe(RecipeBase):
     name = "strawberryperl"
     version = "5.42.2.1"
     license = "Artistic-1.0", "GPL-1.0"
-    
+
     def validate(self):
         if self.settings.os != "Windows":
             raise RecipeInvalidConfiguration("Strawberry Perl is only supported on Windows")

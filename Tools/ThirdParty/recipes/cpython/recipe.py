@@ -7,7 +7,7 @@ from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.env import VirtualRunEnv
 from thirdparty.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
 from thirdparty.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
-from thirdparty.microsoft import MSBuildDeps, MSBuildToolchain, MSBuild, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, msvs_toolset
+from thirdparty.microsoft import MSBuildDeps, MSBuildToolchain, MSBuild, is_msvc, msvc_runtime_flag, msvs_toolset
 from thirdparty.scm import Version
 
 
@@ -155,9 +155,10 @@ class Recipe(RecipeBase):
         if Version(self.version) >= "3.10":
             tc.configure_args.append("--disable-test-modules")
         if self.options.get_safe("with_sqlite3"):
-            tc.configure_args.append("--enable-loadable-sqlite-extensions={}".format(
-                yes_no(not self.dependencies["sqlite3"].options.omit_load_extension)
-            ))
+            tc.configure_args.append(
+                "--enable-loadable-sqlite-extensions={}".format(
+                    yes_no(not self.dependencies["sqlite3"].options.omit_load_extension)
+                ))
         if self.options.with_tkinter and Version(self.version) < "3.11":
             tcltk_includes = []
             tcltk_libs = []
@@ -229,10 +230,11 @@ class Recipe(RecipeBase):
     def _inject_recipe_props_file(self, project_basename, dep_name, condition=True):
         if condition:
             search = '<Import Project="python.props" />'
-            replace_in_file(self,
-                            self._msvc_project_path(project_basename),
-                            search,
-                            search + f'<Import Project="{self.generators_folder}/recipe_{dep_name}.props" />')
+            replace_in_file(
+                self,
+                self._msvc_project_path(project_basename),
+                search,
+                search + f'<Import Project="{self.generators_folder}/recipe_{dep_name}.props" />')
 
     def _patch_setup_py(self):
         setup_py = os.path.join(self.source_folder, "setup.py")
@@ -243,7 +245,8 @@ class Recipe(RecipeBase):
             libcurses = self.dependencies["ncurses"].cpp_info.components["libcurses"]
             tinfo = self.dependencies["ncurses"].cpp_info.components["tinfo"]
             libs = libcurses.libs + libcurses.system_libs + tinfo.libs + tinfo.system_libs
-            replace_in_file(self, setup_py,
+            replace_in_file(
+                self, setup_py,
                 "curses_libs = ",
                 "curses_libs = {} #".format(repr(libs)))
 
@@ -251,15 +254,18 @@ class Recipe(RecipeBase):
             openssl = self.dependencies["openssl"].cpp_info.aggregated_components()
             zlib = self.dependencies["zlib"].cpp_info.aggregated_components()
             if Version(self.version) < "3.11":
-                replace_in_file(self, setup_py,
-                                "openssl_includes = ",
-                                f"openssl_includes = {openssl.includedirs + zlib.includedirs} #")
-                replace_in_file(self, setup_py,
-                                "openssl_libdirs = ",
-                                f"openssl_libdirs = {openssl.libdirs + zlib.libdirs} #")
-                replace_in_file(self, setup_py,
-                                "openssl_libs = ",
-                                f"openssl_libs = {openssl.libs + zlib.libs} #")
+                replace_in_file(
+                    self, setup_py,
+                    "openssl_includes = ",
+                    f"openssl_includes = {openssl.includedirs + zlib.includedirs} #")
+                replace_in_file(
+                    self, setup_py,
+                    "openssl_libdirs = ",
+                    f"openssl_libdirs = {openssl.libdirs + zlib.libdirs} #")
+                replace_in_file(
+                    self, setup_py,
+                    "openssl_libs = ",
+                    f"openssl_libs = {openssl.libs + zlib.libs} #")
 
             if Version(self.version) < "3.11":
                 replace_in_file(self, setup_py, "if (MACOS and self.detect_tkinter_darwin())", "if (False)")
@@ -289,30 +295,34 @@ class Recipe(RecipeBase):
         replace_in_file(self, self._msvc_project_path("_decimal"), r"..\Modules\_decimal\libmpdec;", "")
 
         # Don't include vendored sqlite3
-        replace_in_file(self, self._msvc_project_path("_sqlite3"),
-                        '<ProjectReference Include="sqlite3.vcxproj">',
-                        '<ProjectReference Include="sqlite3.vcxproj" Condition="False">')
+        replace_in_file(
+            self, self._msvc_project_path("_sqlite3"),
+            '<ProjectReference Include="sqlite3.vcxproj">',
+            '<ProjectReference Include="sqlite3.vcxproj" Condition="False">')
 
         # Remove hardcoded reference to lzma library
         replace_in_file(self, self._msvc_project_path("_lzma"), "<AdditionalDependencies>$(OutDir)liblzma$(PyDebugExt).lib;", "<AdditionalDependencies>")
         # Don't include vendored lzma
-        replace_in_file(self, self._msvc_project_path("_lzma"),
-                        '<ProjectReference Include="liblzma.vcxproj">',
-                        '<ProjectReference Include="liblzma.vcxproj" Condition="False">')
+        replace_in_file(
+            self, self._msvc_project_path("_lzma"),
+            '<ProjectReference Include="liblzma.vcxproj">',
+            '<ProjectReference Include="liblzma.vcxproj" Condition="False">')
 
         # Don't include vendored expat project
-        replace_in_file(self, self._msvc_project_path("pyexpat"),
-                        r"<AdditionalIncludeDirectories>$(PySourcePath)Modules\expat;",
-                        "<AdditionalIncludeDirectories>")
+        replace_in_file(
+            self, self._msvc_project_path("pyexpat"),
+            r"<AdditionalIncludeDirectories>$(PySourcePath)Modules\expat;",
+            "<AdditionalIncludeDirectories>")
         # Remove XML_STATIC, this should conditionally be set by the expat library.
         # TODO: Why HAVE_EXPAT_H? (It is at least removed in later versions)
         replace_in_file(self, self._msvc_project_path("pyexpat"), ("HAVE_EXPAT_H;" if Version(self.version) < "3.11" else "") + "XML_STATIC;", "")
         self._regex_replace_in_file(self._msvc_project_path("pyexpat"), r'.*Include=\"\.\.\\Modules\\expat\\.*" />', "")
 
         # Don't include vendored expat headers
-        replace_in_file(self, self._msvc_project_path("_elementtree"),
-                        r"<AdditionalIncludeDirectories>..\Modules\expat;",
-                        "<AdditionalIncludeDirectories>")
+        replace_in_file(
+            self, self._msvc_project_path("_elementtree"),
+            r"<AdditionalIncludeDirectories>..\Modules\expat;",
+            "<AdditionalIncludeDirectories>")
         # Remove XML_STATIC, this should conditionally be set by the expat library.
         replace_in_file(self, self._msvc_project_path("_elementtree"), "XML_STATIC;", "")
         # Remove vendored expat
@@ -321,9 +331,10 @@ class Recipe(RecipeBase):
         if Version(self.version) >= "3.9":
             # deflate.c has warning 4244 disabled, need special patching else it breaks the regex below
             # Add an extra space to avoid being picked up by the regex
-            replace_in_file(self, self._msvc_project_path("pythoncore"),
-                            r'<ClCompile Include="$(zlibDir)\deflate.c">',
-                            r'<ClCompile Include= "$(zlibDir)\deflate.c" Condition="False">')
+            replace_in_file(
+                self, self._msvc_project_path("pythoncore"),
+                r'<ClCompile Include="$(zlibDir)\deflate.c">',
+                r'<ClCompile Include= "$(zlibDir)\deflate.c" Condition="False">')
         # Don't use vendored zlib
         self._regex_replace_in_file(self._msvc_project_path("pythoncore"), r'.*Include=\"\$\(zlibDir\).*', "")
 
@@ -332,9 +343,10 @@ class Recipe(RecipeBase):
         # Don't use hardcoded tcl/tk library
         replace_in_file(self, self._msvc_project_path("_tkinter"), "<AdditionalDependencies>$(tcltkLib);", "<AdditionalDependencies>")
         # TODO: Why?
-        replace_in_file(self, self._msvc_project_path("_tkinter"),
-                        "<PreprocessorDefinitions Condition=\"'$(BuildForRelease)' != 'true'\">",
-                        "<PreprocessorDefinitions Condition='False'>")
+        replace_in_file(
+            self, self._msvc_project_path("_tkinter"),
+            "<PreprocessorDefinitions Condition=\"'$(BuildForRelease)' != 'true'\">",
+            "<PreprocessorDefinitions Condition='False'>")
         # Don't use vendored tcl/tk
         self._regex_replace_in_file(self._msvc_project_path("_tkinter"), r'.*Include=\"\$\(tcltkdir\).*', "")
 
@@ -343,14 +355,16 @@ class Recipe(RecipeBase):
 
         if Version(self.version) < "3.11":
             # TODO: Why?
-            replace_in_file(self, self._msvc_project_path("_freeze_importlib"),
-                            "<Target Name=\"RebuildImportLib\" AfterTargets=\"AfterBuild\" Condition=\"$(Configuration) == 'Debug' or $(Configuration) == 'Release'\"",
-                            "<Target Name=\"RebuildImportLib\" AfterTargets=\"AfterBuild\" Condition=\"False\"")
+            replace_in_file(
+                self, self._msvc_project_path("_freeze_importlib"),
+                "<Target Name=\"RebuildImportLib\" AfterTargets=\"AfterBuild\" Condition=\"$(Configuration) == 'Debug' or $(Configuration) == 'Release'\"",
+                "<Target Name=\"RebuildImportLib\" AfterTargets=\"AfterBuild\" Condition=\"False\"")
 
         # Remove vendored openssl file
-        replace_in_file(self, self._msvc_project_path("_ssl"),
-                        r'<ClCompile Include="$(opensslIncludeDir)\applink.c">',
-                        r'<ClCompile Include="$(opensslIncludeDir)\applink.c" Condition="False">')
+        replace_in_file(
+            self, self._msvc_project_path("_ssl"),
+            r'<ClCompile Include="$(opensslIncludeDir)\applink.c">',
+            r'<ClCompile Include="$(opensslIncludeDir)\applink.c" Condition="False">')
 
         self._inject_recipe_props_file("_bz2", "bzip2", self.options.get_safe("with_bz2"))
         self._inject_recipe_props_file("_elementtree", "expat", self._supports_modules)
@@ -375,10 +389,11 @@ class Recipe(RecipeBase):
         if Version(self.version) < "3.12":
             self._patch_setup_py()
         if Version(self.version) >= "3.11":
-            replace_in_file(self, os.path.join(self.source_folder, "configure"),
-                            'OPENSSL_LIBS="-lssl -lcrypto"',
-                            'OPENSSL_LIBS="-lssl -lcrypto -lz"',
-                            strict=False)
+            replace_in_file(
+                self, os.path.join(self.source_folder, "configure"),
+                'OPENSSL_LIBS="-lssl -lcrypto"',
+                'OPENSSL_LIBS="-lssl -lcrypto -lz"',
+                strict=False)
         if is_msvc(self):
             runtime_library = {
                 "MT": "MultiThreaded",
@@ -387,46 +402,57 @@ class Recipe(RecipeBase):
                 "MDd": "MultiThreadedDebugDLL",
             }[msvc_runtime_flag(self)]
             self.output.info("Patching runtime")
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
-                            "MultiThreadedDLL", runtime_library)
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
-                            "MultiThreadedDebugDLL", runtime_library)
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
-                            "<WholeProgramOptimization>true</WholeProgramOptimization>",
-                            "<WholeProgramOptimization>false</WholeProgramOptimization>")
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
+                "MultiThreadedDLL", runtime_library)
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
+                "MultiThreadedDebugDLL", runtime_library)
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
+                "<WholeProgramOptimization>true</WholeProgramOptimization>",
+                "<WholeProgramOptimization>false</WholeProgramOptimization>")
 
         # Remove vendored packages
         rmdir(self, os.path.join(self.source_folder, "Modules", "_decimal", "libmpdec"))
         rmdir(self, os.path.join(self.source_folder, "Modules", "expat"))
 
         if Version(self.version) < "3.12":
-            replace_in_file(self, os.path.join(self.source_folder, "Makefile.pre.in"),
-                            "$(RUNSHARED) CC='$(CC)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'",
-                            "$(RUNSHARED) CC='$(CC) $(CONFIGURE_CFLAGS) $(CONFIGURE_CPPFLAGS)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'")
+            replace_in_file(
+                self, os.path.join(self.source_folder, "Makefile.pre.in"),
+                "$(RUNSHARED) CC='$(CC)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'",
+                "$(RUNSHARED) CC='$(CC) $(CONFIGURE_CFLAGS) $(CONFIGURE_CPPFLAGS)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'")
 
         # Enable static MSVC cpython
         if not self.options.shared:
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
                 "<PreprocessorDefinitions>",
                 "<PreprocessorDefinitions>Py_NO_BUILD_SHARED;")
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
                 "Py_ENABLE_SHARED",
                 "Py_NO_ENABLE_SHARED")
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
                 "DynamicLibrary",
                 "StaticLibrary")
 
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "python.vcxproj"),
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "python.vcxproj"),
                 "<Link>",
                 "<Link><AdditionalDependencies>shlwapi.lib;ws2_32.lib;pathcch.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>")
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "python.vcxproj"),
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "python.vcxproj"),
                 "<PreprocessorDefinitions>",
                 "<PreprocessorDefinitions>Py_NO_ENABLE_SHARED;")
 
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pythonw.vcxproj"),
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pythonw.vcxproj"),
                 "<Link>",
                 "<Link><AdditionalDependencies>shlwapi.lib;ws2_32.lib;pathcch.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>")
-            replace_in_file(self, os.path.join(self.source_folder, "PCbuild", "pythonw.vcxproj"),
+            replace_in_file(
+                self, os.path.join(self.source_folder, "PCbuild", "pythonw.vcxproj"),
                 "<ItemDefinitionGroup>",
                 "<ItemDefinitionGroup><ClCompile><PreprocessorDefinitions>Py_NO_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>")
 
@@ -569,27 +595,34 @@ class Recipe(RecipeBase):
     def _msvc_package_copy(self):
         build_path = self._msvc_artifacts_path
         infix = "_d" if self.settings.build_type == "Debug" else ""
-        copy(self, "*.exe",
-             src=build_path,
-             dst=os.path.join(self.package_folder, self._msvc_install_subprefix))
-        copy(self, "*.dll",
-             src=build_path,
-             dst=os.path.join(self.package_folder, self._msvc_install_subprefix))
-        copy(self, "*.pyd",
-             src=build_path,
-             dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "DLLs"))
-        copy(self, f"python{self._version_suffix}{infix}.lib",
-             src=build_path,
-             dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "libs"))
-        copy(self, "*",
-             src=os.path.join(self.source_folder, "Include"),
-             dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "include"))
-        copy(self, "pyconfig.h",
-             src=os.path.join(self.source_folder, "PC"),
-             dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "include"))
-        copy(self, "*.py",
-             src=os.path.join(self.source_folder, "lib"),
-             dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "Lib"))
+        copy(
+            self, "*.exe",
+            src=build_path,
+            dst=os.path.join(self.package_folder, self._msvc_install_subprefix))
+        copy(
+            self, "*.dll",
+            src=build_path,
+            dst=os.path.join(self.package_folder, self._msvc_install_subprefix))
+        copy(
+            self, "*.pyd",
+            src=build_path,
+            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "DLLs"))
+        copy(
+            self, f"python{self._version_suffix}{infix}.lib",
+            src=build_path,
+            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "libs"))
+        copy(
+            self, "*",
+            src=os.path.join(self.source_folder, "Include"),
+            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "include"))
+        copy(
+            self, "pyconfig.h",
+            src=os.path.join(self.source_folder, "PC"),
+            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "include"))
+        copy(
+            self, "*.py",
+            src=os.path.join(self.source_folder, "lib"),
+            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "Lib"))
         rmdir(self, os.path.join(self.package_folder, self._msvc_install_subprefix, "Lib", "test"))
 
         packages = {}
@@ -604,8 +637,9 @@ class Recipe(RecipeBase):
             if add:
                 packages[name] = fn
         for fname in packages.values():
-            unzip(self, filename=os.path.join(whldir, fname),
-                  destination=os.path.join(self.package_folder, "bin", "Lib", "site-packages"))
+            unzip(
+                self, filename=os.path.join(whldir, fname),
+                destination=os.path.join(self.package_folder, "bin", "Lib", "site-packages"))
 
         interpreter_path = os.path.join(build_path, self._cpython_interpreter_name)
         lib_dir_path = os.path.join(self.package_folder, self._msvc_install_subprefix, "Lib").replace("\\", "/")
@@ -634,36 +668,37 @@ class Recipe(RecipeBase):
             return os.path.join("lib", "cmake")
 
     def _write_cmake_findpython_wrapper_file(self):
-        template = textwrap.dedent("""
-        if (DEFINED Python3_VERSION_STRING)
-            set(_RECIPE_PYTHON_SUFFIX "3")
-        else()
-            set(_RECIPE_PYTHON_SUFFIX "")
-        endif()
-        set(Python${_RECIPE_PYTHON_SUFFIX}_EXECUTABLE @PYTHON_EXECUTABLE@)
-        set(Python${_RECIPE_PYTHON_SUFFIX}_LIBRARY @PYTHON_LIBRARY@)
-
-        # Fails if these are set beforehand
-        unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIRS)
-        unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIR)
-
-        include(${CMAKE_ROOT}/Modules/FindPython${_RECIPE_PYTHON_SUFFIX}.cmake)
-
-        # Sanity check: The former comes from FindPython(3), the latter comes from the injected find module
-        if(NOT Python${_RECIPE_PYTHON_SUFFIX}_VERSION STREQUAL Python${_RECIPE_PYTHON_SUFFIX}_VERSION_STRING)
-            message(FATAL_ERROR "CMake detected wrong cpython version - this is likely a bug with the cpython Recipe package")
-        endif()
-
-        if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Module)
-            set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Module PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
-        endif()
-        if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::SABIModule)
-            set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
-        endif()
-        if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Python)
-            set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Python PROPERTIES INTERFACE_LINK_LIBRARIES cpython::embed)
-        endif()
-        """)
+        template = textwrap.dedent(
+            """
+                    if (DEFINED Python3_VERSION_STRING)
+                        set(_RECIPE_PYTHON_SUFFIX "3")
+                    else()
+                        set(_RECIPE_PYTHON_SUFFIX "")
+                    endif()
+                    set(Python${_RECIPE_PYTHON_SUFFIX}_EXECUTABLE @PYTHON_EXECUTABLE@)
+                    set(Python${_RECIPE_PYTHON_SUFFIX}_LIBRARY @PYTHON_LIBRARY@)
+            
+                    # Fails if these are set beforehand
+                    unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIRS)
+                    unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIR)
+            
+                    include(${CMAKE_ROOT}/Modules/FindPython${_RECIPE_PYTHON_SUFFIX}.cmake)
+            
+                    # Sanity check: The former comes from FindPython(3), the latter comes from the injected find module
+                    if(NOT Python${_RECIPE_PYTHON_SUFFIX}_VERSION STREQUAL Python${_RECIPE_PYTHON_SUFFIX}_VERSION_STRING)
+                        message(FATAL_ERROR "CMake detected wrong cpython version - this is likely a bug with the cpython Recipe package")
+                    endif()
+            
+                    if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Module)
+                        set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Module PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+                    endif()
+                    if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::SABIModule)
+                        set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+                    endif()
+                    if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Python)
+                        set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Python PROPERTIES INTERFACE_LINK_LIBRARIES cpython::embed)
+                    endif()
+                    """)
 
         # In order for the package to be relocatable, these variables must be relative to the installed CMake file
         if is_msvc(self):
@@ -703,12 +738,14 @@ class Recipe(RecipeBase):
                     continue
                 with open(filepath, "rb") as fn:
                     firstline = fn.readline(1024)
-                    if not(firstline.startswith(b"#!") and b"/python" in firstline and b"/bin/sh" not in firstline):
+                    if not (firstline.startswith(b"#!") and b"/python" in firstline and b"/bin/sh" not in firstline):
                         continue
                     text = fn.read()
                 self.output.info(f"Rewriting shebang of {filename}")
                 with open(filepath, "wb") as fn:
-                    fn.write(textwrap.dedent(f"""\
+                    fn.write(
+                        textwrap.dedent(
+                            f"""\
                         #!/bin/sh
                         ''':'
                         __file__="$0"
@@ -880,11 +917,11 @@ class Recipe(RecipeBase):
                 # FIXME: On Windows, defining this breaks the packaged Python executable, but fixes
                 # separately built executables with an embedded interpreter trying to run standard Python
                 # modules. However, NOT defining this reverses the situation, normal Python executables
-                #work, but embedded interpreters break.
+                # work, but embedded interpreters break.
                 # The docs at https://python.readthedocs.io/en/latest/using/cmdline.html#envvar-PYTHONHOME
                 # seem to not be accurate to Windows (https://discuss.python.org/t/the-document-on-pythonhome-might-be-wrong/19614/5)
-                #self.runenv_info.append_path("PYTHONHOME", pythonhome)
-                #self.buildenv_info.append_path("PYTHONHOME", pythonhome)
+                # self.runenv_info.append_path("PYTHONHOME", pythonhome)
+                # self.buildenv_info.append_path("PYTHONHOME", pythonhome)
 
                 # TODO remove once Recipe 1.x is no longer supported
                 self.output.info(f"Setting PYTHONHOME environment variable: {pythonhome}")

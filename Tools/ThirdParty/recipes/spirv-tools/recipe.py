@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, replace_in_file, rm, rmdir, save
+from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -53,9 +53,9 @@ class Recipe(RecipeBase):
 
         tc = CMakeToolchain(self)
 
-        #====================
+        # ====================
         # Shared libs mess in Spirv-Tools (see https://github.com/KhronosGroup/SPIRV-Tools/issues/3909)
-        #====================
+        # ====================
         # We have 2 solutions if shared True:
         #  - Only package SPIRV-Tools-shared lib (private symbols properly hidden), and wait resolution
         #    of above issue before allowing to build shared for all Spirv-Tools libs.
@@ -66,7 +66,7 @@ class Recipe(RecipeBase):
         # Static and shared libs are controlled by a weird combination
         # of SPIRV_TOOLS_BUILD_STATIC and BUILD_SHARED_LIBS.
         tc.variables["SPIRV_TOOLS_BUILD_STATIC"] = True
-        #============
+        # ============
 
         # Required by the project's CMakeLists.txt
         tc.variables["SPIRV-Headers_SOURCE_DIR"] = self.dependencies["spirv-headers"].package_folder.replace("\\", "/")
@@ -125,7 +125,7 @@ class Recipe(RecipeBase):
             "cmake_target_name",
             "SPIRV-Tools-shared" if self.options.shared else "SPIRV-Tools-static",
         )
-        self.cpp_info.components["spirv-tools-core"].set_property("cmake_target_aliases", ["SPIRV-Tools"]) # before 2020.5, kept for conveniency
+        self.cpp_info.components["spirv-tools-core"].set_property("cmake_target_aliases", ["SPIRV-Tools"])  # before 2020.5, kept for conveniency
         self.cpp_info.components["spirv-tools-core"].libs = ["SPIRV-Tools-shared" if self.options.shared else "SPIRV-Tools"]
         self.cpp_info.components["spirv-tools-core"].requires = ["spirv-headers::spirv-headers"]
         if self.options.shared:

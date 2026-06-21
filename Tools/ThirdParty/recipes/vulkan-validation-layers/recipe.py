@@ -31,8 +31,8 @@ class Recipe(RecipeBase):
     @property
     def _needs_pkg_config(self):
         return self.options.get_safe("with_wsi_xcb") or \
-               self.options.get_safe("with_wsi_xlib") or \
-               self.options.get_safe("with_wsi_wayland")
+            self.options.get_safe("with_wsi_xlib") or \
+            self.options.get_safe("with_wsi_wayland")
 
     def config_options(self):
         if not self._has_wsi_options:

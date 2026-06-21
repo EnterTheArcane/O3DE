@@ -26,7 +26,7 @@ class Recipe(RecipeBase):
     @property
     def _is_cl_like(self):
         return self.settings.compiler.get_safe("runtime") is not None
- 
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -76,19 +76,22 @@ class Recipe(RecipeBase):
                 # shared: "libjpeg.lib" (import), "libjpeg-9.dll" (DLL)
                 jpeg_vcxproj = os.path.join(self.source_folder, "jpeg.vcxproj")
                 target_name = "libjpeg-9" if self.options.shared else "libjpeg"
-                replace_in_file(self, jpeg_vcxproj, """<PropertyGroup Label="UserMacros" />""",
-                                f""" <PropertyGroup Label="UserMacros" /><PropertyGroup Label="TargetName"> <TargetName>{target_name}</TargetName></PropertyGroup>
+                replace_in_file(
+                    self, jpeg_vcxproj, """<PropertyGroup Label="UserMacros" />""",
+                    f""" <PropertyGroup Label="UserMacros" /><PropertyGroup Label="TargetName"> <TargetName>{target_name}</TargetName></PropertyGroup>
                                 """)
                 if self.options.shared:
-                    replace_in_file(self, jpeg_vcxproj, "</SubSystem>",
-                                    "</SubSystem><ImportLibrary>$(OutDir)libjpeg.lib</ImportLibrary>")
+                    replace_in_file(
+                        self, jpeg_vcxproj, "</SubSystem>",
+                        "</SubSystem><ImportLibrary>$(OutDir)libjpeg.lib</ImportLibrary>")
 
                 # Support static/shared
                 if self.options.shared:
-                    replace_in_file(self, jpeg_vcxproj,
+                    replace_in_file(
+                        self, jpeg_vcxproj,
                         "<ConfigurationType>StaticLibrary</ConfigurationType>",
                         "<ConfigurationType>DynamicLibrary</ConfigurationType>"
-                    )
+                        )
 
                 # Don't force LTO
                 replace_in_file(self, jpeg_vcxproj, "<WholeProgramOptimization>true</WholeProgramOptimization>", "")
@@ -106,13 +109,14 @@ class Recipe(RecipeBase):
                 # Patch settings for a different build type
                 if self.settings.build_type != "Release":
                     replacements = {
-                        "Release": str(self.settings.build_type)
+                        "Release": str(self.settings.build_type),
                     }
                     if self.settings.build_type == "Debug":
-                        replacements.update({
-                            "<Optimization>Full": "<Optimization>Disabled",
-                            "NDEBUG;": "_DEBUG;",
-                        })
+                        replacements.update(
+                            {
+                                "<Optimization>Full": "<Optimization>Disabled",
+                                "NDEBUG;": "_DEBUG;",
+                            })
                     for key, value in replacements.items():
                         replace_in_file(self, jpeg_vcxproj, key, value)
 

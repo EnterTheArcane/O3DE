@@ -4,8 +4,6 @@ from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.microsoft import is_msvc
-from thirdparty.scm import Version
-from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):

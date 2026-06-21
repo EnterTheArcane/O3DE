@@ -37,7 +37,7 @@ class Recipe(RecipeBase):
         "with_icuio": True,
         "with_extras": False,
     }
- 
+
     @property
     def _enable_icu_tools(self):
         return self.settings.os not in ["iOS", "tvOS", "watchOS", "Emscripten"]
@@ -96,19 +96,20 @@ class Recipe(RecipeBase):
         if is_apple_os(self):
             tc.extra_defines.append("_DARWIN_C_SOURCE")
         yes_no = lambda v: "yes" if v else "no"
-        tc.configure_args.extend([
-            "--datarootdir=${prefix}/lib", # do not use share
-            f"--enable-release={yes_no(self.settings.build_type != 'Debug')}",
-            f"--enable-debug={yes_no(self.settings.build_type == 'Debug')}",
-            f"--enable-dyload={yes_no(self.options.with_dyload)}",
-            f"--enable-extras={yes_no(self.options.with_extras)}",
-            f"--enable-icuio={yes_no(self.options.with_icuio)}",
-            "--disable-layoutex",
-            "--disable-layout",
-            f"--enable-tools={yes_no(self._enable_icu_tools)}",
-            "--disable-tests",
-            "--disable-samples",
-        ])
+        tc.configure_args.extend(
+            [
+                "--datarootdir=${prefix}/lib",  # do not use share
+                f"--enable-release={yes_no(self.settings.build_type != 'Debug')}",
+                f"--enable-debug={yes_no(self.settings.build_type == 'Debug')}",
+                f"--enable-dyload={yes_no(self.options.with_dyload)}",
+                f"--enable-extras={yes_no(self.options.with_extras)}",
+                f"--enable-icuio={yes_no(self.options.with_icuio)}",
+                "--disable-layoutex",
+                "--disable-layout",
+                f"--enable-tools={yes_no(self._enable_icu_tools)}",
+                "--disable-tests",
+                "--disable-samples",
+            ])
         if cross_building(self):
             base_path = unix_path(self, self.dependencies.build["icu"].package_folder)
             tc.configure_args.append(f"--with-cross-build={base_path}")
@@ -119,8 +120,11 @@ class Recipe(RecipeBase):
                 # know we are cross-building.
                 host_triplet = f"{str(self.settings.arch)}-apple-darwin"
                 build_triplet = f"{str(self.settings.arch)}-apple"
-                tc.update_configure_args({"--host": host_triplet,
-                                          "--build": build_triplet})
+                tc.update_configure_args(
+                    {
+                        "--host": host_triplet,
+                        "--build": build_triplet,
+                    })
         else:
             arch64 = ["X64", "ARM"]
             bits = "64" if self.settings.arch in arch64 else "32"
@@ -142,27 +146,29 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
 
         replace_in_file(
-                self,
-                os.path.join(self.source_folder, "source", "configure"),
-                "if test -z \"$PYTHON\"",
-                "if true",
+            self,
+            os.path.join(self.source_folder, "source", "configure"),
+            "if test -z \"$PYTHON\"",
+            "if true",
         )
 
         if self.settings.os == "Windows":
             # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545
             makeconv_cpp = os.path.join(self.source_folder, "source", "tools", "makeconv", "makeconv.cpp")
-            replace_in_file(self, makeconv_cpp,
-                            "pathBuf.appendPathPart(arg, localError);",
-                            "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);")
+            replace_in_file(
+                self,
+                makeconv_cpp,
+                "pathBuf.appendPathPart(arg, localError);",
+                "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);")
 
         # relocatable shared libs on macOS
         mh_darwin = os.path.join(self.source_folder, "source", "config", "mh-darwin")
         replace_in_file(self, mh_darwin, "-install_name $(libdir)/$(notdir", "-install_name @rpath/$(notdir")
-        replace_in_file(self,
+        replace_in_file(
+            self,
             mh_darwin,
             "-install_name $(notdir $(MIDDLE_SO_TARGET)) $(PKGDATA_TRAILING_SPACE)",
-            "-install_name @rpath/$(notdir $(MIDDLE_SO_TARGET))",
-        )
+            "-install_name @rpath/$(notdir $(MIDDLE_SO_TARGET))")
 
         # workaround for https://unicode-org.atlassian.net/browse/ICU-20531
         mkdir(self, os.path.join(self.build_folder, "data", "out", "tmp"))
@@ -186,10 +192,12 @@ class Recipe(RecipeBase):
     def _data_filename(self):
         vtag = Version(self.version).major
         arch = self.settings.get_safe("arch")
-        suffix = "b" if arch in {"ppc32", "ppc64",
-                                 "sparc", "sparcv9",
-                                 "s390", "s390x",
-                                 "mips", "mips64"} else "l"
+        suffix = "b" if arch in {
+            "ppc32", "ppc64",
+            "sparc", "sparcv9",
+            "s390", "s390x",
+            "mips", "mips64",
+        } else "l"
         return f"icudt{vtag}{suffix}.dat"
 
     @property
