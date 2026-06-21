@@ -1,6 +1,5 @@
 from collections import OrderedDict
 
-from thirdparty._internal.graph.graph_error import GraphError, GraphConflictError
 from thirdparty._internal.model.refs import PkgReference
 from thirdparty._internal.model.refs import RecipeReference
 
@@ -31,205 +30,24 @@ CONTEXT_HOST = "host"
 CONTEXT_BUILD = "build"
 
 
-def build_id(recipe):
-    if hasattr(recipe, "build_id"):
-        from thirdparty._internal.errors import recipe_exception_formatter
-
-        build_id_info = recipe.info.clone()
-        recipe.info_build = build_id_info
-        with recipe_exception_formatter(recipe, "build_id"):
-            recipe.build_id()
-        return build_id_info.package_id()
-    return None
-
-
-class TransitiveRequirement:
-    def __init__(self, require, node):
-        self.require = require
-        self.node = node
-
-    def __repr__(self):
-        return "Require: {}, Node: {}".format(repr(self.require), repr(self.node))
-
-
 class Node:
+    """A node in the dependency graph: a recipe's identity.
 
-    def __init__(self, ref, recipe_instance, context, recipe_state=None, path=None, test=False):
+    This system resolves dependencies by name (see ``recipe_graph``/``build.py``) rather than
+    via Conan's transitive graph algorithm, so the heavy conflict-resolution and propagation
+    machinery has been removed.  ``Node`` is a lean holder of the per-recipe identity that
+    recipe methods read back through ``self._recipe_node``: the ``ref``, the build ``context``
+    and the recipe-origin ``recipe`` state (e.g. ``RECIPE_CONSUMER``/``RECIPE_INCACHE``).
+    """
+
+    def __init__(self, ref, recipe_instance, context, recipe_state=None):
         self.ref = ref
-        self.path = path  # path to the consumer recipe.xx for consumer, None otherwise
-        self._package_id = None
-        self.prev = None
-        self.pref_timestamp = None
-        if recipe_instance is not None:
-            recipe_instance._recipe_node = self  # Reference to self, to access data
-        self.recipe = recipe_instance
-
-        self.binary = None
-        self.recipe_state = recipe_state
         self.context = context
-        self.test = test
-
-        # real graph model
-        self.transitive_deps = OrderedDict()  # of _TransitiveRequirement
-        self.edges = []  # Ordered Edges
-        self.dependants = []  # Edges
-        self.error = None
-        self.should_build = False  # If the --build or policy wants to build this binary
-        self.build_allowed = False
-        self.is_conf = False
-        self.replaced_requires = {}  # To track the replaced requires for self.edges[old-ref]
-        self.skipped_build_requires = False
-        self.editable_output_folder = None  # In case this node is editable
-
-    def subgraph(self):
-        nodes = [self]
-        opened = [self]
-        while opened:
-            new_opened = []
-            for o in opened:
-                for n in o.neighbors():
-                    if n not in nodes:
-                        nodes.append(n)
-                    if n not in opened:
-                        new_opened.append(n)
-            opened = new_opened
-
-        graph = DepsGraph()
-        graph.nodes = nodes
-        return graph
-
-    def __lt__(self, other):
-        """
-        :type other: Node
-        """
-        # TODO: Remove this order, shouldn't be necessary
-        return (str(self.ref), self._package_id) < (str(other.ref), other._package_id)
-
-    def propagate_closing_loop(self, require, prev_node, visibility_conflicts):
-        self.propagate_downstream(require, prev_node, visibility_conflicts)
-        # List to avoid mutating the dict
-        for transitive in list(prev_node.transitive_deps.values()):
-            # TODO: possibly optimize in a bulk propagate
-            if transitive.require.override:
-                continue
-            prev_node.propagate_downstream(transitive.require, transitive.node, visibility_conflicts,
-                                           self)
-
-    def propagate_downstream(self, require, node, visibility_conflicts, src_node=None):
-        # print("  Propagating downstream ", self, "<-", require)
-        assert node is not None
-        # This sets the transitive_deps node if it was None (overrides)
-        # Take into account that while propagating we can find RUNTIME shared conflicts we
-        # didn't find at check_downstream_exist, because we didn't know the shared/static
-        existing = self.transitive_deps.get(require)
-
-        if existing is not None and existing.require is not require:
-            if existing.node is not None and existing.node.ref != node.ref:
-                # print("  +++++Runtime conflict!", require, "with", node.ref)
-                raise GraphConflictError(self, require, existing.node, existing.require, node)
-            ill_formed = ((require.direct or existing.require.direct)
-                          and require.visible != existing.require.visible)
-            if ill_formed and not (require.test or existing.require.test):
-                visibility_conflicts.setdefault(require.ref, set()).add(self.ref)
-            require.aggregate(existing.require)
-            # An override can be overriden by a downstream force/override
-            if existing.require.override and existing.require.ref != require.ref:
-                # If it is an override, but other value, it has been overriden too
-                existing.require.overriden_ref = existing.require.ref
-                existing.require.override_ref = require.ref
-
-        assert not require.version_range  # No ranges slip into transitive_deps definitions
-        # TODO: Might need to move to an update() for performance
-        poped = self.transitive_deps.pop(require, None)
-        self.transitive_deps[require] = TransitiveRequirement(require, node)
-        if poped is not None:  # adjust .edges, to avoid orphans
-            for e in self.edges:
-                if e.dst is poped.node:  # check for identity, pointing to that node
-                    e.dst = node
-                    break
-
-        # Check if need to propagate downstream
-        if not self.dependants:
-            return
-
-        if src_node is not None:  # This happens when closing a loop, and we need to know the edge
-            d = next(d for d in self.dependants if d.src is src_node)
-        else:
-            assert len(self.dependants) == 1
-            d = self.dependants[0]
-
-        down_require = d.require.transform_downstream(self.recipe.package_type, require,
-                                                      node.recipe.package_type)
-        if down_require is None:
-            return
-
-        down_require.defining_require = require.defining_require
-        # If the requirement propagates .files downstream, cannot be skipped
-        # But if the files are not needed in this graph branch, can be marked "Skip"
-        if down_require.files:
-            down_require.required_nodes = require.required_nodes.copy()
-        down_require.required_nodes.add(self)
-        d.src.propagate_downstream(down_require, node, visibility_conflicts)
-
-    def check_downstream_exists(self, require):
-        # First, a check against self, could be a loop-conflict
-        # This is equivalent as the Requirement hash and eq methods
-        # TODO: Make self.ref always exist, but with name=None if name not defined
-        if self.ref is not None and require.ref.name == self.ref.name:
-            if require.build and (self.context == CONTEXT_HOST or  # switch context
-                                  require.ref.version != self.ref.version):  # or different version
-                pass
-            elif require.visible is False:  # and require.ref.version != self.ref.version:
-                # Experimental, to support repackaging of openssl previous versions FIPS plugins
-                pass  # An invisible require doesn't conflict with itself
-            else:
-                return None, self, self  # First is the require, as it is a loop => None
-
-        # First do a check against the current node dependencies
-        prev = self.transitive_deps.get(require)
-        # print("    Transitive deps", self.transitive_deps)
-        # ("    THERE IS A PREV ", prev, "in node ", self, " for require ", require)
-        # Overrides: The existing require could be itself, that was just added
-        result = None
-        if prev and (prev.require is not require or prev.node is not None):
-            result = prev.require, prev.node, self
-            # Do not return yet, keep checking downstream, because downstream overrides or forces
-            # have priority
-
-        # Check if need to propagate downstream
-        # Then propagate downstream
-
-        # Seems the algrithm depth-first, would only have 1 dependant at most to propagate down
-        # at any given time
-        if not self.dependants:
-            return result
-        assert len(self.dependants) == 1
-        dependant = self.dependants[0]
-
-        # TODO: Implement an optimization where the requires is checked against a graph global
-        # print("    Lets check_downstream one more")
-        down_require = dependant.require.transform_downstream(self.recipe.package_type,
-                                                              require, None)
-
-        if down_require is None:
-            # print("    No need to check downstream more")
-            return result
-
-        down_require.defining_require = require.defining_require
-        source_node = dependant.src
-        return source_node.check_downstream_exists(down_require) or result
-
-    def check_loops(self, new_node, count=0):
-        if self.ref == new_node.ref and self.context == new_node.context:
-            if count >= 1:
-                return self
-            count += 1
-        if not self.dependants:
-            return
-        assert len(self.dependants) == 1
-        dependant = self.dependants[0]
-        source_node = dependant.src
-        return source_node.check_loops(new_node, count)
+        # Recipe-origin state (RECIPE_CONSUMER / RECIPE_INCACHE / RECIPE_PLATFORM / ...).
+        self.recipe = recipe_state
+        self._package_id = None
+        if recipe_instance is not None:
+            recipe_instance._recipe_node = self  # back-reference, so recipes can read ref/context
 
     @property
     def package_id(self):
@@ -248,62 +66,6 @@ class Node:
     def pref(self):
         assert self.ref is not None and self.package_id is not None, "Node %s" % self.recipe
         return PkgReference(self.ref, self.package_id)
-
-    def add_edge(self, edge):
-        if edge.src == self:
-            self.edges.append(edge)
-        else:
-            self.dependants.append(edge)
-
-    def neighbors(self):
-        return [edge.dst for edge in self.edges]
-
-    def inverse_neighbors(self):
-        return [edge.src for edge in self.dependants]
-
-    def __repr__(self):
-        return repr(self.recipe)
-
-    def serialize(self):
-        result = OrderedDict()
-        result["ref"] = self.ref.repr_notime() if self.ref is not None else "recipe"
-        result["id"] = getattr(self, "id")  # Must be assigned by graph.serialize()
-        result["recipe"] = self.recipe
-        result["package_id"] = self.package_id
-        result["prev"] = self.prev
-        result["rrev"] = None
-        result["rrev_timestamp"] = None
-        result["prev_timestamp"] = self.pref_timestamp
-        result["build_id"] = build_id(self.recipe)
-        result["binary"] = self.binary
-        # TODO: This doesn't match the model, check it
-        result["invalid_build"] = getattr(getattr(self.recipe, "info", None), "cant_build", False)
-        result["info_invalid"] = getattr(getattr(self.recipe, "info", None), "invalid", None)
-        # Adding the recipe information: settings, options, etc
-        result.update(self.recipe.serialize())
-        result.pop("requires", None)  # superseded by "dependencies" (graph.transitive_deps)
-        result["dependencies"] = {d.node.id: d.require.serialize()
-                                  for d in self.transitive_deps.values() if d.node is not None}
-        result["context"] = self.context
-        result["test"] = self.test
-        return result
-
-    def overrides(self):
-
-        def transitive_subgraph():
-            result = set()
-            opened = {self}
-            while opened:
-                new_opened = set()
-                for o in opened:
-                    result.add(o)
-                    new_opened.update(set(o.neighbors()).difference(result))
-                opened = new_opened
-
-            return result
-
-        nodes = transitive_subgraph()
-        return Overrides.create(nodes)
 
 
 class Edge:

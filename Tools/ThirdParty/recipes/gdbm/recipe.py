@@ -34,8 +34,6 @@ class Recipe(RecipeBase):
     }
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
         if not self.options.with_nls:

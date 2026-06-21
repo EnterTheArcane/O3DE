@@ -27,10 +27,6 @@ class Recipe(RecipeBase):
         "no_exceptions": False,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
         if self.options.shared or self.options.header_only:
             self.options.rm_safe("fPIC")

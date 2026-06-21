@@ -45,15 +45,11 @@ class Recipe(RecipeBase):
         return self.settings.os == "Windows" and self.settings.compiler == "gcc"
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         # Set the default value based on OS
         self.options.with_ticlib = self.settings.os != "Windows"
         self.options.with_tinfo = self.settings.os != "Windows"
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         if not self.options.with_cxx:
             self.settings.rm_safe("compiler.libcxx")
             self.settings.rm_safe("compiler.cppstd")

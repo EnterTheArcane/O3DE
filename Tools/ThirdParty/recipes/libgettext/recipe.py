@@ -41,14 +41,10 @@ class Recipe(RecipeBase):
         return "gettext-tools"
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            self.options.rm_safe("fPIC")
 
         self.options.threads = {"Solaris": "solaris", "Windows": "windows"}.get(str(self.settings.os), "posix")
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

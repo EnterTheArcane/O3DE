@@ -48,8 +48,6 @@ class Recipe(RecipeBase):
             del self.options.data_packaging
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.license = "Unicode-3.0"
 
     @staticmethod

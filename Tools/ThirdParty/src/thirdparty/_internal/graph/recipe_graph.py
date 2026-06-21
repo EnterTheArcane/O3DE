@@ -5,43 +5,27 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from thirdparty._internal.detect import detect_settings, make_conf
-from thirdparty._internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.recipe_base import RecipeBase
-from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.rest.http_requester import HttpRequester
 from thirdparty.env import Environment
 
 
 # ---------------------------------------------------------------------------
-# Runtime shims
+# Runtime services
 #
 # This system has no Conan cache, remotes, or profiles, so recipes are driven
-# directly.  These small stand-ins supply the handful of attributes the recipe
-# methods touch during graph resolution and building.
+# directly.  RecipeRuntime supplies the handful of services (conf, HTTP requester)
+# that recipe methods touch during graph resolution and building.  The graph node
+# itself is the real ``thirdparty._internal.graph.graph.Node`` (see build.py).
 # ---------------------------------------------------------------------------
-class PassthroughWrapper:
-    def wrap(self, cmd, **_kw):
-        return cmd
-
-
 class RecipeRuntime:
     def __init__(self, conf):
-        self.cmd_wrapper = PassthroughWrapper()
         self.global_conf = conf
         self.requester = HttpRequester(conf)
         self.cache = None
         self.home_folder = None
         self.recipe_api = None
-
-
-class FakeNode:
-    """Minimal stand-in for the dependency graph Node, giving dep recipes a ref/context/recipe."""
-
-    def __init__(self, name: str, version: str) -> None:
-        self.ref = RecipeReference(name, version)
-        self.context = CONTEXT_HOST  # "host"
-        self.recipe = RECIPE_INCACHE  # any non-RECIPE_PLATFORM value
 
 
 class VersionResolvingRequirements:
@@ -76,6 +60,11 @@ class VersionResolvingRequirements:
         if resolved and "/" not in resolved:
             return
         return self._inner.tool_require(resolved, **kwargs)
+
+    def __len__(self):
+        # Dunder lookups bypass __getattr__, so delegate explicitly (run_configure_method
+        # uses len(recipe.requires) to detect requires added during configure()).
+        return len(self._inner)
 
     def __getattr__(self, name):
         return getattr(self._inner, name)
@@ -173,28 +162,21 @@ def make_probe_recipe(
 
 
 def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
-    """Call the requirement-declaring methods and return ``(host_dep_names, tool_dep_names)``.
+    """Drive the recipe's config phase and return ``(host_dep_names, tool_dep_names)``.
 
     host_dep_names — regular library dependencies (build=False)
     tool_dep_names — tool_requires / build_requires (build=True)
-    """
-    # Wire up the callable wrappers that graph resolution normally sets before calling these
-    # methods.  Without them, recipe.tool_requires("foo") raises TypeError (calls None).
-    from thirdparty._internal.model.requires import (
-        BuildRequirements, TestRequirements, ToolRequirements,
-    )
-    recipe.build_requires = BuildRequirements(recipe.requires)
-    recipe.test_requires = TestRequirements(recipe.requires)
-    recipe.tool_requires = ToolRequirements(recipe.requires)
 
-    # config_options() / configure() must run before requirements() so that option guards
-    # like "if self.options.with_elf" reflect the correct value.
-    for method in ("config_options", "configure", "requirements", "build_requirements"):
-        if hasattr(recipe, method):
-            try:
-                getattr(recipe, method)()
-            except Exception:
-                pass
+    The whole config phase (config_options/configure + default auto-fPIC handling +
+    requirements/build_requirements) is delegated to ``run_configure_method``.  Errors are
+    swallowed — dependency discovery is best-effort and must not abort graph resolution.
+    """
+    from thirdparty._internal.methods import run_configure_method
+
+    try:
+        run_configure_method(recipe)
+    except Exception:
+        pass
     host_names: list[str] = []
     tool_names: list[str] = []
     for req in recipe.requires.values():

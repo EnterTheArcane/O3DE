@@ -40,8 +40,6 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            self.options.rm_safe("fPIC")
         del self.options.build_decoder
         if self.settings.arch not in ("ARM",):
             del self.options.with_neon
@@ -50,10 +48,6 @@ class Recipe(RecipeBase):
             del self.options.with_neon_i8mm
             del self.options.with_neon_sve
             del self.options.with_neon_sve2
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def requirements(self):
         self.requires("cpuinfo")

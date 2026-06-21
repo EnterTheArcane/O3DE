@@ -51,10 +51,6 @@ class Recipe(RecipeBase):
             del self.options.with_metal
         self.license = "DocumentRef-LICENSE.txt:LicenseRef-Tomorrow-Open-Source-Technology"
 
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def requirements(self):
         self.requires("onetbb", transitive_headers=True)
         if self.options.with_opengl:

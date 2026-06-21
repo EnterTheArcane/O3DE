@@ -122,14 +122,10 @@ class Recipe(RecipeBase):
 
     def config_options(self):
         del self.options.with_libgsasl
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if not is_apple_os(self):
             del self.options.with_apple_sectrust
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

@@ -2,7 +2,7 @@ import os
 
 import yaml
 
-from thirdparty._internal.cache.home_paths import HomePaths
+from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty._internal.default_settings import default_settings_yml
 from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.errors import RecipeException

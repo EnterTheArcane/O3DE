@@ -27,13 +27,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

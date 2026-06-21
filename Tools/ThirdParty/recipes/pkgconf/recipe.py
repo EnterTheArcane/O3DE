@@ -25,10 +25,6 @@ class Recipe(RecipeBase):
         "enable_lib": False,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
         if not self.options.enable_lib:
             self.options.rm_safe("fPIC")

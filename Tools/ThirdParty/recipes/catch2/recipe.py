@@ -33,14 +33,6 @@ class Recipe(RecipeBase):
     def _default_reporter_str(self):
         return str(self.options.default_reporter).strip('"')
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def latest_version(self):
         repo = GithubRepository(self, "catchorg/Catch2")
         return Version(repo.latest_release.removeprefix("v"))

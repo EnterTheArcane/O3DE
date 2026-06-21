@@ -49,8 +49,6 @@ class Recipe(RecipeBase):
             del self.options.with_libcomp
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
         if self.options.get_safe("with_libcomp"):

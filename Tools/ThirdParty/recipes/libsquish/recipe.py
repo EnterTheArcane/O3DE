@@ -34,16 +34,10 @@ class Recipe(RecipeBase):
         return ["ppc32be", "ppc32", "ppc64le", "ppc64"]
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if self.settings.arch not in self._sse2_compliant_archs:
             del self.options.sse2_intrinsics
         if self.settings.arch not in self._altivec_compliant_archs:
             del self.options.altivec_intrinsics
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def source(self):
         get(

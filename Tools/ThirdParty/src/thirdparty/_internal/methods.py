@@ -81,9 +81,17 @@ def run_package_method(recipe, package_id, hook_manager, ref):
     return prev
 
 
-def run_configure_method(recipe, down_options, profile_options, ref):
-    """ Run all the config-related functions for the given recipe object """
+def run_configure_method(recipe):
+    """Drive a recipe's configuration and requirement declaration in canonical order.
 
+    config_options() -> default language handling -> configure() -> default auto-fPIC/shared
+    handling -> package-type computation -> requirements()/build_requirements().
+
+    This is the single entry point for a recipe's config phase.  It injects the default
+    auto-fPIC behavior (``_auto_fpic_configure``) so recipes don't need manual
+    ``del self.options.fPIC`` boilerplate.  ``validate()`` is intentionally NOT run here —
+    callers handle it (and its ``RecipeInvalidConfiguration``) separately.
+    """
     initial_requires_count = len(recipe.requires)
 
     if hasattr(recipe, "config_options"):
@@ -92,26 +100,16 @@ def run_configure_method(recipe, down_options, profile_options, ref):
 
     auto_language(recipe)  # default implementation removes `compiler.cstd`
 
-    # Assign only the current package options values, but none of the dependencies
-    is_consumer = recipe._is_consumer_recipe  # noqa
-    recipe.options.apply_downstream(down_options, profile_options, ref, is_consumer)
-
     if hasattr(recipe, "configure"):
         with recipe_exception_formatter(recipe, "configure"):
             recipe.configure()
 
+    _auto_fpic_configure(recipe)
+
     if initial_requires_count != len(recipe.requires):
         recipe.output.warning("Requirements should only be added in the requirements()/"
-                                 "build_requirements() methods, not configure()/config_options(), "
-                                 "which might raise errors in the future.", warn_tag="deprecated")
-
-    result = recipe.options.get_upstream_options(down_options, ref, is_consumer)
-    self_options, up_options, private_up_options = result
-    # self_options are the minimum to reproduce state, as defined from downstream (not profile)
-    recipe.self_options = self_options
-    # up_options are the minimal options that should be propagated to dependencies
-    recipe.up_options = up_options
-    recipe.private_up_options = private_up_options
+                              "build_requirements() methods, not configure()/config_options().",
+                              warn_tag="deprecated")
 
     PackageType.compute_package_type(recipe)
 
@@ -127,10 +125,18 @@ def run_configure_method(recipe, down_options, profile_options, ref):
         with recipe_exception_formatter(recipe, "build_requirements"):
             recipe.build_requirements()
 
-    if recipe.build_requires._called:  # noqa
-        recipe.output.warning(
-            "build_requires is deprecated, prefer to use tool_requires with correct traits",
-            warn_tag="deprecated")
+
+def _auto_fpic_configure(recipe):
+    """Default option handling injected by ``run_configure``: drop ``fPIC`` where it does not
+    apply (Windows, or shared/header-only builds) and drop ``shared`` for header-only packages.
+    This lets recipes omit manual ``del self.options.fPIC`` boilerplate."""
+    if recipe.settings.get_safe("os") == "Windows":
+        recipe.options.rm_safe("fPIC")
+    if recipe.options.get_safe("header_only"):
+        recipe.options.rm_safe("fPIC")
+        recipe.options.rm_safe("shared")
+    elif recipe.options.get_safe("shared"):
+        recipe.options.rm_safe("fPIC")
 
 
 def auto_shared_fpic_config_options(recipe):
@@ -139,13 +145,7 @@ def auto_shared_fpic_config_options(recipe):
 
 
 def auto_shared_fpic_configure(recipe):
-    if recipe.settings.get_safe("os") == "Windows":
-        recipe.options.rm_safe("fPIC")
-    if recipe.options.get_safe("header_only"):
-        recipe.options.rm_safe("fPIC")
-        recipe.options.rm_safe("shared")
-    elif recipe.options.get_safe("shared"):
-        recipe.options.rm_safe("fPIC")
+    _auto_fpic_configure(recipe)
 
 
 def auto_header_only_package_id(recipe):
