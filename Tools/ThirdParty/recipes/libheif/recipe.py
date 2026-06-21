@@ -69,9 +69,6 @@ class Recipe(RecipeBase):
         if self.options.get_safe("with_x264"):
             self.requires("libx264")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "strukturag/libheif")
         return Version(repo.latest_release.removeprefix("v"))

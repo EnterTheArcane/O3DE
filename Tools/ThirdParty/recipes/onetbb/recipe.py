@@ -13,9 +13,6 @@ class Recipe(RecipeBase):
     version = "2023.0.0"
     license = "Apache-2.0"
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "uxlfoundation/oneTBB")
         return Version(repo.latest_release.removeprefix("v"))

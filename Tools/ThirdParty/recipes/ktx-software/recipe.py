@@ -45,9 +45,6 @@ class Recipe(RecipeBase):
         if self.options.tools:
             self.requires("fmt")
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/KTX-Software")
         return Version(repo.latest_release.lstrip("v"))

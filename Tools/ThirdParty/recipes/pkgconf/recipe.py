@@ -39,9 +39,6 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 
-    def build_requirements(self):
-        self.tool_requires("meson")
-
     def latest_version(self):
         repo = GithubRepository(self, "pkgconf/pkgconf")
         return Version(repo.latest_release.removeprefix("pkgconf-"))

@@ -26,9 +26,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires(f"vulkan-headers", transitive_headers=True)
 
-    def build_requirements(self):
-        self.tool_requires("cmake")
-
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-Utility-Libraries")
         return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
