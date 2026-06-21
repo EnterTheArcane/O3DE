@@ -152,7 +152,7 @@ class RecipeLoader:
         if not recipe.version:
             raise RecipeException("recipe didn't specify version")
 
-        ref = RecipeReference(recipe.name, recipe.version, recipe.user, recipe.channel)
+        ref = RecipeReference(recipe.name, recipe.version)
         recipe.display_name = str(ref)
         return recipe
 
@@ -165,7 +165,7 @@ class RecipeLoader:
                                     update, check_update,
                                     tested_python_requires=tested_python_requires)
 
-        ref = RecipeReference(recipe.name, recipe.version, recipe.user, recipe.channel)
+        ref = RecipeReference(recipe.name, recipe.version)
         if str(ref):
             recipe.display_name = "%s (%s)" % (os.path.basename(recipe_path), str(ref))
         else:
@@ -186,8 +186,6 @@ class RecipeLoader:
 
         recipe.name = ref.name
         recipe.version = str(ref.version)
-        recipe.user = ref.user
-        recipe.channel = ref.channel
         return recipe
 
     def load_recipe_txt(self, recipe_txt_path):

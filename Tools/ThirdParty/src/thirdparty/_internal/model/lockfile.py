@@ -48,19 +48,13 @@ class _LockRequires:
         return result
 
     def add(self, ref, package_ids=None):
-        if ref.revision is not None:
-            old_package_ids = self._requires.pop(ref, None)  # Get existing one
-            if old_package_ids is not None:
-                if package_ids is not None:
-                    assert isinstance(old_package_ids, dict)
-                    old_package_ids.update(package_ids)
-                package_ids = old_package_ids
-            self._requires[ref] = package_ids
-        else:  # Manual addition of something without revision
-            existing = {r: r for r in self._requires}.get(ref)
-            if existing and existing.revision is not None:
-                raise RecipeException(f"Cannot add {ref} to lockfile, already exists")
-            self._requires[ref] = package_ids
+        old_package_ids = self._requires.pop(ref, None)  # Get existing one
+        if old_package_ids is not None:
+            if package_ids is not None:
+                assert isinstance(old_package_ids, dict)
+                old_package_ids.update(package_ids)
+            package_ids = old_package_ids
+        self._requires[ref] = package_ids
 
     def remove(self, pattern):
         ref = RecipeReference.loads(pattern)
@@ -70,9 +64,7 @@ class _LockRequires:
             version_range = VersionRange(version[1:-1])
             for k, v in self._requires.items():
                 if fnmatch.fnmatch(k.name, ref.name) and version_range.contains(k.version, None):
-                    new_pattern = f"{k.name}/*@{ref.user or ''}"
-                    new_pattern += f"/{ref.channel}" if ref.channel else ""
-                    if k.matches(new_pattern, False):
+                    if k.matches(f"{k.name}/*", False):
                         remove.append(k)
         else:
             remove = [k for k in self._requires if k.matches(pattern, False)]
@@ -348,8 +340,7 @@ class Lockfile:
     def _resolve(self, require, locked_refs, resolve_prereleases, kind):
         version_range = require.version_range
         ref = require.ref
-        matches = [r for r in locked_refs if r.name == ref.name and r.user == ref.user and
-                   r.channel == ref.channel]
+        matches = [r for r in locked_refs if r.name == ref.name]
         if version_range:
             for m in matches:
                 if version_range.contains(m.version, resolve_prereleases):
@@ -360,17 +351,13 @@ class Lockfile:
                     raise RecipeException(f"Requirement '{ref}' not in lockfile '{kind}'")
         else:
             ref = require.ref
-            if ref.revision is None:
-                for m in matches:
-                    if m.version == ref.version:
-                        require.ref = m
-                        break
-                else:
-                    if not self.partial:
-                        raise RecipeException(f"Requirement '{ref}' not in lockfile '{kind}'")
+            for m in matches:
+                if m.version == ref.version:
+                    require.ref = m
+                    break
             else:
-                if ref not in matches and not self.partial:
-                    raise RecipeException(f"Requirement '{repr(ref)}' not in lockfile '{kind}'")
+                if not self.partial:
+                    raise RecipeException(f"Requirement '{ref}' not in lockfile '{kind}'")
 
     def replace_alias(self, require, alias):
         locked_alias = self._alias.get(alias)

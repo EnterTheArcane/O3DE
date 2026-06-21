@@ -251,7 +251,7 @@ class Node:
     @property
     def pref(self):
         assert self.ref is not None and self.package_id is not None, "Node %s" % self.recipe
-        return PkgReference(self.ref, self.package_id, self.prev, self.pref_timestamp)
+        return PkgReference(self.ref, self.package_id)
 
     def add_edge(self, edge):
         if edge.src == self:
@@ -275,8 +275,8 @@ class Node:
         result["recipe"] = self.recipe
         result["package_id"] = self.package_id
         result["prev"] = self.prev
-        result["rrev"] = self.ref.revision if self.ref is not None else None
-        result["rrev_timestamp"] = self.ref.timestamp if self.ref is not None else None
+        result["rrev"] = None
+        result["rrev_timestamp"] = None
         result["prev_timestamp"] = self.pref_timestamp
         result["build_id"] = build_id(self.recipe)
         result["binary"] = self.binary

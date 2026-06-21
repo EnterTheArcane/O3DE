@@ -7,7 +7,7 @@ from typing import cast
 from types import ModuleType
 
 import thirdparty._internal.cli.commands as _commands_pkg
-from thirdparty._internal.cli.command import CommandFn, is_command
+from thirdparty._internal.cli.command import CommandFn, is_command, command_name
 
 _SetupParserFn = Callable[[argparse.ArgumentParser], None]
 _CommandEntry = tuple[CommandFn, _SetupParserFn | None]
@@ -24,7 +24,7 @@ def _discover_commands() -> dict[str, _CommandEntry]:
             if is_command(obj):
                 setup_raw = getattr(module, "setup_parser", None)
                 setup = (cast("_SetupParserFn", setup_raw) if callable(setup_raw) else None)
-                commands[obj.__name__] = (obj, setup)
+                commands[command_name(obj)] = (obj, setup)
     return commands
 
 
