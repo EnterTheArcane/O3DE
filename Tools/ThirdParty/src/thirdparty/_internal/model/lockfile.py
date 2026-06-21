@@ -2,7 +2,7 @@ import fnmatch
 import json
 import os
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty._internal.graph.graph import RECIPE_VIRTUAL, RECIPE_CONSUMER, CONTEXT_BUILD, Overrides
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.refs import RecipeReference

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.cli.commands.build import _try_load_recipe_class, _resolve_version
+from thirdparty._internal.graph.recipe_graph import try_load_recipe_class, resolve_version
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -19,12 +19,12 @@ def provide(args: argparse.Namespace) -> None:
     recipes_root = cwd / "recipes"
     build_root = cwd / "build"
 
-    cls = _try_load_recipe_class(recipes_root, name)
+    cls = try_load_recipe_class(recipes_root, name)
     if cls is None:
         print(f"[thirdparty] error: recipe not found: {name}", file=sys.stderr)
         sys.exit(1)
 
-    version = _resolve_version(cls)
+    version = resolve_version(cls)
     pkg_path = build_root / name / version / "package"
     if not pkg_path.exists():
         print(f"[thirdparty] error: package not built: {name}/{version}", file=sys.stderr)

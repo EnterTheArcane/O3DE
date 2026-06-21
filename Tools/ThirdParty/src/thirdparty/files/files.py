@@ -12,7 +12,7 @@ from shutil import which
 
 
 from thirdparty._internal.rest.caching_file_downloader import SourcesCachingDownloader
-from thirdparty._internal.api.output import TimedOutput
+from thirdparty._internal.output import TimedOutput
 from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
 

@@ -1,7 +1,7 @@
 import fnmatch
 import os
 
-from thirdparty._internal.api.output import Color
+from thirdparty._internal.output import Color
 from thirdparty.files import chdir, update_recipe_data
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.conf import ConfDefinition

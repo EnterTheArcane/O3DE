@@ -3,7 +3,7 @@ import os
 import platform
 import textwrap
 
-from thirdparty._internal.api.output import Output, Color
+from thirdparty._internal.output import Output, Color
 from thirdparty.cmake.layout import get_build_folder_custom_vars, is_consumer
 from thirdparty.cmake.toolchain.blocks import GenericSystemBlock
 from thirdparty.cmake.utils import is_multi_configuration

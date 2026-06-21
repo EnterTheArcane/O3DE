@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 from jinja2 import Template
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty._internal import check_duplicated_generator
 from thirdparty.build import use_win_mingw
 from thirdparty.cmake.layout import is_consumer

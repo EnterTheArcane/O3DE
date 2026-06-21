@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
-import importlib.util
 import os
 import shutil
 import sys
@@ -12,77 +11,24 @@ from collections import OrderedDict
 from pathlib import Path
 
 from thirdparty._internal.model.refs import RecipeReference
-from thirdparty._internal.graph.graph import CONTEXT_HOST, RECIPE_INCACHE
 from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty._internal.model.recipe_interface import RecipeInterface
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.requires import Requirement
-from thirdparty._internal.rest.http_requester import HttpRequester
 from thirdparty.env import Environment
 from thirdparty.env.environment import generate_aggregated_env
 from thirdparty._internal.detect import detect_settings, make_conf
 from thirdparty._internal.cli.command import command
-
-
-class _PassthroughWrapper:
-    def wrap(self, cmd, **_kw):
-        return cmd
-
-
-class _RecipeRuntime:
-    def __init__(self, conf):
-        self.cmd_wrapper = _PassthroughWrapper()
-        self.global_conf = conf
-        self.requester = HttpRequester(conf)
-        self.cache = None
-        self.home_folder = None
-        self.recipe_api = None
-
-
-class _FakeNode:
-    """Minimal stand-in for the dependency graph Node, giving dep recipes a ref/context/recipe."""
-
-    def __init__(self, name: str, version: str) -> None:
-        self.ref = RecipeReference(name, version)
-        self.context = CONTEXT_HOST  # "host"
-        self.recipe = RECIPE_INCACHE  # any non-RECIPE_PLATFORM value
-
-
-class _VersionResolvingRequirements:
-    """Wraps the requirements object to accept bare package names (no version).
-
-    Recipes in this system use ``self.requires("abseil")`` without a version.  Recipe 2.x
-    rejects that, so we intercept every call, look up the matching local recipe to find its
-    version, and convert the ref to ``"abseil/20260107.1"`` before forwarding.
-    """
-
-    def __init__(self, inner, recipes_root: Path) -> None:
-        self._inner = inner
-        self._recipes_root = recipes_root
-
-    def _resolve(self, ref: str) -> str:
-        if ref and "/" not in ref and "@" not in ref:
-            cls = _try_load_recipe_class(self._recipes_root, ref)
-            if cls:
-                return f"{ref}/{_resolve_version(cls)}"
-        return ref
-
-    def __call__(self, str_ref, **kwargs):
-        return self._inner(self._resolve(str_ref), **kwargs)
-
-    def tool_require(self, ref, **kwargs):
-        resolved = self._resolve(ref)
-        # Skip tool deps that have no local recipe and no explicit version — they are
-        # system-provided tools (e.g. gperf, pkg-config) and cannot be version-resolved.
-        # Passing an unversioned name to Requirements.tool_require() raises an error that
-        # would abort the entire build_requirements() call, preventing later tool_requires
-        # (e.g. meson) from being registered.
-        if resolved and "/" not in resolved:
-            return
-        return self._inner.tool_require(resolved, **kwargs)
-
-    def __getattr__(self, name):
-        return getattr(self._inner, name)
+from thirdparty._internal.graph.recipe_graph import (
+    RecipeRuntime as _RecipeRuntime,
+    FakeNode as _FakeNode,
+    VersionResolvingRequirements as _VersionResolvingRequirements,
+    try_load_recipe_class as _try_load_recipe_class,
+    resolve_version as _resolve_version,
+    discover_requires as _get_requires,
+    make_probe_recipe,
+    build_recipe_graph,
+)
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -173,34 +119,19 @@ def build(args: argparse.Namespace) -> None:
 
 
 def _load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase]:
-    recipe_path = recipes_root / name / "recipe.py"
-    if not recipe_path.exists():
-        print(f"[thirdparty] error: recipe not found: {recipe_path}", file=sys.stderr)
+    cls = _try_load_recipe_class(recipes_root, name)
+    if cls is None:
+        recipe_path = recipes_root / name / "recipe.py"
+        if not recipe_path.exists():
+            print(f"[thirdparty] error: recipe not found: {recipe_path}", file=sys.stderr)
+        else:
+            print(
+                f"[thirdparty] error: {recipe_path} must define a class named 'Recipe' "
+                "that subclasses RecipeBase",
+                file=sys.stderr,
+            )
         sys.exit(1)
-
-    spec = importlib.util.spec_from_file_location(f"_recipe_{name}", recipe_path)
-    if spec is None or spec.loader is None:
-        print(f"[thirdparty] error: cannot load {recipe_path}", file=sys.stderr)
-        sys.exit(1)
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    cls = getattr(module, "Recipe", None)
-    if cls is None or not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
-        print(
-            f"[thirdparty] error: {recipe_path} must define a class named 'Recipe' "
-            "that subclasses RecipeBase (or RecipeBase)",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
     return cls
-
-
-def _resolve_version(recipe_cls: type[RecipeBase]) -> str:
-    v = getattr(recipe_cls, "version", None)
-    return str(v) if v else "latest"
 
 
 def _instantiate(
@@ -212,9 +143,7 @@ def _instantiate(
     build_type: str,
     jobs: int | None = None,
 ) -> RecipeBase:
-    recipe = recipe_cls(display_name=name)
-    recipe.version = version
-    recipe.recipe_folder = str(recipes_root / name)
+    recipe = make_probe_recipe(recipe_cls, recipes_root, name, version, build_type, jobs=jobs)
 
     source_dir = str(build_root / name / version / "source")
     build_dir = str(build_root / name / version / "build")
@@ -230,52 +159,7 @@ def _instantiate(
     # (CMakeLists.txt, patches, etc.) via export_sources() in real Recipe
     recipe.folders.set_base_export_sources(str(build_root / name / version))
 
-    recipe.settings = detect_settings(build_type)
-    recipe.settings_build = recipe.settings
-    recipe.settings_target = None
-    conf = make_conf(jobs=jobs)
-    recipe.conf = conf
-    recipe._recipe_runtime = _RecipeRuntime(conf)
-    recipe._recipe_dependencies = RecipeDependencies(OrderedDict())
-    recipe._recipe_buildenv = Environment()
-    recipe._recipe_runenv = Environment()
-    recipe.requires = _VersionResolvingRequirements(recipe.requires, recipes_root)
-
     return recipe
-
-
-def _get_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
-    """Call requirements() and build_requirements() and return (host_dep_names, tool_dep_names).
-
-    host_dep_names  — regular library dependencies (build=False)
-    tool_dep_names  — tool_requires / build_requires (build=True)
-    """
-    # Wire up callable wrappers that the dependency graph resolution normally sets before calling these
-    # methods. Without them, recipe.tool_requires("foo") raises TypeError (calls None).
-    from thirdparty._internal.model.requires import (
-        BuildRequirements, TestRequirements, ToolRequirements,
-    )
-    recipe.build_requires = BuildRequirements(recipe.requires)
-    recipe.test_requires = TestRequirements(recipe.requires)
-    recipe.tool_requires = ToolRequirements(recipe.requires)
-
-    # config_options() / configure() must run before requirements() so that
-    # option guards like "if self.options.with_elf" reflect the correct value.
-    for method in ("config_options", "configure", "requirements", "build_requirements"):
-        if hasattr(recipe, method):
-            try:
-                getattr(recipe, method)()
-            except Exception:
-                pass
-    host_names: list[str] = []
-    tool_names: list[str] = []
-    for req in recipe.requires.values():
-        name = str(req.ref.name)
-        if req.build:
-            tool_names.append(name)
-        else:
-            host_names.append(name)
-    return host_names, tool_names
 
 
 def _build_dep_graph(
@@ -469,41 +353,6 @@ def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
             shutil.copytree(item, dst, dirs_exist_ok=True)
 
 
-def _try_load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase] | None:
-    recipe_path = recipes_root / name / "recipe.py"
-    if not recipe_path.exists():
-        return None
-    try:
-        spec = importlib.util.spec_from_file_location(f"_recipe_{name}", recipe_path)
-        if spec is None or spec.loader is None:
-            return None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        cls = getattr(module, "Recipe", None)
-        return cls if (cls and isinstance(cls, type) and issubclass(cls, RecipeBase)) else None
-    except Exception:
-        return None
-
-
-def _topo_sort(graph: dict[str, list[str]]) -> list[str]:
-    in_degree = {n: len([d for d in deps if d in graph]) for n, deps in graph.items()}
-    queue = sorted(n for n, d in in_degree.items() if d == 0)
-    order: list[str] = []
-    while queue:
-        node = queue.pop(0)
-        order.append(node)
-        for n, deps in graph.items():
-            if n not in order and node in deps:
-                in_degree[n] -= 1
-                if in_degree[n] == 0:
-                    queue.append(n)
-                    queue.sort()
-    for n in graph:
-        if n not in order:
-            order.append(n)
-    return order
-
-
 def _build_ordered(
     recipes_root: Path,
     build_root: Path,
@@ -516,22 +365,8 @@ def _build_ordered(
     generate_only: bool,
     fail_fast: bool = False,
 ) -> None:
-    known = set(names)
-    graph: dict[str, list[str]] = {}
-    for name in names:
-        cls = _try_load_recipe_class(recipes_root, name)
-        if cls is None:
-            graph[name] = []
-            continue
-        version = _resolve_version(cls)
-        try:
-            probe = _instantiate(cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
-            host_deps, tool_deps = _get_requires(probe)
-        except Exception:
-            host_deps, tool_deps = [], []
-        graph[name] = [d for d in host_deps + tool_deps if d in known]
-
-    order = _topo_sort(graph)
+    rgraph = build_recipe_graph(recipes_root, names, build_type, jobs=jobs)
+    order = rgraph.topo_order()
 
     if resume:
         if resume not in order:
@@ -542,8 +377,7 @@ def _build_ordered(
 
     print(f"\n=== Build Plan: {len(order)} recipes ({build_type}) ===")
     for i, name in enumerate(order, 1):
-        cls = _try_load_recipe_class(recipes_root, name)
-        version = _resolve_version(cls) if cls else "?"
+        version = rgraph[name].version
         built = _is_built(build_root, name, version)
         status = "[force]" if force else ("[built]" if built else "[pending]")
         print(f"  {i:3d}. {name}/{version}  {status}")

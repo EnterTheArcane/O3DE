@@ -245,7 +245,7 @@ class Options:
                         if "[" in package:
                             msg = (f"Options pattern {package} contains a version range, which has no effect. "
                                    f"Only '&' for consumer and '*' as wildcard are supported in this context.")
-                            from thirdparty._internal.api.output import Output
+                            from thirdparty._internal.output import Output
                             Output().warning(msg, warn_tag="risk")
                         self._deps_package_options.setdefault(package, _PackageOptions())[option] = v
                     else:

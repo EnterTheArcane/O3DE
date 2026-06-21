@@ -3,7 +3,7 @@ import textwrap
 import jinja2
 from jinja2 import Template
 
-from thirdparty._internal.api.output import Color
+from thirdparty._internal.output import Color
 from thirdparty._internal import check_duplicated_generator
 from thirdparty.cmake.cmakedeps import FIND_MODE_CONFIG, FIND_MODE_NONE, FIND_MODE_BOTH, \
     FIND_MODE_MODULE
