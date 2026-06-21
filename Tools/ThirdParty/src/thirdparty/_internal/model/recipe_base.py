@@ -22,8 +22,6 @@ class RecipeBase:
     # Reference
     name = None
     version = None  # Any str, can be "1.1" or whatever
-    user = None
-    channel = None
 
     # Metadata
     url = None  # The URL where this File is located, as github, to collaborate in package
@@ -77,7 +75,6 @@ class RecipeBase:
     conf_info = None
     conf = None
     generator_info = None
-    recipe_data = None
 
     def __init__(self, display_name=""):
         self.display_name = display_name
@@ -183,8 +180,6 @@ class RecipeBase:
         if self.info is not None:
             result["info"] = self.info.serialize()
         result["vendor"] = self.vendor
-        if self.recipe_data:
-            result["recipe_data"] = self.recipe_data
         return result
 
     @property

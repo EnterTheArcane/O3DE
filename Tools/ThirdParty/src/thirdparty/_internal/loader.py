@@ -7,8 +7,6 @@ import types
 import uuid
 from threading import Lock
 
-import yaml
-
 from pathlib import Path
 
 from thirdparty._internal.output import Output
@@ -20,9 +18,8 @@ from thirdparty.errors import RecipeException
 from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
-from thirdparty._internal.paths import DATA_YML
 from thirdparty._internal.util.config_parser import TextINIParse
-from thirdparty._internal.util.files import load, chdir, load_user_encoded
+from thirdparty._internal.util.files import chdir, load_user_encoded
 
 
 class RecipeLoader:
@@ -71,10 +68,6 @@ class RecipeLoader:
             recipe.recipe_folder = os.path.dirname(recipe_path)
             recipe.recipe_path = Path(recipe.recipe_folder)
 
-            # Load and populate dynamic fields from the data file
-            recipe_data = self._load_data(recipe_path)
-            recipe.recipe_data = recipe_data
-
             self._cached_recipe_classes[recipe_path] = (recipe, module)
             result = recipe(display)
 
@@ -86,20 +79,7 @@ class RecipeLoader:
         except RecipeException as e:
             raise RecipeException("Error loading recipe at '{}': {}".format(recipe_path, e))
 
-    @staticmethod
-    def _load_data(recipe_path):
-        data_path = os.path.join(os.path.dirname(recipe_path), DATA_YML)
-        if not os.path.exists(data_path):
-            return None
-
-        try:
-            data = yaml.safe_load(load(data_path))
-        except Exception as e:
-            raise RecipeException("Invalid yml format at {}: {}".format(DATA_YML, e))
-
-        return data or {}
-
-    def load_named(self, recipe_path, name, version, user, channel, graph_lock=None,
+    def load_named(self, recipe_path, name, version, graph_lock=None,
                    update=None, check_update=None, tested_python_requires=None):
         """ loads the basic recipe object and evaluates its name and version
         """
@@ -119,21 +99,6 @@ class RecipeLoader:
                                      % (version, recipe.version))
             recipe.version = version
 
-        if user:
-            if recipe.user and user != recipe.user:
-                raise RecipeException("Package recipe with user %s!=%s"
-                                     % (user, recipe.user))
-            recipe.user = user
-
-        if channel:
-            if recipe.channel and channel != recipe.channel:
-                raise RecipeException("Package recipe with channel %s!=%s"
-                                     % (channel, recipe.channel))
-            recipe.channel = channel
-
-        if recipe.channel and not recipe.user:
-            raise RecipeException(f"{recipe_path}: Can't specify channel '{recipe.channel}' without user")
-
         if hasattr(recipe, "set_name"):
             with recipe_exception_formatter("recipe.py", "set_name"):
                 recipe.set_name()
@@ -143,10 +108,10 @@ class RecipeLoader:
 
         return recipe
 
-    def load_export(self, recipe_path, name, version, user, channel, graph_lock=None):
+    def load_export(self, recipe_path, name, version, graph_lock=None):
         """ loads the recipe and evaluates its name, version, and enforce its existence
         """
-        recipe = self.load_named(recipe_path, name, version, user, channel, graph_lock)
+        recipe = self.load_named(recipe_path, name, version, graph_lock)
         if not recipe.name:
             raise RecipeException("recipe didn't specify name")
         if not recipe.version:
@@ -156,12 +121,12 @@ class RecipeLoader:
         recipe.display_name = str(ref)
         return recipe
 
-    def load_consumer(self, recipe_path, name=None, version=None, user=None,
-                      channel=None, graph_lock=None, update=None, check_update=None,
+    def load_consumer(self, recipe_path, name=None, version=None,
+                      graph_lock=None, update=None, check_update=None,
                       tested_python_requires=None):
         """ loads a recipe.py in user space. Might have name/version or not
         """
-        recipe = self.load_named(recipe_path, name, version, user, channel, graph_lock,
+        recipe = self.load_named(recipe_path, name, version, graph_lock,
                                     update, check_update,
                                     tested_python_requires=tested_python_requires)
 

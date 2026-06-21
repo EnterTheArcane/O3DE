@@ -126,10 +126,6 @@ class RecipeInterface:
         self._recipe.set_deploy_folder(deploy_folder)
 
     @property
-    def recipe_data(self):
-        return self._recipe.recipe_data
-
-    @property
     def license(self):
         return self._recipe.license
 
