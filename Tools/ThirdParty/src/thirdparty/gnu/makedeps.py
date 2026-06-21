@@ -32,7 +32,7 @@ import textwrap
 from jinja2 import Template, StrictUndefined
 from typing import Optional
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty._internal import check_duplicated_generator
 from thirdparty.files import save
 

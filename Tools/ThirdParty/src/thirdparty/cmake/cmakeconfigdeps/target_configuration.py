@@ -5,7 +5,7 @@ import jinja2
 from jinja2 import Template
 
 from thirdparty.errors import RecipeException
-from thirdparty._internal.api.install.generators import relativize_path
+from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.graph.graph import CONTEXT_BUILD
 from thirdparty.cmake.utils import cmake_escape_value

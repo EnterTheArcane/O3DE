@@ -3,7 +3,7 @@ import textwrap
 import jinja2
 from jinja2 import Template
 from thirdparty.cmake.utils import parse_extra_variable, cmake_escape_value
-from thirdparty._internal.api.install.generators import relativize_path
+from thirdparty._internal.util.generators import relativize_path
 
 
 class ConfigTemplate2:

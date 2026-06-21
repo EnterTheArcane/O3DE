@@ -160,7 +160,7 @@ class VersionRange:
         for t in tokens[1:]:
             if "include_prerelease" in t:
                 if "include_prerelease=" in t:
-                    from thirdparty._internal.api.output import Output
+                    from thirdparty._internal.output import Output
                     Output().warning(
                         f'include_prerelease version range option in "{expression}" does not take an attribute, '
                         'its presence unconditionally enables prereleases')
@@ -169,7 +169,7 @@ class VersionRange:
             else:
                 t = t.strip()
                 if len(t) > 0 and t[0].isalpha():
-                    from thirdparty._internal.api.output import Output
+                    from thirdparty._internal.output import Output
                     Output().warning(f'Unrecognized version range option "{t}" in "{expression}"')
                 else:
                     raise RecipeException(f'"{t}" in version range "{expression}" is not a valid option')

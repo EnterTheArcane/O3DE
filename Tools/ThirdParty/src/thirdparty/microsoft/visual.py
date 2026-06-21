@@ -2,7 +2,7 @@ import os
 import textwrap
 
 from thirdparty._internal import check_duplicated_generator
-from thirdparty._internal.api.detect.detect_vs import vs_installation_path
+from thirdparty._internal.detect_vs import vs_installation_path
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.scm import Version
 from thirdparty._internal.util.files import save

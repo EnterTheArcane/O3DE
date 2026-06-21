@@ -14,7 +14,7 @@ from thirdparty.build.cross_building import cross_building
 from thirdparty.cmake.toolchain import RECIPE_TOOLCHAIN_FILENAME
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.microsoft.visual import msvc_version_to_toolset_version, msvc_platform_from_arch
-from thirdparty._internal.api.install.generators import relativize_path
+from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version

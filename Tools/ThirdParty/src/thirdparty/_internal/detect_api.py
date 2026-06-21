@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import textwrap
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.util.files import load
@@ -285,7 +285,7 @@ def default_msvc_runtime(compiler):
 
 
 def detect_msvc_update(version):
-    from thirdparty._internal.api.detect.detect_vs import vs_detect_update
+    from thirdparty._internal.detect_vs import vs_detect_update
     return vs_detect_update(version)
 
 
@@ -449,7 +449,7 @@ def default_msvc_ide_version(version):
 
 
 def _detect_vs_ide_version():
-    from thirdparty._internal.api.detect.detect_vs import vs_installation_path
+    from thirdparty._internal.detect_vs import vs_installation_path
     msvc_versions = "18", "17", "16", "15"
     for version in msvc_versions:
         vs_path = os.getenv('vs%s0comntools' % version)

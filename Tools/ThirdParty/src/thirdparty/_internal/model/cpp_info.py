@@ -5,7 +5,7 @@ import os
 import re
 from collections import OrderedDict, defaultdict
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.util.files import load, save

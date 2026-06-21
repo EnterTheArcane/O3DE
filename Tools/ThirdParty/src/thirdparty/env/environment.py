@@ -4,7 +4,7 @@ from shlex import quote
 from collections import OrderedDict
 from contextlib import contextmanager
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.recipe_ref import ref_matches
