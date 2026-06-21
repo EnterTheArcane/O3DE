@@ -9,7 +9,7 @@ from thirdparty.build import cross_building
 from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.files import (
     chdir, copy, get, rename,
-    replace_in_file, rm, rmdir, save, load
+    replace_in_file, rm, rmdir, save, load,
 )
 from thirdparty.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, PkgConfigDeps
 from thirdparty.microsoft import check_min_vs, is_msvc, unix_path
@@ -207,7 +207,6 @@ class Recipe(RecipeBase):
         "enable_filters": None,
     }
 
- 
     @property
     def _dependencies(self):
         return {
@@ -424,7 +423,7 @@ class Recipe(RecipeBase):
                 "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto ||",
                 f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} || ")
 
-        #replace_in_file(self, os.path.join(self.source_folder, "configure"), "echo libx264.lib", "echo x264.lib")
+        # replace_in_file(self, os.path.join(self.source_folder, "configure"), "echo libx264.lib", "echo x264.lib")
 
     @property
     def _default_compilers(self):
@@ -446,15 +445,16 @@ class Recipe(RecipeBase):
         # This must be done before modifying tc.configure_args, because update_configre_args currently removes
         # duplicate configuration keys, even when they have different values, such as list of encoder flags.
         # See https://github.com/recipe-io/recipe-center-index/issues/17140 for further information.
-        tc.update_configure_args({
-            "--sbindir": None,
-            "--includedir": None,
-            "--oldincludedir": None,
-            "--datarootdir": None,
-            "--build": None,
-            "--host": None,
-            "--target": None,
-        })
+        tc.update_configure_args(
+            {
+                "--sbindir": None,
+                "--includedir": None,
+                "--oldincludedir": None,
+                "--datarootdir": None,
+                "--build": None,
+                "--host": None,
+                "--target": None,
+            })
         return tc
 
     def generate(self):
@@ -537,9 +537,10 @@ class Recipe(RecipeBase):
             "--disable-cuda",  # FIXME: CUDA support
             "--disable-cuvid",  # FIXME: CUVID support
             # Licenses
-            opt_enable_disable("nonfree", self.options.get_safe("with_libfdk_aac") or (self.options.with_ssl and (
-                self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc")))),
-            opt_enable_disable("gpl", self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc"))
+            opt_enable_disable(
+                "nonfree", self.options.get_safe("with_libfdk_aac") or (self.options.with_ssl and (
+                        self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc")))),
+            opt_enable_disable("gpl", self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc")),
         ]
 
         # Individual Component Options
@@ -557,50 +558,72 @@ class Recipe(RecipeBase):
         opt_append_disable_if_set(args, "outdevs", self.options.disable_all_output_devices)
         opt_append_disable_if_set(args, "filters", self.options.disable_all_filters)
 
-        args.extend(self._split_and_format_options_string(
-            "enable-encoder", self.options.enable_encoders))
-        args.extend(self._split_and_format_options_string(
-            "disable-encoder", self.options.disable_encoders))
-        args.extend(self._split_and_format_options_string(
-            "enable-decoder", self.options.enable_decoders))
-        args.extend(self._split_and_format_options_string(
-            "disable-decoder", self.options.disable_decoders))
-        args.extend(self._split_and_format_options_string(
-            "enable-hwaccel", self.options.enable_hardware_accelerators))
-        args.extend(self._split_and_format_options_string(
-            "disable-hwaccel", self.options.disable_hardware_accelerators))
-        args.extend(self._split_and_format_options_string(
-            "enable-muxer", self.options.enable_muxers))
-        args.extend(self._split_and_format_options_string(
-            "disable-muxer", self.options.disable_muxers))
-        args.extend(self._split_and_format_options_string(
-            "enable-demuxer", self.options.enable_demuxers))
-        args.extend(self._split_and_format_options_string(
-            "disable-demuxer", self.options.disable_demuxers))
-        args.extend(self._split_and_format_options_string(
-            "enable-parser", self.options.enable_parsers))
-        args.extend(self._split_and_format_options_string(
-            "disable-parser", self.options.disable_parsers))
-        args.extend(self._split_and_format_options_string(
-            "enable-bsf", self.options.enable_bitstream_filters))
-        args.extend(self._split_and_format_options_string(
-            "disable-bsf", self.options.disable_bitstream_filters))
-        args.extend(self._split_and_format_options_string(
-            "enable-protocol", self.options.enable_protocols))
-        args.extend(self._split_and_format_options_string(
-            "disable-protocol", self.options.disable_protocols))
-        args.extend(self._split_and_format_options_string(
-            "enable-indev", self.options.enable_input_devices))
-        args.extend(self._split_and_format_options_string(
-            "disable-indev", self.options.disable_input_devices))
-        args.extend(self._split_and_format_options_string(
-            "enable-outdev", self.options.enable_output_devices))
-        args.extend(self._split_and_format_options_string(
-            "disable-outdev", self.options.disable_output_devices))
-        args.extend(self._split_and_format_options_string(
-            "enable-filter", self.options.enable_filters))
-        args.extend(self._split_and_format_options_string(
-            "disable-filter", self.options.disable_filters))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-encoder", self.options.enable_encoders))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-encoder", self.options.disable_encoders))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-decoder", self.options.enable_decoders))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-decoder", self.options.disable_decoders))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-hwaccel", self.options.enable_hardware_accelerators))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-hwaccel", self.options.disable_hardware_accelerators))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-muxer", self.options.enable_muxers))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-muxer", self.options.disable_muxers))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-demuxer", self.options.enable_demuxers))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-demuxer", self.options.disable_demuxers))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-parser", self.options.enable_parsers))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-parser", self.options.disable_parsers))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-bsf", self.options.enable_bitstream_filters))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-bsf", self.options.disable_bitstream_filters))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-protocol", self.options.enable_protocols))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-protocol", self.options.disable_protocols))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-indev", self.options.enable_input_devices))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-indev", self.options.disable_input_devices))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-outdev", self.options.enable_output_devices))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-outdev", self.options.disable_output_devices))
+        args.extend(
+            self._split_and_format_options_string(
+                "enable-filter", self.options.enable_filters))
+        args.extend(
+            self._split_and_format_options_string(
+                "disable-filter", self.options.disable_filters))
 
         if "with_libjxl" in self.options:
             args.append(opt_enable_disable("libjxl", self.options.with_libjxl))
@@ -616,12 +639,13 @@ class Recipe(RecipeBase):
             args.append("--install-name-dir=@rpath")
         args.append(f"--arch={self._target_arch}")
         if self.settings.build_type == "Debug":
-            args.extend([
-                "--disable-optimizations",
-                "--disable-mmx",
-                "--disable-stripping",
-                "--enable-debug",
-            ])
+            args.extend(
+                [
+                    "--disable-optimizations",
+                    "--disable-mmx",
+                    "--disable-stripping",
+                    "--enable-debug",
+                ])
         if not self.options.with_programs:
             args.append("--disable-programs")
         # since ffmpeg"s build system ignores CC and CXX
@@ -753,8 +777,9 @@ class Recipe(RecipeBase):
                 # ffmpeg created `.lib` files in the `/bin` folder
                 for fn in os.listdir(os.path.join(self.package_folder, "bin")):
                     if fn.endswith(".lib"):
-                        rename(self, os.path.join(self.package_folder, "bin", fn),
-                               os.path.join(self.package_folder, "lib", fn))
+                        rename(
+                            self, os.path.join(self.package_folder, "bin", fn),
+                            os.path.join(self.package_folder, "lib", fn))
                 rm(self, "*.def", os.path.join(self.package_folder, "lib"))
             else:
                 # ffmpeg produces `.a` files that are actually `.lib` files

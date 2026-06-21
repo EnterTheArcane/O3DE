@@ -14,7 +14,6 @@ from thirdparty.gnu import PkgConfigDeps
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
 from thirdparty.scm import Version
 
-
 SUBMODULES = [
     "qt3d",
     "qt5compat",
@@ -69,6 +68,7 @@ MODULE_STATUSES = [
     "deprecated",
     "preview",
 ]
+
 
 class Recipe(RecipeBase):
     name = "qt"
@@ -183,8 +183,10 @@ class Recipe(RecipeBase):
                 if status not in MODULE_STATUSES:
                     raise RecipeException(f"module {modulename} has status {status} which is not in MODULE_STATUSES {MODULE_STATUSES}")
                 assert modulename in SUBMODULES, f"module {modulename} not in SUBMODULES"
-                self._submodules_tree[modulename] = {"status": status,
-                                "path": str(config.get(section, "path")), "depends": []}
+                self._submodules_tree[modulename] = {
+                    "status": status,
+                    "path": str(config.get(section, "path")), "depends": [],
+                }
                 if config.has_option(section, "depends"):
                     self._submodules_tree[modulename]["depends"] = [str(i) for i in config.get(section, "depends").split()]
 
@@ -241,16 +243,17 @@ class Recipe(RecipeBase):
                 if not is_disabled:
                     requested_modules.add(module)
                 else:
-                    self.output.warning(f"qt6: {module} requested because {status}_modules=True"
-                                        f" but it has been explicitly disabled with {module}=False")
+                    self.output.warning(
+                        f"qt6: {module} requested because {status}_modules=True"
+                        f" but it has been explicitly disabled with {module}=False")
 
         self.output.debug(f"qt6: requested modules {list(requested_modules)}")
 
-        required_modules =  {}
+        required_modules = {}
         for module in requested_modules:
             deps = self._get_module_tree[module]["depends"]
             for dep in deps:
-                required_modules.setdefault(dep,[]).append(module)
+                required_modules.setdefault(dep, []).append(module)
 
         required_but_disabled = [m for m in required_modules.keys() if self.options.get_safe(m) == False]
         if required_modules:
@@ -259,8 +262,9 @@ class Recipe(RecipeBase):
             required_by = set()
             for m in required_but_disabled:
                 required_by.update(required_modules[m])
-            raise RecipeInvalidConfiguration(f"Modules {required_but_disabled} are explicitly disabled, "
-                                            f"but are required by {list(required_by)}, enabled by other options")
+            raise RecipeInvalidConfiguration(
+                f"Modules {required_but_disabled} are explicitly disabled, "
+                f"but are required by {list(required_by)}, enabled by other options")
 
         enabled_modules = requested_modules.union(set(required_modules.keys()))
         enabled_modules.discard("qtbase")
@@ -285,8 +289,9 @@ class Recipe(RecipeBase):
         for status in MODULE_STATUSES:
             # These are convenience only, should not affect package_id
             option_name = f"{status}_modules"
-            self.output.debug(f"qt6 removing convenience option: {option_name},"
-                              f" see individual module options")
+            self.output.debug(
+                f"qt6 removing convenience option: {option_name},"
+                f" see individual module options")
             self.options.rm_safe(option_name)
 
         for option in self.options.items():
@@ -374,7 +379,7 @@ class Recipe(RecipeBase):
         if self.settings.os in ['Linux', 'FreeBSD'] and self.options.with_gssapi:
             self.requires("krb5")
         if self.options.get_safe("with_md4c", False):
-            self.requires("md4c") # stable API since 0.3x as per md4c wiki
+            self.requires("md4c")  # stable API since 0.3x as per md4c wiki
 
     def build_requirements(self):
         self.tool_requires("cmake")
@@ -423,7 +428,8 @@ class Recipe(RecipeBase):
         tc.generate()
 
         for f in glob.glob("*.cmake"):
-            replace_in_file(self, f,
+            replace_in_file(
+                self, f,
                 " IMPORTED)\n",
                 " IMPORTED GLOBAL)\n", strict=False)
 
@@ -511,30 +517,33 @@ class Recipe(RecipeBase):
         # See: https://github.com/recipe-io/recipe-center-index/issues/24729#issuecomment-2255291495
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_WrapLibClang"] = "ON"
 
-        for opt, conf_arg in [("with_glib", "glib"),
-                              ("with_icu", "icu"),
-                              ("with_fontconfig", "fontconfig"),
-                              ("with_mysql", "sql_mysql"),
-                              ("with_pq", "sql_psql"),
-                              ("with_odbc", "sql_odbc"),
-                              ("gui", "gui"),
-                              ("widgets", "widgets"),
-                              ("with_zstd", "zstd"),
-                              ("with_vulkan", "vulkan"),
-                              ("with_brotli", "brotli"),
-                              ("with_gssapi", "gssapi"),
-                              ("with_egl", "egl"),
-                              ("with_gstreamer", "gstreamer")]:
+        for opt, conf_arg in [
+            ("with_glib", "glib"),
+            ("with_icu", "icu"),
+            ("with_fontconfig", "fontconfig"),
+            ("with_mysql", "sql_mysql"),
+            ("with_pq", "sql_psql"),
+            ("with_odbc", "sql_odbc"),
+            ("gui", "gui"),
+            ("widgets", "widgets"),
+            ("with_zstd", "zstd"),
+            ("with_vulkan", "vulkan"),
+            ("with_brotli", "brotli"),
+            ("with_gssapi", "gssapi"),
+            ("with_egl", "egl"),
+            ("with_gstreamer", "gstreamer"),
+        ]:
             tc.variables[f"FEATURE_{conf_arg}"] = ("ON" if self.options.get_safe(opt, False) else "OFF")
 
         for opt, conf_arg in [
-                              ("with_doubleconversion", "doubleconversion"),
-                              ("with_freetype", "freetype"),
-                              ("with_harfbuzz", "harfbuzz"),
-                              ("with_libjpeg", "jpeg"),
-                              ("with_libpng", "png"),
-                              ("with_sqlite3", "sqlite"),
-                              ("with_pcre2", "pcre2"),]:
+            ("with_doubleconversion", "doubleconversion"),
+            ("with_freetype", "freetype"),
+            ("with_harfbuzz", "harfbuzz"),
+            ("with_libjpeg", "jpeg"),
+            ("with_libpng", "png"),
+            ("with_sqlite3", "sqlite"),
+            ("with_pcre2", "pcre2"),
+        ]:
             if self.options.get_safe(opt, False):
                 if self.options.multiconfiguration:
                     tc.variables[f"FEATURE_{conf_arg}"] = "ON"
@@ -545,13 +554,14 @@ class Recipe(RecipeBase):
                 tc.variables[f"FEATURE_system_{conf_arg}"] = "OFF"
 
         for opt, conf_arg in [
-                              ("with_doubleconversion", "doubleconversion"),
-                              ("with_freetype", "freetype"),
-                              ("with_harfbuzz", "harfbuzz"),
-                              ("with_libjpeg", "libjpeg"),
-                              ("with_libpng", "libpng"),
-                              ("with_md4c", "libmd4c"),
-                              ("with_pcre2", "pcre"),]:
+            ("with_doubleconversion", "doubleconversion"),
+            ("with_freetype", "freetype"),
+            ("with_harfbuzz", "harfbuzz"),
+            ("with_libjpeg", "libjpeg"),
+            ("with_libpng", "libpng"),
+            ("with_md4c", "libmd4c"),
+            ("with_pcre2", "pcre"),
+        ]:
             if self.options.get_safe(opt, False):
                 if self.options.multiconfiguration:
                     tc.variables[f"INPUT_{conf_arg}"] = "qt"
@@ -567,8 +577,10 @@ class Recipe(RecipeBase):
             tc.variables["FEATURE_framework"] = "OFF"
         elif self.settings.os == "Android":
             tc.variables["CMAKE_ANDROID_NATIVE_API_LEVEL"] = self.settings.os.api_level
-            tc.variables["ANDROID_ABI"] = {"ARM": "arm64-v8a",
-                                           "X64": "x86_64"}.get(str(self.settings.arch))
+            tc.variables["ANDROID_ABI"] = {
+                "ARM": "arm64-v8a",
+                "X64": "x86_64",
+            }.get(str(self.settings.arch))
 
         if self.options.sysroot:
             tc.variables["CMAKE_SYSROOT"] = self.options.sysroot
@@ -595,9 +607,9 @@ class Recipe(RecipeBase):
         if self.settings.compiler == "gcc" and self.settings.get_safe("build_type") == "Debug" and not self.options.shared:
             tc.variables["BUILD_WITH_PCH"] = "OFF"  # disabling PCH to save disk space
 
-                               #"set(QT_EXTRA_INCLUDEPATHS ${RECIPE_INCLUDE_DIRS})\n"
-                               #"set(QT_EXTRA_DEFINES ${RECIPE_DEFINES})\n"
-                               #"set(QT_EXTRA_LIBDIRS ${RECIPE_LIB_DIRS})\n"
+            # "set(QT_EXTRA_INCLUDEPATHS ${RECIPE_INCLUDE_DIRS})\n"
+            # "set(QT_EXTRA_DEFINES ${RECIPE_DEFINES})\n"
+            # "set(QT_EXTRA_LIBDIRS ${RECIPE_LIB_DIRS})\n"
 
         current_cpp_std = self.settings.get_safe("compiler.cppstd", default_cppstd(self))
         current_cpp_std = str(current_cpp_std).replace("gnu", "")
@@ -606,7 +618,7 @@ class Recipe(RecipeBase):
             14: "FEATURE_cxx14",
             17: "FEATURE_cxx17",
             20: "FEATURE_cxx20",
-            23: "FEATURE_cxx2b"
+            23: "FEATURE_cxx2b",
         }
 
         for std, feature in cpp_std_map.items():
@@ -638,10 +650,11 @@ class Recipe(RecipeBase):
         # patching in source method because of no_copy_source attribute
         apply_patches(self)
         for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
-            replace_in_file(self, os.path.join(self.source_folder, "qtwebengine", "src", "3rdparty", "chromium", "third_party", "blink", f, "BUILD.gn"),
-                                  "  if (enable_precompiled_headers) {\n    if (is_win) {",
-                                  "  if (enable_precompiled_headers) {\n    if (false) {"
-                                  )
+            replace_in_file(
+                self, os.path.join(self.source_folder, "qtwebengine", "src", "3rdparty", "chromium", "third_party", "blink", f, "BUILD.gn"),
+                "  if (enable_precompiled_headers) {\n    if (is_win) {",
+                "  if (enable_precompiled_headers) {\n    if (false) {"
+                )
 
         for f in ["FindPostgreSQL.cmake"]:
             file = os.path.join(self.source_folder, "qtbase", "cmake", f)
@@ -650,21 +663,24 @@ class Recipe(RecipeBase):
 
         # workaround QTBUG-94356
         replace_in_file(self, os.path.join(self.source_folder, "qtbase", "cmake", "FindWrapSystemZLIB.cmake"), '"-lz"', 'ZLIB::ZLIB')
-        replace_in_file(self, os.path.join(self.source_folder, "qtbase", "configure.cmake"),
+        replace_in_file(
+            self, os.path.join(self.source_folder, "qtbase", "configure.cmake"),
             "set_property(TARGET ZLIB::ZLIB PROPERTY IMPORTED_GLOBAL TRUE)",
             "")
 
-        replace_in_file(self,
-                        os.path.join(self.source_folder, "qtbase", "cmake", "QtAutoDetectHelpers.cmake"),
-                        "qt_auto_detect_vcpkg()",
-                        "# qt_auto_detect_vcpkg()")
+        replace_in_file(
+            self,
+            os.path.join(self.source_folder, "qtbase", "cmake", "QtAutoDetectHelpers.cmake"),
+            "qt_auto_detect_vcpkg()",
+            "# qt_auto_detect_vcpkg()")
 
         # Handle locating moltenvk headers when vulkan is enabled on macOS
-        replace_in_file(self, os.path.join(self.source_folder, "qtbase", "cmake", "FindWrapVulkanHeaders.cmake"),
-        "if(APPLE)", "if(APPLE)\n"
-                    " find_package(moltenvk REQUIRED QUIET)\n"
-                    " target_include_directories(WrapVulkanHeaders::WrapVulkanHeaders INTERFACE ${moltenvk_INCLUDE_DIR})"
-        )
+        replace_in_file(
+            self, os.path.join(self.source_folder, "qtbase", "cmake", "FindWrapVulkanHeaders.cmake"),
+            "if(APPLE)", "if(APPLE)\n"
+                         " find_package(moltenvk REQUIRED QUIET)\n"
+                         " target_include_directories(WrapVulkanHeaders::WrapVulkanHeaders INTERFACE ${moltenvk_INCLUDE_DIR})"
+            )
 
     def _xplatform(self):
         if self.settings.os == "Linux":
@@ -675,9 +691,11 @@ class Recipe(RecipeBase):
                     return "linux-clang-libc++" if self.settings.compiler.libcxx == "libc++" else "linux-clang"
 
         elif self.settings.os == "Mac":
-            return {"clang": "macx-clang",
-                    "apple-clang": "macx-clang",
-                    "gcc": "macx-g++"}.get(str(self.settings.compiler))
+            return {
+                "clang": "macx-clang",
+                "apple-clang": "macx-clang",
+                "gcc": "macx-g++",
+            }.get(str(self.settings.compiler))
 
         elif self.settings.os == "iOS":
             if self.settings.compiler == "apple-clang":
@@ -724,12 +742,14 @@ class Recipe(RecipeBase):
                         "armv7": "winrt-arm-msvc2019",
                         "x86": "winrt-x86-msvc2019",
                         "x86_64": "winrt-x64-msvc2019",
-                    }
+                    },
                 }.get(msvc_version).get(str(self.settings.arch))
 
         elif self.settings.os == "FreeBSD":
-            return {"clang": "freebsd-clang",
-                    "gcc": "freebsd-g++"}.get(str(self.settings.compiler))
+            return {
+                "clang": "freebsd-clang",
+                "gcc": "freebsd-g++",
+            }.get(str(self.settings.compiler))
 
         elif self.settings.os == "SunOS":
             if self.settings.compiler == "sun-cc":
@@ -738,17 +758,21 @@ class Recipe(RecipeBase):
                 if self.settings.arch == "sparcv9":
                     return "solaris-cc64-stlport" if self.settings.compiler.libcxx == "libstlport" else "solaris-cc64"
             elif self.settings.compiler == "gcc":
-                return {"sparc": "solaris-g++",
-                        "sparcv9": "solaris-g++-64"}.get(str(self.settings.arch))
+                return {
+                    "sparc": "solaris-g++",
+                    "sparcv9": "solaris-g++-64",
+                }.get(str(self.settings.arch))
         elif self.settings.os == "Neutrino" and self.settings.compiler == "qcc":
-            return {"armv8": "qnx-aarch64le-qcc",
-                    "armv8.3": "qnx-aarch64le-qcc",
-                    "armv7": "qnx-armle-v7-qcc",
-                    "armv7hf": "qnx-armle-v7-qcc",
-                    "armv7s": "qnx-armle-v7-qcc",
-                    "armv7k": "qnx-armle-v7-qcc",
-                    "x86": "qnx-x86-qcc",
-                    "x86_64": "qnx-x86-64-qcc"}.get(str(self.settings.arch))
+            return {
+                "armv8": "qnx-aarch64le-qcc",
+                "armv8.3": "qnx-aarch64le-qcc",
+                "armv7": "qnx-armle-v7-qcc",
+                "armv7hf": "qnx-armle-v7-qcc",
+                "armv7s": "qnx-armle-v7-qcc",
+                "armv7k": "qnx-armle-v7-qcc",
+                "x86": "qnx-x86-qcc",
+                "x86_64": "qnx-x86-64-qcc",
+            }.get(str(self.settings.arch))
         elif self.settings.os == "Emscripten" and self.settings.arch == "wasm":
             return "wasm-emscripten"
 
@@ -783,8 +807,9 @@ class Recipe(RecipeBase):
             save(self, ".qmake.super", "")
         cmake = CMake(self)
         cmake.install()
-        copy(self, "*LICENSE*", self.source_folder, os.path.join(self.package_folder, "licenses"),
-             excludes="qtbase/examples/*")
+        copy(
+            self, "*LICENSE*", self.source_folder, os.path.join(self.package_folder, "licenses"),
+            excludes="qtbase/examples/*")
         for module in self._get_module_tree:
             if not getattr(self.options, module):
                 rmdir(self, os.path.join(self.package_folder, "licenses", module))
@@ -859,9 +884,11 @@ class Recipe(RecipeBase):
             targets.append("qscxmlc")
         for target in targets:
             exe_path = None
-            for path_ in [f"bin/{target}{extension}",
-                          f"lib/{target}{extension}",
-                          f"libexec/{target}{extension}"]:
+            for path_ in [
+                f"bin/{target}{extension}",
+                f"lib/{target}{extension}",
+                f"libexec/{target}{extension}",
+            ]:
                 if os.path.isfile(os.path.join(self.package_folder, path_)):
                     exe_path = path_
                     break
@@ -869,14 +896,16 @@ class Recipe(RecipeBase):
                 assert False, f"Could not find executable {target}{extension} in {self.package_folder}"
             if not exe_path:
                 self.output.warning(f"Could not find path to {target}{extension}")
-            filecontents += textwrap.dedent(f"""\
+            filecontents += textwrap.dedent(
+                f"""\
                 if(NOT TARGET ${{QT_CMAKE_EXPORT_NAMESPACE}}::{target})
                     add_executable(${{QT_CMAKE_EXPORT_NAMESPACE}}::{target} IMPORTED)
                     set_target_properties(${{QT_CMAKE_EXPORT_NAMESPACE}}::{target} PROPERTIES IMPORTED_LOCATION ${{CMAKE_CURRENT_LIST_DIR}}/../../../{exe_path})
                 endif()
                 """)
 
-        filecontents += textwrap.dedent(f"""\
+        filecontents += textwrap.dedent(
+            f"""\
             if(NOT DEFINED QT_DEFAULT_MAJOR_VERSION)
                 set(QT_DEFAULT_MAJOR_VERSION {ver.major})
             endif()
@@ -886,7 +915,8 @@ class Recipe(RecipeBase):
 
         def _create_private_module(module, dependencies):
             dependencies_string = ';'.join(f"Qt6::{dependency}" for dependency in dependencies)
-            contents = textwrap.dedent(f"""\
+            contents = textwrap.dedent(
+                f"""\
             if(NOT TARGET Qt6::{module}Private)
                 add_library(Qt6::{module}Private INTERFACE IMPORTED)
 
@@ -914,27 +944,30 @@ class Recipe(RecipeBase):
 
         if self.options.qtdeclarative:
             _create_private_module("Qml", ["CorePrivate", "Qml"])
-            save(self, os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"), textwrap.dedent("""\
-                    set(QT_KNOWN_POLICY_QTP0001 TRUE)
-                    set(QT_KNOWN_POLICY_QTP0004 TRUE)
-                    set(QT_KNOWN_POLICY_QTP0005 TRUE)
-                    """))
+            save(
+                self, os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"), textwrap.dedent(
+                    """\
+                                        set(QT_KNOWN_POLICY_QTP0001 TRUE)
+                                        set(QT_KNOWN_POLICY_QTP0004 TRUE)
+                                        set(QT_KNOWN_POLICY_QTP0005 TRUE)
+                                        """))
             if self.options.gui and self.options.qtshadertools:
                 _create_private_module("Quick", ["CorePrivate", "GuiPrivate", "QmlPrivate", "Quick"])
 
         if self.settings.os in ["Windows", "iOS"]:
-            contents = textwrap.dedent("""\
-                set(entrypoint_conditions "$<NOT:$<BOOL:$<TARGET_PROPERTY:qt_no_entrypoint>>>")
-                list(APPEND entrypoint_conditions "$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>")
-                if(WIN32)
-                    list(APPEND entrypoint_conditions "$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>")
-                endif()
-                list(JOIN entrypoint_conditions "," entrypoint_conditions)
-                set(entrypoint_conditions "$<AND:${entrypoint_conditions}>")
-                set_property(
-                    TARGET ${QT_CMAKE_EXPORT_NAMESPACE}::Core
-                    APPEND PROPERTY INTERFACE_LINK_LIBRARIES "$<${entrypoint_conditions}:${QT_CMAKE_EXPORT_NAMESPACE}::EntryPointPrivate>"
-                )""")
+            contents = textwrap.dedent(
+                """\
+                                set(entrypoint_conditions "$<NOT:$<BOOL:$<TARGET_PROPERTY:qt_no_entrypoint>>>")
+                                list(APPEND entrypoint_conditions "$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>")
+                                if(WIN32)
+                                    list(APPEND entrypoint_conditions "$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>")
+                                endif()
+                                list(JOIN entrypoint_conditions "," entrypoint_conditions)
+                                set(entrypoint_conditions "$<AND:${entrypoint_conditions}>")
+                                set_property(
+                                    TARGET ${QT_CMAKE_EXPORT_NAMESPACE}::Core
+                                    APPEND PROPERTY INTERFACE_LINK_LIBRARIES "$<${entrypoint_conditions}:${QT_CMAKE_EXPORT_NAMESPACE}::EntryPointPrivate>"
+                                )""")
             save(self, os.path.join(self.package_folder, self._cmake_entry_point_file), contents)
 
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtPlatformTargetHelpers.cmake#L68
@@ -942,26 +975,27 @@ class Recipe(RecipeBase):
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtFlagHandlingHelpers.cmake#L384
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtFlagHandlingHelpers.cmake#L402
         if self.settings.os == "Windows" or is_msvc(self):
-            contents = textwrap.dedent("""\
-                set(utf8_flags "")
-                if(MSVC)
-                    list(APPEND utf8_flags "$<$<CXX_COMPILER_ID:MSVC>:-utf-8>")
-                endif()
-
-                if(utf8_flags)
-                    set(opt_out_condition "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UTF8_SOURCE>>>")
-                    set(language_condition "$<COMPILE_LANGUAGE:C,CXX>")
-                    set(genex_condition "$<AND:${opt_out_condition},${language_condition}>")
-                    set(utf8_flags "$<${genex_condition}:${utf8_flags}>")
-                    target_compile_options(Qt6::Platform INTERFACE "${utf8_flags}")
-                endif()
-
-                if(WIN32)
-                    set(no_unicode_condition
-                        "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UNICODE_DEFINES>>>")
-                    target_compile_definitions(Qt6::Platform
-                        INTERFACE "$<${no_unicode_condition}:UNICODE$<SEMICOLON>_UNICODE>")
-                endif()""")
+            contents = textwrap.dedent(
+                """\
+                                set(utf8_flags "")
+                                if(MSVC)
+                                    list(APPEND utf8_flags "$<$<CXX_COMPILER_ID:MSVC>:-utf-8>")
+                                endif()
+                
+                                if(utf8_flags)
+                                    set(opt_out_condition "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UTF8_SOURCE>>>")
+                                    set(language_condition "$<COMPILE_LANGUAGE:C,CXX>")
+                                    set(genex_condition "$<AND:${opt_out_condition},${language_condition}>")
+                                    set(utf8_flags "$<${genex_condition}:${utf8_flags}>")
+                                    target_compile_options(Qt6::Platform INTERFACE "${utf8_flags}")
+                                endif()
+                
+                                if(WIN32)
+                                    set(no_unicode_condition
+                                        "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UNICODE_DEFINES>>>")
+                                    target_compile_definitions(Qt6::Platform
+                                        INTERFACE "$<${no_unicode_condition}:UNICODE$<SEMICOLON>_UNICODE>")
+                                endif()""")
             save(self, os.path.join(self.package_folder, self._cmake_platform_target_setup_file), contents)
 
     def package_info(self):
@@ -977,6 +1011,7 @@ class Recipe(RecipeBase):
         self.buildenv_info.define("QT_HOST_PATH", self.package_folder)
 
         build_modules = {}
+
         def _add_build_module(component, module):
             if component not in build_modules:
                 build_modules[component] = []
@@ -1055,7 +1090,7 @@ class Recipe(RecipeBase):
         if self.options.with_glib:
             core_reqs.append("glib::glib")
         if self.options.openssl:
-            core_reqs.append("openssl::openssl") # used by QCryptographicHash
+            core_reqs.append("openssl::openssl")  # used by QCryptographicHash
 
         _create_module("Core", core_reqs)
         pkg_config_vars = [
@@ -1117,7 +1152,7 @@ class Recipe(RecipeBase):
             if self.settings.os == "Windows":
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L419-L429
                 self.cpp_info.components["qtGui"].system_libs += [
-                    "advapi32", "gdi32", "ole32", "shell32", "user32", "d3d11", "dxgi", "dxguid"
+                    "advapi32", "gdi32", "ole32", "shell32", "user32", "d3d11", "dxgi", "dxguid",
                 ]
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L729
                 self.cpp_info.components["qtGui"].system_libs.append("d2d1")
@@ -1135,7 +1170,7 @@ class Recipe(RecipeBase):
                 self.cpp_info.components["qtGui"].system_libs += [
                     "advapi32", "d2d1", "d3d11", "dwmapi", "dwrite", "dxgi", "dxguid", "gdi32", "imm32", "ole32",
                     "oleaut32", "setupapi", "shell32", "shlwapi", "user32", "version", "winmm", "winspool",
-                    "wtsapi32", "shcore", "comdlg32", "d3d9", "runtimeobject"
+                    "wtsapi32", "shcore", "comdlg32", "d3d9", "runtimeobject",
                 ]
                 _create_plugin("QWindowsIntegrationPlugin", "qwindows", "platforms", ["Core", "Gui"])
                 # https://github.com/qt/qtbase/commit/65d58e6c41e3c549c89ea4f05a8e467466e79ca3
@@ -1143,7 +1178,7 @@ class Recipe(RecipeBase):
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/windows/CMakeLists.txt#L53-L69
                 self.cpp_info.components["qtQWindowsIntegrationPlugin"].system_libs += [
                     "advapi32", "dwmapi", "gdi32", "imm32", "ole32", "oleaut32", "setupapi", "shell32", "shlwapi",
-                    "user32", "winmm", "winspool", "wtsapi32", "shcore", "comdlg32", "d3d9", "runtimeobject"
+                    "user32", "winmm", "winspool", "wtsapi32", "shcore", "comdlg32", "d3d9", "runtimeobject",
                 ]
                 # https://github.com/qt/qtbase/blob/6.8.3/src/plugins/platforms/windows/CMakeLists.txt#L204
                 self.cpp_info.components["qtQWindowsIntegrationPlugin"].system_libs.append("uiautomationcore")
@@ -1165,7 +1200,7 @@ class Recipe(RecipeBase):
                     _create_plugin("QCocoaIntegrationPlugin", "qcocoa", "platforms", ["Core", "Gui"])
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/cocoa/CMakeLists.txt#L51-L58
                     self.cpp_info.components["QCocoaIntegrationPlugin"].frameworks = [
-                        "AppKit", "Carbon", "CoreServices", "CoreVideo", "IOKit", "IOSurface", "Metal", "QuartzCore"
+                        "AppKit", "Carbon", "CoreServices", "CoreVideo", "IOKit", "IOSurface", "Metal", "QuartzCore",
                     ]
                 if self.settings.os in ["Mac", "iOS"]:
                     # https://github.com/qt/qtbase/blob/v6.5.3/src/gui/CMakeLists.txt#L963
@@ -1174,7 +1209,7 @@ class Recipe(RecipeBase):
                     _create_plugin("QIOSIntegrationPlugin", "qios", "platforms", [])
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/ios/CMakeLists.txt#L32-L37
                     self.cpp_info.components["QIOSIntegrationPlugin"].frameworks = [
-                        "AudioToolbox", "Foundation", "Metal", "QuartzCore", "UIKit", "CoreGraphics"
+                        "AudioToolbox", "Foundation", "Metal", "QuartzCore", "UIKit", "CoreGraphics",
                     ]
                     if self.settings.os != "tvOS":
                         # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/ios/CMakeLists.txt#L66-L68
@@ -1264,7 +1299,7 @@ class Recipe(RecipeBase):
             self.cpp_info.components["qtLinguistTools"].set_property("cmake_target_name", "Qt6::LinguistTools")
             self.cpp_info.components["qtLinguistTools"].set_property("cmake_target_aliases", ["Qt::LinguistTools"])
             _create_module("UiPlugin", ["Gui", "Widgets"])
-            self.cpp_info.components["qtUiPlugin"].libs = [] # this is a collection of abstract classes, so this is header-only
+            self.cpp_info.components["qtUiPlugin"].libs = []  # this is a collection of abstract classes, so this is header-only
             self.cpp_info.components["qtUiPlugin"].libdirs = []
             _create_module("UiTools", ["UiPlugin", "Gui", "Widgets"])
             if "designer" not in disabled_features:
@@ -1374,9 +1409,11 @@ class Recipe(RecipeBase):
             if self.options.qtdeclarative and qt_quick_enabled:
                 _create_module("MultimediaQuick", ["Multimedia", "Quick"])
             if self.options.with_gstreamer:
-                _create_plugin("QGstreamerMediaPlugin", "gstreamermediaplugin", "multimedia", [
-                    "gstreamer::gstreamer",
-                    "gst-plugins-base::gst-plugins-base"])
+                _create_plugin(
+                    "QGstreamerMediaPlugin", "gstreamermediaplugin", "multimedia", [
+                        "gstreamer::gstreamer",
+                        "gst-plugins-base::gst-plugins-base",
+                    ])
 
         if self.options.get_safe("qtpositioning"):
             _create_module("Positioning", [])
@@ -1418,8 +1455,11 @@ class Recipe(RecipeBase):
             if self.options.get_safe("qtpositioning"):
                 webenginereqs.append("Positioning")
             if self.settings.os == "Linux":
-                webenginereqs.extend(["expat::expat", "opus::libopus", "xorg-proto::xorg-proto", "libxshmfence::libxshmfence", \
-                                      "nss::nss", "libdrm::libdrm"])
+                webenginereqs.extend(
+                    [
+                        "expat::expat", "opus::libopus", "xorg-proto::xorg-proto", "libxshmfence::libxshmfence", \
+                        "nss::nss", "libdrm::libdrm",
+                    ])
             _create_module("WebEngineCore", webenginereqs)
             _create_module("WebEngineQuick", ["WebEngineCore"])
             _create_module("WebEngineWidgets", ["WebEngineCore", "Quick", "PrintSupport", "Widgets", "Gui", "Network"])
@@ -1610,7 +1650,7 @@ class Recipe(RecipeBase):
 
         def _add_build_modules_for_component(component):
             for req in self.cpp_info.components[component].requires:
-                if "::" in req: # not a qt component
+                if "::" in req:  # not a qt component
                     continue
                 _add_build_modules_for_component(req)
             build_modules_list.extend(build_modules.pop(component, []))

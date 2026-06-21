@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.files import copy, get, rmdir, replace_in_file, save
+from thirdparty.files import copy, get, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -11,7 +11,7 @@ class Recipe(RecipeBase):
     name = "openexr"
     version = "3.4.12"
     license = "BSD-3-Clause"
-                            
+
     options = {
         "shared": [True, False],
         "fPIC": [True, False],

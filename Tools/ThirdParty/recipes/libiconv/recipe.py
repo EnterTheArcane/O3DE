@@ -11,7 +11,7 @@ from thirdparty.files import (
     rename,
     rm,
     rmdir,
-    replace_in_file
+    replace_in_file,
 )
 from thirdparty.gnu import Autotools, AutotoolsToolchain, GnuFtp
 from thirdparty.microsoft import is_msvc, unix_path
@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
     @property
     def _is_clang_cl(self):
         return self.settings.compiler == "clang" and self.settings.os == "Windows" and \
-               self.settings.compiler.get_safe("runtime")
+            self.settings.compiler.get_safe("runtime")
 
     @property
     def _msvc_tools(self):
@@ -85,10 +85,11 @@ class Recipe(RecipeBase):
             if host_arch and build_arch:
                 host = f"{host_arch}-w64-mingw32"
                 build = f"{build_arch}-w64-mingw32"
-                tc.configure_args.extend([
-                    f"--host={host}",
-                    f"--build={build}",
-                ])
+                tc.configure_args.extend(
+                    [
+                        f"--host={host}",
+                        f"--build={build}",
+                    ])
         env = tc.environment()
         if is_msvc(self) or self._is_clang_cl:
             cc, lib, link = self._msvc_tools
@@ -113,7 +114,7 @@ class Recipe(RecipeBase):
             self.output.info("Applying {} resource patch: {}".format(self.settings.arch, windres_options_path))
             replace_in_file(self, windres_options_path, '#   PACKAGE_VERSION_SUBMINOR', '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)
 
-    def build(self): 
+    def build(self):
         apply_patches(self)
         self._apply_resource_patch()
         autotools = Autotools(self)
@@ -132,8 +133,9 @@ class Recipe(RecipeBase):
                 dst = os.path.join(self.package_folder, "lib", f"{import_lib}.lib")
                 if os.path.isfile(dst):
                     os.remove(dst)
-                rename(self, os.path.join(self.package_folder, "lib", f"{import_lib}.dll.lib"),
-                             os.path.join(self.package_folder, "lib", f"{import_lib}.lib"))
+                rename(
+                    self, os.path.join(self.package_folder, "lib", f"{import_lib}.dll.lib"),
+                    os.path.join(self.package_folder, "lib", f"{import_lib}.lib"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Iconv")

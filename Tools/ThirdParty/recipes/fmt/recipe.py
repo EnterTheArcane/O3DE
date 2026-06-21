@@ -92,7 +92,7 @@ class Recipe(RecipeBase):
         # Mirror upstream find package version policy:
         # https://github.com/fmtlib/fmt/blob/11.1.1/CMakeLists.txt#L403-L407
         self.cpp_info.set_property("cmake_config_version_compat", "AnyNewerVersion")
-        self.cpp_info.set_property("pkg_config_name",  "fmt")
+        self.cpp_info.set_property("pkg_config_name", "fmt")
 
         if is_msvc(self):
             self.cpp_info.components["_fmt"].cxxflags.append("/utf-8")

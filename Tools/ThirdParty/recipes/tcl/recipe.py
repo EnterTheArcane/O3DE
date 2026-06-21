@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.files import apply_patches, chdir, collect_libs, copy, get, replace_in_file, rmdir, save
+from thirdparty.files import apply_patches, chdir, collect_libs, copy, get, replace_in_file, rmdir
 from thirdparty.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag, NMakeToolchain, NMakeDeps
 from thirdparty.scm import Version
@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
         "shared": False,
         "fPIC": True,
     }
- 
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -72,12 +72,16 @@ class Recipe(RecipeBase):
                 env.generate(scope="build")
 
             tc = AutotoolsToolchain(self)
-            def yes_no(v): return "yes" if v else "no"
-            tc.configure_args.extend([
-                "--enable-threads",
-                "--enable-symbols={}".format(yes_no(self.settings.build_type == "Debug")),
-                "--enable-64bit={}".format(yes_no(self.settings.arch == "X64")),
-            ])
+
+            def yes_no(v):
+                return "yes" if v else "no"
+
+            tc.configure_args.extend(
+                [
+                    "--enable-threads",
+                    "--enable-symbols={}".format(yes_no(self.settings.build_type == "Debug")),
+                    "--enable-64bit={}".format(yes_no(self.settings.arch == "X64")),
+                ])
             if self.settings.os == "Linux":
                 # Ensure the library has a soname, fix https://github.com/recipe-io/recipe-center-index/issues/27691
                 # (mirror debian behavior)
@@ -97,9 +101,10 @@ class Recipe(RecipeBase):
         unix_config_dir = os.path.join(self.source_folder, "unix")
         # When disabling 64-bit support (in 32-bit), this test must be 0 in order to use "long long" for 64-bit ints
         # (${tcl_type_64bit} can be either "__int64" or "long long")
-        replace_in_file(self, os.path.join(unix_config_dir, "configure"),
-                        "(sizeof(${tcl_type_64bit})==sizeof(long))",
-                        "(sizeof(${tcl_type_64bit})!=sizeof(long))")
+        replace_in_file(
+            self, os.path.join(unix_config_dir, "configure"),
+            "(sizeof(${tcl_type_64bit})==sizeof(long))",
+            "(sizeof(${tcl_type_64bit})!=sizeof(long))")
 
         unix_makefile_in = os.path.join(unix_config_dir, "Makefile.in")
         # Avoid building internal libraries as shared libraries
@@ -129,10 +134,11 @@ class Recipe(RecipeBase):
         replace_in_file(self, win_rules_vc, "cwarn = $(cwarn) -WX", "")
         # disable whole program optimization to be portable across different MSVC versions.
         # See recipe-io/recipe-center-index#4811 recipe-io/recipe-center-index#4094
-        replace_in_file(self,
-                        win_rules_vc,
-                        "OPTIMIZATIONS  = $(OPTIMIZATIONS) -GL",
-                        "")
+        replace_in_file(
+            self,
+            win_rules_vc,
+            "OPTIMIZATIONS  = $(OPTIMIZATIONS) -GL",
+            "")
 
     def _build_nmake(self, targets):
         opts = []
@@ -150,12 +156,13 @@ class Recipe(RecipeBase):
 
         win_config_dir = os.path.join(self.source_folder, "win")
         with chdir(self, win_config_dir):
-            self.run('nmake -nologo -f "{cfgdir}/makefile.vc" INSTALLDIR="{pkgdir}" OPTS={opts} {targets}'.format(
-                cfgdir=win_config_dir,
-                pkgdir=self.package_folder,
-                opts=",".join(opts),
-                targets=" ".join(targets),
-            ))
+            self.run(
+                'nmake -nologo -f "{cfgdir}/makefile.vc" INSTALLDIR="{pkgdir}" OPTS={opts} {targets}'.format(
+                    cfgdir=win_config_dir,
+                    pkgdir=self.package_folder,
+                    opts=",".join(opts),
+                    targets=" ".join(targets),
+                ))
 
     def _get_configure_subdir(self):
         return {

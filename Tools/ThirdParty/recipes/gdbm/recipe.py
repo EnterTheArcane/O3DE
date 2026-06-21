@@ -78,27 +78,30 @@ class Recipe(RecipeBase):
         tc = AutotoolsToolchain(self)
         yes_no = lambda v: "yes" if v else "no"
         enable_debug = self.settings.build_type in ["Debug", "RelWithDebInfo"]
-        tc.configure_args.extend([
-            f"--enable-debug={yes_no(enable_debug)}",
-            f"--enable-libgdbm-compat={yes_no(self.options.libgdbm_compat)}",
-            f"--enable-gdbmtool-debug={yes_no(self.options.gdbmtool_debug)}",
-            f"--enable-nls={yes_no(self.options.with_nls)}",
-            f"--with-readline={yes_no(self.options.with_readline)}",
-            f"--with-pic={yes_no(self.options.get_safe('fPIC', True))}",
-        ])
+        tc.configure_args.extend(
+            [
+                f"--enable-debug={yes_no(enable_debug)}",
+                f"--enable-libgdbm-compat={yes_no(self.options.libgdbm_compat)}",
+                f"--enable-gdbmtool-debug={yes_no(self.options.gdbmtool_debug)}",
+                f"--enable-nls={yes_no(self.options.with_nls)}",
+                f"--with-readline={yes_no(self.options.with_readline)}",
+                f"--with-pic={yes_no(self.options.get_safe('fPIC', True))}",
+            ])
         if self.options.gdbmtool_debug:
             tc.extra_defines.append("YYDEBUG=1")
         if self.options.get_safe("with_libiconv"):
             libiconv_package_folder = self.dependencies.direct_host["libiconv"].package_folder
-            tc.configure_args.extend([
-                f"--with-libiconv-prefix={libiconv_package_folder}"
-                "--with-libintl-prefix"
-            ])
+            tc.configure_args.extend(
+                [
+                    f"--with-libiconv-prefix={libiconv_package_folder}"
+                    "--with-libintl-prefix",
+                ])
         else:
-            tc.configure_args.extend([
-                "--without-libiconv-prefix",
-                "--without-libintl-prefix"
-            ])
+            tc.configure_args.extend(
+                [
+                    "--without-libiconv-prefix",
+                    "--without-libintl-prefix",
+                ])
         if is_apple_os(self):
             # Inject -headerpad_max_install_names, otherwise fix_apple_shared_install_name() may fail.
             # See https://github.com/recipe-io/recipe-center-index/issues/20002

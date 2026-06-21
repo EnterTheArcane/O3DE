@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file, save
+from thirdparty.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
@@ -55,12 +55,14 @@ class Recipe(RecipeBase):
         apply_patches(self)
 
         if not self.options.get_safe("shared", False):
-            replace_in_file(self, os.path.join(self.source_folder, "meson.build"),
-                                  "'-DLIBPKGCONF_EXPORT'",
-                                  "'-DPKGCONFIG_IS_STATIC'", strict=False)
-            replace_in_file(self, os.path.join(self.source_folder, "meson.build"),
-            "project('pkgconf', 'c',",
-            "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)
+            replace_in_file(
+                self, os.path.join(self.source_folder, "meson.build"),
+                "'-DLIBPKGCONF_EXPORT'",
+                "'-DPKGCONFIG_IS_STATIC'", strict=False)
+            replace_in_file(
+                self, os.path.join(self.source_folder, "meson.build"),
+                "project('pkgconf', 'c',",
+                "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -80,7 +82,7 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder,"licenses"))
+        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
 
         meson = Meson(self)
         meson.install()
@@ -89,16 +91,18 @@ class Recipe(RecipeBase):
             rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
             if self.options.enable_lib and not self.options.shared:
                 rm(self, "pkgconf.lib", os.path.join(self.package_folder, "lib"))
-                rename(self, os.path.join(self.package_folder, "lib", "libpkgconf.a"),
-                          os.path.join(self.package_folder, "lib", "pkgconf.lib"),)
+                rename(
+                    self, os.path.join(self.package_folder, "lib", "libpkgconf.a"),
+                    os.path.join(self.package_folder, "lib", "pkgconf.lib"), )
 
         if not self.options.enable_lib:
             rmdir(self, os.path.join(self.package_folder, "lib"))
             rmdir(self, os.path.join(self.package_folder, "include"))
 
         rmdir(self, os.path.join(self.package_folder, "share", "man"))
-        copy(self, "*", src=os.path.join(self.package_folder, "share", "aclocal"),
-             dst=os.path.join(self.package_folder, "bin", "aclocal"))
+        copy(
+            self, "*", src=os.path.join(self.package_folder, "share", "aclocal"),
+            dst=os.path.join(self.package_folder, "bin", "aclocal"))
         rmdir(self, os.path.join(self.package_folder, "share"))
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
 

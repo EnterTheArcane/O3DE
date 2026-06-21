@@ -1,9 +1,10 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps
 from thirdparty.scm import Version
-import os
 
 
 class Recipe(RecipeBase):
@@ -35,7 +36,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
-        
+
     def validate(self):
         from thirdparty.errors import RecipeInvalidConfiguration
         if self.settings.os != "Linux":

@@ -3,9 +3,9 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.files import copy, get
+from thirdparty.premake import Premake, PremakeDeps, PremakeToolchain
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
-from thirdparty.premake import Premake, PremakeDeps, PremakeToolchain
 
 
 class Recipe(RecipeBase):
@@ -111,8 +111,9 @@ class Recipe(RecipeBase):
 
     def package(self):
         copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "*.h", src=os.path.join(self.source_folder, "include"),
-             dst=os.path.join(self.package_folder, "include"), keep_path=True)
+        copy(
+            self, "*.h", src=os.path.join(self.source_folder, "include"),
+            dst=os.path.join(self.package_folder, "include"), keep_path=True)
         copy(self, "*.a", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
         copy(self, "*.lib", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
 

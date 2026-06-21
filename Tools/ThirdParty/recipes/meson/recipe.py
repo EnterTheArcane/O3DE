@@ -35,13 +35,15 @@ class Recipe(RecipeBase):
             # sys.path and calls mesonmain.  sys.argv[0] then ends with '.py', so
             # meson stores [python.exe, meson.py] as the command — executable by ninja.
             copy(self, "meson.pyz", src=self.build_folder, dst=dst)
-            save(self, os.path.join(dst, "meson.py"),
-                 'import sys, os\n'
-                 'sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "meson.pyz"))\n'
-                 'from mesonbuild import mesonmain\n'
-                 'sys.exit(mesonmain.main())\n')
-            save(self, os.path.join(dst, "meson.cmd"),
-                 '@python "%~dp0meson.py" %*\n')
+            save(
+                self, os.path.join(dst, "meson.py"),
+                'import sys, os\n'
+                'sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "meson.pyz"))\n'
+                'from mesonbuild import mesonmain\n'
+                'sys.exit(mesonmain.main())\n')
+            save(
+                self, os.path.join(dst, "meson.cmd"),
+                '@python "%~dp0meson.py" %*\n')
         else:
             # On Unix the shebang is honoured directly. Copy as "meson" (no extension),
             # make executable, and it runs without any wrapper script.

@@ -73,8 +73,9 @@ class Recipe(RecipeBase):
         if is_msvc(self) or self._is_clang_cl:
             rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
             if not self.options.shared:
-                rename(self, os.path.join(self.package_folder, "lib", "libopenh264.a"),
-                        os.path.join(self.package_folder, "lib", "openh264.lib"))
+                rename(
+                    self, os.path.join(self.package_folder, "lib", "libopenh264.a"),
+                    os.path.join(self.package_folder, "lib", "openh264.lib"))
         fix_apple_shared_install_name(self)
 
     def package_info(self):

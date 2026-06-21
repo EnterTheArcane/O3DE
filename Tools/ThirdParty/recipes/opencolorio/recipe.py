@@ -108,7 +108,8 @@ class Recipe(RecipeBase):
         cm.install()
 
         if not self.options.shared:
-            copy(self, "*",
+            copy(
+                self, "*",
                 src=os.path.join(self.package_folder, "lib", "static"),
                 dst=os.path.join(self.package_folder, "lib"))
             rmdir(self, os.path.join(self.package_folder, "lib", "static"))

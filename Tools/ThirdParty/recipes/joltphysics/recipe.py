@@ -78,9 +78,12 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_target_name", "Jolt::Jolt")
         self.cpp_info.defines = ["JPH_OBJECT_STREAM"]
         if self.settings.arch in ["X64"]:
-            self.cpp_info.defines.extend(["JPH_USE_AVX2", "JPH_USE_AVX", "JPH_USE_SSE4_1",
-                                          "JPH_USE_SSE4_2", "JPH_USE_LZCNT", "JPH_USE_TZCNT",
-                                          "JPH_USE_F16C", "JPH_USE_FMADD"])
+            self.cpp_info.defines.extend(
+                [
+                    "JPH_USE_AVX2", "JPH_USE_AVX", "JPH_USE_SSE4_1",
+                    "JPH_USE_SSE4_2", "JPH_USE_LZCNT", "JPH_USE_TZCNT",
+                    "JPH_USE_F16C", "JPH_USE_FMADD",
+                ])
         if is_msvc(self):
             self.cpp_info.defines.append("JPH_FLOATING_POINT_EXCEPTIONS_ENABLED")
         if self.options.shared:

@@ -64,10 +64,12 @@ class Recipe(RecipeBase):
 
     def package(self):
         copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "*.h", src=os.path.join(self.source_folder, "transcoder"),
-             dst=os.path.join(self.package_folder, "include"))
-        copy(self, "*.h", src=os.path.join(self.source_folder, "encoder"),
-             dst=os.path.join(self.package_folder, "include"))
+        copy(
+            self, "*.h", src=os.path.join(self.source_folder, "transcoder"),
+            dst=os.path.join(self.package_folder, "include"))
+        copy(
+            self, "*.h", src=os.path.join(self.source_folder, "encoder"),
+            dst=os.path.join(self.package_folder, "include"))
         copy(self, "*.a", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
         copy(self, "*.lib", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
 

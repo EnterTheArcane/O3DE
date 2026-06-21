@@ -43,15 +43,14 @@ class Recipe(RecipeBase):
             url="https://github.com/alembic/alembic/archive/refs/tags/1.8.11.tar.gz",
             sha256="ab299bb4b1894a6675c73fa29940522b54c81a91b1d691ca3470d86b7345ffce",
             destination=self.source_folder,
-            strip_root=True,
-        )
+            strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["ALEMBIC_BUILD_LIBS"] = True
         tc.variables["ALEMBIC_DEBUG_WARNINGS_AS_ERRORS"] = False
         tc.variables["ALEMBIC_ILMBASE_FOUND"] = 1
-        tc.variables["ALEMBIC_ILMBASE_LINK_STATIC"] = True # for -DOPENEXR_DLL, handled by OpenEXR package
+        tc.variables["ALEMBIC_ILMBASE_LINK_STATIC"] = True  # for -DOPENEXR_DLL, handled by OpenEXR package
         tc.variables["ALEMBIC_SHARED_LIBS"] = self.options.shared
         tc.variables["ALEMBIC_USING_IMATH_3"] = False
         tc.variables["USE_ARNOLD"] = False

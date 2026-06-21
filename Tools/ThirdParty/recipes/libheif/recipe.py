@@ -80,8 +80,9 @@ class Recipe(RecipeBase):
             sha256="8bd20cfa3201997b8f63266cddfabea2e1481467d7f992e6a2595e0bec691fc2",
             destination=self.source_folder,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"),
-                        "set(CMAKE_POSITION_INDEPENDENT_CODE", "#set(CMAKE_POSITION_INDEPENDENT_CODE")
+        replace_in_file(
+            self, os.path.join(self.source_folder, "CMakeLists.txt"),
+            "set(CMAKE_POSITION_INDEPENDENT_CODE", "#set(CMAKE_POSITION_INDEPENDENT_CODE")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -106,7 +107,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["WITH_OpenJPEG_ENCODER"] = self.options.get_safe("with_openjpeg", False)
         tc.cache_variables["WITH_OPENJPH_ENCODER"] = self.options.get_safe("with_openjph", False)
         tc.cache_variables["WITH_OPENH264_DECODER"] = self.options.get_safe("with_openh264", False)
-        
+
         # Disable finding possible Doxygen in system, so no docs are built
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_Doxygen"] = True
         tc.cache_variables["CMAKE_COMPILE_WARNING_AS_ERROR"] = False

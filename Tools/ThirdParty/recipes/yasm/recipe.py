@@ -42,11 +42,12 @@ class Recipe(RecipeBase):
             env.generate()
             tc = AutotoolsToolchain(self)
             enable_debug = "yes" if self.settings.build_type == "Debug" else "no"
-            tc.configure_args.extend([
-                f"--enable-debug={enable_debug}",
-                "--disable-rpath",
-                "--disable-nls",
-            ])
+            tc.configure_args.extend(
+                [
+                    f"--enable-debug={enable_debug}",
+                    "--disable-rpath",
+                    "--disable-nls",
+                ])
             tc.generate()
 
     def build(self):

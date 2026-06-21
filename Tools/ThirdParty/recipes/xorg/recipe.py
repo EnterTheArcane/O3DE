@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.gnu import PkgConfig
 
-
 _COMPONENTS = [
     "fontenc",
     "ice",
@@ -68,7 +67,7 @@ class Recipe(RecipeBase):
         self.cpp_info.bindirs = []
         self.cpp_info.includedirs = []
         self.cpp_info.libdirs = []
-        
+
         components = _COMPONENTS + ([] if self.settings.os == "FreeBSD" else ["uuid"])
 
         for name in components:
@@ -82,7 +81,7 @@ class Recipe(RecipeBase):
             self.cpp_info.components[name].libdirs = []
             self.cpp_info.components[name].set_property(
                 "pkg_config_custom_content",
-                "\n".join(f"{key}={value}" for key, value in pkg_config.variables.items() if key not in ["pcfiledir","prefix", "includedir"]))
+                "\n".join(f"{key}={value}" for key, value in pkg_config.variables.items() if key not in ["pcfiledir", "prefix", "includedir"]))
 
         if self.settings.os == "Linux":
             self.cpp_info.components["sm"].requires.append("uuid")

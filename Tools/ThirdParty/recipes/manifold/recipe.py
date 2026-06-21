@@ -43,7 +43,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["MANIFOLD_TEST"] = False
         tc.cache_variables["MANIFOLD_CBIND"] = False
         tc.cache_variables["MANIFOLD_PYBIND"] = False
-        tc.cache_variables["MANIFOLD_STRICT"] = False # no -Werror
+        tc.cache_variables["MANIFOLD_STRICT"] = False  # no -Werror
         tc.cache_variables["MANIFOLD_PAR"] = True
         tc.generate()
 

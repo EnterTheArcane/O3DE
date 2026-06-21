@@ -62,13 +62,14 @@ class Recipe(RecipeBase):
 
         yes_no = lambda v: "yes" if v else "no"
         tc = AutotoolsToolchain(self)
-        tc.configure_args.extend([
-            f"--enable-debug={yes_no(self.settings.build_type == 'Debug')}",
-            "--enable-builddir=no",
-            "--enable-docs=no",
-            "--enable-shared" if self.options.shared else "--disable-shared",
-            "--disable-static" if self.options.shared else "--enable-static",
-        ])
+        tc.configure_args.extend(
+            [
+                f"--enable-debug={yes_no(self.settings.build_type == 'Debug')}",
+                "--enable-builddir=no",
+                "--enable-docs=no",
+                "--enable-shared" if self.options.shared else "--disable-shared",
+                "--disable-static" if self.options.shared else "--enable-static",
+            ])
 
         if self.settings_build.compiler == "apple-clang":
             tc.configure_args.append("--disable-multi-os-directory")
