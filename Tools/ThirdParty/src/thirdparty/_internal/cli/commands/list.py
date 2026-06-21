@@ -10,6 +10,7 @@ from colorama import Fore, Style
 
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph.recipe_graph import build_recipe_graph, is_built
+from thirdparty._internal.detect import detect_platform_tag
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -64,11 +65,12 @@ def list_recipes(args: argparse.Namespace) -> None:
     graph = build_recipe_graph(recipes_root, names, args.build_type)
     order = graph.topo_order() if args.build_order else sorted(names)
 
+    plat = detect_platform_tag()
     rows: list[tuple[str, str, bool, list[str], list[str]]] = []
     built_count = 0
     for name in order:
         node = graph[name]
-        built = node.version != "?" and is_built(build_root, name, node.version)
+        built = node.version != "?" and is_built(build_root, name, node.version, plat)
         built_count += built
         rows.append((name, node.version, built, node.host_deps, node.tool_deps))
 

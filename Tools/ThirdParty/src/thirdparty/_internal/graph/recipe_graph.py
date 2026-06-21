@@ -120,9 +120,12 @@ def resolve_version(recipe_cls: type[RecipeBase]) -> str:
 COMPLETE_MARKER = ".complete"
 
 
-def is_built(build_root: Path, name: str, version: str) -> bool:
-    """True if ``name/version`` has a completed build (the build-phase marker exists)."""
-    return (build_root / name / version / "build" / COMPLETE_MARKER).is_file()
+def is_built(build_root: Path, name: str, version: str, platform_tag: str) -> bool:
+    """True if ``name/version`` has a completed build for *platform_tag*.
+
+    The build-phase marker lives at ``build/<name>/<version>/<platform_tag>/build/.complete``.
+    """
+    return (build_root / name / version / platform_tag / "build" / COMPLETE_MARKER).is_file()
 
 
 # ---------------------------------------------------------------------------
