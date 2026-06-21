@@ -19,4 +19,3 @@ def build_jobs(recipe):
     :return: ``int`` with the number of jobs
     """
     return recipe.conf.get("tools.build:jobs", default=cpu_count(), check_type=int)
-

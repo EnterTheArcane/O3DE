@@ -404,6 +404,3 @@ def load_settings_yml(home_folder):
         appending_recursive_dict_update(settings, settings_user)
 
     return Settings(settings)
-
-
-

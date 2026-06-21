@@ -214,4 +214,3 @@ def export_recipe_data_patches(recipe):
         recipe_data_path = os.path.join(recipe.export_folder, DATA_YML)
         new_recipe_data_yml = yaml.safe_dump(recipe.recipe_data, default_flow_style=False)
         save(recipe_data_path, new_recipe_data_yml)
-

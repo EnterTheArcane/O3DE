@@ -166,4 +166,3 @@ class BazelToolchain:
         """
         check_duplicated_generator(self, self._recipe)
         save(self._recipe, BazelToolchain.bazelrc_name, self._content)
-

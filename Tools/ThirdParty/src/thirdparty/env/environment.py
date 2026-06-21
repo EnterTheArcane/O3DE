@@ -963,4 +963,3 @@ def _relativize_paths(recipe, placeholder):
     new_path = placeholder if rel_path == "." else os.path.join(placeholder, rel_path)
     new_path = os.path.join(new_path, "")  # For the trailing / to dissambiguate matches
     return abs_base_path, new_path
-

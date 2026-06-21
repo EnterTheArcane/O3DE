@@ -232,5 +232,3 @@ class VersionRange:
 
     def version(self):
         return Version(f"[{self._expression}]")
-
-

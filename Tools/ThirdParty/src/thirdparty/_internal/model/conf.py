@@ -802,7 +802,3 @@ def load_global_conf(home_folder):
         user_conf.loads(content)
         new_config.update_conf_definition(user_conf)
     return new_config
-
-
-
-

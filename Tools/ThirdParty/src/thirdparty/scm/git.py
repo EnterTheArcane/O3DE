@@ -293,4 +293,3 @@ class Git:
         self.clone(url=sources["url"], target=".", args=["--origin=origin"])
         self.run(f"fetch origin {sources['commit']}")
         self.checkout(commit=sources["commit"])
-

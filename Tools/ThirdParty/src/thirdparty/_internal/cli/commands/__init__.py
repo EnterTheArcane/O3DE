@@ -23,4 +23,3 @@ def command(fn: CommandFn) -> CommandFn:
 
 def is_command(obj: object) -> TypeGuard[CommandFn]:
     return callable(obj) and bool(getattr(obj, _COMMAND_ATTR, False))
-

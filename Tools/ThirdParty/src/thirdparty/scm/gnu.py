@@ -34,4 +34,3 @@ class GnuFtp:
         if best_str is None:
             raise RuntimeError(f"no version found for {self._package} at {self._url}")
         return best_str
-

@@ -8,4 +8,3 @@ __all__ = [
     "RecipeBase",
     "CppInfo",
 ]
-

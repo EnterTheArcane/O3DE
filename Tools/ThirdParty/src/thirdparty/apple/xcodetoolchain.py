@@ -128,4 +128,3 @@ class XcodeToolchain:
     @property
     def _flags_xcconfig_filename(self):
         return "recipe_global_flags" + self.extension
-

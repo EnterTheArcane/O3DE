@@ -455,6 +455,3 @@ class DepsGraph:
         result["replaced_requires"] = {k: v for k, v in self.replaced_requires.items()}
         result["error"] = self.error.serialize() if isinstance(self.error, GraphError) else None
         return result
-
-
-

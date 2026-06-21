@@ -807,4 +807,3 @@ def _build_recipe(
 
     print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
     return transitive
-

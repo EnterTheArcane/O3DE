@@ -170,4 +170,3 @@ class Recipe(RecipeBase):
         self.cpp_info.resdirs = ["res"]
         if not self.options.shared:
             self.cpp_info.defines.append("LIBJPEG_STATIC")
-

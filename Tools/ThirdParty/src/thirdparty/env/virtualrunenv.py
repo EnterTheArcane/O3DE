@@ -98,4 +98,3 @@ class VirtualRunEnv:
         check_duplicated_generator(self, self._recipe)
         run_env = self.environment()
         run_env.vars(self._recipe, scope=scope).save_script(self._filename)
-

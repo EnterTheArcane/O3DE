@@ -125,4 +125,3 @@ class GitlabRepository:
                 f"no version-like tags found for {self._slug} on {self._host}"
             )
         return best_tag
-

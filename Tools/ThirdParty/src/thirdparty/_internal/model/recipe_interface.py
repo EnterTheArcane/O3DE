@@ -161,6 +161,3 @@ class RecipeInterface:
     @property
     def conf(self):
         return self._recipe.conf
-
-
-

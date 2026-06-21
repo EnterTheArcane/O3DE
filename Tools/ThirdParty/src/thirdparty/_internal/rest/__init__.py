@@ -25,6 +25,3 @@ def response_to_str(response):
 
     except Exception:
         return response.content
-
-
-

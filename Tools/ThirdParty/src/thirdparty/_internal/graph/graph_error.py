@@ -93,6 +93,3 @@ class GraphProvidesError(GraphError):
         provides = self.node.recipe.provides or self.conflicting_node.recipe.provides
         return f"Provide Conflict: Both '{self.node.ref}' and '{self.conflicting_node.ref}' " \
                f"provide '{provides}'."
-
-
-

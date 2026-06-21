@@ -183,4 +183,3 @@ def _print_table(rows: list[tuple[str, str, str, str, str | None]]) -> None:
             status_col = f"{Style.DIM}{status}{Style.RESET_ALL}"
 
         print(f"{name:<{name_w}}  {current:<{cur_w}}  {latest_col}  {status_col}")
-

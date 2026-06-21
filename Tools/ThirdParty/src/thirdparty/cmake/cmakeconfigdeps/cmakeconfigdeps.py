@@ -399,4 +399,3 @@ class _PathGenerator:
                     existing.append(d)
 
         return ' '.join(f'"$<$<CONFIG:{c}>:{i}>"' for c, v in host_runtime_dirs.items() for i in v)
-

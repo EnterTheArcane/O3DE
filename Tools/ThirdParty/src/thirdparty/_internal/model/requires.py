@@ -616,6 +616,3 @@ class Requirements:
 
     def __len__(self):
         return len(self._requires)
-
-
-

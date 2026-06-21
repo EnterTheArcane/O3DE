@@ -189,6 +189,3 @@ def get_transitive_requires(consumer, dependency):
     # and we keep those that are really dependencies of the current package
     result = result.transitive_requires(pkg_deps)
     return result
-
-
-

@@ -383,6 +383,3 @@ class Lockfile:
     def resolve_locked_pyrequires(self, require, resolve_prereleases=None):
         locked_refs = self._python_requires.refs()  # CHANGE
         self._resolve(require, locked_refs, resolve_prereleases, "python_requires")
-
-
-

@@ -157,4 +157,3 @@ class Recipe(RecipeBase):
             self.cpp_info.components["minizip"].system_libs.append("crypt32")
         if self.settings.os != "Windows" and self.options.with_iconv:
             self.cpp_info.components["minizip"].requires.append("libiconv::libiconv")
-

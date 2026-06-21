@@ -444,4 +444,3 @@ class MSBuildDeps:
         result["recipe_dedup.props"] = self._recipe_dedup_props
 
         return result
-

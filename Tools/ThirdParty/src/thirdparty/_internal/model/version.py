@@ -199,6 +199,3 @@ class Version:
         """ Check if the version is in the specified range """
         from thirdparty._internal.model.version_range import VersionRange
         return VersionRange(version_range).contains(self, resolve_prerelease=resolve_prerelease)
-
-
-

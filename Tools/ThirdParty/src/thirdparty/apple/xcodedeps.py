@@ -355,4 +355,3 @@ class XcodeDeps:
         result[GLOBAL_XCCONFIG_FILENAME] = self._global_xconfig_content
 
         return result
-

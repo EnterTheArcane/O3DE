@@ -424,6 +424,3 @@ class RecipeTextLoader:
     @property
     def generators(self):
         return self._config_parser.generators.splitlines()
-
-
-

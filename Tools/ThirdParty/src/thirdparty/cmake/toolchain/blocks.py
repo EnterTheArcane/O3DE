@@ -1447,4 +1447,3 @@ class ToolchainBlocks:
             if content:
                 result.append(content)
         return result
-

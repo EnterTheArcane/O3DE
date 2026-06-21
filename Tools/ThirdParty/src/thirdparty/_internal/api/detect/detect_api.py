@@ -628,6 +628,3 @@ def detect_sdk_version(sdk):
     _, result = detect_runner(cmd)
     result = result.strip()
     return result
-
-
-

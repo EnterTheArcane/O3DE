@@ -12,4 +12,3 @@ def unix_path_package_info_legacy(recipe, path, path_flavor=None):
               "and will be removed in a future version."
     recipe.output.warning(message, warn_tag="deprecated")
     return path
-

@@ -400,4 +400,3 @@ class PkgConfigDeps:
          upstream recipe.
         """
         self._properties.setdefault(dep, {}).update({prop: value})
-

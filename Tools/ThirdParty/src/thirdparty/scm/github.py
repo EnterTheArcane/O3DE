@@ -161,4 +161,3 @@ class GithubRepository:
         if best_tag is None:
             raise RuntimeError(f"no version-like tags found for {self._slug}")
         return best_tag
-
