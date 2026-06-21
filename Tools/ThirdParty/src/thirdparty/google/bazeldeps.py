@@ -4,7 +4,6 @@ import textwrap
 
 from jinja2 import Template, StrictUndefined
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.util.files import save
@@ -560,7 +559,6 @@ class BazelDeps:
             )
             use_repo(load_recipe_dependencies, "dep-1", "dep-2", ...)
         """
-        check_duplicated_generator(self, self._recipe)
         dependencies_context = []
         for require, dep in self._get_requirements(self.build_context_activated):
             # Bazel info generator

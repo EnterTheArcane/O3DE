@@ -153,20 +153,10 @@ class Recipe(RecipeBase):
             f'    cmake_language(DEFER DIRECTORY "${{CMAKE_CURRENT_SOURCE_DIR}}" CALL\n'
             f'        include "{fix_script_fwd}")\n'
             'endif()\n'
-            'if(WIN32)\n'
-            '    if(NOT TARGET Qt6::PlatformCommonInternal)\n'
-            '        add_library(Qt6::PlatformCommonInternal INTERFACE IMPORTED)\n'
-            '        set_target_properties(Qt6::PlatformCommonInternal PROPERTIES\n'
-            '            INTERFACE_COMPILE_DEFINITIONS'
-            ' "NOMINMAX;QT_NO_NARROWING_CONVERSIONS_IN_CONNECT;_CRT_SECURE_NO_WARNINGS;'
-            '$<$<NOT:$<CONFIG:Debug>>:QT_NO_DEBUG>"\n'
-            '            INTERFACE_COMPILE_OPTIONS "-FS;-bigobj;-Zc:rvalueCast;-Zc:inline"\n'
-            '        )\n'
-            '    endif()\n'
-            '    if(NOT TARGET Qt::PlatformCommonInternal)\n'
-            '        add_library(Qt::PlatformCommonInternal ALIAS Qt6::PlatformCommonInternal)\n'
-            '    endif()\n'
-            'endif()\n'
+            # NOTE: do not pre-define Qt6::PlatformCommonInternal here. Qt 6.11.1 exports it
+            # as part of its platform target export set; defining it before find_package(Qt6)
+            # makes Qt's _qt_internal_check_multiple_inclusion fail ("some but not all targets
+            # already defined"). Let Qt's own config create it (with the right MSVC flags).
             '# Stub target for WrapOpenSSL so Qt6NetworkTargets generate step succeeds\n'
             '# when Qt6Network is transitively found but OpenSSL find modules are not loaded.\n'
             'if(NOT TARGET WrapOpenSSL::WrapOpenSSL)\n'
@@ -361,9 +351,15 @@ class Recipe(RecipeBase):
         # LIBRARY_OUTPUT_DIRECTORY to ${CMAKE_CURRENT_BINARY_DIR}/.. (i.e. one level
         # above the shibokenmodule build dir).
         src_dir = os.path.join(self.build_folder, "sources", "shiboken6")
-        site_pkgs = os.path.join(
-            self.package_folder, "lib", f"python{py_maj}.{py_min}", "site-packages"
-        )
+        # PYTHON_SITE_PACKAGES (where generate_pyi.py imports shiboken6 from) follows the
+        # interpreter's layout: Windows cpython uses lib/site-packages, while Unix uses
+        # lib/pythonX.Y/site-packages.
+        if self.settings.os == "Windows":
+            site_pkgs = os.path.join(self.package_folder, "lib", "site-packages")
+        else:
+            site_pkgs = os.path.join(
+                self.package_folder, "lib", f"python{py_maj}.{py_min}", "site-packages"
+            )
         dst_dir = os.path.join(site_pkgs, "shiboken6")
         os.makedirs(dst_dir, exist_ok=True)
 

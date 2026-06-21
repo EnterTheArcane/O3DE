@@ -1,6 +1,5 @@
 import os
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.env import Environment
 
 
@@ -95,6 +94,5 @@ class VirtualRunEnv:
 
         :param scope: Scope to be used.
         """
-        check_duplicated_generator(self, self._recipe)
         run_env = self.environment()
         run_env.vars(self._recipe, scope=scope).save_script(self._filename)

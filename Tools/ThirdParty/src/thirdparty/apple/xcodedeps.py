@@ -3,7 +3,6 @@ import re
 import textwrap
 from jinja2 import Template
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import load, save
 from thirdparty.apple.apple import _to_apple_arch
@@ -112,7 +111,6 @@ class XcodeDeps:
         self.sdk_version = recipe.settings.get_safe("os.sdk_version")
 
     def generate(self):
-        check_duplicated_generator(self, self._recipe)
         if self.configuration is None:
             raise RecipeException("XcodeDeps.configuration is None, it should have a value")
         if self.architecture is None:

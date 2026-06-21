@@ -1,7 +1,6 @@
 import os
 import textwrap
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.detect_vs import vs_installation_path
 from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
@@ -119,7 +118,6 @@ class VCVars:
                       in ``self.run()`` calls and build helpers such as ``cmake.configure()``
                       and ``cmake.build()``.
         """
-        check_duplicated_generator(self, self._recipe)
         recipe = self._recipe
 
         os_ = recipe.settings.get_safe("os")

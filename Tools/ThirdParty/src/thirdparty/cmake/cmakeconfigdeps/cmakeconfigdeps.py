@@ -6,7 +6,6 @@ from jinja2 import Template
 
 from thirdparty._internal.output import Color, Output
 from thirdparty.errors import RecipeException
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty.cmake.cmakeconfigdeps.config import ConfigTemplate2
@@ -87,7 +86,6 @@ class CMakeConfigDeps:
         self._recipe.output.warning("CMakeConfigDeps is experimental, and might get "
                                        "breaking changes in future releases",
                                        warn_tag="experimental")
-        check_duplicated_generator(self, self._recipe)
         # Current directory is the generators_folder
         generator_files = self._content()
         for generator_file, content in generator_files.items():

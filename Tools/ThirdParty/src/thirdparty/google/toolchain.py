@@ -25,7 +25,6 @@ import textwrap
 
 from jinja2 import Template
 
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.internal_tools import raise_on_universal_arch
 from thirdparty.apple import to_apple_arch, is_apple_os
 from thirdparty.build.cross_building import cross_building
@@ -164,5 +163,4 @@ class BazelToolchain:
         Creates a ``recipe_bzl.rc`` file with some bazel-build configuration. This last mentioned
         is put as ``recipe-config``.
         """
-        check_duplicated_generator(self, self._recipe)
         save(self._recipe, BazelToolchain.bazelrc_name, self._content)

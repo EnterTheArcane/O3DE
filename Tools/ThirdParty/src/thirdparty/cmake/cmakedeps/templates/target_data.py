@@ -1,8 +1,7 @@
 import os
 import textwrap
 
-from thirdparty.cmake.cmakedeps import FIND_MODE_NONE, FIND_MODE_CONFIG, FIND_MODE_MODULE, \
-    FIND_MODE_BOTH
+from thirdparty.cmake.cmakedeps.modes import *
 from thirdparty.cmake.cmakedeps.templates import CMakeDepsFileTemplate
 from thirdparty.errors import RecipeException
 from thirdparty._internal.util.generators import relativize_path

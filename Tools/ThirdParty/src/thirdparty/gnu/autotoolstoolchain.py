@@ -1,7 +1,6 @@
 import os
 
 from thirdparty.errors import RecipeException
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.apple.apple import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.build import cmd_args_to_string, save_toolchain_args
@@ -323,7 +322,6 @@ class AutotoolsToolchain:
         return self.environment().vars(self._recipe, scope="build")
 
     def generate(self, env=None, scope="build"):
-        check_duplicated_generator(self, self._recipe)
         env = env or self.environment()
         env = env.vars(self._recipe, scope=scope)
         env.save_script("autotoolstoolchain")
