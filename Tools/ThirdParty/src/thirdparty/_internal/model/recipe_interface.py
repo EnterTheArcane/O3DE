@@ -115,10 +115,6 @@ class RecipeInterface:
         return self._recipe.package_type
 
     @property
-    def languages(self):
-        return self._recipe.languages
-
-    @property
     def info(self):
         return self._recipe.info
 
@@ -128,22 +124,6 @@ class RecipeInterface:
     @property
     def license(self):
         return self._recipe.license
-
-    @property
-    def description(self):
-        return self._recipe.description
-
-    @property
-    def author(self):
-        return self._recipe.author
-
-    @property
-    def homepage(self):
-        return self._recipe.homepage
-
-    @property
-    def url(self):
-        return self._recipe.url
 
     @property
     def extension_properties(self):

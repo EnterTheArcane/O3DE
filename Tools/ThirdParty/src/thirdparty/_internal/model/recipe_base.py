@@ -1,6 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
@@ -20,87 +21,69 @@ class RecipeBase:
     """
 
     # Reference
-    name = None
-    version = None  # Any str, can be "1.1" or whatever
+    name: str | None = None
+    version: str | None = None  # Any str, can be "1.1" or whatever
 
     # Metadata
-    url = None  # The URL where this File is located, as github, to collaborate in package
-    license = None
-    author = None
-    description = None
-    topics = None
-    homepage = None
+    license: str | tuple[str, ...] | None = None
 
-    build_policy = None
-    upload_policy = None
-
-    exports = None
-    exports_sources = None
-
-    generators = []
-    revision_mode = "hash"
+    generators: list[str] = []
 
     # Binary model: Settings and Options
-    settings = None
-    options = None
-    default_options = None
-    default_build_options = None
-    package_type = None
-    vendor = False
-    languages = []
-    implements = []
+    # NOTE: ``settings``/``options``/the ``*_requires`` are intentionally ``Any``: recipe authors
+    # may set them as a tuple/dict (e.g. ``options = {...}``) while at runtime they hold model
+    # objects (``Settings``, ``Options``, ``Requirements``).  ``Any`` keeps both valid.
+    settings: Any = None  # set to a Settings object by the build driver (host/target)
+    settings_build: Any = None  # Settings for the build machine (tools)
+    settings_target: Any = None  # Settings of what a tool_require will build for
+    options: Any = None
+    default_options: dict[str, Any] | None = None
+    default_build_options: dict[str, Any] | None = None
+    package_type: Any = None  # str (author) or PackageType (runtime)
 
-    provides = None
-    deprecated = None
+    win_bash: bool | None = None
+    win_bash_run: bool | None = None  # For run scope
 
-    win_bash = None
-    win_bash_run = None  # For run scope
-
-    _is_consumer_recipe = False
+    _is_consumer_recipe: bool = False
 
     # #### Requirements
-    requires = None
-    tool_requires = None
-    build_requires = None
-    test_requires = None
-    tested_reference_str = None
+    requires: Any = None
+    tool_requires: Any = None
+    build_requires: Any = None
+    test_requires: Any = None
+    tested_reference_str: str | None = None
 
-    no_copy_source = False
-    recipe_folder = None
+    recipe_folder: str | None = None
 
     # Tools implied by the build-system helpers a recipe imports (e.g. CMake -> "cmake").
     # Populated at load time by the recipe loader from the recipe module's direct imports.
-    _implicit_tool_requires = frozenset()
+    _implicit_tool_requires: frozenset[str] = frozenset()
 
     # Package information
-    cpp = None
-    buildenv_info = None
-    runenv_info = None
-    conf_info = None
-    conf = None
-    generator_info = None
+    cpp: "Infos | None" = None
+    buildenv_info: Any = None  # Environment
+    runenv_info: Any = None  # Environment
+    conf_info: "Conf | None" = None
+    conf: "Conf | None" = None
+    generator_info: Any = None
 
     def __init__(self, display_name=""):
-        self.display_name = display_name
+        self.display_name: str = display_name
         # something that can run commands, as os.sytem
 
-        self._recipe_runtime = None
+        self._recipe_runtime: Any = None
         from thirdparty.env import Environment
         self.buildenv_info = Environment()
         self.runenv_info = Environment()
         # At the moment only for build_requires, others will be ignored
         self.conf_info = Conf()
-        self.info = None
-        self._recipe_buildenv = None  # The profile buildenv, will be assigned initialize()
-        self._recipe_runenv = None
-        self._recipe_node = None  # access to container Node object, to access info, context, deps...
+        self.info: Any = None
+        self._recipe_buildenv: Any = None  # The profile buildenv, will be assigned initialize()
+        self._recipe_runenv: Any = None
+        self._recipe_node: Any = None  # access to container Node object, to access info, context, deps...
 
         if isinstance(self.generators, str):
             self.generators = [self.generators]
-        if isinstance(self.languages, str):
-            self.languages = [self.languages]
-        if not all(lang == "C" or lang == "C++" for lang in self.languages):
-            raise RecipeException("Only 'C' and 'C++' languages are allowed in 'languages' attribute")
         if isinstance(self.settings, str):
             self.settings = [self.settings]
         self.requires = Requirements(self.requires, self.build_requires, self.test_requires,
@@ -112,15 +95,10 @@ class RecipeBase:
 
         self.options = Options(self.options or {}, self.default_options)
 
-        if isinstance(self.topics, str):
-            self.topics = [self.topics]
-        if isinstance(self.provides, str):
-            self.provides = [self.provides]
-
         # user declared variables
         self.user_info = MockInfoProperty("user_info")
         self.env_info = MockInfoProperty("env_info")
-        self._recipe_dependencies = None
+        self._recipe_dependencies: "RecipeDependencies | None" = None
 
         if not hasattr(self, "virtualbuildenv"):  # Allow the user to override it with True or False
             self.virtualbuildenv = True
@@ -138,17 +116,13 @@ class RecipeBase:
     def serialize(self):
         result = {}
 
-        for a in ("name", "user", "channel", "url", "license",
-                  "author", "description", "homepage", "build_policy", "upload_policy",
-                  "revision_mode", "provides", "deprecated", "win_bash", "win_bash_run",
-                  "default_options", "options_description"):
+        for a in ("name", "license", "win_bash", "win_bash_run",
+                  "default_options"):
             v = getattr(self, a, None)
             result[a] = v
 
         result["version"] = str(self.version) if self.version is not None else None
-        result["topics"] = list(self.topics) if self.topics is not None else None
         result["package_type"] = str(self.package_type)
-        result["languages"] = self.languages
 
         settings = self.settings
         if settings is not None:
@@ -183,7 +157,6 @@ class RecipeBase:
         result["label"] = self.display_name
         if self.info is not None:
             result["info"] = self.info.serialize()
-        result["vendor"] = self.vendor
         return result
 
     @property

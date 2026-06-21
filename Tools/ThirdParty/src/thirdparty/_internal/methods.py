@@ -89,8 +89,6 @@ def run_configure_method(recipe, down_options, profile_options, ref):
     if hasattr(recipe, "config_options"):
         with recipe_exception_formatter(recipe, "config_options"):
             recipe.config_options()
-    elif "auto_shared_fpic" in recipe.implements:
-        auto_shared_fpic_config_options(recipe)
 
     auto_language(recipe)  # default implementation removes `compiler.cstd`
 
@@ -101,8 +99,6 @@ def run_configure_method(recipe, down_options, profile_options, ref):
     if hasattr(recipe, "configure"):
         with recipe_exception_formatter(recipe, "configure"):
             recipe.configure()
-    elif "auto_shared_fpic" in recipe.implements:
-        auto_shared_fpic_configure(recipe)
 
     if initial_requires_count != len(recipe.requires):
         recipe.output.warning("Requirements should only be added in the requirements()/"
@@ -156,11 +152,6 @@ def auto_header_only_package_id(recipe):
 
 
 def auto_language(recipe):
-    if not recipe.languages:
-        recipe.settings.rm_safe("compiler.cstd")
-        return
-    if "C" not in recipe.languages:
-        recipe.settings.rm_safe("compiler.cstd")
-    if "C++" not in recipe.languages:
-        recipe.settings.rm_safe("compiler.cppstd")
-        recipe.settings.rm_safe("compiler.libcxx")
+    # This system does not use the ``languages`` attribute; default to removing the C-only
+    # ``compiler.cstd`` setting (the historical empty-languages behavior).
+    recipe.settings.rm_safe("compiler.cstd")

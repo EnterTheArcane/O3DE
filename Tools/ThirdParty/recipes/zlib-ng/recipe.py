@@ -43,8 +43,6 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
-        if self.options.zlib_compat:
-            self.provides = ["zlib"]
 
     def latest_version(self):
         repo = GithubRepository(self, "zlib-ng/zlib-ng")

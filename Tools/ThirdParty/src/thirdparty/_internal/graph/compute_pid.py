@@ -36,9 +36,6 @@ def compute_package_id(node, modes, config_version, hook_manager):
             else:
                 data[require] = req_info
 
-    if recipe.vendor:  # Make the package_id fully independent of dependencies versions
-        data, build_data = OrderedDict(), OrderedDict()  # TODO, cleaner, now minimal diff
-
     reqs_info = RequirementsInfo(data)
     build_requires_info = RequirementsInfo(build_data)
     python_requires = PythonRequiresInfo(python_requires, python_mode)
@@ -107,8 +104,6 @@ def run_validate_package_id(recipe, hook_manager):
         with recipe_exception_formatter(recipe, "package_id"):
             with recipe_remove_attr(recipe, ['cpp_info', 'settings', 'options'], "package_id"):
                 recipe.package_id()
-    elif "auto_header_only" in recipe.implements:
-        auto_header_only_package_id(recipe)
     if hook_manager.post_package_id_hook:
         with recipe_exception_formatter(recipe, "package_id"):
             with recipe_remove_attr(recipe, ['cpp_info', 'settings', 'options'], "package_id"):
