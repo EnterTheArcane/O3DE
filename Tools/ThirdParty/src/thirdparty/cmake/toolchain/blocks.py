@@ -13,7 +13,6 @@ from thirdparty.build.flags import architecture_flag, architecture_link_flag, li
 from thirdparty.build.cross_building import cross_building
 from thirdparty.cmake.toolchain import CONAN_TOOLCHAIN_FILENAME
 from thirdparty.cmake.utils import is_multi_configuration
-from thirdparty.intel import IntelCC
 from thirdparty.microsoft.visual import msvc_version_to_toolset_version, msvc_platform_from_arch
 from thirdparty._internal.api.install.generators import relativize_path
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS
@@ -81,7 +80,7 @@ class VSRuntimeBlock(Block):
             return
 
         compiler = settings.get_safe("compiler")
-        if compiler not in ("msvc", "clang", "intel-cc"):
+        if compiler not in ("msvc", "clang"):
             return
 
         runtime = settings.get_safe("compiler.runtime")
@@ -102,7 +101,7 @@ class VSRuntimeBlock(Block):
         if build_type is None:
             return None
 
-        if compiler == "msvc" or compiler == "intel-cc" or compiler == "clang":
+        if compiler == "msvc" or compiler == "clang":
             runtime_type = settings.get_safe("compiler.runtime_type")
             rt = "MultiThreadedDebug" if runtime_type == "Debug" else "MultiThreaded"
             if runtime != "static":
@@ -1026,9 +1025,7 @@ class GenericSystemBlock(Block):
             return None
         settings = conanfile.settings
         compiler = settings.get_safe("compiler")
-        if compiler == "intel-cc":
-            return IntelCC(conanfile).ms_toolset
-        elif compiler == "msvc":
+        if compiler == "msvc":
             toolset = settings.get_safe("compiler.toolset")
             if toolset is None:
                 compiler_version = str(settings.compiler.version)

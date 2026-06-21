@@ -269,10 +269,6 @@ def detect_libcxx(compiler, version, compiler_exe=None):
         return "libCstd"
     elif compiler == "mcst-lcc":
         return "libstdc++"
-    elif compiler == "intel-cc":
-        return "libstdc++11"
-
-
 def default_msvc_runtime(compiler):
     if platform.system() != "Windows":
         return None, None
@@ -318,19 +314,12 @@ def default_cppstd(compiler, compiler_version):
     def _mcst_lcc_cppstd_default(version):
         return "gnu14" if version >= "1.24" else "gnu98"
 
-    def _intel_cppstd_default(version):
-        tokens = version.main
-        major = tokens[0]
-        # https://www.intel.com/content/www/us/en/developer/articles/troubleshooting/icx-changes-default-cpp-std-to-cpp17-with-2023.html
-        return "17" if major >= "2023" else "14"
-
     def _apple_clang_cppstd_default(version):
         return "gnu98" if version < "17" else "gnu14"
 
     default = {"gcc": _gcc_cppstd_default(compiler_version),
                "clang": _clang_cppstd_default(compiler_version),
                "apple-clang": _apple_clang_cppstd_default(compiler_version),
-               "intel-cc": _intel_cppstd_default(compiler_version),
                "msvc": _visual_cppstd_default(compiler_version),
                "mcst-lcc": _mcst_lcc_cppstd_default(compiler_version)}.get(str(compiler), None)
     return default
@@ -378,9 +367,6 @@ def default_cstd(compiler, compiler_version):
             return "gnu11"
         return "gnu99"
 
-    def _intel_cstd_default(version):
-        return None
-
     def _mcst_lcc_cstd_default(version):
         return None
 
@@ -388,7 +374,6 @@ def default_cstd(compiler, compiler_version):
         "gcc": _gcc_cstd_default(compiler_version),
         "clang": _clang_cstd_default(compiler_version),
         "apple-clang": _apple_clang_cstd_default(compiler_version),
-        "intel-cc": _intel_cstd_default(compiler_version),
         "msvc": _visual_cstd_default(compiler_version),
         "mcst-lcc": _mcst_lcc_cstd_default(compiler_version),
     }.get(str(compiler), None)
@@ -422,9 +407,6 @@ def detect_default_compiler():
                 output.error("%s detected as a frontend using apple-clang. "
                              "Compiler not supported" % command)
             return gcc, gcc_version, compiler_exe
-        if "icpx" in command or "icx" in command:
-            intel, intel_version, compiler_exe = detect_intel_compiler(command)
-            return intel, intel_version, compiler_exe
         if platform.system() == "SunOS" and command.lower() == "cc":
             return detect_suncc_compiler(command)
         if (platform.system() == "Windows" and command.rstrip('"').endswith(("cl", "cl.exe"))
@@ -514,20 +496,6 @@ def detect_gcc_compiler(compiler_exe="gcc"):
             return None, None, None
         compiler = "gcc"
         installed_version = re.search(r"([0-9]+(\.[0-9]+)?)", out).group()
-        if installed_version:
-            ConanOutput(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
-            return compiler, Version(installed_version), compiler_exe
-    except (Exception,):  # to disable broad-except
-        return None, None, None
-
-
-def detect_intel_compiler(compiler_exe="icx"):
-    try:
-        ret, out = detect_runner(f'"{compiler_exe}" --version')
-        if ret != 0:
-            return None, None, None
-        compiler = "intel-cc"
-        installed_version = re.search(r"(202[0-9]+(\.[0-9])?)", out).group()
         if installed_version:
             ConanOutput(scope="detect_api").info("Found %s %s" % (compiler, installed_version))
             return compiler, Version(installed_version), compiler_exe
@@ -649,8 +617,6 @@ def default_compiler_version(compiler, version):
     elif compiler == "intel" and (major < 19 or (major == 19 and minor == 0)):
         return major
     elif compiler == "msvc":
-        return major
-    elif compiler == "intel-cc":
         return major
     return version
 

@@ -18,16 +18,12 @@ class ConanInvalidConfiguration(ConanException):
     pass
 
 
-class ConanMigrationError(ConanException):
-    pass
-
 RecipeException = ConanException
 InvalidConfiguration = ConanInvalidConfiguration
 
 __all__ = [
     "ConanException",
     "ConanInvalidConfiguration",
-    "ConanMigrationError",
     "RecipeException",
     "InvalidConfiguration",
 ]

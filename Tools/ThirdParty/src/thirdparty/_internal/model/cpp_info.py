@@ -810,9 +810,9 @@ class CppInfo:
         return aggregated
 
     def check_component_requires(self, conanfile):
-        """ quality check for component requires, called by BinaryInstaller after package_info()
+        """ quality check for component requires, called after package_info()
         - Check that all recipe ``requires`` are used if consumer recipe explicit opt-in to use
-          component requires
+            component requires
         - Check that component external dep::comp dependency "dep" is a recipe "requires"
         - Check that every internal component require actually exist
         It doesn't check that external components do exist
