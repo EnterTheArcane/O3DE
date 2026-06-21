@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
-from thirdparty.files import apply_patches, get, copy, rm, rmdir
+from thirdparty.files import get, copy, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

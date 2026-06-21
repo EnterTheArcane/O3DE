@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import apply_patches, copy, get, rmdir
+from thirdparty.files import copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

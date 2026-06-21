@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, replace_in_file, rm, rmdir, apply_patches, save
+from thirdparty.files import copy, get, replace_in_file, rm, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -45,7 +45,6 @@ class Recipe(RecipeBase):
             sha256="3445457d807912b879f526eade9e191235e1bd272ff8e70e7fd8b7e5435e2397",
             destination=self.source_folder,
             strip_root=True)
-        apply_patches(self)
         replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
 
     def generate(self):
