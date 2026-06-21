@@ -35,10 +35,6 @@ class Recipe(RecipeBase):
             del self.options.wchar_filenames
             del self.options.wchar_console
 
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def requirements(self):
         self.requires("fmt/[>=10 <12]", transitive_headers=True, transitive_libs=True)
 

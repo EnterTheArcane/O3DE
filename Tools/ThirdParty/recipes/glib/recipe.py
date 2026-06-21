@@ -33,8 +33,6 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if self.settings.os != "Linux":
             del self.options.with_mount
             del self.options.with_selinux
@@ -46,8 +44,6 @@ class Recipe(RecipeBase):
             del self.options.with_elf
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

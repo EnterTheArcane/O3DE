@@ -49,11 +49,9 @@ class Recipe(RecipeBase):
             del self.options.inject
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
-            # single_object is valid only for static
-            # override:
+        # single_object is valid only for static override:
+        if self.options.shared:
             self.options.rm_safe("single_object")
 
         # inject is valid only for Unix-like dynamic override:

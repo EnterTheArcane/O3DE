@@ -49,8 +49,6 @@ class Recipe(RecipeBase):
             del self.options.with_coretext
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         if self.options.shared and self.options.with_glib:
             self.options["glib"].shared = True
 

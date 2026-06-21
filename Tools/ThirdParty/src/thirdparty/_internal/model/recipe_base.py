@@ -164,10 +164,6 @@ class RecipeBase:
         return self._recipe_node.context
 
     @property
-    def subgraph(self):
-        return self._recipe_node.subgraph()
-
-    @property
     def dependencies(self):
         # Caching it, this object is requested many times
         if self._recipe_dependencies is None:
@@ -349,7 +345,6 @@ class RecipeBase:
             underlying ``Popen`` function.
         :parameter scope: The scope of the command, either ``"build"`` or ``"run"``.
         """
-        command = self._recipe_runtime.cmd_wrapper.wrap(command, recipe=self)
         if env == "":  # This default allows not breaking for users with ``env=None`` indicating
             # they don't want any env-file applied
             env = "env_build" if scope == "build" else "env_run"

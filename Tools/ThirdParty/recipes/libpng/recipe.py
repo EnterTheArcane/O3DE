@@ -62,8 +62,6 @@ class Recipe(RecipeBase):
         }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if not self._has_neon_support:
             del self.options.neon
         if not self._has_msa_support:
@@ -74,8 +72,6 @@ class Recipe(RecipeBase):
             del self.options.vsx
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

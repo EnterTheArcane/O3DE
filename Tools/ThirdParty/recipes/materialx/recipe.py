@@ -25,14 +25,6 @@ class Recipe(RecipeBase):
         "with_openimageio": False,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def latest_version(self):
         repo = GithubRepository(self, "AcademySoftwareFoundation/MaterialX")
         return Version(repo.latest_release.lstrip("v"))

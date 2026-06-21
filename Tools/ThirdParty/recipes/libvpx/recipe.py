@@ -32,8 +32,6 @@ class Recipe(RecipeBase):
     default_options.update({name: "avx" not in name for name in _arch_options})
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if str(self.settings.arch) not in ["X64"]:
             for name in self._arch_options:
                 delattr(self.options, name)

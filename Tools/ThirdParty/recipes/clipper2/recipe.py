@@ -27,14 +27,6 @@ class Recipe(RecipeBase):
         "with_hi_precision": False,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def latest_version(self):
         repo = GithubRepository(self, "AngusJohnson/Clipper2")
         return Version(repo.latest_release.removeprefix("Clipper2_"))

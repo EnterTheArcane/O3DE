@@ -26,13 +26,7 @@ class Recipe(RecipeBase):
         "with_readline": False,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         if not self.options.compile_as_cpp:
             self.options.rm_safe("compiler.libcxx")
             self.options.rm_safe("compiler.cppstd")

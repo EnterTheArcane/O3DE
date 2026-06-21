@@ -34,8 +34,6 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if self.settings.os != "Linux":
             del self.options.with_numa
         # FIXME: Disable assembly by default if host is arm and compiler apple-clang for the moment.
@@ -46,10 +44,6 @@ class Recipe(RecipeBase):
         if is_msvc(self) and self.settings.arch == "ARM":
             # Build errors, possibly unsupported
             self.options.assembly = False
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def requirements(self):
         if self.options.get_safe("with_numa", False):

@@ -25,14 +25,8 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if self.settings.arch not in ["X64"]:
             del self.options.sse
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def latest_version(self):
         repo = GithubRepository(self, "strukturag/libde265")

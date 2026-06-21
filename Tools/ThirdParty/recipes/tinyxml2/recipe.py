@@ -21,14 +21,6 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def latest_version(self):
         repo = GithubRepository(self, "leethomason/tinyxml2")
         return Version(repo.latest_release)
