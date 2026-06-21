@@ -10,8 +10,6 @@ from thirdparty._internal.api.output import (
 from thirdparty._internal.api.model import (
     RecipeReference,
     PkgReference,
-    Remote,
-    LOCAL_RECIPES_INDEX,
     PackagesList,
     MultiPackagesList,
     ListPattern,
@@ -25,8 +23,6 @@ __all__ = [
     "LEVEL_QUIET",
     "RecipeReference",
     "PkgReference",
-    "Remote",
-    "LOCAL_RECIPES_INDEX",
     "PackagesList",
     "MultiPackagesList",
     "ListPattern",

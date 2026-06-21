@@ -22,7 +22,6 @@ from thirdparty.cmake.toolchain.blocks import (ExtraVariablesBlock, ToolchainBlo
                                                 PreprocessorBlock, RpathLinkFlagsBlock)
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.intel import IntelCC
 from thirdparty.microsoft import VCVars
 from thirdparty.microsoft.visual import vs_ide_version
 from thirdparty.errors import ConanException
@@ -182,11 +181,8 @@ class CMakeToolchain:
             toolchain_file = self.filename
             save(os.path.join(self._conanfile.generators_folder, toolchain_file), self.content)
             ConanOutput(str(self._conanfile)).info(f"CMakeToolchain generated: {toolchain_file}")
-        # If we're using Intel oneAPI, we need to generate the environment file and run it
-        if self._conanfile.settings.get_safe("compiler") == "intel-cc":
-            IntelCC(self._conanfile).generate()
         # Generators like Ninja or NMake requires an active vcvars
-        elif self.generator is not None and "Visual" not in self.generator:
+        if self.generator is not None and "Visual" not in self.generator:
             VCVars(self._conanfile).generate()
 
         cache_variables = {}

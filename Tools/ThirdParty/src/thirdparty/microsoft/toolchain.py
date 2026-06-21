@@ -7,7 +7,6 @@ from jinja2 import Template
 from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.api.detect.detect_vs import vs_installation_path
 from thirdparty.build import build_jobs
-from thirdparty.intel.intel_cc import IntelCC
 from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
     msvc_platform_from_arch, vs_ide_version
 from thirdparty.errors import ConanException
@@ -107,10 +106,7 @@ class MSBuildToolchain:
         # Writing the props files
         self._write_config_toolchain(config_filename)
         self._write_main_toolchain(config_filename, condition)
-        if self._conanfile.settings.get_safe("compiler") == "intel-cc":
-            IntelCC(self._conanfile).generate()
-        else:
-            VCVars(self._conanfile).generate()
+        VCVars(self._conanfile).generate()
 
     def _runtime_library(self):
         return {
