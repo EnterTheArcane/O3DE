@@ -493,7 +493,7 @@ class Recipe(RecipeBase):
             command.extend(targets)
         if self._make_program in ["make", "jom"]:
             command.append(f"-j{build_jobs(self)}" if parallel else "-j1")
-        self.run(" ".join(command), env="buildenv")
+        self.run(" ".join(command), env="env_build")
 
     @property
     def _perl(self):
@@ -508,7 +508,7 @@ class Recipe(RecipeBase):
             if self._use_nmake:
                 self._replace_runtime_in_file(os.path.join("Configurations", "10-main.conf"))
 
-            self.run(f"{self._perl} ./Configure {args}", env="buildenv")
+            self.run(f"{self._perl} ./Configure {args}", env="env_build")
             if self._use_nmake:
                 # When `--prefix=/`, the scripts derive `\` without escaping, which
                 # causes issues on Windows

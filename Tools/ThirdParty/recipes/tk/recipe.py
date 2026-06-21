@@ -173,7 +173,7 @@ class Recipe(RecipeBase):
         with chdir(self, config_dir):
             self.run(
                 f"""nmake -nologo -f makefile.vc {' '.join([f'{k}="{v}"' for k, v in flags.items()])} {target}""",
-                env="buildenv",
+                env="env_build",
             )
 
     def build(self):
