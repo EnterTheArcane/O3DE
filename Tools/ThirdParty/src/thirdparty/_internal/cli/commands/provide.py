@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.recipe_graph import try_load_recipe_class, resolve_version
+from thirdparty._internal.loader import try_load_recipe_class, resolve_version
 from thirdparty._internal.detect import detect_platform_tag
 
 
