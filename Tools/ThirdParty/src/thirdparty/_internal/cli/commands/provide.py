@@ -6,6 +6,7 @@ from pathlib import Path
 
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph.recipe_graph import try_load_recipe_class, resolve_version
+from thirdparty._internal.detect import detect_platform_tag
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -25,7 +26,7 @@ def provide(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     version = resolve_version(cls)
-    pkg_path = build_root / name / version / "package"
+    pkg_path = build_root / name / version / detect_platform_tag() / "package"
     if not pkg_path.exists():
         print(f"[thirdparty] error: package not built: {name}/{version}", file=sys.stderr)
         sys.exit(1)

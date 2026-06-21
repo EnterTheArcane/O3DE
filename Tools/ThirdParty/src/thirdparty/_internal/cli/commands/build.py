@@ -16,7 +16,7 @@ from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.requires import Requirement
 from thirdparty.env import Environment
 from thirdparty.env.environment import generate_aggregated_env
-from thirdparty._internal.detect import detect_settings, make_conf
+from thirdparty._internal.detect import detect_settings, make_conf, detect_platform_tag
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph.recipe_graph import (
     RecipeRuntime as _RecipeRuntime,
@@ -108,15 +108,21 @@ def build(args: argparse.Namespace) -> None:
         print("[thirdparty] error: no recipes matched", file=sys.stderr)
         sys.exit(1)
 
+    # Output folders are grouped by os+arch (the host/target platform) so that builds
+    # for different platforms never collide.  See detect.platform_tag / detect_platform_tag.
+    plat = detect_platform_tag()
+
     if is_multi or resume or dry_run:
         _build_ordered(
             recipes_root, build_root, names, build_type,
             jobs=args.jobs, resume=resume, dry_run=dry_run,
             force=force, generate_only=generate_only, fail_fast=fail_fast,
+            platform_tag=plat,
         )
     else:
         _build_recipe(recipes_root, build_root, names[0], build_type, set(),
-                      jobs=args.jobs, generate_only=generate_only, force=force)
+                      jobs=args.jobs, generate_only=generate_only, force=force,
+                      platform_tag=plat)
 
 
 def _load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase]:
@@ -142,23 +148,25 @@ def _instantiate(
     name: str,
     version: str,
     build_type: str,
+    platform_tag: str,
     jobs: int | None = None,
 ) -> RecipeBase:
     recipe = make_probe_recipe(recipe_cls, recipes_root, name, version, build_type, jobs=jobs)
 
-    source_dir = str(build_root / name / version / "source")
-    build_dir = str(build_root / name / version / "build")
-    pkg_dir = str(build_root / name / version / "package")
+    pkg_root = build_root / name / version / platform_tag
+    source_dir = str(pkg_root / "source")
+    build_dir = str(pkg_root / "build")
+    pkg_dir = str(pkg_root / "package")
     gen_dir = build_dir
 
     recipe.folders.set_base_source(source_dir)
     recipe.folders.set_base_build(build_dir)
     recipe.folders.set_base_package(pkg_dir)
     recipe.folders.set_base_generators(gen_dir)
-    recipe.folders.set_base_recipe_metadata(str(build_root / name / version / ".metadata"))
+    recipe.folders.set_base_recipe_metadata(str(pkg_root / ".metadata"))
     # export_sources_folder = parent of source_dir; recipes place auxiliary files here
     # (CMakeLists.txt, patches, etc.) via export_sources() in real Recipe
-    recipe.folders.set_base_export_sources(str(build_root / name / version))
+    recipe.folders.set_base_export_sources(str(pkg_root))
 
     return recipe
 
@@ -168,6 +176,7 @@ def _build_dep_graph(
     build_root: Path,
     dep_names: list[str],
     build_type: str,
+    platform_tag: str,
     jobs: int | None = None,
     tool_names: list[str] | None = None,
     _iface_cache: dict | None = None,
@@ -207,7 +216,11 @@ def _build_dep_graph(
 
         dep_cls = _load_recipe_class(recipes_root, dep_name)
         dep_version = _resolve_version(dep_cls)
-        pkg_dir = str((build_root / dep_name / dep_version / "package").resolve())
+        # NOTE (host vs build context): tool_requires (is_build=True) run on the build
+        # machine and should resolve to the build-machine platform folder; host deps use
+        # the target platform folder.  Today build == host == platform_tag, so one tag
+        # suffices — revisit here when cross-compilation lands.
+        pkg_dir = str((build_root / dep_name / dep_version / platform_tag / "package").resolve())
 
         dep = dep_cls(display_name=dep_name)
         dep.version = dep_version
@@ -282,7 +295,7 @@ def _build_dep_graph(
             _sub_tools = [str(r.ref.name) for r in dep.requires.values() if r.build]
             dep._recipe_dependencies = _build_dep_graph(
                 recipes_root, build_root, _sub_host, build_type,
-                jobs=jobs, tool_names=_sub_tools,
+                platform_tag, jobs=jobs, tool_names=_sub_tools,
                 _iface_cache=_iface_cache,
             )
         except Exception:
@@ -315,8 +328,8 @@ def _build_dep_graph(
     return RecipeDependencies(deps_dict)
 
 
-def _is_sourced(build_root: Path, name: str, version: str) -> bool:
-    return (build_root / name / version / "source" / _COMPLETE_MARKER).is_file()
+def _is_sourced(build_root: Path, name: str, version: str, platform_tag: str) -> bool:
+    return (build_root / name / version / platform_tag / "source" / _COMPLETE_MARKER).is_file()
 
 
 _RECIPE_SKIP_NAMES = {"recipe.py", "__pycache__"}
@@ -346,6 +359,7 @@ def _build_ordered(
     dry_run: bool,
     force: bool,
     generate_only: bool,
+    platform_tag: str,
     fail_fast: bool = False,
 ) -> None:
     rgraph = build_recipe_graph(recipes_root, names, build_type, jobs=jobs)
@@ -361,7 +375,7 @@ def _build_ordered(
     print(f"\n=== Build Plan: {len(order)} recipes ({build_type}) ===")
     for i, name in enumerate(order, 1):
         version = rgraph[name].version
-        built = _is_built(build_root, name, version)
+        built = _is_built(build_root, name, version, platform_tag)
         status = "[force]" if force else ("[built]" if built else "[pending]")
         print(f"  {i:3d}. {name}/{version}  {status}")
 
@@ -381,14 +395,15 @@ def _build_ordered(
             skipped.append(name)
             continue
         version = _resolve_version(cls)
-        if not force and _is_built(build_root, name, version):
+        if not force and _is_built(build_root, name, version, platform_tag):
             skipped.append(name)
             visited.add(name)
             continue
         t0 = time.time()
         try:
             _build_recipe(recipes_root, build_root, name, build_type, visited,
-                          jobs=jobs, generate_only=generate_only, force=force)
+                          jobs=jobs, generate_only=generate_only, force=force,
+                          platform_tag=platform_tag)
             elapsed = time.time() - t0
             results.append((name, version, elapsed, None))
         except Exception as exc:
@@ -427,6 +442,7 @@ def _build_recipe(
     name: str,
     build_type: str,
     visited: set[str],
+    platform_tag: str,
     jobs: int | None = None,
     generate_only: bool = False,
     force: bool = False,
@@ -445,14 +461,14 @@ def _build_recipe(
 
     # Probe the recipe to discover its direct dependencies (even when pre-built,
     # so we can return the correct transitive dep list to our caller).
-    probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
+    probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, platform_tag, jobs=jobs)
     direct_deps, direct_tools = _get_requires(probe)
 
     # Recursively build tool dependencies that have local recipes.
     for tool_name in direct_tools:
         if (recipes_root / tool_name / "recipe.py").exists():
             _build_recipe(recipes_root, build_root, tool_name, build_type, visited,
-                          jobs=jobs, generate_only=generate_only, force=force)
+                          platform_tag, jobs=jobs, generate_only=generate_only, force=force)
 
     # Recursively build deps and collect their full transitive dep lists.
     transitive: list[str] = []
@@ -461,7 +477,7 @@ def _build_recipe(
             print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
             continue
         sub = _build_recipe(recipes_root, build_root, dep_name, build_type, visited,
-                            jobs=jobs, generate_only=generate_only, force=force)
+                            platform_tag, jobs=jobs, generate_only=generate_only, force=force)
         for d in sub:
             if d not in transitive:
                 transitive.append(d)
@@ -470,17 +486,17 @@ def _build_recipe(
         if dep_name not in transitive:
             transitive.append(dep_name)
 
-    if not generate_only and not force and _is_built(build_root, name, version):
+    if not generate_only and not force and _is_built(build_root, name, version, platform_tag):
         print(f"[thirdparty] {name}/{version} already built — skipping")
         return transitive
 
     # Build the dependency graph for this recipe from all transitive deps.
-    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type, jobs=jobs,
-                                 tool_names=direct_tools)
+    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type, platform_tag,
+                                 jobs=jobs, tool_names=direct_tools)
 
     print(f"\n[thirdparty] === Building {name}/{version} ({build_type}) ===\n")
 
-    recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, jobs=jobs)
+    recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type, platform_tag, jobs=jobs)
     recipe._recipe_dependencies = dep_graph
 
     # Propagate conf_info from tool dependencies into recipe.conf so that, e.g.,
@@ -554,7 +570,7 @@ def _build_recipe(
         src_folder = Path(recipe.source_folder)
         src_folder.mkdir(parents=True, exist_ok=True)
         # Only run source() once per package; skip if already completed successfully.
-        if not _is_sourced(build_root, name, version):
+        if not _is_sourced(build_root, name, version, platform_tag):
             # Wipe any partial state from a previous failed source() attempt
             shutil.rmtree(src_folder, ignore_errors=True)
             src_folder.mkdir(parents=True, exist_ok=True)

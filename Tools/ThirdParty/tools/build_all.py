@@ -28,7 +28,7 @@ sys.path.insert(0, str(REPO / "src"))
 from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty.env import Environment
-from thirdparty._internal.detect import detect_settings, make_conf
+from thirdparty._internal.detect import detect_settings, make_conf, detect_platform_tag
 
 
 class _PassthroughWrapper:
@@ -112,7 +112,7 @@ def _topo_sort(graph: dict[str, list[str]]) -> list[str]:
 
 
 def _is_built(build_root: Path, name: str, version: str) -> bool:
-    pkg = build_root / name / version / "package"
+    pkg = build_root / name / version / detect_platform_tag() / "package"
     return pkg.exists() and any(pkg.iterdir())
 
 

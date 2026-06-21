@@ -135,6 +135,41 @@ def detect_settings(build_type="Release"):
     return settings
 
 
+def platform_tag(settings) -> str:
+    """Return the output-folder platform tag for *settings*, e.g. ``windows-x86_64``.
+
+    Build outputs are grouped by OS and architecture so that packages built for
+    different platforms never share an output folder.  The tag is derived from the
+    *host* settings (the platform the package will run on) — which is what governs
+    binary compatibility — NOT the build machine.
+
+    NOTE on HOST vs BUILD context: tools that run during the build (``tool_requires``
+    such as cmake/ninja/nasm) must be built/located for the *build machine* and so
+    should use the build-machine tag, while regular library dependencies use the
+    host/target tag.  Today host == build == the detected machine, so a single tag
+    is correct; when cross-compilation is introduced this distinction matters.
+    """
+    os_name = str(getattr(settings, "os", None) or "unknown").lower()
+    arch = str(getattr(settings, "arch", None) or "unknown").lower()
+    return f"{os_name}-{arch}"
+
+
+def detect_platform_tag() -> str:
+    """Lightweight platform tag for the current machine (no compiler probing).
+
+    Produces the same string as :func:`platform_tag` applied to
+    :func:`detect_settings`, but without shelling out to detect the compiler — cheap
+    enough to call for status display (e.g. the ``list`` command).
+    """
+    the_os = platform.system()
+    os_name = {"Darwin": "macos", "Windows": "windows", "Linux": "linux"}.get(
+        the_os, the_os.lower()
+    )
+    machine = platform.machine().lower()
+    arch = "armv8" if ("arm64" in machine or "aarch64" in machine) else "x86_64"
+    return f"{os_name}-{arch}"
+
+
 def make_conf(jobs=None):
     conf = Conf()
     conf.define("tools.cmake.cmaketoolchain:generator", "Ninja")
