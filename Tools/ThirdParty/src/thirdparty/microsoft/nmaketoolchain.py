@@ -115,4 +115,3 @@ class NMakeToolchain:
         env = env or self.environment()
         env.vars(self._recipe, scope=scope).save_script("nmaketoolchain")
         VCVars(self._recipe).generate(scope=scope)
-

@@ -68,4 +68,3 @@ class Recipe(RecipeBase):
             self.cpp_info.system_libs.append("m")
         if not self.options.shared:
             self.cpp_info.defines.append("OPENDDL_STATIC_LIBARY")
-

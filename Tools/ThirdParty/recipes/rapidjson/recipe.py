@@ -32,4 +32,3 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_target_name", "rapidjson")
         self.cpp_info.bindirs = []
         self.cpp_info.libdirs = []
-

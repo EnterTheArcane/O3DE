@@ -43,4 +43,3 @@ def parse_extra_variable(source, key, value):
 
 def cmake_escape_value(v):
     return v.replace('\\', '\\\\').replace('$', '\\$').replace('"', '\\"')
-

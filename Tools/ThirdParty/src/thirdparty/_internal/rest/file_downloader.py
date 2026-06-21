@@ -143,6 +143,3 @@ class FileDownloader:
             # If this part failed, it means problems with the connection to server
             raise ConnectionErrorException("Download failed, check server, possibly try again\n%s"
                                            % str(e))
-
-
-

@@ -196,6 +196,3 @@ class Profile:
         Specified package settings are prioritized to profile"""
         for package_name, settings in package_settings.items():
             self.package_settings[package_name].update(settings)
-
-
-

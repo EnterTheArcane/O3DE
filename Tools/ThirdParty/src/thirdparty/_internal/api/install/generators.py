@@ -187,6 +187,3 @@ def relativize_path(path, recipe, placeholder, normalize=True):
     except ValueError:  # In case the unit in Windows is different, path cannot be made relative
         pass
     return path
-
-
-

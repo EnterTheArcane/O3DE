@@ -131,6 +131,3 @@ class FileTreeManifest:
             if h != h2:
                 result[f] = h2, h
         return result
-
-
-

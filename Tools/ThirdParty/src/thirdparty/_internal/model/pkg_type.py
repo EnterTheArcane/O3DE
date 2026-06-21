@@ -66,6 +66,3 @@ class PackageType(Enum):
             recipe.package_type = recipe_type
         else:  # automatic default detection with option shared/header-only
             recipe.package_type = deduce_from_options()
-
-
-

@@ -253,4 +253,3 @@ def _get_toolset_props(recipe):
         if folder.startswith(vcvars_ver):
             result = folder
             return os.path.join(basebuild, result, f"Microsoft.VCToolsVersion.{result}.props")
-

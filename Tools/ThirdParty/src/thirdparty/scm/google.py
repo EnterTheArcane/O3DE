@@ -43,4 +43,3 @@ class GoogleSourceRepository:
         if best_tag is None:
             raise RuntimeError(f"no version-like tags found at {self._url}")
         return best_tag
-

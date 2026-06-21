@@ -438,7 +438,3 @@ def _profile_parse_args(settings, options, conf):
 def migrate_profile_plugin(cache_folder):
     profile_plugin_file = HomePaths(cache_folder).profile_plugin_path
     update_file(profile_plugin_file, _default_profile_plugin)
-
-
-
-

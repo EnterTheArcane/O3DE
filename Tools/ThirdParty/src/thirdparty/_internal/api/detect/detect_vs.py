@@ -132,6 +132,3 @@ def vswhere(all_=False, prerelease=True, products=None, requires=None, version="
         raise RecipeException("vswhere error: %s" % str(e))
 
     return json.loads(output)
-
-
-

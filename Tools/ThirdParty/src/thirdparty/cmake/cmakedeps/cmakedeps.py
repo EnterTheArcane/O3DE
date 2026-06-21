@@ -226,4 +226,3 @@ class CMakeDeps:
     def get_transitive_requires(self, recipe):
         # Prepared to filter transitive tool-requires with visible=True
         return get_transitive_requires(self._recipe, recipe)
-

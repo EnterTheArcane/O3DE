@@ -91,6 +91,3 @@ EXPORT_FILE_NAME = "recipe_export.t"
 EXPORT_SOURCES_FILE_NAME = "recipe_sources.t"
 COMPRESSIONS = "gz", "xz", "zst"
 DATA_YML = "data.yml"
-
-
-

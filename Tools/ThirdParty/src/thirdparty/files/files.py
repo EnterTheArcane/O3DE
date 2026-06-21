@@ -658,4 +658,3 @@ def move_folder_contents(recipe, src_folder, dst_folder):
         os.rmdir(src_folder)
     except OSError:
         pass
-

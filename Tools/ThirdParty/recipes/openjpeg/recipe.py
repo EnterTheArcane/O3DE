@@ -136,4 +136,3 @@ class Recipe(RecipeBase):
             self.cpp_info.system_libs = ["pthread", "m"]
         elif self.settings.os == "Android":
             self.cpp_info.system_libs = ["m"]
-

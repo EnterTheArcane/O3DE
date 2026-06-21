@@ -239,4 +239,3 @@ class Recipe(RecipeBase):
         tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(os.path.join(self.package_folder, "bin"))))
         tclsh = os.path.join(self.package_folder, "bin", tclsh_list[0])
         self.runenv_info.define_path("TCLSH", tclsh)
-

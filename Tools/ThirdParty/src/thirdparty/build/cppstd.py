@@ -284,4 +284,3 @@ def _emcc_supported_cppstd(version):
         return _clang_supported_cppstd(Version("20"))
     # Since emcc 4.0.2 clang version is 21
     return _clang_supported_cppstd(Version("21"))
-

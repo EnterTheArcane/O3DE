@@ -93,4 +93,3 @@ class GnuDepsFlags:
 
         path = subsystem_path(self._subsystem, path)
         return '"%s"' % path if ' ' in path else path
-

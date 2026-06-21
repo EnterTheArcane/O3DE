@@ -164,4 +164,3 @@ def _copy_files_symlinked_to_folders(files_symlinked_to_folders, src, dst):
         os.symlink(link_dst, symlink_path)
         copied_files.append(symlink_path)
     return copied_files
-

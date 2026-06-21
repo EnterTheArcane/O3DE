@@ -399,4 +399,3 @@ class GnuToolchain:
         }
         save_toolchain_args(args, namespace=self._namespace)
         VCVars(self._recipe).generate()
-

@@ -923,6 +923,3 @@ class CppInfo:
             comp.deduce_locations(recipe, component_name=comp_name)
 
         return result
-
-
-

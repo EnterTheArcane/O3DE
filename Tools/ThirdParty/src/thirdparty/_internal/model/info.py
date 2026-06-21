@@ -485,6 +485,3 @@ class PackageIdInfo:
             self.settings.validate()
         except RecipeException as e:
             self.invalid = str(e)
-
-
-

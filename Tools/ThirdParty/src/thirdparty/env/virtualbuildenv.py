@@ -91,4 +91,3 @@ class VirtualBuildEnv:
         check_duplicated_generator(self, self._recipe)
         build_env = self.environment()
         build_env.vars(self._recipe, scope=scope).save_script(self._filename)
-

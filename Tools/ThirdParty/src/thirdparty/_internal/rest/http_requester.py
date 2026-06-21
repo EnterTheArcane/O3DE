@@ -203,6 +203,3 @@ def _load_auth_source_plugin(auth_source_plugin_path):
     if os.path.exists(auth_source_plugin_path):
         mod, _ = load_python_file(auth_source_plugin_path)
         return getattr(mod, "auth_source_plugin", None)
-
-
-

@@ -103,6 +103,3 @@ def check_output_runner(cmd, stderr=None, ignore_error=False):
             os.unlink(tmp_file)
         except OSError:
             pass
-
-
-
