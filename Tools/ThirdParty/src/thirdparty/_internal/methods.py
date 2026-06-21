@@ -76,7 +76,6 @@ def run_package_method(recipe, package_id, hook_manager, ref):
     prev = manifest.summary_hash
     scoped_output.info("Created package revision %s" % prev)
     pref = PkgReference(ref, package_id)
-    pref.revision = prev
     scoped_output.success("Package '%s' created" % package_id)
     scoped_output.success("Full package reference: {}".format(pref.repr_notime()))
     return prev

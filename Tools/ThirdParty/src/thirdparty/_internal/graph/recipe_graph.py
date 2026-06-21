@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -86,21 +85,20 @@ class VersionResolvingRequirements:
 # Recipe class loading / version resolution
 # ---------------------------------------------------------------------------
 def try_load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase] | None:
-    """Load the ``Recipe`` class from ``recipes/<name>/recipe.py``.
+    """Load the recipe class from ``recipes/<name>/recipe.py``.
 
-    Returns ``None`` if the recipe does not exist or fails to import/validate.
+    Delegates to the central recipe parser (``_parse_recipe``), which loads the file under
+    a lock with a unique module id, inserts the recipe directory on ``sys.path`` so recipes
+    can import sibling helpers, and validates that exactly one RecipeBase subclass is
+    defined.  Returns ``None`` if the recipe is missing or fails to load/validate.
     """
     recipe_path = recipes_root / name / "recipe.py"
     if not recipe_path.exists():
         return None
     try:
-        spec = importlib.util.spec_from_file_location(f"_recipe_{name}", recipe_path)
-        if spec is None or spec.loader is None:
-            return None
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        cls = getattr(module, "Recipe", None)
-        return cls if (cls and isinstance(cls, type) and issubclass(cls, RecipeBase)) else None
+        from thirdparty._internal.loader import _parse_recipe
+        _module, cls = _parse_recipe(str(recipe_path))
+        return cls if (isinstance(cls, type) and issubclass(cls, RecipeBase)) else None
     except Exception:
         return None
 
@@ -108,6 +106,14 @@ def try_load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase] | N
 def resolve_version(recipe_cls: type[RecipeBase]) -> str:
     v = getattr(recipe_cls, "version", None)
     return str(v) if v else "latest"
+
+
+COMPLETE_MARKER = ".complete"
+
+
+def is_built(build_root: Path, name: str, version: str) -> bool:
+    """True if ``name/version`` has a completed build (the build-phase marker exists)."""
+    return (build_root / name / version / "build" / COMPLETE_MARKER).is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +147,9 @@ def make_probe_recipe(
     recipe._recipe_buildenv = Environment()
     recipe._recipe_runenv = Environment()
     recipe.requires = VersionResolvingRequirements(recipe.requires, recipes_root)
+    # Mirror RecipeLoader: run the recipe's init() hook if it defines one.
+    if hasattr(recipe, "init") and callable(recipe.init):
+        recipe.init()
     return recipe
 
 
@@ -252,14 +261,25 @@ def build_recipe_graph(
     names: list[str],
     build_type: str,
     jobs: int | None = None,
+    transitive: bool = False,
 ) -> RecipeGraph:
-    """Resolve the direct dependencies of each recipe in ``names`` and return a graph.
+    """Resolve the dependencies of each recipe in ``names`` and return a graph.
 
-    Recipes that fail to load or probe are still included as nodes with no dependencies,
-    so callers can report them rather than silently dropping them.
+    With ``transitive=False`` only the listed recipes become nodes.  With
+    ``transitive=True`` the graph is expanded to the full transitive closure of the
+    listed recipes (every reachable local dependency becomes a node too).
+
+    Recipes/deps that fail to load or probe are still included as nodes with no
+    dependencies, so callers can report them rather than silently dropping them.
     """
     nodes: dict[str, RecipeGraphNode] = {}
-    for name in names:
+    queue: list[str] = list(names)
+    seen: set[str] = set()
+    while queue:
+        name = queue.pop(0)
+        if name in seen:
+            continue
+        seen.add(name)
         cls = try_load_recipe_class(recipes_root, name)
         if cls is None:
             nodes[name] = RecipeGraphNode(name=name, version="?", recipe_cls=None)
@@ -274,4 +294,9 @@ def build_recipe_graph(
             name=name, version=version, recipe_cls=cls,
             host_deps=host_deps, tool_deps=tool_deps,
         )
+        if transitive:
+            for dep in host_deps + tool_deps:
+                if dep not in seen:
+                    queue.append(dep)
     return RecipeGraph(nodes)
+

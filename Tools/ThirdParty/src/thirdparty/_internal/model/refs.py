@@ -4,100 +4,62 @@ from functools import total_ordering
 
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
-from thirdparty._internal.util.dates import timestamp_to_str
 
 
 @total_ordering
 class RecipeReference:
-    """Concrete recipe reference: ``name/version[@user/channel][#revision][%timestamp]``."""
+    """Recipe reference: ``name/version``.
 
-    def __init__(self, name=None, version=None, user=None, channel=None, revision=None,
-                 timestamp=None):
+    This system has no user/channel/revision/timestamp coordinates — a recipe is
+    identified solely by its name, and each name maps to exactly one version.
+    """
+
+    def __init__(self, name=None, version=None):
         self.name: str = name
         if version is not None and not isinstance(version, Version):
             version = Version(version)
         self.version: Version = version
-        self.user = user
-        self.channel = channel
-        self.revision = revision
-        self.timestamp = timestamp
 
     def copy(self):
-        return RecipeReference(self.name, self.version, self.user, self.channel, self.revision,
-                               self.timestamp)
+        return RecipeReference(self.name, self.version)
 
     def __repr__(self):
-        result = self.repr_notime()
-        if self.timestamp is not None:
-            result += f"%{self.timestamp}"
-        return result
+        return str(self)
 
     def repr_notime(self):
-        result = str(self)
-        if self.revision is not None:
-            result += f"#{self.revision}"
-        return result
+        return str(self)
 
     def repr_humantime(self):
-        result = self.repr_notime()
-        assert self.timestamp
-        result += f" ({timestamp_to_str(self.timestamp)})"
-        return result
+        return str(self)
 
     def __str__(self):
         if self.name is None:
             return ""
-        result = "/".join([self.name, str(self.version)])
-        if self.user:
-            result += f"@{self.user}"
-        if self.channel:
-            assert self.user
-            result += f"/{self.channel}"
-        return result
+        return "/".join([self.name, str(self.version)])
 
     def __lt__(self, ref):
-        return (self.name, self.version, self.user or "", self.channel or "", self.timestamp or 0,
-                self.revision or "") < \
-               (ref.name, ref.version, ref.user or "", ref.channel or "", ref.timestamp or 0,
-                ref.revision or "")
+        return (self.name, self.version) < (ref.name, ref.version)
 
     def __eq__(self, ref):
         if ref is None:
             return False
-        if self.revision is not None and ref.revision is not None:
-            return (self.name, self.version, self.user, self.channel, self.revision) == \
-                   (ref.name, ref.version, ref.user, ref.channel, ref.revision)
-        return (self.name, self.version, self.user, self.channel) == \
-               (ref.name, ref.version, ref.user, ref.channel)
+        return (self.name, self.version) == (ref.name, ref.version)
 
     def __hash__(self):
-        return hash((self.name, self.version, self.user, self.channel))
+        return hash((self.name, self.version))
 
     @staticmethod
     def loads(rref):
         try:
-            tokens = rref.rsplit("%", 1)
-            text = tokens[0]
-            timestamp = float(tokens[1]) if len(tokens) == 2 else None
-
-            tokens = text.split("#", 1)
-            ref = tokens[0]
-            revision = tokens[1] if len(tokens) == 2 else None
-
-            tokens = ref.split("@", 1)
-            name, version = tokens[0].split("/", 1)
+            # Tolerate (and discard) any legacy @user/channel, #revision or %timestamp suffix.
+            text = rref.split("%", 1)[0].split("#", 1)[0].split("@", 1)[0]
+            name, version = text.split("/", 1)
             assert name and version
-            if len(tokens) == 2 and tokens[1]:
-                tokens = tokens[1].split("/", 1)
-                user = tokens[0] if tokens[0] else None
-                channel = tokens[1] if len(tokens) == 2 else None
-            else:
-                user = channel = None
-            return RecipeReference(name, version, user, channel, revision, timestamp)
+            return RecipeReference(name, version)
         except Exception:
             raise RecipeException(
                 f"{rref} is not a valid recipe reference, provide a reference"
-                f" in the form name/version[@user/channel]"
+                f" in the form name/version"
             )
 
     def validate_ref(self, allow_uppercase=False):
@@ -123,20 +85,9 @@ class RecipeReference:
             raise RecipeException(f"Invalid package name '{self.name}'")
         if validation_pattern.match(str(self.version)) is None:
             raise RecipeException(f"Invalid package version '{self.version}'")
-        if self.user and validation_pattern.match(self.user) is None:
-            raise RecipeException(f"Invalid package user '{self.user}'")
-        if self.channel and validation_pattern.match(self.channel) is None:
-            raise RecipeException(f"Invalid package channel '{self.channel}'")
 
-        pattern = re.compile(r"[.+]")
-        if pattern.search(self.name):
+        if re.compile(r"[.+]").search(self.name):
             Output().warning(f"Name containing special chars is discouraged '{self.name}'")
-        if self.user and pattern.search(self.user):
-            Output().warning(f"User containing special chars is discouraged '{self.user}'")
-        if self.channel and pattern.search(self.channel):
-            Output().warning(
-                f"Channel containing special chars is discouraged '{self.channel}'"
-            )
 
     def matches(self, pattern, is_consumer):
         negate = False
@@ -144,70 +95,37 @@ class RecipeReference:
             pattern = pattern[1:]
             negate = True
 
-        no_user_channel = False
+        # ``@`` / ``@#`` suffixes meant "no user/channel"; always true here, just strip them.
         if pattern.endswith("@"):
             pattern = pattern[:-1]
-            no_user_channel = True
         elif "@#" in pattern:
             pattern = pattern.replace("@#", "#")
-            no_user_channel = True
 
         condition = ((pattern == "&" and is_consumer) or
-                     fnmatch.fnmatchcase(str(self), pattern) or
-                     fnmatch.fnmatchcase(self.repr_notime(), pattern))
-        if no_user_channel:
-            condition = condition and not self.user and not self.channel
+                     fnmatch.fnmatchcase(str(self), pattern))
         return not condition if negate else condition
 
     def partial_match(self, pattern):
-        tokens = [self.name, "/", str(self.version)]
-        if self.user:
-            tokens += ["@", self.user]
-        if self.channel:
-            tokens += ["/", self.channel]
-        if self.revision:
-            tokens += ["#", self.revision]
         partial = ""
-        for token in tokens:
+        for token in (self.name, "/", str(self.version)):
             partial += token
             if pattern.match(partial):
                 return True
 
 
 class PkgReference:
-    def __init__(self, ref=None, package_id=None, revision=None, timestamp=None):
+    def __init__(self, ref=None, package_id=None):
         self.ref = ref
         self.package_id = package_id
-        self.revision = revision
-        self.timestamp = timestamp
 
     def __repr__(self):
-        if self.ref is None:
-            return ""
-        result = repr(self.ref)
-        if self.package_id:
-            result += f":{self.package_id}"
-        if self.revision is not None:
-            result += f"#{self.revision}"
-        if self.timestamp is not None:
-            result += f"%{self.timestamp}"
-        return result
+        return str(self)
 
     def repr_notime(self):
-        if self.ref is None:
-            return ""
-        result = self.ref.repr_notime()
-        if self.package_id:
-            result += f":{self.package_id}"
-        if self.revision is not None:
-            result += f"#{self.revision}"
-        return result
+        return str(self)
 
     def repr_humantime(self):
-        result = self.repr_notime()
-        assert self.timestamp
-        result += f" ({timestamp_to_str(self.timestamp)})"
-        return result
+        return str(self)
 
     def __str__(self):
         if self.ref is None:
@@ -221,11 +139,10 @@ class PkgReference:
         raise Exception("WHO IS COMPARING PACKAGE REFERENCES?")
 
     def __eq__(self, other):
-        return self.ref == other.ref and self.package_id == other.package_id and \
-               self.revision == other.revision
+        return self.ref == other.ref and self.package_id == other.package_id
 
     def __hash__(self):
-        return hash((self.ref, self.package_id, self.revision))
+        return hash((self.ref, self.package_id))
 
     @staticmethod
     def loads(pkg_ref):
@@ -233,20 +150,12 @@ class PkgReference:
             tokens = pkg_ref.split(":", 1)
             assert len(tokens) == 2
             ref, pkg_id = tokens
-
             ref = RecipeReference.loads(ref)
-
-            tokens = pkg_id.rsplit("%", 1)
-            text = tokens[0]
-            timestamp = float(tokens[1]) if len(tokens) == 2 else None
-
-            tokens = text.split("#", 1)
-            package_id = tokens[0]
-            revision = tokens[1] if len(tokens) == 2 else None
-
-            return PkgReference(ref, package_id, revision, timestamp)
+            # Tolerate (and discard) any legacy #revision or %timestamp suffix on the package id.
+            package_id = pkg_id.split("%", 1)[0].split("#", 1)[0]
+            return PkgReference(ref, package_id)
         except Exception:
             raise RecipeException(
                 f"{pkg_ref} is not a valid package reference, provide a reference"
-                f" in the form name/version[@user/channel:package_id]"
+                f" in the form name/version:package_id"
             )
