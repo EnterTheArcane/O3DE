@@ -374,8 +374,9 @@ class RecipeBase:
         :parameter cwd: The current working directory to run the command in.
         :parameter ignore_errors: If ``True``, do not raise an error if the command returns a
             non-zero exit code.
-        :parameter env: The environment file to use. If empty, it defaults to ``"buildenv"`` for
-            when ``scope`` is ``build`` or ``"runenv"`` for ``run``.
+        :parameter env: The environment file to use. If empty, it defaults to ``"env_build"`` for
+            when ``scope`` is ``build`` or ``"env_run"`` for ``run`` (the aggregated environment
+            files produced by ``generate_aggregated_env``, which include vcvars on Windows).
             If set to ``None`` explicitly, no environment file will be applied,
             which is useful for commands that do not require any environment.
         :parameter quiet: If ``True``, suppress the output of the command.
@@ -386,7 +387,7 @@ class RecipeBase:
         command = self._recipe_runtime.cmd_wrapper.wrap(command, recipe=self)
         if env == "":  # This default allows not breaking for users with ``env=None`` indicating
             # they don't want any env-file applied
-            env = "buildenv" if scope == "build" else "runenv"
+            env = "env_build" if scope == "build" else "env_run"
 
         env = [env] if env and isinstance(env, str) else (env or [])
         assert isinstance(env, list), "env argument to RecipeBase.run() should be a list"

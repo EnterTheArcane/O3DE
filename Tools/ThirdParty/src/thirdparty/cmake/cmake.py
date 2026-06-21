@@ -294,7 +294,7 @@ class CMake:
 
         # CTest behavior controlled by CTEST_ env-vars should be directly defined in [buildenv]
         # The default for ``test()`` is both the buildenv and the runenv
-        env = ["buildenv", "runenv"] if env == "" else env
+        env = ["env_build", "env_run"] if env == "" else env
         self._build(build_type=build_type, target=target, cli_args=cli_args,
                     build_tool_args=build_tool_args, env=env, stdout=stdout, stderr=stderr)
 
@@ -336,7 +336,7 @@ class CMake:
         arg_list = " ".join(filter(None, arg_list))
         command = f"ctest {arg_list}"
 
-        env = ["buildenv", "runenv"] if env == "" else env
+        env = ["env_build", "env_run"] if env == "" else env
         self._recipe.run(command, env=env, stdout=stdout, stderr=stderr)
 
     @property

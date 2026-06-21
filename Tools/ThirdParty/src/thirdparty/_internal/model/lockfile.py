@@ -10,7 +10,6 @@ from thirdparty._internal.model.version_range import VersionRange
 from thirdparty._internal.util.files import load, save
 
 LOCKFILE = "recipe.lock"
-LOCKFILE_VERSION = "0.5"
 
 
 class _LockRequires:
@@ -225,10 +224,6 @@ class Lockfile:
         """ constructs a GraphLock from a json like dict
         """
         graph_lock = Lockfile()
-        version = data.get("version")
-        if version and version != LOCKFILE_VERSION:
-            raise RecipeException("This lockfile was created with an incompatible "
-                                 "version. Please regenerate the lockfile")
         if "requires" in data:
             graph_lock._requires = _LockRequires.deserialize(data["requires"])
         if "build_requires" in data:
@@ -248,7 +243,7 @@ class Lockfile:
         """ returns the object serialized as a dict of plain python types
         that can be converted to json
         """
-        result = {"version": LOCKFILE_VERSION}
+        result = {}
         if self._requires:
             result["requires"] = self._requires.serialize()
         if self._build_requires:
