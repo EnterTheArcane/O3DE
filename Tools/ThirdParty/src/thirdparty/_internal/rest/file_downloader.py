@@ -3,7 +3,7 @@ import re
 import time
 
 
-from thirdparty._internal.api.output import Output, TimedOutput
+from thirdparty._internal.output import Output, TimedOutput
 from thirdparty._internal.rest import response_to_str
 from thirdparty._internal.errors import (ConnectionErrorException, RequestErrorException,
                                    AuthenticationException, ForbiddenException, NotFoundException)

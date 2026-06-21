@@ -5,7 +5,7 @@ from thirdparty.cmake.cmakedeps import FIND_MODE_NONE, FIND_MODE_CONFIG, FIND_MO
     FIND_MODE_BOTH
 from thirdparty.cmake.cmakedeps.templates import CMakeDepsFileTemplate
 from thirdparty.errors import RecipeException
-from thirdparty._internal.api.install.generators import relativize_path
+from thirdparty._internal.util.generators import relativize_path
 from thirdparty.cmake.utils import cmake_escape_value
 
 """

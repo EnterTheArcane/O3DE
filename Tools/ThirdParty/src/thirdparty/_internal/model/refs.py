@@ -101,7 +101,7 @@ class RecipeReference:
             )
 
     def validate_ref(self, allow_uppercase=False):
-        from thirdparty._internal.api.output import Output
+        from thirdparty._internal.output import Output
 
         self_str = str(self)
         if self_str != self_str.lower():

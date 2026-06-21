@@ -11,7 +11,7 @@ import yaml
 
 from pathlib import Path
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty.cmake import cmake_layout
 from thirdparty.google import bazel_layout
 from thirdparty.microsoft import vs_layout

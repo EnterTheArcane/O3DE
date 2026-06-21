@@ -37,7 +37,7 @@ def remove_if_dirty(item):
     if is_dirty(item):
         if os.path.exists(item):
             # To avoid circular import in recipe_server
-            from thirdparty._internal.api.output import Output
+            from thirdparty._internal.output import Output
             Output().warning(f"{item} is dirty, removing it")
             if os.path.isfile(item):
                 os.remove(item)

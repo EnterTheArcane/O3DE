@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -9,9 +8,9 @@ from pathlib import Path
 import colorama
 from colorama import Fore, Style
 
-from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.cli.command import command
+from thirdparty._internal.graph.recipe_graph import try_load_recipe_class
 
 _BUMP_COLOR = {
     "major": Fore.RED,
@@ -55,10 +54,9 @@ def outdated(args: argparse.Namespace) -> None:
         recipe_path = recipe_dir / "recipe.py"
         if not recipe_path.exists():
             continue
-        try:
-            cls = _load_recipe_class(recipe_path, name)
-        except Exception as exc:
-            rows.append((name, "?", "?", f"load-error: {exc}", None))
+        cls = try_load_recipe_class(recipes_root, name)
+        if cls is None:
+            rows.append((name, "?", "?", "load-error", None))
             continue
         if not hasattr(cls, "latest_version"):
             missing_rows.append((name, str(getattr(cls, "version", "?"))))
@@ -126,18 +124,6 @@ def _check_recipe(name: str, cls: type) -> tuple[str, str, str, str, str | None]
     if cur_v == lat_v:
         return (name, str(cur_v), str(lat_v), "up-to-date", None)
     return (name, str(cur_v), str(lat_v), "ahead", None)
-
-
-def _load_recipe_class(recipe_path: Path, name: str) -> type[RecipeBase]:
-    spec = importlib.util.spec_from_file_location(f"_recipe_{name}", recipe_path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot load {recipe_path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    cls = getattr(module, "Recipe", None)
-    if cls is None or not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
-        raise RuntimeError(f"{recipe_path} has no Recipe class")
-    return cls
 
 
 def _print_missing(rows: list[tuple[str, str]]) -> None:

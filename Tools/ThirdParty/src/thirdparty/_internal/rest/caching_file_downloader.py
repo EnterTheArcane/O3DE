@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty._internal.cache.home_paths import HomePaths
 from thirdparty._internal.rest.file_downloader import FileDownloader
 from thirdparty._internal.rest.download_cache import DownloadCache

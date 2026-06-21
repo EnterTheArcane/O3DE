@@ -8,7 +8,7 @@ from jinja2 import Template
 
 from thirdparty._internal import check_duplicated_generator
 from thirdparty.errors import RecipeException
-from thirdparty._internal.api.install.generators import relativize_path
+from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty.microsoft.visual import msvc_platform_from_arch
 from thirdparty._internal.util.files import load, save

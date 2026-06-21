@@ -39,7 +39,7 @@ def recipe_exception_formatter(recipe, funcname):
         raise RecipeInvalidConfiguration(msg)
     except Exception as exc:
         m = scoped_traceback(f"{recipe}: Error in {funcname}() method", exc, scope="recipe.py")
-        from thirdparty._internal.api.output import LEVEL_DEBUG, Output
+        from thirdparty._internal.output import LEVEL_DEBUG, Output
         if Output.level_allowed(LEVEL_DEBUG):
             m = traceback.format_exc() + "\n" + m
         raise RecipeException(m)

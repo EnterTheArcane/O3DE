@@ -2,7 +2,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from thirdparty._internal.api.output import Output, Color, LEVEL_QUIET
+from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.cpp_info import MockInfoProperty

@@ -1,7 +1,7 @@
 import operator
 
 from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
-from thirdparty._internal.api.detect.detect_api import default_cppstd as default_cppstd_
+from thirdparty._internal.detect_api import default_cppstd as default_cppstd_
 from thirdparty._internal.model.version import Version
 
 

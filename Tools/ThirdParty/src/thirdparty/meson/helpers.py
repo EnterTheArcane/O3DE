@@ -1,4 +1,4 @@
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 from thirdparty._internal.model.options import _PackageOption
 

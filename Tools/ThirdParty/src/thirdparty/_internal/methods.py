@@ -1,6 +1,6 @@
 import os
 
-from thirdparty._internal.api.output import Output
+from thirdparty._internal.output import Output
 from thirdparty.errors import RecipeException
 from thirdparty._internal.errors import recipe_exception_formatter, recipe_remove_attr
 from thirdparty._internal.paths import PACKAGE_INFO
