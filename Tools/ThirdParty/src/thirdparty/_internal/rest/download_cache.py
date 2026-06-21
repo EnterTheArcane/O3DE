@@ -153,6 +153,3 @@ class DownloadCache:
         summary_dump = json.dumps(summary)
         recipe.output.debug(f"New summary: ${summary_dump}")
         save(summary_path, json.dumps(summary))
-
-
-

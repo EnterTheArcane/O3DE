@@ -422,6 +422,3 @@ class Options:
         # is the way to access dependencies (in other methods)
         self._deps_package_options = {}
         return self_options, upstream_options, private_deps_options
-
-
-

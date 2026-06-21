@@ -197,6 +197,3 @@ class PackageCacheDownloader:
             # Everything good, file in the cache, just copy it to final destination
             mkdir(os.path.dirname(file_path))
             shutil.copy2(cached_path, file_path)
-
-
-

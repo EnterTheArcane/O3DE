@@ -50,6 +50,3 @@ class TextINIParse:
             if self._allowed_fields and name not in self._allowed_fields:
                 raise RecipeException("ConfigParser: Unrecognized field '%s'" % name)
             return ""
-
-
-

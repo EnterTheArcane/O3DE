@@ -131,4 +131,3 @@ class Recipe(RecipeBase):
         self.cpp_info.components["webpmux"].requires = ["webp"]
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
             self.cpp_info.components["webpmux"].system_libs = ["m"]
-

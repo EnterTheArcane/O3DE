@@ -139,6 +139,3 @@ EXCEPTION_CODE_MAPPING = {InternalErrorException: 500,
                           NotFoundException: 404,
                           RecipeNotFoundException: 404,
                           PackageNotFoundException: 404}
-
-
-

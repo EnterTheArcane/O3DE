@@ -582,4 +582,3 @@ def cstd_msvc_flag(visual_version, cstd):
 def _cstd_msvc(visual_version, cstd):
     flag = cstd_msvc_flag(visual_version, cstd)
     return f'/std:{flag}' if flag else None
-

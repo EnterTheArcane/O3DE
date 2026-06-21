@@ -340,6 +340,3 @@ def copytree_compat(source_folder, dest_folder):
     else:
         from distutils.dir_util import copy_tree
         copy_tree(source_folder, dest_folder)
-
-
-

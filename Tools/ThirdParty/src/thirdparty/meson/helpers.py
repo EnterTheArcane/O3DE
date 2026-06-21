@@ -137,4 +137,3 @@ def to_cstd_flag(recipe, cstd):
     if disable_flag(recipe, "cppstd"):
         return None
     return cstd if cstd.startswith("gnu") else f"c{cstd}"
-

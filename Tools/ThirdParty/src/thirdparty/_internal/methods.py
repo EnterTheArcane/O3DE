@@ -165,6 +165,3 @@ def auto_language(recipe):
     if "C++" not in recipe.languages:
         recipe.settings.rm_safe("compiler.cppstd")
         recipe.settings.rm_safe("compiler.libcxx")
-
-
-

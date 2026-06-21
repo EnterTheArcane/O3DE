@@ -685,4 +685,3 @@ class MakeDeps:
 
         save(self._recipe, RECIPE_MAKEFILE_FILENAME, content_buffer)
         self._recipe.output.info(f"Generated {RECIPE_MAKEFILE_FILENAME}")
-

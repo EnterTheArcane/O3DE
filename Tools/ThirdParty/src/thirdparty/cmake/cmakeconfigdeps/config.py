@@ -174,4 +174,3 @@ class ConfigTemplate2:
         set({{ key }} {{ value }})
         {% endfor %}
         """)
-

@@ -109,4 +109,3 @@ def get_build_folder_custom_vars(recipe):
 
     user_defined_build = "settings.build_type" in build_vars
     return "-".join(ret), user_defined_build
-

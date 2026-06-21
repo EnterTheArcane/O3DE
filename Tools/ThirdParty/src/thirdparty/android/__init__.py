@@ -6,4 +6,3 @@ def CppInfo(recipe):
     # that at the moment doesn't require a ``recipe`` argument, but might require in the future
     # and allow us to refactor the location of recipe_model.build_info import CppInfo
     return _CppInfo()
-

@@ -216,6 +216,3 @@ def get_cased_path(name):
     drive, _ = os.path.splitdrive(current)
     result.append(drive)
     return os.sep.join(reversed(result))
-
-
-

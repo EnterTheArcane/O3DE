@@ -173,6 +173,3 @@ class BinaryCompatibility:
                 if settings_target and compat_info.settings_target:
                     compat_info.settings_target.update_values(settings_target, raise_undefined=False)
         return result
-
-
-

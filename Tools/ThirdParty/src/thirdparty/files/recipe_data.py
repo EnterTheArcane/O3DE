@@ -75,4 +75,3 @@ def trim_recipe_data(recipe, raise_if_missing=True):
 
     new_recipe_data_yml = yaml.safe_dump(result, default_flow_style=False)
     save(path, new_recipe_data_yml)
-

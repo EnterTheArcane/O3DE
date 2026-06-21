@@ -115,6 +115,3 @@ def run_validate_package_id(recipe, hook_manager):
                 hook_manager.execute("post_package_id", recipe=recipe)
 
     recipe.info.validate()
-
-
-

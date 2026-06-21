@@ -606,4 +606,3 @@ class MesonToolchain:
         save(self._filename, self._content)
         # FIXME: Should we check the OS and compiler to call VCVars?
         VCVars(self._recipe).generate()
-

@@ -400,4 +400,3 @@ def load_cmake_presets(folder):
                              f"are using CMakeToolchain as generator to ensure its correct "
                              f"initialization.")
     return json.loads(tmp)
-

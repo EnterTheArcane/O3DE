@@ -360,4 +360,3 @@ class _TargetDataContext:
         # SONAME flag only makes sense for SHARED libraries
         nosoname = cmakedeps.get_property("nosoname", recipe, comp_name, check_type=bool)
         self.no_soname = str((nosoname if self.library_type == "SHARED" else False) or False).upper()
-

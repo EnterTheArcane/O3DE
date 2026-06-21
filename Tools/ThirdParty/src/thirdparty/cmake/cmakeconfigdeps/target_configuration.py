@@ -510,4 +510,3 @@ class TargetConfigurationTemplate2:
         set_property(TARGET {{exe}} PROPERTY RECIPE_CONTEXT "{{context}}")
         {% endfor %}
         """)
-

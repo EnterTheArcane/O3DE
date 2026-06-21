@@ -374,4 +374,3 @@ def apple_extra_flags(recipe):
     if enable_visibility is False:
         flags.extend(["-fvisibility=hidden", "-fvisibility-inlines-hidden"])
     return flags
-

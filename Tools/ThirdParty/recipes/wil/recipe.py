@@ -41,4 +41,3 @@ class Recipe(RecipeBase):
         # https://github.com/microsoft/wil/blob/56e3e5aa79234f8de3ceeeaf05b715b823bc2cca/CMakeLists.txt#L53
         self.cpp_info.set_property("cmake_file_name", "wil")
         self.cpp_info.set_property("cmake_target_name", "WIL::WIL")
-

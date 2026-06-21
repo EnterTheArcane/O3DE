@@ -6,6 +6,3 @@ def ref_matches(ref, pattern, is_consumer):
         assert is_consumer
         ref = RecipeReference.loads("*/*")  # FIXME: ugly
     return ref.matches(pattern, is_consumer=is_consumer)
-
-
-

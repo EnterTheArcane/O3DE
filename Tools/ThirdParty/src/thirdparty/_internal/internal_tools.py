@@ -23,6 +23,3 @@ def raise_on_universal_arch(recipe):
     if is_universal_arch(recipe.settings.get_safe("arch"),
                          recipe.settings.possible_values().get("arch")):
         raise RecipeException("Universal binaries not supported by toolchain.")
-
-
-

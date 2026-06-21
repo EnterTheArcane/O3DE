@@ -84,4 +84,3 @@ class AutotoolsDeps:
     def generate(self, scope="build"):
         check_duplicated_generator(self, self._recipe)
         self.vars(scope).save_script("autotoolsdeps")
-

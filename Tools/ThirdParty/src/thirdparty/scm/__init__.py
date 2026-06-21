@@ -5,4 +5,3 @@ from thirdparty.scm.gitlab import GitlabRepository
 from thirdparty.scm.google import GoogleSourceRepository
 from thirdparty.scm.bitbucket import BitbucketRepository
 from thirdparty.scm.gnu import GnuFtp
-

@@ -266,4 +266,3 @@ class CMakeToolchain:
             return "MinGW Makefiles"
 
         return "Unix Makefiles"
-

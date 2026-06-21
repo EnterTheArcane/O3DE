@@ -433,4 +433,3 @@ class AutotoolsToolchain:
                 "make_args":  cmd_args_to_string(self.make_args),
                 "autoreconf_args": cmd_args_to_string(self.autoreconf_args)}
         save_toolchain_args(args, namespace=self._namespace)
-

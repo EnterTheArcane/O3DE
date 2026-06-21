@@ -411,4 +411,3 @@ def msvs_toolset(recipe):
         return msvc_version_to_toolset_version(compiler_version)
     if compiler == "clang":
         return "ClangCl"
-

@@ -571,4 +571,3 @@ class BazelDeps:
 
         for name, content in _BazelPathsGenerator.items(dependencies_context):
             save(name, content)
-

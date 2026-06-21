@@ -184,6 +184,3 @@ def migrate_settings_file(cache_folder):
 
     settings_path = os.path.join(cache_folder, "settings.yml")
     update_file(settings_path, default_settings_yml)
-
-
-

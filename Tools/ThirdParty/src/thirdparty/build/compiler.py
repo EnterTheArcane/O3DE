@@ -42,4 +42,3 @@ def check_min_compiler_version(recipe, compiler_restrictions):
                     f"{ref} requires {compiler} >= {min_version}, but {compiler} {compiler_version} was found\n"
                     f"Reason: {reason}")
             break
-
