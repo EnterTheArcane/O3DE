@@ -18,23 +18,23 @@ from thirdparty.env import Environment
 from thirdparty.env.environment import generate_aggregated_env
 from thirdparty._internal.detect import detect_settings, make_conf, detect_platform_tag
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.recipe_graph import (
-    RecipeRuntime as _RecipeRuntime,
-    VersionResolvingRequirements as _VersionResolvingRequirements,
-    try_load_recipe_class as _try_load_recipe_class,
-    resolve_version as _resolve_version,
-    discover_requires as _get_requires,
-    make_probe_recipe,
-    build_recipe_graph,
-    is_built as _is_built,
-    COMPLETE_MARKER as _COMPLETE_MARKER,
-)
-from thirdparty._internal.methods import run_configure_method as _run_configure_method
 from thirdparty._internal.graph.graph import (
     Node as _Node,
+    Graph as _Graph,
+    discover_requires as _get_requires,
+    is_built as _is_built,
+    COMPLETE_MARKER as _COMPLETE_MARKER,
     CONTEXT_HOST as _CONTEXT_HOST,
     RECIPE_INCACHE as _RECIPE_INCACHE,
 )
+from thirdparty._internal.loader import (
+    RecipeRuntime as _RecipeRuntime,
+    VersionResolvingRequirements as _VersionResolvingRequirements,
+    make_probe_recipe,
+    try_load_recipe_class as _try_load_recipe_class,
+    resolve_version as _resolve_version,
+)
+from thirdparty._internal.methods import run_configure_method as _run_configure_method
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -169,8 +169,8 @@ def _instantiate(
                                target_os=target_os, target_arch=target_arch)
     # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeConfigDeps
     # and anything reading ``recipe.ref`` rely on this being present.
-    recipe._recipe_node = _Node(RecipeReference(name, version), recipe, _CONTEXT_HOST,
-                                _RECIPE_INCACHE)
+    recipe._recipe_node = _Node(name, version, context=_CONTEXT_HOST,
+                                recipe_state=_RECIPE_INCACHE)
 
     platform_tag = detect_platform_tag(target_os, target_arch)
     pkg_root = build_root / name / version / platform_tag
@@ -279,8 +279,8 @@ def _build_dep_graph(
         dep._recipe_runenv = Environment()
         dep.requires = _VersionResolvingRequirements(dep.requires, recipes_root)
 
-        dep._recipe_node = _Node(RecipeReference(dep_name, dep_version), dep, _CONTEXT_HOST,
-                                 _RECIPE_INCACHE)
+        dep._recipe_node = _Node(dep_name, dep_version, context=_CONTEXT_HOST,
+                                 recipe_state=_RECIPE_INCACHE)
 
         # Full config phase (config_options/configure + auto-fPIC + package-type +
         # requirements/build_requirements); populates dep.requires for the sub-graph below.
@@ -406,8 +406,8 @@ def _build_ordered(
     target_arch: str | None,
     fail_fast: bool = False,
 ) -> None:
-    rgraph = build_recipe_graph(recipes_root, names, build_type, jobs=jobs,
-                                target_os=target_os, target_arch=target_arch)
+    rgraph = _Graph.build(recipes_root, names, build_type, jobs=jobs,
+                          target_os=target_os, target_arch=target_arch)
     order = rgraph.topo_order()
 
     if resume:

@@ -10,7 +10,7 @@ from colorama import Fore, Style
 
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.recipe_graph import try_load_recipe_class
+from thirdparty._internal.loader import try_load_recipe_class
 
 _BUMP_COLOR = {
     "major": Fore.RED,

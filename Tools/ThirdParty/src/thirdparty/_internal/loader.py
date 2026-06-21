@@ -1,4 +1,5 @@
 import traceback
+from collections import OrderedDict
 from importlib import invalidate_caches, util as imp_util
 import inspect
 import os
@@ -20,6 +21,9 @@ from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.util.config_parser import TextINIParse
 from thirdparty._internal.util.files import chdir, load_user_encoded
+from thirdparty._internal.detect import detect_settings, make_conf
+from thirdparty._internal.model.dependencies import RecipeDependencies
+from thirdparty.env import Environment
 
 
 class RecipeLoader:
@@ -264,6 +268,150 @@ def _parse_recipe(recipe_path):
         return module, recipe
     except Exception as e:  # re-raise with file name
         raise RecipeException("%s: %s" % (recipe_path, str(e)))
+
+
+def try_load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase] | None:
+    """Load the recipe class from ``recipes/<name>/recipe.py``.
+
+    Delegates to the central recipe parser (``_parse_recipe``), which loads the file under
+    a lock with a unique module id, inserts the recipe directory on ``sys.path`` so recipes
+    can import sibling helpers, and validates that exactly one RecipeBase subclass is
+    defined.  Returns ``None`` if the recipe is missing or fails to load/validate.
+    """
+    recipe_path = recipes_root / name / "recipe.py"
+    if not recipe_path.exists():
+        return None
+    try:
+        module, cls = _parse_recipe(str(recipe_path))
+        if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
+            return None
+        # Collect implicit tool_requires from the recipe's DIRECT imports only.  A module's
+        # namespace contains only the names it imported/defined itself, so build-system
+        # helpers pulled in transitively by thirdparty.* are never counted here.
+        implicit: set[str] = set()
+        for obj in vars(module).values():
+            implicit.update(getattr(obj, "_implicit_tool_requires", ()))
+        cls._implicit_tool_requires = frozenset(implicit)
+        return cls
+    except Exception:
+        return None
+
+
+def resolve_version(recipe_cls: type[RecipeBase]) -> str:
+    v = getattr(recipe_cls, "version", None)
+    return str(v) if v else "latest"
+
+
+# ---------------------------------------------------------------------------
+# Recipe runtime services + requirement shim, used when instantiating a recipe
+# ---------------------------------------------------------------------------
+class RecipeRuntime:
+    """Runtime services recipe methods touch during graph resolution and building.
+
+    This system has no Conan cache, remotes, or profiles, so recipes are driven directly;
+    this supplies the handful of services they reference (global conf + HTTP requester).
+    """
+
+    def __init__(self, conf):
+        # Lazy import: rest.http_requester imports loader.load_python_file, so a module-level
+        # import here would be circular.
+        from thirdparty._internal.rest.http_requester import HttpRequester
+        self.global_conf = conf
+        self.requester = HttpRequester(conf)
+        self.home_folder = None
+
+
+class VersionResolvingRequirements:
+    """Wraps the requirements object to accept bare package names (no version).
+
+    Recipes in this system use ``self.requires("abseil")`` without a version.  The underlying
+    Requirements model rejects that, so we intercept every call, look up the matching local
+    recipe to find its version, and convert the ref to ``"abseil/20260107.1"`` before forwarding.
+    """
+
+    def __init__(self, inner, recipes_root: Path) -> None:
+        self._inner = inner
+        self._recipes_root = recipes_root
+
+    def _resolve(self, ref: str) -> str:
+        if ref and "/" not in ref and "@" not in ref:
+            cls = try_load_recipe_class(self._recipes_root, ref)
+            if cls:
+                return f"{ref}/{resolve_version(cls)}"
+        return ref
+
+    def __call__(self, str_ref, **kwargs):
+        resolved = self._resolve(str_ref)
+        # Skip host requires with no local recipe (and no explicit version) — these are
+        # system-provided libraries (e.g. libalsa/libudev/libusb on Linux) that this framework
+        # does not vendor; the build links the system copy via find_package/pkg-config.
+        if resolved and "/" not in resolved:
+            return
+        return self._inner(resolved, **kwargs)
+
+    def tool_require(self, ref, **kwargs):
+        resolved = self._resolve(ref)
+        # Skip tool deps that have no local recipe and no explicit version — they are
+        # system-provided tools (e.g. gperf, pkg-config) and cannot be version-resolved.
+        # Passing an unversioned name to Requirements.tool_require() raises an error that
+        # would abort the entire build_requirements() call, preventing later tool_requires
+        # (e.g. meson) from being registered.
+        if resolved and "/" not in resolved:
+            return
+        return self._inner.tool_require(resolved, **kwargs)
+
+    def __len__(self):
+        # Dunder lookups bypass __getattr__, so delegate explicitly (run_configure_method
+        # uses len(recipe.requires) to detect requires added during configure()).
+        return len(self._inner)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
+def make_probe_recipe(
+    recipe_cls: type[RecipeBase],
+    recipes_root: Path,
+    name: str,
+    version: str,
+    build_type: str,
+    jobs: int | None = None,
+    target_os: str | None = None,
+    target_arch: str | None = None,
+) -> RecipeBase:
+    """Instantiate a recipe with just enough state (settings, conf, requires shim) to
+    drive ``config_options()``/``configure()``/``requirements()``/``build_requirements()``.
+
+    ``target_os``/``target_arch`` select the HOST/target platform (default: build machine).
+    ``settings`` is the target platform; ``settings_build`` is always the build machine.
+    No build folders are created — this is for dependency discovery only.  ``build.py``
+    layers folder setup on top of this for actual builds.
+    """
+    recipe = recipe_cls(display_name=name)
+    recipe.version = version
+    recipe.recipe_folder = str(recipes_root / name)
+
+    recipe.settings = detect_settings(build_type, target_os, target_arch)
+    if target_os is None and target_arch is None:
+        recipe.settings_build = recipe.settings
+    else:
+        recipe.settings_build = detect_settings(build_type)
+    recipe.settings_target = None
+    conf = make_conf(jobs=jobs)
+    recipe.conf = conf
+    recipe._recipe_runtime = RecipeRuntime(conf)
+    recipe._recipe_dependencies = RecipeDependencies(OrderedDict())
+    recipe._recipe_buildenv = Environment()
+    recipe._recipe_runenv = Environment()
+    recipe.requires = VersionResolvingRequirements(recipe.requires, recipes_root)
+    # Give the probe a graph node so recipes can read self.ref / self.context during
+    # config/requirements (e.g. cross-build recipes doing tool_requires(str(self.ref))).
+    from thirdparty._internal.graph.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
+    recipe._recipe_node = Node(name, version, context=CONTEXT_HOST, recipe_state=RECIPE_INCACHE)
+    # Mirror RecipeLoader: run the recipe's init() hook if it defines one.
+    if hasattr(recipe, "init") and callable(recipe.init):
+        recipe.init()
+    return recipe
 
 
 def load_python_file(recipe_path):
