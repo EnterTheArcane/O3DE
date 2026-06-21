@@ -148,8 +148,6 @@ class Node:
                     e.dst = node
                     break
 
-        if self.recipe.vendor:
-            return
         # Check if need to propagate downstream
         if not self.dependants:
             return
@@ -201,8 +199,6 @@ class Node:
         # Check if need to propagate downstream
         # Then propagate downstream
 
-        if self.recipe.vendor:
-            return result
         # Seems the algrithm depth-first, would only have 1 dependant at most to propagate down
         # at any given time
         if not self.dependants:

@@ -87,9 +87,8 @@ class GraphProvidesError(GraphError):
                 "node": {"id": self.node.id, "ref": str(self.node.ref)},
                 "conflicting_node": {"id": self.conflicting_node.id,
                                      "ref": str(self.conflicting_node.ref)},
-                "provided": self.node.recipe.provides or self.conflicting_node.recipe.provides}
+                "provided": str(self.node.ref)}
 
     def __str__(self):
-        provides = self.node.recipe.provides or self.conflicting_node.recipe.provides
         return f"Provide Conflict: Both '{self.node.ref}' and '{self.conflicting_node.ref}' " \
-               f"provide '{provides}'."
+               f"provide the same package."

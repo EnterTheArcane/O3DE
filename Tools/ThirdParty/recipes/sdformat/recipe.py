@@ -108,9 +108,7 @@ class Recipe(RecipeBase):
         self.cpp_info.components["sdformat"].builddirs = [""]
         self.cpp_info.components["sdformat"].set_property("cmake_file_name", "sdformat16")
         self.cpp_info.components["sdformat"].set_property("cmake_target_name", "sdformat16::sdformat16")
-        self.cpp_info.components["sdformat"].includedirs = [
-            os.path.join("include", "sdformat16"),
-        ]
+        self.cpp_info.components["sdformat"].includedirs = [os.path.join("include", "sdformat16")]
         self.cpp_info.components["sdformat"].requires = [
             "gz-cmake::gz-cmake",
             "gz-math::core",

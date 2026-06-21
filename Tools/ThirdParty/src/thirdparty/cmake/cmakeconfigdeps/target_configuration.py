@@ -245,14 +245,13 @@ class TargetConfigurationTemplate2:
             target["type"] = lib_type
             target["location"] = location
             target["link_location"] = link_location
-            link_languages = info.languages or self._recipe.languages or []
+            link_languages = info.languages or []
             link_languages = ["CXX" if c == "C++" else c for c in link_languages]
             target["link_languages"] = link_languages
         return target
 
     def _get_aliases(self, comp_name=None):
-        aliases = self._cmakedeps.get_property("cmake_target_aliases", self._recipe,
-                                               comp_name, check_type=list) or []
+        aliases = self._cmakedeps.get_property("cmake_target_aliases", self._recipe, comp_name, check_type=list) or []
         return aliases
 
     def _add_root_lib_target(self, libs, pkg_name, cpp_info):
