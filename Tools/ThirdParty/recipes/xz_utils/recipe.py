@@ -108,11 +108,11 @@ class Recipe(RecipeBase):
                 f"<Import Project=\"{recipe_toolchain_props}\" /><Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />",
             )
 
-            if self.settings.arch == "armv8":
+            if self.settings.arch == "ARM":
                 replace_in_file(self, vcxproj_file, "x64", "ARM64")
 
         solution_file = os.path.join(build_script_folder, "xz_win.sln")
-        if self.settings.arch == "armv8":
+        if self.settings.arch == "ARM":
             replace_in_file(self, solution_file, "x64", "ARM64")
 
         #==============================

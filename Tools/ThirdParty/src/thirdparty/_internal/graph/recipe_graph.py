@@ -138,10 +138,14 @@ def make_probe_recipe(
     version: str,
     build_type: str,
     jobs: int | None = None,
+    target_os: str | None = None,
+    target_arch: str | None = None,
 ) -> RecipeBase:
     """Instantiate a recipe with just enough state (settings, conf, requires shim) to
     drive ``config_options()``/``configure()``/``requirements()``/``build_requirements()``.
 
+    ``target_os``/``target_arch`` select the HOST/target platform (default: build machine).
+    ``settings`` is the target platform; ``settings_build`` is always the build machine.
     No build folders are created — this is for dependency discovery only.  ``build.py``
     layers folder setup on top of this for actual builds.
     """
@@ -149,8 +153,11 @@ def make_probe_recipe(
     recipe.version = version
     recipe.recipe_folder = str(recipes_root / name)
 
-    recipe.settings = detect_settings(build_type)
-    recipe.settings_build = recipe.settings
+    recipe.settings = detect_settings(build_type, target_os, target_arch)
+    if target_os is None and target_arch is None:
+        recipe.settings_build = recipe.settings
+    else:
+        recipe.settings_build = detect_settings(build_type)
     recipe.settings_target = None
     conf = make_conf(jobs=jobs)
     recipe.conf = conf
@@ -280,12 +287,17 @@ def build_recipe_graph(
     build_type: str,
     jobs: int | None = None,
     transitive: bool = False,
+    target_os: str | None = None,
+    target_arch: str | None = None,
 ) -> RecipeGraph:
     """Resolve the dependencies of each recipe in ``names`` and return a graph.
 
     With ``transitive=False`` only the listed recipes become nodes.  With
     ``transitive=True`` the graph is expanded to the full transitive closure of the
     listed recipes (every reachable local dependency becomes a node too).
+
+    ``target_os``/``target_arch`` select the platform used for requirement discovery
+    (conditional ``requires`` may branch on ``settings.os``/``arch``).
 
     Recipes/deps that fail to load or probe are still included as nodes with no
     dependencies, so callers can report them rather than silently dropping them.
@@ -304,7 +316,8 @@ def build_recipe_graph(
             continue
         version = resolve_version(cls)
         try:
-            probe = make_probe_recipe(cls, recipes_root, name, version, build_type, jobs=jobs)
+            probe = make_probe_recipe(cls, recipes_root, name, version, build_type, jobs=jobs,
+                                      target_os=target_os, target_arch=target_arch)
             host_deps, tool_deps = discover_requires(probe)
         except Exception:
             host_deps, tool_deps = [], []

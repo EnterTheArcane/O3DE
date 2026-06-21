@@ -33,9 +33,9 @@ class Recipe(RecipeBase):
         self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.tool_requires("pkgconf")
-        if self.settings.arch in ["x86", "x86_64"]:
+        if self.settings.arch in ["X64"]:
             self.tool_requires("nasm")
-        if is_msvc(self) and self.settings.arch == "armv8":
+        if is_msvc(self) and self.settings.arch == "ARM":
             self.tool_requires("strawberryperl")
             self.tool_requires("gas-preprocessor")
 

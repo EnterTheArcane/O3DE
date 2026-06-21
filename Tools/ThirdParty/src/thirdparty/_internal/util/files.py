@@ -150,10 +150,10 @@ def update_file(file_path, new_content):
         save(file_path, new_content)
         return
 
-    content = load(file_path)
-    first_line = content.lstrip().split("\n", 1)[0]
-    if GENERATED_FILE_COMMENT in first_line and content != new_content:
-        save(file_path, new_content)
+    #content = load(file_path)
+    #first_line = content.lstrip().split("\n", 1)[0]
+    #if GENERATED_FILE_COMMENT in first_line and content != new_content:
+    save(file_path, new_content)
 
 
 def load_user_encoded(path):

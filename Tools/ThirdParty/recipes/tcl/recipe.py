@@ -76,7 +76,7 @@ class Recipe(RecipeBase):
             tc.configure_args.extend([
                 "--enable-threads",
                 "--enable-symbols={}".format(yes_no(self.settings.build_type == "Debug")),
-                "--enable-64bit={}".format(yes_no(self.settings.arch == "x86_64")),
+                "--enable-64bit={}".format(yes_no(self.settings.arch == "X64")),
             ])
             if self.settings.os == "Linux":
                 # Ensure the library has a soname, fix https://github.com/recipe-io/recipe-center-index/issues/27691
@@ -90,7 +90,7 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         apply_patches(self)
 
-        if is_apple_os(self) and self.settings.arch not in ("x86", "x86_64"):
+        if is_apple_os(self) and self.settings.arch not in ("X64",):
             macos_configure = os.path.join(self.source_folder, "macosx", "configure")
             replace_in_file(self, macos_configure, "#define HAVE_CPUID 1", "#undef HAVE_CPUID")
 
@@ -159,7 +159,7 @@ class Recipe(RecipeBase):
 
     def _get_configure_subdir(self):
         return {
-            "Macos": "macosx",
+            "Mac": "macosx",
             "Linux": "unix",
             "FreeBSD": "unix",
             "Windows": "win",

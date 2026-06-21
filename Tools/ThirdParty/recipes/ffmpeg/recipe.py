@@ -253,7 +253,7 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-            if is_msvc(self) and self.settings.arch == "armv8":
+            if is_msvc(self) and self.settings.arch == "ARM":
                 self.options.with_libsvtav1 = False
 
         del self.options.postproc
@@ -267,9 +267,9 @@ class Recipe(RecipeBase):
             del self.options.with_pulse
             del self.options.with_xlib
             del self.options.with_libdrm
-        if self.settings.os != "Macos":
+        if self.settings.os != "Mac":
             del self.options.with_appkit
-        if self.settings.os not in ["Macos", "iOS", "tvOS"]:
+        if self.settings.os not in ["Mac", "iOS", "tvOS"]:
             del self.options.with_coreimage
             del self.options.with_audiotoolbox
             del self.options.with_videotoolbox
@@ -362,7 +362,7 @@ class Recipe(RecipeBase):
             self.requires("openapv")
 
     def build_requirements(self):
-        if self.settings.arch in ("x86", "x86_64"):
+        if self.settings.arch == "X64":
             self.tool_requires("nasm")
 
         if self.settings.os != "Linux" and not self.conf.get("tools.gnu:pkg_config", check_type=str):
@@ -372,7 +372,7 @@ class Recipe(RecipeBase):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")
-            if self.settings.arch == "armv8" and is_msvc(self):
+            if self.settings.arch == "ARM" and is_msvc(self):
                 self.tool_requires("gas-preprocessor")
 
     def latest_version(self):
@@ -390,10 +390,10 @@ class Recipe(RecipeBase):
     @property
     def _target_arch(self):
         # Taken from acceptable values https://github.com/FFmpeg/FFmpeg/blob/0684e58886881a998f1a7b510d73600ff1df2b90/configure#L5010
-        if str(self.settings.arch).startswith("armv8"):
+        if self.settings.arch == "ARM":
             return "aarch64"
-        elif self.settings.arch == "x86":
-            return "i686"
+        elif self.settings.arch == "X64":
+            return "x86_64"
         return str(self.settings.arch)
 
     @property
@@ -851,7 +851,7 @@ class Recipe(RecipeBase):
                 avfilter.frameworks = ["CoreGraphics"]
             if self.options.avcodec:
                 avcodec.frameworks = ["CoreFoundation", "CoreVideo", "CoreMedia"]
-            if self.settings.os == "Macos":
+            if self.settings.os == "Mac":
                 if self.options.avdevice:
                     avdevice.frameworks.append("OpenGL")
                 if self.options.avfilter:

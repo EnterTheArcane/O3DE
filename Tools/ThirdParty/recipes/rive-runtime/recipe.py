@@ -77,7 +77,7 @@ class Recipe(RecipeBase):
     def build(self):
         config = "release" if str(self.settings.build_type) == "Release" else "debug"
 
-        _arch_map = {"x86_64": "x64", "x86": "x86", "armv8": "arm64", "armv7": "arm"}
+        _arch_map = {"X64": "x64", "ARM": "arm64"}
 
         premake = Premake(self)
         premake.luafile = os.path.join(self.source_folder, "premake5_v2.lua").replace("\\", "/")
@@ -124,5 +124,5 @@ class Recipe(RecipeBase):
             self.cpp_info.defines = ["_USE_MATH_DEFINES", "NOMINMAX"]
         elif self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.system_libs = ["m", "pthread"]
-        elif self.settings.os == "Macos":
+        elif self.settings.os == "Mac":
             self.cpp_info.frameworks = ["CoreText", "CoreGraphics", "CoreFoundation"]

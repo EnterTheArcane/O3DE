@@ -1084,10 +1084,7 @@ class GenericSystemBlock(Block):
                 return "Generic-ELF"
             return cmake_system_name_map.get(os_host, os_host)
         elif arch_host is not None and arch_host != arch_build:
-            if not ((arch_build == "x86_64") and (arch_host == "x86") or
-                    (arch_build == "sparcv9") and (arch_host == "sparc") or
-                    (arch_build == "ppc64") and (arch_host == "ppc32")):
-                return cmake_system_name_map.get(os_host, os_host)
+            return cmake_system_name_map.get(os_host, os_host)
 
     def _is_apple_cross_building(self):
 
@@ -1099,15 +1096,15 @@ class GenericSystemBlock(Block):
         arch_host = self._recipe.settings.get_safe("arch")
         arch_build = self._recipe.settings_build.get_safe("arch")
         os_build = self._recipe.settings_build.get_safe("os")
-        return os_host in ('iOS', 'watchOS', 'tvOS', 'visionOS') or (
-                os_host == 'Macos' and (arch_host != arch_build or os_build != os_host))
+        return os_host in ('iOS', 'tvOS', 'visionOS') or (
+                os_host == 'Mac' and (arch_host != arch_build or os_build != os_host))
 
     @staticmethod
     def _get_darwin_version(os_name, os_version):
         # version mapping from https://en.wikipedia.org/wiki/Darwin_(operating_system)
         # but a more detailed version can be found in https://theapplewiki.com/wiki/Kernel
         version_mapping = {
-            "Macos": {
+            "Mac": {
                 "10.6": "10", "10.7": "11", "10.8": "12", "10.9": "13", "10.10": "14", "10.11": "15",
                 "10.12": "16", "10.13": "17", "10.14": "18", "10.15": "19", "11": "20", "12": "21",
                 "13": "22", "14": "23", "15": "24"
@@ -1115,10 +1112,6 @@ class GenericSystemBlock(Block):
             "iOS": {
                 "7": "14", "8": "14", "9": "15", "10": "16", "11": "17", "12": "18", "13": "19",
                 "14": "20", "15": "21", "16": "22", "17": "23", "18": "24"
-            },
-            "watchOS": {
-                "4": "17", "5": "18", "6": "19", "7": "20",
-                "8": "21", "9": "22", "10": "23", "11": "24"
             },
             "tvOS": {
                 "11": "17", "12": "18", "13": "19", "14": "20",
@@ -1128,7 +1121,7 @@ class GenericSystemBlock(Block):
                 "1": "23", "2": "24"
             }
         }
-        os_version = Version(os_version).major if os_name != "Macos" or (os_name == "Macos" and Version(
+        os_version = Version(os_version).major if os_name != "Mac" or (os_name == "Mac" and Version(
             os_version) >= Version("11")) else os_version
         return version_mapping.get(os_name, {}).get(str(os_version))
 
@@ -1143,15 +1136,15 @@ class GenericSystemBlock(Block):
             os_host = self._recipe.settings.get_safe("os")
             os_host_version = self._recipe.settings.get_safe("os.version")
             arch_host = self._recipe.settings.get_safe("arch")
-            if arch_host == "armv8":
-                arch_host = {"Windows": "ARM64", "Macos": "arm64"}.get(os_host, "aarch64")
+            if arch_host == "ARM":
+                arch_host = {"Windows": "ARM64", "Mac": "arm64"}.get(os_host, "aarch64")
 
             if system_name is None:  # Try to deduce
                 _system_version = None
                 _system_processor = None
                 if self._is_apple_cross_building():
                     # cross-build in Macos also for M1
-                    system_name = {'Macos': 'Darwin'}.get(os_host, os_host)
+                    system_name = {'Mac': 'Darwin'}.get(os_host, os_host)
                     #  CMAKE_SYSTEM_VERSION for Apple sets the Darwin version, not the os version
                     _system_version = self._get_darwin_version(os_host, os_host_version)
                     _system_processor = to_apple_arch(self._recipe)

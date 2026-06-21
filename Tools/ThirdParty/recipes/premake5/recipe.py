@@ -26,7 +26,7 @@ class Recipe(RecipeBase):
         elif self.settings.os == "Linux":
             url = "https://github.com/premake/premake-core/releases/download/v5.0.0-beta8/premake-5.0.0-beta8-linux.tar.gz"
             sha256 = "63edd3e7461eebdd45b500a3c7e8ad4e7a67d68f230010f9a97cbb71b4ec59c8"
-        elif self.settings.os == "Macos":
+        elif self.settings.os == "Mac":
             url = "https://github.com/premake/premake-core/releases/download/v5.0.0-beta8/premake-5.0.0-beta8-macosx.tar.gz"
             sha256 = "fa73a46f093fa6f17494a3d063421aa6cae3ea825a61c62dd59fc2f07a256d03"
         else:

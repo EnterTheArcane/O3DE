@@ -55,7 +55,7 @@ class Recipe(RecipeBase):
                 tc.extra_ldflags.append("-PDB")
 
         if cross_building(self) and is_msvc(self):
-            triplet_arch_windows = {"x86_64": "x86_64", "x86": "i686", "armv8": "aarch64"}
+            triplet_arch_windows = {"X64": "x86_64", "ARM": "aarch64"}
             
             host_arch = triplet_arch_windows.get(str(self.settings.arch))
             build_arch = triplet_arch_windows.get(str(self.settings_build.arch))

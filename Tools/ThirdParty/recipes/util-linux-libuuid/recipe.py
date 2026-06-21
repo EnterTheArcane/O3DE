@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
 
     @property
     def _has_sys_file_header(self):
-        return self.settings.os in ["FreeBSD", "Linux", "Macos"]
+        return self.settings.os in ["Linux", "Mac"]
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
             raise RecipeInvalidConfiguration(f"{self.name} is only supported on Linux")
 
     def requirements(self):
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             self.requires("libgettext")
 
     def source(self):
@@ -65,11 +65,11 @@ class Recipe(RecipeBase):
             tc.extra_cflags.append("-mstackrealign")
 
         # Based on https://github.com/recipe-io/recipe-center-index/blob/c647b1/recipes/libx264/all/recipe.py#L94
-        if is_apple_os(self) and self.settings.arch == "armv8":
+        if is_apple_os(self) and self.settings.arch == "ARM":
             tc.configure_args.append("--host=aarch64-apple-darwin")
             tc.extra_asflags = ["-arch arm64"]
             tc.extra_ldflags = ["-arch arm64"]
-            if self.settings.os != "Macos":
+            if self.settings.os != "Mac":
                 xcrun = XCRun(self)
                 platform_flags = ["-isysroot", xcrun.sdk_path]
                 apple_min_version_flag = AutotoolsToolchain(self).apple_min_version_flag

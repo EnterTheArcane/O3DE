@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
             env.generate()
             tc = AutotoolsToolchain(self)
             tc.configure_args.append("--disable-frontend")
-            if self.settings.compiler == "clang" and self.settings.arch in ["x86", "x86_64"]:
+            if self.settings.compiler == "clang" and self.settings.arch in ["X64"]:
                 tc.extra_cxxflags.extend(["-mmmx", "-msse"])
             tc.generate()
 
@@ -90,10 +90,10 @@ class Recipe(RecipeBase):
                 # clang-cl: error: no such file or directory: '/GAy'
                 # https://docs.microsoft.com/en-us/cpp/build/reference/ga-optimize-for-windows-application?view=msvc-170
                 replace_in_file(self, "Makefile.MSVC", "/GAy", "/GA", strict=False)
-            if self.settings.arch == "x86_64":
+            if self.settings.arch == "X64":
                 replace_in_file(self, "Makefile.MSVC", "MACHINE = /machine:I386", "MACHINE =/machine:X64", strict=False)
                 command += " MSVCVER=Win64 asm=yes"
-            elif self.settings.arch == "armv8":
+            elif self.settings.arch == "ARM":
                 replace_in_file(self, "Makefile.MSVC", "MACHINE = /machine:I386", "MACHINE =/machine:ARM64", strict=False)
                 command += " MSVCVER=Win64"
             else:

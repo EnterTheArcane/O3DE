@@ -63,7 +63,7 @@ class Recipe(RecipeBase):
             tc = AutotoolsToolchain(self)
             if self.settings.arch == "x86":
                 tc.extra_cflags.append("-m32")
-            elif self.settings.arch == "x86_64":
+            elif self.settings.arch == "X64":
                 tc.extra_cflags.append("-m64")
             tc.generate()
 

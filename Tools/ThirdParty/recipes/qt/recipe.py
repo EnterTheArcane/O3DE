@@ -442,7 +442,7 @@ class Recipe(RecipeBase):
         env.unset("VCPKG_ROOT")
         env.prepend_path("PKG_CONFIG_PATH", self.generators_folder)
         env.vars(self).save_script("buildenvenv_pkg_config_path")
-        if self.settings_build.os == "Macos":
+        if self.settings_build.os == "Mac":
             # On macOS, SIP resets DYLD_LIBRARY_PATH injected by VirtualBuildEnv & VirtualRunEnv
             dyld_library_path = "$DYLD_LIBRARY_PATH"
             dyld_library_path_build = vbe.vars().get("DYLD_LIBRARY_PATH")
@@ -563,14 +563,12 @@ class Recipe(RecipeBase):
         for feature in str(self.options.disabled_features).split():
             tc.variables[f"FEATURE_{feature}"] = "OFF"
 
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             tc.variables["FEATURE_framework"] = "OFF"
         elif self.settings.os == "Android":
             tc.variables["CMAKE_ANDROID_NATIVE_API_LEVEL"] = self.settings.os.api_level
-            tc.variables["ANDROID_ABI"] = {"armv7": "armeabi-v7a",
-                                           "armv8": "arm64-v8a",
-                                           "x86": "x86",
-                                           "x86_64": "x86_64"}.get(str(self.settings.arch))
+            tc.variables["ANDROID_ABI"] = {"ARM": "arm64-v8a",
+                                           "X64": "x86_64"}.get(str(self.settings.arch))
 
         if self.options.sysroot:
             tc.variables["CMAKE_SYSROOT"] = self.options.sysroot
@@ -671,18 +669,12 @@ class Recipe(RecipeBase):
     def _xplatform(self):
         if self.settings.os == "Linux":
             if self.settings.compiler == "gcc":
-                return {"x86": "linux-g++-32",
-                        "armv6": "linux-arm-gnueabi-g++",
-                        "armv7": "linux-arm-gnueabi-g++",
-                        "armv7hf": "linux-arm-gnueabi-g++",
-                        "armv8": "linux-aarch64-gnu-g++"}.get(str(self.settings.arch), "linux-g++")
+                return {"ARM": "linux-aarch64-gnu-g++"}.get(str(self.settings.arch), "linux-g++")
             if self.settings.compiler == "clang":
-                if self.settings.arch == "x86":
-                    return "linux-clang-libc++-32" if self.settings.compiler.libcxx == "libc++" else "linux-clang-32"
-                if self.settings.arch == "x86_64":
+                if self.settings.arch == "X64":
                     return "linux-clang-libc++" if self.settings.compiler.libcxx == "libc++" else "linux-clang"
 
-        elif self.settings.os == "Macos":
+        elif self.settings.os == "Mac":
             return {"clang": "macx-clang",
                     "apple-clang": "macx-clang",
                     "gcc": "macx-g++"}.get(str(self.settings.compiler))
@@ -690,10 +682,6 @@ class Recipe(RecipeBase):
         elif self.settings.os == "iOS":
             if self.settings.compiler == "apple-clang":
                 return "macx-ios-clang"
-
-        elif self.settings.os == "watchOS":
-            if self.settings.compiler == "apple-clang":
-                return "macx-watchos-clang"
 
         elif self.settings.os == "tvOS":
             if self.settings.compiler == "apple-clang":
@@ -767,7 +755,7 @@ class Recipe(RecipeBase):
         return None
 
     def build(self):
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             save(self, ".qmake.stash", "")
             save(self, ".qmake.super", "")
         cmake = CMake(self)
@@ -790,7 +778,7 @@ class Recipe(RecipeBase):
         return os.path.join("lib", "cmake", f"Qt6{module}", f"recipe_qt_qt6_{module.lower()}private.cmake")
 
     def package(self):
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             save(self, ".qmake.stash", "")
             save(self, ".qmake.super", "")
         cmake = CMake(self)
@@ -833,7 +821,7 @@ class Recipe(RecipeBase):
         filecontents += f"set(QT_VERSION_MAJOR {ver.major})\n"
         filecontents += f"set(QT_VERSION_MINOR {ver.minor})\n"
         filecontents += f"set(QT_VERSION_PATCH {ver.patch})\n"
-        if self.settings.os == "Macos":
+        if self.settings.os == "Mac":
             filecontents += 'set(__qt_internal_cmake_apple_support_files_path "${CMAKE_CURRENT_LIST_DIR}/../../../lib/cmake/Qt6/macos")\n'
         targets = ["moc", "qlalr", "rcc", "tracegen", "cmake_automoc_parser", "qmake", "qtpaths", "syncqt", "tracepointgen"]
         disabled_features = str(self.options.disabled_features).split()
@@ -843,7 +831,7 @@ class Recipe(RecipeBase):
             targets.append("qvkgen")
         if self.options.widgets:
             targets.append("uic")
-        if self.settings_build.os == "Macos" and self.settings.os != "iOS":
+        if self.settings_build.os == "Mac" and self.settings.os != "iOS":
             targets.extend(["macdeployqt"])
         if self.settings.os == "Windows":
             targets.extend(["windeployqt"])
@@ -1167,11 +1155,11 @@ class Recipe(RecipeBase):
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L388-L394
                 self.cpp_info.components["qtGui"].frameworks = ["CoreFoundation", "CoreGraphics", "CoreText", "Foundation", "ImageIO"]
                 # https://github.com/qt/qtbase/blob/6.8.0/src/gui/configure.cmake#L834-L837
-                has_metal = "metal" not in disabled_features and self.settings.os in ["Macos", "iOS", "visionOS"]
+                has_metal = "metal" not in disabled_features and self.settings.os in ["Mac", "iOS", "visionOS"]
                 if has_metal:
                     # https://github.com/qt/qtbase/blob/6.8.0/src/gui/CMakeLists.txt#L432-L437
                     self.cpp_info.components["qtGui"].frameworks.append("QuartzCore")
-                if self.settings.os == "Macos":
+                if self.settings.os == "Mac":
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L362-L370
                     self.cpp_info.components["qtGui"].frameworks += ["AppKit", "Carbon"]
                     _create_plugin("QCocoaIntegrationPlugin", "qcocoa", "platforms", ["Core", "Gui"])
@@ -1179,7 +1167,7 @@ class Recipe(RecipeBase):
                     self.cpp_info.components["QCocoaIntegrationPlugin"].frameworks = [
                         "AppKit", "Carbon", "CoreServices", "CoreVideo", "IOKit", "IOSurface", "Metal", "QuartzCore"
                     ]
-                if self.settings.os in ["Macos", "iOS"]:
+                if self.settings.os in ["Mac", "iOS"]:
                     # https://github.com/qt/qtbase/blob/v6.5.3/src/gui/CMakeLists.txt#L963
                     self.cpp_info.components["qtGui"].frameworks.append("Metal")
                 if self.settings.os in ["iOS", "tvOS"]:
@@ -1547,7 +1535,7 @@ class Recipe(RecipeBase):
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/printsupport/CMakeLists.txt#L52-L63
                     self.cpp_info.components["qtPrintSupport"].system_libs.append("cups")
                     self.cpp_info.components["qtPrintSupport"].frameworks.append("ApplicationServices")
-                if self.settings.os == "Macos":
+                if self.settings.os == "Mac":
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L598-L606
                     self.cpp_info.components["qtCore"].frameworks.append("AppKit")
                     self.cpp_info.components["qtCore"].frameworks.append("ApplicationServices")

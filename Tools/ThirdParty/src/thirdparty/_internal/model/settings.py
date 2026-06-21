@@ -94,7 +94,12 @@ class SettingsItem:
     def __eq__(self, other):
         if other is None:
             return self._value is None
-        other = self._validate(other)
+        # Note: comparison does NOT validate `other` against the defined value range.
+        # A value that isn't a defined setting simply can't equal our (always-valid) value,
+        # so we return False instead of raising.  This lets recipes keep defensive checks
+        # such as `self.settings.os in ["Linux", "FreeBSD"]` even though this system only
+        # defines a small set of platforms.  Assignment (update_values) stays strict.
+        other = str(other) if other is not None else None
         return other == self._value
 
     def __delattr__(self, item):

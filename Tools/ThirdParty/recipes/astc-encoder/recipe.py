@@ -26,7 +26,7 @@ class Recipe(RecipeBase):
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
-        if self.settings.arch in ["armv8", "armv8.3"]:
+        if self.settings.arch in ["ARM"]:
             self.options.isa = "neon"
 
     def configure(self):

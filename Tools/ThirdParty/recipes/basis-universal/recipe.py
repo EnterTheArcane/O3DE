@@ -25,7 +25,7 @@ class Recipe(RecipeBase):
 
     @property
     def _has_sse(self):
-        return self.settings.arch in ["x86", "x86_64"]
+        return self.settings.arch in ["X64"]
 
     def config_options(self):
         if self.settings.os == "Windows":

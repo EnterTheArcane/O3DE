@@ -45,17 +45,16 @@ def architecture_flag(recipe):
         if runtime is not None:
             return ""
         # TODO: Maybe Clang-Mingw runtime does, but with C++ is impossible to test
-        return {"x86_64": "-m64",
-                "x86": "-m32"}.get(arch, "")
+        return {"X64": "-m64"}.get(arch, "")
     elif compiler in ['gcc', 'apple-clang', 'clang', 'sun-cc']:
-        if the_os == 'Macos' and subsystem == 'catalyst':
+        if the_os == 'Mac' and subsystem == 'catalyst':
             # FIXME: This might be conflicting with Autotools --target cli arg
             apple_arch = _to_apple_arch(arch)
             if apple_arch:
                 # TODO: Could we define anything like `to_apple_target()`?
                 #       Check https://github.com/rust-lang/rust/issues/48862
                 return f'--target={apple_arch}-apple-ios{subsystem_ios_version}-macabi'
-        elif arch in ['x86_64', 'sparcv9', 's390x']:
+        elif arch in ['X64']:
             return '-m64'
         elif arch in ['x86', 'sparc']:
             return '-m32'

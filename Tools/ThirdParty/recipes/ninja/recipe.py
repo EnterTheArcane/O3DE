@@ -17,14 +17,14 @@ class Recipe(RecipeBase):
 
     def build(self):
         if self.settings.os == "Windows":
-            if self.settings.arch == "armv8":
+            if self.settings.arch == "ARM":
                 url = "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-winarm64.zip"
                 sha256 = "e52f0bdef9dfb1003229dbd6508a508c4073fd017247002adc66e5e806cb0391"
             else:
                 url = "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-win.zip"
                 sha256 = "07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65"
         elif self.settings.os == "Linux":
-            if self.settings.arch == "armv8":
+            if self.settings.arch == "ARM":
                 url = "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-linux-aarch64.zip"
                 sha256 = "fd2cacc8050a7f12a16a2e48f9e06fca5c14fc4c2bee2babb67b58be17a607fc"
             else:

@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
         if Version(self.version) >= "0.5.0":
             # Set it to false for iOS, tvOS, watchOS, visionOS
             # to prevent cmake from creating a bundle for the md2html executable
-            is_ios_variant = is_apple_os(self) and not self.settings.os == "Macos"
+            is_ios_variant = is_apple_os(self) and not self.settings.os == "Mac"
             self.options.md2html = not is_ios_variant
         else:
             # md2html was introduced in 0.5.0

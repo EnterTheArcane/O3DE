@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("mem_src_dst")
 
     def build_requirements(self):
-        if self.options.get_safe("SIMD") and self.settings.arch in ["x86", "x86_64"]:
+        if self.options.get_safe("SIMD") and self.settings.arch in ["X64"]:
             self.tool_requires("nasm")
 
     def latest_version(self):
