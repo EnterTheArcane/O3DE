@@ -28,14 +28,8 @@ class Recipe(RecipeBase):
         return self.settings.arch in ["X64"]
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if not self._has_sse:
             del self.options.with_sse
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def latest_version(self):
         repo = GithubRepository(self, "BinomialLLC/basis_universal")

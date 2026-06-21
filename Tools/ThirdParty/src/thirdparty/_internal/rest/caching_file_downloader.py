@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from urllib.request import url2pathname
 
 from thirdparty._internal.output import Output
-from thirdparty._internal.cache.home_paths import HomePaths
+from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty._internal.rest.file_downloader import FileDownloader
 from thirdparty._internal.rest.download_cache import DownloadCache
 from thirdparty._internal.errors import AuthenticationException, ForbiddenException, NotFoundException

@@ -20,10 +20,6 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
         if is_msvc(self):
             # Only static for msvc

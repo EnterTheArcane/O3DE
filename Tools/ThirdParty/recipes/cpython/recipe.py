@@ -63,8 +63,6 @@ class Recipe(RecipeBase):
         return f"{v.major}{joiner}{v.minor}"
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if is_msvc(self):
             del self.options.lto
             del self.options.docstrings
@@ -77,8 +75,6 @@ class Recipe(RecipeBase):
         self.settings.compiler.rm_safe("cppstd")
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         if not self._supports_modules:
             self.options.rm_safe("with_bz2")
             self.options.rm_safe("with_sqlite3")

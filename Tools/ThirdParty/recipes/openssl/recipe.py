@@ -111,8 +111,6 @@ class Recipe(RecipeBase):
             self.options.rm_safe("fPIC")
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

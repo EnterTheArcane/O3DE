@@ -10,7 +10,7 @@ from jinja2 import Template
 from requests.adapters import HTTPAdapter
 
 from thirdparty._internal.output import Output
-from thirdparty._internal.cache.home_paths import HomePaths
+from thirdparty._internal.util.home_paths import HomePaths
 
 from thirdparty._internal.loader import load_python_file
 from thirdparty._internal.errors import scoped_traceback

@@ -1,6 +1,7 @@
 import os
 import textwrap
 from collections import OrderedDict
+from typing import Any
 
 from jinja2 import Template
 
@@ -88,13 +89,16 @@ class CMakeToolchain:
         if(CMAKE_POLICY_DEFAULT_CMP0091)  # Avoid unused and not-initialized warnings
         endif()
         """)
+    
+    variables: Variables
+    cache_variables: Variables
 
     def __init__(self, recipe, generator=None):
         self._recipe = recipe
         self.generator = self._get_generator(generator)
         self.variables = Variables()
         # This doesn't support multi-config, they go to the same configPreset common in multi-config
-        self.cache_variables = {}
+        self.cache_variables = Variables()
         self.preprocessor_definitions = Variables()
 
         self.extra_cxxflags = []

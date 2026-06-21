@@ -26,8 +26,6 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if Version(self.version) >= "0.5.0":
             # Set it to false for iOS, tvOS, watchOS, visionOS
             # to prevent cmake from creating a bundle for the md2html executable
@@ -38,8 +36,6 @@ class Recipe(RecipeBase):
             del self.options.md2html
 
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

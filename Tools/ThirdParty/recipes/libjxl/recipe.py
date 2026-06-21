@@ -33,16 +33,10 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if self.settings.arch not in ["X64"]:
             del self.options.avx512
             del self.options.avx512_spr
             del self.options.avx512_zen4
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def requirements(self):
         self.requires("brotli")

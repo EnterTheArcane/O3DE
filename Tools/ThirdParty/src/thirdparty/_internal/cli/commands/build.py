@@ -20,7 +20,6 @@ from thirdparty._internal.detect import detect_settings, make_conf, detect_platf
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph.recipe_graph import (
     RecipeRuntime as _RecipeRuntime,
-    FakeNode as _FakeNode,
     VersionResolvingRequirements as _VersionResolvingRequirements,
     try_load_recipe_class as _try_load_recipe_class,
     resolve_version as _resolve_version,
@@ -29,6 +28,12 @@ from thirdparty._internal.graph.recipe_graph import (
     build_recipe_graph,
     is_built as _is_built,
     COMPLETE_MARKER as _COMPLETE_MARKER,
+)
+from thirdparty._internal.methods import run_configure_method as _run_configure_method
+from thirdparty._internal.graph.graph import (
+    Node as _Node,
+    CONTEXT_HOST as _CONTEXT_HOST,
+    RECIPE_INCACHE as _RECIPE_INCACHE,
 )
 
 
@@ -164,7 +169,8 @@ def _instantiate(
                                target_os=target_os, target_arch=target_arch)
     # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeConfigDeps
     # and anything reading ``recipe.ref`` rely on this being present.
-    recipe._recipe_node = _FakeNode(name, version)
+    recipe._recipe_node = _Node(RecipeReference(name, version), recipe, _CONTEXT_HOST,
+                                _RECIPE_INCACHE)
 
     platform_tag = detect_platform_tag(target_os, target_arch)
     pkg_root = build_root / name / version / platform_tag
@@ -273,18 +279,13 @@ def _build_dep_graph(
         dep._recipe_runenv = Environment()
         dep.requires = _VersionResolvingRequirements(dep.requires, recipes_root)
 
-        dep._recipe_node = _FakeNode(dep_name, dep_version)
+        dep._recipe_node = _Node(RecipeReference(dep_name, dep_version), dep, _CONTEXT_HOST,
+                                 _RECIPE_INCACHE)
 
-        for method_name in ("config_options", "configure"):
-            if hasattr(dep, method_name):
-                try:
-                    getattr(dep, method_name)()
-                except Exception:
-                    pass
-
+        # Full config phase (config_options/configure + auto-fPIC + package-type +
+        # requirements/build_requirements); populates dep.requires for the sub-graph below.
         try:
-            from thirdparty._internal.model.pkg_type import PackageType
-            PackageType.compute_package_type(dep)
+            _run_configure_method(dep)
         except Exception:
             pass
 
@@ -314,19 +315,8 @@ def _build_dep_graph(
 
         # Populate dep's own transitive dep graph so generators can resolve
         # component dependencies (e.g. spirv-tools-core → spirv-headers).
+        # dep.requires was already populated by run_configure_method above.
         try:
-            from thirdparty._internal.model.requires import (
-                BuildRequirements, TestRequirements, ToolRequirements,
-            )
-            dep.build_requires = BuildRequirements(dep.requires)
-            dep.test_requires = TestRequirements(dep.requires)
-            dep.tool_requires = ToolRequirements(dep.requires)
-            for _meth in ("requirements", "build_requirements"):
-                if hasattr(dep, _meth):
-                    try:
-                        getattr(dep, _meth)()
-                    except Exception:
-                        pass
             _sub_host = [str(r.ref.name) for r in dep.requires.values() if not r.build]
             _sub_tools = [str(r.ref.name) for r in dep.requires.values() if r.build]
             dep._recipe_dependencies = _build_dep_graph(
@@ -590,20 +580,6 @@ def _build_recipe(
             if _dep_conf_info:
                 recipe.conf.compose_conf(_dep_conf_info)
 
-    # Wire up build_requires/tool_requires wrappers then call build_requirements() so
-    # recipes can set win_bash=True and add further tool_requires.
-    from thirdparty._internal.model.requires import (
-        BuildRequirements, TestRequirements, ToolRequirements,
-    )
-    recipe.build_requires = BuildRequirements(recipe.requires)
-    recipe.test_requires = TestRequirements(recipe.requires)
-    recipe.tool_requires = ToolRequirements(recipe.requires)
-    if hasattr(recipe, "build_requirements"):
-        try:
-            recipe.build_requirements()
-        except Exception:
-            pass
-
     pkg_dir = Path(recipe.package_folder)
     build_dir = Path(recipe.build_folder)
     src_dir = Path(recipe.source_folder)
@@ -618,28 +594,20 @@ def _build_recipe(
         # package directory so we start clean.
         shutil.rmtree(pkg_dir, ignore_errors=True)
 
-    # Run config_options / configure / validate before creating any directories so
-    # that packages which are not supported on this platform (RecipeInvalidConfiguration)
-    # don't leave empty build trees behind.
-    if hasattr(recipe, "config_options"):
-        try:
-            recipe.config_options()
-        except Exception:
-            pass
-    if hasattr(recipe, "configure"):
-        try:
-            recipe.configure()
-        except Exception:
-            pass
-    if hasattr(recipe, "validate"):
-        try:
+    # Drive the recipe's full config phase (config_options/configure + default auto-fPIC +
+    # requirements/build_requirements) then validate(), before creating any directories so
+    # that packages unsupported on this platform (RecipeInvalidConfiguration) don't leave
+    # empty build trees behind.
+    try:
+        _run_configure_method(recipe)
+        if hasattr(recipe, "validate"):
             recipe.validate()
-        except Exception as _val_exc:
-            from thirdparty.errors import RecipeInvalidConfiguration
-            if isinstance(_val_exc, RecipeInvalidConfiguration):
-                print(f"[thirdparty] {name}/{version} not supported on this platform: {_val_exc} — skipping")
-                return transitive
-            raise
+    except Exception as _cfg_exc:
+        from thirdparty.errors import RecipeInvalidConfiguration
+        if isinstance(_cfg_exc, RecipeInvalidConfiguration):
+            print(f"[thirdparty] {name}/{version} not supported on this platform: {_cfg_exc} — skipping")
+            return transitive
+        raise
 
     # Mirror what Recipe's export_sources phase does: copy auxiliary recipe files
     # (CMakeLists.txt, patches/, etc.) to export_sources_folder so that:

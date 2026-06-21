@@ -24,13 +24,7 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         # OpenAL's API is pure C, thus the c++ standard does not matter
         # Because the backend is C++, the C++ STL matters
         self.settings.rm_safe("compiler.cppstd")

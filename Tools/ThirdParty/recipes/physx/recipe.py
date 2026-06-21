@@ -29,18 +29,12 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if self.settings.build_type != "Release":
             del self.options.release_build_type
         if self.settings.os != "Windows":
             del self.options.enable_float_point_precise_math
         if self.settings.os not in ["Windows", "Android"]:
             del self.options.enable_simd
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     def latest_version(self):
         repo = GithubRepository(self, "NVIDIA-Omniverse/PhysX")

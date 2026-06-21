@@ -29,8 +29,6 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
         if str(self.settings.os) == "baremetal":
             self.options.with_os_api = False
 

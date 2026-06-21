@@ -41,14 +41,6 @@ class Recipe(RecipeBase):
         "with_openh264": False,
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
-
     def requirements(self):
         if self.options.with_libde265:
             self.requires("libde265")

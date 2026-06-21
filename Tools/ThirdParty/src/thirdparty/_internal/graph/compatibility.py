@@ -2,7 +2,7 @@ import os
 from collections import OrderedDict
 
 from thirdparty._internal.output import Output
-from thirdparty._internal.cache.home_paths import HomePaths
+from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty._internal.graph.compute_pid import run_validate_package_id
 from thirdparty._internal.loader import load_python_file
 from thirdparty._internal.errors import recipe_exception_formatter, scoped_traceback

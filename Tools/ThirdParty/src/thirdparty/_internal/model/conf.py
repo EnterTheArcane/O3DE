@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from thirdparty.errors import RecipeException
 from thirdparty._internal import detect_api
-from thirdparty._internal.cache.home_paths import HomePaths
+from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.model.recipe_ref import ref_matches
 from thirdparty._internal.model.settings import SettingsItem

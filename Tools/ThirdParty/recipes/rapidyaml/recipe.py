@@ -31,13 +31,7 @@ class Recipe(RecipeBase):
     def _minimum_cpp_standard(self):
         return 11
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
         # with_default_callback_uses_exceptions should only be valid if with_default_callbacks is true
         if not self.options.with_default_callbacks:
             self.options.rm_safe("with_default_callback_uses_exceptions")

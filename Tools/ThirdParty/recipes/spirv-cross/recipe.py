@@ -43,13 +43,8 @@ class Recipe(RecipeBase):
         "namespace": "spirv_cross",
     }
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-
     def configure(self):
         if self.options.shared:
-            self.options.rm_safe("fPIC")
             # these options don't contribute to shared binary
             del self.options.c_api
             del self.options.util

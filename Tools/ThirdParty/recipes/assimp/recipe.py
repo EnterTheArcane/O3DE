@@ -98,16 +98,10 @@ class Recipe(RecipeBase):
     default_options.update(dict.fromkeys(_format_option_map, True))
 
     def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
 
         for option, (_, min_version) in self._format_option_map.items():
             if Version(self.version) < Version(min_version):
                 delattr(self.options, option)
-
-    def configure(self):
-        if self.options.shared:
-            self.options.rm_safe("fPIC")
 
     @property
     def _depends_on_kuba_zip(self):
