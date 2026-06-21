@@ -120,6 +120,12 @@ class Recipe(RecipeBase):
     def _is_win_x_android(self):
         return self.settings.os == "Android" and self.settings_build.os == "Windows"
 
+    @property
+    def _is_using_cmake_build(self):
+        # This recipe always builds with CMake (see generate()); upstream's autotools
+        # build path was not ported, so the CMake branch always applies.
+        return True
+
     def config_options(self):
         del self.options.with_libgsasl
         if not is_apple_os(self):

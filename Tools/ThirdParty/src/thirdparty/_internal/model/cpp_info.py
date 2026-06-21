@@ -10,10 +10,8 @@ from thirdparty.errors import RecipeException
 from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.util.files import load, save
 
-_DIRS_VAR_NAMES = ["_includedirs", "_srcdirs", "_libdirs", "_resdirs", "_bindirs", "_builddirs",
-                   "_frameworkdirs", "_objects"]
-_FIELD_VAR_NAMES = ["_system_libs", "_package_framework", "_frameworks", "_libs", "_defines",
-                    "_cflags", "_cxxflags", "_sharedlinkflags", "_exelinkflags", "_sources"]
+_DIRS_VAR_NAMES = ["_includedirs", "_srcdirs", "_libdirs", "_resdirs", "_bindirs", "_builddirs", "_frameworkdirs", "_objects"]
+_FIELD_VAR_NAMES = ["_system_libs", "_package_framework", "_frameworks", "_libs", "_defines", "_cflags", "_cxxflags", "_sharedlinkflags", "_exelinkflags", "_sources"]
 _ALL_NAMES = _DIRS_VAR_NAMES + _FIELD_VAR_NAMES
 _SINGLE_VALUE_VARS = "_type", "_exe", "_location", "_link_location", "_languages"
 

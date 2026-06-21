@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.recipe_graph import build_recipe_graph, RecipeGraph
+from thirdparty._internal.graph.graph import Graph
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -62,7 +62,7 @@ def graph(args: argparse.Namespace) -> None:
         print("[thirdparty] no recipes matched", file=sys.stderr)
         sys.exit(1)
 
-    g = build_recipe_graph(recipes_root, roots, args.build_type, transitive=True)
+    g = Graph.build(recipes_root, roots, args.build_type, transitive=True)
 
     if args.fmt == "tree":
         _print_tree(g, roots, args.tools)
@@ -72,7 +72,7 @@ def graph(args: argparse.Namespace) -> None:
         _print_mermaid(g, args.tools)
 
 
-def _deps_of(g: RecipeGraph, name: str, tools: bool) -> list[tuple[str, bool]]:
+def _deps_of(g: Graph, name: str, tools: bool) -> list[tuple[str, bool]]:
     """Return [(dep_name, is_tool)] for a node, host deps first."""
     node = g[name]
     result: list[tuple[str, bool]] = [(d, False) for d in node.host_deps]
@@ -81,7 +81,7 @@ def _deps_of(g: RecipeGraph, name: str, tools: bool) -> list[tuple[str, bool]]:
     return result
 
 
-def _print_tree(g: RecipeGraph, roots: list[str], tools: bool) -> None:
+def _print_tree(g: Graph, roots: list[str], tools: bool) -> None:
     enc = (getattr(sys.stdout, "encoding", "") or "").lower()
     if "utf" in enc:
         tee, last_, pipe = "├── ", "└── ", "│   "
@@ -115,7 +115,7 @@ def _safe_id(name: str) -> str:
     return re.sub(r"[^0-9a-zA-Z_]", "_", name)
 
 
-def _print_dot(g: RecipeGraph, tools: bool) -> None:
+def _print_dot(g: Graph, tools: bool) -> None:
     print("digraph deps {")
     print("  rankdir=LR;")
     print('  node [shape=box, fontname="monospace"];')
@@ -130,7 +130,7 @@ def _print_dot(g: RecipeGraph, tools: bool) -> None:
     print("}")
 
 
-def _print_mermaid(g: RecipeGraph, tools: bool) -> None:
+def _print_mermaid(g: Graph, tools: bool) -> None:
     print("flowchart LR")
     for name in sorted(g.nodes):
         node = g.nodes[name]

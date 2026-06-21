@@ -10,12 +10,8 @@ from colorama import Fore, Style
 
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.detect import detect_platform_tag
-from thirdparty._internal.graph.recipe_graph import (
-    RecipeGraphNode,
-    build_recipe_graph,
-    is_built,
-    make_probe_recipe,
-)
+from thirdparty._internal.graph.graph import Node, Graph, is_built
+from thirdparty._internal.loader import make_probe_recipe
 from thirdparty.errors import RecipeInvalidConfiguration
 
 
@@ -35,7 +31,7 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
     )
 
 
-def _is_incompatible(recipes_root: Path, node: RecipeGraphNode, build_type: str) -> bool:
+def _is_incompatible(recipes_root: Path, node: Node, build_type: str) -> bool:
     if node.recipe_cls is None:
         return False
     try:
@@ -90,7 +86,7 @@ def list_recipes(args: argparse.Namespace) -> None:
         print("[thirdparty] no recipes matched", file=sys.stderr)
         sys.exit(1)
 
-    graph = build_recipe_graph(recipes_root, names, args.build_type)
+    graph = Graph.build(recipes_root, names, args.build_type)
     order = graph.topo_order() if args.build_order else sorted(names)
 
     plat = detect_platform_tag()
