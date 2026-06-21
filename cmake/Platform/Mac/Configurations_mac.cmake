@@ -35,5 +35,11 @@ ly_set(CMAKE_XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep")
 # Generate scheme files for Xcode
 ly_set(CMAKE_XCODE_GENERATE_SCHEME TRUE)
 
+# Disable user script sandboxing for the Xcode generator.
+# Xcode 26 defaults ENABLE_USER_SCRIPT_SANDBOXING to YES, which runs every target's PostBuild script (like runtime-dependency copy/fixup_bundle steps)
+# inside a sandbox that denies the filesystem writes those scripts need, producing "Operation not permitted" (EPERM) failures.
+# The O3DE PostBuild scripts copy frameworks and run fixup_bundle, so they require unrestricted filesystem access.
+ly_set(CMAKE_XCODE_ATTRIBUTE_ENABLE_USER_SCRIPT_SANDBOXING NO)
+
 # Make modules have the dylib extension
 ly_set(CMAKE_SHARED_MODULE_SUFFIX .dylib)

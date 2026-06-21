@@ -391,6 +391,38 @@ if(target_bundle_content_dir)
         list(APPEND plugin_dirs "${target_bundle_framework_dir}")
         fixup_bundle("${target_bundle_dir}" "${plugin_libs}" "${plugin_dirs}" IGNORE_ITEM ${fixup_bundle_ignore})
 
+        # Replace every bundled Qt framework with a symlink to its 3rdParty source so loose Gems and
+        # the bundle resolve a single Qt instance (see LY_MAC_BUNDLE_QT_SYMLINK). Globs the bundle
+        # rather than the direct deps so transitively-bundled frameworks (e.g. QtDBus) are covered.
+        if(@LY_MAC_BUNDLE_QT_SYMLINK@)
+            set(qt_frameworks_relinked FALSE)
+            # Derive the 3rdParty qt/lib source dir from any Qt framework in the dependency dirs.
+            set(qt_source_lib_dir "")
+            foreach(dir IN LISTS plugin_dirs)
+                if(dir MATCHES "(.*/qt/lib)/Qt[^/]+\\.framework$")
+                    set(qt_source_lib_dir "${CMAKE_MATCH_1}")
+                    break()
+                endif()
+            endforeach()
+            file(GLOB bundled_qt_frameworks "${target_bundle_framework_dir}/Qt*.framework")
+            foreach(bundled_qt_framework IN LISTS bundled_qt_frameworks)
+                cmake_path(GET bundled_qt_framework FILENAME qt_framework_filename)
+                set(source_qt_framework "${qt_source_lib_dir}/${qt_framework_filename}")
+                if(qt_source_lib_dir AND EXISTS "${source_qt_framework}"
+                        AND NOT IS_SYMLINK "${bundled_qt_framework}")
+                    file(REMOVE_RECURSE "${bundled_qt_framework}")
+                    execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink
+                        "${source_qt_framework}" "${bundled_qt_framework}")
+                    set(qt_frameworks_relinked TRUE)
+                endif()
+            endforeach()
+            # Swapping Contents/Frameworks entries invalidates the bundle signature (arm64 needs it
+            # for dlopen). Re-seal ad-hoc with --deep (plain --sign fails on the loose Builders files).
+            if(qt_frameworks_relinked)
+                execute_process(COMMAND codesign --force --deep --sign - "${target_bundle_dir}")
+            endif()
+        endif()
+
         # fix the rpath for the DirectXShaderCompiler `dxc-3.7` to point at
         # <bundle-app>/Contents/Frameworks/libDirectXShaderCompiler.dylib
         #
