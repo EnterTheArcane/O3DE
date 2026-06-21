@@ -3,53 +3,53 @@ from pathlib import Path
 from thirdparty._internal.graph.graph import CONTEXT_BUILD
 
 
-class ConanFileInterface:
+class RecipeInterface:
     """
     This is just a protective wrapper to give consumers
-    a limited view of conanfile dependencies, "read" only,
+    a limited view of recipe dependencies, "read" only,
     and only to some attributes, not methods
     """
 
     def __str__(self):
-        return str(self._conanfile)
+        return str(self._recipe)
 
-    def __init__(self, conanfile, consumer):
-        self._conanfile = conanfile
+    def __init__(self, recipe, consumer):
+        self._recipe = recipe
         self._consumer = consumer
 
     def __eq__(self, other):
         """
-        The conanfile is a different entity per node, and conanfile equality is identity
-        :type other: ConanFileInterface
+        The recipe is a different entity per node, and recipe equality is identity
+        :type other: RecipeInterface
         """
-        return self._conanfile == other._conanfile
+        return self._recipe == other._recipe
 
     def __hash__(self):
-        return hash(self._conanfile)
+        return hash(self._recipe)
 
     @property
     def options(self):
-        return self._conanfile.options
+        return self._recipe.options
 
     @property
     def recipe_folder(self):
-        return self._conanfile.recipe_folder
+        return self._recipe.recipe_folder
 
     @property
     def recipe_metadata_folder(self):
-        return self._conanfile.recipe_metadata_folder
+        return self._recipe.recipe_metadata_folder
 
     @property
     def package_folder(self):
-        return self._conanfile.package_folder
+        return self._recipe.package_folder
 
     @property
     def immutable_package_folder(self):
-        return self._conanfile.immutable_package_folder
+        return self._recipe.immutable_package_folder
 
     @property
     def package_metadata_folder(self):
-        return self._conanfile.package_metadata_folder
+        return self._recipe.package_metadata_folder
 
     @property
     def package_path(self) -> Path:
@@ -58,109 +58,109 @@ class ConanFileInterface:
 
     @property
     def ref(self):
-        return self._conanfile.ref
+        return self._recipe.ref
 
     @property
     def pref(self):
-        return self._conanfile.pref
+        return self._recipe.pref
 
     @property
     def buildenv_info(self):
-        return self._conanfile.buildenv_info
+        return self._recipe.buildenv_info
 
     @property
     def runenv_info(self):
-        return self._conanfile.runenv_info
+        return self._recipe.runenv_info
 
     @property
     def cpp_info(self):
         # At the moment, not doing a full copy, not necessary as access is not concurrent
-        self._conanfile.cpp_info.set_consumer(self._consumer)
-        return self._conanfile.cpp_info
+        self._recipe.cpp_info.set_consumer(self._consumer)
+        return self._recipe.cpp_info
 
     @property
     def settings(self):
-        return self._conanfile.settings
+        return self._recipe.settings
 
     @property
     def settings_build(self):
-        return self._conanfile.settings_build
+        return self._recipe.settings_build
 
     @property
     def context(self):
-        return self._conanfile.context
+        return self._recipe.context
 
     @property
     def conf_info(self):
-        return self._conanfile.conf_info
+        return self._recipe.conf_info
 
     @property
     def generator_info(self):
-        return self._conanfile.generator_info
+        return self._recipe.generator_info
 
     @property
     def dependencies(self):
-        return self._conanfile.dependencies
+        return self._recipe.dependencies
 
     @property
     def folders(self):
-        return self._conanfile.folders
+        return self._recipe.folders
 
     @property
     def is_build_context(self):
-        return self._conanfile.context == CONTEXT_BUILD
+        return self._recipe.context == CONTEXT_BUILD
 
     @property
     def package_type(self):
-        return self._conanfile.package_type
+        return self._recipe.package_type
 
     @property
     def languages(self):
-        return self._conanfile.languages
+        return self._recipe.languages
 
     @property
     def info(self):
-        return self._conanfile.info
+        return self._recipe.info
 
     def set_deploy_folder(self, deploy_folder):
-        self._conanfile.set_deploy_folder(deploy_folder)
+        self._recipe.set_deploy_folder(deploy_folder)
 
     @property
-    def conan_data(self):
-        return self._conanfile.conan_data
+    def recipe_data(self):
+        return self._recipe.recipe_data
 
     @property
     def license(self):
-        return self._conanfile.license
+        return self._recipe.license
 
     @property
     def description(self):
-        return self._conanfile.description
+        return self._recipe.description
 
     @property
     def author(self):
-        return self._conanfile.author
+        return self._recipe.author
 
     @property
     def homepage(self):
-        return self._conanfile.homepage
+        return self._recipe.homepage
 
     @property
     def url(self):
-        return self._conanfile.url
+        return self._recipe.url
 
     @property
     def extension_properties(self):
-        return getattr(self._conanfile, "extension_properties", {})
+        return getattr(self._recipe, "extension_properties", {})
 
     @property
     def recipe(self) -> str:
         # IMPORTANT: this should be used only for "informational" purposes, see GH#18996.
-        return self._conanfile._conan_node.recipe  # noqa
+        return self._recipe._recipe_node.recipe  # noqa
 
     @property
     def conf(self):
-        return self._conanfile.conf
+        return self._recipe.conf
 
 
 

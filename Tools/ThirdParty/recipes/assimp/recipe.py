@@ -210,7 +210,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             tc.preprocessor_definitions["NOMINMAX"] = 1
 
-        tc.cache_variables["CMAKE_PROJECT_Assimp_INCLUDE"] = os.path.join(self.generators_folder, "conan_deps.cmake").replace("\\", "/")
+        tc.cache_variables["CMAKE_PROJECT_Assimp_INCLUDE"] = os.path.join(self.generators_folder, "recipe_deps.cmake").replace("\\", "/")
         tc.cache_variables["WITH_CLIPPER"] = self._depends_on_clipper
         tc.cache_variables["WITH_DRACO"] = self._depends_on_draco
         tc.cache_variables["WITH_KUBAZIP"] = self._depends_on_kuba_zip
@@ -261,13 +261,13 @@ class Recipe(RecipeBase):
             "stb",
         ]:
             content = content.replace("${%s_SRCS}" % vendored_lib, "")
-        # Link conan-provided targets in non-hunter mode so their include dirs propagate
+        # Link recipe-provided targets in non-hunter mode so their include dirs propagate
         content = content.replace(
             "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\nENDIF()",
             "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\n"
-            "  foreach(_conan_target rapidjson::rapidjson utf8cpp::utf8cpp stb::stb openddlparser::openddlparser minizip::minizip poly2tri::poly2tri clipper::clipper zip::zip)\n"
-            "    if(TARGET ${_conan_target})\n"
-            "      target_link_libraries(assimp ${_conan_target})\n"
+            "  foreach(_recipe_target rapidjson::rapidjson utf8cpp::utf8cpp stb::stb openddlparser::openddlparser minizip::minizip poly2tri::poly2tri clipper::clipper zip::zip)\n"
+            "    if(TARGET ${_recipe_target})\n"
+            "      target_link_libraries(assimp ${_recipe_target})\n"
             "    endif()\n"
             "  endforeach()\n"
             "ENDIF()"
@@ -286,7 +286,7 @@ class Recipe(RecipeBase):
                  f"#include <{include}>\n")
         rmdir(self, os.path.join(self.source_folder, "contrib", "utf8cpp"))
 
-        # minizip is provided via conan_deps.cmake, no need to use pkgconfig
+        # minizip is provided via recipe_deps.cmake, no need to use pkgconfig
         replace_in_file(
             self,
             os.path.join(self.source_folder, "CMakeLists.txt"),

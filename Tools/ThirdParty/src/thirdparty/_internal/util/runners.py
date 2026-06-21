@@ -5,7 +5,7 @@ import tempfile
 from contextlib import contextmanager
 from io import StringIO
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import load
 
 
@@ -32,7 +32,7 @@ else:
         yield
 
 
-def conan_run(command, stdout=None, stderr=None, cwd=None, shell=True):
+def run_command(command, stdout=None, stderr=None, cwd=None, shell=True):
     """
     @param shell:
     @param stderr:
@@ -50,7 +50,7 @@ def conan_run(command, stdout=None, stderr=None, cwd=None, shell=True):
         try:
             proc = subprocess.Popen(command, shell=shell, stdout=out, stderr=err, cwd=cwd)
         except Exception as e:
-            raise ConanException("Error while running cmd\nError: %s" % (str(e)))
+            raise RecipeException("Error while running cmd\nError: %s" % (str(e)))
 
         proc_stdout, proc_stderr = proc.communicate()
         # If the output is piped, like user provided a StringIO or testing, the communicate
@@ -94,7 +94,7 @@ def check_output_runner(cmd, stderr=None, ignore_error=False):
         if process.returncode and not ignore_error:
             # Only in case of error, we print also the stderr to know what happened
             msg = f"Command '{cmd}' failed with errorcode '{process.returncode}'\n{stderr}"
-            raise ConanException(msg)
+            raise RecipeException(msg)
 
         output = load(tmp_file)
         return output

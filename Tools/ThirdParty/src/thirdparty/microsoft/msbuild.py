@@ -1,14 +1,14 @@
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
 
 
-def msbuild_verbosity_cmd_line_arg(conanfile):
+def msbuild_verbosity_cmd_line_arg(recipe):
     """
     Controls msbuild verbosity.
     See https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-command-line-reference
     :return:
     """
-    verbosity = conanfile.conf.get("tools.build:verbosity", choices=("quiet", "verbose"))
+    verbosity = recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose"))
     if verbosity is not None:
         verbosity = {
             "quiet": "Quiet",
@@ -23,20 +23,20 @@ class MSBuild:
     MSBuild build helper class
     """
 
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
         #: Defines the build type. By default, ``settings.build_type``.
-        self.build_type = conanfile.settings.get_safe("build_type")
+        self.build_type = recipe.settings.get_safe("build_type")
         # if platforms:
         #    msvc_arch.update(platforms)
-        arch = conanfile.settings.get_safe("arch")
+        arch = recipe.settings.get_safe("arch")
         # MSVC default platform for VS projects is "x86", not "Win32" (but CMake default is "Win32")
         msvc_platform = msvc_platform_from_arch(arch) if arch != "x86" else "x86"
-        if conanfile.settings.get_safe("os") == "WindowsCE":
-            msvc_platform = conanfile.settings.get_safe("os.platform")
+        if recipe.settings.get_safe("os") == "WindowsCE":
+            msvc_platform = recipe.settings.get_safe("os.platform")
         #: Defines the platform name, e.g., ``ARM`` if ``settings.arch == "armv7"``.
         self.platform = msvc_platform
 
@@ -53,18 +53,18 @@ class MSBuild:
         cmd = ('msbuild.exe "%s" -p:Configuration="%s" -p:Platform="%s"'
                % (sln, self.build_type, self.platform))
 
-        verbosity = msbuild_verbosity_cmd_line_arg(self._conanfile)
+        verbosity = msbuild_verbosity_cmd_line_arg(self._recipe)
         if verbosity:
             cmd += " {}".format(verbosity)
 
-        maxcpucount = self._conanfile.conf.get("tools.microsoft.msbuild:max_cpu_count",
+        maxcpucount = self._recipe.conf.get("tools.microsoft.msbuild:max_cpu_count",
                                                check_type=int)
         if maxcpucount is not None:
             cmd += f' -m:"{maxcpucount}"' if maxcpucount > 0 else " -m"
 
         if targets:
             if not isinstance(targets, list):
-                raise ConanException("targets argument should be a list")
+                raise RecipeException("targets argument should be a list")
             cmd += ' -target:"{}"'.format(";".join(targets))
 
         return cmd
@@ -77,7 +77,7 @@ class MSBuild:
         :param targets: ``targets`` is an optional argument, defaults to ``None``, and otherwise it is a list of targets to build
         """
         cmd = self.command(sln, targets=targets)
-        self._conanfile.run(cmd)
+        self._recipe.run(cmd)
 
     @staticmethod
     def get_version(_):

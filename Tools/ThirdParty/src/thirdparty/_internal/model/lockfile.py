@@ -2,14 +2,14 @@ import fnmatch
 import json
 import os
 
-from thirdparty._internal.api.output import ConanOutput
+from thirdparty._internal.api.output import Output
 from thirdparty._internal.graph.graph import RECIPE_VIRTUAL, RECIPE_CONSUMER, CONTEXT_BUILD, Overrides
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.version_range import VersionRange
 from thirdparty._internal.util.files import load, save
 
-LOCKFILE = "conan.lock"
+LOCKFILE = "recipe.lock"
 LOCKFILE_VERSION = "0.5"
 
 
@@ -59,7 +59,7 @@ class _LockRequires:
         else:  # Manual addition of something without revision
             existing = {r: r for r in self._requires}.get(ref)
             if existing and existing.revision is not None:
-                raise ConanException(f"Cannot add {ref} to lockfile, already exists")
+                raise RecipeException(f"Cannot add {ref} to lockfile, already exists")
             self._requires[ref] = package_ids
 
     def remove(self, pattern):
@@ -87,7 +87,7 @@ class _LockRequires:
             new_reqs = {}
             for k, v in self._requires.items():
                 if r.name == k.name:
-                    ConanOutput().info(f"Replacing {name}: {k.repr_notime()} -> {repr(r)}")
+                    Output().info(f"Replacing {name}: {k.repr_notime()} -> {repr(r)}")
                 else:
                     new_reqs[k] = v
             self._requires = new_reqs
@@ -130,13 +130,13 @@ class Lockfile:
     def update_lock(self, deps_graph, lock_packages=False):
         for graph_node in deps_graph.nodes:
             try:
-                for r in graph_node.conanfile.python_requires.all_refs():
+                for r in graph_node.recipe.python_requires.all_refs():
                     self._python_requires.add(r)
             except AttributeError:
                 pass
             if graph_node.recipe in (RECIPE_VIRTUAL, RECIPE_CONSUMER) or graph_node.ref is None:
                 continue
-            assert graph_node.conanfile is not None
+            assert graph_node.recipe is not None
 
             pids = {graph_node.package_id: graph_node.prev} if lock_packages else None
             if graph_node.context == CONTEXT_BUILD:
@@ -157,12 +157,12 @@ class Lockfile:
         if not path:
             raise IOError("Invalid path")
         if not os.path.isfile(path):
-            raise ConanException("Missing lockfile in: %s" % path)
+            raise RecipeException("Missing lockfile in: %s" % path)
         content = load(path)
         try:
             return Lockfile.loads(content)
         except Exception as e:
-            raise ConanException("Error parsing lockfile '{}': {}".format(path, e))
+            raise RecipeException("Error parsing lockfile '{}': {}".format(path, e))
 
     @staticmethod
     def loads(content):
@@ -215,7 +215,7 @@ class Lockfile:
                 for r in reqs:
                     removed.extend(self_reqs.remove(r))
                 for d in removed:
-                    ConanOutput().info(f"Removed locked {name}: {d.repr_notime()}")
+                    Output().info(f"Removed locked {name}: {d.repr_notime()}")
 
         _remove(requires, self._requires, "require")
         _remove(build_requires, self._build_requires, "build_require")
@@ -235,7 +235,7 @@ class Lockfile:
         graph_lock = Lockfile()
         version = data.get("version")
         if version and version != LOCKFILE_VERSION:
-            raise ConanException("This lockfile was created with an incompatible "
+            raise RecipeException("This lockfile was created with an incompatible "
                                  "version. Please regenerate the lockfile")
         if "requires" in data:
             graph_lock._requires = _LockRequires.deserialize(data["requires"])
@@ -283,13 +283,13 @@ class Lockfile:
             kind = "requires"
         try:
             self._resolve(require, locked_refs, resolve_prereleases, kind)
-        except ConanException:
+        except RecipeException:
             overrides = self._overrides.get(require.ref)
             if overrides is not None and len(overrides) > 1:
                 msg = f"Override defined for {require.ref}, but multiple possible overrides" \
-                      f" {overrides}. You might need to apply the 'conan graph build-order'" \
+                      f" {overrides}. You might need to apply the 'recipe graph build-order'" \
                       f" overrides for correctly building this package with this lockfile"
-                ConanOutput().error(msg, error_type="exception")
+                Output().error(msg, error_type="exception")
             raise
 
     def resolve_overrides(self, require, context):
@@ -330,7 +330,7 @@ class Lockfile:
         # Existing installed config packages must exist in the lockfile
         not_locked = [r for r in installed_refs if r not in lockfile_refs]
         if not_locked:
-            raise ConanException(f"Installed config packages {not_locked} not in the lockfile")
+            raise RecipeException(f"Installed config packages {not_locked} not in the lockfile")
 
         # Config-requires in the lockfile must be installed, at least 1 per package name
         # so first, group by package name
@@ -342,7 +342,7 @@ class Lockfile:
             if not any(r in installed_refs for r in refs):
                 not_installed.extend(refs)
         if not_installed:
-            raise ConanException("There are config packages in lockfile "
+            raise RecipeException("There are config packages in lockfile "
                                  f"'config_requires' not installed: {not_installed}")
 
     def _resolve(self, require, locked_refs, resolve_prereleases, kind):
@@ -357,7 +357,7 @@ class Lockfile:
                     break
             else:
                 if not self.partial:
-                    raise ConanException(f"Requirement '{ref}' not in lockfile '{kind}'")
+                    raise RecipeException(f"Requirement '{ref}' not in lockfile '{kind}'")
         else:
             ref = require.ref
             if ref.revision is None:
@@ -367,10 +367,10 @@ class Lockfile:
                         break
                 else:
                     if not self.partial:
-                        raise ConanException(f"Requirement '{ref}' not in lockfile '{kind}'")
+                        raise RecipeException(f"Requirement '{ref}' not in lockfile '{kind}'")
             else:
                 if ref not in matches and not self.partial:
-                    raise ConanException(f"Requirement '{repr(ref)}' not in lockfile '{kind}'")
+                    raise RecipeException(f"Requirement '{repr(ref)}' not in lockfile '{kind}'")
 
     def replace_alias(self, require, alias):
         locked_alias = self._alias.get(alias)
@@ -378,7 +378,7 @@ class Lockfile:
             require.ref = locked_alias
             return True
         elif not self.partial:
-            raise ConanException(f"Requirement alias '{alias}' not in lockfile")
+            raise RecipeException(f"Requirement alias '{alias}' not in lockfile")
 
     def resolve_locked_pyrequires(self, require, resolve_prereleases=None):
         locked_refs = self._python_requires.refs()  # CHANGE

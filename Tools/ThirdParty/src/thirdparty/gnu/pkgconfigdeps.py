@@ -4,7 +4,7 @@ import textwrap
 
 from jinja2 import Template, StrictUndefined
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
@@ -39,9 +39,9 @@ class _PCFilesDeps:
     """)
 
     def __init__(self, pkgconfigdeps, dep, suffix=""):
-        self._conanfile = pkgconfigdeps._conanfile  # noqa
+        self._recipe = pkgconfigdeps._recipe  # noqa
         self._properties = pkgconfigdeps._properties  # noqa
-        self._transitive_reqs = get_transitive_requires(self._conanfile, dep)
+        self._transitive_reqs = get_transitive_requires(self._recipe, dep)
         self._dep = dep
         self._suffix = suffix
 
@@ -60,7 +60,7 @@ class _PCFilesDeps:
                 # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
                     (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_aliases()
-            raise ConanException("Component '{name}::{cname}' not found in '{name}' "
+            raise RecipeException("Component '{name}::{cname}' not found in '{name}' "
                                  "package requirement".format(name=dep.ref.name,
                                                               cname=comp_ref_name))
         comp_aliases = self._get_property("pkg_config_aliases", dep, comp_ref_name, check_type=list)
@@ -80,7 +80,7 @@ class _PCFilesDeps:
                 # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
                     (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_name()
-            raise ConanException("Component '{name}::{cname}' not found in '{name}' "
+            raise RecipeException("Component '{name}::{cname}' not found in '{name}' "
                                  "package requirement".format(name=dep.ref.name,
                                                               cname=comp_ref_name))
         comp_name = self._get_property("pkg_config_name", dep, comp_ref_name)
@@ -97,7 +97,7 @@ class _PCFilesDeps:
         try:
             value = self._properties[f"{dep_comp}{self._suffix}"][prop]
             if check_type is not None and not isinstance(value, check_type):
-                raise ConanException(
+                raise RecipeException(
                     f'The expected type for {prop} is "{check_type.__name__}", but "{type(value).__name__}" was found')
             return value
         except KeyError:
@@ -106,9 +106,9 @@ class _PCFilesDeps:
 
     def _get_pc_variables(self, dep, cpp_info, custom_content=None):
         """
-        Get all the freeform variables defined by Conan and
+        Get all the freeform variables defined by Recipe and
         users (through ``pkg_config_custom_content``). This last ones will override the
-        Conan defined variables.
+        Recipe defined variables.
         """
         def apply_custom_content():
             if isinstance(custom_content, dict):
@@ -150,9 +150,9 @@ class _PCFilesDeps:
 
     def _get_framework_flags(self, cpp_info):
         # FIXME: GnuDepsFlags used only here. Let's adapt the code and remove this dependency.
-        #        self._conanfile is also used only here.
+        #        self._recipe is also used only here.
         from thirdparty.gnu.gnudeps_flags import GnuDepsFlags
-        gnudeps_flags = GnuDepsFlags(self._conanfile, cpp_info)
+        gnudeps_flags = GnuDepsFlags(self._recipe, cpp_info)
         return gnudeps_flags.frameworks + gnudeps_flags.framework_paths
 
     def _get_lib_flags(self, libdirvars, cpp_info):
@@ -177,8 +177,8 @@ class _PCFilesDeps:
         For instance, those requirements could be coming from:
 
         ```python
-        from conan import ConanFile
-        class PkgConfigConan(ConanFile):
+        from thirdparty import RecipeBase
+        class PkgConfigRecipe(RecipeBase):
             requires = "other/1.0"
 
             def package_info(self):
@@ -197,12 +197,12 @@ class _PCFilesDeps:
             # For instance, dep == "hello/1.0" and req == "other::cmp1" -> hello != other
             if dep_ref_name != pkg_ref_name:
                 try:
-                    req_conanfile = self._transitive_reqs[pkg_ref_name]
+                    req_recipe = self._transitive_reqs[pkg_ref_name]
                 except KeyError:
                     continue  # If the dependency is not in the transitive, might be skipped
             else:  # For instance, dep == "hello/1.0" and req == "hello::cmp1" -> hello == hello
-                req_conanfile = self._dep
-            comp_name = self._get_name(req_conanfile, pkg_ref_name, comp_ref_name)
+                req_recipe = self._dep
+            comp_name = self._get_name(req_recipe, pkg_ref_name, comp_ref_name)
             if comp_name not in ret:
                 ret.append(comp_name)
         return ret
@@ -240,7 +240,7 @@ class _PCFilesDeps:
             pc_variables = self._get_pc_variables(self._dep, comp_cpp_info, custom_content)
             pc_context = {
                 "name": comp_name,
-                "description": f"Conan component: {comp_name}",
+                "description": f"Recipe component: {comp_name}",
                 "version": version,
                 "requires": comp_requires,
                 "pc_variables": pc_variables,
@@ -259,7 +259,7 @@ class _PCFilesDeps:
                 })
         # Second, let's load the root package's PC file ONLY
         # if it does not already exist in components one
-        # Issue related: https://github.com/conan-io/conan/issues/10341
+        # Issue related: upstream issue 10341
         should_skip_main = self._get_property("pkg_config_name", self._dep) == "none"
         if pkg_name not in pc_files and not should_skip_main:
             cpp_info = self._dep.cpp_info
@@ -277,7 +277,7 @@ class _PCFilesDeps:
             pc_variables = self._get_pc_variables(self._dep, cpp_info, custom_content)
             pc_context = {
                 "name": pkg_name,
-                "description": f"Conan package: {pkg_name}",
+                "description": f"Recipe package: {pkg_name}",
                 "version": version,
                 "requires": requires,
                 "pc_variables": pc_variables,
@@ -311,37 +311,37 @@ class _PCFilesDeps:
 
 class PkgConfigDeps:
 
-    def __init__(self, conanfile):
-        self._conanfile = conanfile
+    def __init__(self, recipe):
+        self._recipe = recipe
         # Activate the build *.pc files for the specified libraries
         self.build_context_activated = []
         # If specified, the files/requires/names for the build context will be renamed appending
         # a suffix. It is necessary in case of same require and build_require and will cause an error
         # DEPRECATED: consumers should use build_context_folder instead
-        # FIXME: Conan 3.x: Remove build_context_suffix attribute
+        # FIXME: Recipe 3.x: Remove build_context_suffix attribute
         self.build_context_suffix = {}
         # By default, the "[generators_folder]/build" folder will save all the *.pc files activated
         # in the build_context_activated list.
         # Notice that if the `build_context_suffix` attr is defined, the `build_context_folder` one
         # will have no effect.
-        # Issue: https://github.com/conan-io/conan/issues/12342
-        # Issue: https://github.com/conan-io/conan/issues/14935
-        # FIXME: Conan 3.x: build_context_folder should be "build" by default
+        # Issue: upstream issue 12342
+        # Issue: upstream issue 14935
+        # FIXME: Recipe 3.x: build_context_folder should be "build" by default
         self.build_context_folder = None  # Keeping backward-compatibility
         self._properties = {}
 
     def _get_dependencies(self):
         # Get all the dependencies
-        host_req = self._conanfile.dependencies.host
-        build_req = self._conanfile.dependencies.build  # tool_requires
-        test_req = self._conanfile.dependencies.test
+        host_req = self._recipe.dependencies.host
+        build_req = self._recipe.dependencies.build  # tool_requires
+        test_req = self._recipe.dependencies.test
         # If self.build_context_suffix is not defined, the build requires will be saved
         # in the self.build_context_folder
-        # FIXME: Conan 3.x: Remove build_context_suffix attribute and the validation function
+        # FIXME: Recipe 3.x: Remove build_context_suffix attribute and the validation function
         if self.build_context_folder is None:  # Legacy flow
             if self.build_context_suffix:
                 # deprecation warning
-                self._conanfile.output.warning(
+                self._recipe.output.warning(
                     "PkgConfigDeps.build_context_suffix attribute has been "
                     "deprecated. Use PkgConfigDeps.build_context_folder instead."
                 )
@@ -352,12 +352,12 @@ class PkgConfigDeps:
             without_suffixes = [common_name for common_name in common_names
                                 if not self.build_context_suffix.get(common_name)]
             if without_suffixes:
-                raise ConanException(
+                raise RecipeException(
                     f"The packages {without_suffixes} exist both as 'require' and as"
                     f" 'build require'. You need to specify a suffix using the "
                     f"'build_context_suffix' attribute at the PkgConfigDeps generator.")
         elif self.build_context_folder is not None and self.build_context_suffix:
-            raise ConanException(
+            raise RecipeException(
                 "It's not allowed to define both PkgConfigDeps.build_context_folder "
                 "and PkgConfigDeps.build_context_suffix (deprecated).")
 
@@ -374,11 +374,11 @@ class PkgConfigDeps:
         def _pc_file_name(name_, is_build_context=False, has_suffix=False):
             # If no suffix is defined, we can save the *.pc file in the build_context_folder
             build = is_build_context and self.build_context_folder and not has_suffix
-            # Issue: https://github.com/conan-io/conan/issues/12342
-            # Issue: https://github.com/conan-io/conan/issues/14935
+            # Issue: upstream issue 12342
+            # Issue: upstream issue 14935
             return f"{self.build_context_folder}/{name_}.pc" if build else f"{name_}.pc"
 
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         for require, dep in self._get_dependencies():
             suffix = self.build_context_suffix.get(require.ref.name, "") if require.build else ""
             # Save all the *.pc files and their contents
@@ -390,7 +390,7 @@ class PkgConfigDeps:
     def set_property(self, dep, prop, value):
         """
         Using this method you can overwrite the :ref:`property<PkgConfigDeps Properties>` values set by
-        the Conan recipes from the consumer. This can be done for `pkg_config_name`,
+        the Recipe recipes from the consumer. This can be done for `pkg_config_name`,
         `pkg_config_aliases` and `pkg_config_custom_content` properties.
 
         :param dep: Name of the dependency to set the :ref:`property<PkgConfigDeps Properties>`. For

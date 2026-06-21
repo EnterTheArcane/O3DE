@@ -112,22 +112,22 @@ class Recipe(RecipeBase):
         libs = "-lfreetyped" if self.settings.build_type == "Debug" else "-lfreetype"
         staticlibs = f"-lm {libs}" if self.settings.os == "Linux" else libs
         replace_in_file(self, freetype_config, r"%PKG_CONFIG%", r"/bin/false")  # never use pkg-config
-        replace_in_file(self, freetype_config, r"%prefix%", r"$conan_prefix")
-        replace_in_file(self, freetype_config, r"%exec_prefix%", r"$conan_exec_prefix")
-        replace_in_file(self, freetype_config, r"%includedir%", r"$conan_includedir")
-        replace_in_file(self, freetype_config, r"%libdir%", r"$conan_libdir")
-        replace_in_file(self, freetype_config, r"%ft_version%", r"$conan_ftversion")
-        replace_in_file(self, freetype_config, r"%LIBSSTATIC_CONFIG%", r"$conan_staticlibs")
+        replace_in_file(self, freetype_config, r"%prefix%", r"$recipe_prefix")
+        replace_in_file(self, freetype_config, r"%exec_prefix%", r"$recipe_exec_prefix")
+        replace_in_file(self, freetype_config, r"%includedir%", r"$recipe_includedir")
+        replace_in_file(self, freetype_config, r"%libdir%", r"$recipe_libdir")
+        replace_in_file(self, freetype_config, r"%ft_version%", r"$recipe_ftversion")
+        replace_in_file(self, freetype_config, r"%LIBSSTATIC_CONFIG%", r"$recipe_staticlibs")
         replace_in_file(self, freetype_config, r"-lfreetype", libs)
         replace_in_file(self, freetype_config, r"export LC_ALL", textwrap.dedent("""\
             export LC_ALL
             BINDIR=$(dirname $0)
-            conan_prefix=$(dirname $BINDIR)
-            conan_exec_prefix=${{conan_prefix}}/bin
-            conan_includedir=${{conan_prefix}}/include
-            conan_libdir=${{conan_prefix}}/lib
-            conan_ftversion={version}
-            conan_staticlibs="{staticlibs}"
+            recipe_prefix=$(dirname $BINDIR)
+            recipe_exec_prefix=${{recipe_prefix}}/bin
+            recipe_includedir=${{recipe_prefix}}/include
+            recipe_libdir=${{recipe_prefix}}/lib
+            recipe_ftversion={version}
+            recipe_staticlibs="{staticlibs}"
         """).format(version=version, staticlibs=staticlibs))
 
     def _extract_libtool_version(self):
@@ -188,11 +188,11 @@ class Recipe(RecipeBase):
 
     @property
     def _module_vars_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
 
     @property
     def _module_target_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-targets.cmake")
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-targets.cmake")
 
     @staticmethod
     def _chmod_plus_x(filename):

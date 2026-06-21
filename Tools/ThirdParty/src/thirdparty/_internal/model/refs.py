@@ -2,7 +2,7 @@ import fnmatch
 import re
 from functools import total_ordering
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.util.dates import timestamp_to_str
 
@@ -95,46 +95,46 @@ class RecipeReference:
                 user = channel = None
             return RecipeReference(name, version, user, channel, revision, timestamp)
         except Exception:
-            raise ConanException(
+            raise RecipeException(
                 f"{rref} is not a valid recipe reference, provide a reference"
                 f" in the form name/version[@user/channel]"
             )
 
     def validate_ref(self, allow_uppercase=False):
-        from thirdparty._internal.api.output import ConanOutput
+        from thirdparty._internal.api.output import Output
 
         self_str = str(self)
         if self_str != self_str.lower():
             if not allow_uppercase:
-                raise ConanException(f"Conan packages names '{self_str}' must be all lowercase")
-            ConanOutput().warning(
+                raise RecipeException(f"Recipe packages names '{self_str}' must be all lowercase")
+            Output().warning(
                 f"Package name '{self_str}' has uppercase, and has been "
                 "allowed by temporary config. This will break in later 2.X"
             )
         if len(self_str) > 200:
-            raise ConanException(f"Package reference too long >200 {self_str}")
+            raise RecipeException(f"Package reference too long >200 {self_str}")
         if ":" in repr(self):
-            raise ConanException(f"Invalid recipe reference '{repr(self)}' is a package reference")
+            raise RecipeException(f"Invalid recipe reference '{repr(self)}' is a package reference")
         if not allow_uppercase:
             validation_pattern = re.compile(r"^[a-z0-9_][a-z0-9_+.-]{1,100}\Z")
         else:
             validation_pattern = re.compile(r"^[a-zA-Z0-9_][a-zA-Z0-9_+.-]{1,100}\Z")
         if validation_pattern.match(self.name) is None:
-            raise ConanException(f"Invalid package name '{self.name}'")
+            raise RecipeException(f"Invalid package name '{self.name}'")
         if validation_pattern.match(str(self.version)) is None:
-            raise ConanException(f"Invalid package version '{self.version}'")
+            raise RecipeException(f"Invalid package version '{self.version}'")
         if self.user and validation_pattern.match(self.user) is None:
-            raise ConanException(f"Invalid package user '{self.user}'")
+            raise RecipeException(f"Invalid package user '{self.user}'")
         if self.channel and validation_pattern.match(self.channel) is None:
-            raise ConanException(f"Invalid package channel '{self.channel}'")
+            raise RecipeException(f"Invalid package channel '{self.channel}'")
 
         pattern = re.compile(r"[.+]")
         if pattern.search(self.name):
-            ConanOutput().warning(f"Name containing special chars is discouraged '{self.name}'")
+            Output().warning(f"Name containing special chars is discouraged '{self.name}'")
         if self.user and pattern.search(self.user):
-            ConanOutput().warning(f"User containing special chars is discouraged '{self.user}'")
+            Output().warning(f"User containing special chars is discouraged '{self.user}'")
         if self.channel and pattern.search(self.channel):
-            ConanOutput().warning(
+            Output().warning(
                 f"Channel containing special chars is discouraged '{self.channel}'"
             )
 
@@ -246,7 +246,7 @@ class PkgReference:
 
             return PkgReference(ref, package_id, revision, timestamp)
         except Exception:
-            raise ConanException(
+            raise RecipeException(
                 f"{pkg_ref} is not a valid package reference, provide a reference"
                 f" in the form name/version[@user/channel:package_id]"
             )

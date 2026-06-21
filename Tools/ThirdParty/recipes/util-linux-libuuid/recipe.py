@@ -37,9 +37,9 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
         
     def validate(self):
-        from thirdparty.errors import InvalidConfiguration
+        from thirdparty.errors import RecipeInvalidConfiguration
         if self.settings.os != "Linux":
-            raise InvalidConfiguration(f"{self.name} is only supported on Linux")
+            raise RecipeInvalidConfiguration(f"{self.name} is only supported on Linux")
 
     def requirements(self):
         if self.settings.os == "Macos":
@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
         if "x86" in self.settings.arch:
             tc.extra_cflags.append("-mstackrealign")
 
-        # Based on https://github.com/conan-io/conan-center-index/blob/c647b1/recipes/libx264/all/conanfile.py#L94
+        # Based on https://github.com/recipe-io/recipe-center-index/blob/c647b1/recipes/libx264/all/recipe.py#L94
         if is_apple_os(self) and self.settings.arch == "armv8":
             tc.configure_args.append("--host=aarch64-apple-darwin")
             tc.extra_asflags = ["-arch arm64"]

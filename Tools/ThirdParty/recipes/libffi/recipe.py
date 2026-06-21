@@ -82,7 +82,7 @@ class Recipe(RecipeBase):
         if self.settings_build.os == "Windows" and self.settings.get_safe("compiler.runtime"):
 
             if is_msvc(self) and check_min_vs(self, "180", raise_invalid=False):
-                # https://github.com/conan-io/conan/issues/6514
+                # upstream issue 6514
                 tc.extra_cflags.append("-FS")
 
             if is_msvc_static_runtime(self):

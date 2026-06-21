@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
         tc.variables["LZ4_POSITION_INDEPENDENT_LIB"] = self.options.get_safe("fPIC", True)
         # Generate a relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
-        # Honor BUILD_SHARED_LIBS (see https://github.com/conan-io/conan/issues/11840)
+        # Honor BUILD_SHARED_LIBS (see upstream issue 11840)
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0077"] = "NEW"
         tc.generate()
 

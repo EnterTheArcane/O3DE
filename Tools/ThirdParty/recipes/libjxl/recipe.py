@@ -70,7 +70,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = os.path.join(self.generators_folder, "conan_deps.cmake").replace("\\", "/")
+        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = os.path.join(self.generators_folder, "recipe_deps.cmake").replace("\\", "/")
         tc.variables["BUILD_TESTING"] = False
         tc.variables["JPEGXL_STATIC"] = False
         tc.variables["JPEGXL_BUNDLE_LIBPNG"] = False
@@ -136,7 +136,7 @@ class Recipe(RecipeBase):
         # FindAtomics.cmake values are set by CMakeToolchain instead
         save(self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"), "")
 
-        # Allow fPIC to be set by Conan (top-level set() was removed in 0.11.2; individual targets handle it)
+        # Allow fPIC to be set by Recipe (top-level set() was removed in 0.11.2; individual targets handle it)
         for cmake_file in ["jxl.cmake", "jxl_threads.cmake", "jxl_cms.cmake", "jpegli.cmake"]:
             path = os.path.join(self.source_folder, "lib", cmake_file)
             if os.path.exists(path):

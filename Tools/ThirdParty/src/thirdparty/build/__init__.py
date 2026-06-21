@@ -12,17 +12,17 @@ from thirdparty.build.cpu import build_jobs
 from thirdparty.build.cross_building import cross_building, can_run
 from thirdparty.build.stdcpp_library import stdcpp_library
 from thirdparty.build.compiler import check_min_compiler_version
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
-CONAN_TOOLCHAIN_ARGS_FILE = "conanbuild.conf"
-CONAN_TOOLCHAIN_ARGS_SECTION = "toolchain"
+RECIPE_TOOLCHAIN_ARGS_FILE = "buildenv.conf"
+RECIPE_TOOLCHAIN_ARGS_SECTION = "toolchain"
 
 
-def use_win_mingw(conanfile):
-    os_build = conanfile.settings_build.get_safe('os')
+def use_win_mingw(recipe):
+    os_build = recipe.settings_build.get_safe('os')
     if os_build == "Windows":
-        compiler_ = conanfile.settings.get_safe("compiler")
-        sub = conanfile.settings.get_safe("os.subsystem")
+        compiler_ = recipe.settings.get_safe("compiler")
+        sub = recipe.settings.get_safe("os.subsystem")
         if sub in ("cygwin", "msys2", "msys") or compiler_ == "qcc":
             return False
         else:
@@ -66,44 +66,44 @@ def _windows_cmd_args_to_string(args):
 
 def load_toolchain_args(generators_folder=None, namespace=None):
     """
-    Helper function to load the content of any CONAN_TOOLCHAIN_ARGS_FILE
+    Helper function to load the content of any RECIPE_TOOLCHAIN_ARGS_FILE
 
-    :param generators_folder: `str` folder where is located the CONAN_TOOLCHAIN_ARGS_FILE.
+    :param generators_folder: `str` folder where is located the RECIPE_TOOLCHAIN_ARGS_FILE.
     :param namespace: `str` namespace to be prepended to the filename.
     :return: <class 'configparser.SectionProxy'>
     """
-    namespace_name = "{}_{}".format(namespace, CONAN_TOOLCHAIN_ARGS_FILE) if namespace \
-        else CONAN_TOOLCHAIN_ARGS_FILE
+    namespace_name = "{}_{}".format(namespace, RECIPE_TOOLCHAIN_ARGS_FILE) if namespace \
+        else RECIPE_TOOLCHAIN_ARGS_FILE
     args_file = os.path.join(generators_folder, namespace_name) if generators_folder \
         else namespace_name
     toolchain_config = configparser.ConfigParser()
     toolchain_file = toolchain_config.read(args_file)
     if not toolchain_file:
-        raise ConanException("The file %s does not exist. Please, make sure that it was not"
+        raise RecipeException("The file %s does not exist. Please, make sure that it was not"
                              " generated in another folder." % args_file)
     try:
-        return toolchain_config[CONAN_TOOLCHAIN_ARGS_SECTION]
+        return toolchain_config[RECIPE_TOOLCHAIN_ARGS_SECTION]
     except KeyError:
-        raise ConanException("The primary section [%s] does not exist in the file %s. Please, add it"
+        raise RecipeException("The primary section [%s] does not exist in the file %s. Please, add it"
                              " as the default one of all your configuration variables." %
-                             (CONAN_TOOLCHAIN_ARGS_SECTION, args_file))
+                             (RECIPE_TOOLCHAIN_ARGS_SECTION, args_file))
 
 
 def save_toolchain_args(content, generators_folder=None, namespace=None):
     """
-    Helper function to save the content into the CONAN_TOOLCHAIN_ARGS_FILE
+    Helper function to save the content into the RECIPE_TOOLCHAIN_ARGS_FILE
 
     :param content: `dict` all the information to be saved into the toolchain file.
     :param namespace: `str` namespace to be prepended to the filename.
-    :param generators_folder: `str` folder where is located the CONAN_TOOLCHAIN_ARGS_FILE
+    :param generators_folder: `str` folder where is located the RECIPE_TOOLCHAIN_ARGS_FILE
     """
     # Let's prune None values
     content_ = {k: v for k, v in content.items() if v is not None}
-    namespace_name = "{}_{}".format(namespace, CONAN_TOOLCHAIN_ARGS_FILE) if namespace \
-        else CONAN_TOOLCHAIN_ARGS_FILE
+    namespace_name = "{}_{}".format(namespace, RECIPE_TOOLCHAIN_ARGS_FILE) if namespace \
+        else RECIPE_TOOLCHAIN_ARGS_FILE
     args_file = os.path.join(generators_folder, namespace_name) if generators_folder \
         else namespace_name
     toolchain_config = configparser.ConfigParser()
-    toolchain_config[CONAN_TOOLCHAIN_ARGS_SECTION] = content_
+    toolchain_config[RECIPE_TOOLCHAIN_ARGS_SECTION] = content_
     with open(args_file, "w") as f:
         toolchain_config.write(f)

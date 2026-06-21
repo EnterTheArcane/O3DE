@@ -9,8 +9,8 @@ from thirdparty._internal.model.version import Version
 
 
 class BitbucketRepository:
-    def __init__(self, conanfile, slug: str) -> None:
-        self._conanfile = conanfile
+    def __init__(self, recipe, slug: str) -> None:
+        self._recipe = recipe
         self._slug = slug
 
     @cached_property

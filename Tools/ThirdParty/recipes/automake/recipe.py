@@ -98,7 +98,7 @@ class Recipe(RecipeBase):
         self.cpp_info.includedirs = []
         self.cpp_info.frameworkdirs = []
 
-        # For consumers with new integrations (Conan 1 and 2 compatible):
+        # For consumers with new integrations (Recipe 1 and 2 compatible):
         ver = Version(self.version)
         automake_helper_scripts_dir = os.path.join(self.package_folder, "share", f"automake-{ver.major}.{ver.minor}")
         compile_wrapper = os.path.join(automake_helper_scripts_dir, "compile")

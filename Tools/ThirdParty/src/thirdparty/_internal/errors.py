@@ -1,54 +1,54 @@
 import traceback
 from contextlib import contextmanager
 
-from thirdparty.errors import ConanException, ConanInvalidConfiguration
+from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 
 
 @contextmanager
-def conanfile_remove_attr(conanfile, names, method):
+def recipe_remove_attr(recipe, names, method):
     """ remove some self.xxxx attribute from the class, so it raises an exception if used
-    within a given conanfile method
+    within a given recipe method
     """
-    original_class = type(conanfile)
+    original_class = type(recipe)
 
     def _prop(attr_name):
         def _m(_):
-            raise ConanException(f"'self.{attr_name}' access in '{method}()' method is forbidden")
+            raise RecipeException(f"'self.{attr_name}' access in '{method}()' method is forbidden")
         return property(_m)
 
     try:
         new_class = type(original_class.__name__, (original_class, ), {})
-        conanfile.__class__ = new_class
+        recipe.__class__ = new_class
         for name in names:
             setattr(new_class, name, _prop(name))
         yield
     finally:
-        conanfile.__class__ = original_class
+        recipe.__class__ = original_class
 
 
 @contextmanager
-def conanfile_exception_formatter(conanfile, funcname):
+def recipe_exception_formatter(recipe, funcname):
     """
-    Decorator to throw an exception formatted with the line of the conanfile where the error ocurrs.
+    Decorator to throw an exception formatted with the line of the recipe where the error ocurrs.
     """
     try:
         yield
-    except ConanInvalidConfiguration as exc:
-        # TODO: This is never called from `conanfile.validate()` but could be called from others
-        msg = "{}: Invalid configuration: {}".format(str(conanfile), exc)
-        raise ConanInvalidConfiguration(msg)
+    except RecipeInvalidConfiguration as exc:
+        # TODO: This is never called from `recipe.validate()` but could be called from others
+        msg = "{}: Invalid configuration: {}".format(str(recipe), exc)
+        raise RecipeInvalidConfiguration(msg)
     except Exception as exc:
-        m = scoped_traceback(f"{conanfile}: Error in {funcname}() method", exc, scope="conanfile.py")
-        from thirdparty._internal.api.output import LEVEL_DEBUG, ConanOutput
-        if ConanOutput.level_allowed(LEVEL_DEBUG):
+        m = scoped_traceback(f"{recipe}: Error in {funcname}() method", exc, scope="recipe.py")
+        from thirdparty._internal.api.output import LEVEL_DEBUG, Output
+        if Output.level_allowed(LEVEL_DEBUG):
             m = traceback.format_exc() + "\n" + m
-        raise ConanException(m)
+        raise RecipeException(m)
 
 
 def scoped_traceback(header_msg, exception, scope):
     """
     It will iterate the traceback lines, when it finds that the source code is inside the users
-    conanfile it "start recording" the messages, when the trace exits the conanfile we return
+    recipe it "start recording" the messages, when the trace exits the recipe we return
     the traces.
     """
     import sys
@@ -62,7 +62,7 @@ def scoped_traceback(header_msg, exception, scope):
             # 40 levels of nested functions max, get the latest
             filepath, line, name, contents = traceback.extract_tb(tb, 40)[index]
             filepath = filepath.replace("\\", "/")
-            if scope not in filepath:  # Avoid show trace from internal conan source code
+            if scope not in filepath:  # Avoid show trace from internal recipe source code
                 if scope_reached:  # The error goes to internal code, exit print
                     break
             else:
@@ -81,49 +81,39 @@ def scoped_traceback(header_msg, exception, scope):
     return ret
 
 
-class ConanReferenceDoesNotExistInDB(ConanException):
-    """ Reference does not exist in cache db """
+class ConnectionErrorException(RecipeException):
     pass
 
 
-class ConanReferenceAlreadyExistsInDB(ConanException):
-    """ Reference already exists in cache db """
-    pass
-
-
-class ConanConnectionError(ConanException):
-    pass
-
-
-class InternalErrorException(ConanException):
+class InternalErrorException(RecipeException):
     """
          Generic 500 error
     """
     pass
 
 
-class RequestErrorException(ConanException):
+class RequestErrorException(RecipeException):
     """
          Generic 400 error
     """
     pass
 
 
-class AuthenticationException(ConanException):  # 401
+class AuthenticationException(RecipeException):  # 401
     """
         401 error
     """
     pass
 
 
-class ForbiddenException(ConanException):  # 403
+class ForbiddenException(RecipeException):  # 403
     """
         403 error
     """
     pass
 
 
-class NotFoundException(ConanException):  # 404
+class NotFoundException(RecipeException):  # 404
     """
         404 error
     """

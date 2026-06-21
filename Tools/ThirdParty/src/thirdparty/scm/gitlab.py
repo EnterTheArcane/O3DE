@@ -54,8 +54,8 @@ class GitlabRepository:
     blocked on some instances without a token.
     """
 
-    def __init__(self, conanfile, slug: str, host: str = "gitlab.com") -> None:
-        self._conanfile = conanfile
+    def __init__(self, recipe, slug: str, host: str = "gitlab.com") -> None:
+        self._recipe = recipe
         self._slug = slug
         self._host = host
 

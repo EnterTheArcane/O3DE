@@ -16,12 +16,12 @@ def _path_inside(base, folder):
     return os.path.commonprefix([base, folder]) == base
 
 
-def absolute_to_relative_symlinks(conanfile, base_folder):
+def absolute_to_relative_symlinks(recipe, base_folder):
     """
     Convert the symlinks with absolute paths into relative ones if they are pointing to a file or
     directory inside the ``base_folder``. Any absolute symlink pointing outside the ``base_folder``    will be ignored.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param base_folder: Folder to be scanned.
     """
     for fullpath in get_symlinks(base_folder):
@@ -35,11 +35,11 @@ def absolute_to_relative_symlinks(conanfile, base_folder):
             os.symlink(new_link, fullpath)
 
 
-def remove_external_symlinks(conanfile, base_folder):
+def remove_external_symlinks(recipe, base_folder):
     """
     Remove the symlinks to files that point outside the ``base_folder``, no matter if relative or absolute.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param base_folder: Folder to be scanned.
     """
     for fullpath in get_symlinks(base_folder):
@@ -50,11 +50,11 @@ def remove_external_symlinks(conanfile, base_folder):
             os.unlink(fullpath)
 
 
-def remove_broken_symlinks(conanfile, base_folder=None):
+def remove_broken_symlinks(recipe, base_folder=None):
     """
     Remove the broken symlinks, no matter if relative or absolute.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param base_folder: Folder to be scanned.
     """
     for fullpath in get_symlinks(base_folder):

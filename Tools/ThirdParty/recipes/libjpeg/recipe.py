@@ -93,14 +93,14 @@ class Recipe(RecipeBase):
                 # Don't force LTO
                 replace_in_file(self, jpeg_vcxproj, "<WholeProgramOptimization>true</WholeProgramOptimization>", "")
 
-                # Inject conan-generated .props file
+                # Inject recipe-generated .props file
                 # Note: importing it right before Microsoft.Cpp.props also ensures we correctly
                 #       handle the toolset setting
-                conantoolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
+                recipe_toolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
                 replace_in_file(
                     self, jpeg_vcxproj,
                     """<Import Project="$(VCTargetsPath)\\Microsoft.Cpp.props" />""",
-                    f"""<Import Project="{conantoolchain_props}" /><Import Project="$(VCTargetsPath)\\Microsoft.Cpp.props" />""",
+                    f"""<Import Project="{recipe_toolchain_props}" /><Import Project="$(VCTargetsPath)\\Microsoft.Cpp.props" />""",
                 )
 
                 # Patch settings for a different build type

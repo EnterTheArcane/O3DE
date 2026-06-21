@@ -9,13 +9,13 @@ import urllib3
 from jinja2 import Template
 from requests.adapters import HTTPAdapter
 
-from thirdparty._internal.api.output import ConanOutput
+from thirdparty._internal.api.output import Output
 from thirdparty._internal.cache.home_paths import HomePaths
 
-from thirdparty import CONAN_COMPAT_VERSION
+from thirdparty import __version__
 from thirdparty._internal.loader import load_python_file
 from thirdparty._internal.errors import scoped_traceback
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 # Capture SSL warnings as pointed out here:
 # https://urllib3.readthedocs.org/en/latest/security.html#insecureplatformwarning
@@ -31,7 +31,7 @@ INFINITE_TIMEOUT = -1
 
 class _SourceURLCredentials:
     """
-    Only for sources download (get(), download(), conan config install
+    Only for sources download (get(), download(), recipe config install
     """
     def __init__(self, cache_folder):
         self._urls = {}
@@ -48,7 +48,7 @@ class _SourceURLCredentials:
             if ("headers" in credentials or "token" in credentials or
                ("user" in credentials and "password" in credentials)):
                 return credentials
-            raise ConanException(f"Unknown credentials method for '{credentials['url']}'")
+            raise RecipeException(f"Unknown credentials method for '{credentials['url']}'")
 
         try:
             template = Template(load(creds_path))
@@ -57,7 +57,7 @@ class _SourceURLCredentials:
             self._urls = {credentials["url"]: _get_auth(credentials)
                           for credentials in content["credentials"]}
         except Exception as e:
-            raise ConanException(f"Error loading 'source_credentials.json' {creds_path}: {repr(e)}")
+            raise RecipeException(f"Error loading 'source_credentials.json' {creds_path}: {repr(e)}")
 
     def add_auth(self, url, kwargs):
         # First, try to use "auth_source_plugin"
@@ -65,9 +65,9 @@ class _SourceURLCredentials:
             try:
                 c = self._auth_source_plugin(url)
             except Exception as e:
-                msg = f"Error while processing 'auth_source_remote.py' plugin"
+                msg = f"Error while processing 'auth_source.py' plugin"
                 msg = scoped_traceback(msg, e, scope="/extensions/plugins")
-                raise ConanException(msg)
+                raise RecipeException(msg)
             if c:
                 if c.get("token"):
                     kwargs["headers"]["Authorization"] = f"Bearer {c.get('token')}"
@@ -93,7 +93,7 @@ class _SourceURLCredentials:
                 break
 
 
-class ConanRequester:
+class HttpRequester:
 
     def __init__(self, config, cache_folder=None):
         self._url_creds = _SourceURLCredentials(cache_folder)
@@ -112,7 +112,7 @@ class ConanRequester:
         platform_info = "; ".join([" ".join([platform.system(), platform.release()]),
                                    "Python " + platform.python_version(),
                                    platform.machine()])
-        self._user_agent = "Conan/%s (%s)" % (CONAN_COMPAT_VERSION, platform_info)
+        self._user_agent = "O3DE-ThirdParty/%s (%s)" % (__version__, platform_info)
 
     @staticmethod
     def _get_retries(max_retries):
@@ -142,8 +142,7 @@ class ConanRequester:
         return False
 
     def _add_kwargs(self, url, kwargs):
-        # verify is the kwargs that comes from caller, RestAPI, it is defined in
-        # Conan remote "verify_ssl"
+        # verify is the caller-provided SSL setting for source downloads.
         source_credentials = kwargs.pop("source_credentials", None)
         if kwargs.get("verify", None) is not False:  # False means de-activate
             if self._cacert_path is not None:
@@ -185,11 +184,11 @@ class ConanRequester:
         popped = False
         if self._clean_system_proxy:
             old_env = dict(os.environ)
-            # Clean the proxies from the environ and use the conan specified proxies
+            # Clean the proxies from the environ and use the recipe specified proxies
             for var_name in ("http_proxy", "https_proxy", "ftp_proxy", "all_proxy", "no_proxy"):
                 popped = True if os.environ.pop(var_name, None) else popped
                 popped = True if os.environ.pop(var_name.upper(), None) else popped
-        ConanOutput(scope="HttpRequest").trace(f"{method}: {url}")
+        Output(scope="HttpRequest").trace(f"{method}: {url}")
         try:
             all_kwargs = self._add_kwargs(url, kwargs)
             tmp = getattr(self._http_requester, method)(url, **all_kwargs)

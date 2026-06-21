@@ -1,6 +1,6 @@
 import hashlib
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.dependencies import UserRequirementsDict
 from thirdparty._internal.model.refs import PkgReference
 from thirdparty._internal.model.refs import RecipeReference
@@ -78,7 +78,7 @@ class RequirementInfo:
         try:
             func_package_id_mode = getattr(self, default_package_id_mode)
         except AttributeError:
-            raise ConanException(f"require {self._ref} package_id_mode='{default_package_id_mode}' "
+            raise RecipeException(f"require {self._ref} package_id_mode='{default_package_id_mode}' "
                                  "is not a known package_id_mode")
         else:
             func_package_id_mode()
@@ -312,18 +312,18 @@ class PythonRequiresInfo:
 def load_binary_info(text):
     # This is used for search functionality, search prints info from this file
     parser = TextINIParse(text)
-    conan_info_json = {}
+    recipe_info_json = {}
     for section, lines in parser.line_items():
         try:
             items = [line.split("=", 1) for line in lines]
-            conan_info_json[section] = {item[0].strip(): item[1].strip() for item in items}
+            recipe_info_json[section] = {item[0].strip(): item[1].strip() for item in items}
         except IndexError:
-            conan_info_json[section] = lines
+            recipe_info_json[section] = lines
 
-    return conan_info_json
+    return recipe_info_json
 
 
-class ConanInfo:
+class PackageIdInfo:
 
     def __init__(self, settings=None, options=None, reqs_info=None, build_requires_info=None,
                  python_requires=None, conf=None, config_version=None):
@@ -342,10 +342,10 @@ class ConanInfo:
     def clone(self):
         """ Useful for build_id implementation and for compatibility()
         """
-        result = ConanInfo()
+        result = PackageIdInfo()
         result.invalid = self.invalid
         result.settings = self.settings.copy()
-        result.options = self.options.copy_conaninfo_options()
+        result.options = self.options.copy_package_id_info_options()
         result.requires = self.requires.copy()
         result.build_requires = self.build_requires.copy()
         result.python_requires = self.python_requires.copy()
@@ -478,12 +478,12 @@ class ConanInfo:
         # If the options are not fully defined, this is also an invalid case
         try:
             self.options.validate()
-        except ConanException as e:
+        except RecipeException as e:
             self.invalid = str(e)
 
         try:
             self.settings.validate()
-        except ConanException as e:
+        except RecipeException as e:
             self.invalid = str(e)
 
 

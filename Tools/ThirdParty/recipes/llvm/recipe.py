@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.errors import InvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
         os_name = str(self.settings.os)
         arch = str(self.settings.arch)
         if os_name not in _SOURCES or arch not in _SOURCES[os_name]:
-            raise InvalidConfiguration(f"{self.name} has no prebuilt binaries for {os_name}/{arch}")
+            raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {os_name}/{arch}")
 
     def build(self):
         entry = _SOURCES[str(self.settings.os)][str(self.settings.arch)]

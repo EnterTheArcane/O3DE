@@ -2,8 +2,8 @@ import fnmatch
 import os
 
 from thirdparty._internal.api.output import Color
-from thirdparty.files import chdir, update_conandata
-from thirdparty.errors import ConanException
+from thirdparty.files import chdir, update_recipe_data
+from thirdparty.errors import RecipeException
 from thirdparty._internal.model.conf import ConfDefinition
 from thirdparty._internal.util.files import mkdir
 from thirdparty._internal.util.runners import check_output_runner
@@ -13,18 +13,18 @@ class Git:
     """
     Git is a wrapper for several common patterns used with *git* tool.
     """
-    def __init__(self, conanfile, folder=".", excluded=None):
+    def __init__(self, recipe, folder=".", excluded=None):
         """
-        :param conanfile: Conanfile instance.
+        :param recipe: Recipefile instance.
         :param folder: Current directory, by default ``.``, the current working directory.
         :param excluded: Files to be excluded from the "dirty" checks. It will compose with the
           configuration ``core.scm:excluded`` (the configuration has higher priority).
           It is a list of patterns to ``fnmatch``.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
         self.folder = folder
         self._excluded = excluded
-        global_conf = conanfile._conan_helpers.global_conf  # noqa _conan_helpers
+        global_conf = recipe._recipe_runtime.global_conf  # noqa _recipe_runtime
         conf_excluded = global_conf.get("core.scm:excluded", check_type=list)
         if conf_excluded:
             if excluded:
@@ -43,11 +43,11 @@ class Git:
         :return: The console output of the command.
         """
         print_cmd = cmd if hidden_output is None else cmd.replace(hidden_output, "<hidden>")
-        self._conanfile.output.info(f"RUN: git {print_cmd}", fg=Color.BRIGHT_BLUE)
-        with chdir(self._conanfile, self.folder):
-            # We tried to use self.conanfile.run(), but it didn't work:
+        self._recipe.output.info(f"RUN: git {print_cmd}", fg=Color.BRIGHT_BLUE)
+        with chdir(self._recipe, self.folder):
+            # We tried to use self.recipe.run(), but it didn't work:
             #  - when using win_bash, crashing because access to .settings (forbidden in source())
-            #  - the ``conan source`` command, not passing profiles, buildenv not injected
+            #  - the ``recipe source`` command, not passing profiles, buildenv not injected
             return check_output_runner("git {}".format(cmd)).strip()
 
     def get_commit(self, repository=False):
@@ -61,13 +61,13 @@ class Git:
             # commit = self.run("rev-parse HEAD") For the whole repo
             # This rev-list knows to capture the last commit for the folder
             # --full-history is needed to not avoid wrong commits:
-            # https://github.com/conan-io/conan/issues/10971
+            # upstream issue 10971
             # https://git-scm.com/docs/git-rev-list#Documentation/git-rev-list.txt-Defaultmode
             path = '' if repository else '-- "."'
             commit = self.run(f'rev-list HEAD -n 1 --full-history {path}')
             return commit
         except Exception as e:
-            raise ConanException("Unable to get git commit in '%s': %s" % (self.folder, str(e)))
+            raise RecipeException("Unable to get git commit in '%s': %s" % (self.folder, str(e)))
 
     def get_remote_url(self, remote="origin"):
         """
@@ -113,7 +113,7 @@ class Git:
             if "{}/".format(remote) in branches:
                 return True
         except Exception as e:
-            raise ConanException("Unable to check remote commit in '%s': %s" % (self.folder, str(e)))
+            raise RecipeException("Unable to check remote commit in '%s': %s" % (self.folder, str(e)))
 
         try:
             # This will raise if commit not present.
@@ -121,7 +121,7 @@ class Git:
             return True
         except (Exception,):
             # For example, if using an older git<2.36, see
-            # https://github.com/conan-io/conan/issues/18470, then lets try the old approach
+            # upstream issue 18470, then lets try the old approach
             try:
                 # This will raise if commit not present.
                 self.run("fetch {} --dry-run --depth=1 {}".format(remote, commit))
@@ -142,7 +142,7 @@ class Git:
         """
         path = '' if repository else '.'
         status = self.run(f"status {path} --short --no-branch --untracked-files").strip()
-        self._conanfile.output.debug(f"Git status:\n{status}")
+        self._recipe.output.debug(f"Git status:\n{status}")
         if not self._excluded:
             return bool(status)
         # Parse the status output, line by line, and match it with "_excluded"
@@ -151,7 +151,7 @@ class Git:
         # (Taking into account that STATUS is one word, PATH might be many)
         lines = [line.split(maxsplit=1)[1].strip('"') for line in lines if line]
         lines = [line for line in lines if not any(fnmatch.fnmatch(line, p) for p in self._excluded)]
-        self._conanfile.output.debug(f"Filtered git status: {lines}")
+        self._recipe.output.debug(f"Filtered git status: {lines}")
         return bool(lines)
 
     def get_url_and_commit(self, remote="origin", repository=False):
@@ -162,11 +162,11 @@ class Git:
 
         * If the repository is dirty, it will raise an exception. Doesn’t make sense to capture coordinates
           of something dirty, as it will not be reproducible. If there are local changes, and the
-          user wants to test a local conan create, should commit the changes first (locally, not push the changes).
+          user wants to test a local recipe create, should commit the changes first (locally, not push the changes).
 
         * If the repository is not dirty, but the commit doesn’t exist in the given remote, the method
           will return that commit and the URL of the local user checkout. This way, a package can be
-          conan create created locally, testing everything works, before pushing some changes to the remote.
+          recipe create created locally, testing everything works, before pushing some changes to the remote.
 
         * If the repository is not dirty, and the commit exists in the specified remote, it will
           return that commit and the url of the remote.
@@ -185,7 +185,7 @@ class Git:
         """
         dirty = self.is_dirty(repository=repository)
         if dirty:
-            raise ConanException("Repo is dirty, cannot capture url and commit: "
+            raise RecipeException("Repo is dirty, cannot capture url and commit: "
                                  "{}".format(self.folder))
         commit = self.get_commit(repository=repository)
         url = self.get_remote_url(remote=remote)
@@ -193,11 +193,11 @@ class Git:
         if in_remote:
             return url, commit
         if self._local_url == "block":
-            raise ConanException(f"Current commit {commit} doesn't exist in remote {remote}\n"
+            raise RecipeException(f"Current commit {commit} doesn't exist in remote {remote}\n"
                                  "Failing according to 'core.scm:local_url=block' conf")
 
         if self._local_url != "allow":
-            self._conanfile.output.warning("Current commit {} doesn't exist in remote {}\n"
+            self._recipe.output.warning("Current commit {} doesn't exist in remote {}\n"
                                            "This revision will not be buildable in other "
                                            "computer".format(commit, remote))
         return self.get_repo_root(), commit
@@ -225,7 +225,7 @@ class Git:
         if os.path.exists(url):
             url = url.replace("\\", "/")  # Windows local directory
         mkdir(self.folder)
-        self._conanfile.output.info("Cloning git repo")
+        self._recipe.output.info("Cloning git repo")
         target_path = f'"{target}"' if target else ""  # quote in case there are spaces in path
         # Avoid printing the clone command, it can contain tokens
         self.run('clone "{}" {} {}'.format(url, " ".join(args), target_path),
@@ -244,7 +244,7 @@ class Git:
         if os.path.exists(url):
             url = url.replace("\\", "/")  # Windows local directory
         mkdir(self.folder)
-        self._conanfile.output.info("Shallow fetch of git repo")
+        self._recipe.output.info("Shallow fetch of git repo")
         self.run('init')
         self.run(f'remote add origin "{url}"', hidden_output=url if hide_url else None)
         self.run(f'fetch --depth 1 origin {commit}')
@@ -256,7 +256,7 @@ class Git:
 
         :param commit: Commit to checkout.
         """
-        self._conanfile.output.info("Checkout: {}".format(commit))
+        self._recipe.output.info("Checkout: {}".format(commit))
         self.run('checkout {}'.format(commit))
 
     def included_files(self):
@@ -270,10 +270,10 @@ class Git:
         files = files.splitlines()
         return files
 
-    def coordinates_to_conandata(self, repository=False):
+    def coordinates_to_recipe_data(self, repository=False):
         """
         Capture the "url" and "commit" from the Git repo, calling ``get_url_and_commit()``, and then
-        store those in the ``conandata.yml`` under the "scm" key. This information can be
+        store those in the ``recipe_data.yml`` under the "scm" key. This information can be
         used later to clone and checkout the exact source point that was used to create this
         package, and can be useful even if the recipe uses ``exports_sources`` as mechanism to
         embed the sources.
@@ -282,14 +282,14 @@ class Git:
                      the commit of the repository instead.
         """
         scm_url, scm_commit = self.get_url_and_commit(repository=repository)
-        update_conandata(self._conanfile, {"scm": {"commit": scm_commit, "url": scm_url}})
+        update_recipe_data(self._recipe, {"scm": {"commit": scm_commit, "url": scm_url}})
 
-    def checkout_from_conandata_coordinates(self):
+    def checkout_from_recipe_data_coordinates(self):
         """
-        Reads the "scm" field from the ``conandata.yml``, that must contain at least "url" and
+        Reads the "scm" field from the ``recipe_data.yml``, that must contain at least "url" and
         "commit" and then do a ``clone(url, target=".")``, ``fetch <commit>``, followed by a ``checkout(commit)``.
         """
-        sources = self._conanfile.conan_data["scm"]
+        sources = self._recipe.recipe_data["scm"]
         self.clone(url=sources["url"], target=".", args=["--origin=origin"])
         self.run(f"fetch origin {sources['commit']}")
         self.checkout(commit=sources["commit"])

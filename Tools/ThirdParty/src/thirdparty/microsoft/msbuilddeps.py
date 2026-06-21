@@ -7,7 +7,7 @@ from xml.dom import minidom
 from jinja2 import Template
 
 from thirdparty._internal import check_duplicated_generator
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.api.install.generators import relativize_path
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty.microsoft.visual import msvc_platform_from_arch
@@ -19,24 +19,24 @@ VALID_LIB_EXTENSIONS = (".so", ".lib", ".a", ".dylib", ".bc")
 class MSBuildDeps:
     """
     MSBuildDeps class generator
-    conandeps.props: unconditional import of all *direct* dependencies only
+    recipe_deps.props: unconditional import of all *direct* dependencies only
     """
 
     _vars_props = textwrap.dedent("""\
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-          <PropertyGroup Label="ConanVariables">
-            <Conan{{name}}RootFolder>{{root_folder}}</Conan{{name}}RootFolder>
-            <Conan{{name}}BinaryDirectories>{{bin_dirs}}</Conan{{name}}BinaryDirectories>
+          <PropertyGroup Label="RecipeVariables">
+            <Recipe{{name}}RootFolder>{{root_folder}}</Recipe{{name}}RootFolder>
+            <Recipe{{name}}BinaryDirectories>{{bin_dirs}}</Recipe{{name}}BinaryDirectories>
             {% if host_context %}
-            <Conan{{name}}CompilerFlags>{{compiler_flags}}</Conan{{name}}CompilerFlags>
-            <Conan{{name}}LinkerFlags>{{linker_flags}}</Conan{{name}}LinkerFlags>
-            <Conan{{name}}PreprocessorDefinitions>{{definitions}}</Conan{{name}}PreprocessorDefinitions>
-            <Conan{{name}}IncludeDirectories>{{include_dirs}}</Conan{{name}}IncludeDirectories>
-            <Conan{{name}}ResourceDirectories>{{res_dirs}}</Conan{{name}}ResourceDirectories>
-            <Conan{{name}}LibraryDirectories>{{lib_dirs}}</Conan{{name}}LibraryDirectories>
-            <Conan{{name}}Libraries>{{libs}}</Conan{{name}}Libraries>
-            <Conan{{name}}SystemLibs>{{system_libs}}</Conan{{name}}SystemLibs>
+            <Recipe{{name}}CompilerFlags>{{compiler_flags}}</Recipe{{name}}CompilerFlags>
+            <Recipe{{name}}LinkerFlags>{{linker_flags}}</Recipe{{name}}LinkerFlags>
+            <Recipe{{name}}PreprocessorDefinitions>{{definitions}}</Recipe{{name}}PreprocessorDefinitions>
+            <Recipe{{name}}IncludeDirectories>{{include_dirs}}</Recipe{{name}}IncludeDirectories>
+            <Recipe{{name}}ResourceDirectories>{{res_dirs}}</Recipe{{name}}ResourceDirectories>
+            <Recipe{{name}}LibraryDirectories>{{lib_dirs}}</Recipe{{name}}LibraryDirectories>
+            <Recipe{{name}}Libraries>{{libs}}</Recipe{{name}}Libraries>
+            <Recipe{{name}}SystemLibs>{{system_libs}}</Recipe{{name}}SystemLibs>
             {% endif %}
           </PropertyGroup>
         </Project>
@@ -47,7 +47,7 @@ class MSBuildDeps:
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
           <ImportGroup Label="PropertySheets">
             {% for dep in deps %}
-            <Import Condition="'$(conan_{{dep}}_props_imported)' != 'True'" Project="conan_{{dep}}.props"/>
+            <Import Condition="'$(recipe_{{dep}}_props_imported)' != 'True'" Project="recipe_{{dep}}.props"/>
             {% endfor %}
           </ImportGroup>
           <ImportGroup Label="PropertySheets">
@@ -55,74 +55,74 @@ class MSBuildDeps:
           </ImportGroup>
           {% if host_context %}
           <PropertyGroup>
-            <ConanDebugPath>$(Conan{{name}}BinaryDirectories);$(ConanDebugPath)</ConanDebugPath>
-            <LocalDebuggerEnvironment>PATH=$(ConanDebugPath);%PATH%</LocalDebuggerEnvironment>
+            <RecipeDebugPath>$(Recipe{{name}}BinaryDirectories);$(RecipeDebugPath)</RecipeDebugPath>
+            <LocalDebuggerEnvironment>PATH=$(RecipeDebugPath);%PATH%</LocalDebuggerEnvironment>
             <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
             {% if ca_exclude %}
-            <CAExcludePath>$(Conan{{name}}IncludeDirectories);$(CAExcludePath)</CAExcludePath>
+            <CAExcludePath>$(Recipe{{name}}IncludeDirectories);$(CAExcludePath)</CAExcludePath>
             {% endif %}
           </PropertyGroup>
           <ItemDefinitionGroup>
             <ClCompile>
-              <AdditionalIncludeDirectories>$(Conan{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-              <PreprocessorDefinitions>$(Conan{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
-              <AdditionalOptions>$(Conan{{name}}CompilerFlags) %(AdditionalOptions)</AdditionalOptions>
+              <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+              <PreprocessorDefinitions>$(Recipe{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
+              <AdditionalOptions>$(Recipe{{name}}CompilerFlags) %(AdditionalOptions)</AdditionalOptions>
             </ClCompile>
             <Link>
-              <AdditionalLibraryDirectories>$(Conan{{name}}LibraryDirectories)%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-              <AdditionalDependencies>$(Conan{{name}}Libraries)%(AdditionalDependencies)</AdditionalDependencies>
-              <AdditionalDependencies>$(Conan{{name}}SystemLibs)%(AdditionalDependencies)</AdditionalDependencies>
-              <AdditionalOptions>$(Conan{{name}}LinkerFlags) %(AdditionalOptions)</AdditionalOptions>
+              <AdditionalLibraryDirectories>$(Recipe{{name}}LibraryDirectories)%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+              <AdditionalDependencies>$(Recipe{{name}}Libraries)%(AdditionalDependencies)</AdditionalDependencies>
+              <AdditionalDependencies>$(Recipe{{name}}SystemLibs)%(AdditionalDependencies)</AdditionalDependencies>
+              <AdditionalOptions>$(Recipe{{name}}LinkerFlags) %(AdditionalOptions)</AdditionalOptions>
             </Link>
             <Midl>
-              <AdditionalIncludeDirectories>$(Conan{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+              <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
             </Midl>
             <ResourceCompile>
-              <AdditionalIncludeDirectories>$(Conan{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-              <PreprocessorDefinitions>$(Conan{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
+              <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+              <PreprocessorDefinitions>$(Recipe{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
             </ResourceCompile>
           </ItemDefinitionGroup>
           {% else %}
           <PropertyGroup>
-            <ExecutablePath>$(Conan{{name}}BinaryDirectories)$(ExecutablePath)</ExecutablePath>
+            <ExecutablePath>$(Recipe{{name}}BinaryDirectories)$(ExecutablePath)</ExecutablePath>
           </PropertyGroup>
           {% endif %}
         </Project>
         """)
 
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
         #: Defines the build type. By default, the value of ``settings.build_type``.
-        self.configuration = conanfile.settings.build_type
+        self.configuration = recipe.settings.build_type
         #: Defines the configuration key used to conditionally select which property sheet to
         #: import (defaults to ``"Configuration"``).
         self.configuration_key = "Configuration"
         # TODO: This platform is not exactly the same as ``msbuild_arch``, because it differs
         # in x86=>Win32
         #: Platform name, e.g., ``Win32`` if ``settings.arch == "x86"``.
-        self.platform = msvc_platform_from_arch(str(conanfile.settings.arch))
+        self.platform = msvc_platform_from_arch(str(recipe.settings.arch))
         #: Defines the platform key used to conditionally select which property sheet to
         #: import (defaults to ``"Platform"``).
         self.platform_key = "Platform"
         ca_exclude = "tools.microsoft.msbuilddeps:exclude_code_analysis"
         #: List of packages names patterns to add Visual Studio ``CAExcludePath`` property
-        #: to each match as part of its ``conan_[DEP]_[CONFIG].props``. By default, value given by
+        #: to each match as part of its ``recipe_[DEP]_[CONFIG].props``. By default, value given by
         #: ``tools.microsoft.msbuilddeps:exclude_code_analysis`` configuration.
-        self.exclude_code_analysis = self._conanfile.conf.get(ca_exclude, check_type=list)
+        self.exclude_code_analysis = self._recipe.conf.get(ca_exclude, check_type=list)
 
     def generate(self):
         """
-        Generates ``conan_<pkg>_<config>_vars.props``, ``conan_<pkg>_<config>.props``,
-        and ``conan_<pkg>.props`` files into the ``conanfile.generators_folder``.
+        Generates ``recipe_<pkg>_<config>_vars.props``, ``recipe_<pkg>_<config>.props``,
+        and ``recipe_<pkg>.props`` files into the ``recipe.generators_folder``.
         """
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         if self.configuration is None:
-            raise ConanException("MSBuildDeps.configuration is None, it should have a value")
+            raise RecipeException("MSBuildDeps.configuration is None, it should have a value")
         if self.platform is None:
-            raise ConanException("MSBuildDeps.platform is None, it should have a value")
+            raise RecipeException("MSBuildDeps.platform is None, it should have a value")
         generator_files = self._content()
         for generator_file, content in generator_files.items():
             save(generator_file, content)
@@ -152,7 +152,7 @@ class MSBuildDeps:
 
     def _vars_props_file(self, require, dep, name, cpp_info, build):
         """
-        content for conan_vars_poco_x86_release.props, containing the variables for 1 config
+        content for recipe_vars_poco_x86_release.props, containing the variables for 1 config
         This will be for 1 package or for one component of a package
         :return: varfile content
         """
@@ -169,7 +169,7 @@ class MSBuildDeps:
                     lib_name = meson_name
             return f"{lib_name};"
 
-        pkg_placeholder = "$(Conan{}RootFolder)".format(name)
+        pkg_placeholder = "$(Recipe{}RootFolder)".format(name)
 
         def escape_path(path):
             # https://docs.microsoft.com/en-us/visualstudio/msbuild/
@@ -191,8 +191,8 @@ class MSBuildDeps:
 
         root_folder = dep.recipe_folder if dep.package_folder is None else dep.package_folder
         root_folder = escape_path(root_folder)
-        # Make the root_folder relative to the generated conan_vars_xxx.props file
-        relative_root_folder = relativize_path(root_folder, self._conanfile,
+        # Make the root_folder relative to the generated recipe_vars_xxx.props file
+        relative_root_folder = relativize_path(root_folder, self._recipe,
                                                "$(MSBuildThisFileDirectory)", normalize=False)
 
         bin_dirs = join_paths(cpp_info.bindirs)
@@ -241,7 +241,7 @@ class MSBuildDeps:
     def _activate_props_file(self, dep_name, vars_filename, deps, build):
         """
         Actual activation of the VS variables, per configuration
-            - conan_pkgname_x86_release.props / conan_pkgname_compname_x86_release.props
+            - recipe_pkgname_x86_release.props / recipe_pkgname_compname_x86_release.props
         :param dep_name: pkgname / pkgname_compname
         :param deps: the name of other things to be included: [dep1, dep2:compA, ...]
         :param build: if it is a build require or not
@@ -259,7 +259,7 @@ class MSBuildDeps:
     def _dep_props_file(dep_name, filename, aggregated_filename, condition, content=None):
         """
         The file aggregating all configurations for a given pkg / component
-            - conan_pkgname.props
+            - recipe_pkgname.props
         """
         # Current directory is the generators_folder
         if content:
@@ -273,7 +273,7 @@ class MSBuildDeps:
               <ImportGroup Label="PropertySheets">
               </ImportGroup>
               <PropertyGroup>
-                <conan_{{name}}_props_imported>True</conan_{{name}}_props_imported>
+                <recipe_{{name}}_props_imported>True</recipe_{{name}}_props_imported>
               </PropertyGroup>
             </Project>
             """)
@@ -294,61 +294,61 @@ class MSBuildDeps:
             import_node.setAttribute('Project', aggregated_filename)
             import_vars.appendChild(import_node)
 
-        # Import conan_dedup.props
-        if "conan_dedup.props" not in content_multi:
+        # Import recipe_dedup.props
+        if "recipe_dedup.props" not in content_multi:
             dedup_import = dom.createElement('Import')
-            dedup_import.setAttribute('Condition', "'$(ConanDedupPropsImported)' != 'True'")
-            dedup_import.setAttribute('Project', 'conan_dedup.props')
+            dedup_import.setAttribute('Condition', "'$(RecipeDedupPropsImported)' != 'True'")
+            dedup_import.setAttribute('Project', 'recipe_dedup.props')
             import_vars.appendChild(dedup_import)
 
         content_multi = dom.toprettyxml()
         content_multi = "\n".join(line for line in content_multi.splitlines() if line.strip())
         return content_multi
 
-    _conan_dedup_props = textwrap.dedent("""\
+    _recipe_dedup_props = textwrap.dedent("""\
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
           <PropertyGroup>
-            <ConanDedupPropsImported>True</ConanDedupPropsImported>
+            <RecipeDedupPropsImported>True</RecipeDedupPropsImported>
           </PropertyGroup>
-          <Target Name="ConanDeduplicatePaths"
+          <Target Name="RecipeDeduplicatePaths"
                   BeforeTargets="ClCompile;Link;Midl;ResourceCompile"
-                  Condition="'$(ConanDedupTargetDefined)' != 'True'">
+                  Condition="'$(RecipeDedupTargetDefined)' != 'True'">
             <PropertyGroup>
-              <ConanDedupTargetDefined>True</ConanDedupTargetDefined>
+              <RecipeDedupTargetDefined>True</RecipeDedupTargetDefined>
             </PropertyGroup>
             <ItemGroup>
-              <_ConanIncludePaths Include="%(ClCompile.AdditionalIncludeDirectories)" />
+              <_RecipeIncludePaths Include="%(ClCompile.AdditionalIncludeDirectories)" />
             </ItemGroup>
-            <RemoveDuplicates Inputs="@(_ConanIncludePaths)">
-              <Output TaskParameter="Filtered" ItemName="_ConanUniqueIncludePaths" />
+            <RemoveDuplicates Inputs="@(_RecipeIncludePaths)">
+              <Output TaskParameter="Filtered" ItemName="_RecipeUniqueIncludePaths" />
             </RemoveDuplicates>
             <ItemGroup>
-              <ClCompile Condition="'@(_ConanUniqueIncludePaths)' != ''">
-                <AdditionalIncludeDirectories>@(_ConanUniqueIncludePaths)</AdditionalIncludeDirectories>
+              <ClCompile Condition="'@(_RecipeUniqueIncludePaths)' != ''">
+                <AdditionalIncludeDirectories>@(_RecipeUniqueIncludePaths)</AdditionalIncludeDirectories>
               </ClCompile>
             </ItemGroup>
             <ItemGroup>
-              <_ConanLibPaths Include="%(Link.AdditionalLibraryDirectories)" />
+              <_RecipeLibPaths Include="%(Link.AdditionalLibraryDirectories)" />
             </ItemGroup>
-            <RemoveDuplicates Inputs="@(_ConanLibPaths)">
-              <Output TaskParameter="Filtered" ItemName="_ConanUniqueLibPaths" />
+            <RemoveDuplicates Inputs="@(_RecipeLibPaths)">
+              <Output TaskParameter="Filtered" ItemName="_RecipeUniqueLibPaths" />
             </RemoveDuplicates>
             <ItemGroup>
-              <Link Condition="'@(_ConanUniqueLibPaths)' != ''">
-                <AdditionalLibraryDirectories>@(_ConanUniqueLibPaths)</AdditionalLibraryDirectories>
+              <Link Condition="'@(_RecipeUniqueLibPaths)' != ''">
+                <AdditionalLibraryDirectories>@(_RecipeUniqueLibPaths)</AdditionalLibraryDirectories>
               </Link>
             </ItemGroup>
           </Target>
         </Project>
         """)
 
-    def _conandeps(self):
+    def _recipe_deps(self):
         """ this is a .props file including direct declared dependencies
         """
         # Current directory is the generators_folder
-        conandeps_filename = "conandeps.props"
-        direct_deps = self._conanfile.dependencies.filter({"direct": True})
+        recipe_deps_filename = "recipe_deps.props"
+        direct_deps = self._recipe.dependencies.filter({"direct": True})
         pkg_aggregated_content = textwrap.dedent("""\
             <?xml version="1.0" encoding="utf-8"?>
             <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -358,33 +358,33 @@ class MSBuildDeps:
             """)
         for req, dep in direct_deps.items():
             dep_name = self._dep_name(dep, req.build)
-            filename = "conan_%s.props" % dep_name
-            comp_condition = "'$(conan_%s_props_imported)' != 'True'" % dep_name
-            pkg_aggregated_content = self._dep_props_file("", conandeps_filename, filename,
+            filename = "recipe_%s.props" % dep_name
+            comp_condition = "'$(recipe_%s_props_imported)' != 'True'" % dep_name
+            pkg_aggregated_content = self._dep_props_file("", recipe_deps_filename, filename,
                                                           condition=comp_condition,
                                                           content=pkg_aggregated_content)
-        return {conandeps_filename: pkg_aggregated_content}
+        return {recipe_deps_filename: pkg_aggregated_content}
 
     def _package_props_files(self, require, dep, build=False):
         """ all the files for a given package:
-        - conan_pkgname_vars_config.props: definition of variables, one per config
-        - conan_pkgname_config.props: The one using those variables. This is very different for
+        - recipe_pkgname_vars_config.props: definition of variables, one per config
+        - recipe_pkgname_config.props: The one using those variables. This is very different for
                                       Host and build, build only activate <ExecutablePath>
-        - conan_pkgname.props: Conditional aggregate xxx_config.props based on active config
+        - recipe_pkgname.props: Conditional aggregate xxx_config.props based on active config
         """
         conf_name = self._config_filename()
         condition = self._condition()
         dep_name = self._dep_name(dep, build)
         result = {}
-        pkg_deps = get_transitive_requires(self._conanfile, dep)  # only non-skipped dependencies
+        pkg_deps = get_transitive_requires(self._recipe, dep)  # only non-skipped dependencies
         if dep.cpp_info.has_components:
             pkg_aggregated_content = None
             for comp_name, comp_info in dep.cpp_info.components.items():
                 full_comp_name = "{}_{}".format(dep_name, self._get_valid_xml_format(comp_name))
-                vars_filename = "conan_%s_vars%s.props" % (full_comp_name, conf_name)
-                activate_filename = "conan_%s%s.props" % (full_comp_name, conf_name)
-                comp_filename = "conan_%s.props" % full_comp_name
-                pkg_filename = "conan_%s.props" % dep_name
+                vars_filename = "recipe_%s_vars%s.props" % (full_comp_name, conf_name)
+                activate_filename = "recipe_%s%s.props" % (full_comp_name, conf_name)
+                comp_filename = "recipe_%s.props" % full_comp_name
+                pkg_filename = "recipe_%s.props" % dep_name
 
                 public_deps = []  # To store the xml dependencies/file names
                 for required_pkg, required_comp in comp_info.parsed_requires():
@@ -406,16 +406,16 @@ class MSBuildDeps:
                                                                       public_deps, build=build)
                 result[comp_filename] = self._dep_props_file(full_comp_name, comp_filename,
                                                              activate_filename, condition)
-                comp_condition = "'$(conan_%s_props_imported)' != 'True'" % full_comp_name
+                comp_condition = "'$(recipe_%s_props_imported)' != 'True'" % full_comp_name
                 pkg_aggregated_content = self._dep_props_file(dep_name, pkg_filename, comp_filename,
                                                               condition=comp_condition,
                                                               content=pkg_aggregated_content)
                 result[pkg_filename] = pkg_aggregated_content
         else:
             cpp_info = dep.cpp_info
-            vars_filename = "conan_%s_vars%s.props" % (dep_name, conf_name)
-            activate_filename = "conan_%s%s.props" % (dep_name, conf_name)
-            pkg_filename = "conan_%s.props" % dep_name
+            vars_filename = "recipe_%s_vars%s.props" % (dep_name, conf_name)
+            activate_filename = "recipe_%s%s.props" % (dep_name, conf_name)
+            pkg_filename = "recipe_%s.props" % dep_name
             public_deps = [self._dep_name(d, build) for d in pkg_deps.values()]
 
             result[vars_filename] = self._vars_props_file(require, dep, dep_name, cpp_info,
@@ -427,21 +427,21 @@ class MSBuildDeps:
         return result
 
     def _content(self):
-        if not self._conanfile.settings.get_safe("build_type"):
-            raise ConanException("The 'msbuild' generator requires a 'build_type' setting value")
+        if not self._recipe.settings.get_safe("build_type"):
+            raise RecipeException("The 'msbuild' generator requires a 'build_type' setting value")
         result = {}
 
-        for req, dep in self._conanfile.dependencies.host.items():
+        for req, dep in self._recipe.dependencies.host.items():
             result.update(self._package_props_files(req, dep, build=False))
-        for req, dep in self._conanfile.dependencies.test.items():
+        for req, dep in self._recipe.dependencies.test.items():
             result.update(self._package_props_files(req, dep, build=False))
-        for req, dep in self._conanfile.dependencies.build.items():
+        for req, dep in self._recipe.dependencies.build.items():
             result.update(self._package_props_files(req, dep, build=True))
 
         # Include all direct build_requires for host context. This might change
-        result.update(self._conandeps())
+        result.update(self._recipe_deps())
 
-        result["conan_dedup.props"] = self._conan_dedup_props
+        result["recipe_dedup.props"] = self._recipe_dedup_props
 
         return result
 

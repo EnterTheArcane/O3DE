@@ -25,16 +25,16 @@ class ConfigTemplate(CMakeDepsFileTemplate):
     @property
     def additional_variables_prefixes(self):
         prefix_list = (
-            self.cmakedeps.get_property("cmake_additional_variables_prefixes", self.conanfile, check_type=list) or [])
+            self.cmakedeps.get_property("cmake_additional_variables_prefixes", self.recipe, check_type=list) or [])
         return list(set([self.file_name] + prefix_list))
 
     @property
     def parsed_extra_variables(self):
         # Reading configuration from "cmake_extra_variables" property
         from thirdparty.cmake.utils import parse_extra_variable
-        conf_extra_variables = self.conanfile.conf.get("tools.cmake.cmaketoolchain:extra_variables",
+        conf_extra_variables = self.recipe.conf.get("tools.cmake.cmaketoolchain:extra_variables",
                                                        default={}, check_type=dict)
-        dep_extra_variables = self.cmakedeps.get_property("cmake_extra_variables", self.conanfile,
+        dep_extra_variables = self.cmakedeps.get_property("cmake_extra_variables", self.recipe,
                                                           check_type=dict) or {}
         # The configuration variables have precedence over the dependency ones
         extra_variables = {dep: value for dep, value in dep_extra_variables.items()
@@ -50,7 +50,7 @@ class ConfigTemplate(CMakeDepsFileTemplate):
         targets_include = "" if not self.generating_module else "module-"
         targets_include += "{}Targets.cmake".format(self.file_name)
         return {"is_module": self.generating_module,
-                "version": self.conanfile.ref.version,
+                "version": self.recipe.ref.version,
                 "file_name":  self.file_name,
                 "additional_variables_prefixes": self.additional_variables_prefixes,
                 "extra_variables": self.parsed_extra_variables,
@@ -109,7 +109,7 @@ class ConfigTemplate(CMakeDepsFileTemplate):
 
         # Only the last installed configuration BUILD_MODULES are included to avoid the collision
         foreach(_BUILD_MODULE {{ pkg_var(pkg_name, 'BUILD_MODULES_PATHS', config_suffix) }} )
-            message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Conan: Including build module from '${_BUILD_MODULE}'")
+            message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Recipe: Including build module from '${_BUILD_MODULE}'")
             include({{ '${_BUILD_MODULE}' }})
         endforeach()
 
@@ -119,9 +119,9 @@ class ConfigTemplate(CMakeDepsFileTemplate):
         if({{ file_name }}_FIND_COMPONENTS)
             foreach(_FIND_COMPONENT {{ pkg_var(file_name, 'FIND_COMPONENTS', '') }})
                 if (TARGET ${_FIND_COMPONENT})
-                    message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Conan: Component '${_FIND_COMPONENT}' found in package '{{ pkg_name }}'")
+                    message({% raw %}${{% endraw %}{{ file_name }}_MESSAGE_MODE} "Recipe: Component '${_FIND_COMPONENT}' found in package '{{ pkg_name }}'")
                 else()
-                    message(FATAL_ERROR "Conan: Component '${_FIND_COMPONENT}' NOT found in package '{{ pkg_name }}'")
+                    message(FATAL_ERROR "Recipe: Component '${_FIND_COMPONENT}' NOT found in package '{{ pkg_name }}'")
                 endif()
             endforeach()
         endif()

@@ -8,7 +8,7 @@ from thirdparty._internal.util.files import save
 
 
 class XcodeToolchain:
-    filename = "conantoolchain"
+    filename = "recipe_toolchain"
     extension = ".xcconfig"
 
     _vars_xconfig = textwrap.dedent("""\
@@ -27,27 +27,27 @@ class XcodeToolchain:
         """)
 
     _agreggated_xconfig = textwrap.dedent("""\
-        // Conan XcodeToolchain generated file
+        // Recipe XcodeToolchain generated file
         // Includes all installed configurations
 
         """)
 
-    def __init__(self, conanfile):
-        self._conanfile = conanfile
-        arch = conanfile.settings.get_safe("arch")
-        self.architecture = to_apple_arch(self._conanfile, default=arch)
-        self.configuration = conanfile.settings.build_type
-        self.libcxx = conanfile.settings.get_safe("compiler.libcxx")
-        self.os_version = conanfile.settings.get_safe("os.version")
-        self._global_defines = self._conanfile.conf.get("tools.build:defines", default=[], check_type=list)
-        self._global_cxxflags = self._conanfile.conf.get("tools.build:cxxflags", default=[], check_type=list)
-        self._global_cflags = self._conanfile.conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._conanfile.conf.get("tools.build:sharedlinkflags", default=[], check_type=list)
-        exelinkflags = self._conanfile.conf.get("tools.build:exelinkflags", default=[], check_type=list)
+    def __init__(self, recipe):
+        self._recipe = recipe
+        arch = recipe.settings.get_safe("arch")
+        self.architecture = to_apple_arch(self._recipe, default=arch)
+        self.configuration = recipe.settings.build_type
+        self.libcxx = recipe.settings.get_safe("compiler.libcxx")
+        self.os_version = recipe.settings.get_safe("os.version")
+        self._global_defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
+        self._global_cxxflags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
+        self._global_cflags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
+        sharedlinkflags = self._recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list)
+        exelinkflags = self._recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list)
         self._global_ldflags = sharedlinkflags + exelinkflags
 
     def generate(self):
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         save(self._agreggated_xconfig_filename, self._agreggated_xconfig_content)
         save(self._vars_xconfig_filename, self._vars_xconfig_content)
         if self._check_if_extra_flags:
@@ -57,32 +57,32 @@ class XcodeToolchain:
     @property
     def _cppstd(self):
         from thirdparty.build.flags import cppstd_flag
-        cppstd = cppstd_flag(self._conanfile)
+        cppstd = cppstd_flag(self._recipe)
         if cppstd.startswith("-std="):
             return cppstd[5:]
         return cppstd
 
     @property
     def _apple_deployment_target(self):
-        deployment_target_key = xcodebuild_deployment_target_key(self._conanfile.settings.get_safe("os"))
+        deployment_target_key = xcodebuild_deployment_target_key(self._recipe.settings.get_safe("os"))
         return '{}{}={}'.format(deployment_target_key,
-                                _xcconfig_conditional(self._conanfile.settings, self.configuration),
+                                _xcconfig_conditional(self._recipe.settings, self.configuration),
                                 self.os_version) if deployment_target_key and self.os_version else ""
 
     @property
     def _clang_cxx_library(self):
-        return 'CLANG_CXX_LIBRARY{}={}'.format(_xcconfig_conditional(self._conanfile.settings,
+        return 'CLANG_CXX_LIBRARY{}={}'.format(_xcconfig_conditional(self._recipe.settings,
                                                                      self.configuration),
                                                self.libcxx) if self.libcxx else ""
 
     @property
     def _clang_cxx_language_standard(self):
-        return 'CLANG_CXX_LANGUAGE_STANDARD{}={}'.format(_xcconfig_conditional(self._conanfile.settings, self.configuration),
+        return 'CLANG_CXX_LANGUAGE_STANDARD{}={}'.format(_xcconfig_conditional(self._recipe.settings, self.configuration),
                                                          self._cppstd) if self._cppstd else ""
 
     @property
     def _vars_xconfig_filename(self):
-        return "conantoolchain{}{}".format(_xcconfig_settings_filename(self._conanfile.settings,
+        return "recipe_toolchain{}{}".format(_xcconfig_settings_filename(self._recipe.settings,
                                                                        self.configuration),
                                            self.extension)
 
@@ -127,5 +127,5 @@ class XcodeToolchain:
 
     @property
     def _flags_xcconfig_filename(self):
-        return "conan_global_flags" + self.extension
+        return "recipe_global_flags" + self.extension
 

@@ -128,7 +128,7 @@ class Recipe(RecipeBase):
         if build_system is None:
             build_system = self._get_default_build_system()
         if build_system not in ["win", "unix", "macosx"]:
-            raise ConanException(f"Invalid build system: {build_system}")
+            raise RecipeException(f"Invalid build system: {build_system}")
         return os.path.join(self.source_folder, build_system)
 
     def _build_nmake(self, target="release"):
@@ -159,7 +159,7 @@ class Recipe(RecipeBase):
                 tclstublib = os.path.join(tcl_lib_path, lib)
 
         if tclimplib is None or tclstublib is None:
-            raise ConanException("tcl dependency misses tcl and/or tclstub library")
+            raise RecipeException("tcl dependency misses tcl and/or tclstub library")
 
         flags = {
             "INSTALLDIR": self.package_folder,
@@ -173,7 +173,7 @@ class Recipe(RecipeBase):
         with chdir(self, config_dir):
             self.run(
                 f"""nmake -nologo -f makefile.vc {' '.join([f'{k}="{v}"' for k, v in flags.items()])} {target}""",
-                env="conanbuild",
+                env="buildenv",
             )
 
     def build(self):

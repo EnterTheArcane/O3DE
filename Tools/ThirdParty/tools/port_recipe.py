@@ -7,8 +7,8 @@ Usage::
     python tools/port_recipe.py --all [--overwrite]
 
 Reads::
-    <cci_root>/recipes/<name>/all/conanfile.py
-    <cci_root>/recipes/<name>/all/conandata.yml
+    <cci_root>/recipes/<name>/all/recipe.py
+    <cci_root>/recipes/<name>/all/recipe_data.yml
 
 Writes::
     <thirdparty_root>/recipes/<name>/recipe.py
@@ -56,7 +56,7 @@ _IMPORT_MAP: dict[str, str | None] = {
     "conan.tools.env":            "thirdparty.tools.env",
     "conan.tools.gnu":            "thirdparty.tools.gnu",
     "conan.tools.meson":          "thirdparty.tools.meson",
-    "conan.errors":               None,   # ConanInvalidConfiguration — validate() removed
+    "conan.errors":               None,   # RecipeInvalidConfiguration — validate() removed
     "conan.tools.system":         None,   # system package installation — not supported
     "conan.tools.cross_building": None,   # we don't cross-compile
     "conan.tools.layout":         None,   # cmake_layout/basic_layout — layout() removed
@@ -65,7 +65,7 @@ _IMPORT_MAP: dict[str, str | None] = {
 # Symbols to drop from a specific module's import list
 _FILTER_SYMBOLS: dict[str, set[str]] = {
     "conan.tools.cmake": {"cmake_layout", "basic_layout"},
-    "conan.tools.files": {"export_conandata_patches"},   # no-op; export_sources() removed
+    "conan.tools.files": {"export_recipe_data_patches"},   # no-op; export_sources() removed
     "conan.tools.env":   set(),  # VirtualBuildEnv/VirtualRunEnv are re-exported from thirdparty.tools.env
 }
 
@@ -174,19 +174,19 @@ class _ConanTransformer(cst.CSTTransformer):
         if not mod.startswith("conan"):
             return updated_node
 
-        # `from conan import ConanFile` → `from thirdparty import RecipeBase as ConanFile`
+        # `from conan import RecipeBase` → `from thirdparty import RecipeBase as RecipeBase`
         if mod == "conan":
             if isinstance(updated_node.names, (list, tuple)):
                 kept = []
                 for alias in updated_node.names:
-                    if isinstance(alias.name, cst.Name) and alias.name.value == "ConanFile":
+                    if isinstance(alias.name, cst.Name) and alias.name.value == "RecipeBase":
                         kept.append(
                             alias.with_changes(
                                 name=cst.Name("RecipeBase"),
                                 asname=cst.AsName(
                                     whitespace_before_as=cst.SimpleWhitespace(" "),
                                     whitespace_after_as=cst.SimpleWhitespace(" "),
-                                    name=cst.Name("ConanFile"),
+                                    name=cst.Name("RecipeBase"),
                                 ),
                             )
                         )
@@ -226,7 +226,7 @@ class _ConanTransformer(cst.CSTTransformer):
 
     def visit_ClassDef(self, node: cst.ClassDef) -> bool:
         is_conan = any(
-            isinstance(arg.value, cst.Name) and arg.value.value == "ConanFile"
+            isinstance(arg.value, cst.Name) and arg.value.value == "RecipeBase"
             for arg in node.bases
         )
         self._class_stack.append(is_conan)
@@ -261,7 +261,7 @@ class _ConanTransformer(cst.CSTTransformer):
         return updated_node
 
     # ------------------------------------------------------------------
-    # get(**self.conan_data["sources"][self.version], ...) → inline
+    # get(**self.recipe_data["sources"][self.version], ...) → inline
     # ------------------------------------------------------------------
 
     def leave_Call(
@@ -274,7 +274,7 @@ class _ConanTransformer(cst.CSTTransformer):
 
         args = list(updated_node.args)
         unpack_idx = next(
-            (i for i, a in enumerate(args) if a.star == "**" and _is_conandata_sources(a.value)),
+            (i for i, a in enumerate(args) if a.star == "**" and _is_recipe_data_sources(a.value)),
             None,
         )
         if unpack_idx is None:
@@ -359,7 +359,7 @@ def _apply_regex_transforms(code: str) -> str:
 
 
 # ===========================================================================
-# conandata.yml helpers
+# recipe_data.yml helpers
 # ===========================================================================
 
 def _pick_version(sources: dict) -> str:
@@ -371,16 +371,16 @@ def _pick_version(sources: dict) -> str:
     return max(sources.keys(), key=_key)
 
 
-def _read_conandata(cci_dir: Path) -> dict:
-    p = cci_dir / "conandata.yml"
+def _read_recipe_data(cci_dir: Path) -> dict:
+    p = cci_dir / "recipe_data.yml"
     if not p.exists():
         return {}
     with p.open(encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def _get_source_info(conandata: dict, version: str) -> tuple[str, str]:
-    entry = (conandata.get("sources") or {}).get(str(version)) or {}
+def _get_source_info(recipe_data: dict, version: str) -> tuple[str, str]:
+    entry = (recipe_data.get("sources") or {}).get(str(version)) or {}
     url = entry.get("url", "")
     if isinstance(url, list):
         url = url[0]
@@ -388,8 +388,8 @@ def _get_source_info(conandata: dict, version: str) -> tuple[str, str]:
     return str(url), str(sha256)
 
 
-def _copy_patches(conandata: dict, version: str, cci_dir: Path, out_dir: Path) -> None:
-    entries = (conandata.get("patches") or {}).get(str(version)) or []
+def _copy_patches(recipe_data: dict, version: str, cci_dir: Path, out_dir: Path) -> None:
+    entries = (recipe_data.get("patches") or {}).get(str(version)) or []
     if not entries:
         return
     out_patches = out_dir / "patches"
@@ -407,11 +407,11 @@ def _copy_patches(conandata: dict, version: str, cci_dir: Path, out_dir: Path) -
         print(f"  [patch] {src.name}")
 
 
-_SKIP_NAMES = {"conanfile.py", "test_package", "patches", "__pycache__"}
+_SKIP_NAMES = {"recipe.py", "test_package", "patches", "__pycache__"}
 
 def _copy_data_files(cci_dir: Path, out_dir: Path) -> None:
-    """Copy auxiliary data files (conandata.yml, CMakeLists.txt, .conf, etc.) that
-    recipes reference at runtime, but are not conanfile.py or test/patch directories."""
+    """Copy auxiliary data files (recipe_data.yml, CMakeLists.txt, .conf, etc.) that
+    recipes reference at runtime, but are not recipe.py or test/patch directories."""
     for item in cci_dir.iterdir():
         if item.name in _SKIP_NAMES or item.name.startswith("."):
             continue
@@ -467,11 +467,11 @@ def _make_version_line(version: str, template: cst.SimpleStatementLine) -> cst.S
     )
 
 
-def _is_conandata_sources(node: cst.BaseExpression) -> bool:
-    """Return True if node is self.conan_data["sources"][self.version]."""
+def _is_recipe_data_sources(node: cst.BaseExpression) -> bool:
+    """Return True if node is self.recipe_data["sources"][self.version]."""
     if not isinstance(node, cst.Subscript):
         return False
-    # Inner: self.conan_data["sources"]
+    # Inner: self.recipe_data["sources"]
     inner = node.value
     if not isinstance(inner, cst.Subscript):
         return False
@@ -495,7 +495,7 @@ def _is_conandata_sources(node: cst.BaseExpression) -> bool:
     return (
         isinstance(attr.value, cst.Name)
         and attr.value.value == "self"
-        and attr.attr.value == "conan_data"
+        and attr.attr.value == "recipe_data"
     )
 
 
@@ -544,14 +544,14 @@ def _find_cci_dir(cci_root: Path, name: str, subdir: str | None = None) -> Path 
         return None
     if subdir:
         explicit = base / subdir
-        if (explicit / "conanfile.py").exists():
+        if (explicit / "recipe.py").exists():
             return explicit
     all_dir = base / "all"
-    if (all_dir / "conanfile.py").exists():
+    if (all_dir / "recipe.py").exists():
         return all_dir
     # Pick the highest-sorted version subfolder (reverse alpha == latest)
     for child in sorted(base.iterdir(), reverse=True):
-        if child.is_dir() and (child / "conanfile.py").exists():
+        if child.is_dir() and (child / "recipe.py").exists():
             return child
     return None
 
@@ -575,17 +575,17 @@ def port_recipe(
         print(f"[port] SKIP {name} — exists (--overwrite to replace)")
         return False
 
-    conandata = _read_conandata(cci_dir)
-    sources   = conandata.get("sources") or {}
+    recipe_data = _read_recipe_data(cci_dir)
+    sources   = recipe_data.get("sources") or {}
 
     if sources:
         version     = _pick_version(sources)
-        url, sha256 = _get_source_info(conandata, version)
+        url, sha256 = _get_source_info(recipe_data, version)
     else:
         version, url, sha256 = "0.0.0", "", ""
-        print(f"[port] WARNING {name} — no sources in conandata.yml")
+        print(f"[port] WARNING {name} — no sources in recipe_data.yml")
 
-    source_code = (cci_dir / "conanfile.py").read_text(encoding="utf-8")
+    source_code = (cci_dir / "recipe.py").read_text(encoding="utf-8")
 
     try:
         tree        = cst.parse_module(source_code)
@@ -605,7 +605,7 @@ def port_recipe(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(transformed, encoding="utf-8")
     print(f"[port] {name}/{version}")
-    _copy_patches(conandata, version, cci_dir, out_root / name)
+    _copy_patches(recipe_data, version, cci_dir, out_root / name)
     _copy_data_files(cci_dir, out_root / name)
     return True
 

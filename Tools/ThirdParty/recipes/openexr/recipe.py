@@ -80,11 +80,11 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
 
     @staticmethod
-    def _conan_comp(name):
+    def _recipe_comp(name):
         return f"openexr_{name.lower()}"
 
     def _add_component(self, name):
-        component = self.cpp_info.components[self._conan_comp(name)]
+        component = self.cpp_info.components[self._recipe_comp(name)]
         component.set_property("cmake_target_name", f"OpenEXR::{name}")
         return component
 
@@ -114,7 +114,7 @@ class Recipe(RecipeBase):
         # OpenEXR::Iex
         Iex = self._add_component("Iex")
         Iex.libs = [f"Iex{lib_suffix}"]
-        Iex.requires = [self._conan_comp("IexConfig")]
+        Iex.requires = [self._recipe_comp("IexConfig")]
         if self.settings.os in ["Linux", "FreeBSD"]:
             Iex.system_libs = ["m"]
 
@@ -122,7 +122,7 @@ class Recipe(RecipeBase):
         IlmThread = self._add_component("IlmThread")
         IlmThread.libs = [f"IlmThread{lib_suffix}"]
         IlmThread.requires = [
-            self._conan_comp("IlmThreadConfig"), self._conan_comp("Iex"),
+            self._recipe_comp("IlmThreadConfig"), self._recipe_comp("Iex"),
         ]
         if self.settings.os in ["Linux", "FreeBSD"]:
             IlmThread.system_libs = ["pthread", "m"]
@@ -130,7 +130,7 @@ class Recipe(RecipeBase):
         # OpenEXR::OpenEXRCore
         OpenEXRCore = self._add_component("OpenEXRCore")
         OpenEXRCore.libs = [f"OpenEXRCore{lib_suffix}"]
-        OpenEXRCore.requires = [self._conan_comp("OpenEXRConfig"), "zlib::zlib"]
+        OpenEXRCore.requires = [self._recipe_comp("OpenEXRConfig"), "zlib::zlib"]
         OpenEXRCore.requires.append("libdeflate::libdeflate")
         OpenEXRCore.requires.append("openjph::openjph")
         if self.settings.os in ["Linux", "FreeBSD"]:
@@ -140,8 +140,8 @@ class Recipe(RecipeBase):
         OpenEXR = self._add_component("OpenEXR")
         OpenEXR.libs = [f"OpenEXR{lib_suffix}"]
         OpenEXR.requires = [
-            self._conan_comp("OpenEXRCore"), self._conan_comp("IlmThread"),
-            self._conan_comp("Iex"), "imath::imath",
+            self._recipe_comp("OpenEXRCore"), self._recipe_comp("IlmThread"),
+            self._recipe_comp("Iex"), "imath::imath",
         ]
         if self.settings.os in ["Linux", "FreeBSD"]:
             OpenEXR.system_libs = ["m"]
@@ -149,7 +149,7 @@ class Recipe(RecipeBase):
         # OpenEXR::OpenEXRUtil
         OpenEXRUtil = self._add_component("OpenEXRUtil")
         OpenEXRUtil.libs = [f"OpenEXRUtil{lib_suffix}"]
-        OpenEXRUtil.requires = [self._conan_comp("OpenEXR")]
+        OpenEXRUtil.requires = [self._recipe_comp("OpenEXR")]
         if self.settings.os in ["Linux", "FreeBSD"]:
             OpenEXRUtil.system_libs = ["m"]
 

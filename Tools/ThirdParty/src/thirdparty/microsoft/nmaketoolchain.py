@@ -14,11 +14,11 @@ class NMakeToolchain:
     but not possible, because it cannot include other files, it will also potentially collide with
     a user Tool.ini, without easy resolution. At least the environment is additive.
     """
-    def __init__(self, conanfile):
+    def __init__(self, recipe):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
 
         # Flags
         self.extra_cflags = []
@@ -32,29 +32,29 @@ class NMakeToolchain:
 
     @property
     def _cl(self):
-        bt_flags = build_type_flags(self._conanfile)
+        bt_flags = build_type_flags(self._recipe)
         bt_flags = bt_flags if bt_flags else []
 
-        rt_flags = msvc_runtime_flag(self._conanfile)
+        rt_flags = msvc_runtime_flag(self._recipe)
         rt_flags = [f"/{rt_flags}"] if rt_flags else []
 
         cflags = []
-        cflags.extend(self._conanfile.conf.get("tools.build:cflags", default=[], check_type=list))
+        cflags.extend(self._recipe.conf.get("tools.build:cflags", default=[], check_type=list))
         cflags.extend(self.extra_cflags)
 
         cxxflags = []
-        cppstd = cppstd_flag(self._conanfile)
+        cppstd = cppstd_flag(self._recipe)
         if cppstd:
             cxxflags.append(cppstd)
-        cxxflags.extend(self._conanfile.conf.get("tools.build:cxxflags", default=[],
+        cxxflags.extend(self._recipe.conf.get("tools.build:cxxflags", default=[],
                                                  check_type=list))
         cxxflags.extend(self.extra_cxxflags)
 
         defines = []
-        build_type = self._conanfile.settings.get_safe("build_type")
+        build_type = self._recipe.settings.get_safe("build_type")
         if build_type in ["Release", "RelWithDebInfo", "MinSizeRel"]:
             defines.append("NDEBUG")
-        defines.extend(self._conanfile.conf.get("tools.build:defines", default=[], check_type=list))
+        defines.extend(self._recipe.conf.get("tools.build:defines", default=[], check_type=list))
         defines.extend(self.extra_defines)
 
         return (["/nologo"] + self._format_options(bt_flags + rt_flags + cflags + cxxflags) +
@@ -62,14 +62,14 @@ class NMakeToolchain:
 
     @property
     def _link(self):
-        bt_ldflags = build_type_link_flags(self._conanfile.settings)
+        bt_ldflags = build_type_link_flags(self._recipe.settings)
         bt_ldflags = bt_ldflags if bt_ldflags else []
 
         ldflags = []
         ldflags.extend(bt_ldflags)
-        ldflags.extend(self._conanfile.conf.get("tools.build:sharedlinkflags", default=[],
+        ldflags.extend(self._recipe.conf.get("tools.build:sharedlinkflags", default=[],
                                                 check_type=list))
-        ldflags.extend(self._conanfile.conf.get("tools.build:exelinkflags", default=[],
+        ldflags.extend(self._recipe.conf.get("tools.build:exelinkflags", default=[],
                                                 check_type=list))
         ldflags.extend(self.extra_ldflags)
 
@@ -77,7 +77,7 @@ class NMakeToolchain:
 
     @property
     def _rcflags(self):
-        rcflags = self._conanfile.conf.get("tools.build:rcflags", default=[], check_type=list)
+        rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
         return self._format_options(rcflags) if rcflags else []
 
     def environment(self):
@@ -92,7 +92,7 @@ class NMakeToolchain:
             env.append("RCFLAGS", self._rcflags)
         # Also define some special env-vars which can override special NMake macros:
         # https://learn.microsoft.com/en-us/cpp/build/reference/special-nmake-macros
-        conf_compilers = self._conanfile.conf.get("tools.build:compiler_executables", default={},
+        conf_compilers = self._recipe.conf.get("tools.build:compiler_executables", default={},
                                                   check_type=dict)
         if conf_compilers:
             compilers_mapping = {
@@ -108,11 +108,11 @@ class NMakeToolchain:
         return env
 
     def vars(self):
-        return self.environment().vars(self._conanfile, scope="build")
+        return self.environment().vars(self._recipe, scope="build")
 
     def generate(self, env=None, scope="build"):
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         env = env or self.environment()
-        env.vars(self._conanfile, scope=scope).save_script("conannmaketoolchain")
-        VCVars(self._conanfile).generate(scope=scope)
+        env.vars(self._recipe, scope=scope).save_script("nmaketoolchain")
+        VCVars(self._recipe).generate(scope=scope)
 

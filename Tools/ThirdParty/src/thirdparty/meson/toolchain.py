@@ -3,7 +3,7 @@ import textwrap
 
 from jinja2 import Template, StrictUndefined
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.internal_tools import raise_on_universal_arch
 from thirdparty._internal.model.pkg_type import PackageType
@@ -23,8 +23,8 @@ class MesonToolchain:
     """
     MesonToolchain generator
     """
-    native_filename = "conan_meson_native.ini"
-    cross_filename = "conan_meson_cross.ini"
+    native_filename = "recipe_meson_native.ini"
+    cross_filename = "recipe_meson_cross.ini"
 
     _meson_file_template = textwrap.dedent("""\
     [properties]
@@ -111,31 +111,31 @@ class MesonToolchain:
     {% endfor %}
     """)
 
-    def __init__(self, conanfile, backend=None, native=False):
+    def __init__(self, recipe, backend=None, native=False):
         """
-        :param conanfile: ``< ConanFile object >`` The current recipe object. Always use ``self``.
+        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         :param backend: (**DEPRECATED**, use ``self.backend`` instead) ``str`` ``backend`` Meson variable
                         value. By default, ``ninja``.
-        :param native: ``bool`` Indicates whether you want Conan to create the
-                       ``conan_meson_native.ini`` in a cross-building context. Notice that it only
+        :param native: ``bool`` Indicates whether you want Recipe to create the
+                       ``recipe_meson_native.ini`` in a cross-building context. Notice that it only
                        makes sense if your project's ``meson.build`` uses the ``native=true``
                        (see also https://mesonbuild.com/Cross-compilation.html#mixing-host-and-build-targets).
         """
-        raise_on_universal_arch(conanfile)
-        self._conanfile = conanfile
+        raise_on_universal_arch(recipe)
+        self._recipe = recipe
         self._native = native
-        self._is_apple_system = is_apple_os(self._conanfile)
-        is_cross_building = cross_building(conanfile)  # x86_64->x86 is considered cross-building
+        self._is_apple_system = is_apple_os(self._recipe)
+        is_cross_building = cross_building(recipe)  # x86_64->x86 is considered cross-building
         if not is_cross_building and native:
-            raise ConanException("You can only pass native=True if you're cross-building, "
+            raise RecipeException("You can only pass native=True if you're cross-building, "
                                  "otherwise, it could cause unexpected results.")
-        self._conanfile_conf = self._conanfile.conf_build if native else self._conanfile.conf
+        self._recipe_conf = self._recipe.conf_build if native else self._recipe.conf
         # Values are kept as Python built-ins so users can modify them more easily, and they are
         # only converted to Meson file syntax for rendering
         # priority: first user conf, then recipe, last one is default "ninja"
         #: Backend to use. Defined by the conf ``tools.meson.mesontoolchain:backend``. By default, ``ninja``.
         self.backend = backend or 'ninja'
-        build_type = self._conanfile.settings.get_safe("build_type")
+        build_type = self._recipe.settings.get_safe("build_type")
         #: Build type to use.
         self.buildtype = {"Debug": "debug",  # Note, it is not "'debug'"
                           "Release": "release",
@@ -145,9 +145,9 @@ class MesonToolchain:
         self.b_ndebug = "true" if self.buildtype != "debug" else "false"
 
         # https://mesonbuild.com/Builtin-options.html#base-options
-        fpic = self._conanfile.options.get_safe("fPIC")
-        shared = self._conanfile.package_type is PackageType.SHARED
-        static = self._conanfile.package_type is PackageType.STATIC
+        fpic = self._recipe.options.get_safe("fPIC")
+        shared = self._recipe.package_type is PackageType.SHARED
+        static = self._recipe.package_type is PackageType.STATIC
         #: Build static libraries as position independent. By default, ``self.options.get_safe("fPIC")``
         self.b_staticpic = fpic if (static and fpic is not None) else None
         # https://mesonbuild.com/Builtin-options.html#core-options
@@ -155,23 +155,23 @@ class MesonToolchain:
         #: Default library type, e.g., "shared.
         self.default_library = ("shared" if shared else "static") if shared or static else None
 
-        compiler = self._conanfile.settings.get_safe("compiler")
+        compiler = self._recipe.settings.get_safe("compiler")
         if compiler is None:
-            raise ConanException("MesonToolchain needs 'settings.compiler', but it is not defined")
-        compiler_version = self._conanfile.settings.get_safe("compiler.version")
+            raise RecipeException("MesonToolchain needs 'settings.compiler', but it is not defined")
+        compiler_version = self._recipe.settings.get_safe("compiler.version")
         if compiler_version is None:
-            raise ConanException("MesonToolchain needs 'settings.compiler.version', but it is not defined")
+            raise RecipeException("MesonToolchain needs 'settings.compiler.version', but it is not defined")
 
-        cppstd = self._conanfile.settings.get_safe("compiler.cppstd")
-        cstd = self._conanfile.settings.get_safe("compiler.cstd")
+        cppstd = self._recipe.settings.get_safe("compiler.cppstd")
+        cstd = self._recipe.settings.get_safe("compiler.cstd")
         #: C++ language standard to use. Defined by ``to_cppstd_flag()`` by default.
-        self.cpp_std = to_cppstd_flag(self._conanfile, compiler, compiler_version, cppstd)
+        self.cpp_std = to_cppstd_flag(self._recipe, compiler, compiler_version, cppstd)
         #: C language standard to use. Defined by ``to_cstd_flag()`` by default.
-        self.c_std = to_cstd_flag(self._conanfile, cstd)
+        self.c_std = to_cstd_flag(self._recipe, cstd)
         #: VS runtime library to use. Defined by ``msvc_runtime_flag()`` by default.
         self.b_vscrt = None
         if compiler in ("msvc", "clang"):
-            vscrt = msvc_runtime_flag(self._conanfile)
+            vscrt = msvc_runtime_flag(self._recipe)
             if vscrt:
                 self.b_vscrt = str(vscrt).lower()
 
@@ -185,12 +185,12 @@ class MesonToolchain:
         #: List of extra preprocessor definitions. Added to ``c_args`` and ``cpp_args`` with the
         #: format ``-D[FLAG_N]``.
         self.extra_defines = []
-        #: Architecture flag deduced by Conan and added to ``c_args``, ``cpp_args``, ``c_link_args`` and ``cpp_link_args``
-        self.arch_flag = architecture_flag(self._conanfile)  # https://github.com/conan-io/conan/issues/17624
-        #: Architecture link flag deduced by Conan and added to ``c_link_args`` and ``cpp_link_args``
-        self.arch_link_flag = architecture_link_flag(self._conanfile)
-        #: Threads flags deduced by Conan and added to ``c_args``, ``cpp_args``, ``c_link_args`` and ``cpp_link_args``
-        self.threads_flags = threads_flags(self._conanfile)
+        #: Architecture flag deduced by Recipe and added to ``c_args``, ``cpp_args``, ``c_link_args`` and ``cpp_link_args``
+        self.arch_flag = architecture_flag(self._recipe)  # upstream issue 17624
+        #: Architecture link flag deduced by Recipe and added to ``c_link_args`` and ``cpp_link_args``
+        self.arch_link_flag = architecture_link_flag(self._recipe)
+        #: Threads flags deduced by Recipe and added to ``c_args``, ``cpp_args``, ``c_link_args`` and ``cpp_link_args``
+        self.threads_flags = threads_flags(self._recipe)
         #: Dict-like object that defines Meson ``properties`` with ``key=value`` format
         self.properties = {}
         #: Dict-like object that defines Meson ``binaries`` with ``key=value`` format. If any dict key
@@ -198,7 +198,7 @@ class MesonToolchain:
         self.binaries = {}
         #: Dict-like object that defines Meson ``project options`` with ``key=value`` format
         self.project_options = {
-            "wrap_mode": "nofallback"  # https://github.com/conan-io/conan/issues/10671
+            "wrap_mode": "nofallback"  # upstream issue 10671
         }
         #: Dict-like object that defines Meson ``preprocessor definitions``
         self.preprocessor_definitions = {}
@@ -207,40 +207,40 @@ class MesonToolchain:
         #: Dict-like object that defines Meson ``subproject options``.
         self.subproject_options = {}
         #: Defines the Meson ``pkg_config_path`` variable
-        self.pkg_config_path = self._conanfile.generators_folder
+        self.pkg_config_path = self._recipe.generators_folder
         #: Defines the Meson ``build.pkg_config_path`` variable (build context)
-        # Issue: https://github.com/conan-io/conan/issues/12342
-        # Issue: https://github.com/conan-io/conan/issues/14935
+        # Issue: upstream issue 12342
+        # Issue: upstream issue 14935
         self.build_pkg_config_path = None
-        self.libcxx, self.gcc_cxx11_abi = libcxx_flags(self._conanfile)
+        self.libcxx, self.gcc_cxx11_abi = libcxx_flags(self._recipe)
         #: Dict-like object with the build, host, and target as the Meson machine context
         self.cross_build = {}
         default_comp = ""
         default_comp_cpp = ""
         if native is False and is_cross_building:
-            os_host = conanfile.settings.get_safe("os")
-            arch_host = conanfile.settings.get_safe("arch")
-            os_build = conanfile.settings_build.get_safe('os')
-            arch_build = conanfile.settings_build.get_safe('arch')
+            os_host = recipe.settings.get_safe("os")
+            arch_host = recipe.settings.get_safe("arch")
+            os_build = recipe.settings_build.get_safe('os')
+            arch_build = recipe.settings_build.get_safe('arch')
             self.cross_build["build"] = to_meson_machine(os_build, arch_build)
             self.cross_build["host"] = to_meson_machine(os_host, arch_host)
             # Check subsystem if it's Apple cross-building only. It requires Meson >= 1.2.0,
             # but it does not break lower versions.
             # See https://mesonbuild.com/Reference-tables.html#subsystem-names-since-120
-            # Issue: https://github.com/conan-io/conan/issues/17873
-            if self._is_apple_system and is_apple_os(conanfile, build_context=True):
-                sdk_build = conanfile.settings_build.get_safe("os.sdk")
-                sdk_host = conanfile.settings.get_safe("os.sdk")
+            # Issue: upstream issue 17873
+            if self._is_apple_system and is_apple_os(recipe, build_context=True):
+                sdk_build = recipe.settings_build.get_safe("os.sdk")
+                sdk_host = recipe.settings.get_safe("os.sdk")
                 self.cross_build["host"]["subsystem"] = get_apple_subsystem(sdk_host)
                 self.cross_build["build"]["subsystem"] = get_apple_subsystem(sdk_build)
-            # Issue: https://github.com/conan-io/conan/issues/19217
-            self.properties["needs_exe_wrapper"] = not can_run(self._conanfile)
-            if hasattr(conanfile, 'settings_target') and conanfile.settings_target:
-                settings_target = conanfile.settings_target
+            # Issue: upstream issue 19217
+            self.properties["needs_exe_wrapper"] = not can_run(self._recipe)
+            if hasattr(recipe, 'settings_target') and recipe.settings_target:
+                settings_target = recipe.settings_target
                 os_target = settings_target.get_safe("os")
                 arch_target = settings_target.get_safe("arch")
                 self.cross_build["target"] = to_meson_machine(os_target, arch_target)
-            if is_apple_os(self._conanfile):  # default cross-compiler in Apple is common
+            if is_apple_os(self._recipe):  # default cross-compiler in Apple is common
                 default_comp = "clang"
                 default_comp_cpp = "clang++"
         else:
@@ -256,14 +256,14 @@ class MesonToolchain:
             default_comp_cpp = "cl"
 
         # Read configuration for sys_root property (honoring existing conf)
-        self._sys_root = self._conanfile_conf.get("tools.build:sysroot", check_type=str)
+        self._sys_root = self._recipe_conf.get("tools.build:sysroot", check_type=str)
 
         # Read configuration for compilers
-        compilers_by_conf = self._conanfile_conf.get("tools.build:compiler_executables", default={},
+        compilers_by_conf = self._recipe_conf.get("tools.build:compiler_executables", default={},
                                                      check_type=dict)
         # Read the VirtualBuildEnv to update the variables
-        build_env = self._conanfile.buildenv_build.vars(self._conanfile) if native else (
-            VirtualBuildEnv(self._conanfile, auto_generate=True).vars())
+        build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (
+            VirtualBuildEnv(self._recipe, auto_generate=True).vars())
         #: Sets the Meson ``c`` variable, defaulting to the ``CC`` build environment value.
         #: If provided as a blank-separated string, it will be transformed into a list.
         #: Otherwise, it remains a single string.
@@ -295,7 +295,7 @@ class MesonToolchain:
         self.windres = build_env.get("WINDRES")
         #: Defines the Meson ``pkgconfig`` variable. Defaulted to ``PKG_CONFIG``
         #: build environment value
-        self.pkgconfig = (self._conanfile_conf.get("tools.gnu:pkg_config", check_type=str) or
+        self.pkgconfig = (self._recipe_conf.get("tools.gnu:pkg_config", check_type=str) or
                           build_env.get("PKG_CONFIG"))
         #: Defines the Meson ``c_args`` variable. Defaulted to ``CFLAGS`` build environment value
         self.c_args = self._get_env_list(build_env.get("CFLAGS", []))
@@ -316,7 +316,7 @@ class MesonToolchain:
         #: Apple minimum binary version flag as a list, e.g., ``["-mios-version-min", "10.8"]``
         self.apple_min_version_flag = []
         #: Apple bitcode, visibility and arc flags
-        self.apple_extra_flags = apple_extra_flags(self._conanfile)
+        self.apple_extra_flags = apple_extra_flags(self._recipe)
         #: Defines the Meson ``objc`` variable. Defaulted to ``None``, if if any Apple OS ``clang``
         self.objc = None
         #: Defines the Meson ``objcpp`` variable. Defaulted to ``None``, if if any Apple OS ``clang++``
@@ -339,11 +339,11 @@ class MesonToolchain:
         Get all the default directories from cpp.package.
 
         Issues related:
-            - https://github.com/conan-io/conan/issues/9713
-            - https://github.com/conan-io/conan/issues/11596
+            - upstream issue 9713
+            - upstream issue 11596
         """
         def _get_cpp_info_value(name):
-            elements = getattr(self._conanfile.cpp.package, name)
+            elements = getattr(self._recipe.cpp.package, name)
             return elements[0] if elements else None
 
         ret = {}
@@ -375,14 +375,14 @@ class MesonToolchain:
             return
         # Calculating the main Apple flags
         min_flag, arch_flag, isysroot_flag = (
-            resolve_apple_flags(self._conanfile, is_cross_building=self.cross_build))
+            resolve_apple_flags(self._recipe, is_cross_building=self.cross_build))
         self.apple_arch_flag = arch_flag.split() if arch_flag else []
         self.apple_isysroot_flag = isysroot_flag.split() if isysroot_flag else []
-        self.apple_min_version_flag = [apple_min_version_flag(self._conanfile)]
+        self.apple_min_version_flag = [apple_min_version_flag(self._recipe)]
         # Objective C/C++ ones
         self.objc = compilers_by_conf.get("objc", "clang")
         self.objcpp = compilers_by_conf.get("objcpp", "clang++")
-        enable_arc = self._conanfile.conf.get("tools.apple:enable_arc", check_type=bool)
+        enable_arc = self._recipe.conf.get("tools.apple:enable_arc", check_type=bool)
         fobj_arc = ""
         if enable_arc:
             fobj_arc = "-fobjc-arc"
@@ -397,34 +397,34 @@ class MesonToolchain:
         if not self.cross_build or not self.cross_build["host"]["system"] == "android":
             return
 
-        ndk_path = self._conanfile_conf.get("tools.android:ndk_path")
+        ndk_path = self._recipe_conf.get("tools.android:ndk_path")
         if not ndk_path:
-            raise ConanException("You must provide a NDK path. Use 'tools.android:ndk_path' "
+            raise RecipeException("You must provide a NDK path. Use 'tools.android:ndk_path' "
                                  "configuration field.")
 
-        arch = self._conanfile.settings.get_safe("arch")
+        arch = self._recipe.settings.get_safe("arch")
         os_build = self.cross_build["build"]["system"]
         ndk_bin = os.path.join(ndk_path, "toolchains",
                                "llvm", "prebuilt", "{}-x86_64".format(os_build), "bin")
-        android_api_level = self._conanfile.settings.get_safe("os.api_level")
+        android_api_level = self._recipe.settings.get_safe("os.api_level")
         android_target = {'armv7': 'armv7a-linux-androideabi',
                           'armv8': 'aarch64-linux-android',
                           'x86': 'i686-linux-android',
                           'x86_64': 'x86_64-linux-android'}.get(arch)
-        os_build = self._conanfile.settings_build.get_safe('os')
+        os_build = self._recipe.settings_build.get_safe('os')
         compile_ext = ".cmd" if os_build == "Windows" else ""
-        # User has more prio than Conan
+        # User has more prio than Recipe
         self.c = os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang{compile_ext}")
         self.cpp = os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang++{compile_ext}")
         self.ar = os.path.join(ndk_bin, "llvm-ar")
 
     @property
     def _rpath_link_flag(self):
-        add_rpath_link = self._conanfile.conf.get("tools.build:add_rpath_link", check_type=bool)
+        add_rpath_link = self._recipe.conf.get("tools.build:add_rpath_link", check_type=bool)
         if not add_rpath_link:
             return []
         runtime_dirs = []
-        host_req = self._conanfile.dependencies.filter({"build": False}).values()
+        host_req = self._recipe.dependencies.filter({"build": False}).values()
         for req in host_req:
             cppinfo = req.cpp_info.aggregated_components()
             runtime_dirs.extend(cppinfo.libdirs)
@@ -432,16 +432,16 @@ class MesonToolchain:
 
     def _get_extra_flags(self):
         # Now, it's time to get all the flags defined by the user
-        cxxflags = self._conanfile_conf.get("tools.build:cxxflags", default=[], check_type=list)
-        cflags = self._conanfile_conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._conanfile_conf.get("tools.build:sharedlinkflags", default=[],
+        cxxflags = self._recipe_conf.get("tools.build:cxxflags", default=[], check_type=list)
+        cflags = self._recipe_conf.get("tools.build:cflags", default=[], check_type=list)
+        sharedlinkflags = self._recipe_conf.get("tools.build:sharedlinkflags", default=[],
                                                    check_type=list)
-        exelinkflags = self._conanfile_conf.get("tools.build:exelinkflags", default=[],
+        exelinkflags = self._recipe_conf.get("tools.build:exelinkflags", default=[],
                                                 check_type=list)
-        linker_scripts = self._conanfile_conf.get("tools.build:linker_scripts", default=[],
+        linker_scripts = self._recipe_conf.get("tools.build:linker_scripts", default=[],
                                                   check_type=list)
         linker_script_flags = ['-T' + linker_script for linker_script in linker_scripts]
-        defines = self._conanfile_conf.get("tools.build:defines", default=[], check_type=list)
+        defines = self._recipe_conf.get("tools.build:defines", default=[], check_type=list)
         sys_root = [f"--sysroot={self._sys_root}"] if self._sys_root else [""]
         ld = (sharedlinkflags + exelinkflags + linker_script_flags + sys_root + self.extra_ldflags
               + self.threads_flags)
@@ -471,7 +471,7 @@ class MesonToolchain:
         if value is None or isinstance(value, list):
             return value
         if not isinstance(value, str):
-            raise ConanException(f"MesonToolchain: Value '{value}' should be a string")
+            raise RecipeException(f"MesonToolchain: Value '{value}' should be a string")
         ret = [x.strip() for x in value.split() if x]
         return ret[0] if len(ret) == 1 else ret
 
@@ -518,7 +518,7 @@ class MesonToolchain:
         self.objcpp_link_args.extend(self.cpp_link_args)
 
         if self.preprocessor_definitions:
-            self._conanfile.output.warning(
+            self._recipe.output.warning(
                 "Use 'extra_defines' attribute for compiler preprocessor definitions instead " +
                 "of 'preprocessor_definitions'", warn_tag="deprecated")
 
@@ -532,7 +532,7 @@ class MesonToolchain:
         for subproject, listkeypair in self.subproject_options.items():
             if listkeypair:
                 if not isinstance(listkeypair, list):
-                    raise ConanException("MesonToolchain.subproject_options must be a list of dicts")
+                    raise RecipeException("MesonToolchain.subproject_options must be a list of dicts")
                 subproject_options[subproject] = [{k: to_meson_value(v) for k, v in keypair.items()}
                                                   for keypair in listkeypair]
         return {
@@ -549,7 +549,7 @@ class MesonToolchain:
             # https://mesonbuild.com/Builtin-options.html#core-options
             "buildtype": self.buildtype,
             "default_library": self.default_library,
-            "backend": self._conanfile_conf.get("tools.meson.mesontoolchain:backend",
+            "backend": self._recipe_conf.get("tools.meson.mesontoolchain:backend",
                                                 default=self.backend),
             # https://mesonbuild.com/Builtin-options.html#base-options
             "b_vscrt": self.b_vscrt,
@@ -597,13 +597,13 @@ class MesonToolchain:
 
     def generate(self):
         """
-        Creates a ``conan_meson_native.ini`` (if native builds) or a
-        ``conan_meson_cross.ini`` (if cross builds) with the proper content.
-        If Windows OS, it will be created a ``conanvcvars.bat`` as well.
+        Creates a ``recipe_meson_native.ini`` (if native builds) or a
+        ``recipe_meson_cross.ini`` (if cross builds) with the proper content.
+        If Windows OS, it will be created a ``vcvars_env.bat`` as well.
         """
-        check_duplicated_generator(self, self._conanfile)
-        self._conanfile.output.info(f"MesonToolchain generated: {self._filename}")
+        check_duplicated_generator(self, self._recipe)
+        self._recipe.output.info(f"MesonToolchain generated: {self._filename}")
         save(self._filename, self._content)
         # FIXME: Should we check the OS and compiler to call VCVars?
-        VCVars(self._conanfile).generate()
+        VCVars(self._recipe).generate()
 

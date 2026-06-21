@@ -1,40 +1,40 @@
 import jinja2
 from jinja2 import Template
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 class CMakeDepsFileTemplate:
 
-    def __init__(self, cmakedeps, require, conanfile, generating_module=False):
+    def __init__(self, cmakedeps, require, recipe, generating_module=False):
         self.cmakedeps = cmakedeps
         self.require = require
-        self.conanfile = conanfile
+        self.recipe = recipe
         self.generating_module = generating_module
 
     @property
     def pkg_name(self):
-        return self.conanfile.ref.name + self.suffix
+        return self.recipe.ref.name + self.suffix
 
     @property
     def root_target_name(self):
-        return self.get_root_target_name(self.conanfile, self.suffix)
+        return self.get_root_target_name(self.recipe, self.suffix)
 
     @property
     def file_name(self):
-        return self.cmakedeps.get_cmake_package_name(self.conanfile, module_mode=self.generating_module) + self.suffix
+        return self.cmakedeps.get_cmake_package_name(self.recipe, module_mode=self.generating_module) + self.suffix
 
     @property
     def suffix(self):
         if not self.require.build:
             return ""
-        return self.cmakedeps.build_context_suffix.get(self.conanfile.ref.name, "")
+        return self.cmakedeps.build_context_suffix.get(self.recipe.ref.name, "")
 
     def render(self):
         try:
             context = self.context
         except Exception as e:
-            raise ConanException("error generating context for '{}': {}".format(self.conanfile, e))
+            raise RecipeException("error generating context for '{}': {}".format(self.recipe, e))
 
         # Cache the template instance as a class attribute to greatly speed up the rendering
         # NOTE: this assumes that self.template always returns the same string
@@ -86,7 +86,7 @@ class CMakeDepsFileTemplate:
             # foo::foo might be referencing the root cppinfo
             if req.ref.name == comp_name:
                 return self.get_root_target_name(req)
-            raise ConanException("Component '{name}::{cname}' not found in '{name}' "
+            raise RecipeException("Component '{name}::{cname}' not found in '{name}' "
                                  "package requirement".format(name=req.ref.name, cname=comp_name))
         if self.generating_module:
             ret = self.cmakedeps.get_property("cmake_module_target_name", req, comp_name=comp_name)

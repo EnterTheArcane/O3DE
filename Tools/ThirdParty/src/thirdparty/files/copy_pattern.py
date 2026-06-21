@@ -3,16 +3,16 @@ import fnmatch
 import os
 import shutil
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import mkdir
 
 
-def copy(conanfile, pattern, src, dst, keep_path=True, excludes=None,
+def copy(recipe, pattern, src, dst, keep_path=True, excludes=None,
          ignore_case=True, overwrite_equal=False):
     """
     Copy the files matching the pattern (fnmatch) at the src folder to a dst folder.
 
-    :param conanfile: The current recipe object. Always use ``self``.
+    :param recipe: The current recipe object. Always use ``self``.
     :param pattern: (Required) An fnmatch file pattern of the files that should be copied.
            It must not start with ``..`` relative path or an exception will be raised.
     :param src: (Required) Source folder in which those files will be searched. This folder
@@ -32,11 +32,11 @@ def copy(conanfile, pattern, src, dst, keep_path=True, excludes=None,
     :return: list of copied files
     """
     if src == dst:
-        raise ConanException("copy() 'src' and 'dst' arguments must have different values")
+        raise RecipeException("copy() 'src' and 'dst' arguments must have different values")
     if pattern.startswith(".."):
-        raise ConanException("copy() it is not possible to use relative patterns starting with '..'")
+        raise RecipeException("copy() it is not possible to use relative patterns starting with '..'")
     if src is None:
-        raise ConanException("copy() received 'src=None' argument")
+        raise RecipeException("copy() received 'src=None' argument")
 
     # This is necessary to add the trailing / so it is not reported as symlink
     src = os.path.join(src, "")
@@ -46,9 +46,9 @@ def copy(conanfile, pattern, src, dst, keep_path=True, excludes=None,
 
     copied_files = _copy_files(files_to_copy, src, dst, keep_path, overwrite_equal)
     copied_files.extend(_copy_files_symlinked_to_folders(files_symlinked_to_folders, src, dst))
-    if conanfile:  # Some usages still pass None
+    if recipe:  # Some usages still pass None
         copied = '\n    '.join(files_to_copy)
-        conanfile.output.debug(f"copy(pattern={pattern}) copied {len(copied_files)} files\n"
+        recipe.output.debug(f"copy(pattern={pattern}) copied {len(copied_files)} files\n"
                                f"  from {src}\n"
                                f"  to {dst}\n"
                                f"  Files:\n    {copied}")

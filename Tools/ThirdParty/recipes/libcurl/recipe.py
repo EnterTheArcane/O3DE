@@ -5,7 +5,7 @@ from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, download, get, replace_in_file, rmdir, save
-from thirdparty.github import GithubRepository
+from thirdparty.scm.github import GithubRepository
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 
@@ -235,7 +235,7 @@ class Recipe(RecipeBase):
         tc.variables["CURL_DISABLE_PROXY"] = not self.options.with_proxy
         tc.variables["USE_LIBIDN2"] = self.options.with_libidn
         if self.options.with_libidn:
-            # Conan won't generate this variable as we're setting prefixes,
+            # Recipe won't generate this variable as we're setting prefixes,
             # and CMake might not either as it's looking for Libidn2
             # Ensure it's there
             tc.cache_variables["LIBIDN2_FOUND"] = True
@@ -265,7 +265,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["CURL_CA_FALLBACK"] = self.options.with_ca_fallback
 
         # TODO: refactor this and consider `CMAKE_TRY_COMPILE_CONFIGURATION` for all platforms
-        #       see https://github.com/conan-io/conan/issues/12180
+        #       see upstream issue 12180
         tc.variables["HAVE_SSL_SET0_WBIO"] = False
         tc.variables["HAVE_OPENSSL_SRP"] = True
         tc.variables["HAVE_SSL_CTX_SET_QUIC_METHOD"] = True

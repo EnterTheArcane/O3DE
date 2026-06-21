@@ -3,38 +3,38 @@ import inspect
 import os
 import traceback
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 from thirdparty._internal.cache.home_paths import HomePaths
-from thirdparty._internal.errors import conanfile_exception_formatter
+from thirdparty._internal.errors import recipe_exception_formatter
 from thirdparty._internal.util.files import mkdir, chdir
 
 
-_generators = {"CMakeToolchain": "conan.tools.cmake",
-               "CMakeDeps": "conan.tools.cmake",
-               "CMakeConfigDeps": "conan.tools.cmake",
-               "MesonToolchain": "conan.tools.meson",
-               "MSBuildDeps": "conan.tools.microsoft",
-               "MSBuildToolchain": "conan.tools.microsoft",
-               "NMakeToolchain": "conan.tools.microsoft",
-               "NMakeDeps": "conan.tools.microsoft",
-               "VCVars": "conan.tools.microsoft",
-               "VirtualRunEnv": "conan.tools.env.virtualrunenv",
-               "VirtualBuildEnv": "conan.tools.env.virtualbuildenv",
-               "AutotoolsDeps": "conan.tools.gnu",
-               "AutotoolsToolchain": "conan.tools.gnu",
-               "GnuToolchain": "conan.tools.gnu",
-               "PkgConfigDeps": "conan.tools.gnu",
-               "BazelDeps": "conan.tools.google",
-               "BazelToolchain": "conan.tools.google",
-               "XcodeDeps": "conan.tools.apple",
-               "XcodeToolchain": "conan.tools.apple",
-               "PremakeDeps": "conan.tools.premake",
-               "PremakeToolchain": "conan.tools.premake",
-               "MakeDeps": "conan.tools.gnu",
-               "SConsDeps": "conan.tools.scons",
-               "QbsDeps": "conan.tools.qbs",
-               "QbsProfile": "conan.tools.qbs",
-               "ROSEnv": "conan.tools.ros"
+_generators = {"CMakeToolchain": "thirdparty.tools.cmake",
+               "CMakeDeps": "thirdparty.tools.cmake",
+               "CMakeConfigDeps": "thirdparty.tools.cmake",
+               "MesonToolchain": "thirdparty.tools.meson",
+               "MSBuildDeps": "thirdparty.tools.microsoft",
+               "MSBuildToolchain": "thirdparty.tools.microsoft",
+               "NMakeToolchain": "thirdparty.tools.microsoft",
+               "NMakeDeps": "thirdparty.tools.microsoft",
+               "VCVars": "thirdparty.tools.microsoft",
+               "VirtualRunEnv": "thirdparty.tools.env.virtualrunenv",
+               "VirtualBuildEnv": "thirdparty.tools.env.virtualbuildenv",
+               "AutotoolsDeps": "thirdparty.tools.gnu",
+               "AutotoolsToolchain": "thirdparty.tools.gnu",
+               "GnuToolchain": "thirdparty.tools.gnu",
+               "PkgConfigDeps": "thirdparty.tools.gnu",
+               "BazelDeps": "thirdparty.tools.google",
+               "BazelToolchain": "thirdparty.tools.google",
+               "XcodeDeps": "thirdparty.tools.apple",
+               "XcodeToolchain": "thirdparty.tools.apple",
+               "PremakeDeps": "thirdparty.tools.premake",
+               "PremakeToolchain": "thirdparty.tools.premake",
+               "MakeDeps": "thirdparty.tools.gnu",
+               "SConsDeps": "thirdparty.tools.scons",
+               "QbsDeps": "thirdparty.tools.qbs",
+               "QbsProfile": "thirdparty.tools.qbs",
+               "ROSEnv": "thirdparty.tools.ros"
                }
 
 
@@ -43,15 +43,15 @@ def _get_generator_class(generator_name):
         generator_class = _generators[generator_name]
         # This is identical to import ... form ... in terms of cacheing
     except KeyError as e:
-        raise ConanException(f"Invalid generator '{generator_name}'. "
+        raise RecipeException(f"Invalid generator '{generator_name}'. "
                              f"Available types: {', '.join(_generators)}") from e
     try:
         return getattr(importlib.import_module(generator_class), generator_name)
     except ImportError as e:
-        raise ConanException("Internal Conan error: "
+        raise RecipeException("Internal Recipe error: "
                              f"Could not find module {generator_class}") from e
     except AttributeError as e:
-        raise ConanException("Internal Conan error: "
+        raise RecipeException("Internal Recipe error: "
                              f"Could not find name {generator_name} "
                              f"inside module {generator_class}") from e
 
@@ -72,25 +72,25 @@ def load_cache_generators(path):
     return result
 
 
-def write_generators(conanfile, hook_manager, home_folder, envs_generation=None):
-    new_gen_folder = conanfile.generators_folder
-    _receive_conf(conanfile)
-    _receive_generators(conanfile)
+def write_generators(recipe, hook_manager, home_folder, envs_generation=None):
+    new_gen_folder = recipe.generators_folder
+    _receive_conf(recipe)
+    _receive_generators(recipe)
 
     # TODO: Optimize this, so the global generators are not loaded every call to write_generators
     global_generators = load_cache_generators(HomePaths(home_folder).custom_generators_path)
-    hook_manager.execute("pre_generate", conanfile=conanfile)
+    hook_manager.execute("pre_generate", recipe=recipe)
 
-    if conanfile.generators:
-        conanfile.output.highlight(f"Writing generators to {new_gen_folder}")
+    if recipe.generators:
+        recipe.output.highlight(f"Writing generators to {new_gen_folder}")
     # generators check that they are not present in the generators field,
     # to avoid duplicates between the generators attribute and the generate() method
     # They would raise an exception here if we don't invalidate the field while we call them
     old_generators = []
-    for gen in conanfile.generators:
+    for gen in recipe.generators:
         if gen not in old_generators:
             old_generators.append(gen)
-    conanfile.generators = []
+    recipe.generators = []
 
     for generator_name in old_generators:
         if isinstance(generator_name, str):
@@ -101,50 +101,50 @@ def write_generators(conanfile, hook_manager, home_folder, envs_generation=None)
             generator_name = generator_class.__name__
         assert generator_class
         try:
-            generator = generator_class(conanfile)
+            generator = generator_class(recipe)
             mkdir(new_gen_folder)
-            conanfile.output.info(f"Generator '{generator_name}' calling 'generate()'")
+            recipe.output.info(f"Generator '{generator_name}' calling 'generate()'")
             with chdir(new_gen_folder):
                 generator.generate()
         except Exception as e:
             # When a generator fails, it is very useful to have the whole stacktrace
-            if not isinstance(e, ConanException):
-                conanfile.output.error(traceback.format_exc(), error_type="exception")
-            raise ConanException(f"Error in generator '{generator_name}': {str(e)}") from e
+            if not isinstance(e, RecipeException):
+                recipe.output.error(traceback.format_exc(), error_type="exception")
+            raise RecipeException(f"Error in generator '{generator_name}': {str(e)}") from e
 
     # restore the generators attribute, so it can raise
     # if the user tries to instantiate a generator already present in generators
-    conanfile.generators = old_generators
+    recipe.generators = old_generators
 
-    if hasattr(conanfile, "generate"):
-        conanfile.output.highlight("Calling generate()")
-        conanfile.output.info(f"Generators folder: {new_gen_folder}")
+    if hasattr(recipe, "generate"):
+        recipe.output.highlight("Calling generate()")
+        recipe.output.info(f"Generators folder: {new_gen_folder}")
         mkdir(new_gen_folder)
         with chdir(new_gen_folder):
-            with conanfile_exception_formatter(conanfile, "generate"):
-                conanfile.generate()
+            with recipe_exception_formatter(recipe, "generate"):
+                recipe.generate()
 
     if envs_generation is None:
-        if conanfile.virtualbuildenv:
+        if recipe.virtualbuildenv:
             mkdir(new_gen_folder)
             with chdir(new_gen_folder):
                 from thirdparty.env.virtualbuildenv import VirtualBuildEnv
-                env = VirtualBuildEnv(conanfile)
+                env = VirtualBuildEnv(recipe)
                 # TODO: Check length of env.vars().keys() when adding NotEmpty
                 env.generate()
-        if conanfile.virtualrunenv:
+        if recipe.virtualrunenv:
             mkdir(new_gen_folder)
             with chdir(new_gen_folder):
                 from thirdparty.env import VirtualRunEnv
-                env = VirtualRunEnv(conanfile)
+                env = VirtualRunEnv(recipe)
                 env.generate()
 
     from thirdparty.env.environment import generate_aggregated_env
-    generate_aggregated_env(conanfile)
-    hook_manager.execute("post_generate", conanfile=conanfile)
+    generate_aggregated_env(recipe)
+    hook_manager.execute("post_generate", recipe=recipe)
 
 
-def _receive_conf(conanfile):
+def _receive_conf(recipe):
     """  collect conf_info from the immediate build_requires, aggregate it and injects/update
     current conf
     """
@@ -152,36 +152,36 @@ def _receive_conf(conanfile):
     # TODO: Only direct build_requires?
     # TODO: Is really the best mechanism to define this info? Better than env-vars?
     # Conf only for first level build_requires
-    for build_require in conanfile.dependencies.direct_build.values():
+    for build_require in recipe.dependencies.direct_build.values():
         if build_require.conf_info:
-            conanfile.conf.compose_conf(build_require.conf_info)
+            recipe.conf.compose_conf(build_require.conf_info)
 
 
-def _receive_generators(conanfile):
+def _receive_generators(recipe):
     """  Collect generators_info from the immediate build_requires"""
-    for build_req in conanfile.dependencies.direct_build.values():
+    for build_req in recipe.dependencies.direct_build.values():
         if build_req.generator_info:
             if not isinstance(build_req.generator_info, list):
-                raise ConanException(f"{build_req} 'generator_info' must be a list")
+                raise RecipeException(f"{build_req} 'generator_info' must be a list")
             names = [c.__name__ if not isinstance(c, str) else c for c in build_req.generator_info]
-            conanfile.output.warning(f"Tool-require {build_req} adding generators: {names}",
+            recipe.output.warning(f"Tool-require {build_req} adding generators: {names}",
                                      warn_tag="experimental")
             # Generators can be defined as a tuple in recipes, ensure we don't break if so
-            conanfile.generators = build_req.generator_info + list(conanfile.generators)
+            recipe.generators = build_req.generator_info + list(recipe.generators)
 
 
-def relativize_path(path, conanfile, placeholder, normalize=True):
+def relativize_path(path, recipe, placeholder, normalize=True):
     """
     relative path from the "generators_folder" to "path", asuming the root file, like
-    conan_toolchain.cmake will be directly in the "generators_folder"
+    recipe_toolchain.cmake will be directly in the "generators_folder"
     """
-    base_common_folder = conanfile.folders._base_generators # noqa
+    base_common_folder = recipe.folders._base_generators # noqa
     if not base_common_folder or not os.path.isabs(base_common_folder):
         return path
     try:
-        common_path = os.path.commonpath([path, conanfile.generators_folder, base_common_folder])
+        common_path = os.path.commonpath([path, recipe.generators_folder, base_common_folder])
         if common_path.replace("\\", "/") == base_common_folder.replace("\\", "/"):
-            rel_path = os.path.relpath(path, conanfile.generators_folder)
+            rel_path = os.path.relpath(path, recipe.generators_folder)
             new_path = os.path.join(placeholder, rel_path)
             return new_path.replace("\\", "/") if normalize else new_path
     except ValueError:  # In case the unit in Windows is different, path cannot be made relative

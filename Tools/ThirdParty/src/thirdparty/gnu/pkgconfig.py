@@ -3,39 +3,39 @@ from io import StringIO
 
 from thirdparty.build import cmd_args_to_string
 from thirdparty.env import Environment
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 
 class PkgConfig:
 
-    def __init__(self, conanfile, library, pkg_config_path=None):
+    def __init__(self, recipe, library, pkg_config_path=None):
         """
 
-        :param conanfile: The current recipe object. Always use ``self``.
+        :param recipe: The current recipe object. Always use ``self``.
         :param library: The library which ``.pc`` file is to be parsed. It must exist in the pkg_config path.
         :param pkg_config_path:  If defined it will be prepended to ``PKG_CONFIG_PATH`` environment
                variable, so the execution finds the required files.
         """
-        self._conanfile = conanfile
+        self._recipe = recipe
         self._library = library
         self._info = {}
         self._pkg_config_path = pkg_config_path
         self._variables = None
 
     def _parse_output(self, option):
-        executable = self._conanfile.conf.get("tools.gnu:pkg_config", default="pkg-config")
+        executable = self._recipe.conf.get("tools.gnu:pkg_config", default="pkg-config")
         command = cmd_args_to_string([executable, '--' + option, self._library, '--print-errors'])
 
         env = Environment()
         if self._pkg_config_path:
             env.prepend_path("PKG_CONFIG_PATH", self._pkg_config_path)
-        with env.vars(self._conanfile).apply():
-            # This way we get the environment from ConanFile, from profile (default buildenv)
+        with env.vars(self._recipe).apply():
+            # This way we get the environment from RecipeBase, from profile (default buildenv)
             output, err = StringIO(), StringIO()
-            ret = self._conanfile.run(command, stdout=output, stderr=err, quiet=True,
+            ret = self._recipe.run(command, stdout=output, stderr=err, quiet=True,
                                       ignore_errors=True)
             if ret != 0:
-                raise ConanException(f"PkgConfig failed. Command: {command}\n"
+                raise RecipeException(f"PkgConfig failed. Command: {command}\n"
                                      f"    stdout:\n{textwrap.indent(output.getvalue(), '    ')}\n"
                                      f"    stderr:\n{textwrap.indent(err.getvalue(), '    ')}\n")
         value = output.getvalue().strip()
@@ -99,8 +99,8 @@ class PkgConfig:
 
         """
         if not self.provides:
-            raise ConanException("PkgConfig error, '{}' files not available".format(self._library))
-        self._conanfile.output.verbose(f"PkgConfig fill cpp_info for {self._library}")
+            raise RecipeException("PkgConfig error, '{}' files not available".format(self._library))
+        self._recipe.output.verbose(f"PkgConfig fill cpp_info for {self._library}")
         if is_system:
             cpp_info.system_libs = self.libs
         else:

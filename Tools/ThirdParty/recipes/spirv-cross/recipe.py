@@ -124,7 +124,7 @@ class Recipe(RecipeBase):
 
     @property
     def _module_file_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-targets.cmake")
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-targets.cmake")
 
     @property
     def _spirv_cross_components(self):
@@ -161,7 +161,7 @@ class Recipe(RecipeBase):
         return components
 
     def package_info(self):
-        # FIXME: we should provide one CMake config file per target (waiting for an implementation of https://github.com/conan-io/conan/issues/9000)
+        # FIXME: we should provide one CMake config file per target (waiting for an implementation of upstream issue 9000)
         def _register_component(target_lib, requires):
             self.cpp_info.components[target_lib].set_property("cmake_target_name", target_lib)
             if self.options.shared:

@@ -7,7 +7,7 @@ from threading import Lock
 import colorama
 from colorama import Fore, Style
 
-from thirdparty.errors import ConanException
+from thirdparty.errors import RecipeException
 
 LEVEL_QUIET = 80  # -q
 LEVEL_ERROR = 70  # Errors
@@ -40,7 +40,7 @@ class Color:
     BRIGHT_MAGENTA = Style.BRIGHT + Fore.MAGENTA  # @UndefinedVariable
 
 
-if os.environ.get("CONAN_COLOR_DARK"):
+if os.environ.get("O3DE_PACKAGE_COLOR_DARK"):
     Color.WHITE = Fore.BLACK
     Color.CYAN = Fore.BLUE
     Color.YELLOW = Fore.MAGENTA
@@ -84,8 +84,8 @@ def _color_enabled(stream):
     return hasattr(stream, "isatty") and stream.isatty()
 
 
-class ConanOutput:
-    """ A singleton class to handle output messages in Conan.
+class Output:
+    """ A singleton class to handle output messages.
 
     Recipes should only access this class through the ``self.output`` attribute of the recipe,
     but custom commands or tools can instantiate it directly, where doing so for each message is
@@ -98,16 +98,16 @@ class ConanOutput:
     The output methods return the instance itself, so different methods can be chained together.
     """
     # Singleton
-    _conan_output_level = LEVEL_STATUS
+    _output_level = LEVEL_STATUS
     _silent_warn_tags = []
     _warnings_as_errors = []
     _last_scope_header = None
-    # Flag to enable/disable new ConanOutput contextual behavior
+    # Flag to enable/disable new Output contextual behavior
     _scoped_recipe_output = None
     lock = Lock()
 
     def __init__(self, scope: str = ""):
-        """ Initialize the ConanOutput instance.
+        """ Initialize the Output instance.
 
         :parameter scope: A string that represents the scope of the output. This is usually the
             reference of the recipe being executed, like ``pkg/1.0@user/channel`` and is prefixed
@@ -119,7 +119,7 @@ class ConanOutput:
         #         stream to capture it, so colorama is not there to strip the color bytes
         self._color = _color_enabled(self.stream)
         if not scope:
-            ConanOutput._last_scope_header = None
+            Output._last_scope_header = None
 
     @classmethod
     def define_silence_warnings(cls, warnings):
@@ -131,11 +131,11 @@ class ConanOutput:
 
     @classmethod
     def get_output_level(cls):
-        return cls._conan_output_level
+        return cls._output_level
 
     @classmethod
     def set_output_level(cls, level):
-        cls._conan_output_level = level
+        cls._output_level = level
 
     @classmethod
     def valid_log_levels(cls):
@@ -154,21 +154,21 @@ class ConanOutput:
 
     @classmethod
     def define_log_level(cls, v):
-        env_level = os.getenv("CONAN_LOG_LEVEL")
+        env_level = os.getenv("O3DE_PACKAGE_LOG_LEVEL")
         v = env_level or v
         levels = cls.valid_log_levels()
         try:
             level = levels[v]
         except KeyError:
-            msg = " defined in CONAN_LOG_LEVEL environment variable" if env_level else ""
+            msg = " defined in O3DE_PACKAGE_LOG_LEVEL environment variable" if env_level else ""
             vals = "quiet, error, warning, notice, status, verbose, debug(v), trace(vv)"
-            raise ConanException(f"Invalid argument '-v{v}'{msg}.\nAllowed values: {vals}")
+            raise RecipeException(f"Invalid argument '-v{v}'{msg}.\nAllowed values: {vals}")
         else:
             cls.set_output_level(level)
 
     @classmethod
     def level_allowed(cls, level):
-        return cls._conan_output_level <= level
+        return cls._output_level <= level
 
     @property
     def color(self):
@@ -182,7 +182,7 @@ class ConanOutput:
     def scope(self, out_scope):
         self._scope = out_scope
         if not out_scope:
-            ConanOutput._last_scope_header = None
+            Output._last_scope_header = None
 
     @property
     def is_terminal(self):
@@ -192,7 +192,7 @@ class ConanOutput:
         return self.write(data, fg, bg, newline=True)
 
     def write(self, data, fg=None, bg=None, newline=False):
-        if self._conan_output_level > LEVEL_NOTICE:
+        if self._output_level > LEVEL_NOTICE:
             return self
         if self._color and (fg or bg):
             data = "%s%s%s%s" % (fg or '', bg or '', data, Style.RESET_ALL)
@@ -227,10 +227,10 @@ class ConanOutput:
             msg = "=> {}".format(msg)
             # msg = json.dumps(msg, sort_keys=True, default=json_encoder)
 
-        if ConanOutput._scoped_recipe_output and self._scope:
-            if self._scope != ConanOutput._last_scope_header:
+        if Output._scoped_recipe_output and self._scope:
+            if self._scope != Output._last_scope_header:
                 self.writeln(f"{self._scope}:", fg=Color.BRIGHT_BLUE)
-                ConanOutput._last_scope_header = self._scope
+                Output._last_scope_header = self._scope
             if self._color:
                 ret = f"  {fg or ''}{bg or ''}{msg}{Style.RESET_ALL}"
             else:
@@ -264,7 +264,7 @@ class ConanOutput:
 
         It’s used when full visibility of everything happening in the system is required,
         but should be used carefully due to the large amount of information it can generate."""
-        if self._conan_output_level <= LEVEL_TRACE:
+        if self._output_level <= LEVEL_TRACE:
             self._write_message(msg, fg=Color.BLUE)
         return self
 
@@ -276,7 +276,7 @@ class ConanOutput:
 
         These messages provide useful information for developers, such as variable values
         or execution flow details, to trace errors or analyze the program's behavior."""
-        if self._conan_output_level <= LEVEL_DEBUG:
+        if self._output_level <= LEVEL_DEBUG:
             self._write_message(msg, fg=fg, bg=bg)
         return self
 
@@ -289,7 +289,7 @@ class ConanOutput:
 
         It’s appropriate for gaining more context without overloading the logs with
         excessive detail. Useful when more clarity is needed than a simple info."""
-        if self._conan_output_level <= LEVEL_VERBOSE:
+        if self._output_level <= LEVEL_VERBOSE:
             self._write_message(msg, fg=fg, bg=bg)
         return self
 
@@ -298,7 +298,7 @@ class ConanOutput:
 
         Info messages are basic and used to inform about common events,
         like the start or completion of processes, without implying specific problems or achievements."""
-        if self._conan_output_level <= LEVEL_STATUS:
+        if self._output_level <= LEVEL_STATUS:
             self._write_message(msg, fg=fg, bg=bg, newline=newline)
         return self
 
@@ -306,14 +306,14 @@ class ConanOutput:
 
     def title(self, msg: str):
         """ Draws a title around the message, useful for important messages"""
-        if self._conan_output_level <= LEVEL_NOTICE:
+        if self._output_level <= LEVEL_NOTICE:
             self._write_message("\n======== {} ========".format(msg),
                                 fg=Color.BRIGHT_MAGENTA)
         return self
 
     def subtitle(self, msg: str):
         """ Draws a subtitle around the message, useful for important messages"""
-        if self._conan_output_level <= LEVEL_NOTICE:
+        if self._output_level <= LEVEL_NOTICE:
             self._write_message("\n-------- {} --------".format(msg),
                                 fg=Color.BRIGHT_MAGENTA)
         return self
@@ -323,7 +323,7 @@ class ConanOutput:
         indicate success or error.
 
         These messages draw attention to key points that may be relevant for the user or administrator."""
-        if self._conan_output_level <= LEVEL_NOTICE:
+        if self._output_level <= LEVEL_NOTICE:
             self._write_message(msg, fg=Color.BRIGHT_MAGENTA)
         return self
 
@@ -332,7 +332,7 @@ class ConanOutput:
 
         This type of message is useful to confirm that key processes or tasks have finished correctly,
         which is essential for good application monitoring."""
-        if self._conan_output_level <= LEVEL_NOTICE:
+        if self._output_level <= LEVEL_NOTICE:
             self._write_message(msg, fg=Color.BRIGHT_GREEN)
         return self
 
@@ -351,8 +351,8 @@ class ConanOutput:
         and is not skipped, this will be upgraded to an error, and raise an exception
         when the output is printed, so that the error does not pass unnoticed."""
         _treat_as_error = self._warn_tag_matches(warn_tag, self._warnings_as_errors)
-        if (self._conan_output_level <= LEVEL_WARNING or
-                (_treat_as_error and self._conan_output_level <= LEVEL_ERROR)):
+        if (self._output_level <= LEVEL_WARNING or
+                (_treat_as_error and self._output_level <= LEVEL_ERROR)):
             if self._warn_tag_matches(warn_tag, self._silent_warn_tags):
                 return self
             warn_tag_msg = "" if warn_tag is None else f"{warn_tag}: "
@@ -374,8 +374,8 @@ class ConanOutput:
         this will raise an exception when the output is printed,
         so that the error does not pass unnoticed."""
         if self._warnings_as_errors and error_type != "exception":
-            raise ConanException(msg)
-        if self._conan_output_level <= LEVEL_ERROR:
+            raise RecipeException(msg)
+        if self._output_level <= LEVEL_ERROR:
             self._write_message("ERROR: {}".format(msg), Color.RED)
         return self
 
@@ -393,7 +393,7 @@ def cli_out_write(data, fg=None, bg=None, endline="\n", indentation=0):
     else:
         data = f"{' ' * indentation}{data}{endline}"
         if sys.stdout.isatty():
-            # https://github.com/conan-io/conan/issues/17245 avoid colorama crash and overhead
+            # upstream issue 17245 avoid colorama crash and overhead
             # skip deinit/reinit if stdout is not a TTY to preserve redirected output to file
             colorama.deinit()
             sys.stdout.write(data)
@@ -407,7 +407,7 @@ class TimedOutput:
         self._interval = interval
         self._msg_format = msg_format
         self._t = time.time()
-        self._out = out or ConanOutput()
+        self._out = out or Output()
 
     def info(self, msg, *args, **kwargs):
         t = time.time()

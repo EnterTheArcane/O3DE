@@ -4,7 +4,7 @@ from pathlib import Path
 recipes_dir = Path(r"D:\O3DE\Engine\Tools\ThirdParty\recipes")
 names = [
     "alembic", "assimp", "c4core", "directx-headers", "dirent",
-    "double-conversion", fast-float", "harfbuzz", "icu", "jansson",
+    "double-conversion", "fast-float", "harfbuzz", "icu", "jansson",
     "kuba-zip", "lcms", "libde265", "libffi", "libheif", "libwebm",
     "luau", "manifold", "md4c", "meshoptimizer", "msdfgen", "ogg",
     "openal-soft", "openddl-parser", "openjph", "pcre2", "ptex",

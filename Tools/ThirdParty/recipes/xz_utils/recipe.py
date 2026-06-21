@@ -88,14 +88,14 @@ class Recipe(RecipeBase):
         build_script_folder = os.path.join(self.source_folder, "windows", "vs2017" if is_msvc_modern else "vs2013")
 
         #==============================
-        # TODO: to remove once https://github.com/conan-io/conan/pull/12817 available in conan client.
+        # TODO: to remove once upstream PR 12817 available in recipe client.
         vcxproj_files = [
             os.path.join(build_script_folder, "liblzma.vcxproj"),
             os.path.join(build_script_folder, "liblzma_dll.vcxproj"),
         ]
         old_toolset = "v141" if is_msvc_modern else "v120"
         new_toolset = MSBuildToolchain(self).toolset
-        conantoolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
+        recipe_toolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
         for vcxproj_file in vcxproj_files:
             replace_in_file(
                 self, vcxproj_file,
@@ -105,7 +105,7 @@ class Recipe(RecipeBase):
             replace_in_file(
                 self, vcxproj_file,
                 "<Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />",
-                f"<Import Project=\"{conantoolchain_props}\" /><Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />",
+                f"<Import Project=\"{recipe_toolchain_props}\" /><Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />",
             )
 
             if self.settings.arch == "armv8":
@@ -156,7 +156,7 @@ class Recipe(RecipeBase):
 
     @property
     def _module_file_rel_path(self):
-        return os.path.join("lib", "cmake", f"conan-official-{self.name}-variables.cmake")
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "LibLZMA")

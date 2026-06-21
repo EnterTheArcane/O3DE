@@ -10,9 +10,9 @@ from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
 
 class GnuDepsFlags:
 
-    def __init__(self, conanfile, cpp_info):
-        self._conanfile = conanfile
-        self._subsystem = deduce_subsystem(conanfile, scope="build")
+    def __init__(self, recipe, cpp_info):
+        self._recipe = recipe
+        self._subsystem = deduce_subsystem(recipe, scope="build")
 
         # From cppinfo, calculated flags
         self.include_paths = self._format_include_paths(cpp_info.includedirs)
@@ -45,9 +45,9 @@ class GnuDepsFlags:
         returns an appropriate compiler flags to link with Apple Frameworks
         or an empty array, if Apple Frameworks aren't supported by the given compiler
         """
-        if not frameworks or not is_apple_os(self._conanfile):
+        if not frameworks or not is_apple_os(self._recipe):
             return []
-        compiler = self._conanfile.settings.get_safe("compiler")
+        compiler = self._recipe.settings.get_safe("compiler")
         if str(compiler) not in self._GCC_LIKE:
             return []
         if is_path:
@@ -58,14 +58,14 @@ class GnuDepsFlags:
     def _format_include_paths(self, include_paths):
         if not include_paths:
             return []
-        pattern = "/I%s" if is_msvc(self._conanfile) else "-I%s"
+        pattern = "/I%s" if is_msvc(self._recipe) else "-I%s"
         return [pattern % (self._adjust_path(include_path))
                 for include_path in include_paths if include_path]
 
     def _format_library_paths(self, library_paths):
         if not library_paths:
             return []
-        pattern = "/LIBPATH:%s" if is_msvc(self._conanfile) else "-L%s"
+        pattern = "/LIBPATH:%s" if is_msvc(self._recipe) else "-L%s"
         return [pattern % self._adjust_path(library_path)
                 for library_path in library_paths if library_path]
 
@@ -75,7 +75,7 @@ class GnuDepsFlags:
 
         result = []
 
-        is_visual = is_msvc(self._conanfile)
+        is_visual = is_msvc(self._recipe)
         for library in libraries:
             if is_visual:
                 if not library.endswith(".lib"):
@@ -86,7 +86,7 @@ class GnuDepsFlags:
         return result
 
     def _adjust_path(self, path):
-        if is_msvc(self._conanfile):
+        if is_msvc(self._recipe):
             path = path.replace('/', '\\')
         else:
             path = path.replace('\\', '/')

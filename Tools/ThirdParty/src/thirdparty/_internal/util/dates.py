@@ -6,7 +6,7 @@ from dateutil import parser
 
 
 def from_timestamp_to_iso8601(timestamp):
-    # Used exclusively by conan_server to return the date in iso format (same as artifactory)
+    # Used exclusively by recipe_server to return the date in iso format (same as artifactory)
     return "%s" % datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc).isoformat()
 
 
@@ -15,7 +15,7 @@ def _from_iso8601_to_datetime(iso_str):
 
 
 def from_iso8601_to_timestamp(iso_str):
-    # used by RestClient v2 to transform from HTTP API (iso) to Conan internal timestamp
+    # used by RestClient v2 to transform from HTTP API (iso) to Recipe internal timestamp
     datetime_time = _from_iso8601_to_datetime(iso_str)
     return datetime_time.timestamp()
 

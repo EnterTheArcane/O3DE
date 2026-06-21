@@ -14,7 +14,7 @@ class _OptionsAccessor:
     """Proxy that supports both attribute-style and dict-style option access.
 
     This lets ported recipes use either ``self.options["shared"]`` or the
-    Conan-compatible ``self.options.shared`` without modification.
+    Recipe-compatible ``self.options.shared`` without modification.
     """
 
     def __init__(self, values: dict[str, Any]) -> None:
@@ -43,11 +43,11 @@ class _OptionsAccessor:
         return values.get(key, default)
 
     def get_safe(self, key: str, default: Any = None) -> Any:
-        """Conan-compatible alias for :meth:`get`."""
+        """Recipe-compatible alias for :meth:`get`."""
         return self.get(key, default)
 
     def rm_safe(self, key: str) -> None:
-        """Remove option *key* if it exists (Conan-compatible no-op wrapper)."""
+        """Remove option *key* if it exists (Recipe-compatible no-op wrapper)."""
         values: dict[str, Any] = object.__getattribute__(self, "_values")
         values.pop(key, None)
 
@@ -114,7 +114,7 @@ class _SettingsAccessor:
 
 
 class CppInfo:
-    """Describes what a built package provides to consumers (Conan-compatible)."""
+    """Describes what a built package provides to consumers (Recipe-compatible)."""
 
     def __init__(self) -> None:
         self.includedirs: list[str] = ["include"]
@@ -139,7 +139,7 @@ class CppInfo:
         return self._properties.get(prop)
 
     def aggregated_components(self) -> "CppInfo":
-        """Conan-compatible stub — returns self (no multi-component support)."""
+        """Recipe-compatible stub — returns self (no multi-component support)."""
         return self
 
 

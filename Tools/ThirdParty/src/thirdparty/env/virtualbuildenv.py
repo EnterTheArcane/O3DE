@@ -1,20 +1,19 @@
 from thirdparty._internal import check_duplicated_generator
-from thirdparty._internal.model.version_range import required_conan_version_policy
 from thirdparty.env import Environment
 from thirdparty.env.virtualrunenv import runenv_from_cpp_info
 
 
 class VirtualBuildEnv:
-    """ Calculates the environment variables of the build time context and produces a conanbuildenv
+    """ Calculates the environment variables of the build time context and produces a buildenv
         .bat or .sh script
     """
 
-    def __init__(self, conanfile, auto_generate=False):
+    def __init__(self, recipe, auto_generate=False):
         self._buildenv = None
-        self._conanfile = conanfile
+        self._recipe = recipe
         if not auto_generate:
-            self._conanfile.virtualbuildenv = False
-        self.basename = "conanbuildenv"
+            self._recipe.virtualbuildenv = False
+        self.basename = "buildenv"
         self.configuration = None
         self.arch = None
 
@@ -22,12 +21,12 @@ class VirtualBuildEnv:
     def _filename(self):
         if not self.configuration:
             # TODO: Make this use the settings_build
-            configuration = self._conanfile.settings.get_safe("build_type")
+            configuration = self._recipe.settings.get_safe("build_type")
             configuration = configuration.lower() if configuration else None
         else:
             configuration = self.configuration
         if not self.arch:
-            arch = self._conanfile.settings.get_safe("arch")
+            arch = self._recipe.settings.get_safe("arch")
             arch = arch.lower() if arch else None
         else:
             arch = self.arch
@@ -51,10 +50,10 @@ class VirtualBuildEnv:
             return self._buildenv
 
         # Top priority: profile
-        profile_env = self._conanfile.buildenv
+        profile_env = self._recipe.buildenv
         self._buildenv.compose_env(profile_env)
 
-        build_requires = self._conanfile.dependencies.build.topological_sort
+        build_requires = self._recipe.dependencies.build.topological_sort
         for require, build_require in reversed(build_requires.items()):
             if require.direct:  # Only buildenv_info from direct deps is propagated
                 # higher priority, explicit buildenv_info
@@ -64,12 +63,12 @@ class VirtualBuildEnv:
             if build_require.runenv_info:
                 self._buildenv.compose_env(build_require.runenv_info)
             # Then the implicit
-            if require.run or not required_conan_version_policy(self._conanfile, "2.27.9"):
-                os_name = self._conanfile.settings_build.get_safe("os")
+            if require.run:
+                os_name = self._recipe.settings_build.get_safe("os")
                 self._buildenv.compose_env(runenv_from_cpp_info(build_require, os_name))
 
         # Requires in host context can also bring some direct buildenv_info
-        host_requires = self._conanfile.dependencies.host.topological_sort
+        host_requires = self._recipe.dependencies.host.topological_sort
         for require in reversed(host_requires.values()):
             if require.buildenv_info:
                 self._buildenv.compose_env(require.buildenv_info)
@@ -81,7 +80,7 @@ class VirtualBuildEnv:
         :param scope: Scope to be used.
         :return: An ``EnvVars`` instance containing the computed environment variables.
         """
-        return self.environment().vars(self._conanfile, scope=scope)
+        return self.environment().vars(self._recipe, scope=scope)
 
     def generate(self, scope="build"):
         """
@@ -89,7 +88,7 @@ class VirtualBuildEnv:
 
         :param scope: Scope to be used.
         """
-        check_duplicated_generator(self, self._conanfile)
+        check_duplicated_generator(self, self._recipe)
         build_env = self.environment()
-        build_env.vars(self._conanfile, scope=scope).save_script(self._filename)
+        build_env.vars(self._recipe, scope=scope).save_script(self._filename)
 
