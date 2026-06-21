@@ -27,7 +27,7 @@ dev = [
 ]
 
 [project.scripts]
-thirdparty = "thirdparty._internal.cli:main"
+thirdparty = "thirdparty:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

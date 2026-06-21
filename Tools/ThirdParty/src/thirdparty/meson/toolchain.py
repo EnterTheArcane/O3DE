@@ -4,7 +4,6 @@ import textwrap
 from jinja2 import Template, StrictUndefined
 
 from thirdparty.errors import RecipeException
-from thirdparty._internal import check_duplicated_generator
 from thirdparty._internal.internal_tools import raise_on_universal_arch
 from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty.apple.apple import is_apple_os, apple_min_version_flag, \
@@ -603,7 +602,6 @@ class MesonToolchain:
         ``recipe_meson_cross.ini`` (if cross builds) with the proper content.
         If Windows OS, it will be created a ``vcvars_env.bat`` as well.
         """
-        check_duplicated_generator(self, self._recipe)
         self._recipe.output.info(f"MesonToolchain generated: {self._filename}")
         save(self._filename, self._content)
         # FIXME: Should we check the OS and compiler to call VCVars?

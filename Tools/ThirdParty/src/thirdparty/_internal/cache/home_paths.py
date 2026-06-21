@@ -27,10 +27,6 @@ class HomePaths:
         return os.path.join(self._home, _EXTENSIONS_FOLDER, "deployers")
 
     @property
-    def custom_generators_path(self):
-        return os.path.join(self._home, _EXTENSIONS_FOLDER, "generators")
-
-    @property
     def hooks_path(self):
         return os.path.join(self._home, _EXTENSIONS_FOLDER, "hooks")
 

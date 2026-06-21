@@ -139,6 +139,8 @@ def auto_shared_fpic_config_options(recipe):
 
 
 def auto_shared_fpic_configure(recipe):
+    if recipe.settings.get_safe("os") == "Windows":
+        recipe.options.rm_safe("fPIC")
     if recipe.options.get_safe("header_only"):
         recipe.options.rm_safe("fPIC")
         recipe.options.rm_safe("shared")

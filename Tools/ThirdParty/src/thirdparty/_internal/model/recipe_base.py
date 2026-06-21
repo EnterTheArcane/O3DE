@@ -27,8 +27,6 @@ class RecipeBase:
     # Metadata
     license: str | tuple[str, ...] | None = None
 
-    generators: list[str] = []
-
     # Binary model: Settings and Options
     # NOTE: ``settings``/``options``/the ``*_requires`` are intentionally ``Any``: recipe authors
     # may set them as a tuple/dict (e.g. ``options = {...}``) while at runtime they hold model
@@ -65,7 +63,6 @@ class RecipeBase:
     runenv_info: Any = None  # Environment
     conf_info: "Conf | None" = None
     conf: "Conf | None" = None
-    generator_info: Any = None
 
     def __init__(self, display_name=""):
         self.display_name: str = display_name
@@ -82,8 +79,6 @@ class RecipeBase:
         self._recipe_runenv: Any = None
         self._recipe_node: Any = None  # access to container Node object, to access info, context, deps...
 
-        if isinstance(self.generators, str):
-            self.generators = [self.generators]
         if isinstance(self.settings, str):
             self.settings = [self.settings]
         self.requires = Requirements(self.requires, self.build_requires, self.test_requires,
@@ -131,9 +126,6 @@ class RecipeBase:
         result["options"] = self.options.serialize()
         result["options_definitions"] = self.options.possible_values
 
-        if self.generators is not None:
-            result["generators"] = list(s.__name__ if isinstance(s, type) else s
-                                        for s in self.generators)
         if self.license is not None:
             result["license"] = list(self.license) if not isinstance(self.license, str) else self.license
 

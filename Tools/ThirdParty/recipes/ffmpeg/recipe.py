@@ -421,7 +421,8 @@ class Recipe(RecipeBase):
                 self,
                 os.path.join(self.source_folder, "configure"),
                 "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto ||",
-                f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} || ")
+                f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} ||",
+                strict=False)
 
         # replace_in_file(self, os.path.join(self.source_folder, "configure"), "echo libx264.lib", "echo x264.lib")
 
@@ -740,7 +741,10 @@ class Recipe(RecipeBase):
         env_pkg.vars(self, scope="build").save_script("pkgconfigpath")
 
         if self.options.with_ssl == "openssl":
-            openssl_libs = " ".join([f"-l{lib}" for lib in self.dependencies["openssl"].cpp_info.aggregated_components().libs])
+            openssl_cpp = self.dependencies["openssl"].cpp_info.aggregated_components()
+            # Include system_libs (crypt32, ws2_32, ... on Windows) so configure's check_lib
+            # link test for DTLS_get_data_mtu can actually resolve openssl's symbols.
+            openssl_libs = " ".join([f"-l{lib}" for lib in openssl_cpp.libs] + [f"-l{lib}" for lib in openssl_cpp.system_libs])
             save(self, os.path.join(self.build_folder, "openssl_libs.list"), openssl_libs)
 
     def _split_and_format_options_string(self, flag_name, options_list):

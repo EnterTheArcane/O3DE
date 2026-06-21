@@ -9,8 +9,14 @@ import colorama
 from colorama import Fore, Style
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.recipe_graph import build_recipe_graph, is_built
 from thirdparty._internal.detect import detect_platform_tag
+from thirdparty._internal.graph.recipe_graph import (
+    RecipeGraphNode,
+    build_recipe_graph,
+    is_built,
+    make_probe_recipe,
+)
+from thirdparty.errors import RecipeInvalidConfiguration
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -27,6 +33,28 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
         dest="build_type",
         metavar="<type>",
     )
+
+
+def _is_incompatible(recipes_root: Path, node: RecipeGraphNode, build_type: str) -> bool:
+    if node.recipe_cls is None:
+        return False
+    try:
+        probe = make_probe_recipe(node.recipe_cls, recipes_root, node.name, node.version, build_type)
+    except Exception:
+        return False
+    for method in ("config_options", "configure"):
+        if hasattr(probe, method):
+            try:
+                getattr(probe, method)()
+            except Exception:
+                pass
+    if not hasattr(probe, "validate"):
+        return False
+    try:
+        probe.validate()
+    except RecipeInvalidConfiguration:
+        return True
+    return False
 
 
 @command(name="list")
@@ -66,21 +94,28 @@ def list_recipes(args: argparse.Namespace) -> None:
     order = graph.topo_order() if args.build_order else sorted(names)
 
     plat = detect_platform_tag()
-    rows: list[tuple[str, str, bool, list[str], list[str]]] = []
+    rows: list[tuple[str, str, bool, bool, list[str], list[str]]] = []
     built_count = 0
+    incompatible_count = 0
     for name in order:
         node = graph[name]
-        built = node.version != "?" and is_built(build_root, name, node.version, plat)
+        incompatible = _is_incompatible(recipes_root, node, args.build_type)
+        built = not incompatible and node.version != "?" and is_built(build_root, name, node.version, plat)
         built_count += built
-        rows.append((name, node.version, built, node.host_deps, node.tool_deps))
+        incompatible_count += incompatible
+        rows.append((name, node.version, built, incompatible, node.host_deps, node.tool_deps))
 
     name_w = max(len("recipe"), max(len(r[0]) for r in rows))
     ver_w = max(len("version"), max(len(r[1]) for r in rows))
     print(f"{'recipe':<{name_w}}  {'version':<{ver_w}}  status")
     print(f"{'-' * name_w}  {'-' * ver_w}  ------")
-    for name, version, built, host_deps, tool_deps in rows:
-        status = (f"{Fore.GREEN}built{Style.RESET_ALL}" if built
-                  else f"{Style.DIM}pending{Style.RESET_ALL}")
+    for name, version, built, incompatible, host_deps, tool_deps in rows:
+        if incompatible:
+            status = f"{Fore.YELLOW}incompatible{Style.RESET_ALL}"
+        elif built:
+            status = f"{Fore.GREEN}built{Style.RESET_ALL}"
+        else:
+            status = f"{Style.DIM}pending{Style.RESET_ALL}"
         print(f"{name:<{name_w}}  {version:<{ver_w}}  {status}")
         if args.deps:
             if host_deps:
@@ -89,4 +124,8 @@ def list_recipes(args: argparse.Namespace) -> None:
                 print(f"{'':<{name_w}}    tools:    {', '.join(tool_deps)}")
 
     print()
-    print(f"{len(rows)} recipes ({built_count} built, {len(rows) - built_count} pending)")
+    pending_count = len(rows) - built_count - incompatible_count
+    print(
+        f"{len(rows)} recipes "
+        f"({built_count} built, {incompatible_count} incompatible, {pending_count} pending)"
+    )

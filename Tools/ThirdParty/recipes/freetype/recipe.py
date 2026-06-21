@@ -204,9 +204,13 @@ class Recipe(RecipeBase):
             os.chmod(filename, os.stat(filename).st_mode | 0o111)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "both")
-        self.cpp_info.set_property("cmake_module_file_name", "Freetype")
-        self.cpp_info.set_property("cmake_file_name", "freetype")
+        # Use config mode with the canonical "Freetype" name. The CMakeConfigDeps generator
+        # does not emit Find modules, so a split "both"/module setup would let consumers'
+        # find_package(Freetype) fall through to CMake's builtin FindFreetype, which links
+        # only freetype itself and drops freetype's private static deps (brotli, bzip2) —
+        # causing unresolved BrotliDecoderDecompress / BZ2_* symbols downstream.
+        self.cpp_info.set_property("cmake_find_mode", "config")
+        self.cpp_info.set_property("cmake_file_name", "Freetype")
         self.cpp_info.set_property("cmake_target_name", "Freetype::Freetype")
         self.cpp_info.set_property("cmake_target_aliases", ["freetype"])  # other possible target name in upstream config file
         self.cpp_info.set_property("cmake_build_modules", [self._module_vars_rel_path])

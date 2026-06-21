@@ -95,10 +95,6 @@ class RecipeInterface:
         return self._recipe.conf_info
 
     @property
-    def generator_info(self):
-        return self._recipe.generator_info
-
-    @property
     def dependencies(self):
         return self._recipe.dependencies
 

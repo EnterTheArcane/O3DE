@@ -5,7 +5,6 @@ from collections import OrderedDict
 from jinja2 import Template
 
 from thirdparty._internal.output import Output
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.build import use_win_mingw
 from thirdparty.cmake.layout import is_consumer
 from thirdparty.cmake.presets import write_cmake_presets
@@ -179,7 +178,6 @@ class CMakeToolchain:
         """
           This method will save the generated files to the recipe.generators_folder
         """
-        check_duplicated_generator(self, self._recipe)
         toolchain_file = self._recipe.conf.get("tools.cmake.cmaketoolchain:toolchain_file")
         if toolchain_file is None:  # The main toolchain file generated only if user dont define
             toolchain_file = self.filename

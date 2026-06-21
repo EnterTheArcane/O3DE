@@ -1,4 +1,3 @@
-from thirdparty._internal import check_duplicated_generator
 from thirdparty.env import Environment
 from thirdparty.env.virtualrunenv import runenv_from_cpp_info
 
@@ -88,6 +87,5 @@ class VirtualBuildEnv:
 
         :param scope: Scope to be used.
         """
-        check_duplicated_generator(self, self._recipe)
         build_env = self.environment()
         build_env.vars(self._recipe, scope=scope).save_script(self._filename)
