@@ -28,6 +28,8 @@ from thirdparty._internal.graph.recipe_graph import (
     discover_requires as _get_requires,
     make_probe_recipe,
     build_recipe_graph,
+    is_built as _is_built,
+    COMPLETE_MARKER as _COMPLETE_MARKER,
 )
 
 
@@ -312,13 +314,6 @@ def _build_dep_graph(
         _add_dep(dep_name, is_build=True, direct=True)
 
     return RecipeDependencies(deps_dict)
-
-
-_COMPLETE_MARKER = ".complete"
-
-
-def _is_built(build_root: Path, name: str, version: str) -> bool:
-    return (build_root / name / version / "build" / _COMPLETE_MARKER).is_file()
 
 
 def _is_sourced(build_root: Path, name: str, version: str) -> bool:

@@ -91,7 +91,7 @@ class RequirementInfo:
         return result
 
     def pref(self):
-        ref = RecipeReference(self.name, self.version, self.user, self.channel, self.recipe_revision)
+        ref = RecipeReference(self.name, self.version)
         return PkgReference(ref, self.package_id)
 
     def dumps(self):
@@ -104,66 +104,66 @@ class RequirementInfo:
     def semver_mode(self):
         self.name = self._ref.name
         self.version = _VersionRepr(self._ref.version).stable()
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = None
         self.recipe_revision = None
 
     def full_version_mode(self):
         self.name = self._ref.name
         self.version = self._ref.version
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = None
         self.recipe_revision = None
 
     def patch_mode(self):
         self.name = self._ref.name
         self.version = _VersionRepr(self._ref.version).patch()
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = None
         self.recipe_revision = None
 
     def minor_mode(self):
         self.name = self._ref.name
         self.version = _VersionRepr(self._ref.version).minor()
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = None
         self.recipe_revision = None
 
     def major_mode(self):
         self.name = self._ref.name
         self.version = _VersionRepr(self._ref.version).major()
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = None
         self.recipe_revision = None
 
     def full_package_mode(self):
         self.name = self._ref.name
         self.version = self._ref.version
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = self._package_id
         self.recipe_revision = None
 
     def revision_mode(self):
         self.name = self._ref.name
         self.version = self._ref.version
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = None
-        self.recipe_revision = self._ref.revision if self._ref.revision != "platform" else None
+        self.recipe_revision = None
 
     def full_mode(self):
         self.name = self._ref.name
         self.version = self._ref.version
-        self.user = self._ref.user
-        self.channel = self._ref.channel
+        self.user = None
+        self.channel = None
         self.package_id = self._package_id
-        self.recipe_revision = self._ref.revision if self._ref.revision != "platform" else None
+        self.recipe_revision = None
 
     full_recipe_mode = full_version_mode
     recipe_revision_mode = full_mode  # to not break everything and help in upgrade

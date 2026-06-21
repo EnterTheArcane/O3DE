@@ -201,8 +201,7 @@ class Requirement:
     def alias(self):
         version = repr(self.ref.version)
         if version.startswith("(") and version.endswith(")"):
-            return RecipeReference(self.ref.name, version[1:-1], self.ref.user, self.ref.channel,
-                                   self.ref.revision)
+            return RecipeReference(self.ref.name, version[1:-1])
 
     def process_package_type(self, src_node, node):
         """If the requirement traits have not been adjusted, then complete them with package type
