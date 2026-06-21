@@ -137,9 +137,7 @@ class DownloadCache:
             # try to construct a reference from the recipe itself.
             # We accept it if we have a name and a version at least.
             if recipe.name and recipe.version:
-                user = f"@{recipe.user}" if recipe.user else ""
-                channel = f"/{recipe.channel}" if recipe.channel else ""
-                summary_key = f"{recipe.name}/{recipe.version}{user}{channel}"
+                summary_key = f"{recipe.name}/{recipe.version}"
             else:
                 # The recipe path would be different between machines
                 # So best we can do is to set this as unknown
