@@ -6,8 +6,8 @@ import shutil
 import subprocess
 
 from thirdparty import RecipeBase
-from thirdparty.errors import RecipeInvalidConfiguration
-from thirdparty.files import chdir, get, replace_in_file, copy, trim_recipe_data
+from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
+from thirdparty.files import chdir, get, replace_in_file, copy
 
 
 class OpLock:
@@ -50,11 +50,6 @@ class Recipe(RecipeBase):
         "additional_packages": None,
         "no_kill": False,
     }
-
-    def export(self):
-        # this will ensure locally-exported recipes match the recipe revision from
-        # the recipe data
-        trim_recipe_data(self)
 
     def config_options(self):
         default_packages = "base-devel,binutils,gcc"
