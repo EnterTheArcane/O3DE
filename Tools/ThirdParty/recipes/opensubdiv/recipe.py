@@ -105,8 +105,8 @@ class Recipe(RecipeBase):
         tc.variables["NO_MACOS_FRAMEWORK"] = True
         tc.generate()
 
-        tc = CMakeDeps(self)
-        tc.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def _patch_sources(self):
         apply_patches(self)

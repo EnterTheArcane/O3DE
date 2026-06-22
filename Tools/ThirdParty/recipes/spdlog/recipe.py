@@ -70,8 +70,8 @@ class Recipe(RecipeBase):
         tc.cache_variables["SPDLOG_USE_STD_FORMAT"] = False
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0091"] = "NEW"
         tc.generate()
-        cmake_deps = CMakeDeps(self)
-        cmake_deps.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)

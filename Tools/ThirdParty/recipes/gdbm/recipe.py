@@ -105,8 +105,8 @@ class Recipe(RecipeBase):
             # See https://github.com/recipe-io/recipe-center-index/issues/20002
             tc.extra_ldflags.append("-headerpad_max_install_names")
         tc.generate()
-        autotools_deps = AutotoolsDeps(self)
-        autotools_deps.generate()
+        deps = AutotoolsDeps(self)
+        deps.generate()
 
     def _patch_sources(self):
         apply_patches(self)

@@ -84,8 +84,8 @@ class Recipe(RecipeBase):
     def generate(self):
         virtual_build_env = VirtualBuildEnv(self)
         virtual_build_env.generate()
-        tc = PkgConfigDeps(self)
-        tc.generate()
+        deps = PkgConfigDeps(self)
+        deps.generate()
         tc = MesonToolchain(self)
 
         tc.project_options["selinux"] = "enabled" if self.options.get_safe("with_selinux") else "disabled"

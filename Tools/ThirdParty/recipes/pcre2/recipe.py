@@ -90,8 +90,8 @@ class Recipe(RecipeBase):
         tc.variables["CMAKE_MODULE_PATH"] = os.path.join(self.source_folder, "cmake").replace("\\", "/")
         tc.generate()
 
-        cd = CMakeDeps(self)
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def _patch_sources(self):
         apply_patches(self)
