@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -166,7 +166,7 @@ class Recipe(RecipeBase):
         with open(toolchain_path, "a") as f:
             f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.set_property("llvm", "cmake_find_mode", "none")
         deps.set_property("cpython", "cmake_find_mode", "none")
         # Qt has its own cmake config files that properly set Qt6Core_FOUND and

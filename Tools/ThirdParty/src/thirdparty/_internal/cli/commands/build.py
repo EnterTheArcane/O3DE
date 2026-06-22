@@ -35,6 +35,18 @@ from thirdparty._internal.loader import (
     resolve_version as _resolve_version,
 )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
+from thirdparty._internal.util.files import rmdir as _rmdir
+
+
+def _wipe(path) -> None:
+    """Remove a directory tree, clearing read-only attributes (e.g. Subversion `.svn` or
+    msys2 source files on Windows) that make a plain ``shutil.rmtree`` fail.  ``rmdir``
+    installs an onerror handler that chmods + retries; this swallows any final failure so
+    cleanup stays best-effort (matching the old ``ignore_errors=True`` callers)."""
+    try:
+        _rmdir(str(path))
+    except Exception:
+        pass
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
@@ -587,12 +599,12 @@ def _build_recipe(
     if force:
         # Wipe all build artifacts so source(), build(), and package() run fresh.
         for _dir in (src_dir, build_dir, pkg_dir):
-            shutil.rmtree(_dir, ignore_errors=True)
+            _wipe(_dir)
     elif pkg_dir.exists() and not (build_dir / _COMPLETE_MARKER).is_file():
         # If the package directory exists but the completion marker is absent, the
         # previous build was interrupted or failed mid-package().  Remove the partial
         # package directory so we start clean.
-        shutil.rmtree(pkg_dir, ignore_errors=True)
+        _wipe(pkg_dir)
 
     # Drive the recipe's full config phase (config_options/configure + default auto-fPIC +
     # requirements/build_requirements) then validate(), before creating any directories so
@@ -623,7 +635,7 @@ def _build_recipe(
         # Only run source() once per package; skip if already completed successfully.
         if not _is_sourced(build_root, name, version, platform_tag):
             # Wipe any partial state from a previous failed source() attempt
-            shutil.rmtree(src_folder, ignore_errors=True)
+            _wipe(src_folder)
             src_folder.mkdir(parents=True, exist_ok=True)
             # Run source() with CWD = source_folder (as Conan does) so that downloads/extracts
             # (e.g. get()'s transient archive) land in the build tree, not the directory the
@@ -666,21 +678,21 @@ def _build_recipe(
                 recipe.build()
             except Exception:
                 # Clean up so that the next run starts fresh rather than resuming a broken state.
-                shutil.rmtree(recipe.build_folder, ignore_errors=True)
-                shutil.rmtree(recipe.package_folder, ignore_errors=True)
+                _wipe(recipe.build_folder)
+                _wipe(recipe.package_folder)
                 raise
             finally:
                 os.chdir(_orig_cwd_build)
         if hasattr(recipe, "package"):
             Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
-            shutil.rmtree(recipe.package_folder, ignore_errors=True)
+            _wipe(recipe.package_folder)
             Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
             _orig_cwd_pkg = os.getcwd()
             try:
                 os.chdir(recipe.build_folder)
                 recipe.package()
             except Exception:
-                shutil.rmtree(recipe.package_folder, ignore_errors=True)
+                _wipe(recipe.package_folder)
                 raise
             finally:
                 os.chdir(_orig_cwd_pkg)
