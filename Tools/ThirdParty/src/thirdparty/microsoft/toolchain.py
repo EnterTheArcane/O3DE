@@ -165,14 +165,14 @@ class MSBuildToolchain:
         }
 
     def _write_config_toolchain(self, config_filename):
-        config_filepath = os.path.join(self._recipe.generators_folder, config_filename)
+        config_filepath = os.path.join(self._recipe.folders.generators, config_filename)
         config_props = Template(self._config_toolchain_props, trim_blocks=True,
                                 lstrip_blocks=True).render(**self.context_config_toolchain)
         self._recipe.output.info("MSBuildToolchain created %s" % config_filename)
         save(config_filepath, config_props)
 
     def _write_main_toolchain(self, config_filename, condition):
-        main_toolchain_path = os.path.join(self._recipe.generators_folder, self.filename)
+        main_toolchain_path = os.path.join(self._recipe.folders.generators, self.filename)
         if os.path.isfile(main_toolchain_path):
             content = load(main_toolchain_path)
         else:

@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/kcat/openal-soft/archive/refs/tags/1.25.2.tar.gz",
             sha256="fb27e5839aa11f0e5b9d33756965291fad5d6909ab928ea1f796f4a1a6877894",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -61,14 +61,14 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
         self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_file_rel_path)
+            os.path.join(self.folders.package, self._module_file_rel_path)
         )
 
     def _create_cmake_module_variables(self, module_file):

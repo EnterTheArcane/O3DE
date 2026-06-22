@@ -14,18 +14,18 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/skandhurkat/Getopt-for-Visual-Studio/archive/6708172892a4d89042b743315e8a52e2d9d5defc.zip",
             sha256="9b50026b3f10c3f6a7340e0074a898d6d1105eef068bf98d90af99770375a465",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
     @property
     def _license_text(self):
-        content = load(self, os.path.join(self.source_folder, "getopt.h"))
+        content = load(self, os.path.join(self.folders.source, "getopt.h"))
         return "\n".join(list(l.strip() for l in content[content.find("/**", 3):content.find("#pragma")].split("\n")))
 
     def package(self):
-        save(self, os.path.join(self.package_folder, "licenses", "LICENSE"), self._license_text)
-        copy(self, "getopt.h", src=self.source_folder, dst=os.path.join(self.package_folder, "include"))
+        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), self._license_text)
+        copy(self, "getopt.h", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.bindirs = []

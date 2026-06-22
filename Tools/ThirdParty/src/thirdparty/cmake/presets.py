@@ -29,10 +29,10 @@ class _CMakePresets:
     @staticmethod
     def generate(recipe, toolchain_file, generator, cache_variables, preset_prefix, buildenv,
                  runenv, cmake_executable, absolute_paths):
-        toolchain_file = os.path.abspath(os.path.join(recipe.generators_folder, toolchain_file))
+        toolchain_file = os.path.abspath(os.path.join(recipe.folders.generators, toolchain_file))
         if not absolute_paths:
             try:  # Make it relative to the build dir if possible
-                toolchain_file = os.path.relpath(toolchain_file, recipe.build_folder)
+                toolchain_file = os.path.relpath(toolchain_file, recipe.folders.build)
             except ValueError:
                 pass
         cache_variables = cache_variables or {}
@@ -53,7 +53,7 @@ class _CMakePresets:
             if recipe.conf.get("tools.build:skip_test", check_type=bool):
                 cache_variables["BUILD_TESTING"] = "OFF"
 
-        preset_path = os.path.join(recipe.generators_folder, "CMakePresets.json")
+        preset_path = os.path.join(recipe.folders.generators, "CMakePresets.json")
         multiconfig = is_multi_configuration(generator)
         if os.path.exists(preset_path):
             data = json.loads(load(preset_path))
@@ -171,11 +171,11 @@ class _CMakePresets:
                 ret["cacheVariables"][f"CMAKE_{lang}_COMPILER"] = comp.replace("\\", "/")
 
         ret["toolchainFile"] = toolchain_file
-        if recipe.build_folder:
+        if recipe.folders.build:
             # If we are installing a ref: "recipe install <ref>", we don't have build_folder, because
             # we don't even have a recipe with a `layout()` to determine the build folder.
             # If we install a local recipe "recipe install ." with a layout(), it will be available
-            ret["binaryDir"] = recipe.build_folder
+            ret["binaryDir"] = recipe.folders.build
 
         def _format_val(val):
             return f'"{val}"' if type(val) is str and " " in val else f"{val}"
@@ -269,11 +269,11 @@ class _IncludingPresets:
 
         # If generators folder is the same as source folder, do not create the user presets
         # we already have the CMakePresets.json right there
-        if not (recipe.source_folder and recipe.source_folder != recipe.generators_folder):
+        if not (recipe.folders.source and recipe.folders.source != recipe.folders.generators):
             return
 
         is_default = user_presets_path == "CMakeUserPresets.json"
-        user_presets_path = os.path.join(recipe.source_folder, user_presets_path)
+        user_presets_path = os.path.join(recipe.folders.source, user_presets_path)
         if os.path.isdir(user_presets_path):  # Allows user to specify only the folder
             output_dir = user_presets_path
             user_presets_path = os.path.join(user_presets_path, "CMakeUserPresets.json")

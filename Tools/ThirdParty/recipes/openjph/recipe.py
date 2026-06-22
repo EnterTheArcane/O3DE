@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/aous72/OpenJPH/archive/0.27.3.tar.gz",
             sha256="f96808ef72cf3acca73a52123bda3e680f6550dfb4774ad7de57eb3ce26de57a",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -57,9 +57,9 @@ class Recipe(RecipeBase):
         cm = CMake(self)
         cm.install()
 
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "openjph")

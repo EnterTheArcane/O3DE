@@ -36,25 +36,9 @@ class RecipeInterface:
         return self._recipe.recipe_folder
 
     @property
-    def recipe_metadata_folder(self):
-        return self._recipe.recipe_metadata_folder
-
-    @property
-    def package_folder(self):
-        return self._recipe.package_folder
-
-    @property
-    def immutable_package_folder(self):
-        return self._recipe.immutable_package_folder
-
-    @property
-    def package_metadata_folder(self):
-        return self._recipe.package_metadata_folder
-
-    @property
     def package_path(self) -> Path:
-        assert self.package_folder is not None, "`package_folder` is `None`"
-        return Path(self.package_folder)
+        assert self.folders.package is not None, "`package` folder is `None`"
+        return Path(self.folders.package)
 
     @property
     def ref(self):

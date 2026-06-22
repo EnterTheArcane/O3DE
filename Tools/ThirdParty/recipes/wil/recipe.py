@@ -20,17 +20,17 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/microsoft/wil/archive/refs/tags/v1.0.260126.7.tar.gz",
             sha256="de9e03b38ff0ff8d22048f00b111cb631d21c550328f12530ccba71c05c9e361",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         copy(
             self,
             pattern="*.h",
-            dst=os.path.join(self.package_folder, "include"),
-            src=os.path.join(self.source_folder, "include"),
+            dst=os.path.join(self.folders.package, "include"),
+            src=os.path.join(self.folders.source, "include"),
         )
 
     def package_info(self):

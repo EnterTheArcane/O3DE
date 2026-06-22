@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/google/re2/releases/download/2025-11-05/re2-2025-11-05.tar.gz",
             sha256="87f6029d2f6de8aa023654240a03ada90e876ce9a4676e258dd01ea4c26ffd67",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -51,11 +51,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "re2")

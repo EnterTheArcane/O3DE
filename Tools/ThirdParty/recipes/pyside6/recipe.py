@@ -39,13 +39,13 @@ class Recipe(RecipeBase):
             self,
             url="https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.1-src/pyside-setup-everywhere-src-6.11.1.tar.xz",
             sha256="6ffd9835bb0dd2c56f061d62f1616bb1707cfc0202b80e3165d6be087f3965e2",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
-        llvm_pkg = self.dependencies["llvm"].package_folder
-        cpython_pkg = self.dependencies["cpython"].package_folder
-        qt_pkg = self.dependencies["qt"].package_folder
+        llvm_pkg = self.dependencies["llvm"].folders.package
+        cpython_pkg = self.dependencies["cpython"].folders.package
+        qt_pkg = self.dependencies["qt"].folders.package
 
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTS"] = False
@@ -146,7 +146,7 @@ class Recipe(RecipeBase):
             'unset(_t)\n'
             'unset(_type)\n'
         )
-        fix_script_path = os.path.join(self.generators_folder, "fix_msvc_runtime.cmake")
+        fix_script_path = os.path.join(self.folders.generators, "fix_msvc_runtime.cmake")
         fix_script_fwd = fix_script_path.replace("\\", "/")
         with open(fix_script_path, "w") as f:
             f.write(fix_script_content)
@@ -177,10 +177,10 @@ class Recipe(RecipeBase):
             '    endif()\n'
             'endif()\n'
         )
-        helper_path = os.path.join(self.generators_folder, "qt_pyside6_internal_targets.cmake")
+        helper_path = os.path.join(self.folders.generators, "qt_pyside6_internal_targets.cmake")
         with open(helper_path, "w") as f:
             f.write(helper_content)
-        toolchain_path = os.path.join(self.generators_folder, "recipe_toolchain.cmake")
+        toolchain_path = os.path.join(self.folders.generators, "recipe_toolchain.cmake")
         with open(toolchain_path, "a") as f:
             f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
 
@@ -232,7 +232,7 @@ class Recipe(RecipeBase):
            be loaded; weak just prevents hard failure if somehow absent.)
         """
         cmake_path = os.path.join(
-            self.source_folder, "sources", "pyside6", "PySide6", "QtCore", "CMakeLists.txt"
+            self.folders.source, "sources", "pyside6", "PySide6", "QtCore", "CMakeLists.txt"
         )
         with open(cmake_path, "r") as f:
             content = f.read()
@@ -272,7 +272,7 @@ class Recipe(RecipeBase):
         find' for each missing .app bundle.
         """
         cmake_path = os.path.join(
-            self.source_folder, "sources", "pyside-tools", "CMakeLists.txt"
+            self.folders.source, "sources", "pyside-tools", "CMakeLists.txt"
         )
         with open(cmake_path, "r") as f:
             content = f.read()
@@ -319,10 +319,10 @@ class Recipe(RecipeBase):
         LLVM's lib dir from DYLD_LIBRARY_PATH is safe.
         """
         import glob
-        llvm_pkg = self.dependencies["llvm"].package_folder
+        llvm_pkg = self.dependencies["llvm"].folders.package
         llvm_lib = os.path.join(llvm_pkg, "lib")
 
-        search_pattern = os.path.join(self.build_folder, "**", "shiboken_wrapper.sh")
+        search_pattern = os.path.join(self.folders.build, "**", "shiboken_wrapper.sh")
         found = list(glob.glob(search_pattern, recursive=True, include_hidden=True))
 
         for wrapper_path in found:
@@ -360,15 +360,15 @@ class Recipe(RecipeBase):
         # lives in {build_folder}/sources/shiboken6/ because shibokenmodule sets
         # LIBRARY_OUTPUT_DIRECTORY to ${CMAKE_CURRENT_BINARY_DIR}/.. (i.e. one level
         # above the shibokenmodule build dir).
-        src_dir = os.path.join(self.build_folder, "sources", "shiboken6")
+        src_dir = os.path.join(self.folders.build, "sources", "shiboken6")
         # PYTHON_SITE_PACKAGES (where generate_pyi.py imports shiboken6 from) follows the
         # interpreter's layout: Windows cpython uses lib/site-packages, while Unix uses
         # lib/pythonX.Y/site-packages.
         if self.settings.os == "Windows":
-            site_pkgs = os.path.join(self.package_folder, "lib", "site-packages")
+            site_pkgs = os.path.join(self.folders.package, "lib", "site-packages")
         else:
             site_pkgs = os.path.join(
-                self.package_folder, "lib", f"python{py_maj}.{py_min}", "site-packages"
+                self.folders.package, "lib", f"python{py_maj}.{py_min}", "site-packages"
             )
         dst_dir = os.path.join(site_pkgs, "shiboken6")
         os.makedirs(dst_dir, exist_ok=True)
@@ -392,10 +392,10 @@ class Recipe(RecipeBase):
             shutil.copy2(config_src, os.path.join(dst_dir, "_config.py"))
 
     def package(self):
-        copy(self, "LICENSE.FDL", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "LICENSE.GPL2", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "LICENSE.GPL3", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "LICENSE.LGPL3", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.FDL", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.GPL2", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.GPL3", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.LGPL3", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
@@ -419,12 +419,12 @@ class Recipe(RecipeBase):
         # Expose the shiboken6 generator location via conf
         self.conf_info.define(
             "user.pyside6:shiboken6_generator",
-            os.path.join(self.package_folder, "bin", "shiboken6"),
+            os.path.join(self.folders.package, "bin", "shiboken6"),
         )
         self.conf_info.define(
             "user.pyside6:pyside6_dir",
-            self.package_folder,
+            self.folders.package,
         )
 
-        bin_dir = os.path.join(self.package_folder, "bin")
+        bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)

@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/elalish/manifold/archive/refs/tags/v3.5.0.tar.gz",
             sha256="7002091f992c80bec49b69e49c85769d862bb97169781e23b9909a4b72b6a618",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -58,12 +58,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.libs = ["manifold"]

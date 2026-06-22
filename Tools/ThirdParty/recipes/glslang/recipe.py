@@ -38,7 +38,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/glslang/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
             sha256="a6885b1631fd77c89cd689b939cf2b3032c5ec13ee99250270d34bcad1efc10c",
-            destination=os.path.join(self.source_folder, "src"),
+            destination=os.path.join(self.folders.source, "src"),
             strip_root=True)
         wrapper = (
             "cmake_minimum_required(VERSION 3.15)\n"
@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
             "endif()\n"
             "add_subdirectory(src)\n"
         )
-        save(self, os.path.join(self.source_folder, "CMakeLists.txt"), wrapper)
+        save(self, os.path.join(self.folders.source, "CMakeLists.txt"), wrapper)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -61,7 +61,7 @@ class Recipe(RecipeBase):
         tc.variables["ENABLE_SPVREMAPPER"] = False
         tc.variables["ENABLE_CTEST"] = False
         if self.options.enable_optimizer:
-            spirv_tools_pkg = self.dependencies["spirv-tools"].package_folder
+            spirv_tools_pkg = self.dependencies["spirv-tools"].folders.package
             tc.variables["spirv-tools_SOURCE_DIR"] = spirv_tools_pkg.replace("\\", "/")
         tc.generate()
         deps = CMakeDeps(self)
@@ -73,11 +73,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        src = os.path.join(self.source_folder, "src")
-        copy(self, "LICENSE*", src=src, dst=os.path.join(self.package_folder, "licenses"))
+        src = os.path.join(self.folders.source, "src")
+        copy(self, "LICENSE*", src=src, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "glslang")

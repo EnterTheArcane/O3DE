@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/richgel999/miniz/archive/refs/tags/3.1.1.tar.gz",
             sha256="8bb29c7bd6f22356e5583e794bed4a0b3e6dfcbcadb49974fc9270ccca1e5557",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -55,12 +55,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "miniz")

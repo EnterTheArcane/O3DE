@@ -59,7 +59,7 @@ class Recipe(RecipeBase):
             self,
             url="https://downloads.videolan.org/videolan/x265/x265_4.2.tar.gz",
             sha256="40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -89,7 +89,7 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        cmakelists = os.path.join(self.source_folder, "source", "CMakeLists.txt")
+        cmakelists = os.path.join(self.folders.source, "source", "CMakeLists.txt")
         replace_in_file(
             self, cmakelists,
             "if((WIN32 AND ENABLE_CLI) OR (WIN32 AND ENABLE_SHARED))",
@@ -107,11 +107,11 @@ class Recipe(RecipeBase):
     def build(self):
         self._patch_sources()
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, "source"))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, "source"))
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
@@ -120,19 +120,19 @@ class Recipe(RecipeBase):
                 static_lib = "x265-static.lib"
             else:
                 static_lib = "libx265.a"
-            os.unlink(os.path.join(self.package_folder, "lib", static_lib))
+            os.unlink(os.path.join(self.folders.package, "lib", static_lib))
 
         if is_msvc(self):
             name = "libx265.lib" if self.options.shared else "x265-static.lib"
             rename(
-                self, os.path.join(self.package_folder, "lib", name),
-                os.path.join(self.package_folder, "lib", "x265.lib"))
+                self, os.path.join(self.folders.package, "lib", name),
+                os.path.join(self.folders.package, "lib", "x265.lib"))
 
         if self.settings.os == "Windows" and self.options.shared:
-            rm(self, "*[!.dll]", os.path.join(self.package_folder, "bin"))
+            rm(self, "*[!.dll]", os.path.join(self.folders.package, "bin"))
         else:
-            rmdir(self, os.path.join(self.package_folder, "bin"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+            rmdir(self, os.path.join(self.folders.package, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("pkg_config_name", "x265")

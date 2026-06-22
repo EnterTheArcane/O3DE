@@ -35,12 +35,12 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz",
             sha256="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "build", "cmake", "lib", "CMakeLists.txt"),
+            os.path.join(self.folders.source, "build", "cmake", "lib", "CMakeLists.txt"),
             "POSITION_INDEPENDENT_CODE On",
             "")
 
@@ -54,22 +54,22 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, "build", "cmake"))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, "build", "cmake"))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
         if self.options.shared:
             # If we build programs we have to build static libs (see logic in generate()),
             # but if shared is True, we only want shared lib in package folder.
-            rm(self, "*_static.*", os.path.join(self.package_folder, "lib"))
-            for lib in glob.glob(os.path.join(self.package_folder, "lib", "*.a")):
+            rm(self, "*_static.*", os.path.join(self.folders.package, "lib"))
+            for lib in glob.glob(os.path.join(self.folders.package, "lib", "*.a")):
                 if not lib.endswith(".dll.a"):
                     os.remove(lib)
 

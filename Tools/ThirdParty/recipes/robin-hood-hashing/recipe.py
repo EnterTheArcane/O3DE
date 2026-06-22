@@ -20,15 +20,15 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/martinus/robin-hood-hashing/archive/refs/tags/3.11.5.tar.gz",
             sha256="3693e44dda569e9a8b87ce8263f7477b23af448a3c3600c8ab9004fe79c20ad0",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         copy(
-            self, "robin_hood.h", src=os.path.join(self.source_folder, "src", "include"),
-            dst=os.path.join(self.package_folder, "include"))
+            self, "robin_hood.h", src=os.path.join(self.folders.source, "src", "include"),
+            dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "robin_hood")

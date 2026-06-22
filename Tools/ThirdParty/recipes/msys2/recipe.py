@@ -72,7 +72,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/msys2/msys2-installer/releases/download/2025-12-13/msys2-base-x86_64-20251213.tar.xz",
             sha256="999f63c2fc7525af5cd41b55e9ea704471a4f9d0278a257fff3b0d1183c441b9",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=False)  # Preserve tarball root dir (msys64/)
 
     def _update_pacman(self):
@@ -124,7 +124,7 @@ class Recipe(RecipeBase):
     @property
     def _msys_dir(self):
         subdir = "msys64"  # top-level directoy in tarball
-        return os.path.join(self.source_folder, subdir)
+        return os.path.join(self.folders.source, subdir)
 
     def build(self):
         with OpLock():
@@ -175,16 +175,16 @@ class Recipe(RecipeBase):
                     if fnmatch.fnmatch(fullname, exclude):
                         os.unlink(fullname)
         # See https://github.com/recipe-io/recipe-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
-        copy(self, "*", dst=os.path.join(self.package_folder, "bin", "msys64"), src=self._msys_dir, excludes=excludes)
+        copy(self, "*", dst=os.path.join(self.folders.package, "bin", "msys64"), src=self._msys_dir, excludes=excludes)
         shutil.copytree(
             os.path.join(self._msys_dir, "usr", "share", "licenses"),
-            os.path.join(self.package_folder, "licenses"))
+            os.path.join(self.folders.package, "licenses"))
 
     def package_info(self):
         self.cpp_info.libdirs = []
         self.cpp_info.includedirs = []
 
-        msys_root = os.path.join(self.package_folder, "bin", "msys64")
+        msys_root = os.path.join(self.folders.package, "bin", "msys64")
         msys_bin = os.path.join(msys_root, "usr", "bin")
         self.cpp_info.bindirs.append(msys_bin)
 

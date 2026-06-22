@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
             self,
             url="https://ftpmirror.gnu.org/gnu/ncurses/ncurses-6.5.tar.gz",
             sha256="136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -201,14 +201,14 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         autotools = Autotools(self)
         autotools.install()
-        os.unlink(os.path.join(self.package_folder, "bin", f"ncurses{self._suffix}{Version(self.version).major}-config"))
+        os.unlink(os.path.join(self.folders.package, "bin", f"ncurses{self._suffix}{Version(self.version).major}-config"))
         copy(
             self, "*.cmake",
-            src=os.path.join(self.export_sources_folder, "cmake"),
-            dst=os.path.join(self.package_folder, self._module_subfolder))
+            src=os.path.join(self.folders.export_sources, "cmake"),
+            dst=os.path.join(self.folders.package, self._module_subfolder))
         fix_apple_shared_install_name(self)
 
     @property
@@ -294,7 +294,7 @@ class Recipe(RecipeBase):
         self.cpp_info.components["libcurses"].builddirs.append(self._module_subfolder)
         self.cpp_info.set_property("cmake_build_modules", [module_rel_path])
 
-        terminfo = os.path.join(self.package_folder, "res", "terminfo")
+        terminfo = os.path.join(self.folders.package, "res", "terminfo")
         self.buildenv_info.define_path("TERMINFO", terminfo)
         self.runenv_info.define_path("TERMINFO", terminfo)
         self.conf_info.define("user.ncurses:lib_suffix", self._lib_suffix)

@@ -191,7 +191,7 @@ def _create_deactivate_vcvars_file(recipe, filename):
         content = f"Write-Host {message}"
     else:
         content = f"echo {message}"
-    path = os.path.join(recipe.generators_folder, deactivate_filename)
+    path = os.path.join(recipe.folders.generators, deactivate_filename)
     save(path, content)
 
 

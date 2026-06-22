@@ -127,11 +127,11 @@ class Recipe(RecipeBase):
             self,
             url="https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz",
             sha256="73ac8fe780227bf371add8373c3079f42a0dc62deff8d612cd15a618082ab623",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def _generate_autotools(self):
-        tc = AutotoolsToolchain(self, prefix=self.package_folder)
+        tc = AutotoolsToolchain(self, prefix=self.folders.package)
         # Not necessary, just cleans up the output
         tc.update_configure_args({"--enable-static": None, "--disable-static": None})
         yes_no = lambda v: "yes" if v else "no"
@@ -144,7 +144,7 @@ class Recipe(RecipeBase):
             "--with-lto={}".format(yes_no(self.options.lto)),
             "--with-pydebug={}".format(yes_no(self.settings.build_type == "Debug")),
             "--with-system-libmpdec",
-            "--with-openssl={}".format(self.dependencies["openssl"].package_folder),
+            "--with-openssl={}".format(self.dependencies["openssl"].folders.package),
         ]
         if Version(self.version) < "3.12":
             tc.configure_args.append("--with-system-ffi")
@@ -190,7 +190,7 @@ class Recipe(RecipeBase):
             # LC_RPATH's found". Add -rpath for each of these dep lib directories.
             for _rpath_dep in ("tcl", "tk", "gdbm", "libxcrypt"):
                 if _rpath_dep in self.dependencies:
-                    _lib_dir = os.path.join(self.dependencies[_rpath_dep].package_folder, "lib")
+                    _lib_dir = os.path.join(self.dependencies[_rpath_dep].folders.package, "lib")
                     tc.extra_ldflags.append(f"-Wl,-rpath,{_lib_dir}")
 
         tc.generate()
@@ -216,7 +216,7 @@ class Recipe(RecipeBase):
             self._generate_autotools()
 
     def _msvc_project_path(self, name):
-        return os.path.join(self.source_folder, "PCbuild", f"{name}.vcxproj")
+        return os.path.join(self.folders.source, "PCbuild", f"{name}.vcxproj")
 
     def _regex_replace_in_file(self, filename, pattern, replacement):
         content = load(self, filename)
@@ -230,10 +230,10 @@ class Recipe(RecipeBase):
                 self,
                 self._msvc_project_path(project_basename),
                 search,
-                search + f'<Import Project="{self.generators_folder}/recipe_{dep_name}.props" />')
+                search + f'<Import Project="{self.folders.generators}/recipe_{dep_name}.props" />')
 
     def _patch_setup_py(self):
-        setup_py = os.path.join(self.source_folder, "setup.py")
+        setup_py = os.path.join(self.folders.source, "setup.py")
         if Version(self.version) < "3.10":
             replace_in_file(self, setup_py, ":libmpdec.so.2", "mpdec")
 
@@ -386,7 +386,7 @@ class Recipe(RecipeBase):
             self._patch_setup_py()
         if Version(self.version) >= "3.11":
             replace_in_file(
-                self, os.path.join(self.source_folder, "configure"),
+                self, os.path.join(self.folders.source, "configure"),
                 'OPENSSL_LIBS="-lssl -lcrypto"',
                 'OPENSSL_LIBS="-lssl -lcrypto -lz"',
                 strict=False)
@@ -399,62 +399,62 @@ class Recipe(RecipeBase):
             }[msvc_runtime_flag(self)]
             self.output.info("Patching runtime")
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
+                self, os.path.join(self.folders.source, "PCbuild", "pyproject.props"),
                 "MultiThreadedDLL", runtime_library)
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
+                self, os.path.join(self.folders.source, "PCbuild", "pyproject.props"),
                 "MultiThreadedDebugDLL", runtime_library)
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pyproject.props"),
+                self, os.path.join(self.folders.source, "PCbuild", "pyproject.props"),
                 "<WholeProgramOptimization>true</WholeProgramOptimization>",
                 "<WholeProgramOptimization>false</WholeProgramOptimization>")
 
         # Remove vendored packages
-        rmdir(self, os.path.join(self.source_folder, "Modules", "_decimal", "libmpdec"))
-        rmdir(self, os.path.join(self.source_folder, "Modules", "expat"))
+        rmdir(self, os.path.join(self.folders.source, "Modules", "_decimal", "libmpdec"))
+        rmdir(self, os.path.join(self.folders.source, "Modules", "expat"))
 
         if Version(self.version) < "3.12":
             replace_in_file(
-                self, os.path.join(self.source_folder, "Makefile.pre.in"),
+                self, os.path.join(self.folders.source, "Makefile.pre.in"),
                 "$(RUNSHARED) CC='$(CC)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'",
                 "$(RUNSHARED) CC='$(CC) $(CONFIGURE_CFLAGS) $(CONFIGURE_CPPFLAGS)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'")
 
         # Enable static MSVC cpython
         if not self.options.shared:
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
+                self, os.path.join(self.folders.source, "PCbuild", "pythoncore.vcxproj"),
                 "<PreprocessorDefinitions>",
                 "<PreprocessorDefinitions>Py_NO_BUILD_SHARED;")
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
+                self, os.path.join(self.folders.source, "PCbuild", "pythoncore.vcxproj"),
                 "Py_ENABLE_SHARED",
                 "Py_NO_ENABLE_SHARED")
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
+                self, os.path.join(self.folders.source, "PCbuild", "pythoncore.vcxproj"),
                 "DynamicLibrary",
                 "StaticLibrary")
 
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "python.vcxproj"),
+                self, os.path.join(self.folders.source, "PCbuild", "python.vcxproj"),
                 "<Link>",
                 "<Link><AdditionalDependencies>shlwapi.lib;ws2_32.lib;pathcch.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>")
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "python.vcxproj"),
+                self, os.path.join(self.folders.source, "PCbuild", "python.vcxproj"),
                 "<PreprocessorDefinitions>",
                 "<PreprocessorDefinitions>Py_NO_ENABLE_SHARED;")
 
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pythonw.vcxproj"),
+                self, os.path.join(self.folders.source, "PCbuild", "pythonw.vcxproj"),
                 "<Link>",
                 "<Link><AdditionalDependencies>shlwapi.lib;ws2_32.lib;pathcch.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>")
             replace_in_file(
-                self, os.path.join(self.source_folder, "PCbuild", "pythonw.vcxproj"),
+                self, os.path.join(self.folders.source, "PCbuild", "pythonw.vcxproj"),
                 "<ItemDefinitionGroup>",
                 "<ItemDefinitionGroup><ClCompile><PreprocessorDefinitions>Py_NO_ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions></ClCompile>")
 
-        recipe_toolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
+        recipe_toolchain_props = os.path.join(self.folders.generators, MSBuildToolchain.filename)
         replace_in_file(
-            self, os.path.join(self.source_folder, "PCbuild", "pythoncore.vcxproj"),
+            self, os.path.join(self.folders.source, "PCbuild", "pythoncore.vcxproj"),
             '<Import Project="python.props" />',
             f'<Import Project="{recipe_toolchain_props}" /><Import Project="python.props" />',
         )
@@ -465,7 +465,7 @@ class Recipe(RecipeBase):
     @property
     def _solution_projects(self):
         if self.options.shared:
-            solution_path = os.path.join(self.source_folder, "PCbuild", "pcbuild.sln")
+            solution_path = os.path.join(self.folders.source, "PCbuild", "pcbuild.sln")
             projects = set(m.group(1) for m in re.finditer('"([^"]+)\\.vcxproj"', open(solution_path).read()))
 
             def project_build(name):
@@ -517,7 +517,7 @@ class Recipe(RecipeBase):
         projects = self._solution_projects
         self.output.info(f"Building {len(projects)} Visual Studio projects: {projects}")
 
-        sln = os.path.join(self.source_folder, "PCbuild", "pcbuild.sln")
+        sln = os.path.join(self.folders.source, "PCbuild", "pcbuild.sln")
         # FIXME: Solution files do not pick up the toolset automatically.
         cmd = msbuild.command(sln, targets=projects)
         self.run(f"{cmd} /p:PlatformToolset={msvs_toolset(self)} /p:SkipCopySSLDLL=true")
@@ -537,7 +537,7 @@ class Recipe(RecipeBase):
             "X64": "amd64",
             "ARM": "arm64",
         }
-        return os.path.join(self.source_folder, "PCbuild", build_subdir_lut[str(self.settings.arch)])
+        return os.path.join(self.folders.source, "PCbuild", build_subdir_lut[str(self.settings.arch)])
 
     @property
     def _msvc_install_subprefix(self):
@@ -547,7 +547,7 @@ class Recipe(RecipeBase):
         if is_msvc(self):
             # Until MSVC builds support cross building, copy dll's of essential (shared) dependencies to python binary location.
             # These dll's are required when running the layout tool using the newly built python executable.
-            dest_path = os.path.join(self.build_folder, self._msvc_artifacts_path)
+            dest_path = os.path.join(self.folders.build, self._msvc_artifacts_path)
             for bin_path in self.dependencies["libffi"].cpp_info.bindirs:
                 copy(self, "*.dll", src=bin_path, dst=dest_path)
             for bin_path in self.dependencies["expat"].cpp_info.bindirs:
@@ -557,16 +557,16 @@ class Recipe(RecipeBase):
 
     def _msvc_package_layout(self):
         self._copy_essential_dlls()
-        install_prefix = os.path.join(self.package_folder, self._msvc_install_subprefix)
+        install_prefix = os.path.join(self.folders.package, self._msvc_install_subprefix)
         mkdir(self, install_prefix)
         build_path = self._msvc_artifacts_path
         infix = "_d" if self.settings.build_type == "Debug" else ""
         # FIXME: if cross building, use a build python executable here
         python_built = os.path.join(build_path, f"python{infix}.exe")
         layout_args = [
-            os.path.join(self.source_folder, "PC", "layout", "main.py"),
+            os.path.join(self.folders.source, "PC", "layout", "main.py"),
             "-v",
-            "-s", self.source_folder,
+            "-s", self.folders.source,
             "-b", build_path,
             "--copy", install_prefix,
             "-p",
@@ -581,7 +581,7 @@ class Recipe(RecipeBase):
         python_args = " ".join(f'"{a}"' for a in layout_args)
         self.run(f"{python_built} {python_args}")
 
-        rmdir(self, os.path.join(self.package_folder, "bin", "tcl"))
+        rmdir(self, os.path.join(self.folders.package, "bin", "tcl"))
 
         rm(self, "LICENSE.txt", install_prefix)
         for file in os.listdir(os.path.join(install_prefix, "libs")):
@@ -594,36 +594,36 @@ class Recipe(RecipeBase):
         copy(
             self, "*.exe",
             src=build_path,
-            dst=os.path.join(self.package_folder, self._msvc_install_subprefix))
+            dst=os.path.join(self.folders.package, self._msvc_install_subprefix))
         copy(
             self, "*.dll",
             src=build_path,
-            dst=os.path.join(self.package_folder, self._msvc_install_subprefix))
+            dst=os.path.join(self.folders.package, self._msvc_install_subprefix))
         copy(
             self, "*.pyd",
             src=build_path,
-            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "DLLs"))
+            dst=os.path.join(self.folders.package, self._msvc_install_subprefix, "DLLs"))
         copy(
             self, f"python{self._version_suffix}{infix}.lib",
             src=build_path,
-            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "libs"))
+            dst=os.path.join(self.folders.package, self._msvc_install_subprefix, "libs"))
         copy(
             self, "*",
-            src=os.path.join(self.source_folder, "Include"),
-            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "include"))
+            src=os.path.join(self.folders.source, "Include"),
+            dst=os.path.join(self.folders.package, self._msvc_install_subprefix, "include"))
         copy(
             self, "pyconfig.h",
-            src=os.path.join(self.source_folder, "PC"),
-            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "include"))
+            src=os.path.join(self.folders.source, "PC"),
+            dst=os.path.join(self.folders.package, self._msvc_install_subprefix, "include"))
         copy(
             self, "*.py",
-            src=os.path.join(self.source_folder, "lib"),
-            dst=os.path.join(self.package_folder, self._msvc_install_subprefix, "Lib"))
-        rmdir(self, os.path.join(self.package_folder, self._msvc_install_subprefix, "Lib", "test"))
+            src=os.path.join(self.folders.source, "lib"),
+            dst=os.path.join(self.folders.package, self._msvc_install_subprefix, "Lib"))
+        rmdir(self, os.path.join(self.folders.package, self._msvc_install_subprefix, "Lib", "test"))
 
         packages = {}
         get_name_version = lambda fn: fn.split(".", 2)[:2]
-        whldir = os.path.join(self.source_folder, "Lib", "ensurepip", "_bundled")
+        whldir = os.path.join(self.folders.source, "Lib", "ensurepip", "_bundled")
         for fn in filter(lambda n: n.endswith(".whl"), os.listdir(whldir)):
             name, version = get_name_version(fn)
             add = True
@@ -635,10 +635,10 @@ class Recipe(RecipeBase):
         for fname in packages.values():
             unzip(
                 self, filename=os.path.join(whldir, fname),
-                destination=os.path.join(self.package_folder, "bin", "Lib", "site-packages"))
+                destination=os.path.join(self.folders.package, "bin", "Lib", "site-packages"))
 
         interpreter_path = os.path.join(build_path, self._cpython_interpreter_name)
-        lib_dir_path = os.path.join(self.package_folder, self._msvc_install_subprefix, "Lib").replace("\\", "/")
+        lib_dir_path = os.path.join(self.folders.package, self._msvc_install_subprefix, "Lib").replace("\\", "/")
         self.run(f"{interpreter_path} -c \"import compileall; compileall.compile_dir('{lib_dir_path}')\"")
 
     @property
@@ -704,30 +704,30 @@ class Recipe(RecipeBase):
             python_exe = "${CMAKE_CURRENT_LIST_DIR}/../../bin/" + self._cpython_interpreter_name
             python_library = "${CMAKE_CURRENT_LIST_DIR}/../" + self._exact_lib_name
 
-        cmake_file = os.path.join(self.package_folder, self._cmake_module_path, "use_recipe_python.cmake")
+        cmake_file = os.path.join(self.folders.package, self._cmake_module_path, "use_recipe_python.cmake")
         content = template.replace("@PYTHON_EXECUTABLE@", python_exe).replace("@PYTHON_LIBRARY@", python_library)
         save(self, cmake_file, content)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         if is_msvc(self):
             if self.options.shared:
                 self._msvc_package_layout()
             else:
                 self._msvc_package_copy()
-            rm(self, "vcruntime*", os.path.join(self.package_folder, "bin"), recursive=True)
+            rm(self, "vcruntime*", os.path.join(self.folders.package, "bin"), recursive=True)
         else:
             autotools = Autotools(self)
             if is_apple_os(self):
                 # FIXME: See https://github.com/python/cpython/issues/109796, this workaround is mentioned there
                 autotools.make(target="sharedinstall", args=["DESTDIR="])
             autotools.install(args=["DESTDIR="])
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.package_folder, "share"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+            rmdir(self, os.path.join(self.folders.package, "share"))
 
             # Rewrite shebangs of python scripts
-            for filename in os.listdir(os.path.join(self.package_folder, "bin")):
-                filepath = os.path.join(self.package_folder, "bin", filename)
+            for filename in os.listdir(os.path.join(self.folders.package, "bin")):
+                filepath = os.path.join(self.folders.package, "bin", filename)
                 if not os.path.isfile(filepath):
                     continue
                 if os.path.islink(filepath):
@@ -761,7 +761,7 @@ class Recipe(RecipeBase):
 
     @property
     def _cpython_symlink(self):
-        symlink = os.path.join(self.package_folder, "bin", "python")
+        symlink = os.path.join(self.folders.package, "bin", "python")
         if self.settings.os == "Windows":
             symlink += ".exe"
         return symlink
@@ -780,7 +780,7 @@ class Recipe(RecipeBase):
 
     @property
     def _cpython_interpreter_path(self):
-        return os.path.join(self.package_folder, "bin", self._cpython_interpreter_name)
+        return os.path.join(self.folders.package, "bin", self._cpython_interpreter_name)
 
     @property
     def _abi_suffix(self):
@@ -880,7 +880,7 @@ class Recipe(RecipeBase):
                 self.cpp_info.components["_hidden"].system_libs.append("nsl")
 
         if self.options.env_vars:
-            bindir = os.path.join(self.package_folder, "bin")
+            bindir = os.path.join(self.folders.package, "bin")
             self.runenv_info.append_path("PATH", bindir)
             self.buildenv_info.append_path("PATH", bindir)
 
@@ -898,9 +898,9 @@ class Recipe(RecipeBase):
             self.output.info(f"Appending PYTHON environment variable: {python}")
 
         if is_msvc(self):
-            pythonhome = os.path.join(self.package_folder, "bin")
+            pythonhome = os.path.join(self.folders.package, "bin")
         else:
-            pythonhome = self.package_folder
+            pythonhome = self.folders.package
         self.conf_info.define("user.cpython:pythonhome", pythonhome)
         self.user_info.pythonhome = pythonhome
 
@@ -922,7 +922,7 @@ class Recipe(RecipeBase):
                 # TODO remove once Recipe 1.x is no longer supported
                 self.output.info(f"Setting PYTHONHOME environment variable: {pythonhome}")
 
-        python_root = self.package_folder
+        python_root = self.folders.package
         if self.options.env_vars:
             self.runenv_info.append_path("PYTHON_ROOT", python_root)
             self.buildenv_info.append_path("PYTHON_ROOT", python_root)

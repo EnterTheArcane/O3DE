@@ -20,12 +20,12 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/fastfloat/fast_float/archive/refs/tags/v8.2.5.tar.gz",
             sha256="17c7fb14499fcf42c3f5d143df0fbe22172e92749ec5f75ef13224005421a654",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "*", src=os.path.join(self.source_folder, "include"), dst=os.path.join(self.package_folder, "include"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "*", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "FastFloat")

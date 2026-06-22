@@ -302,7 +302,7 @@ class AutotoolsToolchain:
         env.append("LDFLAGS", self.ldflags)
         if self.rcflags:
             env.append("RCFLAGS", self.rcflags)
-        env.prepend_path("PKG_CONFIG_PATH", self._recipe.generators_folder)
+        env.prepend_path("PKG_CONFIG_PATH", self._recipe.folders.generators)
         # Objective C/C++
         self._include_obj_arc_flags(env)
         # Issue related: upstream issue 15486

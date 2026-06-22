@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.352.tar.gz",
             sha256="4850909d22a8a9767c27daea2b972e49d7c298560573d5b6221ee50db9bf49db",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -35,11 +35,11 @@ class Recipe(RecipeBase):
         cmake.configure()
 
     def package(self):
-        copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        copy(self, "*", src=os.path.join(self.package_folder, "share", "vulkan", "registry"), dst=os.path.join(self.package_folder, "res", "vulkan", "registry"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        copy(self, "*", src=os.path.join(self.folders.package, "share", "vulkan", "registry"), dst=os.path.join(self.folders.package, "res", "vulkan", "registry"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "VulkanHeaders")

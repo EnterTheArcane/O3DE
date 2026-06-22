@@ -35,19 +35,19 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54221_64bit/strawberry-perl-5.42.2.1-64bit-portable.zip",
             sha256="32d83be90cf04b807cfb9477482bc36302cdee6f5b04cf57e81adecbd8f07898",
-            destination=self.build_folder
+            destination=self.folders.build
         )
 
     def package(self):
-        copy(self, pattern="License.rtf*", src=os.path.join(self.build_folder, "licenses"), dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, pattern="*", src=os.path.join(self.build_folder, "perl", "bin"), dst=os.path.join(self.package_folder, "bin"))
-        copy(self, pattern="*", src=os.path.join(self.build_folder, "perl", "lib"), dst=os.path.join(self.package_folder, "lib"))
-        copy(self, pattern="*", src=os.path.join(self.build_folder, "perl", "vendor", "lib"), dst=os.path.join(self.package_folder, "lib"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        copy(self, pattern="License.rtf*", src=os.path.join(self.folders.build, "licenses"), dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, pattern="*", src=os.path.join(self.folders.build, "perl", "bin"), dst=os.path.join(self.folders.package, "bin"))
+        copy(self, pattern="*", src=os.path.join(self.folders.build, "perl", "lib"), dst=os.path.join(self.folders.package, "lib"))
+        copy(self, pattern="*", src=os.path.join(self.folders.build, "perl", "vendor", "lib"), dst=os.path.join(self.folders.package, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.libdirs = []
         self.cpp_info.includedirs = []
 
-        perl_path = os.path.join(self.package_folder, "bin", "perl.exe").replace("\\", "/")
+        perl_path = os.path.join(self.folders.package, "bin", "perl.exe").replace("\\", "/")
         self.conf_info.define("user.strawberryperl:perl", perl_path)

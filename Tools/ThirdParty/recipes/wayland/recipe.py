@@ -60,10 +60,10 @@ class Recipe(RecipeBase):
             self,
             url="https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.25.0/downloads/wayland-1.25.0.tar.xz",
             sha256="c065f040afdff3177680600f249727e41a1afc22fccf27222f15f5306faa1f03",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.source_folder, "meson.build"), "subdir('tests')", "#subdir('tests')")
+        replace_in_file(self, os.path.join(self.folders.source, "meson.build"), "subdir('tests')", "#subdir('tests')")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -86,7 +86,7 @@ class Recipe(RecipeBase):
         tc.project_options["dtd_validation"] = True
         tc.project_options["documentation"] = False
         if not can_run(self):
-            tc.project_options["build.pkg_config_path"] = self.generators_folder
+            tc.project_options["build.pkg_config_path"] = self.folders.generators
         tc.project_options["scanner"] = True
         tc.generate()
 
@@ -96,10 +96,10 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         meson = Meson(self)
         meson.install()
-        pkg_config_dir = os.path.join(self.package_folder, "lib", "pkgconfig")
+        pkg_config_dir = os.path.join(self.folders.package, "lib", "pkgconfig")
         rmdir(self, pkg_config_dir)
 
     def package_info(self):

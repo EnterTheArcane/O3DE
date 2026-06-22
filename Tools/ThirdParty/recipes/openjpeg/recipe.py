@@ -35,10 +35,10 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.4.tar.gz",
             sha256="a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "-ffast-math", "-ffast-math;-fno-finite-math-only")
+        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "-ffast-math", "-ffast-math;-fno-finite-math-only")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -62,17 +62,17 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", self._openjpeg_subdir))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake", self._openjpeg_subdir))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", self._openjpeg_subdir))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake", self._openjpeg_subdir))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_vars_rel_path)
+            os.path.join(self.folders.package, self._module_vars_rel_path)
         )
         self._create_cmake_module_alias_targets(
-            os.path.join(self.package_folder, self._module_target_rel_path),
+            os.path.join(self.folders.package, self._module_target_rel_path),
             {"openjp2": "OpenJPEG::OpenJPEG"}
         )
 

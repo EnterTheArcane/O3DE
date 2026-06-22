@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/lz4/lz4/archive/v1.10.0.tar.gz",
             sha256="537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
     @property
     def _cmakelists_folder(self):
         subfolder = os.path.join("build", "cmake")
-        return os.path.join(self.source_folder, subfolder)
+        return os.path.join(self.folders.source, subfolder)
 
     def build(self):
         cmake = CMake(self)
@@ -61,12 +61,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=os.path.join(self.source_folder, "lib"), dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=os.path.join(self.folders.source, "lib"), dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     @property
     def _lz4_target(self):

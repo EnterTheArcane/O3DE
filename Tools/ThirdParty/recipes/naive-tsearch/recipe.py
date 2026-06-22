@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/kulp/naive-tsearch/releases/download/v0.1.1/naive-tsearch-0.1.1.tar.xz",
             sha256="cb779326a8748fb527ab2f4d199923c92dc7d120988b45400d4b31fd77288a1b",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -49,18 +49,18 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         if self.options.header_only:
-            rmdir(self, os.path.join(self.package_folder, "lib"))
-            rm(self, "tsearch.h", os.path.join(self.package_folder, "include", "naive-tsearch"))
+            rmdir(self, os.path.join(self.folders.package, "lib"))
+            rm(self, "tsearch.h", os.path.join(self.folders.package, "include", "naive-tsearch"))
         else:
-            rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-            rm(self, "tsearch_hdronly.h", os.path.join(self.package_folder, "include", "naive-tsearch"))
-            rm(self, "tsearch.c.inc", os.path.join(self.package_folder, "include", "naive-tsearch"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+            rm(self, "tsearch_hdronly.h", os.path.join(self.folders.package, "include", "naive-tsearch"))
+            rm(self, "tsearch.c.inc", os.path.join(self.folders.package, "include", "naive-tsearch"))
 
     def package_info(self):
         if self.options.header_only:

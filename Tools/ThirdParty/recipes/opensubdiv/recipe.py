@@ -68,7 +68,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/PixarAnimationStudios/OpenSubdiv/archive/refs/tags/v3_7_0.tar.gz",
             sha256="f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     @property
@@ -111,10 +111,10 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         apply_patches(self)
         if self.settings.os == "Mac" and not self._osd_gpu_enabled:
-            path = os.path.join(self.source_folder, "opensubdiv", "CMakeLists.txt")
+            path = os.path.join(self.folders.source, "opensubdiv", "CMakeLists.txt")
             replace_in_file(self, path, "$<TARGET_OBJECTS:osd_gpu_obj>", "")
         # No warnings as errors
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "/WX", "", strict=False)
+        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "/WX", "", strict=False)
 
     def build(self):
         self._patch_sources()
@@ -123,12 +123,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
         if self.options.shared:
-            rm(self, "*.a", os.path.join(self.package_folder, "lib"))
+            rm(self, "*.a", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "OpenSubdiv")

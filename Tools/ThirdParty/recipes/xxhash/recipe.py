@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/Cyan4973/xxHash/archive/v0.8.3.tar.gz",
             sha256="aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -50,16 +50,16 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, "cmake_unofficial"))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, "cmake_unofficial"))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "xxHash")

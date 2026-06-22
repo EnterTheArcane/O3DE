@@ -169,7 +169,7 @@ class _BazelDepBuildGenerator:
         """
         Returns the absolute path to the BUILD file created by Recipe
         """
-        folder = os.path.join(self._recipe.generators_folder, self._build_file_path)
+        folder = os.path.join(self._recipe.folders.generators, self._build_file_path)
         return folder.replace("\\", "/")
 
     @property
@@ -178,8 +178,8 @@ class _BazelDepBuildGenerator:
         Returns the package folder path
         """
         # If editable, package_folder can be None
-        root_folder = self._dep.recipe_folder if self._dep.package_folder is None \
-            else self._dep.package_folder
+        root_folder = self._dep.recipe_folder if self._dep.folders.package is None \
+            else self._dep.folders.package
         return root_folder.replace("\\", "/")
 
     def _get_repository_name(self, dep):

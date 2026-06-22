@@ -33,7 +33,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/biojppm/c4core/releases/download/v0.3.0/c4core-0.3.0-src.tgz",
             sha256="47a5634c785f84a6bef07c04c3cc3c063ff61c5c7554b95c35298712e2f306fd",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -50,12 +50,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE*", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, pattern="LICENSE*", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.natvis", os.path.join(self.package_folder, "include"), recursive=True)
+        rmdir(self, os.path.join(self.folders.package, "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.natvis", os.path.join(self.folders.package, "include"), recursive=True)
 
     def package_info(self):
         self.cpp_info.libs = ["c4core"]

@@ -85,7 +85,7 @@ def _windows_bash_wrapper(recipe, command, env, envfiles_folder):
         msys2_mode_env.unset("ORIGINAL_PATH")
         # So --login do not change automatically to the user home
         msys2_mode_env.define("CHERE_INVOKING", "1")
-        path = os.path.join(recipe.generators_folder, "msys2_mode.bat")
+        path = os.path.join(recipe.folders.generators, "msys2_mode.bat")
         # Make sure we save pure .bat files, without sh stuff
         wb, recipe.win_bash = recipe.win_bash, None
         msys2_mode_env.vars(recipe, "build").save_bat(path)

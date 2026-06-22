@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
             self,
             url="https://sourceforge.net/projects/rapidxml/files/rapidxml/rapidxml%201.13/rapidxml-1.13.zip/download",
             sha256="c3f0b886374981bb20fabcf323d755db4be6dba42064599481da64a85f5b3571",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -22,8 +22,8 @@ class Recipe(RecipeBase):
         pass
 
     def package(self):
-        copy(self, "license.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "*.hpp", src=self.source_folder, dst=os.path.join(self.package_folder, "include", "rapidxml"))
+        copy(self, "license.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "*.hpp", src=self.folders.source, dst=os.path.join(self.folders.package, "include", "rapidxml"))
 
     def package_info(self):
         self.cpp_info.includedirs.append(os.path.join("include", "rapidxml"))

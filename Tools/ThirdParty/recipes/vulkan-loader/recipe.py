@@ -37,11 +37,11 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/Vulkan-Loader/archive/vulkan-sdk-1.4.350.0.tar.gz",
             sha256="91f88fc43abb36821a568c7fbb3f815e9baf946d5fe187928df279708d45e509",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "CMakeLists.txt"),
+            os.path.join(self.folders.source, "CMakeLists.txt"),
             "set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<$<CONFIG:Debug>:Debug>\")",
             "")
 
@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTS"] = False
         tc.variables["LOADER_CODEGEN"] = False
-        vulkan_headers = self.dependencies["vulkan-headers"].package_folder.replace("\\", "/")
+        vulkan_headers = self.dependencies["vulkan-headers"].folders.package.replace("\\", "/")
         tc.variables["VULKAN_HEADERS_INSTALL_DIR"] = vulkan_headers
         tc.generate()
         deps = CMakeDeps(self)
@@ -61,12 +61,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "loader"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "loader"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "VulkanLoader")

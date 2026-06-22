@@ -34,11 +34,11 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/wdas/ptex/archive/refs/tags/v2.5.2.tar.gz",
             sha256="dd95fbea4b50e9e68fd042f540fb83157a0ff25053066c3439d4527de3621d34",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        save(self, os.path.join(self.source_folder, "src", "utils", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.source_folder, "src", "tests", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.source_folder, "src", "doc", "CMakeLists.txt"), "")
+        save(self, os.path.join(self.folders.source, "src", "utils", "CMakeLists.txt"), "")
+        save(self, os.path.join(self.folders.source, "src", "tests", "CMakeLists.txt"), "")
+        save(self, os.path.join(self.folders.source, "src", "doc", "CMakeLists.txt"), "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -54,10 +54,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         cmake_target = "Ptex_dynamic" if self.options.shared else "Ptex_static"

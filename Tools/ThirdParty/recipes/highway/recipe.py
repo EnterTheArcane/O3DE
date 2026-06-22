@@ -30,7 +30,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/google/highway/archive/1.4.0.tar.gz",
             sha256="e72241ac9524bb653ae52ced768b508045d4438726a303f10181a38f764a453c",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         self._patch_sources()
 
@@ -44,13 +44,13 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         # No hardcoded CMAKE_CXX_STANDARD
         replace_in_file(
-            self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"),
+            self, os.path.join(self.folders.source, "cmake", "FindAtomics.cmake"),
             "set(CMAKE_CXX_STANDARD 11)", "")
         replace_in_file(
-            self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"),
+            self, os.path.join(self.folders.source, "cmake", "FindAtomics.cmake"),
             "unset(CMAKE_CXX_STANDARD)", "")
         # Honor fPIC option
-        cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
+        cmakelists = os.path.join(self.folders.source, "CMakeLists.txt")
         replace_in_file(self, cmakelists, "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
         replace_in_file(
             self, cmakelists,
@@ -63,13 +63,13 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        license_folder = os.path.join(self.package_folder, "licenses")
-        copy(self, "LICENSE", src=self.source_folder, dst=license_folder)
-        copy(self, "LICENSE-BSD3", src=self.source_folder, dst=license_folder)
+        license_folder = os.path.join(self.folders.package, "licenses")
+        copy(self, "LICENSE", src=self.folders.source, dst=license_folder)
+        copy(self, "LICENSE-BSD3", src=self.folders.source, dst=license_folder)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         self.cpp_info.components["hwy"].set_property("pkg_config_name", "libhwy")

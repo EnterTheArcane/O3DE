@@ -124,7 +124,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v3.1.13.1/OpenImageIO-3.1.13.1.tar.gz",
             sha256="b0d81f4f041fd72f034bd2a6c5ad9db1880008f67af101233cf3992f9e59217f",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -237,15 +237,15 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE*.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE*.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         if self.settings.os == "Windows":
             for vc_file in ("concrt", "msvcp", "vcruntime"):
-                rm(self, f"{vc_file}*.dll", os.path.join(self.package_folder, "bin"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+                rm(self, f"{vc_file}*.dll", os.path.join(self.folders.package, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     @staticmethod
     def _recipe_comp(name):

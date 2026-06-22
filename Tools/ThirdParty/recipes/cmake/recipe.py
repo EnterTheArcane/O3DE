@@ -39,17 +39,17 @@ class Recipe(RecipeBase):
             self,
             url=url,
             sha256=sha256,
-            destination=self.build_folder,
+            destination=self.folders.build,
             strip_root=True)
 
     def package(self):
         for subdir in ("bin", "share", "lib"):
-            src = os.path.join(self.build_folder, subdir)
+            src = os.path.join(self.folders.build, subdir)
             if os.path.isdir(src):
-                copy(self, "*", src=src, dst=os.path.join(self.package_folder, subdir))
+                copy(self, "*", src=src, dst=os.path.join(self.folders.package, subdir))
 
     def package_info(self):
         self.cpp_info.libdirs = []
         self.cpp_info.includedirs = []
-        bin_dir = os.path.join(self.package_folder, "bin")
+        bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)

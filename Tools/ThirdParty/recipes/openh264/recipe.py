@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/cisco/openh264/archive/refs/tags/v2.6.0.tar.gz",
             sha256="558544ad358283a7ab2930d69a9ceddf913f4a51ee9bf1bfb9e377322af81a69",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -64,16 +64,16 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         meson = Meson(self)
         meson.install()
 
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
         if is_msvc(self) or self._is_clang_cl:
-            rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+            rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
             if not self.options.shared:
-                lib_dir = os.path.join(self.package_folder, "lib")
+                lib_dir = os.path.join(self.folders.package, "lib")
                 gnu_lib = os.path.join(lib_dir, "libopenh264.a")
                 # meson emits the static lib as libopenh264.a; rename to the MSVC-style
                 # openh264.lib. Clear any stale destination first so a re-run doesn't fail

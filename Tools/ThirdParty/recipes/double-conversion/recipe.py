@@ -30,7 +30,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/google/double-conversion/archive/refs/tags/v3.4.0.tar.gz",
             sha256="42fd4d980ea86426e457b24bdfa835a6f5ad9517ddb01cdb42b99ab9c8dd5dc9",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -44,11 +44,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "double-conversion")

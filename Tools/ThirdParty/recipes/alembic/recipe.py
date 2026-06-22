@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/alembic/alembic/archive/refs/tags/1.8.11.tar.gz",
             sha256="ab299bb4b1894a6675c73fa29940522b54c81a91b1d691ca3470d86b7345ffce",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -63,10 +63,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Alembic")

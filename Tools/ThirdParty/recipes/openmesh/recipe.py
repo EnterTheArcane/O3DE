@@ -25,7 +25,7 @@ class Recipe(RecipeBase):
             self,
             url="https://www.graphics.rwth-aachen.de/media/openmesh_static/Releases/11.0/OpenMesh-11.0.0.tar.bz2",
             sha256="9d22e65bdd6a125ac2043350a019ec4346ea83922cafdf47e125a03c16f6fa07",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -43,17 +43,17 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "libdata"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "libdata"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         if self.settings.os != "Windows":
             if self.options.shared:
-                rm(self, "*.a", os.path.join(self.package_folder, "lib"))
+                rm(self, "*.a", os.path.join(self.folders.package, "lib"))
             else:
-                rm(self, "*.so*", os.path.join(self.package_folder, "lib"))
-                rm(self, "*.dylib", os.path.join(self.package_folder, "lib"))
+                rm(self, "*.so*", os.path.join(self.folders.package, "lib"))
+                rm(self, "*.dylib", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "OpenMesh")

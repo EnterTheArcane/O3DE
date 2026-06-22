@@ -41,12 +41,12 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/besser82/libxcrypt/archive/v4.4.36.tar.gz",
             sha256="b979838d5f1f238869d467484793b72b8bca64c4eae696fdbba0a9e0b6c28453",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "Makefile.am"),
+            os.path.join(self.folders.source, "Makefile.am"),
             "\nlibcrypt_la_LDFLAGS = ",
             "\nlibcrypt_la_LDFLAGS = -no-undefined ")
 
@@ -64,12 +64,12 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING.LIB", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING.LIB", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         autotools = Autotools(self)
-        autotools.install(args=[f"DESTDIR={unix_path(self, self.package_folder)}"])
-        rm(self, "*.la", os.path.join(self.package_folder, "lib"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        autotools.install(args=[f"DESTDIR={unix_path(self, self.folders.package)}"])
+        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         fix_apple_shared_install_name(self)
 
     def package_info(self):

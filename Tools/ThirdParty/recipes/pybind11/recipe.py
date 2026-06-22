@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/pybind/pybind11/archive/v3.0.4.tar.gz",
             sha256="74b6a2c2b4573a400cafb6ecbf60c98df300cd3d0041296b913d02b2cbbb2676",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -38,17 +38,17 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
         for filename in ["pybind11Targets.cmake", "pybind11Config.cmake", "pybind11ConfigVersion.cmake"]:
-            rm(self, filename, os.path.join(self.package_folder, "lib", "cmake", "pybind11"))
+            rm(self, filename, os.path.join(self.folders.package, "lib", "cmake", "pybind11"))
 
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
         checked_target = "pybind11"
         replace_in_file(
-            self, os.path.join(self.package_folder, "lib", "cmake", "pybind11", "pybind11Common.cmake"),
+            self, os.path.join(self.folders.package, "lib", "cmake", "pybind11", "pybind11Common.cmake"),
             "add_library(",
             "# add_library(")
 

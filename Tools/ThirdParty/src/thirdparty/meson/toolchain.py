@@ -209,7 +209,7 @@ class MesonToolchain:
         #: Dict-like object that defines Meson ``subproject options``.
         self.subproject_options = {}
         #: Defines the Meson ``pkg_config_path`` variable
-        self.pkg_config_path = self._recipe.generators_folder
+        self.pkg_config_path = self._recipe.folders.generators
         #: Defines the Meson ``build.pkg_config_path`` variable (build context)
         # Issue: upstream issue 12342
         # Issue: upstream issue 14935

@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/akheron/jansson/releases/download/v2.15.0/jansson-2.15.0.tar.bz2",
             sha256="a7eac7765000373165f9373eb748be039c10b2efc00be9af3467ec92357d8954",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -56,12 +56,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "jansson")

@@ -54,12 +54,12 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/MoltenVK/archive/refs/tags/v1.4.1.tar.gz",
             sha256="9985f141902a17de818e264d17c1ce334b748e499ee02fcb4703e4dc0038f89c",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["MVK_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["MVK_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.variables["MVK_VERSION"] = self.version
         tc.variables["MVK_WITH_SPIRV_TOOLS"] = True
         tc.variables["MVK_BUILD_SHADERCONVERTER_TOOL"] = self.options.tools
@@ -72,11 +72,11 @@ class Recipe(RecipeBase):
     def build(self):
         apply_patches(self)
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
@@ -100,6 +100,6 @@ class Recipe(RecipeBase):
         ]
 
         if self.options.shared:
-            moltenvk_icd_path = os.path.join(self.package_folder, "lib", "MoltenVK_icd.json")
+            moltenvk_icd_path = os.path.join(self.folders.package, "lib", "MoltenVK_icd.json")
             self.runenv_info.prepend_path("VK_DRIVER_FILES", moltenvk_icd_path)
             self.runenv_info.prepend_path("VK_ICD_FILENAMES", moltenvk_icd_path)

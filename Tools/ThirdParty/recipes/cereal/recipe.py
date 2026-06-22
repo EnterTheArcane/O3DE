@@ -27,12 +27,12 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/USCiLab/cereal/archive/v1.3.2.tar.gz",
             sha256="16a7ad9b31ba5880dac55d62b5d6f243c3ebc8d46a3514149e56b5e7ea81f85f",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "include/*", src=self.source_folder, dst=self.package_folder)
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "include/*", src=self.folders.source, dst=self.folders.package)
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "cereal")

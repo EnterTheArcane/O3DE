@@ -38,11 +38,11 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/PixarAnimationStudios/OpenUSD/archive/refs/tags/v26.05.tar.gz",
             sha256="bf514f62ac9508d3c5b121dc1107f3b29bf3c954473b9b0bf8324b7cf04c64c1",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "pxr", "base", "work", "workTBB", "dispatcher_impl.h"),
+            os.path.join(self.folders.source, "pxr", "base", "work", "workTBB", "dispatcher_impl.h"),
             "#include <tbb/blocked_range.h>",
             "#include <tbb/version.h>\n#include <tbb/blocked_range.h>")
 
@@ -80,7 +80,7 @@ class Recipe(RecipeBase):
         tc.variables["PXR_VALIDATE_GENERATED_CODE"] = False
 
         python_pkg = self.dependencies["cpython"]
-        python_root = python_pkg.package_folder.replace("\\", "/")
+        python_root = python_pkg.folders.package.replace("\\", "/")
         tc.variables["Python3_ROOT_DIR"] = python_root
         tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
         if self.settings.os == "Windows":
@@ -104,10 +104,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "pxr")

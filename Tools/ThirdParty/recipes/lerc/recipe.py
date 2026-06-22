@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/Esri/lerc/archive/refs/tags/v4.1.0.tar.gz",
             sha256="f05b24d2368becab9144873878655bb718910631550d4f786262378c16ab94a7",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -44,10 +44,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.libs = ["Lerc"]

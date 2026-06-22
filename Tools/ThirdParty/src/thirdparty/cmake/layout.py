@@ -35,7 +35,7 @@ def cmake_layout(recipe, generator=None, src_folder=".", build_folder="build"):
             multi = False
 
     subproject = recipe.folders.subproject
-    recipe.folders.source = src_folder if not subproject else os.path.join(subproject, src_folder)
+    recipe.folders._source = src_folder if not subproject else os.path.join(subproject, src_folder)
     try:
         build_type = str(recipe.settings.build_type)
     except RecipeException:
@@ -53,9 +53,9 @@ def cmake_layout(recipe, generator=None, src_folder=".", build_folder="build"):
         build_folder = os.path.join(build_folder, config_build_folder)
     if not multi and not user_defined_build:
         build_folder = os.path.join(build_folder, build_type)
-    recipe.folders.build = build_folder
+    recipe.folders._build = build_folder
 
-    recipe.folders.generators = os.path.join(recipe.folders.build, "generators")
+    recipe.folders._generators = os.path.join(recipe.folders._build, "generators")
 
     recipe.cpp.source.includedirs = ["include"]
 

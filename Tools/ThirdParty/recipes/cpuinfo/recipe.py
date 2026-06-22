@@ -35,11 +35,11 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/pytorch/cpuinfo/archive/ff24ffee8340fbd9001cce6a9ef41cdd16aa2bd3.tar.gz",
             sha256="59a0a35488762568c7b7575352d726cb11fee361455e451ad820bdf5a01b856e",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "CMakeLists.txt"),
+            os.path.join(self.folders.source, "CMakeLists.txt"),
             "LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}",
             "LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}")
 
@@ -65,11 +65,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "cpuinfo")

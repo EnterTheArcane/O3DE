@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url="https://prdownloads.sourceforge.net/tcl/tk8.6.10-src.tar.gz", sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386", strip_root=True,
-            destination=self.source_folder)
+            destination=self.folders.source)
         apply_patches(self)
 
     def generate(self):
@@ -85,11 +85,11 @@ class Recipe(RecipeBase):
             )
             tc.configure_args.append(f"--enable-aqua={yes_no(is_apple_os(self))}")
             tc.configure_args.append(
-                f"--with-tcl={os.path.join(self.dependencies['tcl'].package_folder, 'lib')}"
+                f"--with-tcl={os.path.join(self.dependencies['tcl'].folders.package, 'lib')}"
             )
             tc.configure_args.append(f"--with-x={yes_no(self.settings.os == 'Linux')}")
             tc.make_args.append(
-                f"TCL_GENERIC_DIR={os.path.join(self.dependencies['tcl'].package_folder, 'include')}"
+                f"TCL_GENERIC_DIR={os.path.join(self.dependencies['tcl'].folders.package, 'include')}"
             )
             if self.settings.os == "Windows":
                 tc.extra_defines.extend(
@@ -122,7 +122,7 @@ class Recipe(RecipeBase):
             build_system = self._get_default_build_system()
         if build_system not in ["win", "unix", "macosx"]:
             raise RecipeException(f"Invalid build system: {build_system}")
-        return os.path.join(self.source_folder, build_system)
+        return os.path.join(self.folders.source, build_system)
 
     def _build_nmake(self, target="release"):
         # https://core.tcl.tk/tips/doc/trunk/tip/477.md
@@ -139,7 +139,7 @@ class Recipe(RecipeBase):
             opts.append("unchecked")
         # https://core.tcl.tk/tk/tktview?name=3d34589aa0
         # https://wiki.tcl-lang.org/page/Building+with+Visual+Studio+2017
-        tcl_lib_path = os.path.join(self.dependencies["tcl"].package_folder, "lib")
+        tcl_lib_path = os.path.join(self.dependencies["tcl"].folders.package, "lib")
         tclimplib, tclstublib = None, None
         for lib in os.listdir(tcl_lib_path):
             if not lib.endswith(".lib"):
@@ -155,9 +155,9 @@ class Recipe(RecipeBase):
             raise RecipeException("tcl dependency misses tcl and/or tclstub library")
 
         flags = {
-            "INSTALLDIR": self.package_folder,
+            "INSTALLDIR": self.folders.package,
             "OPTS": ",".join(opts),
-            "TCLDIR": self.dependencies["tcl"].package_folder,
+            "TCLDIR": self.dependencies["tcl"].folders.package,
             "TCL_LIBRARY": self.dependencies["tcl"].runenv_info.vars(self).get("TCL_LIBRARY"),
             "TCLIMPLIB": tclimplib,
             "TCLSTUBLIB": tclstublib,
@@ -181,25 +181,25 @@ class Recipe(RecipeBase):
         copy(
             self,
             pattern="license.terms",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
+            src=self.folders.source,
+            dst=os.path.join(self.folders.package, "licenses"),
         )
         if is_msvc(self):
             self._build_nmake("install")
         else:
-            with chdir(self, self.build_folder):
+            with chdir(self, self.folders.build):
                 autotools = Autotools(self)
                 autotools.install()
                 # DESTDIR is only default initialized for target="install"
                 autotools.make(
                     target="install-private-headers",
-                    args=[f"DESTDIR={self.package_folder}"],
+                    args=[f"DESTDIR={self.folders.package}"],
                 )
-                rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "man"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+                rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "man"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
-        tkConfigShPath = os.path.join(self.package_folder, "lib", "tkConfig.sh")
+        tkConfigShPath = os.path.join(self.folders.package, "lib", "tkConfig.sh")
         if os.path.exists(tkConfigShPath):
             # This can only be modified after build since the value being replaced is a result
             # of variable substitution in tkConfig.sh.in
@@ -251,11 +251,11 @@ class Recipe(RecipeBase):
             ]
 
         tk_library = os.path.join(
-            self.package_folder,
+            self.folders.package,
             "lib",
             f"{self.name}{tk_version.major}.{tk_version.minor}",
         ).replace("\\", "/")
         self.runenv_info.define("TK_LIBRARY", tk_library)
 
-        tk_root = self.package_folder.replace("\\", "/")
+        tk_root = self.folders.package.replace("\\", "/")
         self.runenv_info.define("TK_ROOT", tk_root)

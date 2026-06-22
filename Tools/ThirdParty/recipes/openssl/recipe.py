@@ -140,7 +140,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz",
             sha256="aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     @property
@@ -296,7 +296,7 @@ class Recipe(RecipeBase):
     def _get_default_openssl_dir(self):
         if self.settings.os == "Linux":
             return "/etc/ssl"
-        return os.path.join(self.package_folder, "res")
+        return os.path.join(self.folders.package, "res")
 
     def _adjust_path(self, path):
         if self._use_nmake:
@@ -453,12 +453,12 @@ class Recipe(RecipeBase):
         self.output.info(f"using target: {self._target} -> {self._ancestor_target}")
         self.output.info(config)
 
-        save(self, os.path.join(self.source_folder, "Configurations", "20-thirdparty.conf"), config)
+        save(self, os.path.join(self.folders.source, "Configurations", "20-thirdparty.conf"), config)
 
     def _run_make(self, targets=None, parallel=True, install=False):
         command = [self._make_program]
         if install:
-            command.append(f"DESTDIR={self._adjust_path(self.package_folder)}")
+            command.append(f"DESTDIR={self._adjust_path(self.folders.package)}")
         if targets:
             command.extend(targets)
         if self._make_program in ["make", "jom"]:
@@ -472,7 +472,7 @@ class Recipe(RecipeBase):
         return "perl"
 
     def _make(self):
-        with chdir(self, self.source_folder):
+        with chdir(self, self.folders.source):
             args = " ".join(self._configure_args)
 
             if self._use_nmake:
@@ -484,18 +484,18 @@ class Recipe(RecipeBase):
                 # causes issues on Windows
                 replace_in_file(self, "Makefile", "INSTALLTOP_dir=\\", "INSTALLTOP_dir=\\\\")
                 # replace backslashes in paths with forward slashes
-                mkinstallvars_pl = os.path.join(self.source_folder, "util", "mkinstallvars.pl")
+                mkinstallvars_pl = os.path.join(self.folders.source, "util", "mkinstallvars.pl")
                 replace_in_file(self, mkinstallvars_pl, "push @{$values{$k}}, $v;", """$v =~ s|\\\\|/|g; push @{$values{$k}}, $v;""")
                 replace_in_file(self, mkinstallvars_pl, "$values{$k} = $v;", """$v->[0] =~ s|\\\\|/|g; $values{$k} = $v;""")
             self._run_make()
 
     def _make_install(self):
-        with chdir(self, self.source_folder):
+        with chdir(self, self.folders.source):
             self._run_make(targets=["install_sw"], parallel=False, install=True)
 
     def build(self):
         self._make()
-        configdata_pm = self._adjust_path(os.path.join(self.source_folder, "configdata.pm"))
+        configdata_pm = self._adjust_path(os.path.join(self.folders.source, "configdata.pm"))
         self.run(f"{self._perl} {configdata_pm} --dump")
 
     @property
@@ -513,14 +513,14 @@ class Recipe(RecipeBase):
             replace_in_file(self, filename, f"/{e}\"", f"/{runtime}\"", strict=False)
 
     def package(self):
-        copy(self, "*LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "*LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         self._make_install()
         if is_apple_os(self):
             fix_apple_shared_install_name(self)
 
-        rm(self, "*.pdb", self.package_folder, "lib")
+        rm(self, "*.pdb", self.folders.package, "lib")
         if self.options.shared:
-            libdir = os.path.join(self.package_folder, "lib")
+            libdir = os.path.join(self.folders.package, "lib")
             for file in os.listdir(libdir):
                 if self._is_mingw and file.endswith(".dll.a"):
                     continue
@@ -528,8 +528,8 @@ class Recipe(RecipeBase):
                     os.unlink(os.path.join(libdir, file))
 
         if not self.options.no_fips:
-            provdir = os.path.join(self.source_folder, "providers")
-            modules_dir = os.path.join(self.package_folder, "lib", "ossl-modules")
+            provdir = os.path.join(self.folders.source, "providers")
+            modules_dir = os.path.join(self.folders.package, "lib", "ossl-modules")
             if self.settings.os == "Mac":
                 copy(self, "fips.dylib", src=provdir, dst=modules_dir)
             elif self.settings.os == "Windows":
@@ -537,11 +537,11 @@ class Recipe(RecipeBase):
             else:
                 copy(self, "fips.so", src=provdir, dst=modules_dir)
 
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
         self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_file_rel_path)
+            os.path.join(self.folders.package, self._module_file_rel_path)
         )
 
     def _create_cmake_module_variables(self, module_file):
@@ -636,5 +636,5 @@ class Recipe(RecipeBase):
         self.cpp_info.components["ssl"].set_property("cmake_target_name", "OpenSSL::SSL")
         self.cpp_info.components["ssl"].set_property("pkg_config_name", "libssl")
 
-        openssl_modules_dir = os.path.join(self.package_folder, "lib", "ossl-modules")
+        openssl_modules_dir = os.path.join(self.folders.package, "lib", "ossl-modules")
         self.runenv_info.define_path("OPENSSL_MODULES", openssl_modules_dir)

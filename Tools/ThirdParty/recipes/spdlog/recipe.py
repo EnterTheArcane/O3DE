@@ -47,9 +47,9 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/gabime/spdlog/archive/v1.17.0.tar.gz",
             sha256="d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.source_folder, "cmake", "utils.cmake"), "/WX", "")
+        replace_in_file(self, os.path.join(self.folders.source, "cmake", "utils.cmake"), "/WX", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -79,12 +79,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, "LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "spdlog", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "spdlog", "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "spdlog")

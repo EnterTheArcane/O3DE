@@ -37,29 +37,29 @@ class Recipe(RecipeBase):
             self,
             url="https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
             sha256="ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BZ2_BUILD_EXE"] = self.options.build_executable
-        tc.variables["BZ2_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["BZ2_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.variables["BZ2_VERSION_MAJOR"] = Version(self.version).major
         tc.variables["BZ2_VERSION_STRING"] = self.version
         tc.generate()
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
         self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_file_rel_path)
+            os.path.join(self.folders.package, self._module_file_rel_path)
         )
 
     def _create_cmake_module_variables(self, module_file):

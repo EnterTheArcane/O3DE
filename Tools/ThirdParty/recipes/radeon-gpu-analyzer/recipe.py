@@ -29,12 +29,12 @@ class Recipe(RecipeBase):
             sha256 = "34ab6ab30caf8cdd426cf7f5202bfda31f9ad6a87e96053e817a0656dffacc86"
         else:
             raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
-        get(self, url=url, sha256=sha256, destination=self.build_folder, strip_root=True)
+        get(self, url=url, sha256=sha256, destination=self.folders.build, strip_root=True)
 
     def package(self):
-        copy(self, "*", src=self.build_folder, dst=os.path.join(self.package_folder, "bin"))
+        copy(self, "*", src=self.folders.build, dst=os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
         self.cpp_info.libdirs = []
         self.cpp_info.includedirs = []
-        self.buildenv_info.prepend_path("PATH", os.path.join(self.package_folder, "bin"))
+        self.buildenv_info.prepend_path("PATH", os.path.join(self.folders.package, "bin"))

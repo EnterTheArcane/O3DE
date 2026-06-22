@@ -40,7 +40,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/gazebosim/gz-math/archive/refs/tags/gz-math9_9.1.0.tar.gz",
             sha256="d6d266a2a5094b977a3cfec4646efb2eede5fd36781a53faaa37ba416da5cdaf",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -63,7 +63,7 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 

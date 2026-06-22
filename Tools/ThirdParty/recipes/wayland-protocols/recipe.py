@@ -22,11 +22,11 @@ class Recipe(RecipeBase):
             self,
             url="https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.48/downloads/wayland-protocols-1.48.tar.xz",
             sha256="398036ac0eb6484982ddbde7ff86848d753231f9cdeeae983f06b52946625aa1",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "meson.build"),
+            os.path.join(self.folders.source, "meson.build"),
             "dep_scanner = dependency('wayland-scanner',",
             "dep_scanner = dependency('wayland-scanner', required: false, disabler: true,")
 
@@ -45,10 +45,10 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
         meson = Meson(self)
         meson.install()
-        rmdir(self, os.path.join(self.package_folder, "res", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "res", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.libdirs = []

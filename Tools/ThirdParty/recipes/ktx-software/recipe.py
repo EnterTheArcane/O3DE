@@ -48,13 +48,13 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v4.4.2.tar.gz",
             sha256="9412cb45045a503005acd47d98f9e8b47154634a50b4df21e17a1dfa8971d323",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        rmdir(self, os.path.join(self.source_folder, "tests"))
-        save(self, os.path.join(self.source_folder, "tests", "CMakeLists.txt"), "")
+        rmdir(self, os.path.join(self.folders.source, "tests"))
+        save(self, os.path.join(self.folders.source, "tests", "CMakeLists.txt"), "")
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "external", "astc-encoder", "CMakeLists.txt"),
+            os.path.join(self.folders.source, "external", "astc-encoder", "CMakeLists.txt"),
             "set(CMAKE_CXX_STANDARD", "#")
         apply_patches(self)
 
@@ -75,11 +75,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "*", src=os.path.join(self.source_folder, "LICENSES"), dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "*", src=os.path.join(self.folders.source, "LICENSES"), dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Ktx")

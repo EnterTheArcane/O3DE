@@ -31,14 +31,14 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/v1.4.352.tar.gz",
             sha256="a8dd82f0f52714a2a1c9deae1e3b21553a7e312aae50445ee9ab7f2dfc1b90c6",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         for text in [
             "set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)",
             "set(CMAKE_POSITION_INDEPENDENT_CODE ON)",
         ]:
             replace_in_file(
-                self, os.path.join(self.source_folder, "CMakeLists.txt"),
+                self, os.path.join(self.folders.source, "CMakeLists.txt"),
                 text, "")
 
     def generate(self):
@@ -56,10 +56,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "VulkanUtilityLibraries")

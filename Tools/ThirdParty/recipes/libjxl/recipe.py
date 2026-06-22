@@ -54,7 +54,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/libjxl/libjxl/archive/v0.11.2.tar.gz",
             sha256="ab38928f7f6248e2a98cc184956021acb927b16a0dee71b4d260dc040a4320ea",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -63,7 +63,7 @@ class Recipe(RecipeBase):
         # which _patch_sources() empties. The deps are instead resolved by the CMakeDeps
         # aggregator (recipe_deps.cmake), injected right after project() so the hwy::hwy /
         # Brotli / LCMS2 targets exist before lib/CMakeLists.txt references them.
-        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = os.path.join(self.generators_folder, "recipe_deps.cmake").replace("\\", "/")
+        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = os.path.join(self.folders.generators, "recipe_deps.cmake").replace("\\", "/")
         tc.variables["BUILD_TESTING"] = False
         tc.variables["JPEGXL_STATIC"] = False
         tc.variables["JPEGXL_BUNDLE_LIBPNG"] = False
@@ -118,7 +118,7 @@ class Recipe(RecipeBase):
         # aggregator that libjxl injects via CMAKE_PROJECT_LIBJXL_INCLUDE (its own
         # find_package(HWY/Brotli/LCMS2) lives in third_party/CMakeLists.txt which
         # _patch_sources empties).  Write an equivalent so those targets exist at project() time.
-        save(self, os.path.join(self.generators_folder, "recipe_deps.cmake"),
+        save(self, os.path.join(self.folders.generators, "recipe_deps.cmake"),
              "find_package(Brotli)\nfind_package(HWY)\nfind_package(LCMS2)\n")
 
         # For tcmalloc
@@ -131,14 +131,14 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         # Disable tools, extras and third_party
-        save(self, os.path.join(self.source_folder, "tools", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.source_folder, "third_party", "CMakeLists.txt"), "")
+        save(self, os.path.join(self.folders.source, "tools", "CMakeLists.txt"), "")
+        save(self, os.path.join(self.folders.source, "third_party", "CMakeLists.txt"), "")
         # FindAtomics.cmake values are set by CMakeToolchain instead
-        save(self, os.path.join(self.source_folder, "cmake", "FindAtomics.cmake"), "")
+        save(self, os.path.join(self.folders.source, "cmake", "FindAtomics.cmake"), "")
 
         # Allow fPIC to be set by Recipe (top-level set() was removed in 0.11.2; individual targets handle it)
         for cmake_file in ["jxl.cmake", "jxl_threads.cmake", "jxl_cms.cmake", "jpegli.cmake"]:
-            path = os.path.join(self.source_folder, "lib", cmake_file)
+            path = os.path.join(self.folders.source, "lib", cmake_file)
             if os.path.exists(path):
                 fpic = "ON" if self.options.get_safe("fPIC", True) else "OFF"
                 replace_in_file(self, path, "POSITION_INDEPENDENT_CODE ON", f"POSITION_INDEPENDENT_CODE {fpic}")
@@ -152,11 +152,11 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         if self.options.shared:
-            rm(self, "*.a", os.path.join(self.package_folder, "lib"))
-            rm(self, "*-static.lib", os.path.join(self.package_folder, "lib"))
+            rm(self, "*.a", os.path.join(self.folders.package, "lib"))
+            rm(self, "*-static.lib", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
         libcxx = stdcpp_library(self)

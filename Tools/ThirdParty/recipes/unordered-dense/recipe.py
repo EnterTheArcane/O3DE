@@ -20,17 +20,17 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/martinus/unordered_dense/archive/v4.8.1.tar.gz",
             sha256="9f7202ec6d8353932ef865d33f5872e4b7a1356e9032da7cd09c3a0c5bb2b7de",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package_id(self):
         self.info.clear()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         copy(
-            self, "*.h", src=os.path.join(self.source_folder, "include", "ankerl"),
-            dst=os.path.join(self.package_folder, "include", "ankerl"))
+            self, "*.h", src=os.path.join(self.folders.source, "include", "ankerl"),
+            dst=os.path.join(self.folders.package, "include", "ankerl"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "unordered_dense")

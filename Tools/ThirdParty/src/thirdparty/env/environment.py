@@ -592,7 +592,7 @@ class EnvVars:
             else:
                 filename = filename + (".bat" if is_bat else ".sh")
 
-        path = os.path.join(self._recipe.generators_folder, filename)
+        path = os.path.join(self._recipe.folders.generators, filename)
         if is_bat:
             self.save_bat(path)
         elif is_ps1:
@@ -817,7 +817,7 @@ def create_env_script(recipe, content, filename, scope="build"):
         filename (str): The name of the file to be created in the generators folder.
         scope (str): The scope or environment group for which the script will be registered.
     """
-    path = os.path.join(recipe.generators_folder, filename)
+    path = os.path.join(recipe.folders.generators, filename)
     save(path, content)
 
     if scope:
@@ -862,15 +862,15 @@ def generate_aggregated_env(recipe):
         shs = []
         ps1s = []
         for env_script in env_scripts:
-            path = os.path.join(recipe.generators_folder, env_script)
+            path = os.path.join(recipe.folders.generators, env_script)
             # Only the .bat and .ps1 are made relative to current script
             if env_script.endswith(".bat"):
-                path = os.path.relpath(path, recipe.generators_folder)
+                path = os.path.relpath(path, recipe.folders.generators)
                 bats.append("%~dp0/"+path)
             elif env_script.endswith(".sh"):
                 shs.append(subsystem_path(subsystem, path))
             elif env_script.endswith(".ps1"):
-                path = os.path.relpath(path, recipe.generators_folder)
+                path = os.path.relpath(path, recipe.folders.generators)
                 # This $PSScriptRoot uses the current script directory
                 ps1s.append("$PSScriptRoot/"+path)
         if shs:
@@ -884,9 +884,9 @@ def generate_aggregated_env(recipe):
                 return content
             filename = "env_{}.sh".format(group)
             generated.append(filename)
-            save(os.path.join(recipe.generators_folder, filename), sh_content(shs))
+            save(os.path.join(recipe.folders.generators, filename), sh_content(shs))
             if not deactivation_mode:
-                save(os.path.join(recipe.generators_folder, "deactivate_{}".format(filename)),
+                save(os.path.join(recipe.folders.generators, "deactivate_{}".format(filename)),
                      sh_content(deactivates(shs)))
         if bats:
             filename = f"env_{group}.bat"
@@ -923,9 +923,9 @@ def generate_aggregated_env(recipe):
                 return "\r\n".join(content)
 
             generated.append(filename)
-            save(os.path.join(recipe.generators_folder, filename), bat_content(bats))
+            save(os.path.join(recipe.folders.generators, filename), bat_content(bats))
             if not deactivation_mode:
-                save(os.path.join(recipe.generators_folder, deactivate_filename),
+                save(os.path.join(recipe.folders.generators, deactivate_filename),
                      bat_content(deactivates(bats)))
 
         if ps1s:
@@ -941,9 +941,9 @@ def generate_aggregated_env(recipe):
                 return content
             filename = "env_{}.ps1".format(group)
             generated.append(filename)
-            save(os.path.join(recipe.generators_folder, filename), ps1_content(ps1s))
+            save(os.path.join(recipe.folders.generators, filename), ps1_content(ps1s))
             if not deactivation_mode:
-                save(os.path.join(recipe.generators_folder, "deactivate_{}".format(filename)),
+                save(os.path.join(recipe.folders.generators, "deactivate_{}".format(filename)),
                      ps1_content(deactivates(ps1s)))
     if generated:
         recipe.output.highlight("Generating aggregated env files")
@@ -955,7 +955,7 @@ def _relativize_paths(recipe, placeholder):
     if not abs_base_path or not os.path.isabs(abs_base_path):
         return None, None
     abs_base_path = os.path.join(abs_base_path, "")  # For the trailing / to dissambiguate matches
-    generators_folder = recipe.generators_folder
+    generators_folder = recipe.folders.generators
     try:
         rel_path = os.path.relpath(abs_base_path, generators_folder)
     except ValueError:  # In case the unit in Windows is different, path cannot be made relative

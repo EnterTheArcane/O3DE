@@ -87,7 +87,7 @@ class Recipe(RecipeBase):
             self,
             url="https://download.sourceforge.net/libpng/libpng-1.6.58.tar.xz",
             sha256="28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -119,17 +119,17 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
         if self.options.shared:
-            rm(self, "*[!.dll]", os.path.join(self.package_folder, "bin"))
+            rm(self, "*[!.dll]", os.path.join(self.folders.package, "bin"))
         else:
-            rmdir(self, os.path.join(self.package_folder, "bin"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "libpng"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rm(self, "*.cmake", os.path.join(self.package_folder, "lib", "cmake", "PNG"))
+            rmdir(self, os.path.join(self.folders.package, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "libpng"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rm(self, "*.cmake", os.path.join(self.folders.package, "lib", "cmake", "PNG"))
 
     def package_info(self):
         major_min_version = f"{Version(self.version).major}{Version(self.version).minor}"

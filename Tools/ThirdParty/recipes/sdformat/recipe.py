@@ -41,11 +41,11 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/gazebosim/sdformat/archive/refs/tags/sdformat16_16.0.1.tar.gz",
             sha256="4fac898700afb2953af5f8ac6b0221e4d9bc1e460aac6d4b7a5c3699c456126c",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
-        tinyxml2_pkg = self.dependencies["tinyxml2"].package_folder.replace("\\", "/")
+        tinyxml2_pkg = self.dependencies["tinyxml2"].folders.package.replace("\\", "/")
         tinyxml2_lib = self.dependencies["tinyxml2"].cpp_info.libs[0]
 
         tc = CMakeToolchain(self)
@@ -87,7 +87,7 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 

@@ -62,7 +62,7 @@ class Recipe(RecipeBase):
             self,
             url="https://ftpmirror.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz",
             sha256="3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -89,7 +89,7 @@ class Recipe(RecipeBase):
             cc, lib, link = self._msvc_tools
             if cc.endswith("cl"):
                 cc = f"{cc} -nologo"
-            build_aux_path = os.path.join(self.source_folder, "build-aux")
+            build_aux_path = os.path.join(self.folders.source, "build-aux")
             lt_compile = unix_path(self, os.path.join(build_aux_path, "compile"))
             lt_ar = unix_path(self, os.path.join(build_aux_path, "ar-lib"))
             env.define("CC", f"{lt_compile} {cc}")
@@ -104,7 +104,7 @@ class Recipe(RecipeBase):
 
     def _apply_resource_patch(self):
         if self.settings.arch == "x86":
-            windres_options_path = os.path.join(self.source_folder, "windows", "windres-options")
+            windres_options_path = os.path.join(self.folders.source, "windows", "windres-options")
             self.output.info("Applying {} resource patch: {}".format(self.settings.arch, windres_options_path))
             replace_in_file(self, windres_options_path, '#   PACKAGE_VERSION_SUBMINOR', '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)
 
@@ -116,20 +116,20 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING.LIB", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING.LIB", self.folders.source, os.path.join(self.folders.package, "licenses"))
         autotools = Autotools(self)
         autotools.install()
-        rm(self, "*.la", os.path.join(self.package_folder, "lib"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         fix_apple_shared_install_name(self)
         if (is_msvc(self) or self._is_clang_cl) and self.options.shared:
             for import_lib in ["iconv", "charset"]:
-                dst = os.path.join(self.package_folder, "lib", f"{import_lib}.lib")
+                dst = os.path.join(self.folders.package, "lib", f"{import_lib}.lib")
                 if os.path.isfile(dst):
                     os.remove(dst)
                 rename(
-                    self, os.path.join(self.package_folder, "lib", f"{import_lib}.dll.lib"),
-                    os.path.join(self.package_folder, "lib", f"{import_lib}.lib"))
+                    self, os.path.join(self.folders.package, "lib", f"{import_lib}.dll.lib"),
+                    os.path.join(self.folders.package, "lib", f"{import_lib}.lib"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Iconv")

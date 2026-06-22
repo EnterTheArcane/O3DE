@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/zeux/pugixml/releases/download/v1.15/pugixml-1.15.tar.gz",
             sha256="655ade57fa703fb421c2eb9a0113b5064bddb145d415dd1f88c79353d90d511a",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -55,7 +55,7 @@ class Recipe(RecipeBase):
 
     def build(self):
         if not self.options.header_only:
-            header_file = os.path.join(self.source_folder, "src", "pugiconfig.hpp")
+            header_file = os.path.join(self.folders.source, "src", "pugiconfig.hpp")
             # For the library build mode, options applied via change the configuration file
             if self.options.wchar_mode:
                 replace_in_file(self, header_file, "// #define PUGIXML_WCHAR_MODE", "#define PUGIXML_WCHAR_MODE", strict=False)
@@ -66,17 +66,17 @@ class Recipe(RecipeBase):
             cmake.build()
 
     def package(self):
-        readme_contents = load(self, os.path.join(self.source_folder, "readme.txt"))
+        readme_contents = load(self, os.path.join(self.folders.source, "readme.txt"))
         license_contents = readme_contents[readme_contents.find("This library is"):]
-        save(self, os.path.join(self.package_folder, "licenses", "LICENSE"), license_contents)
+        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), license_contents)
         if self.options.header_only:
-            source_dir = os.path.join(self.source_folder, "src")
-            copy(self, "*", src=source_dir, dst=os.path.join(self.package_folder, "include"))
+            source_dir = os.path.join(self.folders.source, "src")
+            copy(self, "*", src=source_dir, dst=os.path.join(self.folders.package, "include"))
         else:
             cmake = CMake(self)
             cmake.install()
-            rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "pugixml")

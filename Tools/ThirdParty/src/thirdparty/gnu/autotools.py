@@ -27,7 +27,7 @@ class Autotools:
         """
         self._recipe = recipe
 
-        toolchain_file_content = load_toolchain_args(self._recipe.generators_folder,
+        toolchain_file_content = load_toolchain_args(self._recipe.folders.generators,
                                                      namespace=namespace)
 
         self._configure_args = toolchain_file_content.get("configure_args")
@@ -40,12 +40,12 @@ class Autotools:
 
         :param args: List of arguments to use for the ``configure`` call.
         :param build_script_folder: Subfolder where the `configure` script is located. If not specified
-                                    recipe.source_folder is used.
+                                    recipe.folders.source is used.
         """
         # http://jingfenghanmax.blogspot.com.es/2010/09/configure-with-host-target-and-build.html
         # https://gcc.gnu.org/onlinedocs/gccint/Configure-Terms.html
-        script_folder = os.path.join(self._recipe.source_folder, build_script_folder) \
-            if build_script_folder else self._recipe.source_folder
+        script_folder = os.path.join(self._recipe.folders.source, build_script_folder) \
+            if build_script_folder else self._recipe.folders.source
 
         configure_args = []
         configure_args.extend(args or [])
@@ -92,7 +92,7 @@ class Autotools:
         This is just an "alias" of ``self.make(target="install")`` or ``self.make(target="install-strip")``
 
         :param args: (Optional, Defaulted to ``None``): List of arguments to use for the
-                     ``make`` call. By default an argument ``DESTDIR=unix_path(self.package_folder)``
+                     ``make`` call. By default an argument ``DESTDIR=unix_path(self.folders.package)``
                      is added to the call if the passed value is ``None``. See more information about
                      :ref:`tools.microsoft.unix_path() function<recipe_tools_microsoft_unix_path>`
         :param target: (Optional, Defaulted to ``None``): Choose which target to install.
@@ -109,7 +109,7 @@ class Autotools:
         args = args if args else []
         str_args = " ".join(args)
         if "DESTDIR=" not in str_args:
-            args.insert(0, "DESTDIR={}".format(unix_path(self._recipe, self._recipe.package_folder)))
+            args.insert(0, "DESTDIR={}".format(unix_path(self._recipe, self._recipe.folders.package)))
         self.make(target=target, args=args, makefile=makefile)
 
     def autoreconf(self, build_script_folder=None, args=None):
@@ -119,10 +119,10 @@ class Autotools:
         :param args: (Optional, Defaulted to ``None``): List of arguments to use for the
                      ``autoreconf`` call.
         :param build_script_folder: Subfolder where the `configure` script is located. If not specified
-                                    recipe.source_folder is used.
+                                    recipe.folders.source is used.
         """
-        script_folder = os.path.join(self._recipe.source_folder, build_script_folder) \
-            if build_script_folder else self._recipe.source_folder
+        script_folder = os.path.join(self._recipe.folders.source, build_script_folder) \
+            if build_script_folder else self._recipe.folders.source
         args = args or []
         command = join_arguments(["autoreconf", self._autoreconf_args, cmd_args_to_string(args)])
         with chdir(self, script_folder):

@@ -66,10 +66,10 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/v1.4.352.tar.gz",
             sha256="126d6e5ad7becf0e4fd40e757709cfabe3bc61104cc1fc95595b510bef3f37eb",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)"]:
-            replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), text, "")
+            replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), text, "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -97,14 +97,14 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
         if not self.settings.os == "Windows":
             # Move json files to res, but keep in mind to preserve relative
             # path between module library and manifest json file
-            rename(self, os.path.join(self.package_folder, "share"), os.path.join(self.package_folder, "res"))
+            rename(self, os.path.join(self.folders.package, "share"), os.path.join(self.folders.package, "res"))
         # There is no need to use fix_apple_shared_install_name(self) as the .dylib created
         # is a BUNDLE. Running otool -hv libVkLayer_khronos_validation.dylib shows filetype=BUNDLE
 
@@ -119,7 +119,7 @@ class Recipe(RecipeBase):
 
         # We need to expose this VK_LAYER_PATH explicitly on the runtime environment
         manifest_subfolder = "bin" if self.settings.os == "Windows" else os.path.join("res", "vulkan", "explicit_layer.d")
-        vk_layer_path = os.path.join(self.package_folder, manifest_subfolder)
+        vk_layer_path = os.path.join(self.folders.package, manifest_subfolder)
         self.runenv_info.prepend_path("VK_LAYER_PATH", vk_layer_path)
 
         if self.settings.os == "Android":

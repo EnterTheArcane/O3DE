@@ -25,11 +25,11 @@ class Recipe(RecipeBase):
             self,
             url=f"https://github.com/rive-app/rive-runtime/archive/refs/tags/runtime-v{self.version}.tar.gz",
             sha256="869dadb8157fd062a8a745aa5e1db4d33ada6d8591e6b9a3d8eb54544fac3f15",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True,
         )
 
-        deps_dir = os.path.join(self.source_folder, "dependencies")
+        deps_dir = os.path.join(self.folders.source, "dependencies")
 
         # rive-app fork of harfbuzz (branch rive_13.1.1, pinned to commit)
         get(
@@ -80,7 +80,7 @@ class Recipe(RecipeBase):
         _arch_map = {"X64": "x64", "ARM": "arm64"}
 
         premake = Premake(self)
-        premake.luafile = os.path.join(self.source_folder, "premake5_v2.lua").replace("\\", "/")
+        premake.luafile = os.path.join(self.folders.source, "premake5_v2.lua").replace("\\", "/")
         if premake.action == "vs2026":
             premake.action = "vs2022"
         premake.arguments["config"] = config
@@ -93,8 +93,8 @@ class Recipe(RecipeBase):
 
         # rive_build_config.lua is found via PREMAKE_PATH; dependency source via DEPENDENCIES
         env = Environment()
-        env.define("PREMAKE_PATH", os.path.join(self.source_folder, "build").replace("\\", "/"))
-        env.define("DEPENDENCIES", os.path.join(self.source_folder, "dependencies").replace("\\", "/"))
+        env.define("PREMAKE_PATH", os.path.join(self.folders.source, "build").replace("\\", "/"))
+        env.define("DEPENDENCIES", os.path.join(self.folders.source, "dependencies").replace("\\", "/"))
 
         # configure() injects --arch from RECIPE_TO_PREMAKE_ARCH when the recipe toolchain file exists,
         # but rive uses its own --arch option with different values (x64 not x86_64).
@@ -110,12 +110,12 @@ class Recipe(RecipeBase):
         premake.build(workspace="rive", targets=["rive"], configuration="default")
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         copy(
-            self, "*.h", src=os.path.join(self.source_folder, "include"),
-            dst=os.path.join(self.package_folder, "include"), keep_path=True)
-        copy(self, "*.a", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
-        copy(self, "*.lib", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
+            self, "*.h", src=os.path.join(self.folders.source, "include"),
+            dst=os.path.join(self.folders.package, "include"), keep_path=True)
+        copy(self, "*.a", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
+        copy(self, "*.lib", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "rive")

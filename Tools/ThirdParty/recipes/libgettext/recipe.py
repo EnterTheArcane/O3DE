@@ -68,7 +68,7 @@ class Recipe(RecipeBase):
             self,
             url="https://ftpmirror.gnu.org/gnu/gettext/gettext-0.26.tar.gz",
             sha256="39acf4b0371e9b110b60005562aace5b3631fed9b1bb9ecccfc7f56e58bb1d7f",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -89,7 +89,7 @@ class Recipe(RecipeBase):
             "--disable-libasprintf",
             "--disable-curses",
             "--disable-threads" if self.options.threads == "disabled" else ("--enable-threads=" + str(self.options.threads)),
-            f"--with-libiconv-prefix={unix_path(self, self.dependencies['libiconv'].package_folder)}",
+            f"--with-libiconv-prefix={unix_path(self, self.dependencies['libiconv'].folders.package)}",
         ]
 
         if is_apple_os(self):
@@ -198,16 +198,16 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def package(self):
-        dest_lib_dir = os.path.join(self.package_folder, "lib")
-        dest_runtime_dir = os.path.join(self.package_folder, "bin")
-        dest_include_dir = os.path.join(self.package_folder, "include")
-        copy(self, "COPYING", self.source_folder, os.path.join(self.package_folder, "licenses"))
-        copy(self, "*gnuintl*.dll", self.build_folder, dest_runtime_dir, keep_path=False)
-        copy(self, "*gnuintl*.lib", self.build_folder, dest_lib_dir, keep_path=False)
-        copy(self, "*gnuintl*.a", self.build_folder, dest_lib_dir, keep_path=False)
-        copy(self, "*gnuintl*.so*", self.build_folder, dest_lib_dir, keep_path=False)
-        copy(self, "*gnuintl*.dylib", self.build_folder, dest_lib_dir, keep_path=False)
-        copy(self, "*libgnuintl.h", self.build_folder, dest_include_dir, keep_path=False)
+        dest_lib_dir = os.path.join(self.folders.package, "lib")
+        dest_runtime_dir = os.path.join(self.folders.package, "bin")
+        dest_include_dir = os.path.join(self.folders.package, "include")
+        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "*gnuintl*.dll", self.folders.build, dest_runtime_dir, keep_path=False)
+        copy(self, "*gnuintl*.lib", self.folders.build, dest_lib_dir, keep_path=False)
+        copy(self, "*gnuintl*.a", self.folders.build, dest_lib_dir, keep_path=False)
+        copy(self, "*gnuintl*.so*", self.folders.build, dest_lib_dir, keep_path=False)
+        copy(self, "*gnuintl*.dylib", self.folders.build, dest_lib_dir, keep_path=False)
+        copy(self, "*libgnuintl.h", self.folders.build, dest_include_dir, keep_path=False)
         rename(self, os.path.join(dest_include_dir, "libgnuintl.h"), os.path.join(dest_include_dir, "libintl.h"))
         fix_msvc_libname(self)
         fix_apple_shared_install_name(self)
@@ -227,7 +227,7 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.package_folder, libdir)
+            full_folder = os.path.join(recipe.folders.package, libdir)
             for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":

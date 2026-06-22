@@ -1296,7 +1296,7 @@ class OutputDirsBlock(Block):
         return elements[0] if elements else None
 
     def context(self):
-        pf = self._recipe.package_folder
+        pf = self._recipe.folders.package
         return {"package_folder": pf.replace("\\", "/") if pf else None,
                 "default_bin": self._get_cpp_info_value("bindirs"),
                 "default_lib": self._get_cpp_info_value("libdirs"),

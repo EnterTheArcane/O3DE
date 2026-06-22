@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/fmtlib/fmt/releases/download/12.1.0/fmt-12.1.0.zip",
             sha256="695fd197fa5aff8fc67b5f2bbc110490a875cdf7a41686ac8512fb480fa8ada7",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -71,16 +71,16 @@ class Recipe(RecipeBase):
             cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, pattern="LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         if self.options.header_only:
-            copy(self, pattern="*.h", src=os.path.join(self.source_folder, "include"), dst=os.path.join(self.package_folder, "include"))
+            copy(self, pattern="*.h", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include"))
         else:
             cmake = CMake(self)
             cmake.install()
-            rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.package_folder, "res"))
-            rmdir(self, os.path.join(self.package_folder, "share"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+            rmdir(self, os.path.join(self.folders.package, "res"))
+            rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         target = "fmt-header-only" if self.options.header_only else "fmt"

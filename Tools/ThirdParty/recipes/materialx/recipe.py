@@ -34,13 +34,13 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/AcademySoftwareFoundation/MaterialX/archive/refs/tags/v1.39.5.tar.gz",
             sha256="c0d739b70a36f6f72888a0e8e66db5c83ae87c40737cc9b51c108166804f3a3b",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         replace_in_file(
-            self, os.path.join(self.source_folder, "CMakeLists.txt"),
+            self, os.path.join(self.folders.source, "CMakeLists.txt"),
             "set(CMAKE_CXX_STANDARD", "# set(CMAKE_CXX_STANDARD")
         replace_in_file(
-            self, os.path.join(self.source_folder, "CMakeLists.txt"),
+            self, os.path.join(self.folders.source, "CMakeLists.txt"),
             "set(CMAKE_POSITION_INDEPENDENT_CODE", "# set(CMAKE_POSITION_INDEPENDENT_CODE")
 
     def generate(self):
@@ -60,11 +60,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "MaterialX")

@@ -40,7 +40,7 @@ class Recipe(RecipeBase):
             self,
             url="http://www.bytereef.org/software/mpdecimal/releases/mpdecimal-4.0.0.tar.gz",
             sha256="942445c3245b22730fd41a67a7c5c231d11cb1b9936b9c0f76334fb7d0b4468c",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -159,7 +159,7 @@ class Recipe(RecipeBase):
 
     def package(self):
         pkg_dir = self.package_path
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=pkg_dir / "licenses")
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=pkg_dir / "licenses")
         if is_msvc(self):
             distfolder = self._dist_folder
             copy(self, "vc*.h", src=self.source_path / "libmpdec", dst=pkg_dir / "include")

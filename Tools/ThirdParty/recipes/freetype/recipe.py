@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
             self,
             url="https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz",
             sha256="36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         # Do not accidentally enable dependencies we have disabled
-        cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
+        cmakelists = os.path.join(self.folders.source, "CMakeLists.txt")
         if_harfbuzz_found = "if (HarfBuzz_FOUND)"
         replace_in_file(self, cmakelists, "find_package(HarfBuzz ${HARFBUZZ_MIN_VERSION})", "", strict=False)
         replace_in_file(self, cmakelists, if_harfbuzz_found, "if(0)", strict=False)
@@ -91,7 +91,7 @@ class Recipe(RecipeBase):
             "set(BROTLIDEC_LIBRARIES \"brotli::brotli\")",
             strict=False)
 
-        config_h = os.path.join(self.source_folder, "include", "freetype", "config", "ftoption.h")
+        config_h = os.path.join(self.folders.source, "include", "freetype", "config", "ftoption.h")
         if self.options.subpixel:
             replace_in_file(self, config_h, "/* #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING */", "#define FT_CONFIG_OPTION_SUBPIXEL_RENDERING", strict=False)
 
@@ -102,10 +102,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def _make_freetype_config(self, version):
-        freetype_config_in = os.path.join(self.source_folder, "builds", "unix", "freetype-config.in")
-        if not os.path.isdir(os.path.join(self.package_folder, "bin")):
-            os.makedirs(os.path.join(self.package_folder, "bin"))
-        freetype_config = os.path.join(self.package_folder, "bin", "freetype-config")
+        freetype_config_in = os.path.join(self.folders.source, "builds", "unix", "freetype-config.in")
+        if not os.path.isdir(os.path.join(self.folders.package, "bin")):
+            os.makedirs(os.path.join(self.folders.package, "bin"))
+        freetype_config = os.path.join(self.folders.package, "bin", "freetype-config")
         save(self, freetype_config, load(self, freetype_config_in))
         libs = "-lfreetyped" if self.settings.build_type == "Debug" else "-lfreetype"
         staticlibs = f"-lm {libs}" if self.settings.os == "Linux" else libs
@@ -131,12 +131,12 @@ class Recipe(RecipeBase):
                         """).format(version=version, staticlibs=staticlibs))
 
     def _extract_libtool_version(self):
-        conf_raw = load(self, os.path.join(self.source_folder, "builds", "unix", "configure.raw"))
+        conf_raw = load(self, os.path.join(self.folders.source, "builds", "unix", "configure.raw"))
         return next(re.finditer(r"^version_info='([0-9:]+)'", conf_raw, flags=re.M)).group(1).replace(":", ".")
 
     @property
     def _libtool_version_txt(self):
-        return os.path.join(self.package_folder, "res", "freetype-libtool-version.txt")
+        return os.path.join(self.folders.package, "res", "freetype-libtool-version.txt")
 
     def package(self):
         cmake = CMake(self)
@@ -146,19 +146,19 @@ class Recipe(RecipeBase):
         save(self, self._libtool_version_txt, libtool_version)
         self._make_freetype_config(libtool_version)
 
-        doc_folder = os.path.join(self.source_folder, "docs")
-        license_folder = os.path.join(self.package_folder, "licenses")
+        doc_folder = os.path.join(self.folders.source, "docs")
+        license_folder = os.path.join(self.folders.package, "licenses")
         copy(self, "FTL.TXT", doc_folder, license_folder)
         copy(self, "GPLv2.TXT", doc_folder, license_folder)
         copy(self, "LICENSE.TXT", doc_folder, license_folder)
 
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_vars_rel_path)
+            os.path.join(self.folders.package, self._module_vars_rel_path)
         )
         self._create_cmake_module_alias_targets(
-            os.path.join(self.package_folder, self._module_target_rel_path),
+            os.path.join(self.folders.package, self._module_target_rel_path),
             {"freetype": "Freetype::Freetype"}
         )
 
@@ -223,5 +223,5 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("system_package_version", libtool_version)
 
         self.cpp_info.set_property("component_version", libtool_version)
-        freetype_config = os.path.join(self.package_folder, "bin", "freetype-config")
+        freetype_config = os.path.join(self.folders.package, "bin", "freetype-config")
         self._chmod_plus_x(freetype_config)

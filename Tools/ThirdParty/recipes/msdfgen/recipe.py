@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.13.tar.gz",
             sha256="93cd1ad8918c1a78c5c96e82d4f4c77f0eb86c2e7e8579a0967e54196c4b7167",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -71,11 +71,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "msdfgen")

@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/SPIRV-Headers/archive/fe44b2002bf7871e2e92fc001bc9f6e09f92194f.tar.gz",
             sha256="78a19a22810130602110761b7eaa47e49b778ea61bc7b05377c9794f54d2a426",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -36,11 +36,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "SPIRV-Headers")

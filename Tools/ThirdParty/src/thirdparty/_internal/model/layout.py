@@ -47,10 +47,10 @@ class Folders:
         self._base_pkg_metadata = None
         self._immutable_package_folder = None
 
-        self.source = ""
-        self.build = ""
-        self.package = ""
-        self.generators = ""
+        self._source = ""
+        self._build = ""
+        self._package = ""
+        self._generators = ""
         # Relative location of the project root, if the recipe is not in that project root, but
         # in a subfolder: e.g: If the recipe is in a subfolder then self.root = ".."
         self.root = None
@@ -84,13 +84,13 @@ class Folders:
         self._base_pkg_metadata = output_folder or base_folder
 
     @property
-    def source_folder(self):
+    def source(self):
         if self._base_source is None:
             return None
-        if not self.source:
+        if not self._source:
             return os.path.normpath(self._base_source)
 
-        return os.path.normpath(os.path.join(self._base_source, self.source))
+        return os.path.normpath(os.path.join(self._base_source, self._source))
 
     @property
     def base_source(self):
@@ -100,22 +100,22 @@ class Folders:
         self._base_source = folder
 
     @property
-    def build_folder(self):
+    def build(self):
         if self._base_build is None:
             return None
-        if not self.build:
+        if not self._build:
             return os.path.normpath(self._base_build)
-        return os.path.normpath(os.path.join(self._base_build, self.build))
+        return os.path.normpath(os.path.join(self._base_build, self._build))
 
     @property
-    def recipe_metadata_folder(self):
+    def recipe_metadata(self):
         return self._base_recipe_metadata
 
     def set_base_recipe_metadata(self, folder):
         self._base_recipe_metadata = folder
 
     @property
-    def package_metadata_folder(self):
+    def package_metadata(self):
         return self._base_pkg_metadata
 
     def set_base_pkg_metadata(self, folder):
@@ -136,25 +136,25 @@ class Folders:
         self._base_package = folder
 
     @property
-    def package_folder(self):
+    def package(self):
         """For the cache, the package folder is only the base"""
         return self._base_package
 
     def set_finalize_folder(self, folder):
-        self._immutable_package_folder = self.package_folder
+        self._immutable_package_folder = self.package
         self.set_base_package(folder)
 
     @property
-    def immutable_package_folder(self):
-        return self._immutable_package_folder or self.package_folder
+    def immutable_package(self):
+        return self._immutable_package_folder or self.package
 
     @property
-    def generators_folder(self):
+    def generators(self):
         if self._base_generators is None:
             return None
-        if not self.generators:
+        if not self._generators:
             return os.path.normpath(self._base_generators)
-        return os.path.normpath(os.path.join(self._base_generators, self.generators))
+        return os.path.normpath(os.path.join(self._base_generators, self._generators))
 
     def set_base_generators(self, folder):
         self._base_generators = folder
@@ -172,3 +172,11 @@ class Folders:
 
     def set_base_export_sources(self, folder):
         self._base_export_sources = folder
+
+    @property
+    def export(self):
+        return self._base_export
+
+    @property
+    def export_sources(self):
+        return self._base_export_sources

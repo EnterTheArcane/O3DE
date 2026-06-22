@@ -40,7 +40,7 @@ class Recipe(RecipeBase):
             self,
             url="https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz",
             sha256="78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -84,19 +84,19 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"), ignore_case=True, keep_path=False)
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"), ignore_case=True, keep_path=False)
         cmake = CMake(self)
         cmake.install()
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         for header in ["win32config.h", "wsockcompat.h"]:
             copy(
-                self, pattern=header, src=os.path.join(self.source_folder, "include"),
-                dst=os.path.join(self.package_folder, "include", "libxml2"), keep_path=False)
+                self, pattern=header, src=os.path.join(self.folders.source, "include"),
+                dst=os.path.join(self.folders.package, "include", "libxml2"), keep_path=False)
         self._create_cmake_module_variables(
-            os.path.join(self.package_folder, self._module_file_rel_path)
+            os.path.join(self.folders.package, self._module_file_rel_path)
         )
 
     def _create_cmake_module_variables(self, module_file):

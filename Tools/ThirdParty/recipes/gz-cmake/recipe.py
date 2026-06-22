@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/gazebosim/gz-cmake/archive/refs/tags/gz-cmake5_5.1.1.tar.gz",
             sha256="5424e481b765e7e88347c167e87b1c89f152ded2f8bbc7f24c7559ea3694f83f",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -36,7 +36,7 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 

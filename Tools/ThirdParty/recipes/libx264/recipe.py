@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
             self,
             url="https://code.videolan.org/videolan/x264/-/archive/0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee/x264-0480cb05fa188d37ae87e8f4fd8f1aea3711f7ee.tar.bz2",
             sha256="f05c59f2e83d494c36307025dca2d3afc6b4d185f3a3453d06cc4fecd7094057",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -86,7 +86,7 @@ class Recipe(RecipeBase):
 
         if self._with_nasm:
             env = Environment()
-            env.define("AS", unix_path(self, os.path.join(self.dependencies.build["nasm"].package_folder, "bin", "nasm{}".format(".exe" if self.settings.os == "Windows" else ""))))
+            env.define("AS", unix_path(self, os.path.join(self.dependencies.build["nasm"].folders.package, "bin", "nasm{}".format(".exe" if self.settings.os == "Windows" else ""))))
             env.vars(self).save_script("buildenv_nasm")
 
         if is_msvc(self):
@@ -113,20 +113,20 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        with chdir(self, self.source_folder):
+        with chdir(self, self.folders.source):
             autotools = Autotools(self)
             autotools.configure()
             autotools.make()
 
     def package(self):
-        copy(self, pattern="COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        with chdir(self, self.source_folder):
+        copy(self, pattern="COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        with chdir(self, self.folders.source):
             autotools = Autotools(self)
             autotools.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         if is_msvc(self):
             ext = ".dll.lib" if self.options.shared else ".lib"
-            libdir = os.path.join(self.package_folder, "lib")
+            libdir = os.path.join(self.folders.package, "lib")
             rename(
                 self, os.path.join(libdir, f"libx264{ext}"),
                 os.path.join(libdir, "x264.lib"))

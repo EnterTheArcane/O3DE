@@ -121,7 +121,7 @@ class TargetConfigurationTemplate2:
         # fallback to consumer configuration if it doesn't have build_type
         config = self._recipe.settings.get_safe("build_type", self._cmakedeps.configuration)
         config = config.upper() if config else None
-        pkg_folder = self._recipe.package_folder.replace("\\", "/")
+        pkg_folder = self._recipe.folders.package.replace("\\", "/")
         config_folder = f"_{config}" if config else ""
         build = "_BUILD" if self._recipe.context == CONTEXT_BUILD else ""
         pkg_folder_var = f"{pkg_name}_PACKAGE_FOLDER{config_folder}{build}"

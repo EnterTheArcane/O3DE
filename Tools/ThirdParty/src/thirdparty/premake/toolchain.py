@@ -247,7 +247,7 @@ class PremakeToolchain:
         binary paths, configuration settings and compiler/linker flags based on toolchain
         configuration.
         """
-        premake_recipe_deps = Path(self._recipe.generators_folder) / PREMAKE_ROOT_FILE
+        premake_recipe_deps = Path(self._recipe.folders.generators) / PREMAKE_ROOT_FILE
         cppstd = self._recipe.settings.get_safe("compiler.cppstd")
         if cppstd:
             # See premake possible cppstd values: https://premake.github.io/docs/cppdialect/
@@ -276,7 +276,7 @@ class PremakeToolchain:
 
         content = Template(self._premake_file_template, trim_blocks=True, lstrip_blocks=True).render(
             # Pass posix path for better cross-platform compatibility in Lua
-            build_folder=Path(self._recipe.build_folder).as_posix(),
+            build_folder=Path(self._recipe.folders.build).as_posix(),
             has_recipe_deps=premake_recipe_deps.exists(),
             cppstd=cppstd,
             cstd=self._recipe.settings.get_safe("compiler.cstd"),
@@ -290,7 +290,7 @@ class PremakeToolchain:
         )
         save(
             self,
-            os.path.join(self._recipe.generators_folder, self.filename),
+            os.path.join(self._recipe.folders.generators, self.filename),
             content,
         )
         # Generate VCVars if using MSVC

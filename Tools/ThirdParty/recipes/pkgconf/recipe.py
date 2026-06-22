@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
             self,
             url="https://distfiles.ariadne.space/pkgconf/pkgconf-2.5.1.tar.xz",
             sha256="cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def _patch_sources(self):
@@ -52,11 +52,11 @@ class Recipe(RecipeBase):
 
         if not self.options.get_safe("shared", False):
             replace_in_file(
-                self, os.path.join(self.source_folder, "meson.build"),
+                self, os.path.join(self.folders.source, "meson.build"),
                 "'-DLIBPKGCONF_EXPORT'",
                 "'-DPKGCONFIG_IS_STATIC'", strict=False)
             replace_in_file(
-                self, os.path.join(self.source_folder, "meson.build"),
+                self, os.path.join(self.folders.source, "meson.build"),
                 "project('pkgconf', 'c',",
                 "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)
 
@@ -78,29 +78,29 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
 
         meson = Meson(self)
         meson.install()
 
         if is_msvc(self):
-            rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+            rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
             if self.options.enable_lib and not self.options.shared:
-                rm(self, "pkgconf.lib", os.path.join(self.package_folder, "lib"))
+                rm(self, "pkgconf.lib", os.path.join(self.folders.package, "lib"))
                 rename(
-                    self, os.path.join(self.package_folder, "lib", "libpkgconf.a"),
-                    os.path.join(self.package_folder, "lib", "pkgconf.lib"), )
+                    self, os.path.join(self.folders.package, "lib", "libpkgconf.a"),
+                    os.path.join(self.folders.package, "lib", "pkgconf.lib"), )
 
         if not self.options.enable_lib:
-            rmdir(self, os.path.join(self.package_folder, "lib"))
-            rmdir(self, os.path.join(self.package_folder, "include"))
+            rmdir(self, os.path.join(self.folders.package, "lib"))
+            rmdir(self, os.path.join(self.folders.package, "include"))
 
-        rmdir(self, os.path.join(self.package_folder, "share", "man"))
+        rmdir(self, os.path.join(self.folders.package, "share", "man"))
         copy(
-            self, "*", src=os.path.join(self.package_folder, "share", "aclocal"),
-            dst=os.path.join(self.package_folder, "bin", "aclocal"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+            self, "*", src=os.path.join(self.folders.package, "share", "aclocal"),
+            dst=os.path.join(self.folders.package, "bin", "aclocal"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         if self.options.enable_lib:
@@ -113,13 +113,13 @@ class Recipe(RecipeBase):
             self.cpp_info.includedirs = []
             self.cpp_info.libdirs = []
 
-        bindir = os.path.join(self.package_folder, "bin")
+        bindir = os.path.join(self.folders.package, "bin")
 
         exesuffix = ".exe" if self.settings.os == "Windows" else ""
         pkg_config = os.path.join(bindir, "pkgconf" + exesuffix).replace("\\", "/")
         self.buildenv_info.define_path("PKG_CONFIG", pkg_config)
 
-        pkgconf_aclocal = os.path.join(self.package_folder, "bin", "aclocal")
+        pkgconf_aclocal = os.path.join(self.folders.package, "bin", "aclocal")
         self.buildenv_info.prepend_path("ACLOCAL_PATH", pkgconf_aclocal)
         # TODO: evaluate if `ACLOCAL_PATH` is enough and we can stop using `AUTOMAKE_RECIPE_INCLUDES`
         self.buildenv_info.prepend_path("AUTOMAKE_RECIPE_INCLUDES", pkgconf_aclocal)

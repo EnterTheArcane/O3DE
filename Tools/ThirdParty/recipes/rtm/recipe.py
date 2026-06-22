@@ -23,14 +23,14 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/nfrechette/rtm/archive/v2.3.1.tar.gz",
             sha256="a16fc698feca580533fa12c92fe7d1df4f341f807df7ec314274659fdfec11fb",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         copy(
-            self, "*.h", src=os.path.join(self.source_folder, "includes"),
-            dst=os.path.join(self.package_folder, "include"))
+            self, "*.h", src=os.path.join(self.folders.source, "includes"),
+            dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "rtm")

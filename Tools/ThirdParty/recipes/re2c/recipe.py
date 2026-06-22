@@ -25,7 +25,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/skvadrik/re2c/releases/download/4.5.1/re2c-4.5.1.tar.xz",
             sha256="ffea067c11aa668bcb42885be6e6cd000302000b7747d2bb213299ec66b7864e",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -42,23 +42,23 @@ class Recipe(RecipeBase):
     def package(self):
         copy(
             self, "LICENSE",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
+            src=self.folders.source,
+            dst=os.path.join(self.folders.package, "licenses"),
             keep_path=False)
         copy(
             self, "NO_WARRANTY",
-            src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"),
+            src=self.folders.source,
+            dst=os.path.join(self.folders.package, "licenses"),
             keep_path=False)
         copy(
             self, "*.re",
-            src=os.path.join(self.source_folder, "include"),
-            dst=os.path.join(self.package_folder, "include"),
+            src=os.path.join(self.folders.source, "include"),
+            dst=os.path.join(self.folders.package, "include"),
             keep_path=False)
 
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.frameworkdirs = []
@@ -66,5 +66,5 @@ class Recipe(RecipeBase):
         self.cpp_info.resdirs = []
         self.cpp_info.includedirs = []
 
-        include_dir = os.path.join(self.package_folder, "include")
+        include_dir = os.path.join(self.folders.package, "include")
         self.buildenv_info.define("RE2C_STDLIB_DIR", include_dir)

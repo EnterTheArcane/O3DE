@@ -100,54 +100,11 @@ class RecipeBase:
             self.virtualrunenv = True
 
         self.env_scripts = {}  # Accumulate the env scripts generated in order
-        self.system_requires = {}  # Read only, internal {"apt": []}
 
         # layout() method related variables:
         self.folders = Folders()
         self.cpp = Infos()
         self.layouts = Layouts()
-
-    def serialize(self):
-        result = {}
-
-        for a in ("name", "license", "win_bash", "win_bash_run",
-                  "default_options"):
-            v = getattr(self, a, None)
-            result[a] = v
-
-        result["version"] = str(self.version) if self.version is not None else None
-
-        settings = self.settings
-        if settings is not None:
-            result["settings"] = settings.serialize() if isinstance(settings, Settings) else list(settings)
-
-        result["options"] = self.options.serialize()
-        result["options_definitions"] = self.options.possible_values
-
-        if self.license is not None:
-            result["license"] = list(self.license) if not isinstance(self.license, str) else self.license
-
-        result["requires"] = self.requires.serialize()
-
-        if hasattr(self, "python_requires"):
-            result["python_requires"] = self.python_requires.serialize()
-        else:
-            result["python_requires"] = None
-        result["system_requires"] = self.system_requires
-
-        result["recipe_folder"] = self.recipe_folder
-        result["source_folder"] = self.source_folder
-        result["build_folder"] = self.build_folder
-        result["generators_folder"] = self.generators_folder
-        result["package_folder"] = self.package_folder
-        result["immutable_package_folder"] = self.immutable_package_folder
-
-        result["cpp_info"] = self.cpp_info.serialize()
-        result["conf_info"] = self.conf_info.serialize()
-        result["label"] = self.display_name
-        if self.info is not None:
-            result["info"] = self.info.serialize()
-        return result
 
     @property
     def output(self):
@@ -207,119 +164,34 @@ class RecipeBase:
         self.cpp.package = value
 
     @property
-    def source_folder(self):
-        """
-        The folder in which the source code lives. The path is built joining the base directory
-        (a cache directory when running in the cache or the ``output folder`` when running locally)
-        with the value of ``folders.source`` if declared in the ``layout()`` method.
-
-        :return: A string with the path to the source folder.
-        """
-        return self.folders.source_folder
-
-    @property
     def source_path(self) -> Path:
-        self.output.warning(
-            "Use of 'source_path' is deprecated, please use 'source_folder' instead",
-            warn_tag="deprecated")
-        assert self.source_folder is not None, "`source_folder` is `None`"
-        return Path(self.source_folder)
-
-    @property
-    def export_sources_folder(self):
-        """
-        The value depends on the method you access it:
-
-            - At ``source(self)``: Points to the base source folder (that means self.source_folder but
-              without taking into account the ``folders.source`` declared in the ``layout()`` method).
-              The declared `exports_sources` are copied to that base source folder always.
-            - At ``exports_sources(self)``: Points to the folder in the cache where the export sources
-              have to be copied.
-
-        :return: A string with the mentioned path.
-        """
-        return self.folders.base_export_sources
+        assert self.folders.source is not None, "`source` folder is `None`"
+        return Path(self.folders.source)
 
     @property
     def export_sources_path(self) -> Path:
-        self.output.warning(
-            "Use of 'export_sources_path' is deprecated, please use 'export_sources_folder' instead",
-            warn_tag="deprecated")
-        assert self.export_sources_folder is not None, "`export_sources_folder` is `None`"
-        return Path(self.export_sources_folder)
-
-    @property
-    def export_folder(self):
-        return self.folders.base_export
+        assert self.folders.export_sources is not None, "`export_sources` folder is `None`"
+        return Path(self.folders.export_sources)
 
     @property
     def export_path(self) -> Path:
-        self.output.warning(
-            "Use of 'export_path' is deprecated, please use 'export_folder' instead",
-            warn_tag="deprecated")
-        assert self.export_folder is not None, "`export_folder` is `None`"
-        return Path(self.export_folder)
-
-    @property
-    def build_folder(self):
-        """
-        The folder used to build the source code. The path is built joining the base directory (a cache
-        directory when running in the cache or the ``output folder`` when running locally) with
-        the value of ``folders.build`` if declared in the ``layout()`` method.
-
-        :return: A string with the path to the build folder.
-        """
-        return self.folders.build_folder
-
-    @property
-    def recipe_metadata_folder(self):
-        return self.folders.recipe_metadata_folder
-
-    @property
-    def package_metadata_folder(self):
-        return self.folders.package_metadata_folder
+        assert self.folders.export is not None, "`export` folder is `None`"
+        return Path(self.folders.export)
 
     @property
     def build_path(self) -> Path:
-        self.output.warning(
-            "Use of 'build_path' is deprecated, please use 'build_folder' instead",
-            warn_tag="deprecated")
-        assert self.build_folder is not None, "`build_folder` is `None`"
-        return Path(self.build_folder)
-
-    @property
-    def package_folder(self):
-        """
-        The folder to copy the final artifacts for the binary package. In the local cache a package
-        folder is created for every different package ID.
-
-        :return: A string with the path to the package folder.
-        """
-        return self.folders.base_package
-
-    @property
-    def immutable_package_folder(self):
-        return self.folders.immutable_package_folder
-
-    @property
-    def generators_folder(self):
-        return self.folders.generators_folder
+        assert self.folders.build is not None, "`build` folder is `None`"
+        return Path(self.folders.build)
 
     @property
     def package_path(self) -> Path:
-        self.output.warning(
-            "Use of 'package_path' is deprecated, please use 'package_folder' instead",
-            warn_tag="deprecated")
-        assert self.package_folder is not None, "`package_folder` is `None`"
-        return Path(self.package_folder)
+        assert self.folders.package is not None, "`package` folder is `None`"
+        return Path(self.folders.package)
 
     @property
     def generators_path(self) -> Path:
-        self.output.warning(
-            "Use of 'generators_path' is deprecated, please use 'generators_folder' instead",
-            warn_tag="deprecated")
-        assert self.generators_folder is not None, "`generators_folder` is `None`"
-        return Path(self.generators_folder)
+        assert self.folders.generators is not None, "`generators` folder is `None`"
+        return Path(self.folders.generators)
 
     def run(self, command: str, stdout=None, cwd=None, ignore_errors=False, env="", quiet=False,
             shell=True, scope="build", stderr=None):
@@ -349,7 +221,7 @@ class RecipeBase:
 
         env = [env] if env and isinstance(env, str) else (env or [])
         assert isinstance(env, list), "env argument to RecipeBase.run() should be a list"
-        envfiles_folder = self.generators_folder or os.getcwd()
+        envfiles_folder = self.folders.generators or os.getcwd()
         wrapped_cmd = command_env_wrapper(self, command, env, envfiles_folder=envfiles_folder,
                                           scope=scope)
         from thirdparty._internal.util.runners import run_command
@@ -372,7 +244,7 @@ class RecipeBase:
         return self.display_name
 
     def set_deploy_folder(self, deploy_folder):
-        self.cpp_info.deploy_base_folder(self.package_folder, deploy_folder)
-        self.buildenv_info.deploy_base_folder(self.package_folder, deploy_folder)
-        self.runenv_info.deploy_base_folder(self.package_folder, deploy_folder)
+        self.cpp_info.deploy_base_folder(self.folders.package, deploy_folder)
+        self.buildenv_info.deploy_base_folder(self.folders.package, deploy_folder)
+        self.runenv_info.deploy_base_folder(self.folders.package, deploy_folder)
         self.folders.set_base_package(deploy_folder)

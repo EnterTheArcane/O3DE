@@ -18,12 +18,12 @@ class Recipe(RecipeBase):
     @property
     def _nasm(self):
         suffix = "w.exe" if is_msvc(self) else ""
-        return os.path.join(self.package_folder, "bin", f"nasm{suffix}")
+        return os.path.join(self.folders.package, "bin", f"nasm{suffix}")
 
     @property
     def _ndisasm(self):
         suffix = "w.exe" if is_msvc(self) else ""
-        return os.path.join(self.package_folder, "bin", f"ndisasm{suffix}")
+        return os.path.join(self.folders.package, "bin", f"ndisasm{suffix}")
 
     def _chmod_plus_x(self, filename):
         if os.name == "posix":
@@ -50,7 +50,7 @@ class Recipe(RecipeBase):
             self,
             url="https://www.nasm.us/pub/nasm/releasebuilds/3.01/nasm-3.01.tar.xz",
             sha256="b7324cbe86e767b65f26f467ed8b12ad80e124e3ccb89076855c98e43a9eddd4",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -70,10 +70,10 @@ class Recipe(RecipeBase):
     def build(self):
         apply_patches(self)
         if is_msvc(self):
-            with chdir(self, self.source_folder):
+            with chdir(self, self.folders.source):
                 self.run(f'nmake /f {os.path.join("Mkfiles", "msvc.mak")}')
         else:
-            with chdir(self, self.source_folder):
+            with chdir(self, self.folders.source):
                 autotools = Autotools(self)
                 autotools.configure()
 
@@ -82,17 +82,17 @@ class Recipe(RecipeBase):
                 autotools.make()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         if is_msvc(self):
-            copy(self, pattern="*.exe", src=self.source_folder, dst=os.path.join(self.package_folder, "bin"), keep_path=False)
-            with chdir(self, os.path.join(self.package_folder, "bin")):
+            copy(self, pattern="*.exe", src=self.folders.source, dst=os.path.join(self.folders.package, "bin"), keep_path=False)
+            with chdir(self, os.path.join(self.folders.package, "bin")):
                 shutil.copy2("nasm.exe", "nasmw.exe")
                 shutil.copy2("ndisasm.exe", "ndisasmw.exe")
         else:
-            with chdir(self, self.source_folder):
+            with chdir(self, self.folders.source):
                 autotools = Autotools(self)
                 autotools.install()
-            rmdir(self, os.path.join(self.package_folder, "share"))
+            rmdir(self, os.path.join(self.folders.package, "share"))
         self._chmod_plus_x(self._nasm)
         self._chmod_plus_x(self._ndisasm)
 

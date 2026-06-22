@@ -40,7 +40,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/google/libultrahdr/archive/refs/tags/v1.4.0.tar.gz",
             sha256="e7e1252e2c44d8ed6b99ee0f67a3caf2d8a61c43834b13b1c3cd485574c03ab9",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -68,8 +68,8 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
 
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.libs = ['uhdr']

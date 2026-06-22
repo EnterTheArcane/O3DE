@@ -333,7 +333,7 @@ def chmod(recipe, path: str, read: Optional[bool] = None, write: Optional[bool] 
         :caption: Add execution permission to a packaged bash script
 
         from thirdparty.files.files import chmod
-        chmod(self, os.path.join(self.package_folder, "bin", "script.sh"), execute=True)
+        chmod(self, os.path.join(self.folders.package, "bin", "script.sh"), execute=True)
     """
     if read is None and write is None and execute is None:
         raise RecipeException("Could not change permission: At least one of the permissions should be set.")
@@ -586,15 +586,15 @@ def collect_libs(recipe, folder=None):
 
     :param recipe: The current recipe object. Always use ``self``.
     :param folder: (Optional, Defaulted to ``None``): String indicating the subfolder name inside
-           ``recipe.package_folder`` where the library files are.
+           ``recipe.folders.package`` where the library files are.
     :return: A list with the library names
     """
-    if not recipe.package_folder:
+    if not recipe.folders.package:
         return []
     if folder:
-        lib_folders = [os.path.join(recipe.package_folder, folder)]
+        lib_folders = [os.path.join(recipe.folders.package, folder)]
     else:
-        lib_folders = [os.path.join(recipe.package_folder, folder)
+        lib_folders = [os.path.join(recipe.folders.package, folder)
                        for folder in recipe.cpp_info.libdirs]
 
     ref_libs = {}

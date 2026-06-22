@@ -56,17 +56,17 @@ class Recipe(RecipeBase):
 
     def build(self):
         entry = _SOURCES[str(self.settings.os)][str(self.settings.arch)]
-        get(self, url=entry["url"], sha256=entry["sha256"], destination=self.build_folder, strip_root=True)
+        get(self, url=entry["url"], sha256=entry["sha256"], destination=self.folders.build, strip_root=True)
 
     def package(self):
         for subdir in ("bin", "include", "lib", "libexec", "share"):
-            src = os.path.join(self.build_folder, subdir)
+            src = os.path.join(self.folders.build, subdir)
             if os.path.isdir(src):
-                copy(self, "*", src=src, dst=os.path.join(self.package_folder, subdir))
+                copy(self, "*", src=src, dst=os.path.join(self.folders.package, subdir))
 
     def package_info(self):
-        bin_dir = os.path.join(self.package_folder, "bin")
+        bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)
-        self.buildenv_info.define_path("LLVM_DIR", self.package_folder)
-        self.buildenv_info.define_path("LIBCLANG_PATH", os.path.join(self.package_folder, "lib"))
-        self.conf_info.define("tools.llvm:dir", self.package_folder)
+        self.buildenv_info.define_path("LLVM_DIR", self.folders.package)
+        self.buildenv_info.define_path("LIBCLANG_PATH", os.path.join(self.folders.package, "lib"))
+        self.conf_info.define("tools.llvm:dir", self.folders.package)

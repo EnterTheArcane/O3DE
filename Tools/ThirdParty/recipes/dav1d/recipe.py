@@ -56,9 +56,9 @@ class Recipe(RecipeBase):
             self,
             url="https://downloads.videolan.org/videolan/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
             sha256="732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.source_folder, "meson.build"), "subdir('doc')", "")
+        replace_in_file(self, os.path.join(self.folders.source, "meson.build"), "subdir('doc')", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -80,12 +80,12 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         meson = Meson(self)
         meson.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "lib"))
         fix_apple_shared_install_name(self)
         fix_msvc_libname(self)
 
@@ -105,7 +105,7 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.package_folder, libdir)
+            full_folder = os.path.join(recipe.folders.package, libdir)
             for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":

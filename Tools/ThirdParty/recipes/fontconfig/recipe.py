@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
             self,
             url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.18.0/fontconfig-2.18.0.tar.xz",
             sha256="e7064a4725431ddba06ff8b971ec5a4b422e23b0169ce215747beedcb30e9073",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -75,13 +75,13 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
         meson = Meson(self)
         meson.install()
-        rm(self, "*.pdb", self.package_folder, recursive=True)
-        rm(self, "*.conf", os.path.join(self.package_folder, "res", "etc", "fonts", "conf.d"))
-        rm(self, "*.def", os.path.join(self.package_folder, "lib"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rm(self, "*.pdb", self.folders.package, recursive=True)
+        rm(self, "*.conf", os.path.join(self.folders.package, "res", "etc", "fonts", "conf.d"))
+        rm(self, "*.def", os.path.join(self.folders.package, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         fix_apple_shared_install_name(self)
 
     def package_info(self):
@@ -92,7 +92,7 @@ class Recipe(RecipeBase):
         if self.settings.os in ("Linux", "FreeBSD"):
             self.cpp_info.system_libs.extend(["m", "pthread"])
 
-        fontconfig_path = os.path.join(self.package_folder, "res", "etc", "fonts")
+        fontconfig_path = os.path.join(self.folders.package, "res", "etc", "fonts")
         self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
 
 
@@ -105,7 +105,7 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.package_folder, libdir)
+            full_folder = os.path.join(recipe.folders.package, libdir)
             for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":

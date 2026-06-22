@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
             self,
             url="https://downloads.sourceforge.net/project/tcl/Tcl/8.6.13/tcl8.6.13-src.tar.gz",
             sha256="43a1fae7412f61ff11de2cfd05d28cfc3a73762f354a417c62370a54e2caf066",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -89,10 +89,10 @@ class Recipe(RecipeBase):
         apply_patches(self)
 
         if is_apple_os(self) and self.settings.arch not in ("X64",):
-            macos_configure = os.path.join(self.source_folder, "macosx", "configure")
+            macos_configure = os.path.join(self.folders.source, "macosx", "configure")
             replace_in_file(self, macos_configure, "#define HAVE_CPUID 1", "#undef HAVE_CPUID")
 
-        unix_config_dir = os.path.join(self.source_folder, "unix")
+        unix_config_dir = os.path.join(self.folders.source, "unix")
         # When disabling 64-bit support (in 32-bit), this test must be 0 in order to use "long long" for 64-bit ints
         # (${tcl_type_64bit} can be either "__int64" or "long long")
         replace_in_file(
@@ -109,7 +109,7 @@ class Recipe(RecipeBase):
         # Use CFLAGS and CPPFLAGS as argument to CC
         replace_in_file(self, unix_makefile_in, "${CFLAGS}", "${CFLAGS} ${CPPFLAGS}")
 
-        win_config_dir = os.path.join(self.source_folder, "win")
+        win_config_dir = os.path.join(self.folders.source, "win")
 
         # Fix install for MinGW
         win_makefile_in = os.path.join(win_config_dir, "Makefile.in")
@@ -123,7 +123,7 @@ class Recipe(RecipeBase):
         win_makefile_vc = os.path.join(win_config_dir, "makefile.vc")
         replace_in_file(self, win_makefile_vc, "@type << >$@", "type <<temp.tmp >$@")
 
-        win_rules_vc = os.path.join(self.source_folder, "win", "rules.vc")
+        win_rules_vc = os.path.join(self.folders.source, "win", "rules.vc")
         # do not treat nmake build warnings as errors
         replace_in_file(self, win_rules_vc, "cwarn = $(cwarn) -WX", "")
         # disable whole program optimization to be portable across different MSVC versions.
@@ -148,12 +148,12 @@ class Recipe(RecipeBase):
         if "d" not in msvc_runtime_flag(self):
             opts.append("unchecked")
 
-        win_config_dir = os.path.join(self.source_folder, "win")
+        win_config_dir = os.path.join(self.folders.source, "win")
         with chdir(self, win_config_dir):
             self.run(
                 'nmake -nologo -f "{cfgdir}/makefile.vc" INSTALLDIR="{pkgdir}" OPTS={opts} {targets}'.format(
                     cfgdir=win_config_dir,
-                    pkgdir=self.package_folder,
+                    pkgdir=self.folders.package,
                     opts=",".join(opts),
                     targets=" ".join(targets),
                 ))
@@ -174,7 +174,7 @@ class Recipe(RecipeBase):
             autotools = Autotools(self)
             autotools.configure(build_script_folder=self._get_configure_subdir())
             # https://core.tcl.tk/tcl/tktview/840660e5a1
-            for root, _, list_of_files in os.walk(self.build_folder):
+            for root, _, list_of_files in os.walk(self.folders.build):
                 if "Makefile" in list_of_files:
                     replace_in_file(self, os.path.join(root, "Makefile"), "-Dstrtod=fixstrtod", "", strict=False)
             # For some reason this target "binaries" may not be built before others
@@ -183,7 +183,7 @@ class Recipe(RecipeBase):
             autotools.make()
 
     def package(self):
-        copy(self, "license.terms", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "license.terms", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         if is_msvc(self):
             self._build_nmake(["install-binaries", "install-libraries"])
         else:
@@ -191,19 +191,19 @@ class Recipe(RecipeBase):
             autotools.install()
             autotools.install(target="install-private-headers")
 
-            rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.package_folder, "man"))
-            rmdir(self, os.path.join(self.package_folder, "share"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+            rmdir(self, os.path.join(self.folders.package, "man"))
+            rmdir(self, os.path.join(self.folders.package, "share"))
             fix_apple_shared_install_name(self)
 
         # Relocatable tclConfig.sh
-        tclConfigShPath = os.path.join(self.package_folder, "lib", "tclConfig.sh")
+        tclConfigShPath = os.path.join(self.folders.package, "lib", "tclConfig.sh")
         ## Comment out references to build folder
         replace_in_file(self, tclConfigShPath, "\nTCL_BUILD_", "\n#TCL_BUILD_")
         replace_in_file(self, tclConfigShPath, "\nTCL_SRC_DIR", "\n#TCL_SRC_DIR")
         ## Replace references to package folder by TCL_ROOT env var supposed to be defined by VirtualRunEnv
         if is_msvc(self):
-            replace_in_file(self, tclConfigShPath, self.package_folder, "${TCL_ROOT}")
+            replace_in_file(self, tclConfigShPath, self.folders.package, "${TCL_ROOT}")
         else:
             replace_in_file(self, tclConfigShPath, "TCL_PREFIX='/'", "TCL_PREFIX='${TCL_ROOT}'")
             replace_in_file(self, tclConfigShPath, "TCL_EXEC_PREFIX='/'", "TCL_EXEC_PREFIX='${TCL_ROOT}'")
@@ -218,7 +218,7 @@ class Recipe(RecipeBase):
 
         # There are other libs in subfolders, but they are only used
         # for TCL extensions and should not be linked against.
-        self.cpp_info.libs = collect_libs(self, os.path.join(self.package_folder, "lib"))
+        self.cpp_info.libs = collect_libs(self, os.path.join(self.folders.package, "lib"))
 
         if self.settings.os == "Windows":
             self.cpp_info.system_libs.extend(["ws2_32", "netapi32", "userenv"])
@@ -231,12 +231,12 @@ class Recipe(RecipeBase):
             self.cpp_info.defines.append("STATIC_BUILD")
 
         tcl_version = Version(self.version)
-        tcl_library = os.path.join(self.package_folder, "lib", f"tcl{tcl_version.major}.{tcl_version.minor}")
+        tcl_library = os.path.join(self.folders.package, "lib", f"tcl{tcl_version.major}.{tcl_version.minor}")
         self.runenv_info.define_path("TCL_LIBRARY", tcl_library)
 
-        tcl_root = self.package_folder
+        tcl_root = self.folders.package
         self.runenv_info.define_path("TCL_ROOT", tcl_root)
 
-        tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(os.path.join(self.package_folder, "bin"))))
-        tclsh = os.path.join(self.package_folder, "bin", tclsh_list[0])
+        tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(os.path.join(self.folders.package, "bin"))))
+        tclsh = os.path.join(self.folders.package, "bin", tclsh_list[0])
         self.runenv_info.define_path("TCLSH", tclsh)

@@ -39,19 +39,19 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/shader-slang/slang/archive/refs/tags/v2026.9.1.tar.gz",
             sha256="53c0bf21eff7ba8e3825395ee3a4d7564c2a330fa32e47e165926527c7994303",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         get(
             self,
             url="https://github.com/lua/lua/archive/3fe7be956f23385aa1950dc31e2f25127ccfc0ea.tar.gz",
             sha256="4776526f89abeea61cce41a056577859180dbb2d4cb6c1dad00955872a1007bb",
-            destination=os.path.join(self.source_folder, "external", "lua"),
+            destination=os.path.join(self.folders.source, "external", "lua"),
             strip_root=True)
         get(
             self,
             url="https://github.com/swiftlang/swift-cmark/archive/924936d0427cb25a61169739a7660230bffa6ea6.tar.gz",
             sha256="1c51659bd47c34df1c8976f893adc43ba039a98f6eac4fa95d53d1e08ba6072a",
-            destination=os.path.join(self.source_folder, "external", "cmark"),
+            destination=os.path.join(self.folders.source, "external", "cmark"),
             strip_root=True)
 
     def generate(self):
@@ -90,10 +90,10 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        rmdir(self, os.path.join(self.package_folder, "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        rmdir(self, os.path.join(self.folders.package, "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "slang")

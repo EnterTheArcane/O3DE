@@ -287,10 +287,10 @@ def fix_apple_shared_install_name(recipe):
         substitutions = {}
         libdirs = getattr(recipe.cpp.package, "libdirs")
         for libdir in libdirs:
-            full_folder = os.path.join(recipe.package_folder, libdir)
+            full_folder = os.path.join(recipe.folders.package, libdir)
             if not os.path.exists(full_folder):
                 raise RecipeException(f"Trying to locate shared libraries, but `{libdir}` "
-                                     f" not found inside package folder {recipe.package_folder}")
+                                     f" not found inside package folder {recipe.folders.package}")
             shared_libs = _darwin_collect_binaries(full_folder, "DYLIB")
             # fix LC_ID_DYLIB in first pass
             for shared_lib in shared_libs:
@@ -313,7 +313,7 @@ def fix_apple_shared_install_name(recipe):
         # that reference libraries we just patched
         bindirs = getattr(recipe.cpp.package, "bindirs")
         for bindir in bindirs:
-            full_folder = os.path.join(recipe.package_folder, bindir)
+            full_folder = os.path.join(recipe.folders.package, bindir)
             if not os.path.exists(full_folder):
                 # Skip if the folder does not exist inside the package
                 # (e.g. package does not contain executables but bindirs is defined)
@@ -333,7 +333,7 @@ def fix_apple_shared_install_name(recipe):
                 # Add relative rpath to library directories, avoiding possible
                 # existing duplicates
                 libdirs = getattr(recipe.cpp.package, "libdirs")
-                libdirs = [os.path.join(recipe.package_folder, libdir) for libdir in libdirs]
+                libdirs = [os.path.join(recipe.folders.package, libdir) for libdir in libdirs]
                 rel_paths = [f"@executable_path/{os.path.relpath(libdir, full_folder)}"
                              for libdir in libdirs]
                 existing_rpaths = _get_rpath_entries(executable)

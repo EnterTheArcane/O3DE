@@ -36,7 +36,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/ARM-software/astc-encoder/archive/refs/tags/5.4.0.tar.gz",
             sha256="3fbbb0b285367aaefe2ef33601d087a4ec2218b11a9876dc4dceac76f9f53e1e",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -57,10 +57,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         isa = str(self.options.isa)

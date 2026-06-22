@@ -14,20 +14,20 @@ class Recipe(RecipeBase):
             self,
             url="https://developer.apple.com/metal/cpp/files/metal-cpp_26.zip",
             sha256="4df3c078b9aadcb516212e9cb03004cbc5ce9a3e9c068fa3144d021db585a3a4",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package(self):
         copy(
             self,
             pattern="LICENSE.txt",
-            dst=os.path.join(self.package_folder, "licenses"),
-            src=os.path.join(self.source_folder))
+            dst=os.path.join(self.folders.package, "licenses"),
+            src=os.path.join(self.folders.source))
         copy(
             self,
             pattern="**.hpp",
-            dst=os.path.join(self.package_folder, "include"),
-            src=os.path.join(self.source_folder),
+            dst=os.path.join(self.folders.package, "include"),
+            src=os.path.join(self.folders.source),
             keep_path=True)
 
     def package_info(self):

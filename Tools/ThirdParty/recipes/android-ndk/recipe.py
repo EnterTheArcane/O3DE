@@ -73,7 +73,7 @@ class Recipe(RecipeBase):
 
     @property
     def _ndk_root(self):
-        return os.path.join(self.package_folder, self._ndk_root_rel_path)
+        return os.path.join(self.folders.package, self._ndk_root_rel_path)
 
     @property
     def _android_abi(self):
@@ -136,7 +136,7 @@ class Recipe(RecipeBase):
     def _fix_permissions(self):
         if os.name != "posix":
             return
-        for root, _, files in os.walk(os.path.join(self.package_folder, "bin")):
+        for root, _, files in os.walk(os.path.join(self.folders.package, "bin")):
             for filename in files:
                 filepath = os.path.join(root, filename)
                 with open(filepath, "rb") as f:
@@ -180,26 +180,26 @@ class Recipe(RecipeBase):
         data = _SOURCES[str(self.settings.os)][self._arch]
         self._unzip_fix_symlinks(
             url=data["url"],
-            target_folder=self.source_folder,
+            target_folder=self.folders.source,
             sha256=data["sha256"])
 
     def package(self):
-        copy(self, "*", src=self.source_folder, dst=os.path.join(self.package_folder, "bin"))
-        copy(self, "*NOTICE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "*NOTICE.toolchain", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "cmake-wrapper.cmd", src=os.path.join(self.source_folder, os.pardir), dst=os.path.join(self.package_folder, "bin"))
-        copy(self, "cmake-wrapper", src=os.path.join(self.source_folder, os.pardir), dst=os.path.join(self.package_folder, "bin"))
+        copy(self, "*", src=self.folders.source, dst=os.path.join(self.folders.package, "bin"))
+        copy(self, "*NOTICE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "*NOTICE.toolchain", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "cmake-wrapper.cmd", src=os.path.join(self.folders.source, os.pardir), dst=os.path.join(self.folders.package, "bin"))
+        copy(self, "cmake-wrapper", src=os.path.join(self.folders.source, os.pardir), dst=os.path.join(self.folders.package, "bin"))
         self._fix_permissions()
-        rm(self, "*Config.cmake", os.path.join(self.package_folder, "bin"), recursive=True)
-        rm(self, "*-config.cmake", os.path.join(self.package_folder, "bin"), recursive=True)
-        rm(self, "Find*.cmake", os.path.join(self.package_folder, "bin"), recursive=True)
+        rm(self, "*Config.cmake", os.path.join(self.folders.package, "bin"), recursive=True)
+        rm(self, "*-config.cmake", os.path.join(self.folders.package, "bin"), recursive=True)
+        rm(self, "Find*.cmake", os.path.join(self.folders.package, "bin"), recursive=True)
 
     def package_info(self):
         self.cpp_info.includedirs = []
         self.cpp_info.libdirs = []
 
-        self.buildenv_info.define_path("ANDROID_NDK_ROOT", os.path.join(self.package_folder, "bin"))
-        self.buildenv_info.define_path("ANDROID_NDK_HOME", os.path.join(self.package_folder, "bin"))
+        self.buildenv_info.define_path("ANDROID_NDK_ROOT", os.path.join(self.folders.package, "bin"))
+        self.buildenv_info.define_path("ANDROID_NDK_HOME", os.path.join(self.folders.package, "bin"))
 
         if not hasattr(self, "settings_target") or self.settings_target is None:
             return
@@ -214,7 +214,7 @@ class Recipe(RecipeBase):
         self.conf_info.define("tools.build:sysroot", ndk_sysroot)
         self.buildenv_info.define_path("SYSROOT", ndk_sysroot)
         self.buildenv_info.define("ANDROID_NATIVE_API_LEVEL", str(self.settings_target.os.api_level))
-        self.conf_info.define("tools.android:ndk_path", os.path.join(self.package_folder, "bin"))
+        self.conf_info.define("tools.android:ndk_path", os.path.join(self.folders.package, "bin"))
 
         compiler_executables = {
             "c": self._define_tool_var("CC", "clang"),

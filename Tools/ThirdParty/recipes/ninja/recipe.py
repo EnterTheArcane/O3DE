@@ -38,15 +38,15 @@ class Recipe(RecipeBase):
             self,
             url=url,
             sha256=sha256,
-            destination=self.build_folder,
+            destination=self.folders.build,
             strip_root=False)
 
     def package(self):
-        dst = os.path.join(self.package_folder, "bin")
+        dst = os.path.join(self.folders.package, "bin")
         if str(self.settings.os) == "Windows":
-            copy(self, "ninja.exe", src=self.build_folder, dst=dst)
+            copy(self, "ninja.exe", src=self.folders.build, dst=dst)
         else:
-            copy(self, "ninja", src=self.build_folder, dst=dst)
+            copy(self, "ninja", src=self.folders.build, dst=dst)
             import stat
             ninja_path = os.path.join(dst, "ninja")
             os.chmod(ninja_path, os.stat(ninja_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
@@ -54,5 +54,5 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.cpp_info.libdirs = []
         self.cpp_info.includedirs = []
-        bin_dir = os.path.join(self.package_folder, "bin")
+        bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)

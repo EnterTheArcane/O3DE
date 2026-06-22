@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/HDFGroup/hdf5/archive/refs/tags/2.1.1.tar.gz",
             sha256="5849ed7a81be6bc84ff8aa65dd966430adf0daf71e6bcb734b7a37474f92c859",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -81,7 +81,7 @@ class Recipe(RecipeBase):
     def build(self):
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "CMakeLists.txt"),
+            os.path.join(self.folders.source, "CMakeLists.txt"),
             "set (CMAKE_POSITION_INDEPENDENT_CODE ON)",
             "")
         cmake = CMake(self)
@@ -89,14 +89,14 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rm(self, "libhdf5.settings", os.path.join(self.package_folder, "lib"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rm(self, "libhdf5.settings", os.path.join(self.folders.package, "lib"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
         if self.options.shared:
-            for root, _, files in os.walk(os.path.join(self.package_folder, "lib")):
+            for root, _, files in os.walk(os.path.join(self.folders.package, "lib")):
                 for f in files:
                     if f.endswith(".a") and not f.endswith(".dll.a"):
                         os.remove(os.path.join(root, f))

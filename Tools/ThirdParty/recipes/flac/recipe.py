@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/xiph/flac/releases/download/1.5.0/flac-1.5.0.tar.xz",
             sha256="f2c1c76592a82ffff8413ba3c4a1299b6c7ab06c734dee03fd88630485c2b920",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
     def build(self):
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "src", "share", "getopt", "CMakeLists.txt"),
+            os.path.join(self.folders.source, "src", "share", "getopt", "CMakeLists.txt"),
             "find_package(Intl)",
             "")
         cmake = CMake(self)
@@ -63,14 +63,14 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
         copy(
-            self, "COPYING.*", src=self.source_folder,
-            dst=os.path.join(self.package_folder, "licenses"), keep_path=False)
+            self, "COPYING.*", src=self.folders.source,
+            dst=os.path.join(self.folders.package, "licenses"), keep_path=False)
         copy(
-            self, "*.h", src=os.path.join(self.source_folder, "include", "share"),
-            dst=os.path.join(self.package_folder, "include", "share"), keep_path=False)
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+            self, "*.h", src=os.path.join(self.folders.source, "include", "share"),
+            dst=os.path.join(self.folders.package, "include", "share"), keep_path=False)
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "flac")

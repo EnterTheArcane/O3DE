@@ -32,9 +32,9 @@ class Meson:
         if reconfigure:
             self._recipe.output.warning("reconfigure param has been deprecated."
                                            " Removing in Recipe 2.x.", warn_tag="deprecated")
-        source_folder = self._recipe.source_folder
-        build_folder = self._recipe.build_folder
-        generators_folder = self._recipe.generators_folder
+        source_folder = self._recipe.folders.source
+        build_folder = self._recipe.folders.build
+        generators_folder = self._recipe.folders.generators
         cross = os.path.join(generators_folder, MesonToolchain.cross_filename)
         native = os.path.join(generators_folder, MesonToolchain.native_filename)
         is_cross_build = os.path.exists(cross)
@@ -63,7 +63,7 @@ class Meson:
 
         :param target: ``str`` Specifies the target to be executed.
         """
-        meson_build_folder = self._recipe.build_folder
+        meson_build_folder = self._recipe.folders.build
         cmd = 'meson compile -C "{}"'.format(meson_build_folder)
         njobs = build_jobs(self._recipe)
         if njobs:
@@ -83,8 +83,8 @@ class Meson:
         :param cli_args: List of arguments to be added to the command:
                     ``meson install -C "." --destdir ... arg1 arg2``
         """
-        meson_build_folder = self._recipe.build_folder.replace("\\", "/")
-        meson_package_folder = self._recipe.package_folder.replace("\\", "/")
+        meson_build_folder = self._recipe.folders.build.replace("\\", "/")
+        meson_package_folder = self._recipe.folders.package.replace("\\", "/")
         # Assuming meson >= 0.57.0
         cmd = f'meson install -C "{meson_build_folder}" --destdir "{meson_package_folder}"'
         verbosity = self._install_verbosity
@@ -106,7 +106,7 @@ class Meson:
         """
         if self._recipe.conf.get("tools.build:skip_test", check_type=bool):
             return
-        meson_build_folder = self._recipe.build_folder
+        meson_build_folder = self._recipe.folders.build
         cmd = 'meson test -v -C "{}"'.format(meson_build_folder)
         # TODO: Do we need vcvars for test?
         # TODO: This should use runenvenv, but what if meson itself is a build-require?

@@ -325,7 +325,7 @@ class XcodeDeps:
                                                  transitive_cpp_infos)
 
                     # In case dep is editable and package_folder=None
-                    pkg_folder = dep.package_folder or dep.recipe_folder
+                    pkg_folder = dep.folders.package or dep.recipe_folder
                     component_content = self._get_content_for_component(require, dep_name, comp_name,
                                                                         pkg_folder,
                                                                         transitive_cpp_infos)
@@ -336,7 +336,7 @@ class XcodeDeps:
                 self._collect_all_transitive(dep.cpp_info, dep, all_deps,
                                              transitive_cpp_infos)
                 # In case dep is editable and package_folder=None
-                pkg_folder = dep.package_folder or dep.recipe_folder
+                pkg_folder = dep.folders.package or dep.recipe_folder
                 root_content = self._get_content_for_component(require, dep_name, dep_name, pkg_folder,
                                                                transitive_cpp_infos)
                 include_components_names.append((dep_name, dep_name))

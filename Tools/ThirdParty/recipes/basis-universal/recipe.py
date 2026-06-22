@@ -40,7 +40,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/BinomialLLC/basis_universal/archive/refs/tags/v2_1_0.tar.gz",
             sha256="ee1dbeb4c16699b577a0c78dce337bbede268e04bd2d463946971f8cb1e9c8df",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -57,15 +57,15 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         copy(
-            self, "*.h", src=os.path.join(self.source_folder, "transcoder"),
-            dst=os.path.join(self.package_folder, "include"))
+            self, "*.h", src=os.path.join(self.folders.source, "transcoder"),
+            dst=os.path.join(self.folders.package, "include"))
         copy(
-            self, "*.h", src=os.path.join(self.source_folder, "encoder"),
-            dst=os.path.join(self.package_folder, "include"))
-        copy(self, "*.a", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
-        copy(self, "*.lib", src=self.build_folder, dst=os.path.join(self.package_folder, "lib"), keep_path=False)
+            self, "*.h", src=os.path.join(self.folders.source, "encoder"),
+            dst=os.path.join(self.folders.package, "include"))
+        copy(self, "*.a", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
+        copy(self, "*.lib", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
 
     def package_info(self):
         self.cpp_info.libs = ["basisu_encoder"]

@@ -30,7 +30,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/recastnavigation/recastnavigation/archive/refs/tags/v1.6.0.tar.gz",
             sha256="d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -48,12 +48,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "License.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "License.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.pdb", self.package_folder, recursive=True)
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.pdb", self.folders.package, recursive=True)
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "recastnavigation")

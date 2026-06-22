@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/catchorg/Catch2/archive/v3.15.0.tar.gz",
             sha256="9650c55e497759cc39b977e45524bc8acb15256061c112080916ab6cb0b1ea66",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -64,17 +64,17 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE.txt", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, pattern="LICENSE.txt", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         for cmake_file in ["ParseAndAddCatchTests.cmake", "Catch.cmake", "CatchAddTests.cmake"]:
             copy(
                 self,
                 cmake_file,
-                src=os.path.join(self.source_folder, "extras"),
-                dst=os.path.join(self.package_folder, "lib", "cmake", "Catch2"),
+                src=os.path.join(self.folders.source, "extras"),
+                dst=os.path.join(self.folders.package, "lib", "cmake", "Catch2"),
                 )
 
     def package_info(self):

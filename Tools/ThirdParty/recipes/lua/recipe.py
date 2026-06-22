@@ -40,13 +40,13 @@ class Recipe(RecipeBase):
             self,
             url="https://www.lua.org/ftp/lua-5.5.0.tar.gz",
             sha256="57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["LUA_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["LUA_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.variables["COMPILE_AS_CPP"] = self.options.compile_as_cpp
         tc.variables["SKIP_INSTALL_TOOLS"] = not self.options.with_tools
         tc.variables["WITH_READLINE"] = self.options.with_readline
@@ -56,14 +56,14 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def package(self):
         # Extract the License/s from the header to a file
-        tmp = load(self, os.path.join(self.source_folder, "src", "lua.h"))
+        tmp = load(self, os.path.join(self.folders.source, "src", "lua.h"))
         license_contents = tmp[tmp.find("/***", 1):tmp.find("****/", 1)]
-        save(self, os.path.join(self.package_folder, "licenses", "COPYING.txt"), license_contents)
+        save(self, os.path.join(self.folders.package, "licenses", "COPYING.txt"), license_contents)
         cmake = CMake(self)
         cmake.install()
         fix_apple_shared_install_name(self)

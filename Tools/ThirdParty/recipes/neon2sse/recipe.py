@@ -14,12 +14,12 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/intel/ARM_NEON_2_x86_SSE/archive/ed59be8546632d5126ff69c87122ae5de20ffe4f.zip",
             sha256="10796c02ef44ac02478c41a7b68e4cec204c9de04d2d9374cecdaa2adf2cdbd7",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "NEON_2_SSE.h", src=self.source_folder, dst=os.path.join(self.package_folder, "include"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "NEON_2_SSE.h", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "NEON_2_SSE")

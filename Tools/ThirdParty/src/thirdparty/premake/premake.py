@@ -46,7 +46,7 @@ class Premake:
         """
         self._recipe = recipe
         #: Path to the root premake5 lua file (default is ``premake5.lua``)
-        self.luafile = (Path(self._recipe.source_folder) / "premake5.lua").as_posix()
+        self.luafile = (Path(self._recipe.folders.source) / "premake5.lua").as_posix()
         #: Key value pairs. Will translate to "--{key}={value}"
         self.arguments = {}  # https://premake.github.io/docs/Command-Line-Arguments/
 
@@ -56,7 +56,7 @@ class Premake:
         else:
             self.action = "gmake"  # New generator (old gmakelegacy is deprecated)
 
-        self._premake_recipe_toolchain = Path(self._recipe.generators_folder) / PremakeToolchain.filename
+        self._premake_recipe_toolchain = Path(self._recipe.folders.generators) / PremakeToolchain.filename
 
     @staticmethod
     def _expand_args(args):
@@ -70,7 +70,7 @@ class Premake:
             content = Template(self._premake_file_template).render(
                 premake_recipe_toolchain=self._premake_recipe_toolchain.as_posix(), luafile=self.luafile
             )
-            recipe_luafile = Path(self._recipe.build_folder) / self.filename
+            recipe_luafile = Path(self._recipe.folders.build) / self.filename
             save(self._recipe, recipe_luafile, content)
             arch = str(self._recipe.settings.arch)
             if arch not in RECIPE_TO_PREMAKE_ARCH:

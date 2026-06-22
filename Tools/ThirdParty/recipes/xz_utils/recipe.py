@@ -54,7 +54,7 @@ class Recipe(RecipeBase):
             self,
             url="https://tukaani.org/xz/xz-5.8.3.tar.xz",
             sha256="fff1ffcf2b0da84d308a14de513a1aa23d4e9aa3464d17e64b9714bfdd0bbfb6",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -79,7 +79,7 @@ class Recipe(RecipeBase):
 
     def _build_msvc(self):
         is_msvc_modern = check_min_vs(self, 191)
-        build_script_folder = os.path.join(self.source_folder, "windows", "vs2017" if is_msvc_modern else "vs2013")
+        build_script_folder = os.path.join(self.folders.source, "windows", "vs2017" if is_msvc_modern else "vs2013")
 
         # ==============================
         # TODO: to remove once upstream PR 12817 available in recipe client.
@@ -89,7 +89,7 @@ class Recipe(RecipeBase):
         ]
         old_toolset = "v141" if is_msvc_modern else "v120"
         new_toolset = MSBuildToolchain(self).toolset
-        recipe_toolchain_props = os.path.join(self.generators_folder, MSBuildToolchain.filename)
+        recipe_toolchain_props = os.path.join(self.folders.generators, MSBuildToolchain.filename)
         for vcxproj_file in vcxproj_files:
             replace_in_file(
                 self, vcxproj_file,
@@ -118,18 +118,18 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        rmdir(self, os.path.join(self.source_folder, "tests"))  # optionally included
+        rmdir(self, os.path.join(self.folders.source, "tests"))  # optionally included
         cmake.configure()
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        self._create_cmake_module_variables(os.path.join(self.package_folder, self._module_file_rel_path))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        self._create_cmake_module_variables(os.path.join(self.folders.package, self._module_file_rel_path))
 
     def _create_cmake_module_variables(self, module_file):
         # TODO: also add LIBLZMA_HAS_AUTO_DECODER, LIBLZMA_HAS_EASY_ENCODER & LIBLZMA_HAS_LZMA_PRESET

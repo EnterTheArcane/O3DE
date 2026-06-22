@@ -66,7 +66,7 @@ class Recipe(RecipeBase):
             self,
             url="https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v2.2.1/SVT-AV1-v2.2.1.tar.gz",
             sha256="d02b54685542de0236bce4be1b50912aba68aff997c43b350d84a518df0cf4e5",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -100,11 +100,11 @@ class Recipe(RecipeBase):
 
     def package(self):
         for license_file in ("LICENSE.md", "PATENTS.md"):
-            copy(self, license_file, self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+            copy(self, license_file, self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.configure()
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         if self.options.build_encoder:

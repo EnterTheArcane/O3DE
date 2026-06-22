@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/biojppm/rapidyaml/releases/download/v0.13.0/rapidyaml-0.13.0-src.tgz",
             sha256="b70b484b612152b0dbb2ca61178c9534d80c392fe36d4d54e75d127ec8864d52",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -68,12 +68,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE.txt", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, pattern="LICENSE.txt", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.natvis", os.path.join(self.package_folder, "include"))
+        rmdir(self, os.path.join(self.folders.package, "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.natvis", os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "ryml")

@@ -34,9 +34,9 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/kuba--/zip/archive/v0.3.8.tar.gz",
             sha256="944656c33aa776dc2c882991d1a6a86c8408fec8b8a19bc5305bf7eabdd4d908",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "-Werror", "")
+        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "-Werror", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -51,10 +51,10 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "UNLICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "UNLICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "zip")

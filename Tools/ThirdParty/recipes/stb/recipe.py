@@ -18,17 +18,17 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/nothings/stb/archive/013ac3beddff3dbffafd5177e7972067cd2b5083.zip",
             sha256="b7f476902bbef1b30f8ecc2d9d95c459c32302c8b559d09b589b5955463b7af8",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "*.h", src=self.source_folder, dst=os.path.join(self.package_folder, "include"))
-        copy(self, "stb_vorbis.c", src=self.source_folder, dst=os.path.join(self.package_folder, "include"))
-        rmdir(self, os.path.join(self.package_folder, "include", "tests"))
-        rmdir(self, os.path.join(self.package_folder, "include", "deprecated"))
-        copy(self, "*.h", src=os.path.join(self.source_folder, "deprecated"), dst=os.path.join(self.package_folder, "include"))
-        copy(self, "stb_image.c", src=os.path.join(self.source_folder, "deprecated"), dst=os.path.join(self.package_folder, "include"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "*.h", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
+        copy(self, "stb_vorbis.c", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
+        rmdir(self, os.path.join(self.folders.package, "include", "tests"))
+        rmdir(self, os.path.join(self.folders.package, "include", "deprecated"))
+        copy(self, "*.h", src=os.path.join(self.folders.source, "deprecated"), dst=os.path.join(self.folders.package, "include"))
+        copy(self, "stb_image.c", src=os.path.join(self.folders.source, "deprecated"), dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.bindirs = []

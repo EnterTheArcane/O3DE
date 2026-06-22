@@ -12,7 +12,7 @@ class Bazel:
         """
         self._recipe = recipe
         # Use BazelToolchain generated file if exists
-        self._recipe_bazelrc = os.path.join(self._recipe.generators_folder, BazelToolchain.bazelrc_name)
+        self._recipe_bazelrc = os.path.join(self._recipe.folders.generators, BazelToolchain.bazelrc_name)
         self._use_recipe_config = os.path.exists(self._recipe_bazelrc)
         self._startup_opts = self._get_startup_command_options()
 

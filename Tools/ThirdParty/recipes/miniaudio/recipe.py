@@ -44,14 +44,14 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/mackron/miniaudio/archive/0.11.25.tar.gz",
             sha256="b900edcffe979816e2560a0580b9b1216d674b4f17fbadeca8f777a7f8ab0274",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         if self.options.header_only:
             return
         tc = CMakeToolchain(self)
-        tc.variables["MINIAUDIO_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["MINIAUDIO_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.variables["MINIAUDIO_VERSION_STRING"] = self.version
         tc.generate()
 
@@ -59,24 +59,24 @@ class Recipe(RecipeBase):
         if self.options.header_only:
             return
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        copy(self, "LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
         copy(
             self,
             pattern="**",
-            dst=os.path.join(self.package_folder, "include", "extras"),
-            src=os.path.join(self.source_folder, "extras"),
+            dst=os.path.join(self.folders.package, "include", "extras"),
+            src=os.path.join(self.folders.source, "extras"),
         )
         if self.options.header_only:
-            copy(self, "miniaudio.h", dst=os.path.join(self.package_folder, "include"), src=self.source_folder)
+            copy(self, "miniaudio.h", dst=os.path.join(self.folders.package, "include"), src=self.folders.source)
             copy(
                 self,
                 pattern="miniaudio.*",
-                dst=os.path.join(self.package_folder, "include", "extras", "miniaudio_split"),
-                src=os.path.join(self.source_folder, "extras", "miniaudio_split"),
+                dst=os.path.join(self.folders.package, "include", "extras", "miniaudio_split"),
+                src=os.path.join(self.folders.source, "extras", "miniaudio_split"),
             )
         else:
             cmake = CMake(self)

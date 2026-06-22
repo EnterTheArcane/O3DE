@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v1.619.1.tar.gz",
             sha256="6193774904c940eebb9b0c51b816b93dd776cfeb25a951f0f4a58f22387e5008",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -38,10 +38,10 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
         meson = Meson(self)
         meson.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         if self.settings.os == "Linux" or self.settings.get_safe("os.subsystem") == "wsl":

@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
             self,
             url="https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.bz2",
             sha256="e4de6b08f33fd8b8985d2f204381408c660bffa6170ac65b68ae1bd3cd575c0a",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -45,8 +45,8 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
 
-        copy(self, "COPYING.*", self.source_folder, os.path.join(self.package_folder, "licenses"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        copy(self, "COPYING.*", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "Eigen3")

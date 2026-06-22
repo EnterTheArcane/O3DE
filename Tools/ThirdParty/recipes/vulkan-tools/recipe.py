@@ -36,12 +36,12 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/Vulkan-Tools/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
             sha256="3079796d51b29ce49dc7b7c7e243df93b343d54c3be9d4a8292c3231b9698deb",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        vulkan_headers_pkg = self.dependencies["vulkan-headers"].package_folder
+        vulkan_headers_pkg = self.dependencies["vulkan-headers"].folders.package
         tc.variables["VULKAN_HEADERS_INSTALL_DIR"] = vulkan_headers_pkg.replace("\\", "/")
         tc.variables["BUILD_CUBE"] = self.options.build_cube
         tc.variables["BUILD_VULKANINFO"] = self.options.build_vulkaninfo
@@ -60,7 +60,7 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 

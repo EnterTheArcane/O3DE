@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v5.5.0.tar.gz",
             sha256="3dae862a32c9092fca5b17f8e5d32cd57e035d30c3145c00040f13ca58a866df",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -54,15 +54,15 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, "Build"))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, "Build"))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.cmake", os.path.join(self.package_folder, "include", "Jolt"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.cmake", os.path.join(self.folders.package, "include", "Jolt"))
 
     def package_info(self):
         self.cpp_info.libs = ["Jolt"]

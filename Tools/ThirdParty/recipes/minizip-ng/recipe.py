@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/zlib-ng/minizip-ng/archive/4.2.1.tar.gz",
             sha256="3cc35c2cb925dbe67cc801e3234b31b0f30197812a99377352fa1b551ab3d011",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -110,11 +110,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "minizip")
@@ -132,7 +132,7 @@ class Recipe(RecipeBase):
             self.cpp_info.components["minizip"].defines.append("HAVE_BZIP2")
 
         minizip_dir = "minizip" if self.options.mz_compatibility else "minizip-ng"
-        self.cpp_info.components["minizip"].includedirs.append(os.path.join(self.package_folder, "include", minizip_dir))
+        self.cpp_info.components["minizip"].includedirs.append(os.path.join(self.folders.package, "include", minizip_dir))
 
         self.cpp_info.components["minizip"].set_property("cmake_target_name", "MINIZIP::minizip")
         self.cpp_info.components["minizip"].set_property("pkg_config_name", "minizip")

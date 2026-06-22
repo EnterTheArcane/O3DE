@@ -81,7 +81,7 @@ class CMakeDeps:
 
     def generate(self):
         """
-        This method will save the generated files to the ``recipe.generators_folder`` folder
+        This method will save the generated files to the ``recipe.folders.generators`` folder
         """
         self._recipe.output.warning("CMakeDeps is experimental, and might get "
                                        "breaking changes in future releases",
@@ -281,7 +281,7 @@ class _PathGenerator:
         test_req = self._recipe.dependencies.test
         host_test_reqs = list(host_req.items()) + list(test_req.items())
         all_reqs = host_test_reqs + list(build_req.items())
-        # gen_folder = self._recipe.generators_folder.replace("\\", "/")
+        # gen_folder = self._recipe.folders.generators.replace("\\", "/")
         # if not, test_cmake_add_subdirectory test fails
         # content.append('set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)')
         pkg_paths = {}
@@ -332,7 +332,7 @@ class _PathGenerator:
                     # To define the location of the pkg-config.cmake file
                     build_dir = dep.cpp_info.builddirs[0]
                 except IndexError:
-                    build_dir = dep.package_folder
+                    build_dir = dep.folders.package
                 pkg_folder = build_dir.replace("\\", "/") if build_dir else None
                 if pkg_folder:
                     if any(os.path.isfile(os.path.join(pkg_folder, f + ext)) for f in pkg_names
@@ -351,8 +351,8 @@ class _PathGenerator:
                 # Legacy CMakeDeps put the package on the prefix path; some packages (e.g. the
                 # Gazebo libs) install their own config files in nested folders not matched by
                 # the builddir check above.
-                if dep.package_folder:
-                    rel_root = relativize_path(dep.package_folder.replace("\\", "/"),
+                if dep.folders.package:
+                    rel_root = relativize_path(dep.folders.package.replace("\\", "/"),
                                                self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
                     if rel_root not in prefix_paths:
                         prefix_paths.append(rel_root)

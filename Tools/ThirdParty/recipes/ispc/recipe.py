@@ -32,16 +32,16 @@ class Recipe(RecipeBase):
             sha256 = "4a45b95d9cd590acbdcd158d287f9398d4a1961461e9456bda09181e7b34912e"
         else:
             raise RecipeInvalidConfiguration("Unsupported platform")
-        get(self, url=url, sha256=sha256, destination=self.build_folder, strip_root=True)
+        get(self, url=url, sha256=sha256, destination=self.folders.build, strip_root=True)
 
     def package(self):
         copy(
             self,
             "*",
-            src=os.path.join(self.build_folder, "bin"),
-            dst=os.path.join(self.package_folder, "bin"))
+            src=os.path.join(self.folders.build, "bin"),
+            dst=os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
         self.cpp_info.libdirs = []
         self.cpp_info.includedirs = []
-        self.buildenv_info.prepend_path("PATH", os.path.join(self.package_folder, "bin"))
+        self.buildenv_info.prepend_path("PATH", os.path.join(self.folders.package, "bin"))

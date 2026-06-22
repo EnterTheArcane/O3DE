@@ -626,9 +626,9 @@ def _build_recipe(
             if _dep_conf_info:
                 recipe.conf.compose_conf(_dep_conf_info)
 
-    pkg_dir = Path(recipe.package_folder)
-    build_dir = Path(recipe.build_folder)
-    src_dir = Path(recipe.source_folder)
+    pkg_dir = Path(recipe.folders.package)
+    build_dir = Path(recipe.folders.build)
+    src_dir = Path(recipe.folders.source)
 
     if force:
         # Wipe all build artifacts so source(), build(), and package() run fresh.
@@ -657,14 +657,14 @@ def _build_recipe(
 
     # Mirror what Recipe's export_sources phase does: copy auxiliary recipe files
     # (CMakeLists.txt, patches/, etc.) to export_sources_folder so that:
-    #   - cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+    #   - cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
     #     can find a CMakeLists.txt one level above source_folder
     #   - apply_patches() / patch tools can locate patch files
-    Path(recipe.export_sources_folder).mkdir(parents=True, exist_ok=True)
-    _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.export_sources_folder))
+    Path(recipe.folders.export_sources).mkdir(parents=True, exist_ok=True)
+    _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.folders.export_sources))
 
     if not generate_only and hasattr(recipe, "source"):
-        src_folder = Path(recipe.source_folder)
+        src_folder = Path(recipe.folders.source)
         src_folder.mkdir(parents=True, exist_ok=True)
         # Only run source() once per package; skip if already completed successfully.
         if not _is_sourced(build_root, name, version, platform_tag):
@@ -681,12 +681,12 @@ def _build_recipe(
             finally:
                 os.chdir(_orig_cwd_src)
             (src_folder / _COMPLETE_MARKER).write_text("")
-    gen_folder = recipe.generators_folder if hasattr(recipe, "generate") else None
+    gen_folder = recipe.folders.generators if hasattr(recipe, "generate") else None
     if hasattr(recipe, "generate"):
         # Recipe generators write files with bare filenames and expect CWD == generators_folder
         # (the comment in CMakeDeps says "# Current directory is the generators_folder").
         # We must chdir there before calling generate() so files land in the build tree, not here.
-        gen_folder = recipe.generators_folder
+        gen_folder = recipe.folders.generators
         if gen_folder:
             Path(gen_folder).mkdir(parents=True, exist_ok=True)
         _orig_cwd = os.getcwd()
@@ -705,29 +705,29 @@ def _build_recipe(
     generate_aggregated_env(recipe)
     if not generate_only:
         if hasattr(recipe, "build"):
-            Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
+            Path(recipe.folders.build).mkdir(parents=True, exist_ok=True)
             _orig_cwd_build = os.getcwd()
             try:
-                os.chdir(recipe.build_folder)
+                os.chdir(recipe.folders.build)
                 recipe.build()
             except Exception:
                 # Clean up so that the next run starts fresh rather than resuming a broken state.
                 if not os.environ.get("THIRDPARTY_NO_WIPE_ON_FAIL"):
-                    _wipe(recipe.build_folder)
-                    _wipe(recipe.package_folder)
+                    _wipe(recipe.folders.build)
+                    _wipe(recipe.folders.package)
                 raise
             finally:
                 os.chdir(_orig_cwd_build)
         if hasattr(recipe, "package"):
-            Path(recipe.build_folder).mkdir(parents=True, exist_ok=True)
-            _wipe(recipe.package_folder)
-            Path(recipe.package_folder).mkdir(parents=True, exist_ok=True)
+            Path(recipe.folders.build).mkdir(parents=True, exist_ok=True)
+            _wipe(recipe.folders.package)
+            Path(recipe.folders.package).mkdir(parents=True, exist_ok=True)
             _orig_cwd_pkg = os.getcwd()
             try:
-                os.chdir(recipe.build_folder)
+                os.chdir(recipe.folders.build)
                 recipe.package()
             except Exception:
-                _wipe(recipe.package_folder)
+                _wipe(recipe.folders.package)
                 raise
             finally:
                 os.chdir(_orig_cwd_pkg)
@@ -735,5 +735,5 @@ def _build_recipe(
         build_dir.mkdir(parents=True, exist_ok=True)
         (build_dir / _COMPLETE_MARKER).write_text("")
 
-    print(f"[thirdparty] {name}/{version} done -> {recipe.package_folder}")
+    print(f"[thirdparty] {name}/{version} done -> {recipe.folders.package}")
     return transitive

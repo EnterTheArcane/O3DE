@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/zeux/meshoptimizer/archive/refs/tags/v1.1.1.tar.gz",
             sha256="30cd4d28fe71bf58c614c23c87fed385bac223acbb2dfaf343d20ffc3584a083",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -45,11 +45,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "meshoptimizer")

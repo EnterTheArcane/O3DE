@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/uxlfoundation/oneTBB/archive/v2023.0.0.tar.gz",
             sha256="f8767b971ec6aea25dde58ae0f593e94e7aa75a739a86f67967012f69e2199b1",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -44,11 +44,11 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "TBB")
@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             version_info = load(
                 self,
-                os.path.join(self.package_folder, "include", "oneapi", "tbb", "version.h"))
+                os.path.join(self.folders.package, "include", "oneapi", "tbb", "version.h"))
             binary_version = re.sub(
                 r".*" + re.escape("#define __TBB_BINARY_VERSION ") + r"(\d+).*",
                 r"\1",

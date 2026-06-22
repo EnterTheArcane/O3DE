@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/webmproject/libwebm/archive/refs/tags/libwebm-1.0.0.32.tar.gz",
             sha256="7fd5e085bda9f8031cf2ad2a1e52d9b7b29cba9c0b96ad2ce794ce89e4249eb8",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE.TXT", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.TXT", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "webm")

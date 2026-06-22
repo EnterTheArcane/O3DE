@@ -51,7 +51,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
             sha256="f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -68,7 +68,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _get_zlib_header_version(self):
-        zlib_h = load(self, os.path.join(self.source_folder, "zlib.h.in"))
+        zlib_h = load(self, os.path.join(self.folders.source, "zlib.h.in"))
         match = re.search(r'#define\s+ZLIB_VERSION\s+"([0-9]+\.[0-9]+\.[0-9]+)\.zlib-ng"', zlib_h)
         return match.group(1) if match and match.group(1) else None
 
@@ -82,12 +82,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        license_folder = os.path.join(self.package_folder, "licenses")
-        copy(self, "LICENSE.md", src=self.source_folder, dst=license_folder)
+        license_folder = os.path.join(self.folders.package, "licenses")
+        copy(self, "LICENSE.md", src=self.folders.source, dst=license_folder)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
         # upstream CMakeLists intentionally hardcodes install_name with full
         # install path (to match autootools behavior), instead of @rpath
         fix_apple_shared_install_name(self)

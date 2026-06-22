@@ -35,19 +35,19 @@ class Recipe(RecipeBase):
             self,
             url=url,
             sha256=sha256,
-            destination=self.build_folder,
+            destination=self.folders.build,
             strip_root=False)
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.build_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.build, dst=os.path.join(self.folders.package, "licenses"))
         suffix = ".exe" if self.settings.os == "Windows" else ""
-        copy(self, f"premake5{suffix}", src=self.build_folder, dst=os.path.join(self.package_folder, "bin"))
+        copy(self, f"premake5{suffix}", src=self.folders.build, dst=os.path.join(self.folders.package, "bin"))
         if self.settings.os != "Windows":
-            premake5_path = os.path.join(self.package_folder, "bin", "premake5")
+            premake5_path = os.path.join(self.folders.package, "bin", "premake5")
             os.chmod(premake5_path, os.stat(premake5_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     def package_info(self):
         self.cpp_info.includedirs = []
         self.cpp_info.libdirs = []
-        bin_dir = os.path.join(self.package_folder, "bin")
+        bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)

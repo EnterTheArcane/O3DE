@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
             self,
             url="https://ftp.gnu.org/gnu/gdbm/gdbm-1.26.tar.gz",
             sha256="6a24504a14de4a744103dcb936be976df6fbe88ccff26065e54c1c47946f4a5e",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -88,7 +88,7 @@ class Recipe(RecipeBase):
         if self.options.gdbmtool_debug:
             tc.extra_defines.append("YYDEBUG=1")
         if self.options.get_safe("with_libiconv"):
-            libiconv_package_folder = self.dependencies.direct_host["libiconv"].package_folder
+            libiconv_package_folder = self.dependencies.direct_host["libiconv"].folders.package
             tc.configure_args.extend(
                 [
                     f"--with-libiconv-prefix={libiconv_package_folder}"
@@ -115,7 +115,7 @@ class Recipe(RecipeBase):
             self.conf.get("user.gnu-config:config_sub", check_type=str),
         ]:
             if gnu_config:
-                copy(self, os.path.basename(gnu_config), os.path.dirname(gnu_config), os.path.join(self.source_folder, "build-aux"))
+                copy(self, os.path.basename(gnu_config), os.path.dirname(gnu_config), os.path.join(self.folders.source, "build-aux"))
 
     def build(self):
         self._patch_sources()
@@ -125,11 +125,11 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
         autotools = Autotools(self)
         autotools.install()
-        rm(self, "*.la", os.path.join(self.package_folder, "lib"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         fix_apple_shared_install_name(self)
 
     def package_info(self):
@@ -137,5 +137,5 @@ class Recipe(RecipeBase):
             self.cpp_info.libs.append("gdbm_compat")
         self.cpp_info.libs.append("gdbm")
 
-        bin_path = os.path.join(self.package_folder, "bin")
+        bin_path = os.path.join(self.folders.package, "bin")
         self.output.info("Appending PATH environment variable: {}".format(bin_path))

@@ -33,10 +33,10 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/google/googletest/archive/v1.17.0.tar.gz",
             sha256="65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
-        internal_utils = os.path.join(self.source_folder, "googletest", "cmake", "internal_utils.cmake")
+        internal_utils = os.path.join(self.folders.source, "googletest", "cmake", "internal_utils.cmake")
         replace_in_file(self, internal_utils, "-WX", "")
 
     def generate(self):
@@ -55,12 +55,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "GTest")

@@ -45,7 +45,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/google/draco/archive/refs/tags/1.5.7.tar.gz",
             sha256="bf6b105b79223eab2b86795363dfe5e5356050006a96521477973aba8f036fe1",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -76,13 +76,13 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         if self.options.shared:
-            rm(self, "*draco.a", os.path.join(self.package_folder, "lib"))
+            rm(self, "*draco.a", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "draco")

@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/harfbuzz/harfbuzz/releases/download/14.2.0/harfbuzz-14.2.0.tar.xz",
             sha256="94017020f96d025bb66ae91574e4cf334bcad23e8175a8a40565b3721bc2eaff",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -128,18 +128,18 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def build(self):
-        replace_in_file(self, os.path.join(self.source_folder, "meson.build"), "subdir('util')", "", strict=False)
+        replace_in_file(self, os.path.join(self.folders.source, "meson.build"), "subdir('util')", "", strict=False)
         meson = Meson(self)
         meson.configure()
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
         meson = Meson(self)
         meson.install()
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         fix_apple_shared_install_name(self)
         fix_msvc_libname(self)
 
@@ -206,7 +206,7 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.package_folder, libdir)
+            full_folder = os.path.join(recipe.folders.package, libdir)
             for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":

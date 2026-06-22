@@ -72,7 +72,7 @@ class Recipe(RecipeBase):
             self,
             url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz",
             sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         self._patch_sources()
 
@@ -115,12 +115,12 @@ class Recipe(RecipeBase):
 
         # remove FindXXXX for recipe dependencies
         for module in ["Deflate", "JBIG", "JPEG", "LERC", "WebP", "ZSTD", "liblzma", "LibLZMA"]:
-            rm(self, f"Find{module}.cmake", os.path.join(self.source_folder, "cmake"))
+            rm(self, f"Find{module}.cmake", os.path.join(self.folders.source, "cmake"))
 
         # Export symbols of tiffxx for msvc shared
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "libtiff", "CMakeLists.txt"),
+            os.path.join(self.folders.source, "libtiff", "CMakeLists.txt"),
             "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
             "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")
 
@@ -130,11 +130,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"), ignore_case=True, keep_path=False)
+        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"), ignore_case=True, keep_path=False)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "TIFF")

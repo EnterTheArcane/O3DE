@@ -50,7 +50,7 @@ class CMake:
         # Store a reference to useful data
         self._recipe = recipe
 
-        cmake_presets = load_cmake_presets(recipe.generators_folder)
+        cmake_presets = load_cmake_presets(recipe.folders.generators)
         # Recipe generated presets will have exactly 1 configurePresets, no more
         configure_preset = cmake_presets["configurePresets"][0]
 
@@ -94,14 +94,14 @@ class CMake:
         :param stderr: Use it to redirect stderr to this stream
         """
         self._recipe.output.info("Running CMake.configure()")
-        cmakelist_folder = self._recipe.source_folder
+        cmakelist_folder = self._recipe.folders.source
         if build_script_folder:
-            cmakelist_folder = os.path.join(self._recipe.source_folder, build_script_folder)
+            cmakelist_folder = os.path.join(self._recipe.folders.source, build_script_folder)
         cmakelist_folder = cmakelist_folder.replace("\\", "/")
 
-        build_folder = self._recipe.build_folder
+        build_folder = self._recipe.folders.build
         if subfolder:
-            build_folder = os.path.join(self._recipe.build_folder, subfolder)
+            build_folder = os.path.join(self._recipe.folders.build, subfolder)
         mkdir(self._recipe, build_folder)
 
         arg_list = [self._cmake_program]
@@ -113,8 +113,8 @@ class CMake:
                 toolpath = os.path.relpath(self._toolchain_file, start=subfolder)
             toolpath = toolpath.replace("\\", "/")
             arg_list.append('-DCMAKE_TOOLCHAIN_FILE="{}"'.format(toolpath))
-        if self._recipe.package_folder:
-            pkg_folder = self._recipe.package_folder.replace("\\", "/")
+        if self._recipe.folders.package:
+            pkg_folder = self._recipe.folders.package.replace("\\", "/")
             arg_list.append('-DCMAKE_INSTALL_PREFIX="{}"'.format(pkg_folder))
 
         if not variables:
@@ -159,9 +159,9 @@ class CMake:
 
     def _build(self, build_type=None, target=None, cli_args=None, build_tool_args=None, env="",
                stdout=None, stderr=None, subfolder=None):
-        bf = self._recipe.build_folder
+        bf = self._recipe.folders.build
         if subfolder:
-            bf = os.path.join(self._recipe.build_folder, subfolder)
+            bf = os.path.join(self._recipe.folders.build, subfolder)
         build_config = self._config_arg(build_type)
 
         args = []
@@ -230,11 +230,11 @@ class CMake:
         :param stderr: Use it to redirect stderr to this stream
         """
         self._recipe.output.info("Running CMake.install()")
-        package_folder = self._recipe.package_folder
-        build_folder = self._recipe.build_folder
+        package_folder = self._recipe.folders.package
+        build_folder = self._recipe.folders.build
         if subfolder:
-            package_folder = os.path.join(self._recipe.package_folder, subfolder)
-            build_folder = os.path.join(self._recipe.build_folder, subfolder)
+            package_folder = os.path.join(self._recipe.folders.package, subfolder)
+            build_folder = os.path.join(self._recipe.folders.build, subfolder)
         mkdir(self._recipe, package_folder)
 
         build_config = self._config_arg(build_type)

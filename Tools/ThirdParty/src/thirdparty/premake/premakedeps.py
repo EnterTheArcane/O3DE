@@ -156,7 +156,7 @@ class PremakeDeps:
     def generate(self):
         """
         Generates ``recipe_<pkg>_vars_<config>.premake5.lua``, ``recipe_<pkg>_<config>.premake5.lua``,
-        and ``recipe_<pkg>.premake5.lua`` files into the ``recipe.generators_folder``.
+        and ``recipe_<pkg>.premake5.lua`` files into the ``recipe.folders.generators``.
         """
 
         # Current directory is the generators_folder

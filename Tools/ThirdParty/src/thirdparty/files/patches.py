@@ -22,15 +22,15 @@ class PatchLogHandler(logging.Handler):
 
 def patch(recipe, base_path=None, patch_file=None, patch_string=None, strip=0, fuzz=False, **kwargs):
     """
-    Applies a diff from file (patch_file) or string (patch_string) in the recipe.source_folder
+    Applies a diff from file (patch_file) or string (patch_string) in the recipe.folders.source
     directory. The folder containing the sources can be customized with the self.folders attribute
     in the layout(self) method.
 
     :param recipe: the current recipe, always pass 'self'
-    :param base_path: The path is a relative path to recipe.export_sources_folder unless an
+    :param base_path: The path is a relative path to recipe.folders.export_sources unless an
            absolute path is provided.
     :param patch_file: Patch file that should be applied. The path is relative to the
-           recipe.source_folder unless an absolute path is provided.
+           recipe.folders.source unless an absolute path is provided.
     :param patch_string: Patch string that should be applied.
     :param strip: Number of folders to be stripped from the path.
     :param fuzz: Should accept fuzzy patches.
@@ -50,9 +50,9 @@ def patch(recipe, base_path=None, patch_file=None, patch_string=None, strip=0, f
     patchlog.addHandler(PatchLogHandler(recipe.output, patch_file))
 
     if patch_file:
-        # trick *1: patch_file path could be absolute (e.g. recipe.build_folder), in that case
+        # trick *1: patch_file path could be absolute (e.g. recipe.folders.build), in that case
         # the join does nothing and works.
-        patch_path = os.path.join(recipe.export_sources_folder, patch_file)
+        patch_path = os.path.join(recipe.folders.export_sources, patch_file)
         patchset = patch_ng.fromfile(patch_path)
     else:
         patchset = patch_ng.fromstring(patch_string.encode())
@@ -61,7 +61,7 @@ def patch(recipe, base_path=None, patch_file=None, patch_string=None, strip=0, f
         raise RecipeException("Failed to parse patch: %s" % (patch_file if patch_file else "string"))
 
     # trick *1
-    root = os.path.join(recipe.source_folder, base_path) if base_path else recipe.source_folder
+    root = os.path.join(recipe.folders.source, base_path) if base_path else recipe.folders.source
     if not patchset.apply(strip=strip, root=root, fuzz=fuzz):
         raise RecipeException("Failed to apply patch: %s" % patch_file)
 
@@ -81,6 +81,6 @@ def apply_patches(recipe):
         patchset = patch_ng.fromfile(patch_path)
         if not patchset:
             raise RecipeException(f"Failed to parse patch: {patch_name}")
-        if not patchset.apply(root=recipe.source_folder):
+        if not patchset.apply(root=recipe.folders.source):
             raise RecipeException(f"Failed to apply patch: {patch_name}")
 

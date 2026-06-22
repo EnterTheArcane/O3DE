@@ -30,21 +30,21 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/imageworks/pystring/archive/refs/tags/v1.1.5.tar.gz",
             sha256="63c30c251b8017c897bd923826f400aee1d6e4f1c22ffbbd2104f150522a2040",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["PYSTRING_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["PYSTRING_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.generate()
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 

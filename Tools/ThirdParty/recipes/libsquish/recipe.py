@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
             self,
             url="https://sourceforge.net/projects/libsquish/files/libsquish-1.15.tgz",
             sha256="628796eeba608866183a61d080d46967c9dda6723bc0a3ec52324c85d2147269",
-            destination=self.source_folder)
+            destination=self.folders.source)
         apply_patches(self)
 
     def generate(self):
@@ -61,7 +61,7 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 

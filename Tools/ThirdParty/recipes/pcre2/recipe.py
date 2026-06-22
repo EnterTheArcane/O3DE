@@ -63,7 +63,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.bz2",
             sha256="47fe8c99461250d42f89e6e8fdaeba9da057855d06eb7fc08d9ca03fd08d7bc7",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -87,7 +87,7 @@ class Recipe(RecipeBase):
         tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.get_safe("grep_support_callout_fork", False)
         # 10.47 accidentally dropped the list(APPEND CMAKE_MODULE_PATH cmake/) call;
         # inject it via the toolchain so cmake/ modules (PCRE2CheckVscript etc.) can be found
-        tc.variables["CMAKE_MODULE_PATH"] = os.path.join(self.source_folder, "cmake").replace("\\", "/")
+        tc.variables["CMAKE_MODULE_PATH"] = os.path.join(self.folders.source, "cmake").replace("\\", "/")
         tc.generate()
 
         deps = CMakeDeps(self)
@@ -95,7 +95,7 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        cmakelists = os.path.join(self.source_folder, "CMakeLists.txt")
+        cmakelists = os.path.join(self.folders.source, "CMakeLists.txt")
         # Avoid CMP0006 error (macos bundle)
         if self.settings.os == "Mac":
             replace_in_file(
@@ -116,13 +116,13 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENCE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENCE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "man"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "man"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "PCRE2")

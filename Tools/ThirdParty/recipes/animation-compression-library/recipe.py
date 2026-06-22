@@ -26,14 +26,14 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/nfrechette/acl/archive/v2.1.0.tar.gz",
             sha256="0ac8473cd30eb768bae1ef58558e3088242d6fef81f727ce7b5ff5af9be74fce",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         copy(
-            self, "*.h", src=os.path.join(self.source_folder, "includes"),
-            dst=os.path.join(self.package_folder, "include"))
+            self, "*.h", src=os.path.join(self.folders.source, "includes"),
+            dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "acl")

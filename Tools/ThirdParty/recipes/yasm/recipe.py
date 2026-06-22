@@ -28,7 +28,7 @@ class Recipe(RecipeBase):
             self,
             url="http://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz",
             sha256="3dce6601b495f5b3d45b59f7d2492a340ee7e84b5beca17e48f862502bd5603f",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -62,18 +62,18 @@ class Recipe(RecipeBase):
             autotools.make()
 
     def package(self):
-        copy(self, "BSD.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "BSD.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         if is_msvc(self):
             cmake = CMake(self)
             cmake.install()
-            rmdir(self, os.path.join(self.package_folder, "include"))
-            rmdir(self, os.path.join(self.package_folder, "lib"))
+            rmdir(self, os.path.join(self.folders.package, "include"))
+            rmdir(self, os.path.join(self.folders.package, "lib"))
         else:
             autotools = Autotools(self)
             autotools.install()
-            rmdir(self, os.path.join(self.package_folder, "share"))
-            rmdir(self, os.path.join(self.package_folder, "lib"))
+            rmdir(self, os.path.join(self.folders.package, "share"))
+            rmdir(self, os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
         self.cpp_info.includedirs = []

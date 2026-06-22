@@ -89,12 +89,12 @@ class Recipe(RecipeBase):
             self,
             url="https://sqlite.org/2026/sqlite-amalgamation-3530100.zip",
             sha256="36ad6e7f38540a3b21a2ac36340833f0a9e426bc1c752751c3ba669466827eae",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["SQLITE3_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["SQLITE3_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.variables["SQLITE3_VERSION"] = self.version
         tc.variables["SQLITE3_BUILD_EXECUTABLE"] = self.options.build_executable
         tc.variables["THREADSAFE"] = self.options.threadsafe
@@ -137,16 +137,16 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def _extract_license(self):
-        header = load(self, os.path.join(self.source_folder, "sqlite3.h"))
+        header = load(self, os.path.join(self.folders.source, "sqlite3.h"))
         license_content = header[3:header.find("***", 1)]
         return license_content
 
     def package(self):
-        save(self, os.path.join(self.package_folder, "licenses", "LICENSE"), self._extract_license())
+        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), self._extract_license())
         cmake = CMake(self)
         cmake.install()
 

@@ -37,7 +37,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/strukturag/libde265/releases/download/v1.0.19/libde265-1.0.19.tar.gz",
             sha256="bb19a0b485d2643e0eeb7e91f3ab32d1ad617e7c487dbedc91214ca3dbd8d7eb",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         self._patch_sources()
 
@@ -51,7 +51,7 @@ class Recipe(RecipeBase):
     def _patch_sources(self):
         apply_patches(self)
         replace_in_file(
-            self, os.path.join(self.source_folder, "CMakeLists.txt"),
+            self, os.path.join(self.folders.source, "CMakeLists.txt"),
             "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
 
     def build(self):
@@ -60,11 +60,11 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "libde265")

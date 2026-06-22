@@ -45,7 +45,7 @@ class Recipe(RecipeBase):
             self,
             url="https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v2.41/util-linux-2.41.2.tar.xz",
             sha256="6062a1d89b571a61932e6fc0211f36060c4183568b81ee866cf363bce9f6583e",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -86,15 +86,15 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING.BSD-3-Clause", src=os.path.join(self.source_folder, "Documentation", "licenses"), dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING.BSD-3-Clause", src=os.path.join(self.folders.source, "Documentation", "licenses"), dst=os.path.join(self.folders.package, "licenses"))
         autotools = Autotools(self)
         autotools.install()
-        rm(self, "*.la", os.path.join(self.package_folder, "lib"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "bin"))
-        rmdir(self, os.path.join(self.package_folder, "sbin"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rmdir(self, os.path.join(self.package_folder, "usr"))
+        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "sbin"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, os.path.join(self.folders.package, "usr"))
         fix_apple_shared_install_name(self)
 
     def package_info(self):

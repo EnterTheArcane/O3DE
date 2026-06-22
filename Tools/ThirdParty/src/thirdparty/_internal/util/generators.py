@@ -10,9 +10,9 @@ def relativize_path(path, recipe, placeholder, normalize=True):
     if not base_common_folder or not os.path.isabs(base_common_folder):
         return path
     try:
-        common_path = os.path.commonpath([path, recipe.generators_folder, base_common_folder])
+        common_path = os.path.commonpath([path, recipe.folders.generators, base_common_folder])
         if common_path.replace("\\", "/") == base_common_folder.replace("\\", "/"):
-            rel_path = os.path.relpath(path, recipe.generators_folder)
+            rel_path = os.path.relpath(path, recipe.folders.generators)
             new_path = os.path.join(placeholder, rel_path)
             return new_path.replace("\\", "/") if normalize else new_path
     except ValueError:  # In case the unit in Windows is different, path cannot be made relative

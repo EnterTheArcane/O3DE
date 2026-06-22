@@ -58,7 +58,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
             sha256="fbf9bee521545557357679173d39787a954bd8187e4b2fcaa09044c70201b434",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
 
@@ -87,22 +87,22 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rm(self, "*.ilk", os.path.join(self.package_folder, "bin"))
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rm(self, "*.ilk", os.path.join(self.folders.package, "bin"))
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
         if self.options.shared and self.options.build_executable:
             for static_lib in [
                 "spirv-cross-core", "spirv-cross-glsl", "spirv-cross-hlsl", "spirv-cross-msl",
                 "spirv-cross-cpp", "spirv-cross-reflect", "spirv-cross-c", "spirv-cross-util",
             ]:
-                rm(self, f"*{static_lib}.*", os.path.join(self.package_folder, "lib"))
+                rm(self, f"*{static_lib}.*", os.path.join(self.folders.package, "lib"))
 
         self._create_cmake_module_alias_targets(
-            os.path.join(self.package_folder, self._module_file_rel_path),
+            os.path.join(self.folders.package, self._module_file_rel_path),
             {target: f"spirv-cross::{target}" for target in self._spirv_cross_components.keys()},
         )
 

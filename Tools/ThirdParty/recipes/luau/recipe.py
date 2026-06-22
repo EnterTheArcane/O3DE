@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/luau-lang/luau/archive/0.722.tar.gz",
             sha256="b69d7dd42540dc3892c5aa2f5c733897a8350ad64f09a0e0984a8c42ba29961b",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -32,16 +32,16 @@ class Recipe(RecipeBase):
         tc.variables["LUAU_WERROR"] = False
         tc.variables["LUAU_STATIC_CRT"] = False
         tc.variables["LUAU_NATIVE"] = True
-        tc.variables["LUAU_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["LUAU_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.generate()
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(self, "lua_LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "lua_LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 

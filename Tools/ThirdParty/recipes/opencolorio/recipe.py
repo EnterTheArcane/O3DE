@@ -50,11 +50,11 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v2.5.2/OpenColorIO-2.5.2.tar.gz",
             sha256="cb8b0ae38fa523be8f899a0b2d6b8ca8cbcda7bc4322c91d1ac2b6b2a0082474",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
         for module in ("expat", "lcms2", "pystring", "yaml-cpp", "Imath", "minizip-ng"):
-            rm(self, f"Find{module}.cmake", os.path.join(self.source_folder, "share", "cmake", "modules"))
+            rm(self, f"Find{module}.cmake", os.path.join(self.folders.source, "share", "cmake", "modules"))
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -104,18 +104,18 @@ class Recipe(RecipeBase):
         if not self.options.shared:
             copy(
                 self, "*",
-                src=os.path.join(self.package_folder, "lib", "static"),
-                dst=os.path.join(self.package_folder, "lib"))
-            rmdir(self, os.path.join(self.package_folder, "lib", "static"))
+                src=os.path.join(self.folders.package, "lib", "static"),
+                dst=os.path.join(self.folders.package, "lib"))
+            rmdir(self, os.path.join(self.folders.package, "lib", "static"))
 
-        rmdir(self, os.path.join(self.package_folder, "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
         # nop for 2.x
-        rm(self, "OpenColorIOConfig*.cmake", self.package_folder)
-        rm(self, "*.pdb", os.path.join(self.package_folder, "bin"))
-        copy(self, pattern="LICENSE", dst=os.path.join(self.package_folder, "licenses"), src=self.source_folder)
+        rm(self, "OpenColorIOConfig*.cmake", self.folders.package)
+        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "OpenColorIO")

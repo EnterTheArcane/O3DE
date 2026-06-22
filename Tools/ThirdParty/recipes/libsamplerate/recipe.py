@@ -41,9 +41,9 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/libsndfile/libsamplerate/releases/download/0.2.2/libsamplerate-0.2.2.tar.xz",
             sha256="3258da280511d24b49d6b08615bbe824d0cacc9842b0e4caf11c52cf2b043893",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "cmake_policy(SET CMP0091 OLD)", "")
+        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "cmake_policy(SET CMP0091 OLD)", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -60,12 +60,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "SampleRate")

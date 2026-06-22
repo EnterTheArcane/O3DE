@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
             self,
             url="https://sourceforge.net/projects/polyclipping/files/clipper_ver6.4.2.zip",
             sha256="a14320d82194807c4480ce59c98aa71cd4175a5156645c4e2b3edd330b930627",
-            destination=self.source_folder)
+            destination=self.folders.source)
         apply_patches(self)
 
     def generate(self):
@@ -37,14 +37,14 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, "cpp"))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, "cpp"))
         cmake.build()
 
     def package(self):
-        copy(self, "License.txt", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "License.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("pkg_config_name", "polyclipping")

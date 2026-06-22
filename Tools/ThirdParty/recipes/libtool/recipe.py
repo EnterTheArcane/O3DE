@@ -50,12 +50,12 @@ class Recipe(RecipeBase):
             self,
             url=self._SOURCE_URL,
             sha256=self._SOURCE_SHA256,
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     @property
     def _datarootdir(self):
-        return os.path.join(self.package_folder, "res")
+        return os.path.join(self.folders.package, "res")
 
     def generate(self):
         if is_msvc(self):
@@ -94,8 +94,8 @@ class Recipe(RecipeBase):
         apply_patches(self)
         config_guess = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
         config_sub = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_sub")
-        shutil.copy(config_sub, os.path.join(self.source_folder, "build-aux", "config.sub"))
-        shutil.copy(config_guess, os.path.join(self.source_folder, "build-aux", "config.guess"))
+        shutil.copy(config_sub, os.path.join(self.folders.source, "build-aux", "config.sub"))
+        shutil.copy(config_guess, os.path.join(self.folders.source, "build-aux", "config.guess"))
 
     def build(self):
         self._patch_sources()
@@ -126,15 +126,15 @@ class Recipe(RecipeBase):
         else:
             regex_out = re.compile("^$")
         for directory in (
-                os.path.join(self.package_folder, "bin"),
-                os.path.join(self.package_folder, "lib"),
+                os.path.join(self.folders.package, "bin"),
+                os.path.join(self.folders.package, "lib"),
         ):
             for file in os.listdir(directory):
                 if regex_in.match(file) and not regex_out.match(file):
                     os.unlink(os.path.join(directory, file))
 
     def package(self):
-        copy(self, "COPYING*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "COPYING*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         autotools = Autotools(self)
         autotools.install()
         fix_apple_shared_install_name(self)
@@ -142,15 +142,15 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self._datarootdir, "info"))
         rmdir(self, os.path.join(self._datarootdir, "man"))
 
-        os.unlink(os.path.join(self.package_folder, "lib", "libltdl.la"))
+        os.unlink(os.path.join(self.folders.package, "lib", "libltdl.la"))
         if self.options.shared:
             self._rm_binlib_files_containing(self._static_ext, self._shared_ext)
         else:
             self._rm_binlib_files_containing(self._shared_ext)
 
         files = (
-            os.path.join(self.package_folder, "bin", "libtool"),
-            os.path.join(self.package_folder, "bin", "libtoolize"),
+            os.path.join(self.folders.package, "bin", "libtool"),
+            os.path.join(self.folders.package, "bin", "libtoolize"),
         )
         replaces = {
             "GREP": "/usr/bin/env grep",
@@ -167,7 +167,7 @@ class Recipe(RecipeBase):
                     raise RecipeException("Failed to find {} in {}".format(key, repl))
             open(file, "w").write(contents)
 
-        binpath = os.path.join(self.package_folder, "bin")
+        binpath = os.path.join(self.folders.package, "bin")
         if self.settings.os == "Windows":
             rename(
                 self, os.path.join(binpath, "libtoolize"),
@@ -178,8 +178,8 @@ class Recipe(RecipeBase):
 
         if is_msvc(self) and self.options.shared:
             rename(
-                self, os.path.join(self.package_folder, "lib", "ltdl.dll.lib"),
-                os.path.join(self.package_folder, "lib", "ltdl.lib"))
+                self, os.path.join(self.folders.package, "lib", "ltdl.dll.lib"),
+                os.path.join(self.folders.package, "lib", "ltdl.lib"))
 
         # allow libtool to link static libs into shared for more platforms
         libtool_m4 = os.path.join(self._datarootdir, "aclocal", "libtool.m4")

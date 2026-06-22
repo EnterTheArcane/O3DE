@@ -76,7 +76,7 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz",
             sha256="3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
@@ -109,7 +109,7 @@ class Recipe(RecipeBase):
                 "--disable-samples",
             ])
         if cross_building(self):
-            base_path = unix_path(self, self.dependencies.build["icu"].package_folder)
+            base_path = unix_path(self, self.dependencies.build["icu"].folders.package)
             tc.configure_args.append(f"--with-cross-build={base_path}")
             if self.settings.os in ["iOS", "tvOS", "watchOS"]:
                 # ICU build scripts interpret all Apple platforms as 'darwin'.
@@ -145,14 +145,14 @@ class Recipe(RecipeBase):
 
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "source", "configure"),
+            os.path.join(self.folders.source, "source", "configure"),
             "if test -z \"$PYTHON\"",
             "if true",
         )
 
         if self.settings.os == "Windows":
             # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545
-            makeconv_cpp = os.path.join(self.source_folder, "source", "tools", "makeconv", "makeconv.cpp")
+            makeconv_cpp = os.path.join(self.folders.source, "source", "tools", "makeconv", "makeconv.cpp")
             replace_in_file(
                 self,
                 makeconv_cpp,
@@ -160,7 +160,7 @@ class Recipe(RecipeBase):
                 "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);")
 
         # relocatable shared libs on macOS
-        mh_darwin = os.path.join(self.source_folder, "source", "config", "mh-darwin")
+        mh_darwin = os.path.join(self.folders.source, "source", "config", "mh-darwin")
         replace_in_file(self, mh_darwin, "-install_name $(libdir)/$(notdir", "-install_name @rpath/$(notdir")
         replace_in_file(
             self,
@@ -169,21 +169,21 @@ class Recipe(RecipeBase):
             "-install_name @rpath/$(notdir $(MIDDLE_SO_TARGET))")
 
         # workaround for https://unicode-org.atlassian.net/browse/ICU-20531
-        mkdir(self, os.path.join(self.build_folder, "data", "out", "tmp"))
+        mkdir(self, os.path.join(self.folders.build, "data", "out", "tmp"))
 
         # workaround for "No rule to make target 'out/tmp/dirs.timestamp'"
-        save(self, os.path.join(self.build_folder, "data", "out", "tmp", "dirs.timestamp"), "")
+        save(self, os.path.join(self.folders.build, "data", "out", "tmp", "dirs.timestamp"), "")
 
     def build(self):
         self._patch_sources()
 
         if self.options.dat_package_file:
-            dat_package_file = glob.glob(os.path.join(self.source_folder, "source", "data", "in", "*.dat"))
+            dat_package_file = glob.glob(os.path.join(self.folders.source, "source", "data", "in", "*.dat"))
             if dat_package_file:
                 shutil.copy(str(self.options.dat_package_file), dat_package_file[0])
 
         autotools = Autotools(self)
-        autotools.configure(build_script_folder=os.path.join(self.source_folder, "source"))
+        autotools.configure(build_script_folder=os.path.join(self.folders.source, "source"))
         autotools.make()
 
     @property
@@ -203,17 +203,17 @@ class Recipe(RecipeBase):
         data_dir_name = "icu"
         if self.settings.os == "Windows" and self.settings.build_type == "Debug":
             data_dir_name += "d"
-        data_dir = os.path.join(self.package_folder, "lib", data_dir_name, str(self.version))
+        data_dir = os.path.join(self.folders.package, "lib", data_dir_name, str(self.version))
         return os.path.join(data_dir, self._data_filename)
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         autotools = Autotools(self)
         autotools.install()
 
-        dll_files = glob.glob(os.path.join(self.package_folder, "lib", "*.dll"))
+        dll_files = glob.glob(os.path.join(self.folders.package, "lib", "*.dll"))
         if dll_files:
-            bin_dir = os.path.join(self.package_folder, "bin")
+            bin_dir = os.path.join(self.folders.package, "bin")
             mkdir(self, bin_dir)
             for dll in dll_files:
                 dll_name = os.path.basename(dll)
@@ -221,18 +221,18 @@ class Recipe(RecipeBase):
                 rename(self, src=dll, dst=os.path.join(bin_dir, dll_name))
 
         if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
-            mkdir(self, os.path.join(self.package_folder, "res"))
-            rename(self, src=self._data_path, dst=os.path.join(self.package_folder, "res", self._data_filename))
+            mkdir(self, os.path.join(self.folders.package, "res"))
+            rename(self, src=self._data_path, dst=os.path.join(self.folders.package, "res", self._data_filename))
 
         # Copy some files required for cross-compiling
-        config_dir = os.path.join(self.package_folder, "config")
-        copy(self, "icucross.mk", src=os.path.join(self.build_folder, "config"), dst=config_dir)
-        copy(self, "icucross.inc", src=os.path.join(self.build_folder, "config"), dst=config_dir)
+        config_dir = os.path.join(self.folders.package, "config")
+        copy(self, "icucross.mk", src=os.path.join(self.folders.build, "config"), dst=config_dir)
+        copy(self, "icucross.inc", src=os.path.join(self.folders.build, "config"), dst=config_dir)
 
-        rmdir(self, os.path.join(self.package_folder, "lib", "icu"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "man"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "icu"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "man"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "ICU")
@@ -289,7 +289,7 @@ class Recipe(RecipeBase):
 
         if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
             self.cpp_info.components["icu-data"].resdirs = ["res"]
-            data_path = os.path.join(self.package_folder, "res", self._data_filename).replace("\\", "/")
+            data_path = os.path.join(self.folders.package, "res", self._data_filename).replace("\\", "/")
             self.runenv_info.prepend_path("ICU_DATA", data_path)
             if self._enable_icu_tools or self.options.with_extras:
                 self.buildenv_info.prepend_path("ICU_DATA", data_path)

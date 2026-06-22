@@ -29,16 +29,16 @@ class Recipe(RecipeBase):
             sha256 = "a1d3e3b5e1c5685b3eb27d5e8890e41d87df45def05112a2d6f1a63a931f7d60"
         else:
             raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
-        get(self, url=url, sha256=sha256, destination=self.build_folder)
+        get(self, url=url, sha256=sha256, destination=self.folders.build)
 
     def package(self):
         for subdir in ("bin", "include", "lib"):
-            src = os.path.join(self.build_folder, subdir)
+            src = os.path.join(self.folders.build, subdir)
             if os.path.isdir(src):
-                copy(self, "*", src=src, dst=os.path.join(self.package_folder, subdir))
+                copy(self, "*", src=src, dst=os.path.join(self.folders.package, subdir))
 
     def package_info(self):
-        bin_dir = os.path.join(self.package_folder, "bin")
+        bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)
 
         if self.settings.os == "Windows":

@@ -121,8 +121,8 @@ class _PCFilesDeps:
                         pc_variables[key] = value
 
         # If editable, package_folder can be None
-        prefix_path = (dep.recipe_folder if dep.package_folder is None
-                       else dep.package_folder).replace("\\", "/")
+        prefix_path = (dep.recipe_folder if dep.folders.package is None
+                       else dep.folders.package).replace("\\", "/")
         pc_variables = {"prefix": prefix_path}
         # Already formatted directories
         pc_variables.update(self._get_formatted_dirs("libdir", cpp_info.libdirs, prefix_path))

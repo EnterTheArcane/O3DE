@@ -38,11 +38,11 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.12/openexr-3.4.12.tar.gz",
             sha256="2d45db1d4bb78a5b263cd21cefa93119e1fcd37a13fa446c74663b6b8ec02d00",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "CMakeLists.txt"),
+            os.path.join(self.folders.source, "CMakeLists.txt"),
             "add_subdirectory(website/src)",
             "# add_subdirectory(website/src)")
 
@@ -64,12 +64,12 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.package_folder, "share"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     @staticmethod
     def _recipe_comp(name):

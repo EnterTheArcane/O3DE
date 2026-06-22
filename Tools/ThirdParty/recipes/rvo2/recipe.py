@@ -31,18 +31,18 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/snape/RVO2/archive/v2.0.2.tar.gz",
             sha256="20b59fcc4cf61783cb0d1baa40a0dff3c557a97246651f95d9d9fed91bf17724",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "add_subdirectory(examples)", "")
+        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "add_subdirectory(examples)", "")
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "src", "CMakeLists.txt"),
+            os.path.join(self.folders.source, "src", "CMakeLists.txt"),
             "DESTINATION include",
             "DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}",
         )
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "src", "CMakeLists.txt"),
+            os.path.join(self.folders.source, "src", "CMakeLists.txt"),
             "RVO DESTINATION lib",
             "RVO RUNTIME LIBRARY ARCHIVE",
         )
@@ -58,7 +58,7 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
         fix_apple_shared_install_name(self)

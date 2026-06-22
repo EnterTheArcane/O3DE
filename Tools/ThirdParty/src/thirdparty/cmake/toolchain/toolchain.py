@@ -180,12 +180,12 @@ class CMakeToolchain:
 
     def generate(self):
         """
-          This method will save the generated files to the recipe.generators_folder
+          This method will save the generated files to the recipe.folders.generators
         """
         toolchain_file = self._recipe.conf.get("tools.cmake.cmaketoolchain:toolchain_file")
         if toolchain_file is None:  # The main toolchain file generated only if user dont define
             toolchain_file = self.filename
-            save(os.path.join(self._recipe.generators_folder, toolchain_file), self.content)
+            save(os.path.join(self._recipe.folders.generators, toolchain_file), self.content)
             Output(str(self._recipe)).info(f"CMakeToolchain generated: {toolchain_file}")
         # Generators like Ninja or NMake requires an active vcvars
         if self.generator is not None and "Visual" not in self.generator:

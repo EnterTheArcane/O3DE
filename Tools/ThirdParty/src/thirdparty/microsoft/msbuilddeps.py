@@ -115,7 +115,7 @@ class MSBuildDeps:
     def generate(self):
         """
         Generates ``recipe_<pkg>_<config>_vars.props``, ``recipe_<pkg>_<config>.props``,
-        and ``recipe_<pkg>.props`` files into the ``recipe.generators_folder``.
+        and ``recipe_<pkg>.props`` files into the ``recipe.folders.generators``.
         """
         if self.configuration is None:
             raise RecipeException("MSBuildDeps.configuration is None, it should have a value")
@@ -187,7 +187,7 @@ class MSBuildDeps:
                 ret.append(full_path)
             return "".join("{};".format(e) for e in ret)
 
-        root_folder = dep.recipe_folder if dep.package_folder is None else dep.package_folder
+        root_folder = dep.recipe_folder if dep.folders.package is None else dep.folders.package
         root_folder = escape_path(root_folder)
         # Make the root_folder relative to the generated recipe_vars_xxx.props file
         relative_root_folder = relativize_path(root_folder, self._recipe,

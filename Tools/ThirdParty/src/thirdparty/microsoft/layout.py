@@ -11,9 +11,9 @@ def vs_layout(recipe):
     :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
     """
     subproject = recipe.folders.subproject
-    recipe.folders.source = subproject or "."
-    recipe.folders.generators = os.path.join(subproject, "recipe") if subproject else "recipe"
-    recipe.folders.build = subproject or "."
+    recipe.folders._source = subproject or "."
+    recipe.folders._generators = os.path.join(subproject, "recipe") if subproject else "recipe"
+    recipe.folders._build = subproject or "."
     recipe.cpp.source.includedirs = ["include"]
 
     try:

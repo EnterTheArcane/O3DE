@@ -28,21 +28,21 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/GameTechDev/ISPCTextureCompressor/archive/79ddbc90334fc31edd438e68ccb0fe99b4e15aab.tar.gz",
             sha256="506650f63f7a4a41237206083c8b3785a64daa94d4a896b3757d39581972f70b",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["ISPC_TEXCOMP_SRC_DIR"] = self.source_folder.replace("\\", "/")
+        tc.variables["ISPC_TEXCOMP_SRC_DIR"] = self.folders.source.replace("\\", "/")
         tc.generate()
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.source_folder, os.pardir))
+        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
@@ -51,6 +51,6 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("cmake_target_name", "ispc_texcomp::ispc_texcomp")
         self.cpp_info.libs = ["ispc_texcomp"]
         if self.settings.os == "Windows":
-            bin_dir = os.path.join(self.package_folder, "bin")
+            bin_dir = os.path.join(self.folders.package, "bin")
             self.buildenv_info.prepend_path("PATH", bin_dir)
             self.env_info.PATH.append(bin_dir)

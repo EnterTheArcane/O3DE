@@ -35,9 +35,9 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/KhronosGroup/SPIRV-Tools/archive/18b08af19b08515d5a1749adbdb05bc4369a57ed.tar.gz",
             sha256="3445457d807912b879f526eade9e191235e1bd272ff8e70e7fd8b7e5435e2397",
-            destination=self.source_folder,
+            destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.source_folder, "CMakeLists.txt"), "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
+        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -61,7 +61,7 @@ class Recipe(RecipeBase):
         # ============
 
         # Required by the project's CMakeLists.txt
-        tc.variables["SPIRV-Headers_SOURCE_DIR"] = self.dependencies["spirv-headers"].package_folder.replace("\\", "/")
+        tc.variables["SPIRV-Headers_SOURCE_DIR"] = self.dependencies["spirv-headers"].folders.package.replace("\\", "/")
 
         # There are some switch( ) statements that are causing errors
         # need to turn this off
@@ -84,29 +84,29 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE*", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.package_folder, "lib", "cmake"))
-        rmdir(self, os.path.join(self.package_folder, "SPIRV-Tools"))
-        rmdir(self, os.path.join(self.package_folder, "SPIRV-Tools-link"))
-        rmdir(self, os.path.join(self.package_folder, "SPIRV-Tools-opt"))
-        rmdir(self, os.path.join(self.package_folder, "SPIRV-Tools-reduce"))
-        rmdir(self, os.path.join(self.package_folder, "SPIRV-Tools-lint"))
-        rmdir(self, os.path.join(self.package_folder, "SPIRV-Tools-diff"))
-        rmdir(self, os.path.join(self.package_folder, "SPIRV-Tools-tools"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, os.path.join(self.folders.package, "SPIRV-Tools"))
+        rmdir(self, os.path.join(self.folders.package, "SPIRV-Tools-link"))
+        rmdir(self, os.path.join(self.folders.package, "SPIRV-Tools-opt"))
+        rmdir(self, os.path.join(self.folders.package, "SPIRV-Tools-reduce"))
+        rmdir(self, os.path.join(self.folders.package, "SPIRV-Tools-lint"))
+        rmdir(self, os.path.join(self.folders.package, "SPIRV-Tools-diff"))
+        rmdir(self, os.path.join(self.folders.package, "SPIRV-Tools-tools"))
         if self.options.shared:
             for file_name in [
                 "*SPIRV-Tools", "*SPIRV-Tools-opt", "*SPIRV-Tools-link",
                 "*SPIRV-Tools-reduce", "*SPIRV-Tools-lint",
             ]:
                 for ext in [".a", ".lib"]:
-                    rm(self, f"{file_name}{ext}", os.path.join(self.package_folder, "lib"))
+                    rm(self, f"{file_name}{ext}", os.path.join(self.folders.package, "lib"))
         else:
-            rm(self, "*SPIRV-Tools-shared.dll", os.path.join(self.package_folder, "bin"))
-            rm(self, "*SPIRV-Tools-shared*", os.path.join(self.package_folder, "lib"))
+            rm(self, "*SPIRV-Tools-shared.dll", os.path.join(self.folders.package, "bin"))
+            rm(self, "*SPIRV-Tools-shared*", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "SPIRV-Tools")

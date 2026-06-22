@@ -193,7 +193,7 @@ class Recipe(RecipeBase):
         return self._submodules_tree
 
     def export(self):
-        copy(self, f"qtmodules{self.version}.conf", self.recipe_folder, self.export_folder)
+        copy(self, f"qtmodules{self.version}.conf", self.recipe_folder, self.folders.export)
 
     def config_options(self):
         if self.settings.os not in ["Linux", "FreeBSD"]:
@@ -446,7 +446,7 @@ class Recipe(RecipeBase):
         env.define("PYTHONUTF8", "1")
         # TODO: to remove when properly handled by recipe (see upstream issue 11962)
         env.unset("VCPKG_ROOT")
-        env.prepend_path("PKG_CONFIG_PATH", self.generators_folder)
+        env.prepend_path("PKG_CONFIG_PATH", self.folders.generators)
         env.vars(self).save_script("buildenvenv_pkg_config_path")
         if self.settings_build.os == "Mac":
             # On macOS, SIP resets DYLD_LIBRARY_PATH injected by VirtualBuildEnv & VirtualRunEnv
@@ -597,9 +597,9 @@ class Recipe(RecipeBase):
             tc.variables["QT_QMAKE_DEVICE_OPTIONS"] = f"CROSS_COMPILE={self.options.cross_compile}"
         if cross_building(self):
             # Mainly to locate Qt6HostInfoConfig.cmake
-            tc.cache_variables["QT_HOST_PATH"] = self.dependencies.direct_build["qt"].package_folder
+            tc.cache_variables["QT_HOST_PATH"] = self.dependencies.direct_build["qt"].folders.package
             # Stand-in for Qt6CoreTools - which is loaded for the executable targets
-            tc.cache_variables["CMAKE_PROJECT_Qt_INCLUDE"] = os.path.join(self.dependencies.direct_build["qt"].package_folder, self._cmake_executables_file)
+            tc.cache_variables["CMAKE_PROJECT_Qt_INCLUDE"] = os.path.join(self.dependencies.direct_build["qt"].folders.package, self._cmake_executables_file)
             # Ensure tools for host are always built
             tc.cache_variables["QT_FORCE_BUILD_TOOLS"] = True
 
@@ -636,10 +636,10 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def source(self):
-        destination = self.source_folder
+        destination = self.folders.source
         if platform.system() == "Windows":
             # Don't use os.path.join, or it removes the \\?\ prefix, which enables long paths
-            destination = rf"\\?\{self.source_folder}"
+            destination = rf"\\?\{self.folders.source}"
         get(
             self,
             url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
@@ -651,32 +651,32 @@ class Recipe(RecipeBase):
         apply_patches(self)
         for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
             replace_in_file(
-                self, os.path.join(self.source_folder, "qtwebengine", "src", "3rdparty", "chromium", "third_party", "blink", f, "BUILD.gn"),
+                self, os.path.join(self.folders.source, "qtwebengine", "src", "3rdparty", "chromium", "third_party", "blink", f, "BUILD.gn"),
                 "  if (enable_precompiled_headers) {\n    if (is_win) {",
                 "  if (enable_precompiled_headers) {\n    if (false) {"
                 )
 
         for f in ["FindPostgreSQL.cmake"]:
-            file = os.path.join(self.source_folder, "qtbase", "cmake", f)
+            file = os.path.join(self.folders.source, "qtbase", "cmake", f)
             if os.path.isfile(file):
                 os.remove(file)
 
         # workaround QTBUG-94356
-        replace_in_file(self, os.path.join(self.source_folder, "qtbase", "cmake", "FindWrapSystemZLIB.cmake"), '"-lz"', 'ZLIB::ZLIB')
+        replace_in_file(self, os.path.join(self.folders.source, "qtbase", "cmake", "FindWrapSystemZLIB.cmake"), '"-lz"', 'ZLIB::ZLIB')
         replace_in_file(
-            self, os.path.join(self.source_folder, "qtbase", "configure.cmake"),
+            self, os.path.join(self.folders.source, "qtbase", "configure.cmake"),
             "set_property(TARGET ZLIB::ZLIB PROPERTY IMPORTED_GLOBAL TRUE)",
             "")
 
         replace_in_file(
             self,
-            os.path.join(self.source_folder, "qtbase", "cmake", "QtAutoDetectHelpers.cmake"),
+            os.path.join(self.folders.source, "qtbase", "cmake", "QtAutoDetectHelpers.cmake"),
             "qt_auto_detect_vcpkg()",
             "# qt_auto_detect_vcpkg()")
 
         # Handle locating moltenvk headers when vulkan is enabled on macOS
         replace_in_file(
-            self, os.path.join(self.source_folder, "qtbase", "cmake", "FindWrapVulkanHeaders.cmake"),
+            self, os.path.join(self.folders.source, "qtbase", "cmake", "FindWrapVulkanHeaders.cmake"),
             "if(APPLE)", "if(APPLE)\n"
                          " find_package(moltenvk REQUIRED QUIET)\n"
                          " target_include_directories(WrapVulkanHeaders::WrapVulkanHeaders INTERFACE ${moltenvk_INCLUDE_DIR})"
@@ -808,35 +808,35 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
         copy(
-            self, "*LICENSE*", self.source_folder, os.path.join(self.package_folder, "licenses"),
+            self, "*LICENSE*", self.folders.source, os.path.join(self.folders.package, "licenses"),
             excludes="qtbase/examples/*")
         for module in self._get_module_tree:
             if not getattr(self.options, module):
-                rmdir(self, os.path.join(self.package_folder, "licenses", module))
-        rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
+                rmdir(self, os.path.join(self.folders.package, "licenses", module))
+        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         for mask in ["Find*.cmake", "*Config.cmake", "*-config.cmake"]:
-            rm(self, mask, self.package_folder, recursive=True, excludes=["Qt6*Config.cmake", "FindWrap*.cmake"])
-        rm(self, "*.la*", os.path.join(self.package_folder, "lib"), recursive=True)
-        rm(self, "*.pdb*", self.package_folder, recursive=True)
-        rm(self, "ensure_pro_file.cmake", self.package_folder, recursive=True)
-        os.remove(os.path.join(self.package_folder, "libexec" if self.settings.os != "Windows" else "bin", "qt-cmake-private-install.cmake"))
+            rm(self, mask, self.folders.package, recursive=True, excludes=["Qt6*Config.cmake", "FindWrap*.cmake"])
+        rm(self, "*.la*", os.path.join(self.folders.package, "lib"), recursive=True)
+        rm(self, "*.pdb*", self.folders.package, recursive=True)
+        rm(self, "ensure_pro_file.cmake", self.folders.package, recursive=True)
+        os.remove(os.path.join(self.folders.package, "libexec" if self.settings.os != "Windows" else "bin", "qt-cmake-private-install.cmake"))
 
-        for m in os.listdir(os.path.join(self.package_folder, "lib", "cmake")):
-            if os.path.isfile(os.path.join(self.package_folder, "lib", "cmake", m, f"{m}Macros.cmake")):
+        for m in os.listdir(os.path.join(self.folders.package, "lib", "cmake")):
+            if os.path.isfile(os.path.join(self.folders.package, "lib", "cmake", m, f"{m}Macros.cmake")):
                 continue
-            if glob.glob(os.path.join(self.package_folder, "lib", "cmake", m, "QtPublic*Helpers.cmake")):
+            if glob.glob(os.path.join(self.folders.package, "lib", "cmake", m, "QtPublic*Helpers.cmake")):
                 continue
-            if glob.glob(os.path.join(self.package_folder, "lib", "cmake", m, "Qt6QmlPublic*Helpers.cmake")):
+            if glob.glob(os.path.join(self.folders.package, "lib", "cmake", m, "Qt6QmlPublic*Helpers.cmake")):
                 continue
             if m.endswith("Tools"):
-                if os.path.isfile(os.path.join(self.package_folder, "lib", "cmake", m, f"{m[:-5]}Macros.cmake")):
+                if os.path.isfile(os.path.join(self.folders.package, "lib", "cmake", m, f"{m[:-5]}Macros.cmake")):
                     continue
             if m.endswith("Private"):
                 continue
-            if glob.glob(os.path.join(self.package_folder, "lib", "cmake", m, "Qt6*Config.cmake")):
+            if glob.glob(os.path.join(self.folders.package, "lib", "cmake", m, "Qt6*Config.cmake")):
                 continue
             if m != "Qt6HostInfo":
-                rmdir(self, os.path.join(self.package_folder, "lib", "cmake", m))
+                rmdir(self, os.path.join(self.folders.package, "lib", "cmake", m))
 
         extension = ""
         if self.settings.os == "Windows":
@@ -889,11 +889,11 @@ class Recipe(RecipeBase):
                 f"lib/{target}{extension}",
                 f"libexec/{target}{extension}",
             ]:
-                if os.path.isfile(os.path.join(self.package_folder, path_)):
+                if os.path.isfile(os.path.join(self.folders.package, path_)):
                     exe_path = path_
                     break
             else:
-                assert False, f"Could not find executable {target}{extension} in {self.package_folder}"
+                assert False, f"Could not find executable {target}{extension} in {self.folders.package}"
             if not exe_path:
                 self.output.warning(f"Could not find path to {target}{extension}")
             filecontents += textwrap.dedent(
@@ -911,7 +911,7 @@ class Recipe(RecipeBase):
             endif()
             """)
         filecontents += 'set(CMAKE_AUTOMOC_MACRO_NAMES "Q_OBJECT" "Q_GADGET" "Q_GADGET_EXPORT" "Q_NAMESPACE" "Q_NAMESPACE_EXPORT")\n'
-        save(self, os.path.join(self.package_folder, self._cmake_executables_file), filecontents)
+        save(self, os.path.join(self.folders.package, self._cmake_executables_file), filecontents)
 
         def _create_private_module(module, dependencies):
             dependencies_string = ';'.join(f"Qt6::{dependency}" for dependency in dependencies)
@@ -932,7 +932,7 @@ class Recipe(RecipeBase):
                 )
             endif()""")
 
-            save(self, os.path.join(self.package_folder, self._cmake_qt6_private_file(module)), contents)
+            save(self, os.path.join(self.folders.package, self._cmake_qt6_private_file(module)), contents)
 
         _create_private_module("Core", ["Core"])
 
@@ -945,7 +945,7 @@ class Recipe(RecipeBase):
         if self.options.qtdeclarative:
             _create_private_module("Qml", ["CorePrivate", "Qml"])
             save(
-                self, os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"), textwrap.dedent(
+                self, os.path.join(self.folders.package, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"), textwrap.dedent(
                     """\
                                         set(QT_KNOWN_POLICY_QTP0001 TRUE)
                                         set(QT_KNOWN_POLICY_QTP0004 TRUE)
@@ -968,7 +968,7 @@ class Recipe(RecipeBase):
                                     TARGET ${QT_CMAKE_EXPORT_NAMESPACE}::Core
                                     APPEND PROPERTY INTERFACE_LINK_LIBRARIES "$<${entrypoint_conditions}:${QT_CMAKE_EXPORT_NAMESPACE}::EntryPointPrivate>"
                                 )""")
-            save(self, os.path.join(self.package_folder, self._cmake_entry_point_file), contents)
+            save(self, os.path.join(self.folders.package, self._cmake_entry_point_file), contents)
 
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtPlatformTargetHelpers.cmake#L68
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtPlatformTargetHelpers.cmake#L71
@@ -996,7 +996,7 @@ class Recipe(RecipeBase):
                                     target_compile_definitions(Qt6::Platform
                                         INTERFACE "$<${no_unicode_condition}:UNICODE$<SEMICOLON>_UNICODE>")
                                 endif()""")
-            save(self, os.path.join(self.package_folder, self._cmake_platform_target_setup_file), contents)
+            save(self, os.path.join(self.folders.package, self._cmake_platform_target_setup_file), contents)
 
     def package_info(self):
         disabled_features = str(self.options.disabled_features).split()
@@ -1005,10 +1005,10 @@ class Recipe(RecipeBase):
         self.cpp_info.set_property("pkg_config_name", "qt6")
 
         # consumers will need the QT_PLUGIN_PATH defined in runenv
-        self.runenv_info.define("QT_PLUGIN_PATH", os.path.join(self.package_folder, "plugins"))
-        self.buildenv_info.define("QT_PLUGIN_PATH", os.path.join(self.package_folder, "plugins"))
+        self.runenv_info.define("QT_PLUGIN_PATH", os.path.join(self.folders.package, "plugins"))
+        self.buildenv_info.define("QT_PLUGIN_PATH", os.path.join(self.folders.package, "plugins"))
 
-        self.buildenv_info.define("QT_HOST_PATH", self.package_folder)
+        self.buildenv_info.define("QT_HOST_PATH", self.folders.package)
 
         build_modules = {}
 
@@ -1605,7 +1605,7 @@ class Recipe(RecipeBase):
         if self.settings.os in ["Windows", "iOS"]:
             _add_build_module("qtCore", self._cmake_entry_point_file)
 
-        qt_cmake_dir = os.path.join(self.package_folder, "lib", "cmake")
+        qt_cmake_dir = os.path.join(self.folders.package, "lib", "cmake")
         for m in os.listdir(qt_cmake_dir):
             component_name = m.replace("Qt6", "qt")
             if component_name == "qt":
@@ -1632,7 +1632,7 @@ class Recipe(RecipeBase):
                     _add_build_module(component_name[:-5], module)
                 self.cpp_info.components[component_name[:-5]].builddirs.append(os.path.join("lib", "cmake", m))
 
-        objects_dirs = glob.glob(os.path.join(self.package_folder, "lib", "objects-*/"))
+        objects_dirs = glob.glob(os.path.join(self.folders.package, "lib", "objects-*/"))
         for object_dir in objects_dirs:
             for m in os.listdir(object_dir):
                 component = "qt" + m[:m.find("_")]
@@ -1646,7 +1646,7 @@ class Recipe(RecipeBase):
         build_modules_list = []
 
         if self.options.qtdeclarative:
-            build_modules_list.append(os.path.join(self.package_folder, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"))
+            build_modules_list.append(os.path.join(self.folders.package, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"))
 
         def _add_build_modules_for_component(component):
             for req in self.cpp_info.components[component].requires:
@@ -1660,4 +1660,4 @@ class Recipe(RecipeBase):
 
         self.cpp_info.set_property("cmake_build_modules", build_modules_list)
 
-        self.conf_info.define("user.qt:tools_directory", os.path.join(self.package_folder, "bin" if self.settings.os == "Windows" else "libexec"))
+        self.conf_info.define("user.qt:tools_directory", os.path.join(self.folders.package, "bin" if self.settings.os == "Windows" else "libexec"))
