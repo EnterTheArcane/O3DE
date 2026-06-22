@@ -8,29 +8,13 @@ if TYPE_CHECKING:
     from pathlib import Path  # noqa: F401  (annotation only)
     from thirdparty._internal.model.recipe_base import RecipeBase  # noqa: F401
 
-RECIPE_DOWNLOADED = "Downloaded"
-RECIPE_INCACHE = "Cache"  # The previously installed recipe in cache is being used
-RECIPE_UPDATED = "Updated"
-RECIPE_INCACHE_DATE_UPDATED = "Cache (Updated date)"
-RECIPE_NEWER = "Newer"  # The local recipe is  modified and newer timestamp than server
-RECIPE_UPDATEABLE = "Update available"  # The update of recipe is available (only in recipe info)
-# These recipes do not have a full reference, not in the cache
+# Recipe-origin states (assigned to Node.recipe).
+RECIPE_INCACHE = "Cache"      # a normal, locally-resolved recipe
 RECIPE_EDITABLE = "Editable"
-RECIPE_CONSUMER = "Consumer"  # A recipe from the user
-RECIPE_VIRTUAL = "Cli"  # A virtual recipe (dynamic in memory recipe)
-RECIPE_PLATFORM = "Platform"
+RECIPE_CONSUMER = "Consumer"  # the user-facing recipe being built
+RECIPE_PLATFORM = "Platform"  # a platform-provided (system) requirement
 
-BINARY_CACHE = "Cache"
-BINARY_DOWNLOAD = "Download"
-BINARY_UPDATE = "Update"
-BINARY_BUILD = "Build"
-BINARY_MISSING = "Missing"
-BINARY_SKIP = "Skip"
-BINARY_EDITABLE = "Editable"
-BINARY_EDITABLE_BUILD = "EditableBuild"
-BINARY_INVALID = "Invalid"
-BINARY_PLATFORM = "Platform"
-
+# Build contexts.
 CONTEXT_HOST = "host"
 CONTEXT_BUILD = "build"
 
