@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -213,7 +213,7 @@ class Recipe(RecipeBase):
             libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.cpp_info.aggregated_components().libdirs]
             tc.cache_variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
         tc.generate()
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.set_property("fmt", "cmake_additional_variables_prefixes", ["FMT"])
         deps.set_property("ffmpeg", "cmake_additional_variables_prefixes", ["FFMPEG"])
         deps.set_property("ffmpeg", "cmake_file_name", "FFmpeg")

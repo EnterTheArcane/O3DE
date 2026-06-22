@@ -243,6 +243,9 @@ class _PathGenerator:
         template = textwrap.dedent("""\
         set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
 
+        {% if prefix_paths %}
+        list(PREPEND CMAKE_PREFIX_PATH {{ prefix_paths }})
+        {% endif %}
         {% for pkg_name, folder in pkg_paths.items() %}
         set({{pkg_name}}_DIR "{{folder}}")
         {% endfor %}
@@ -282,6 +285,7 @@ class _PathGenerator:
         # if not, test_cmake_add_subdirectory test fails
         # content.append('set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)')
         pkg_paths = {}
+        prefix_paths = []
 
         pkg_paths_multi = {}
         if os.path.exists(self._recipe_cmakedeps_paths):
@@ -342,6 +346,16 @@ class _PathGenerator:
                         existing_paths = pkg_paths_multi.setdefault(pkg_name, [])
                         if pkg_folder not in existing_paths:
                             existing_paths.append(pkg_folder)
+                # Add the dependency's package root to CMAKE_PREFIX_PATH so find_package() can
+                # locate config files nested under lib/cmake/<name>, share/cmake/<name>, etc.
+                # Legacy CMakeDeps put the package on the prefix path; some packages (e.g. the
+                # Gazebo libs) install their own config files in nested folders not matched by
+                # the builddir check above.
+                if dep.package_folder:
+                    rel_root = relativize_path(dep.package_folder.replace("\\", "/"),
+                                               self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
+                    if rel_root not in prefix_paths:
+                        prefix_paths.append(rel_root)
                 continue
 
             # If CMakeDeps generated, the folder is this one
@@ -358,6 +372,7 @@ class _PathGenerator:
         context = {"host_runtime_dirs": self._get_host_runtime_dirs(),
                    "pkg_paths": pkg_paths,
                    "pkg_paths_multi": pkg_paths_multi,
+                   "prefix_paths": _join_paths(self._recipe, prefix_paths),
                    "cmake_program_path": _join_paths(self._recipe, cmake_program_path),
                    "cmake_library_path": _join_paths(self._recipe, cmake_library_path),
                    "cmake_include_path": _join_paths(self._recipe, cmake_include_path),
