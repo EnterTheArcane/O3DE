@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
-from thirdparty.cmake import CMake, CMakeToolchain, CMakeConfigDeps
+from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, download, get, replace_in_file, rmdir
 from thirdparty.microsoft import is_msvc
@@ -281,7 +281,7 @@ class Recipe(RecipeBase):
 
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.set_property("wolfssl", "cmake_additional_variables_prefixes", ["WolfSSL", "WOLFSSL"])
         deps.set_property("wolfssl", "cmake_file_name", "WolfSSL")
 

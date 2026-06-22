@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -54,9 +54,9 @@ class Recipe(RecipeBase):
         tc.variables["DOCS"] = False
         tc.generate()
 
-        cd = CMakeConfigDeps(self)
-        cd.set_property("openjph", "cmake_target_name", "openjph")
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.set_property("openjph", "cmake_target_name", "openjph")
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)

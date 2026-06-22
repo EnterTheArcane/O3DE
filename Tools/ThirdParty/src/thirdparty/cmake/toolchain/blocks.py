@@ -568,7 +568,7 @@ class FindFiles(Block):
     template = textwrap.dedent("""\
         # Define paths to find packages, programs, libraries, etc.
         if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/recipe_cmakedeps_paths.cmake")
-          message(STATUS "Recipe toolchain: Including CMakeConfigDeps generated recipe_cmakedeps_paths.cmake")
+          message(STATUS "Recipe toolchain: Including CMakeDeps generated recipe_cmakedeps_paths.cmake")
           include("${CMAKE_CURRENT_LIST_DIR}/recipe_cmakedeps_paths.cmake")
         else()
 

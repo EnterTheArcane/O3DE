@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -46,8 +46,8 @@ class Recipe(RecipeBase):
         # Relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         tc.generate()
-        cd = CMakeConfigDeps(self)
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)
@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
 
         # TODO: Upstream VorbisConfig.cmake defines components 'Enc' and 'File',
         # which are related to imported targets Vorbis::vorbisenc and Vorbis::vorbisfile
-        # Find a way to emulate this in CMakeConfigDeps. See upstream issue 10258
+        # Find a way to emulate this in CMakeDeps. See upstream issue 10258
 
         # vorbisenc
         self.cpp_info.components["vorbisenc"].set_property("cmake_target_name", "Vorbis::vorbisenc")

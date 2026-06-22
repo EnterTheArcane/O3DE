@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -46,8 +46,8 @@ class Recipe(RecipeBase):
         tc.variables["BUILD_TESTING"] = False
         tc.variables["BUILD_CXXLIBS"] = True
         tc.generate()
-        cd = CMakeConfigDeps(self)
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         replace_in_file(

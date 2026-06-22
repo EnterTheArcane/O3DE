@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -45,8 +45,8 @@ class Recipe(RecipeBase):
         tc.variables["PTEX_BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["PTEX_BUILD_SHARED_LIBS"] = self.options.shared
         tc.generate()
-        cd = CMakeConfigDeps(self)
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)

@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os, XCRun, fix_apple_shared_install_name
@@ -125,9 +126,16 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.package_folder, "lib", "pkgconfig"))
         if is_msvc(self):
             ext = ".dll.lib" if self.options.shared else ".lib"
+            libdir = os.path.join(self.package_folder, "lib")
             rename(
-                self, os.path.join(self.package_folder, "lib", f"libx264{ext}"),
-                os.path.join(self.package_folder, "lib", "x264.lib"))
+                self, os.path.join(libdir, f"libx264{ext}"),
+                os.path.join(libdir, "x264.lib"))
+            # ffmpeg's MSVC configure hardcodes `-lx264` -> `libx264.lib` (x264's native
+            # MSVC library name; see ffmpeg's configure msvc_flags filter).  Provide that
+            # name as well so such consumers link successfully, while keeping x264.lib for
+            # pkg-config (`-lx264`) / CMake consumers.
+            shutil.copy2(os.path.join(libdir, "x264.lib"),
+                         os.path.join(libdir, "libx264.lib"))
         fix_apple_shared_install_name(self)
 
     def package_info(self):

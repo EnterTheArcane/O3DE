@@ -3,7 +3,7 @@ import re
 import textwrap
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeToolchain, CMakeConfigDeps
+from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import (
     collect_libs, copy, load,
     get, replace_in_file, rmdir, save,
@@ -53,7 +53,7 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         # freetype's CMakeLists does find_package(Brotli) and links target brotli::brotli;
         # Brotli has no builtin CMake Find module, so emit a "Brotli" config for it.
         deps.set_property("brotli", "cmake_file_name", "Brotli")
@@ -202,7 +202,7 @@ class Recipe(RecipeBase):
             os.chmod(filename, os.stat(filename).st_mode | 0o111)
 
     def package_info(self):
-        # Use config mode with the canonical "Freetype" name. The CMakeConfigDeps generator
+        # Use config mode with the canonical "Freetype" name. The CMakeDeps generator
         # does not emit Find modules, so a split "both"/module setup would let consumers'
         # find_package(Freetype) fall through to CMake's builtin FindFreetype, which links
         # only freetype itself and drops freetype's private static deps (brotli, bzip2) —

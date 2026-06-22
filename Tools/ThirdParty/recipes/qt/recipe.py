@@ -7,7 +7,7 @@ import textwrap
 from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building, default_cppstd
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.gnu import PkgConfigDeps
@@ -406,26 +406,26 @@ class Recipe(RecipeBase):
         ms = VirtualBuildEnv(self)
         ms.generate()
 
-        tc = CMakeConfigDeps(self)
-        tc.set_property("libdrm", "cmake_file_name", "Libdrm")
-        tc.set_property("libdrm::libdrm_libdrm", "cmake_target_name", "Libdrm::Libdrm")
-        tc.set_property("wayland", "cmake_file_name", "Wayland")
-        tc.set_property("wayland::wayland-client", "cmake_target_name", "Wayland::Client")
-        tc.set_property("wayland::wayland-server", "cmake_target_name", "Wayland::Server")
-        tc.set_property("wayland::wayland-cursor", "cmake_target_name", "Wayland::Cursor")
-        tc.set_property("wayland::wayland-egl", "cmake_target_name", "Wayland::Egl")
+        deps = CMakeDeps(self)
+        deps.set_property("libdrm", "cmake_file_name", "Libdrm")
+        deps.set_property("libdrm::libdrm_libdrm", "cmake_target_name", "Libdrm::Libdrm")
+        deps.set_property("wayland", "cmake_file_name", "Wayland")
+        deps.set_property("wayland::wayland-client", "cmake_target_name", "Wayland::Client")
+        deps.set_property("wayland::wayland-server", "cmake_target_name", "Wayland::Server")
+        deps.set_property("wayland::wayland-cursor", "cmake_target_name", "Wayland::Cursor")
+        deps.set_property("wayland::wayland-egl", "cmake_target_name", "Wayland::Egl")
 
         # CMakeDeps generates EGL-config.cmake and sets EGL_DIR in recipe_cmakedeps_paths.cmake,
         # so find_package(EGL) prefers the Recipe-installed config over Qt's bundled FindEGL.cmake.
-        tc.set_property("egl", "cmake_file_name", "EGL")
-        tc.set_property("egl", "cmake_find_mode", "config")
-        tc.set_property("egl::egl", "cmake_target_name", "EGL::EGL")
+        deps.set_property("egl", "cmake_file_name", "EGL")
+        deps.set_property("egl", "cmake_find_mode", "config")
+        deps.set_property("egl::egl", "cmake_target_name", "EGL::EGL")
 
         # Don't generate any file for gstreamer — let Qt's own FindGStreamer.cmake handle
         # detection via CMAKE_PREFIX_PATH (same intent as the previous gstreamer_recipe hack).
-        tc.set_property("gstreamer", "cmake_find_mode", "none")
+        deps.set_property("gstreamer", "cmake_find_mode", "none")
 
-        tc.generate()
+        deps.generate()
 
         for f in glob.glob("*.cmake"):
             replace_in_file(
@@ -433,8 +433,8 @@ class Recipe(RecipeBase):
                 " IMPORTED)\n",
                 " IMPORTED GLOBAL)\n", strict=False)
 
-        pc = PkgConfigDeps(self)
-        pc.generate()
+        deps = PkgConfigDeps(self)
+        deps.generate()
 
         vbe = VirtualBuildEnv(self)
         vbe.generate()

@@ -72,13 +72,13 @@ class Recipe(RecipeBase):
             env = VirtualRunEnv(self)
             env.generate(scope="build")
 
-        pkg_config_deps = PkgConfigDeps(self)
+        deps = PkgConfigDeps(self)
         if not can_run(self):
-            pkg_config_deps.build_context_activated = ["wayland"]
+            deps.build_context_activated = ["wayland"]
         elif self.dependencies["expat"].is_build_context:  # wayland is being built as build_require
             # If wayland is the build_require, all its dependencies are treated as build_requires
-            pkg_config_deps.build_context_activated = [dep.ref.name for _, dep in self.dependencies.host.items()]
-        pkg_config_deps.generate()
+            deps.build_context_activated = [dep.ref.name for _, dep in self.dependencies.host.items()]
+        deps.generate()
         tc = MesonToolchain(self)
         tc.project_options["libdir"] = "lib"
         tc.project_options["datadir"] = "res"
