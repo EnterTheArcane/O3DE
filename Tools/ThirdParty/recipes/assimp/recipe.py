@@ -3,7 +3,7 @@ from pathlib import Path
 
 from thirdparty import RecipeBase
 from thirdparty.build import stdcpp_library
-from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.files import collect_libs, copy, get, replace_in_file, rmdir, save
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.scm import Version
@@ -211,10 +211,20 @@ class Recipe(RecipeBase):
         tc.cache_variables["WITH_STB"] = self._depends_on_stb
         tc.generate()
 
-        cd = CMakeDeps(self)
+        cd = CMakeConfigDeps(self)
         cd.set_property("rapidjson", "cmake_target_name", "rapidjson::rapidjson")
         cd.set_property("utfcpp", "cmake_target_name", "utf8cpp::utf8cpp")
         cd.generate()
+
+        # CMakeConfigDeps does not generate the CMakeDeps `recipe_deps.cmake` find_package
+        # aggregator that assimp injects via CMAKE_PROJECT_Assimp_INCLUDE.  Write an equivalent
+        # so the dependency targets exist at project() time (assimp links them conditionally in
+        # _patch_sources).  find_package names match each dep's cmake_file_name (same configs
+        # CMakeConfigDeps emits); calls are non-REQUIRED so options-disabled deps are harmless.
+        _agg_pkgs = ["BZip2", "ZLIB", "minizip", "pugixml", "utf8cpp", "zip",
+                     "poly2tri", "RapidJSON", "draco", "clipper", "stb", "openddlparser"]
+        save(self, os.path.join(self.generators_folder, "recipe_deps.cmake"),
+             "".join(f"find_package({p})\n" for p in _agg_pkgs))
 
     def _patch_sources(self):
         # Don't force several compiler and linker flags

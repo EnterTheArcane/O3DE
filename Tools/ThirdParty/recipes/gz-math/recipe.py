@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -50,7 +50,7 @@ class Recipe(RecipeBase):
         tc.variables["SKIP_SWIG"] = True
         tc.generate()
 
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
         deps.set_property("gz-cmake", "cmake_find_mode", "none")
         deps.set_property("gz-utils", "cmake_find_mode", "none")
         deps.set_property("eigen", "cmake_file_name", "Eigen3")

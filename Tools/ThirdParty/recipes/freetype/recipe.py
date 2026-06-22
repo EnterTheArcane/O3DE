@@ -3,7 +3,7 @@ import re
 import textwrap
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
+from thirdparty.cmake import CMake, CMakeToolchain, CMakeConfigDeps
 from thirdparty.files import (
     collect_libs, copy, load,
     get, replace_in_file, rmdir, save,
@@ -53,7 +53,11 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        deps = CMakeDeps(self)
+        deps = CMakeConfigDeps(self)
+        # freetype's CMakeLists does find_package(Brotli) and links target brotli::brotli;
+        # Brotli has no builtin CMake Find module, so emit a "Brotli" config for it.
+        deps.set_property("brotli", "cmake_file_name", "Brotli")
+        deps.set_property("brotli", "cmake_target_name", "brotli::brotli")
         deps.generate()
 
         tc = CMakeToolchain(self)
