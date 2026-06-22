@@ -179,7 +179,7 @@ def _instantiate(
 ) -> RecipeBase:
     recipe = make_probe_recipe(recipe_cls, recipes_root, name, version, build_type, jobs=jobs,
                                target_os=target_os, target_arch=target_arch)
-    # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeConfigDeps
+    # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeDeps
     # and anything reading ``recipe.ref`` rely on this being present.
     recipe._recipe_node = _Node(name, version, context=_CONTEXT_HOST,
                                 recipe_state=_RECIPE_INCACHE)

@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import apply_patches, copy, get
 from thirdparty.scm import Version
@@ -66,7 +66,7 @@ class Recipe(RecipeBase):
         if self.options.shared:
             tc.variables["MVK_HIDE_VULKAN_SYMBOLS"] = self.options.hide_vulkan_symbols
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

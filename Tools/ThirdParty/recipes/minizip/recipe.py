@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, get, load, save
 
 
@@ -45,7 +45,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Android" and int(str(self.settings.os.api_level)) < 24:
             tc.preprocessor_definitions["IOAPI_NO_64"] = "1"
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

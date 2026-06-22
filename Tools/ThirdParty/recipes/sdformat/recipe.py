@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -72,7 +72,7 @@ class Recipe(RecipeBase):
                 tc.variables["TINYXML2_LIBRARIES"] = f"{tinyxml2_pkg}/lib/lib{tinyxml2_lib}.a"
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.set_property("gz-cmake", "cmake_find_mode", "none")
         deps.set_property("gz-math", "cmake_find_mode", "none")
         deps.set_property("gz-utils", "cmake_find_mode", "none")

@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
@@ -45,7 +45,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["OJPH_DISABLE_SIMD"] = False
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

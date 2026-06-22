@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.build import stdcpp_library
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -66,7 +66,7 @@ class Recipe(RecipeBase):
         tc.variables["KTX_FEATURE_TESTS"] = False
         tc.variables["BASISU_SUPPORT_SSE"] = self.options.get_safe("sse", False)
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

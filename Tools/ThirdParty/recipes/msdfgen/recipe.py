@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.scm import Version
@@ -62,7 +62,7 @@ class Recipe(RecipeBase):
             libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.cpp_info.aggregated_components().libdirs]
             tc.variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):
@@ -79,7 +79,7 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "msdfgen")
-        # Required to avoid some side effect in CMakeConfigDeps generator of downstream recipes
+        # Required to avoid some side effect in CMakeDeps generator of downstream recipes
         self.cpp_info.set_property("cmake_target_name", "msdfgen::msdgen-all-unofficial")
 
         includedir = os.path.join("include", "msdfgen")
