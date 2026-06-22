@@ -46,8 +46,8 @@ class Recipe(RecipeBase):
         tc.variables["BUILD_TESTING"] = False
         tc.variables["BUILD_CXXLIBS"] = True
         tc.generate()
-        cd = CMakeDeps(self)
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         replace_in_file(

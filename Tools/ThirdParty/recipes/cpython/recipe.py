@@ -198,8 +198,8 @@ class Recipe(RecipeBase):
         deps = AutotoolsDeps(self)
         deps.generate()
         if Version(self.version) >= "3.11":
-            pkgdeps = PkgConfigDeps(self)
-            pkgdeps.generate()
+            deps = PkgConfigDeps(self)
+            deps.generate()
 
     def generate(self):
         VirtualRunEnv(self).generate(scope="build")

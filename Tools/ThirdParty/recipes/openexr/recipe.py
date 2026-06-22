@@ -54,9 +54,9 @@ class Recipe(RecipeBase):
         tc.variables["DOCS"] = False
         tc.generate()
 
-        cd = CMakeDeps(self)
-        cd.set_property("openjph", "cmake_target_name", "openjph")
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.set_property("openjph", "cmake_target_name", "openjph")
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)

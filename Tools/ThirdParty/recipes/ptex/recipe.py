@@ -45,8 +45,8 @@ class Recipe(RecipeBase):
         tc.variables["PTEX_BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["PTEX_BUILD_SHARED_LIBS"] = self.options.shared
         tc.generate()
-        cd = CMakeDeps(self)
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)

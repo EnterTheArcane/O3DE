@@ -46,8 +46,8 @@ class Recipe(RecipeBase):
         # Relocatable shared lib on Macos
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         tc.generate()
-        cd = CMakeDeps(self)
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.generate()
 
     def build(self):
         cmake = CMake(self)

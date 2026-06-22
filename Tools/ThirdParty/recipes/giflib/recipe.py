@@ -46,8 +46,8 @@ class Recipe(RecipeBase):
         tc.generate()
 
         if is_msvc(self):
-            cd = CMakeDeps(self)
-            cd.generate()
+            deps = CMakeDeps(self)
+            deps.generate()
 
     def build(self):
         cmake = CMake(self)

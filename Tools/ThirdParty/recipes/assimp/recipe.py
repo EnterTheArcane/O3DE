@@ -211,10 +211,10 @@ class Recipe(RecipeBase):
         tc.cache_variables["WITH_STB"] = self._depends_on_stb
         tc.generate()
 
-        cd = CMakeDeps(self)
-        cd.set_property("rapidjson", "cmake_target_name", "rapidjson::rapidjson")
-        cd.set_property("utfcpp", "cmake_target_name", "utf8cpp::utf8cpp")
-        cd.generate()
+        deps = CMakeDeps(self)
+        deps.set_property("rapidjson", "cmake_target_name", "rapidjson::rapidjson")
+        deps.set_property("utfcpp", "cmake_target_name", "utf8cpp::utf8cpp")
+        deps.generate()
 
         # CMakeDeps does not generate the CMakeDeps `recipe_deps.cmake` find_package
         # aggregator that assimp injects via CMAKE_PROJECT_Assimp_INCLUDE.  Write an equivalent
