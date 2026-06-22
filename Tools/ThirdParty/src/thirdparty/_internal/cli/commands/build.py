@@ -83,8 +83,12 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
                         "default: build machine")
     p.add_argument("--dry-run", action="store_true",
                    help="Print build plan without building")
-    p.add_argument("--force", action="store_true",
-                   help="Rebuild even if already built")
+    p.add_argument("--force", "--clean", action="store_true", dest="force",
+                   help="Rebuild even if already built (wipe source/build/package first)")
+    p.add_argument("--exact", action="store_true",
+                   help="Build ONLY the explicitly named recipe(s); their dependencies are "
+                        "still resolved so generators (CMakeDeps, etc.) can reference them, "
+                        "but no dependency is ever built, wiped, or otherwise modified")
     p.add_argument("--fail-fast", action="store_true", dest="fail_fast",
                    help="Stop after the first recipe failure")
 
@@ -101,6 +105,7 @@ def build(args: argparse.Namespace) -> None:
     fail_fast: bool = getattr(args, "fail_fast", False)
     target_os: str | None = getattr(args, "target_os", None)
     target_arch: str | None = getattr(args, "target_arch", None)
+    exact: bool = getattr(args, "exact", False)
 
     cwd = Path.cwd()
     recipes_root = cwd / "recipes"
@@ -133,6 +138,10 @@ def build(args: argparse.Namespace) -> None:
         print("[thirdparty] error: no recipes matched", file=sys.stderr)
         sys.exit(1)
 
+    # --exact: the set of recipes the user explicitly asked for.  Only these are ever built;
+    # everything else in the graph is resolved for reference but left untouched.
+    exact_set: set[str] | None = set(names) if exact else None
+
     # Output folders are grouped by os+arch (the host/target platform) so that builds
     # for different platforms never collide.  --target-os/--target-arch select the target
     # (default: the build machine).  Tool deps (build context) always build for the build
@@ -142,12 +151,12 @@ def build(args: argparse.Namespace) -> None:
             recipes_root, build_root, names, build_type,
             jobs=args.jobs, resume=resume, dry_run=dry_run,
             force=force, generate_only=generate_only, fail_fast=fail_fast,
-            target_os=target_os, target_arch=target_arch,
+            target_os=target_os, target_arch=target_arch, exact_set=exact_set,
         )
     else:
         _build_recipe(recipes_root, build_root, names[0], build_type, set(),
                       jobs=args.jobs, generate_only=generate_only, force=force,
-                      target_os=target_os, target_arch=target_arch)
+                      target_os=target_os, target_arch=target_arch, exact_set=exact_set)
 
 
 def _load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase]:
@@ -417,6 +426,7 @@ def _build_ordered(
     target_os: str | None,
     target_arch: str | None,
     fail_fast: bool = False,
+    exact_set: set[str] | None = None,
 ) -> None:
     rgraph = _Graph.build(recipes_root, names, build_type, jobs=jobs,
                           target_os=target_os, target_arch=target_arch)
@@ -440,13 +450,18 @@ def _build_ordered(
     label = f"{build_type}"
     if cross:
         label += f" -> {detect_platform_tag(target_os, target_arch)}"
+    if exact_set is not None:
+        label += "  [exact]"
     print(f"\n=== Build Plan: {len(order)} recipes ({label}) ===")
     for i, name in enumerate(order, 1):
         version = rgraph[name].version
         n_to, n_ta = _node_target(name)
         n_plat = detect_platform_tag(n_to, n_ta)
         built = _is_built(build_root, name, version, n_plat)
-        status = "[force]" if force else ("[built]" if built else "[pending]")
+        if exact_set is not None and name not in exact_set:
+            status = "[ref-only]"
+        else:
+            status = "[force]" if force else ("[built]" if built else "[pending]")
         ctx = "" if not cross else f"  ({n_plat})"
         print(f"  {i:3d}. {name}/{version}  {status}{ctx}")
 
@@ -468,6 +483,11 @@ def _build_ordered(
         version = _resolve_version(cls)
         n_to, n_ta = _node_target(name)
         n_plat = detect_platform_tag(n_to, n_ta)
+        # --exact: only build the explicitly named recipes; the rest are graph context only
+        # and must never be built, wiped, or touched here.
+        if exact_set is not None and name not in exact_set:
+            skipped.append(name)
+            continue
         if not force and _is_built(build_root, name, version, n_plat):
             skipped.append(name)
             visited.add((name, n_to, n_ta))
@@ -475,7 +495,8 @@ def _build_ordered(
         t0 = time.time()
         try:
             _build_recipe(recipes_root, build_root, name, build_type, visited,
-                          n_to, n_ta, jobs=jobs, generate_only=generate_only, force=force)
+                          n_to, n_ta, jobs=jobs, generate_only=generate_only, force=force,
+                          exact_set=exact_set)
             elapsed = time.time() - t0
             results.append((name, version, elapsed, None))
         except Exception as exc:
@@ -519,12 +540,18 @@ def _build_recipe(
     jobs: int | None = None,
     generate_only: bool = False,
     force: bool = False,
+    exact_set: set[str] | None = None,
 ) -> list[str]:
     """Build *name* and all its transitive dependencies.
 
     ``target_os``/``target_arch`` are this recipe's *effective* target platform (the host
     context).  Tool dependencies (build context) are built for the BUILD MACHINE by resetting
     the target to ``(None, None)``; regular host dependencies inherit this recipe's target.
+
+    ``exact_set`` (``--exact``): when not ``None``, only recipes whose name is in this set are
+    actually built.  Every other recipe is still walked to resolve the dependency graph (so
+    generators can reference its package folder) but is never sourced, built, packaged, or
+    wiped — its pre-existing package folder is used as-is.
 
     Returns the ordered list of all transitive dep names for *name* (deepest
     first) so that the caller can populate its own dep graph.
@@ -551,7 +578,8 @@ def _build_recipe(
     for tool_name in direct_tools:
         if (recipes_root / tool_name / "recipe.py").exists():
             _build_recipe(recipes_root, build_root, tool_name, build_type, visited,
-                          None, None, jobs=jobs, generate_only=generate_only, force=force)
+                          None, None, jobs=jobs, generate_only=generate_only, force=force,
+                          exact_set=exact_set)
 
     # Recursively build deps (inheriting this recipe's target) and collect their dep lists.
     transitive: list[str] = []
@@ -561,7 +589,7 @@ def _build_recipe(
             continue
         sub = _build_recipe(recipes_root, build_root, dep_name, build_type, visited,
                             target_os, target_arch, jobs=jobs,
-                            generate_only=generate_only, force=force)
+                            generate_only=generate_only, force=force, exact_set=exact_set)
         for d in sub:
             if d not in transitive:
                 transitive.append(d)
@@ -569,6 +597,12 @@ def _build_recipe(
         # already there or it was just built).  Add it to our list if not yet present.
         if dep_name not in transitive:
             transitive.append(dep_name)
+
+    # --exact: dependencies (above) are resolved for reference only.  If this recipe was not
+    # explicitly named, return its transitive dep list without sourcing/building/packaging or
+    # wiping anything — the existing package folder (if any) is left untouched.
+    if exact_set is not None and name not in exact_set:
+        return transitive
 
     if not generate_only and not force and _is_built(build_root, name, version, platform_tag):
         print(f"[thirdparty] {name}/{version} already built — skipping")
@@ -678,8 +712,9 @@ def _build_recipe(
                 recipe.build()
             except Exception:
                 # Clean up so that the next run starts fresh rather than resuming a broken state.
-                _wipe(recipe.build_folder)
-                _wipe(recipe.package_folder)
+                if not os.environ.get("THIRDPARTY_NO_WIPE_ON_FAIL"):
+                    _wipe(recipe.build_folder)
+                    _wipe(recipe.package_folder)
                 raise
             finally:
                 os.chdir(_orig_cwd_build)
