@@ -112,6 +112,24 @@ class Recipe(RecipeBase):
             tc.variables["CMAKE_SHARED_LINKER_FLAGS"] = f"-L{llvm_lib} -lc++abi"
             tc.variables["CMAKE_BUILD_RPATH"] = llvm_lib
 
+        if self.settings.os == "Windows":
+            # Qt6::Gui statically links the vendored harfbuzz, whose Uniscribe backend
+            # (hb-uniscribe.cc) references Windows system symbols (ScriptItemize/ScriptShape/
+            # ScriptPlace/ScriptFreeCache from usp10, UuidCreate from rpcrt4, plus gdi32/user32).
+            # harfbuzz declares these in its cpp_info system_libs, but Qt6's own cmake config
+            # (used here via cmake_find_mode=none) does not propagate them, so PySide6's
+            # bindings fail to link with LNK2019.  Add them explicitly.  PySide6's .pyd modules
+            # are CMake MODULE libraries, so CMAKE_MODULE_LINKER_FLAGS is the one that matters;
+            # SHARED/EXE are set too for completeness.  Use /DEFAULTLIB: (not bare names) so the
+            # linker searches them LAST — bare names land at the start of the link line, before
+            # harfbuzz.lib, so MSVC's single-pass import-lib resolution would still miss the
+            # symbols (classic link-order issue).
+            hb_system_libs = ("/DEFAULTLIB:usp10.lib /DEFAULTLIB:rpcrt4.lib "
+                              "/DEFAULTLIB:gdi32.lib /DEFAULTLIB:user32.lib")
+            tc.variables["CMAKE_MODULE_LINKER_FLAGS"] = hb_system_libs
+            tc.variables["CMAKE_SHARED_LINKER_FLAGS"] = hb_system_libs
+            tc.variables["CMAKE_EXE_LINKER_FLAGS"] = hb_system_libs
+
         tc.generate()
 
         fix_script_content = (
