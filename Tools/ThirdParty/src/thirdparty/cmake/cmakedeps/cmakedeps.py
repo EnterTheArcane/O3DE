@@ -8,10 +8,10 @@ from thirdparty._internal.output import Color, Output
 from thirdparty.errors import RecipeException
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.model.dependencies import get_transitive_requires
-from thirdparty.cmake.cmakeconfigdeps.config import ConfigTemplate2
-from thirdparty.cmake.cmakeconfigdeps.config_version import ConfigVersionTemplate2
-from thirdparty.cmake.cmakeconfigdeps.target_configuration import TargetConfigurationTemplate2
-from thirdparty.cmake.cmakeconfigdeps.targets import TargetsTemplate2
+from thirdparty.cmake.cmakedeps.config import ConfigTemplate2
+from thirdparty.cmake.cmakedeps.config_version import ConfigVersionTemplate2
+from thirdparty.cmake.cmakedeps.target_configuration import TargetConfigurationTemplate2
+from thirdparty.cmake.cmakedeps.targets import TargetsTemplate2
 from thirdparty.files import save
 from thirdparty._internal.util.files import load
 
@@ -21,7 +21,7 @@ FIND_MODE_NONE = "none"
 FIND_MODE_BOTH = "both"
 
 
-class CMakeConfigDeps:
+class CMakeDeps:
 
     def __init__(self, recipe):
         """
@@ -45,7 +45,7 @@ class CMakeConfigDeps:
 
     @build_context_activated.setter
     def build_context_activated(self, value):
-        self._recipe.output.warning("CMakeConfigDeps.build_context_activated is deprecated, "
+        self._recipe.output.warning("CMakeDeps.build_context_activated is deprecated, "
                                        "not used anymore", warn_tag="deprecated")
         self._build_context_activated = value
 
@@ -55,7 +55,7 @@ class CMakeConfigDeps:
 
     @build_context_build_modules.setter
     def build_context_build_modules(self, value):
-        self._recipe.output.warning("CMakeConfigDeps.build_context_build_modules is deprecated, "
+        self._recipe.output.warning("CMakeDeps.build_context_build_modules is deprecated, "
                                        "not used anymore", warn_tag="deprecated")
         self._build_context_build_modules = value
 
@@ -65,7 +65,7 @@ class CMakeConfigDeps:
 
     @build_context_suffix.setter
     def build_context_suffix(self, value):
-        self._recipe.output.warning("CMakeConfigDeps.build_context_suffix is deprecated, "
+        self._recipe.output.warning("CMakeDeps.build_context_suffix is deprecated, "
                                        "not used anymore", warn_tag="deprecated")
         self._build_context_suffix = value
 
@@ -75,7 +75,7 @@ class CMakeConfigDeps:
 
     @check_components_exist.setter
     def check_components_exist(self, value):
-        self._recipe.output.warning("CMakeConfigDeps.check_components_exist is deprecated, "
+        self._recipe.output.warning("CMakeDeps.check_components_exist is deprecated, "
                                        "not used anymore", warn_tag="deprecated")
         self._check_components_exist = value
 
@@ -83,7 +83,7 @@ class CMakeConfigDeps:
         """
         This method will save the generated files to the ``recipe.generators_folder`` folder
         """
-        self._recipe.output.warning("CMakeConfigDeps is experimental, and might get "
+        self._recipe.output.warning("CMakeDeps is experimental, and might get "
                                        "breaking changes in future releases",
                                        warn_tag="experimental")
         # Current directory is the generators_folder
@@ -107,7 +107,7 @@ class CMakeConfigDeps:
             if cmake_find_mode == FIND_MODE_NONE:
                 continue
             if cmake_find_mode in (FIND_MODE_MODULE, FIND_MODE_BOTH):
-                Output(self._recipe.ref).warning("CMakeConfigDeps does not support "
+                Output(self._recipe.ref).warning("CMakeDeps does not support "
                                                          f"module find mode in {dep}.\n"
                                                          f"Config mode will be used regardless.",
                                                          # Should this be risk?
@@ -146,10 +146,10 @@ class CMakeConfigDeps:
 
     def set_property(self, dep, prop, value, build_context=False):
         """
-        Using this method you can overwrite the :ref:`property<CMakeConfigDeps Properties>` values
+        Using this method you can overwrite the :ref:`property<CMakeDeps Properties>` values
         set by the Recipe recipes from the consumer.
 
-        :param dep: Name of the dependency to set the :ref:`property<CMakeConfigDeps Properties>`.
+        :param dep: Name of the dependency to set the :ref:`property<CMakeDeps Properties>`.
          For components use the syntax: ``dep_name::component_name``.
         :param prop: Name of the :ref:`property<CMakeDeps Properties>`.
         :param value: Value of the property. Use ``None`` to invalidate any value set by the

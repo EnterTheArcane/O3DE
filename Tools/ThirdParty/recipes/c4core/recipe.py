@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -41,7 +41,7 @@ class Recipe(RecipeBase):
         tc.variables["C4CORE_WITH_FASTFLOAT"] = True
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

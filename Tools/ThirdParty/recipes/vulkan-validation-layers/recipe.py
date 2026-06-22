@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rename, rm, replace_in_file
 from thirdparty.gnu import PkgConfigDeps
 from thirdparty.scm import Version
@@ -82,7 +82,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["UPDATE_DEPS"] = False
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         # Recipe provides both under the same name, upstream only uses this one
         deps.set_property("spirv-tools", "cmake_file_name", "SPIRV-Tools-opt")
         deps.generate()

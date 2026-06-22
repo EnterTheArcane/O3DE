@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
         tc.variables["SLANG_USE_SYSTEM_UNORDERED_DENSE"] = True
         tc.variables["SLANG_USE_SYSTEM_VULKAN_HEADERS"] = True
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.set_property("lz4", "cmake_target_name", "LZ4::lz4")
         deps.generate()
 

@@ -437,7 +437,7 @@ class TargetConfigurationTemplate2:
         {% if link_info["link_feature"] %}
         # Link feature: {{link_info["link_feature"]}}
         if(CMAKE_VERSION VERSION_LESS "3.24")
-            message(FATAL_ERROR "The 'CMakeConfigDeps' generator LINK_FEATURE property only works with CMake >= 3.24")
+            message(FATAL_ERROR "The 'CMakeDeps' generator LINK_FEATURE property only works with CMake >= 3.24")
         endif()
         {% endif %}
         # set property allows to append, and lib_info[requires] will iterate
@@ -449,7 +449,7 @@ class TargetConfigurationTemplate2:
             {% endif %}
         {% else %}
         if(CMAKE_VERSION VERSION_LESS "3.27")
-            message(FATAL_ERROR "The 'CMakeConfigDeps' generator COMPILE_ONLY expression only works with CMake >= 3.27")
+            message(FATAL_ERROR "The 'CMakeDeps' generator COMPILE_ONLY expression only works with CMake >= 3.27")
         endif()
         # If the headers trait is not there, this will do nothing
         target_link_libraries({{lib}} INTERFACE

@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get
 from thirdparty.microsoft import is_msvc
 
@@ -46,7 +46,7 @@ class Recipe(RecipeBase):
         tc.generate()
 
         if is_msvc(self):
-            cd = CMakeConfigDeps(self)
+            cd = CMakeDeps(self)
             cd.generate()
 
     def build(self):

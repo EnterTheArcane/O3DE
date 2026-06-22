@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeToolchain, CMakeConfigDeps
+from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
@@ -110,7 +110,7 @@ class Recipe(RecipeBase):
             tc.cache_variables["PNG_POWERPC_VSX"] = self._neon_msa_sse_vsx_mapping[str(self.options.vsx)]
 
         tc.generate()
-        tc = CMakeConfigDeps(self)
+        tc = CMakeDeps(self)
         tc.generate()
 
     def build(self):

@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
             spirv_tools_pkg = self.dependencies["spirv-tools"].package_folder
             tc.variables["spirv-tools_SOURCE_DIR"] = spirv_tools_pkg.replace("\\", "/")
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

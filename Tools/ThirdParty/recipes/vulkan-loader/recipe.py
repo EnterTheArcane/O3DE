@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
         vulkan_headers = self.dependencies["vulkan-headers"].package_folder.replace("\\", "/")
         tc.variables["VULKAN_HEADERS_INSTALL_DIR"] = vulkan_headers
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

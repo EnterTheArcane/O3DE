@@ -7,7 +7,7 @@ import textwrap
 from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building, default_cppstd
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
 from thirdparty.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.gnu import PkgConfigDeps
@@ -406,7 +406,7 @@ class Recipe(RecipeBase):
         ms = VirtualBuildEnv(self)
         ms.generate()
 
-        tc = CMakeConfigDeps(self)
+        tc = CMakeDeps(self)
         tc.set_property("libdrm", "cmake_file_name", "Libdrm")
         tc.set_property("libdrm::libdrm_libdrm", "cmake_target_name", "Libdrm::Libdrm")
         tc.set_property("wayland", "cmake_file_name", "Wayland")

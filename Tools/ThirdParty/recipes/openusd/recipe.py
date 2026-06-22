@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -88,7 +88,7 @@ class Recipe(RecipeBase):
 
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.set_property("onetbb", "cmake_file_name", "TBB")
         deps.set_property("onetbb", "cmake_target_name", "TBB::tbb")
         # Don't generate CMake files for cpython - use FindPython3 directly via Python3_ROOT_DIR

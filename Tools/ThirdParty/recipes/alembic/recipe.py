@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -54,7 +54,7 @@ class Recipe(RecipeBase):
         tc.variables["USE_PYALEMBIC"] = False
         tc.variables["USE_TESTS"] = False
         tc.generate()
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

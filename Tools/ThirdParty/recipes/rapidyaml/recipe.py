@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import get, copy, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -59,7 +59,7 @@ class Recipe(RecipeBase):
         tc.variables["RYML_USE_ASSERT"] = False
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.generate()
 
     def build(self):

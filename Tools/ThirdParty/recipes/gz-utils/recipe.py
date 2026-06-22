@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.cmake import CMake, CMakeConfigDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -51,7 +51,7 @@ class Recipe(RecipeBase):
         tc.variables["GZ_UTILS_VENDOR_CLI11"] = True
         tc.generate()
 
-        deps = CMakeConfigDeps(self)
+        deps = CMakeDeps(self)
         deps.set_property("gz-cmake", "cmake_find_mode", "none")
         deps.set_property("spdlog", "cmake_file_name", "spdlog")
         deps.generate()
