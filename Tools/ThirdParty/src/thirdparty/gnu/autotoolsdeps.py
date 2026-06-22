@@ -1,4 +1,3 @@
-from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty import CppInfo
 from thirdparty.env import Environment
 from thirdparty.gnu.gnudeps_flags import GnuDepsFlags
@@ -29,7 +28,7 @@ class AutotoolsDeps:
     def _rpaths_flags(self):
         flags = []
         for dep in self.ordered_deps:
-            if dep.package_type is PackageType.SHARED:
+            if dep.options.get_safe("shared"):
                 flags.extend(["-Wl,-rpath -Wl,{}".format(libdir) for libdir in
                               dep.cpp_info.aggregated_components().libdirs])
         return flags

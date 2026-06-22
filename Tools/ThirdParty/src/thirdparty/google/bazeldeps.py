@@ -5,7 +5,7 @@ import textwrap
 from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
-from thirdparty._internal.model.pkg_type import PackageType
+from thirdparty._internal.model.cpp_info import PackageType
 from thirdparty._internal.util.files import save
 
 

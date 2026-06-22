@@ -39,12 +39,10 @@ class Recipe(RecipeBase):
     def configure(self):
         if self.settings.os == "Windows":
             del self.options.shared
-            self.package_type = "static-library"
         if self.options.get_safe("shared"):
             self.options.rm_safe("fPIC")
         if self.settings.os == "Android":
             del self.options.shared
-            self.package_type = "static-library"
 
     def build_requirements(self):
         if self.settings.arch in ["X64"]:

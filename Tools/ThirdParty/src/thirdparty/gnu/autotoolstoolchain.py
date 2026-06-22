@@ -10,7 +10,6 @@ from thirdparty.build.flags import architecture_flag, architecture_link_flag, bu
 from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.gnu.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
-from thirdparty._internal.model.pkg_type import PackageType
 
 
 class AutotoolsToolchain:
@@ -331,13 +330,11 @@ class AutotoolsToolchain:
     def _default_configure_shared_flags(self):
         args = []
         # Just add these flags if there's a shared option defined (never add to exe's)
-        try:
-            if self._recipe.package_type is PackageType.SHARED:
-                args.extend(["--enable-shared", "--disable-static"])
-            elif self._recipe.package_type is PackageType.STATIC:
-                args.extend(["--disable-shared", "--enable-static"])
-        except RecipeException:
-            pass
+        shared = self._recipe.options.get_safe("shared")
+        if shared is True:
+            args.extend(["--enable-shared", "--disable-static"])
+        elif shared is False:
+            args.extend(["--disable-shared", "--enable-static"])
 
         return args
 

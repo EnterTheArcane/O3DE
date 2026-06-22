@@ -4,11 +4,30 @@ import json
 import os
 import re
 from collections import OrderedDict, defaultdict
+from enum import Enum
 
 from thirdparty._internal.output import Output
 from thirdparty.errors import RecipeException
-from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.util.files import load, save
+
+
+class PackageType(Enum):
+    """The kind of a built library, *deduced* from the produced artifacts (see
+    ``deduce_full_cpp_info``).  Recipes no longer declare a package-level type; this is the
+    vocabulary the deduction produces and that the CMake/Bazel generators consume to emit the
+    correct target type."""
+    STATIC = "static-library"
+    SHARED = "shared-library"
+    HEADER = "header-library"
+    APP = "application"
+
+    def __str__(self):
+        return self.value
+
+    def __eq__(self, other):
+        # Allows comparing with the string value, e.g. ``cpp_info.type == "shared-library"``
+        return super().__eq__(PackageType(other))
+
 
 _DIRS_VAR_NAMES = ["_includedirs", "_srcdirs", "_libdirs", "_resdirs", "_bindirs", "_builddirs", "_frameworkdirs", "_objects"]
 _FIELD_VAR_NAMES = ["_system_libs", "_package_framework", "_frameworks", "_libs", "_defines", "_cflags", "_cxxflags", "_sharedlinkflags", "_exelinkflags", "_sources"]
@@ -570,7 +589,6 @@ class _Component:
                     return lib_found[0].replace("\\", "/")
 
         out = Output(scope=str(recipe))
-        pkg_type = recipe.package_type
         libdirs = self.libdirs
         bindirs = self.bindirs
         libname = self.libs[0]
@@ -609,7 +627,7 @@ class _Component:
             if shared_location:
                 out.warning(f"Lib {libname} has both static {static_location} and "
                             f"shared {shared_location} in the same package")
-                if self._type is PackageType.STATIC or pkg_type is PackageType.STATIC:
+                if self._type is PackageType.STATIC:
                     self._location = static_location
                     deduced_type = PackageType.STATIC
                 else:
@@ -638,8 +656,7 @@ class _Component:
             RecipeException(f"{recipe}: Incorrect deduced type '{deduced_type}' for library"
                            f" '{libname}' that declared .type='{self._type}'")
         self._type = deduced_type
-        if self._type != pkg_type:
-            out.warning(f"Lib {libname} deduced as '{self._type}', but 'package_type={pkg_type}'")
+
 
     def deduce_locations(self, recipe, component_name=""):
         name = f'{recipe} cpp_info.components["{component_name}"]' if component_name \

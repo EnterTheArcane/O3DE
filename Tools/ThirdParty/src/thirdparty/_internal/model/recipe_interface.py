@@ -107,10 +107,6 @@ class RecipeInterface:
         return self._recipe.context == CONTEXT_BUILD
 
     @property
-    def package_type(self):
-        return self._recipe.package_type
-
-    @property
     def info(self):
         return self._recipe.info
 

@@ -37,7 +37,6 @@ class RecipeBase:
     options: Any = None
     default_options: dict[str, Any] | None = None
     default_build_options: dict[str, Any] | None = None
-    package_type: Any = None  # str (author) or PackageType (runtime)
 
     win_bash: bool | None = None
     win_bash_run: bool | None = None  # For run scope
@@ -117,7 +116,6 @@ class RecipeBase:
             result[a] = v
 
         result["version"] = str(self.version) if self.version is not None else None
-        result["package_type"] = str(self.package_type)
 
         settings = self.settings
         if settings is not None:

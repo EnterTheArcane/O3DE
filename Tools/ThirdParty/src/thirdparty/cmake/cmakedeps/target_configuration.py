@@ -6,7 +6,7 @@ from jinja2 import Template
 
 from thirdparty.errors import RecipeException
 from thirdparty._internal.util.generators import relativize_path
-from thirdparty._internal.model.pkg_type import PackageType
+from thirdparty._internal.model.cpp_info import PackageType
 from thirdparty._internal.graph.graph import CONTEXT_BUILD
 from thirdparty.cmake.utils import cmake_escape_value
 
@@ -46,7 +46,7 @@ class TargetConfigurationTemplate2:
         if not requires and not components:  # global cpp_info without components definition
             # require the pkgname::pkgname base (user defined) or INTERFACE base target
             for req, d in transitive_reqs.items():
-                if d.package_type is PackageType.APP:
+                if d.cpp_info.exe:
                     continue
                 dep_target = self._cmakedeps.get_property("cmake_target_name", d)
                 dep_target = dep_target or f"{d.ref.name}::{d.ref.name}"
@@ -87,7 +87,7 @@ class TargetConfigurationTemplate2:
                                    f"'{required_pkg}::{required_comp}' but component "
                                    f"'{required_comp}' not found in {required_pkg}")
                             raise RecipeException(msg)
-                        if dep.package_type is PackageType.APP:
+                        if dep.cpp_info.exe:
                             continue  # It doesn't make sense to link a package that is an App
                         comp = None
                         default_target = f"{dep.ref.name}::{dep.ref.name}"  # replace_requires

@@ -1,5 +1,4 @@
 from thirdparty._internal.errors import recipe_exception_formatter
-from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty._internal.model.requires import BuildRequirements, TestRequirements, ToolRequirements
 
 
@@ -32,8 +31,6 @@ def run_configure_method(recipe):
         recipe.output.warning("Requirements should only be added in the requirements()/"
                               "build_requirements() methods, not configure()/config_options().",
                               warn_tag="deprecated")
-
-    PackageType.compute_package_type(recipe)
 
     recipe.build_requires = BuildRequirements(recipe.requires)
     recipe.test_requires = TestRequirements(recipe.requires)

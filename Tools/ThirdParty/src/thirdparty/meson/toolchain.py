@@ -5,7 +5,6 @@ from jinja2 import Template, StrictUndefined
 
 from thirdparty.errors import RecipeException
 from thirdparty._internal.internal_tools import raise_on_universal_arch
-from thirdparty._internal.model.pkg_type import PackageType
 from thirdparty.apple.apple import is_apple_os, apple_min_version_flag, \
     resolve_apple_flags, apple_extra_flags
 from thirdparty.build.cross_building import cross_building, can_run
@@ -149,8 +148,8 @@ class MesonToolchain:
 
         # https://mesonbuild.com/Builtin-options.html#base-options
         fpic = self._recipe.options.get_safe("fPIC")
-        shared = self._recipe.package_type is PackageType.SHARED
-        static = self._recipe.package_type is PackageType.STATIC
+        shared = self._recipe.options.get_safe("shared") is True
+        static = self._recipe.options.get_safe("shared") is False
         #: Build static libraries as position independent. By default, ``self.options.get_safe("fPIC")``
         self.b_staticpic = fpic if (static and fpic is not None) else None
         # https://mesonbuild.com/Builtin-options.html#core-options

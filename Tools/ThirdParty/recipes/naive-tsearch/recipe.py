@@ -24,8 +24,6 @@ class Recipe(RecipeBase):
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
-        if self.options.header_only:
-            self.package_type = 'header-library'
 
     def latest_version(self):
         repo = GithubRepository(self, "kulp/naive-tsearch")

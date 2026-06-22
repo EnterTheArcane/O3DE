@@ -25,7 +25,6 @@ class Recipe(RecipeBase):
             # Only static for msvc
             # Injecting CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS is not sufficient since there are global symbols
             del self.options.shared
-            self.package_type = "static-library"
         if self.options.get_safe("shared"):
             self.options.rm_safe("fPIC")
         self.settings.rm_safe("compiler.cppstd")
