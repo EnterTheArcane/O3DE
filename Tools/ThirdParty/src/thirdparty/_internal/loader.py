@@ -319,6 +319,10 @@ class RecipeRuntime:
         self.global_conf = conf
         self.requester = HttpRequester(conf)
         self.home_folder = None
+        # Optional compiler-flag-mapping hook read by CppInfo._evaluate_cond when a consumer
+        # recipe reads a dependency's cflags/cxxflags/linkflags.  This system has no flags
+        # plugin, so it stays None (flags are returned unchanged) — matching Conan's default.
+        self.flags_map = None
 
 
 class VersionResolvingRequirements:
