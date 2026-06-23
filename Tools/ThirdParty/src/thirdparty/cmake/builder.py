@@ -5,7 +5,7 @@ from thirdparty.cmake.presets import load_cmake_presets
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.files import chdir, mkdir
-from thirdparty.microsoft.msbuild import msbuild_verbosity_cmd_line_arg
+from thirdparty.msbuild.builder import msbuild_verbosity_cmd_line_arg
 
 
 def _cmake_cmd_line_args(recipe, generator):

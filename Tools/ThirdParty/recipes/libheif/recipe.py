@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
-from thirdparty.gnu import PkgConfigDeps
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

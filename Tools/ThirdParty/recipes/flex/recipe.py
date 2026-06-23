@@ -5,7 +5,7 @@ from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.autotools import Autotools, AutotoolsToolchain
 
 
 class Recipe(RecipeBase):

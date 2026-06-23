@@ -5,8 +5,9 @@ from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
-from thirdparty.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
-from thirdparty.microsoft import NMakeDeps, NMakeToolchain, is_msvc
+from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
+from thirdparty.nmake import NMakeDeps, NMakeToolchain
+from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

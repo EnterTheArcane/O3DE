@@ -1,6 +1,6 @@
 from thirdparty.build.flags import build_type_flags, cppstd_flag, build_type_link_flags
 from thirdparty.env import Environment
-from thirdparty.microsoft.nmakedeps import format_defines
+from thirdparty.nmake.deps import format_defines
 from thirdparty.microsoft.visual import msvc_runtime_flag, VCVars
 
 

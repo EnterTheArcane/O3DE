@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, rmdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc
 
 

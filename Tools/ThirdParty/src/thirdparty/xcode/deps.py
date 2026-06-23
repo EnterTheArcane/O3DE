@@ -5,7 +5,7 @@ import textwrap
 from jinja2 import Template
 
 from thirdparty._internal.util.files import load, save
-from thirdparty.apple.apple import _to_apple_arch
+from thirdparty.apple.utils import _to_apple_arch
 from thirdparty.errors import RecipeException
 
 GLOBAL_XCCONFIG_TEMPLATE = textwrap.dedent(

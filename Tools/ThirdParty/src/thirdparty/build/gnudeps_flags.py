@@ -4,7 +4,7 @@
 # FIXME: only for tools.gnu? perhaps it should be a global module
 
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
-from thirdparty.apple.apple import is_apple_os
+from thirdparty.apple.utils import is_apple_os
 from thirdparty.microsoft import is_msvc
 
 

@@ -1,8 +1,8 @@
 import textwrap
 
 from thirdparty._internal.util.files import save
-from thirdparty.apple.apple import to_apple_arch, xcodebuild_deployment_target_key
-from thirdparty.apple.xcodedeps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, \
+from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key
+from thirdparty.xcode.deps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, \
     _add_includes_to_file_or_create, _xcconfig_settings_filename, _xcconfig_conditional
 
 

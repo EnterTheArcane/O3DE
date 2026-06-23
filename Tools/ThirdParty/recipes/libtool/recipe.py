@@ -7,7 +7,8 @@ from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
 from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain, GnuFtp
+from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.scm import GnuFtp
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 

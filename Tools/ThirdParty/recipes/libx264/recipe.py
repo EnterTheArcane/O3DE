@@ -5,7 +5,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os, XCRun, fix_apple_shared_install_name
 from thirdparty.env import Environment
 from thirdparty.files import copy, rename, get, rmdir, chdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, unix_path
 
 

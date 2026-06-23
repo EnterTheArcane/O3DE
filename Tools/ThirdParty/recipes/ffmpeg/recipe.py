@@ -11,7 +11,8 @@ from thirdparty.files import (
     chdir, copy, get, rename,
     replace_in_file, rm, rmdir, save, load,
 )
-from thirdparty.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, PkgConfigDeps
+from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import check_min_vs, is_msvc, unix_path
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository

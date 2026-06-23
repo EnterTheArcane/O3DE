@@ -5,7 +5,7 @@ from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
 from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir, replace_in_file
-from thirdparty.gnu import PkgConfigDeps
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version

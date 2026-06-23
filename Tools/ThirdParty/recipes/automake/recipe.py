@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rename, rmdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

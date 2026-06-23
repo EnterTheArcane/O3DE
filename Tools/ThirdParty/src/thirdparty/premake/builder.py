@@ -6,7 +6,7 @@ from jinja2 import Template
 from thirdparty.build.cpu import build_jobs
 from thirdparty.errors import RecipeException
 from thirdparty.files import save
-from thirdparty.microsoft.msbuild import MSBuild
+from thirdparty.msbuild import MSBuild
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 from thirdparty.premake.toolchain import PremakeToolchain
 

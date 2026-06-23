@@ -9,7 +9,7 @@ from thirdparty.build.flags import architecture_flag, architecture_link_flag, li
 from thirdparty.env.virtualbuildenv import VirtualBuildEnv
 from thirdparty.files import save
 from thirdparty.microsoft.visual import VCVars
-from thirdparty.premake.premakedeps import PREMAKE_ROOT_FILE
+from thirdparty.premake.deps import PREMAKE_ROOT_FILE
 
 
 def _generate_flags(self, recipe):

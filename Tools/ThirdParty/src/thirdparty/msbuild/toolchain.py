@@ -203,7 +203,7 @@ class MSBuildToolchain:
             recipe_package_version = self._recipe.version if self._recipe.version else ""
             content = content.format(recipe_package_name, recipe_package_version)
 
-        dom = minidom.parseString(content)
+        dom = minidom.parseString(content.strip())
         try:
             import_group = dom.getElementsByTagName('ImportGroup')[0]
         except Exception:

@@ -5,7 +5,8 @@ from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
 from thirdparty.env import Environment
 from thirdparty.files import copy, get
-from thirdparty.gnu import Autotools, AutotoolsToolchain, PkgConfigDeps
+from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 

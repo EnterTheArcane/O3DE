@@ -6,7 +6,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, mkdir, rm, rmdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import check_min_vs, is_msvc, is_msvc_static_runtime, msvc_runtime_flag, unix_path
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository

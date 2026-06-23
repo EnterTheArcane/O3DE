@@ -7,7 +7,7 @@ from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.build import build_jobs
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import chdir, copy, get, replace_in_file, rm, rmdir, save
-from thirdparty.gnu import AutotoolsToolchain
+from thirdparty.autotools import AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, msvc_runtime_flag, unix_path
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository

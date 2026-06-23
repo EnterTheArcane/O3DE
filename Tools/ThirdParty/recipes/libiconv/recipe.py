@@ -13,7 +13,8 @@ from thirdparty.files import (
     rmdir,
     replace_in_file,
 )
-from thirdparty.gnu import Autotools, AutotoolsToolchain, GnuFtp
+from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.scm import GnuFtp
 from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 

@@ -4,7 +4,8 @@ import textwrap
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir, save
-from thirdparty.microsoft import check_min_vs, is_msvc_static_runtime, MSBuild, MSBuildToolchain
+from thirdparty.msbuild import MSBuild, MSBuildToolchain
+from thirdparty.microsoft import check_min_vs, is_msvc_static_runtime
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

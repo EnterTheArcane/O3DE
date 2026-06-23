@@ -10,8 +10,8 @@ from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS
 from thirdparty._internal.util.files import load
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty.android import android_abi
-from thirdparty.apple.apple import get_apple_sdk_fullname, _to_apple_arch
-from thirdparty.apple.apple import is_apple_os, to_apple_arch
+from thirdparty.apple.utils import get_apple_sdk_fullname, _to_apple_arch
+from thirdparty.apple.utils import is_apple_os, to_apple_arch
 from thirdparty.build import build_jobs
 from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, libcxx_flags, threads_flags

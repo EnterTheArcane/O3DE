@@ -1,4 +1,4 @@
-from thirdparty.apple.apple import to_apple_arch, xcodebuild_deployment_target_key
+from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key
 from thirdparty.build import cmd_args_to_string
 
 

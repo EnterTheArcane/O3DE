@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.build import can_run
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir
-from thirdparty.gnu import PkgConfigDeps
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.scm import Version
 from thirdparty.scm.gitlab import GitlabRepository

@@ -1,14 +1,14 @@
 import os
 
 from thirdparty._internal.internal_tools import is_universal_arch
-from thirdparty.apple.apple import is_apple_os, resolve_apple_flags, apple_extra_flags
+from thirdparty.apple.utils import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.build import cmd_args_to_string, save_toolchain_args
 from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, build_type_flags, cppstd_flag, \
     build_type_link_flags, libcxx_flags, cstd_flag, llvm_clang_front, threads_flags
 from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.errors import RecipeException
-from thirdparty.gnu.get_gnu_triplet import _get_gnu_triplet
+from thirdparty.autotools.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
 
 
@@ -125,6 +125,20 @@ class AutotoolsToolchain:
         self.apple_isysroot_flag = isysroot_flag
         self.apple_min_version_flag = min_flag
         self.apple_extra_flags = apple_extra_flags(self._recipe)
+
+    def yes_no(self, option_name, default=None, negated=False):
+        """
+        Simple wrapper to return "yes" or "no" depending on whether ``option_name`` evaluates
+        as True or False.  Convenient for autotools ``--enable-x=yes/no`` configure arguments.
+
+        :param option_name: option name.
+        :param default: Default value to return if the option is not defined.
+        :param negated: Negates the option value if True.
+        :return: "yes" or "no" depending on whether option_name is True or False.
+        """
+        option_value = bool(self._recipe.options.get_safe(option_name, default=default))
+        option_value = not option_value if negated else option_value
+        return "yes" if option_value else "no"
 
     def _resolve_android_cross_compilation(self):
         # Issue related: upstream issue 13443
@@ -298,7 +312,8 @@ class AutotoolsToolchain:
             if compilers_by_conf:
                 compilers_mapping = {
                     "c": "CC", "cpp": "CXX", "cuda": "NVCC", "fortran": "FC",
-                    "rc": "RC",
+                    "rc": "RC", "nm": "NM", "ranlib": "RANLIB",
+                    "objdump": "OBJDUMP", "strip": "STRIP",
                 }
                 for comp, env_var in compilers_mapping.items():
                     if comp in compilers_by_conf:
@@ -310,8 +325,14 @@ class AutotoolsToolchain:
             if compiler_setting == "msvc":
                 # None of them defined, if one is defined by user, user should define the other too
                 if "c" not in compilers_by_conf and "cpp" not in compilers_by_conf:
-                    env.define("CC", "cl")
-                    env.define("CXX", "cl")
+                    env.define("CC", "cl -nologo")
+                    env.define("CXX", "cl -nologo")
+                    env.define("LD", "link -nologo")
+                    env.define("AR", "lib")
+                    env.define("NM", "dumpbin -symbols")
+                    env.define("OBJDUMP", ":")
+                    env.define("RANLIB", ":")
+                    env.define("STRIP", ":")
 
         env.append("CPPFLAGS", [f"-D{d}" for d in self.defines])
         env.append("CXXFLAGS", self.cxxflags)

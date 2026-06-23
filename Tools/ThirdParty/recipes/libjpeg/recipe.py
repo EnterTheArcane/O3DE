@@ -5,8 +5,8 @@ from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, chdir, copy, get, load, replace_in_file, rm, rmdir, save
-from thirdparty.gnu import Autotools, AutotoolsToolchain
-from thirdparty.microsoft import MSBuild, MSBuildToolchain
+from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.msbuild import MSBuild, MSBuildToolchain
 
 
 class Recipe(RecipeBase):

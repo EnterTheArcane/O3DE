@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.files import copy, get, rm, rmdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps
+from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
 from thirdparty.scm import Version
 
 

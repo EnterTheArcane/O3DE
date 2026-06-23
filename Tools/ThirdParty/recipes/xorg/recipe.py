@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.gnu import PkgConfig
+from thirdparty.pkgconfig import PkgConfig
 
 _COMPONENTS = [
     "fontenc",

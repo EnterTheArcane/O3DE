@@ -6,8 +6,10 @@ from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.env import VirtualRunEnv
 from thirdparty.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
-from thirdparty.gnu import Autotools, AutotoolsToolchain, AutotoolsDeps, PkgConfigDeps
-from thirdparty.microsoft import MSBuildDeps, MSBuildToolchain, MSBuild, is_msvc, msvc_runtime_flag, msvs_toolset
+from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
+from thirdparty.pkgconfig import PkgConfigDeps
+from thirdparty.msbuild import MSBuild, MSBuildDeps, MSBuildToolchain
+from thirdparty.microsoft import is_msvc, msvc_runtime_flag, msvs_toolset
 from thirdparty.scm import Version
 
 

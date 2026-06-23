@@ -157,7 +157,7 @@ class _PCFilesDeps:
     def _get_framework_flags(self, cpp_info):
         # FIXME: GnuDepsFlags used only here. Let's adapt the code and remove this dependency.
         #        self._recipe is also used only here.
-        from thirdparty.gnu.gnudeps_flags import GnuDepsFlags
+        from thirdparty.build.gnudeps_flags import GnuDepsFlags
         gnudeps_flags = GnuDepsFlags(self._recipe, cpp_info)
         return gnudeps_flags.frameworks + gnudeps_flags.framework_paths
 

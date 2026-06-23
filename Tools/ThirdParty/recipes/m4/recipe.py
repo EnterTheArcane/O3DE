@@ -5,7 +5,7 @@ from thirdparty import RecipeBase
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, rmdir, save
-from thirdparty.gnu import Autotools, AutotoolsToolchain
+from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository

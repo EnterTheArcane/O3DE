@@ -1,6 +1,6 @@
 from thirdparty import CppInfo
 from thirdparty.env import Environment
-from thirdparty.gnu.gnudeps_flags import GnuDepsFlags
+from thirdparty.build.gnudeps_flags import GnuDepsFlags
 
 
 class AutotoolsDeps:

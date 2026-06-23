@@ -8,10 +8,10 @@ from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.output import Color, Output
 from thirdparty._internal.util.files import load
 from thirdparty._internal.util.generators import relativize_path
-from thirdparty.cmake.cmakedeps.config import ConfigTemplate2
-from thirdparty.cmake.cmakedeps.config_version import ConfigVersionTemplate2
-from thirdparty.cmake.cmakedeps.target_configuration import TargetConfigurationTemplate2
-from thirdparty.cmake.cmakedeps.targets import TargetsTemplate2
+from thirdparty.cmake.deps.config import ConfigTemplate2
+from thirdparty.cmake.deps.config_version import ConfigVersionTemplate2
+from thirdparty.cmake.deps.target_configuration import TargetConfigurationTemplate2
+from thirdparty.cmake.deps.targets import TargetsTemplate2
 from thirdparty.errors import RecipeException
 from thirdparty.files import save
 

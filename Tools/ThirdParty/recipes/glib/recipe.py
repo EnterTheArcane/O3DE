@@ -5,7 +5,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
-from thirdparty.gnu import PkgConfigDeps
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version

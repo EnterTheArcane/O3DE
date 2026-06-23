@@ -6,7 +6,8 @@ from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualRunEnv, Environment
 from thirdparty.files import copy, get, rename
-from thirdparty.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, GnuFtp
+from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
+from thirdparty.scm import GnuFtp
 from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 

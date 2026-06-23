@@ -24,7 +24,7 @@ def architecture_flag(recipe):
     if disable_flag(recipe, "arch"):
         return ""
     settings = recipe.settings
-    from thirdparty.apple.apple import _to_apple_arch
+    from thirdparty.apple.utils import _to_apple_arch
     compiler = settings.get_safe("compiler")
     arch = settings.get_safe("arch")
     the_os = settings.get_safe("os")

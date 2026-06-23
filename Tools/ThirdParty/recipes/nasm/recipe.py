@@ -4,8 +4,9 @@ import shutil
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
-from thirdparty.gnu import Autotools, AutotoolsToolchain
-from thirdparty.microsoft import NMakeToolchain, is_msvc
+from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.nmake import NMakeToolchain
+from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

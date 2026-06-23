@@ -1,7 +1,7 @@
 import os
 import platform
 
-from thirdparty.google.toolchain import BazelToolchain
+from thirdparty.bazel.toolchain import BazelToolchain
 
 
 class Bazel:

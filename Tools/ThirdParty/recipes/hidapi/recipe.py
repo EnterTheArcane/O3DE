@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
-from thirdparty.gnu import PkgConfigDeps
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 

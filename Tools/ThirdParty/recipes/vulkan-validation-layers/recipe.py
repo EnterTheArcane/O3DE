@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rename, rm, replace_in_file
-from thirdparty.gnu import PkgConfigDeps
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
