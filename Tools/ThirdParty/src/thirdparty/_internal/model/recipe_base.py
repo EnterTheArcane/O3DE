@@ -4,6 +4,7 @@ from typing import Any
 
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
+from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.cpp_info import MockInfoProperty
 from thirdparty._internal.model.conf import Conf
@@ -57,8 +58,8 @@ class RecipeBase:
 
     # Package information
     cpp: "Infos | None" = None
-    buildenv_info: Any = None  # Environment
-    runenv_info: Any = None  # Environment
+    buildenv_info: Environment  # Environment
+    runenv_info: Environment  # Environment
     conf_info: "Conf | None" = None
     conf: "Conf | None" = None
 
@@ -67,7 +68,6 @@ class RecipeBase:
         # something that can run commands, as os.sytem
 
         self._recipe_runtime: Any = None
-        from thirdparty.env import Environment
         self.buildenv_info = Environment()
         self.runenv_info = Environment()
         # At the moment only for build_requires, others will be ignored

@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from thirdparty._internal.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
 from thirdparty.errors import RecipeException
-from thirdparty._internal.model.recipe_ref import ref_matches
+from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.util.files import save
 
 
@@ -157,6 +157,7 @@ class _EnvValue:
                 if placeholder:
                     values.append(placeholder.format(name=self._name))
             else:
+                v = os.fspath(v)  # values may be Path objects; an env value is an OS path string
                 if self._path:
                     v = subsystem_path(subsystem, v)
                     if root_path is not None:

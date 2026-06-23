@@ -60,7 +60,7 @@ class Recipe(RecipeBase):
         if self.options.libjpeg8_compatibility:
             self.options.rm_safe("mem_src_dst")
 
-    def build_requirements(self):
+    def requirements(self):
         if self.options.get_safe("SIMD") and self.settings.arch in ["X64"]:
             self.tool_requires("nasm")
 

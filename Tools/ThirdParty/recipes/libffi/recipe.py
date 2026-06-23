@@ -30,7 +30,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
-    def build_requirements(self):
+    def requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", default=False, check_type=str):

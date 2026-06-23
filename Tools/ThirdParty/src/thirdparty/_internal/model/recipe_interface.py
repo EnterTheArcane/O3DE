@@ -2,12 +2,6 @@ from thirdparty._internal.graph.graph import CONTEXT_BUILD
 
 
 class RecipeInterface:
-    """
-    This is just a protective wrapper to give consumers
-    a limited view of recipe dependencies, "read" only,
-    and only to some attributes, not methods
-    """
-
     def __str__(self):
         return str(self._recipe)
 

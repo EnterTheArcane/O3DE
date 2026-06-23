@@ -78,7 +78,7 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
     tool_dep_names — tool_requires / build_requires (build=True)
 
     The whole config phase (config_options/configure + default auto-fPIC handling +
-    requirements/build_requirements) is delegated to ``run_configure_method``.  Errors are
+    requirements) is delegated to ``run_configure_method``.  Errors are
     swallowed — dependency discovery is best-effort and must not abort graph resolution.
     """
     from thirdparty._internal.methods import run_configure_method

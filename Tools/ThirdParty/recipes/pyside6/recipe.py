@@ -25,8 +25,6 @@ class Recipe(RecipeBase):
         self.requires("cpython")
         self.requires("llvm")
         self.requires("qt")
-
-    def build_requirements(self):
         self.tool_requires("cmake")
         self.tool_requires("cpython")
 
@@ -55,10 +53,10 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             tc.cache_variables["CMAKE_LINKER_TYPE"] = "MSVC"
 
-        tc.variables["CLANG_INSTALL_DIR"] = llvm_pkg.replace("\\", "/")
-        tc.variables["Clang_DIR"] = os.path.join(llvm_pkg, "lib", "cmake", "clang").replace("\\", "/")
+        tc.variables["CLANG_INSTALL_DIR"] = llvm_pkg.as_posix()
+        tc.variables["Clang_DIR"] = (llvm_pkg / "lib" / "cmake" / "clang").as_posix()
 
-        python_root = cpython_pkg.replace("\\", "/")
+        python_root = cpython_pkg.as_posix()
         tc.variables["Python3_ROOT_DIR"] = python_root
         tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
         # Shiboken uses find_package(Python ...) (unversioned), so set Python_ variables too.
@@ -81,8 +79,8 @@ class Recipe(RecipeBase):
             tc.variables["Python_FIND_REGISTRY"] = "NEVER"
 
         qt_version = str(self.dependencies["qt"].ref.version)
-        qt_pkg_fwd = qt_pkg.replace("\\", "/")
-        qt_cmake_dir = os.path.join(qt_pkg, "lib", "cmake", "Qt6").replace("\\", "/")
+        qt_pkg_fwd = qt_pkg.as_posix()
+        qt_cmake_dir = (qt_pkg / "lib" / "cmake" / "Qt6").as_posix()
         tc.variables["Qt6Core_VERSION"] = qt_version
         tc.variables["QT6_INSTALL_PREFIX"] = qt_pkg_fwd
         tc.variables["QT6_INSTALL_BINS"] = "bin"

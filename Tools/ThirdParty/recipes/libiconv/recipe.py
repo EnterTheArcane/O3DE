@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 
-    def build_requirements(self):
+    def requirements(self):
         if self.settings_build.os == "Windows":
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2")

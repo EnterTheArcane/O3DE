@@ -57,8 +57,6 @@ class Recipe(RecipeBase):
         self.requires("icu")
         if self.options.with_glib:
             self.requires("glib")
-
-    def build_requirements(self):
         self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.tool_requires("pkgconf")

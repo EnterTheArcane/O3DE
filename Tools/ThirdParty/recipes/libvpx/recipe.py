@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Android":
             del self.options.shared
 
-    def build_requirements(self):
+    def requirements(self):
         if self.settings.arch in ["X64"]:
             self.tool_requires("yasm")
         if self.settings.os == "Windows":

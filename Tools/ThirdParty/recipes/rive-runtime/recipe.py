@@ -13,7 +13,7 @@ class Recipe(RecipeBase):
     version = "0.1.99"
     license = "MIT"
 
-    def build_requirements(self):
+    def requirements(self):
         self.tool_requires("premake5")
 
     def latest_version(self):

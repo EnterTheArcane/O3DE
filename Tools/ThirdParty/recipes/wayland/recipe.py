@@ -43,8 +43,6 @@ class Recipe(RecipeBase):
             self.requires("libffi")
         self.requires("libxml2")
         self.requires("expat")
-
-    def build_requirements(self):
         self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.tool_requires("pkgconf")

@@ -117,8 +117,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         if not self.options.no_zlib:
             self.requires("zlib")
-
-    def build_requirements(self):
         if self.settings_build.os == "Windows":
             if self.conf.get("user.openssl:windows_use_jom", False):
                 self.tool_requires("jom")
@@ -300,7 +298,7 @@ class Recipe(RecipeBase):
 
     def _adjust_path(self, path):
         if self._use_nmake:
-            return path.replace("\\", "/")
+            return os.fspath(path).replace("\\", "/")
         return unix_path(self, path)
 
     @property

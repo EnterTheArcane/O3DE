@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
-    def build_requirements(self):
+    def requirements(self):
         if not is_msvc(self) and not self._is_clang_cl:
             self.tool_requires("gnu-config")
             if self.settings.os == "Windows":

@@ -2,10 +2,9 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.errors import RecipeException
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, replace_in_file
 from thirdparty.gnu import Autotools, AutotoolsToolchain
-from thirdparty.microsoft import is_msvc
 
 
 class Recipe(RecipeBase):
@@ -18,23 +17,14 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def validate(self):
-        # bison 3.8.2's bundled gnulib does not compile with MSVC.  Use winflexbison on Windows.
-        if is_msvc(self):
-            raise RecipeException(
-                "bison 3.8.2 cannot be built with MSVC; use winflexbison on Windows instead.")
+        if self.settings.os == "Windows":
+            raise RecipeInvalidConfiguration("Windows is not supported")
 
     def requirements(self):
         # bison invokes m4 at runtime to expand its parser skeletons
         self.requires("m4")
-
-    def build_requirements(self):
-        if self.settings_build.os == "Windows":
-            self.win_bash = True
-            if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
         self.tool_requires("m4")
-        if self.settings.os != "Windows":
-            self.tool_requires("flex")
+        self.tool_requires("flex")
 
     def source(self):
         get(
@@ -78,8 +68,6 @@ class Recipe(RecipeBase):
         self.cpp_info.includedirs = []
         self.cpp_info.libs = ["y"]
         self.cpp_info.resdirs = ["res"]
-
-        bison_root = self.folders.package.as_posix()
-        self.buildenv_info.define_path("CONAN_BISON_ROOT", bison_root)
-        self.buildenv_info.define_path("BISON_PKGDATADIR",
-                                       os.path.join(self.folders.package, "res", "bison"))
+        self.buildenv_info.define_path("CONAN_BISON_ROOT", self.folders.package.as_posix())
+        self.buildenv_info.define_path(
+            "BISON_PKGDATADIR", os.path.join(self.folders.package, "res", "bison"))

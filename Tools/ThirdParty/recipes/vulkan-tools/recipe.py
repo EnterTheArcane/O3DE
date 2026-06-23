@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         vulkan_headers_pkg = self.dependencies["vulkan-headers"].folders.package
-        tc.variables["VULKAN_HEADERS_INSTALL_DIR"] = vulkan_headers_pkg.replace("\\", "/")
+        tc.variables["VULKAN_HEADERS_INSTALL_DIR"] = vulkan_headers_pkg.as_posix()
         tc.variables["BUILD_CUBE"] = self.options.build_cube
         tc.variables["BUILD_VULKANINFO"] = self.options.build_vulkaninfo
         tc.variables["BUILD_ICD"] = self.options.build_icd

@@ -24,8 +24,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("gz-cmake")
         self.requires("spdlog")
-
-    def build_requirements(self):
         self.tool_requires("cmake")
         self.tool_requires("gz-cmake")
 

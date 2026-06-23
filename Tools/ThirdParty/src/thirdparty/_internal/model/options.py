@@ -1,5 +1,5 @@
 from thirdparty.errors import RecipeException
-from thirdparty._internal.model.recipe_ref import ref_matches
+from thirdparty._internal.model.refs import ref_matches
 
 _falsey_options = ["false", "none", "0", "off", ""]
 

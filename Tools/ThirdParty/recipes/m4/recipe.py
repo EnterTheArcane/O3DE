@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     version = "1.4.20"
     license = "GPL-3.0-only"
 
-    def build_requirements(self):
+    def requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):

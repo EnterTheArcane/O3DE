@@ -29,7 +29,7 @@ class Recipe(RecipeBase):
     def _is_clang_cl(self):
         return self.settings.os == 'Windows' and self.settings.compiler == 'clang'
 
-    def build_requirements(self):
+    def requirements(self):
         self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.tool_requires("pkgconf")

@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
     def _with_nasm(self):
         return self.settings.arch in ("X64",)
 
-    def build_requirements(self):
+    def requirements(self):
         if self._with_nasm:
             self.tool_requires("nasm")
         if self.settings_build.os == "Windows":

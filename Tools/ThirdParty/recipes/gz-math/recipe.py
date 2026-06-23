@@ -25,8 +25,6 @@ class Recipe(RecipeBase):
         self.requires("eigen")
         self.requires("gz-cmake")
         self.requires("gz-utils")
-
-    def build_requirements(self):
         self.tool_requires("cmake")
         self.tool_requires("gz-cmake")
 

@@ -13,7 +13,7 @@ from thirdparty.errors import RecipeException
 from thirdparty._internal.util import detect_api
 from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty._internal.model.options import _PackageOption
-from thirdparty._internal.model.recipe_ref import ref_matches
+from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.model.settings import SettingsItem
 from thirdparty._internal.util.files import load, save
 

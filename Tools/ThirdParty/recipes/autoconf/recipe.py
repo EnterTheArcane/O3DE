@@ -16,8 +16,6 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("m4")  # Needed at runtime by downstream clients as well
-
-    def build_requirements(self):
         self.tool_requires("m4")
         if self.settings.os == "Windows":
             self.win_bash = True

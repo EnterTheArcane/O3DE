@@ -72,33 +72,6 @@ class RecipeReference:
                 f" in the form name or name/version"
             )
 
-    def validate_ref(self, allow_uppercase=False):
-        from thirdparty._internal.output import Output
-
-        self_str = str(self)
-        if self_str != self_str.lower():
-            if not allow_uppercase:
-                raise RecipeException(f"Recipe packages names '{self_str}' must be all lowercase")
-            Output().warning(
-                f"Package name '{self_str}' has uppercase, and has been "
-                "allowed by temporary config. This will break in later 2.X"
-            )
-        if len(self_str) > 200:
-            raise RecipeException(f"Package reference too long >200 {self_str}")
-        if ":" in repr(self):
-            raise RecipeException(f"Invalid recipe reference '{repr(self)}' is a package reference")
-        if not allow_uppercase:
-            validation_pattern = re.compile(r"^[a-z0-9_][a-z0-9_+.-]{1,100}\Z")
-        else:
-            validation_pattern = re.compile(r"^[a-zA-Z0-9_][a-zA-Z0-9_+.-]{1,100}\Z")
-        if validation_pattern.match(self.name) is None:
-            raise RecipeException(f"Invalid package name '{self.name}'")
-        if validation_pattern.match(str(self.version)) is None:
-            raise RecipeException(f"Invalid package version '{self.version}'")
-
-        if re.compile(r"[.+]").search(self.name):
-            Output().warning(f"Name containing special chars is discouraged '{self.name}'")
-
     def matches(self, pattern, is_consumer):
         negate = False
         if pattern.startswith("!") or pattern.startswith("~"):
@@ -115,9 +88,9 @@ class RecipeReference:
                      fnmatch.fnmatchcase(str(self), pattern))
         return not condition if negate else condition
 
-    def partial_match(self, pattern):
-        partial = ""
-        for token in (self.name, "/", str(self.version)):
-            partial += token
-            if pattern.match(partial):
-                return True
+
+def ref_matches(ref, pattern, is_consumer):
+    if not ref or not str(ref):
+        assert is_consumer
+        ref = RecipeReference.loads("*/*")  # FIXME: ugly
+    return ref.matches(pattern, is_consumer=is_consumer)

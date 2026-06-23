@@ -32,7 +32,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
-    def build_requirements(self):
+    def requirements(self):
         if self.options.get_safe("assembly", False):
             self.tool_requires("nasm")
         if self.settings.os == "Windows":

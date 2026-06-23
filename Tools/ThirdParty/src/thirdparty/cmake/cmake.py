@@ -96,12 +96,12 @@ class CMake:
         self._recipe.output.info("Running CMake.configure()")
         cmakelist_folder = self._recipe.folders.source
         if build_script_folder:
-            cmakelist_folder = os.path.join(self._recipe.folders.source, build_script_folder)
-        cmakelist_folder = cmakelist_folder.replace("\\", "/")
+            cmakelist_folder = cmakelist_folder / build_script_folder
+        cmakelist_folder = cmakelist_folder.as_posix()
 
         build_folder = self._recipe.folders.build
         if subfolder:
-            build_folder = os.path.join(self._recipe.folders.build, subfolder)
+            build_folder = build_folder / subfolder
         mkdir(self._recipe, build_folder)
 
         arg_list = [self._cmake_program]
@@ -233,14 +233,14 @@ class CMake:
         package_folder = self._recipe.folders.package
         build_folder = self._recipe.folders.build
         if subfolder:
-            package_folder = os.path.join(self._recipe.folders.package, subfolder)
-            build_folder = os.path.join(self._recipe.folders.build, subfolder)
+            package_folder = package_folder / subfolder
+            build_folder = build_folder / subfolder
         mkdir(self._recipe, package_folder)
 
         build_config = self._config_arg(build_type)
 
-        pkg_folder = '"{}"'.format(package_folder.replace("\\", "/"))
-        build_folder = '"{}"'.format(build_folder.replace("\\", "/"))
+        pkg_folder = '"{}"'.format(package_folder.as_posix())
+        build_folder = '"{}"'.format(build_folder.as_posix())
         arg_list = ["--install", build_folder, build_config, "--prefix", pkg_folder]
         if component:
             arg_list.extend(["--component", component])

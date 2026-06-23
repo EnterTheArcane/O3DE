@@ -62,7 +62,7 @@ class Recipe(RecipeBase):
         tc.variables["ENABLE_CTEST"] = False
         if self.options.enable_optimizer:
             spirv_tools_pkg = self.dependencies["spirv-tools"].folders.package
-            tc.variables["spirv-tools_SOURCE_DIR"] = spirv_tools_pkg.replace("\\", "/")
+            tc.variables["spirv-tools_SOURCE_DIR"] = spirv_tools_pkg.as_posix()
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

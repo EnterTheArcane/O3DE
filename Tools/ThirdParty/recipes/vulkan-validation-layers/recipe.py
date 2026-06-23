@@ -51,8 +51,6 @@ class Recipe(RecipeBase):
             self.requires("xorg")
         if self.options.get_safe("with_wsi_wayland"):
             self.requires("wayland")
-
-    def build_requirements(self):
         if self._needs_pkg_config and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.tool_requires("pkgconf")
         self.tool_requires("cmake")

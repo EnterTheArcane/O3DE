@@ -162,8 +162,6 @@ class Recipe(RecipeBase):
             self.requires("libpsl")
         if self.options.with_libidn:
             self.requires("libidn2")
-
-    def build_requirements(self):
         if self._is_using_cmake_build:
             self.tool_requires("cmake")
             if self._is_win_x_android:

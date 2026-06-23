@@ -39,7 +39,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
-    def build_requirements(self):
+    def requirements(self):
         self.tool_requires("meson")
         if self.options.assembly and self.settings.arch in ("X64",):
             self.tool_requires("nasm")

@@ -49,8 +49,6 @@ class Recipe(RecipeBase):
             self.requires("libiconv")
         if self.options.with_readline:
             self.requires("readline")
-
-    def build_requirements(self):
         self.tool_requires("bison")
         self.tool_requires("flex")
         self.tool_requires("gnu-config")

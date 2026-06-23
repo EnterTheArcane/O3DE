@@ -6,7 +6,7 @@ def run_configure_method(recipe):
     """Drive a recipe's configuration and requirement declaration in canonical order.
 
     config_options() -> default language handling -> configure() -> default auto-fPIC/shared
-    handling -> package-type computation -> requirements()/build_requirements().
+    handling -> package-type computation -> requirements().
 
     This is the single entry point for a recipe's config phase.  It injects the default
     auto-fPIC behavior (``_auto_fpic_configure``) so recipes don't need manual
@@ -28,8 +28,8 @@ def run_configure_method(recipe):
     _auto_fpic_configure(recipe)
 
     if initial_requires_count != len(recipe.requires):
-        recipe.output.warning("Requirements should only be added in the requirements()/"
-                              "build_requirements() methods, not configure()/config_options().",
+        recipe.output.warning("Requirements should only be added in the requirements() method, "
+                              "not configure()/config_options().",
                               warn_tag="deprecated")
 
     recipe.build_requires = BuildRequirements(recipe.requires)
@@ -39,10 +39,6 @@ def run_configure_method(recipe):
     if hasattr(recipe, "requirements"):
         with recipe_exception_formatter(recipe, "requirements"):
             recipe.requirements()
-
-    if hasattr(recipe, "build_requirements"):
-        with recipe_exception_formatter(recipe, "build_requirements"):
-            recipe.build_requirements()
 
 
 def _auto_fpic_configure(recipe):

@@ -306,7 +306,7 @@ def _build_dep_graph(
                                  recipe_state=_RECIPE_INCACHE)
 
         # Full config phase (config_options/configure + auto-fPIC + package-type +
-        # requirements/build_requirements); populates dep.requires for the sub-graph below.
+        # requirements); populates dep.requires for the sub-graph below.
         try:
             _run_configure_method(dep)
         except Exception:
@@ -643,7 +643,7 @@ def _build_recipe(
         _wipe(pkg_dir)
 
     # Drive the recipe's full config phase (config_options/configure + default auto-fPIC +
-    # requirements/build_requirements) then validate(), before creating any directories so
+    # requirements) then validate(), before creating any directories so
     # that packages unsupported on this platform (RecipeInvalidConfiguration) don't leave
     # empty build trees behind.
     try:

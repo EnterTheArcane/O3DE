@@ -48,8 +48,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         if self.options.get_safe("with_numa", False):
             self.requires("libnuma")
-
-    def build_requirements(self):
         if self.options.assembly:
             if self.settings.arch in ["X64"]:
                 self.tool_requires("nasm")

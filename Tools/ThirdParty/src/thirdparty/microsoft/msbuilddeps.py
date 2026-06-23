@@ -173,7 +173,7 @@ class MSBuildDeps:
             # https://docs.microsoft.com/en-us/visualstudio/msbuild/
             #                          how-to-escape-special-characters-in-msbuild
             # https://docs.microsoft.com/en-us/visualstudio/msbuild/msbuild-special-characters
-            return path.lstrip("/")
+            return os.fspath(path).lstrip("/")
 
         def join_paths(paths):
             # TODO: ALmost copied from CMakeDeps TargetDataContext

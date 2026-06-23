@@ -19,8 +19,6 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("autoconf")
-
-    def build_requirements(self):
         self.tool_requires("autoconf")
         if self.settings_build.os == "Windows":
             self.win_bash = True

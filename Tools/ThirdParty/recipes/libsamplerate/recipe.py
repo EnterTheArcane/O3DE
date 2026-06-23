@@ -27,7 +27,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
-    def build_requirements(self):
+    def requirements(self):
         if is_apple_os(self) and self.options.shared:
             # see https://github.com/libsndfile/libsamplerate/blob/0.2.2/src/CMakeLists.txt#L110-L119
             self.tool_requires("cmake")

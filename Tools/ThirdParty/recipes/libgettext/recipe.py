@@ -50,8 +50,6 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("libiconv")
-
-    def build_requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", default=False, check_type=str):

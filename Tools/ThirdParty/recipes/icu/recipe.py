@@ -58,7 +58,7 @@ class Recipe(RecipeBase):
                 m.update(data)
         return m.hexdigest()
 
-    def build_requirements(self):
+    def requirements(self):
         if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):

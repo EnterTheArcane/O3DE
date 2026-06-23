@@ -31,8 +31,6 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("zlib")
-
-    def build_requirements(self):
         if self.settings.os == "Windows" and not is_msvc(self):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
@@ -203,7 +201,7 @@ class Recipe(RecipeBase):
         replace_in_file(self, tclConfigShPath, "\nTCL_SRC_DIR", "\n#TCL_SRC_DIR")
         ## Replace references to package folder by TCL_ROOT env var supposed to be defined by VirtualRunEnv
         if is_msvc(self):
-            replace_in_file(self, tclConfigShPath, self.folders.package, "${TCL_ROOT}")
+            replace_in_file(self, tclConfigShPath, os.fspath(self.folders.package), "${TCL_ROOT}")
         else:
             replace_in_file(self, tclConfigShPath, "TCL_PREFIX='/'", "TCL_PREFIX='${TCL_ROOT}'")
             replace_in_file(self, tclConfigShPath, "TCL_EXEC_PREFIX='/'", "TCL_EXEC_PREFIX='${TCL_ROOT}'")

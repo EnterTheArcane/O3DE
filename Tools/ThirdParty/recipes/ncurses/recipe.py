@@ -64,8 +64,6 @@ class Recipe(RecipeBase):
             self.requires("dirent")
             if self.options.get_safe("with_extended_colors"):
                 self.requires("naive-tsearch")
-
-    def build_requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):

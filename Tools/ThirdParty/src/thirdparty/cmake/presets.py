@@ -175,7 +175,7 @@ class _CMakePresets:
             # If we are installing a ref: "recipe install <ref>", we don't have build_folder, because
             # we don't even have a recipe with a `layout()` to determine the build folder.
             # If we install a local recipe "recipe install ." with a layout(), it will be available
-            ret["binaryDir"] = recipe.folders.build
+            ret["binaryDir"] = recipe.folders.build.as_posix()
 
         def _format_val(val):
             return f'"{val}"' if type(val) is str and " " in val else f"{val}"

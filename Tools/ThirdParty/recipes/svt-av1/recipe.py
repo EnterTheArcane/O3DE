@@ -51,8 +51,6 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("cpuinfo")
-
-    def build_requirements(self):
         self.tool_requires("cmake")
         if self.settings.arch in ("X64",):
             self.tool_requires("nasm")

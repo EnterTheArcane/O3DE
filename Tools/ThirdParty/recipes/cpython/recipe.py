@@ -81,10 +81,6 @@ class Recipe(RecipeBase):
             self.options.rm_safe("with_tkinter")
             self.options.rm_safe("with_lzma")
 
-    def build_requirements(self):
-        if Version(self.version) >= "3.11" and not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf")
-
     def requirements(self):
         self.requires("zlib")
         if self._supports_modules:
@@ -121,6 +117,8 @@ class Recipe(RecipeBase):
             self.requires("ncurses", transitive_headers=True, transitive_libs=True)
         if self.options.get_safe("with_lzma", False):
             self.requires("xz_utils")
+        if Version(self.version) >= "3.11" and not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
+            self.tool_requires("pkgconf")
 
     def source(self):
         get(

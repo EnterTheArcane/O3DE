@@ -19,7 +19,7 @@ class Recipe(RecipeBase):
         "fPIC": True,
     }
 
-    def build_requirements(self):
+    def requirements(self):
         self.tool_requires("cmake")
         self.tool_requires("ispc")
 

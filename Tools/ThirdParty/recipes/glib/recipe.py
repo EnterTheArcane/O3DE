@@ -63,8 +63,6 @@ class Recipe(RecipeBase):
 
         if is_apple_os(self):
             self.requires("libiconv")
-
-    def build_requirements(self):
         self.tool_requires("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.tool_requires("pkgconf")

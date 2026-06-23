@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def package_id(self):
         del self.info.settings.compiler
 
-    def build_requirements(self):
+    def requirements(self):
         self.tool_requires("cmake")
         if self.settings.os == "Windows" and not is_msvc(self):
             self.win_bash = True

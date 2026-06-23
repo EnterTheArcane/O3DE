@@ -26,8 +26,6 @@ class Recipe(RecipeBase):
         self.requires("gz-math")
         self.requires("gz-utils")
         self.requires("tinyxml2")
-
-    def build_requirements(self):
         self.tool_requires("cmake")
         self.tool_requires("gz-cmake")
 

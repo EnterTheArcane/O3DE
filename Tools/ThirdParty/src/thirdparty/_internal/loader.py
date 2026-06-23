@@ -149,7 +149,7 @@ def make_probe_recipe(
     target_arch: str | None = None,
 ) -> RecipeBase:
     """Instantiate a recipe with just enough state (settings, conf, requires shim) to
-    drive ``config_options()``/``configure()``/``requirements()``/``build_requirements()``.
+    drive ``config_options()``/``configure()``/``requirements()``.
 
     ``target_os``/``target_arch`` select the HOST/target platform (default: build machine).
     ``settings`` is the target platform; ``settings_build`` is always the build machine.

@@ -3,7 +3,7 @@ import os
 from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.errors import RecipeException
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.gnu import Autotools, AutotoolsToolchain
 
@@ -19,14 +19,11 @@ class Recipe(RecipeBase):
 
     def validate(self):
         if self.settings.os == "Windows":
-            raise RecipeException(
-                "flex is not compatible with Windows; use winflexbison instead.")
+            raise RecipeInvalidConfiguration("Windows is not supported")
 
     def requirements(self):
         # flex needs m4 at runtime to generate scanners
         self.requires("m4")
-
-    def build_requirements(self):
         self.tool_requires("m4")
         self.tool_requires("gnu-config")
 
@@ -90,6 +87,5 @@ class Recipe(RecipeBase):
         self.cpp_info.system_libs = ["m"]
         # Avoid CMakeDeps messing with Conan targets
         self.cpp_info.set_property("cmake_find_mode", "none")
-
         lex_path = os.path.join(self.folders.package, "bin", "flex").replace("\\", "/")
         self.buildenv_info.define("LEX", lex_path)

@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 
-    def build_requirements(self):
+    def requirements(self):
         self.tool_requires("autoconf")
         self.tool_requires("automake")
         self.tool_requires("libtool")

@@ -36,8 +36,6 @@ class Recipe(RecipeBase):
             self.requires("libusb")
         if self.settings.os == "Linux":
             self.requires("libudev")
-
-    def build_requirements(self):
         if self.settings.os != "Windows":
             self.tool_requires("libtool")
             if self.settings.os in ["Linux", "FreeBSD"] and not self.conf.get("tools.gnu:pkg_config", check_type=str):

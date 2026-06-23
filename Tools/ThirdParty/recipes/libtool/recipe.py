@@ -28,8 +28,6 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("automake")
-
-    def build_requirements(self):
         self.tool_requires("automake")
         self.tool_requires("m4")  # Needed by configure
         self.tool_requires("gnu-config")

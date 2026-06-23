@@ -34,8 +34,6 @@ class Recipe(RecipeBase):
         if self.settings.os == "Linux":
             self.requires("fontconfig")
             self.requires("xorg")
-
-    def build_requirements(self):
         if not is_msvc(self):
             if (
                     self.settings.os == "Windows"

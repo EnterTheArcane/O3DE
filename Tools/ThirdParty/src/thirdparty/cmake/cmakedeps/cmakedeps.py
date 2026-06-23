@@ -333,7 +333,7 @@ class _PathGenerator:
                     build_dir = dep.cpp_info.builddirs[0]
                 except IndexError:
                     build_dir = dep.folders.package
-                pkg_folder = build_dir.replace("\\", "/") if build_dir else None
+                pkg_folder = os.fspath(build_dir).replace("\\", "/") if build_dir else None
                 if pkg_folder:
                     if any(os.path.isfile(os.path.join(pkg_folder, f + ext)) for f in pkg_names
                            for ext in ("-config.cmake", "Config.cmake")):

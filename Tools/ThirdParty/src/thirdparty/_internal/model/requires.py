@@ -304,7 +304,7 @@ class Requirements:
                         self.build_require(item)
                 except TypeError:
                     raise RecipeException("Wrong 'build_requires' definition, "
-                                         "did you mean 'build_requirements()'?")
+                                         "did you mean 'requirements()'?")
         if declared_test is not None:
             if isinstance(declared_test, str):
                 self.test_require(declared_test)
@@ -314,7 +314,7 @@ class Requirements:
                         self.test_require(item)
                 except TypeError:
                     raise RecipeException("Wrong 'test_requires' definition, "
-                                         "did you mean 'build_requirements()'?")
+                                         "did you mean 'requirements()'?")
         if declared_build_tool is not None:
             if isinstance(declared_build_tool, str):
                 self.build_require(declared_build_tool, run=True)
@@ -324,7 +324,7 @@ class Requirements:
                         self.build_require(item, run=True)
                 except TypeError:
                     raise RecipeException("Wrong 'tool_requires' definition, "
-                                         "did you mean 'build_requirements()'?")
+                                         "did you mean 'requirements()'?")
 
     def reindex(self, require, new_name):
         """ This operation is necessary when the reference name of a package is changed

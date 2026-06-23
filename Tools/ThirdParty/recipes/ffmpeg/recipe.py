@@ -357,8 +357,6 @@ class Recipe(RecipeBase):
             self.requires("whisper-cpp")
         if self.options.get_safe("with_openapv"):
             self.requires("openapv")
-
-    def build_requirements(self):
         if self.settings.arch == "X64":
             self.tool_requires("nasm")
 
