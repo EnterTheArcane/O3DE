@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-from thirdparty._internal.model.cpp_info import CppInfo
 from thirdparty._internal.model.conf import Conf
+from thirdparty._internal.model.cpp_info import CppInfo
 
 
 class Infos:

@@ -162,7 +162,7 @@ class Recipe(RecipeBase):
                 contents, nb1 = re.subn("^{}=\"[^\"]*\"".format(key), "{}=\"{}\"".format(key, repl), contents, flags=re.MULTILINE)
                 contents, nb2 = re.subn("^: \\$\\{{{}=\"[^$\"]*\"\\}}".format(key), ": ${{{}=\"{}\"}}".format(key, repl), contents, flags=re.MULTILINE)
                 if nb1 + nb2 == 0:
-                    raise RecipeException("Failed to find {} in {}".format(key, repl))
+                    raise RecipeException(f"Failed to find {key} in {repl}")
             open(file, "w").write(contents)
 
         binpath = os.path.join(self.folders.package, "bin")

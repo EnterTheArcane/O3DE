@@ -1,5 +1,5 @@
-from thirdparty.errors import RecipeException
 from thirdparty._internal.model.refs import ref_matches
+from thirdparty.errors import RecipeException
 
 _falsey_options = ["false", "none", "0", "off", ""]
 
@@ -8,8 +8,10 @@ def option_not_exist_msg(option_name, existing_options):
     """ Someone is referencing an option that is not available in the current package
     options
     """
-    result = ["option '%s' doesn't exist" % option_name,
-              "Possible options are %s" % existing_options or "none"]
+    result = [
+        "option '%s' doesn't exist" % option_name,
+        "Possible options are %s" % existing_options or "none",
+    ]
     return "\n".join(result)
 
 
@@ -189,8 +191,9 @@ class _PackageOptions:
 
         current_value = self._data.get(item)
         if self._freeze and current_value.value is not None and current_value != value:
-            raise RecipeException(f"Incorrect attempt to modify option '{item}' "
-                                 f"from '{current_value}' to '{value}'")
+            raise RecipeException(
+                f"Incorrect attempt to modify option '{item}' "
+                f"from '{current_value}' to '{value}'")
         self._ensure_exists(item)
         v = self._data.setdefault(item, _PackageOption(item, None))
         new_value_important = important or (isinstance(value, _PackageOption) and value.important)
@@ -235,12 +238,13 @@ class Options:
                     if len(tokens) == 2:
                         package, option = tokens
                         if not package:
-                            raise RecipeException("Invalid empty package name in options. "
-                                                 f"Use a pattern like `mypkg/*:{option}`")
+                            raise RecipeException(
+                                "Invalid empty package name in options. "
+                                f"Use a pattern like `mypkg/*:{option}`")
                         if "/" not in package and "*" not in package and "&" not in package:
-                            msg = "The usage of package names `{}` in options is " \
-                                  "deprecated, use a pattern like `{}/*:{}` " \
-                                  "instead".format(k, package, option)
+                            msg = (f"The usage of package names `{k}` in options is "
+                                   f"deprecated, use a pattern like `{package}/*:{option}` "
+                                   f"instead")
                             raise RecipeException(msg)
                         if "[" in package:
                             msg = (f"Options pattern {package} contains a version range, which has no effect. "
@@ -290,8 +294,9 @@ class Options:
                 name, value = line.split("=", 1)
                 values[name] = value
             except ValueError:
-                raise RecipeException(f"Error while parsing option '{line}'. "
-                                     f"Options should be specified as 'pkg/*:option=value'")
+                raise RecipeException(
+                    f"Error while parsing option '{line}'. "
+                    f"Options should be specified as 'pkg/*:option=value'")
         return Options(options_values=values)
 
     def serialize(self):
@@ -345,9 +350,10 @@ class Options:
         result._package_options = self._package_options.copy_package_id_info_options()
         # In most scenarios this should be empty at this stage, because it was cleared
         if self._deps_package_options:
-            raise RecipeException("Dependencies options were defined incorrectly. Maybe you"
-                                 " tried to define options values in 'requirements()' or other"
-                                 " invalid place")
+            raise RecipeException(
+                "Dependencies options were defined incorrectly. Maybe you"
+                " tried to define options values in 'requirements()' or other"
+                " invalid place")
         return result
 
     def update(self, options=None, options_values=None):

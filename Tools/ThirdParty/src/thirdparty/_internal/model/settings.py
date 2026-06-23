@@ -2,11 +2,11 @@ import os
 
 import yaml
 
-from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty._internal.default_settings import default_settings_yml
 from thirdparty._internal.internal_tools import is_universal_arch
-from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import save, load
+from thirdparty._internal.util.home_paths import HomePaths
+from thirdparty.errors import RecipeException
 
 
 def bad_value_msg(name, value, value_range):
@@ -18,8 +18,10 @@ def bad_value_msg(name, value, value_range):
 
 def undefined_field(name, field, fields=None, value=None):
     value_str = " for '%s'" % value if value else ""
-    result = ["'%s.%s' doesn't exist%s" % (name, field, value_str),
-              "'%s' possible configurations are %s" % (name, fields or "none")]
+    result = [
+        "'%s.%s' doesn't exist%s" % (name, field, value_str),
+        "'%s' possible configurations are %s" % (name, fields or "none"),
+    ]
     return RecipeException("\n".join(result))
 
 
@@ -29,6 +31,7 @@ class SettingsItem:
     - List [None, "ANY"] to accept None or any value
     - A dict {subsetting: definition}, e.g. {version: [], runtime: []} for VS
     """
+
     def __init__(self, definition, name, value):
         self._definition = definition  # range of possible values
         self._name = name  # settings.compiler
@@ -264,7 +267,7 @@ class Settings:
         try:
             return Settings(yaml.safe_load(text) or {})
         except (yaml.YAMLError, AttributeError) as ye:
-            raise RecipeException("Invalid settings.yml format: {}".format(ye))
+            raise RecipeException(f"Invalid settings.yml format: {ye}")
 
     def validate(self):
         for child in self._data.values():
@@ -384,7 +387,7 @@ def load_settings_yml(home_folder):
         try:
             return yaml.safe_load(load(path)) or {}
         except yaml.YAMLError as ye:
-            raise RecipeException("Invalid settings.yml format: {}".format(ye))
+            raise RecipeException(f"Invalid settings.yml format: {ye}")
 
     settings = _load_settings(settings_path)
     user_settings_file = _home_paths.settings_path_user

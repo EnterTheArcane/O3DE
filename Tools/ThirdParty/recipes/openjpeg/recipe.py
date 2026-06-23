@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
 
     def _create_cmake_module_variables(self, module_file):
         content = textwrap.dedent(
-            f"""\
+            f"""
             set(OPENJPEG_FOUND TRUE)
             if(DEFINED OpenJPEG_INCLUDE_DIRS)
                 set(OPENJPEG_INCLUDE_DIRS ${{OpenJPEG_INCLUDE_DIRS}})
@@ -90,19 +90,19 @@ class Recipe(RecipeBase):
             set(OPENJPEG_MINOR_VERSION "{Version(self.version).minor}")
             set(OPENJPEG_BUILD_VERSION "{Version(self.version).patch}")
             set(OPENJPEG_BUILD_SHARED_LIBS {"TRUE" if self.options.shared else "FALSE"})
-        """)
+            """)
         save(self, module_file, content)
 
     def _create_cmake_module_alias_targets(self, module_file, targets):
         content = ""
         for alias, aliased in targets.items():
             content += textwrap.dedent(
-                f"""\
+                f"""
                 if(TARGET {aliased} AND NOT TARGET {alias})
                     add_library({alias} INTERFACE IMPORTED)
                     set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
                 endif()
-            """)
+                """)
         save(self, module_file, content)
 
     @property

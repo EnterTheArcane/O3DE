@@ -7,8 +7,8 @@ from collections import OrderedDict, defaultdict
 from enum import Enum
 
 from thirdparty._internal.output import Output
-from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import load, save
+from thirdparty.errors import RecipeException
 
 
 class PackageType(Enum):
@@ -50,8 +50,9 @@ class MockInfoProperty:
     def message():
         if not MockInfoProperty.counter:
             return
-        Output().warning("Usage of deprecated Recipe 1.X features that will be removed in "
-                              "Recipe 2.X:", warn_tag="deprecated")
+        Output().warning(
+            "Usage of deprecated Recipe 1.X features that will be removed in "
+            "Recipe 2.X:", warn_tag="deprecated")
         for k, v in MockInfoProperty.counter.items():
             Output().warning(f"    '{k}' used in: {', '.join(v)}", warn_tag="deprecated")
         MockInfoProperty.counter = {}
@@ -151,7 +152,7 @@ class _Component:
             "type": str(self._type) if self._type else None,
             "location": self._location,
             "link_location": self._link_location,
-            "languages": self._languages
+            "languages": self._languages,
         }
 
     @staticmethod
@@ -247,27 +248,30 @@ class _Component:
     def bindir(self):
         bindirs = self.bindirs
         if not bindirs or len(bindirs) != 1:
-            raise RecipeException(f"The bindir property is undefined because bindirs "
-                                 f"{'is empty' if not bindirs else 'has more than one element'}."
-                                 f" Consider using the bindirs property.")
+            raise RecipeException(
+                f"The bindir property is undefined because bindirs "
+                f"{'is empty' if not bindirs else 'has more than one element'}."
+                f" Consider using the bindirs property.")
         return bindirs[0]
 
     @property
     def libdir(self):
         libdirs = self.libdirs
         if not libdirs or len(libdirs) != 1:
-            raise RecipeException(f"The libdir property is undefined because libdirs "
-                                 f"{'is empty' if not libdirs else 'has more than one element'}."
-                                 f" Consider using the libdirs property.")
+            raise RecipeException(
+                f"The libdir property is undefined because libdirs "
+                f"{'is empty' if not libdirs else 'has more than one element'}."
+                f" Consider using the libdirs property.")
         return libdirs[0]
 
     @property
     def includedir(self):
         includedirs = self.includedirs
         if not includedirs or len(includedirs) != 1:
-            raise RecipeException(f"The includedir property is undefined because includedirs "
-                                 f"{'is empty' if not includedirs else 'has more than one element'}."
-                                 f" Consider using the includedirs property.")
+            raise RecipeException(
+                f"The includedir property is undefined because includedirs "
+                f"{'is empty' if not includedirs else 'has more than one element'}."
+                f" Consider using the includedirs property.")
         return includedirs[0]
 
     @property
@@ -392,8 +396,9 @@ class _Component:
     def sharedlinkflags(self):
         if self._sharedlinkflags is None:
             self._sharedlinkflags = []
-        return self._evaluate_cond("sharedlinkflags", self._sharedlinkflags,
-                                   self._consumer_recipe)
+        return self._evaluate_cond(
+            "sharedlinkflags", self._sharedlinkflags,
+            self._consumer_recipe)
 
     @sharedlinkflags.setter
     def sharedlinkflags(self, value):
@@ -486,6 +491,7 @@ class _Component:
         :param overwrite:
         :type other: _Component
         """
+
         def merge_list(o, d):
             d.extend(e for e in o if e not in d)
 
@@ -625,8 +631,9 @@ class _Component:
 
         if static_location:
             if shared_location:
-                out.warning(f"Lib {libname} has both static {static_location} and "
-                            f"shared {shared_location} in the same package")
+                out.warning(
+                    f"Lib {libname} has both static {static_location} and "
+                    f"shared {shared_location} in the same package")
                 if self._type is PackageType.STATIC:
                     self._location = static_location
                     deduced_type = PackageType.STATIC
@@ -648,21 +655,22 @@ class _Component:
             self._location = dll_location
             deduced_type = PackageType.SHARED
         if not self._location:
-            raise RecipeException(f"{recipe}: Cannot obtain 'location' for library '{libname}' "
-                                 f"in {libdirs}. You can specify 'cpp_info.location' directly "
-                                 f"or report this to the ThirdParty maintainers if you think it "
-                                 f"should have been deduced correctly.")
+            raise RecipeException(
+                f"{recipe}: Cannot obtain 'location' for library '{libname}' "
+                f"in {libdirs}. You can specify 'cpp_info.location' directly "
+                f"or report this to the ThirdParty maintainers if you think it "
+                f"should have been deduced correctly.")
         if self._type is not None and self._type != deduced_type:
-            RecipeException(f"{recipe}: Incorrect deduced type '{deduced_type}' for library"
-                           f" '{libname}' that declared .type='{self._type}'")
+            RecipeException(
+                f"{recipe}: Incorrect deduced type '{deduced_type}' for library"
+                f" '{libname}' that declared .type='{self._type}'")
         self._type = deduced_type
-
 
     def deduce_locations(self, recipe, component_name=""):
         name = f'{recipe} cpp_info.components["{component_name}"]' if component_name \
             else f'{recipe} cpp_info'
         # executable
-        if self._exe:   # exe is a new field, it should have the correct location
+        if self._exe:  # exe is a new field, it should have the correct location
             if self._type is None:
                 self._type = PackageType.APP
             if self._type is not PackageType.APP:
@@ -678,8 +686,9 @@ class _Component:
 
         # libraries
         if len(self.libs) > 1:  # it could be 0, as the libs itself is not necessary
-            raise RecipeException(f"{name} has more than 1 library in .libs: {self.libs}, "
-                                 "cannot deduce locations")
+            raise RecipeException(
+                f"{name} has more than 1 library in .libs: {self.libs}, "
+                "cannot deduce locations")
         # fully defined by user in recipe, nothing to do.
         if self._location or self._link_location:
             if self._type is None or self._type not in [PackageType.SHARED, PackageType.STATIC]:

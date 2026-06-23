@@ -1,33 +1,32 @@
 import os
 import textwrap
 from collections import OrderedDict
-from typing import Any
 
 from jinja2 import Template
 
+from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.output import Output
+from thirdparty._internal.util.files import save
 from thirdparty.build import use_win_mingw
 from thirdparty.cmake.layout import is_consumer
 from thirdparty.cmake.presets import write_cmake_presets
 from thirdparty.cmake.toolchain import RECIPE_TOOLCHAIN_FILENAME
-from thirdparty.cmake.toolchain.blocks import (ExtraVariablesBlock, ToolchainBlocks,
-                                                UserToolchain, GenericSystemBlock,
-                                                AndroidSystemBlock, AppleSystemBlock, FPicBlock,
-                                                ArchitectureBlock, GLibCXXBlock, VSRuntimeBlock,
-                                                CppStdBlock, ParallelBlock, CMakeFlagsInitBlock,
-                                                TryCompileBlock, FindFiles, PkgConfigBlock,
-                                                SkipRPath, SharedLibBock, OutputDirsBlock,
-                                                ExtraFlagsBlock, CompilersBlock, LinkerScriptsBlock,
-                                                VSDebuggerEnvironment, VariablesBlock,
-                                                PreprocessorBlock, RpathLinkFlagsBlock)
+from thirdparty.cmake.toolchain.blocks import (
+    ExtraVariablesBlock, ToolchainBlocks,
+    UserToolchain, GenericSystemBlock,
+    AndroidSystemBlock, AppleSystemBlock, FPicBlock,
+    ArchitectureBlock, GLibCXXBlock, VSRuntimeBlock,
+    CppStdBlock, ParallelBlock, CMakeFlagsInitBlock,
+    TryCompileBlock, FindFiles, PkgConfigBlock,
+    SkipRPath, SharedLibBock, OutputDirsBlock,
+    ExtraFlagsBlock, CompilersBlock, LinkerScriptsBlock,
+    VSDebuggerEnvironment, VariablesBlock,
+    PreprocessorBlock, RpathLinkFlagsBlock, )
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.errors import RecipeException
 from thirdparty.microsoft import VCVars
 from thirdparty.microsoft.visual import vs_ide_version
-from thirdparty.errors import RecipeException
-from thirdparty._internal.model.options import _PackageOption
-from thirdparty._internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
-from thirdparty._internal.util.files import save
 
 
 class Variables(OrderedDict):
@@ -63,14 +62,14 @@ class Variables(OrderedDict):
 
 
 class CMakeToolchain:
-
     filename = RECIPE_TOOLCHAIN_FILENAME
 
     # Importing this class into a recipe implicitly adds tool_requires("cmake") and the
     # Ninja backend that make_conf() configures as the CMake generator.
     _implicit_tool_requires = ("cmake", "ninja")
 
-    _template = textwrap.dedent("""\
+    _template = textwrap.dedent(
+        """
         # Recipe automatically generated toolchain file
         # DO NOT EDIT MANUALLY, it will be overwritten
 
@@ -89,7 +88,7 @@ class CMakeToolchain:
         if(CMAKE_POLICY_DEFAULT_CMP0091)  # Avoid unused and not-initialized warnings
         endif()
         """)
-    
+
     variables: Variables
     cache_variables: Variables
 
@@ -107,32 +106,35 @@ class CMakeToolchain:
         self.extra_exelinkflags = []
         self.add_rpath_link = False
 
-        self.blocks = ToolchainBlocks(self._recipe, self,
-                                      [("user_toolchain", UserToolchain),
-                                       ("generic_system", GenericSystemBlock),
-                                       ("compilers", CompilersBlock),
-                                       ("android_system", AndroidSystemBlock),
-                                       ("apple_system", AppleSystemBlock),
-                                       ("fpic", FPicBlock),
-                                       ("arch_flags", ArchitectureBlock),
-                                       ("linker_scripts", LinkerScriptsBlock),
-                                       ("rpath_link_flags", RpathLinkFlagsBlock),
-                                       ("libcxx", GLibCXXBlock),
-                                       ("vs_runtime", VSRuntimeBlock),
-                                       ("vs_debugger_environment", VSDebuggerEnvironment),
-                                       ("cppstd", CppStdBlock),
-                                       ("parallel", ParallelBlock),
-                                       ("extra_flags", ExtraFlagsBlock),
-                                       ("cmake_flags_init", CMakeFlagsInitBlock),
-                                       ("extra_variables", ExtraVariablesBlock),
-                                       ("try_compile", TryCompileBlock),
-                                       ("find_paths", FindFiles),
-                                       ("pkg_config", PkgConfigBlock),
-                                       ("rpath", SkipRPath),
-                                       ("shared", SharedLibBock),
-                                       ("output_dirs", OutputDirsBlock),
-                                       ("variables", VariablesBlock),
-                                       ("preprocessor", PreprocessorBlock)])
+        self.blocks = ToolchainBlocks(
+            self._recipe, self,
+            [
+                ("user_toolchain", UserToolchain),
+                ("generic_system", GenericSystemBlock),
+                ("compilers", CompilersBlock),
+                ("android_system", AndroidSystemBlock),
+                ("apple_system", AppleSystemBlock),
+                ("fpic", FPicBlock),
+                ("arch_flags", ArchitectureBlock),
+                ("linker_scripts", LinkerScriptsBlock),
+                ("rpath_link_flags", RpathLinkFlagsBlock),
+                ("libcxx", GLibCXXBlock),
+                ("vs_runtime", VSRuntimeBlock),
+                ("vs_debugger_environment", VSDebuggerEnvironment),
+                ("cppstd", CppStdBlock),
+                ("parallel", ParallelBlock),
+                ("extra_flags", ExtraFlagsBlock),
+                ("cmake_flags_init", CMakeFlagsInitBlock),
+                ("extra_variables", ExtraVariablesBlock),
+                ("try_compile", TryCompileBlock),
+                ("find_paths", FindFiles),
+                ("pkg_config", PkgConfigBlock),
+                ("rpath", SkipRPath),
+                ("shared", SharedLibBock),
+                ("output_dirs", OutputDirsBlock),
+                ("variables", VariablesBlock),
+                ("preprocessor", PreprocessorBlock),
+            ])
 
         # Set the CMAKE_MODULE_PATH and CMAKE_PREFIX_PATH to the deps .builddirs
         self.find_builddirs = True
@@ -150,7 +152,7 @@ class CMakeToolchain:
         blocks = self.blocks.process_blocks()
         ctxt_toolchain = {
 
-            "recipe_blocks": blocks
+            "recipe_blocks": blocks,
         }
 
         return ctxt_toolchain
@@ -158,8 +160,9 @@ class CMakeToolchain:
     @property
     def content(self):
         context = self._context()
-        content = Template(self._template, trim_blocks=True, lstrip_blocks=True,
-                           keep_trailing_newline=True).render(**context)
+        content = Template(
+            self._template, trim_blocks=True, lstrip_blocks=True,
+            keep_trailing_newline=True).render(**context)
         return content
 
     @property
@@ -207,9 +210,9 @@ class CMakeToolchain:
 
         buildenv, runenv, cmake_executable = None, None, None
 
-        if self._recipe.conf.get("tools.cmake.cmaketoolchain:presets_environment", default="",
-                                    check_type=str, choices=("disabled", "")) != "disabled":
-
+        if self._recipe.conf.get(
+            "tools.cmake.cmaketoolchain:presets_environment", default="",
+            check_type=str, choices=("disabled", "")) != "disabled":
             build_env = self.presets_build_environment.vars(self._recipe) \
                 if self.presets_build_environment \
                 else VirtualBuildEnv(self._recipe, auto_generate=True).vars()
@@ -227,12 +230,14 @@ class CMakeToolchain:
 
         user_presets = self.user_presets_path
         if is_consumer(self._recipe):
-            user_presets = self._recipe.conf.get("tools.cmake.cmaketoolchain:user_presets",
-                                                    default=self.user_presets_path)
+            user_presets = self._recipe.conf.get(
+                "tools.cmake.cmaketoolchain:user_presets",
+                default=self.user_presets_path)
 
-        write_cmake_presets(self._recipe, toolchain_file, self.generator, cache_variables,
-                            user_presets, self.presets_prefix, buildenv, runenv,
-                            cmake_executable, self.absolute_paths)
+        write_cmake_presets(
+            self._recipe, toolchain_file, self.generator, cache_variables,
+            user_presets, self.presets_prefix, buildenv, runenv,
+            cmake_executable, self.absolute_paths)
 
     def _get_generator(self, recipe_generator):
         # Returns the name of the generator to be used by CMake
@@ -251,16 +256,18 @@ class CMakeToolchain:
         compiler = recipe.settings.get_safe("compiler")
         compiler_version = recipe.settings.get_safe("compiler.version")
 
-        cmake_years = {'8': '8 2005',
-                       '9': '9 2008',
-                       '10': '10 2010',
-                       '11': '11 2012',
-                       '12': '12 2013',
-                       '14': '14 2015',
-                       '15': '15 2017',
-                       '16': '16 2019',
-                       '17': '17 2022',
-                       '18': '18 2026'}
+        cmake_years = {
+            '8': '8 2005',
+            '9': '9 2008',
+            '10': '10 2010',
+            '11': '11 2012',
+            '12': '12 2013',
+            '14': '14 2015',
+            '15': '15 2017',
+            '16': '16 2019',
+            '17': '17 2022',
+            '18': '18 2026',
+        }
 
         if compiler == "msvc":
             if compiler_version is None:

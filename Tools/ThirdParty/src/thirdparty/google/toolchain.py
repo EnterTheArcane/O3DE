@@ -46,18 +46,20 @@ def _get_cpu_name(recipe):
 class BazelToolchain:
     bazelrc_name = "recipe_bzl.rc"
     bazelrc_config = "recipe-config"
-    bazelrc_template = textwrap.dedent("""\
-    # Automatic bazelrc file created by Recipe
-    {% if copt %}build:recipe-config {{copt}}{% endif %}
-    {% if conlyopt %}build:recipe-config {{conlyopt}}{% endif %}
-    {% if cxxopt %}build:recipe-config {{cxxopt}}{% endif %}
-    {% if linkopt %}build:recipe-config {{linkopt}}{% endif %}
-    {% if force_pic %}build:recipe-config --force_pic={{force_pic}}{% endif %}
-    {% if dynamic_mode %}build:recipe-config --dynamic_mode={{dynamic_mode}}{% endif %}
-    {% if compilation_mode %}build:recipe-config --compilation_mode={{compilation_mode}}{% endif %}
-    {% if compiler %}build:recipe-config --compiler={{compiler}}{% endif %}
-    {% if cpu %}build:recipe-config --cpu={{cpu}}{% endif %}
-    {% if crosstool_top %}build:recipe-config --crosstool_top={{crosstool_top}}{% endif %}""")
+    bazelrc_template = textwrap.dedent(
+        """
+        # Automatic bazelrc file created by Recipe
+        {% if copt %}build:recipe-config {{copt}}{% endif %}
+        {% if conlyopt %}build:recipe-config {{conlyopt}}{% endif %}
+        {% if cxxopt %}build:recipe-config {{cxxopt}}{% endif %}
+        {% if linkopt %}build:recipe-config {{linkopt}}{% endif %}
+        {% if force_pic %}build:recipe-config --force_pic={{force_pic}}{% endif %}
+        {% if dynamic_mode %}build:recipe-config --dynamic_mode={{dynamic_mode}}{% endif %}
+        {% if compilation_mode %}build:recipe-config --compilation_mode={{compilation_mode}}{% endif %}
+        {% if compiler %}build:recipe-config --compiler={{compiler}}{% endif %}
+        {% if cpu %}build:recipe-config --cpu={{cpu}}{% endif %}
+        {% if crosstool_top %}build:recipe-config --crosstool_top={{crosstool_top}}{% endif %}
+        """)
 
     def __init__(self, recipe):
         """
@@ -129,10 +131,13 @@ class BazelToolchain:
 
     @property
     def ldflags(self):
-        conf_flags = self._recipe.conf.get("tools.build:sharedlinkflags", default=[],
-                                              check_type=list)
-        conf_flags.extend(self._recipe.conf.get("tools.build:exelinkflags", default=[],
-                                                   check_type=list))
+        conf_flags = self._recipe.conf.get(
+            "tools.build:sharedlinkflags", default=[],
+            check_type=list)
+        conf_flags.extend(
+            self._recipe.conf.get(
+                "tools.build:exelinkflags", default=[],
+                check_type=list))
         linker_scripts = self._recipe.conf.get("tools.build:linker_scripts", default=[], check_type=list)
         conf_flags.extend(["-T'" + linker_script + "'" for linker_script in linker_scripts])
         ret = self.linkopt + conf_flags

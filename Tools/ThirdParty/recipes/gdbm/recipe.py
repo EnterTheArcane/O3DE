@@ -136,4 +136,4 @@ class Recipe(RecipeBase):
         self.cpp_info.libs.append("gdbm")
 
         bin_path = os.path.join(self.folders.package, "bin")
-        self.output.info("Appending PATH environment variable: {}".format(bin_path))
+        self.output.info(f"Appending PATH environment variable: {bin_path}")

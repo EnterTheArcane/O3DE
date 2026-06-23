@@ -101,7 +101,7 @@ class Recipe(RecipeBase):
 
     def _create_cmake_module_variables(self, module_file):
         content = textwrap.dedent(
-            f"""\
+            f"""
             set(LibXml2_FOUND TRUE)
             set(LIBXML2_FOUND TRUE)
             if(DEFINED LibXml2_INCLUDE_DIRS)
@@ -126,7 +126,7 @@ class Recipe(RecipeBase):
                 set(LIBXML2_DEFINITIONS "")
             endif()
             set(LIBXML2_VERSION_STRING "{self.version}")
-        """)
+            """)
         save(self, module_file, content)
 
     @property

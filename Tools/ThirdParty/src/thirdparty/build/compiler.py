@@ -1,5 +1,5 @@
-from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 from thirdparty._internal.model.version import Version
+from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 
 
 def check_min_compiler_version(recipe, compiler_restrictions):

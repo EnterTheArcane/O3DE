@@ -1,21 +1,20 @@
-import traceback
-from collections import OrderedDict
-from importlib import util as imp_util
 import inspect
 import os
 import sys
+import traceback
 import uuid
+from collections import OrderedDict
+from importlib import util as imp_util
+from pathlib import Path
 from threading import Lock
 
-from pathlib import Path
-
 from thirdparty._internal.errors import NotFoundException
-from thirdparty.errors import RecipeException
-from thirdparty._internal.model.recipe_base import RecipeBase
-from thirdparty._internal.util.files import chdir
-from thirdparty._internal.util.detect import detect_settings, make_conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
+from thirdparty._internal.model.recipe_base import RecipeBase
+from thirdparty._internal.util.detect import detect_settings, make_conf
+from thirdparty._internal.util.files import chdir
 from thirdparty.env import Environment
+from thirdparty.errors import RecipeException
 
 
 class RecipeLoader:
@@ -65,7 +64,7 @@ def _parse_module(recipe_module, module_id):
     result = None
     for name, attr in recipe_module.__dict__.items():
         if (name.startswith("_") or not inspect.isclass(attr) or
-                attr.__dict__.get("__module__") != module_id):
+            attr.__dict__.get("__module__") != module_id):
             continue
 
         if issubclass(attr, RecipeBase) and attr != RecipeBase:
@@ -242,11 +241,13 @@ def _load_python_file(recipe_path):
         raise
     except Exception:
         trace = traceback.format_exc().split('\n')
-        raise RecipeException("Unable to load recipe in %s\n%s" % (recipe_path,
-                                                                     '\n'.join(trace[3:])))
+        raise RecipeException(
+            "Unable to load recipe in %s\n%s" % (
+                recipe_path,
+                '\n'.join(trace[3:]),
+            ))
     finally:
         sys.path.pop(0)
 
     loaded.print = new_print
     return loaded, module_id
-

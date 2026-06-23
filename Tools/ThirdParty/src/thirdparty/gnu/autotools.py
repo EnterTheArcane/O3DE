@@ -1,9 +1,9 @@
 import os
 import re
 
-from thirdparty.errors import RecipeException
-from thirdparty.build import build_jobs, cmd_args_to_string, load_toolchain_args
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
+from thirdparty.build import build_jobs, cmd_args_to_string, load_toolchain_args
+from thirdparty.errors import RecipeException
 from thirdparty.files import chdir
 from thirdparty.microsoft import unix_path
 
@@ -27,8 +27,9 @@ class Autotools:
         """
         self._recipe = recipe
 
-        toolchain_file_content = load_toolchain_args(self._recipe.folders.generators,
-                                                     namespace=namespace)
+        toolchain_file_content = load_toolchain_args(
+            self._recipe.folders.generators,
+            namespace=namespace)
 
         self._configure_args = toolchain_file_content.get("configure_args")
         self._make_args = toolchain_file_content.get("make_args")
@@ -50,12 +51,12 @@ class Autotools:
         configure_args = []
         configure_args.extend(args or [])
 
-        self._configure_args = "{} {}".format(self._configure_args, cmd_args_to_string(configure_args))
+        self._configure_args = f"{self._configure_args} {cmd_args_to_string(configure_args)}"
 
-        configure_cmd = "{}/configure".format(script_folder)
+        configure_cmd = f"{script_folder}/configure"
         subsystem = deduce_subsystem(self._recipe, scope="build")
         configure_cmd = subsystem_path(subsystem, configure_cmd)
-        cmd = '"{}" {}'.format(configure_cmd, self._configure_args)
+        cmd = f'"{configure_cmd}" {self._configure_args}'
         self._recipe.run(cmd)
 
     def make(self, target=None, args=None, makefile=None):
@@ -69,9 +70,10 @@ class Autotools:
                      ``make`` call.
         :param makefile: (Optional, Defaulted to ``None``): Allow specifying a custom makefile to use instead of default "Makefile"
         """
-        make_program = self._recipe.conf.get("tools.gnu:make_program",
-                                                default="mingw32-make" if self._use_win_mingw()
-                                                else "make")
+        make_program = self._recipe.conf.get(
+            "tools.gnu:make_program",
+            default="mingw32-make" if self._use_win_mingw()
+            else "make")
         subsystem = deduce_subsystem(self._recipe, scope="build")
         make_program = subsystem_path(subsystem, make_program)
         str_args = self._make_args
@@ -81,7 +83,7 @@ class Autotools:
         if not jobs_already_passed and "nmake" not in make_program.lower():
             njobs = build_jobs(self._recipe)
             if njobs:
-                jobs = "-j{}".format(njobs)
+                jobs = f"-j{njobs}"
         str_makefile = f"--file={makefile}" if makefile else None
 
         command = join_arguments([make_program, str_makefile, target, str_args, str_extra_args, jobs])
@@ -109,7 +111,7 @@ class Autotools:
         args = args if args else []
         str_args = " ".join(args)
         if "DESTDIR=" not in str_args:
-            args.insert(0, "DESTDIR={}".format(unix_path(self._recipe, self._recipe.folders.package)))
+            args.insert(0, f"DESTDIR={unix_path(self._recipe, self._recipe.folders.package)}")
         self.make(target=target, args=args, makefile=makefile)
 
     def autoreconf(self, build_script_folder=None, args=None):

@@ -1,5 +1,5 @@
-import itertools
 import glob
+import itertools
 import re
 
 from thirdparty._internal.util.files import save
@@ -125,8 +125,9 @@ class _PremakeTemplate:
         self.bindirs = _format_paths(dep_cpp_info.bindirs if with_run else [])
 
         self.system_libs = _format_flags(dep_cpp_info.system_libs)
-        self.frameworks = ", ".join('"%s.framework"' % p.replace('"', '\\"') for p in
-                                    dep_cpp_info.frameworks) if dep_cpp_info.frameworks else ""
+        self.frameworks = ", ".join(
+            '"%s.framework"' % p.replace('"', '\\"') for p in
+            dep_cpp_info.frameworks) if dep_cpp_info.frameworks else ""
         self.sysroot = f"{dep_cpp_info.sysroot}".replace("\\", "/") \
             if dep_cpp_info.sysroot else ""
 
@@ -171,9 +172,10 @@ class PremakeDeps:
         self.output_files[filename] = "\n".join(["#!lua", *content])
 
     def _indent_string(self, string, indent=1):
-        return "\n".join([
-            f"{self.tab * indent}{line}" for line in list(filter(None, string.splitlines()))
-        ])
+        return "\n".join(
+            [
+                f"{self.tab * indent}{line}" for line in list(filter(None, string.splitlines()))
+            ])
 
     def _premake_filtered(self, content, configuration, architecture, indent=0):
         """
@@ -225,10 +227,12 @@ class PremakeDeps:
 
             # Generate config dependent package variable and setup premake file
             var_filename = PREMAKE_VAR_FILE.format(pkgname=dep_name, config=conf_name)
-            self._output_lua_file(var_filename, [
-                PREMAKE_TEMPLATE_VAR.format(pkgname=dep_name, config=conf_name,
-                                            deps=_PremakeTemplate(require, dep_aggregate))
-            ])
+            self._output_lua_file(
+                var_filename, [
+                    PREMAKE_TEMPLATE_VAR.format(
+                        pkgname=dep_name, config=conf_name,
+                        deps=_PremakeTemplate(require, dep_aggregate)),
+                ])
 
             # Create list of all available profiles by searching on disk
             file_pattern = PREMAKE_VAR_FILE.format(pkgname=dep_name, config="*")
@@ -247,52 +251,58 @@ class PremakeDeps:
             # Emit package premake file
             pkg_filename = PREMAKE_PKG_FILE.format(pkgname=dep_name)
             pkg_files.append(pkg_filename)
-            self._output_lua_file(pkg_filename, [
-                # Includes
-                *['include "{}"'.format(profile[0]) for profile in profiles],
-            ])
+            self._output_lua_file(
+                pkg_filename, [
+                    # Includes
+                    *[f'include "{profile[0]}"' for profile in profiles],
+                ])
 
         # Output global premake file
-        self._output_lua_file(PREMAKE_ROOT_FILE, [
-            # Includes
-            *[f'include "{pkg_file}"' for pkg_file in pkg_files],
-            # Global order for each configuration
-            'include "recipe_config.premake5.lua"',
-            # Functions
-            PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
-                function_name="recipe_setup_build",
-                lua_content=PREMAKE_TEMPLATE_ROOT_BUILD,
-                filter_call="\n".join(
-                    ["\n".join(self._premake_filtered(
-                        [f'recipe_setup_build("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
-                    ) for config in config_sets]
-                )
-            ),
-            PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
-                function_name="recipe_setup_link",
-                lua_content=PREMAKE_TEMPLATE_ROOT_LINK,
-                filter_call="\n".join(
-                    ["\n".join(self._premake_filtered(
-                        [f'recipe_setup_link("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
-                    ) for config in config_sets]
-                )
-            ),
-            PREMAKE_TEMPLATE_ROOT_GLOBAL
-        ])
+        self._output_lua_file(
+            PREMAKE_ROOT_FILE, [
+                # Includes
+                *[f'include "{pkg_file}"' for pkg_file in pkg_files],
+                # Global order for each configuration
+                'include "recipe_config.premake5.lua"',
+                # Functions
+                PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
+                    function_name="recipe_setup_build",
+                    lua_content=PREMAKE_TEMPLATE_ROOT_BUILD,
+                    filter_call="\n".join(
+                        ["\n".join(
+                            self._premake_filtered(
+                                [f'recipe_setup_build("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
+                        ) for config in config_sets]
+                    )
+                ),
+                PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
+                    function_name="recipe_setup_link",
+                    lua_content=PREMAKE_TEMPLATE_ROOT_LINK,
+                    filter_call="\n".join(
+                        ["\n".join(
+                            self._premake_filtered(
+                                [f'recipe_setup_link("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
+                        ) for config in config_sets]
+                    )
+                ),
+                PREMAKE_TEMPLATE_ROOT_GLOBAL,
+            ])
 
         # Output configuration file for the current build configuration
-        self._output_lua_file(PREMAKE_CONFIG_FILE.format(config=conf_name), [
-            PREMAKE_TEMPLATE_CONFIG.format(
-                config=conf_name, order=", ".join(f'"{name}"' for name in reversed(dep_names))
-            )
-        ])
+        self._output_lua_file(
+            PREMAKE_CONFIG_FILE.format(config=conf_name), [
+                PREMAKE_TEMPLATE_CONFIG.format(
+                    config=conf_name, order=", ".join(f'"{name}"' for name in reversed(dep_names))
+                ),
+            ])
 
         # Output root configuration file
         available_config_files = glob.glob(PREMAKE_CONFIG_FILE.format(config="*"))
         available_configs = [file_name.split("_", 1)[1].split(".")[0] for file_name in available_config_files]
         available_configs.append(conf_name)
-        self._output_lua_file(PREMAKE_CONFIG_ROOT_FILE, [
-            *['include "{}"'.format(PREMAKE_CONFIG_FILE.format(config=config)) for config in available_configs],
-        ])
+        self._output_lua_file(
+            PREMAKE_CONFIG_ROOT_FILE, [
+                *[f'include "{PREMAKE_CONFIG_FILE.format(config=config)}"' for config in available_configs],
+            ])
 
         return self.output_files

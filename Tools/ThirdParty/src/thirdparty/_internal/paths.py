@@ -50,7 +50,6 @@ def find_file_walk_up(start, filename, end=None):
 
 
 def get_recipe_user_home():
-
     def _user_home_from_rc_file():
         try:
             rc_path = find_file_walk_up(os.getcwd(), ".thirdpartyrc")
@@ -75,9 +74,10 @@ def get_recipe_user_home():
     else:  # Do an expansion, just in case the user is using ~/something/here
         user_home = _recipe_expand_user(user_home)
     if not os.path.isabs(user_home):
-        raise RecipeException("Invalid O3DE_PACKAGE_HOME value '%s', "
-                             "please specify an absolute or path starting with ~/ "
-                             "(relative to user home)" % user_home)
+        raise RecipeException(
+            "Invalid O3DE_PACKAGE_HOME value '%s', "
+            "please specify an absolute or path starting with ~/ "
+            "(relative to user home)" % user_home)
     return user_home
 
 

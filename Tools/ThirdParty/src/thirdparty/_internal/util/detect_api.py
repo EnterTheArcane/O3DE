@@ -5,11 +5,11 @@ import subprocess
 import tempfile
 import textwrap
 
-from thirdparty._internal.output import Output
-from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
+from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import load
 from thirdparty._internal.util.runners import check_output_runner, detect_runner
+from thirdparty.errors import RecipeException
 
 
 def detect_os():
@@ -125,7 +125,8 @@ def detect_libcxx(compiler, version, compiler_exe=None):
             if not new_abi_available:
                 return "libstdc++"
 
-        main = textwrap.dedent("""
+        main = textwrap.dedent(
+            """
             #include <string>
 
             static_assert(sizeof(std::string) != sizeof(void*), "using libstdc++");
@@ -133,9 +134,10 @@ def detect_libcxx(compiler, version, compiler_exe=None):
             """)
         # -fsyntax-only to omit the output and stop early (but enough for our static_assert).
         # -xc++ and - to tell the compiler to compile code from stdin and treat it as C++.
-        completed_process = subprocess.run([executable, "-std=c++11", "-fsyntax-only", "-xc++", "-"],
-                                           input=main, stdout=subprocess.PIPE,
-                                           stderr=subprocess.STDOUT, text=True)
+        completed_process = subprocess.run(
+            [executable, "-std=c++11", "-fsyntax-only", "-xc++", "-"],
+            input=main, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True)
         error, out_str = completed_process.returncode, completed_process.stdout
         if error:
             if "using libstdc++" in out_str:
@@ -173,14 +175,17 @@ def detect_libcxx(compiler, version, compiler_exe=None):
         return "libCstd"
     elif compiler == "mcst-lcc":
         return "libstdc++"
+
+
 def default_msvc_runtime(compiler):
     if platform.system() != "Windows":
         return None, None
     if compiler == "clang":
         # It could be LLVM/Clang with VS runtime or Msys2 with libcxx
         Output(scope="detect_api").warning("Assuming LLVM/Clang in Windows with VS 17 2022")
-        Output(scope="detect_api").warning("If Msys2/Clang need to remove compiler.runtime* "
-                                                "and define compiler.libcxx")
+        Output(scope="detect_api").warning(
+            "If Msys2/Clang need to remove compiler.runtime* "
+            "and define compiler.libcxx")
         return "dynamic", "v143"
     elif compiler == "msvc":
         # Add default mandatory fields for MSVC compiler
@@ -221,11 +226,13 @@ def default_cppstd(compiler, compiler_version):
     def _apple_clang_cppstd_default(version):
         return "gnu98" if version < "17" else "gnu14"
 
-    default = {"gcc": _gcc_cppstd_default(compiler_version),
-               "clang": _clang_cppstd_default(compiler_version),
-               "apple-clang": _apple_clang_cppstd_default(compiler_version),
-               "msvc": _visual_cppstd_default(compiler_version),
-               "mcst-lcc": _mcst_lcc_cppstd_default(compiler_version)}.get(str(compiler), None)
+    default = {
+        "gcc": _gcc_cppstd_default(compiler_version),
+        "clang": _clang_cppstd_default(compiler_version),
+        "apple-clang": _apple_clang_cppstd_default(compiler_version),
+        "msvc": _visual_cppstd_default(compiler_version),
+        "mcst-lcc": _mcst_lcc_cppstd_default(compiler_version),
+    }.get(str(compiler), None)
     return default
 
 
@@ -308,13 +315,14 @@ def detect_default_compiler():
         if "gnu-cc" in command or "gcc" in command or "g++" in command or "c++" in command:
             gcc, gcc_version, compiler_exe = detect_gcc_compiler(command)
             if platform.system() == "Darwin" and gcc is None:
-                output.error("%s detected as a frontend using apple-clang. "
-                             "Compiler not supported" % command)
+                output.error(
+                    "%s detected as a frontend using apple-clang. "
+                    "Compiler not supported" % command)
             return gcc, gcc_version, compiler_exe
         if platform.system() == "SunOS" and command.lower() == "cc":
             return detect_suncc_compiler(command)
         if (platform.system() == "Windows" and command.rstrip('"').endswith(("cl", "cl.exe"))
-                and "clang" not in command):
+            and "clang" not in command):
             return detect_cl_compiler(command)
 
         # I am not able to find its version
@@ -468,8 +476,9 @@ def detect_cl_compiler(compiler_exe="cl"):
         if "Microsoft" not in first_line:
             return None, None, None
         compiler = "msvc"
-        version_regex = re.search(r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.([0-9]+)\.?([0-9]+)?",
-                                  first_line)
+        version_regex = re.search(
+            r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.([0-9]+)\.?([0-9]+)?",
+            first_line)
         if not version_regex:
             return None, None, None
         # 19.36.32535 -> 193

@@ -32,12 +32,14 @@ class PkgConfig:
         with env.vars(self._recipe).apply():
             # This way we get the environment from RecipeBase, from profile (default buildenv)
             output, err = StringIO(), StringIO()
-            ret = self._recipe.run(command, stdout=output, stderr=err, quiet=True,
-                                      ignore_errors=True)
+            ret = self._recipe.run(
+                command, stdout=output, stderr=err, quiet=True,
+                ignore_errors=True)
             if ret != 0:
-                raise RecipeException(f"PkgConfig failed. Command: {command}\n"
-                                     f"    stdout:\n{textwrap.indent(output.getvalue(), '    ')}\n"
-                                     f"    stderr:\n{textwrap.indent(err.getvalue(), '    ')}\n")
+                raise RecipeException(
+                    f"PkgConfig failed. Command: {command}\n"
+                    f"    stdout:\n{textwrap.indent(output.getvalue(), '    ')}\n"
+                    f"    stderr:\n{textwrap.indent(err.getvalue(), '    ')}\n")
         value = output.getvalue().strip()
         return value
 
@@ -99,7 +101,7 @@ class PkgConfig:
 
         """
         if not self.provides:
-            raise RecipeException("PkgConfig error, '{}' files not available".format(self._library))
+            raise RecipeException(f"PkgConfig error, '{self._library}' files not available")
         self._recipe.output.verbose(f"PkgConfig fill cpp_info for {self._library}")
         if is_system:
             cpp_info.system_libs = self.libs

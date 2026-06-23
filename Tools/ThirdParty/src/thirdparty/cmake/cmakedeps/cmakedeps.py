@@ -4,16 +4,16 @@ import textwrap
 
 from jinja2 import Template
 
-from thirdparty._internal.output import Color, Output
-from thirdparty.errors import RecipeException
-from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.model.dependencies import get_transitive_requires
+from thirdparty._internal.output import Color, Output
+from thirdparty._internal.util.files import load
+from thirdparty._internal.util.generators import relativize_path
 from thirdparty.cmake.cmakedeps.config import ConfigTemplate2
 from thirdparty.cmake.cmakedeps.config_version import ConfigVersionTemplate2
 from thirdparty.cmake.cmakedeps.target_configuration import TargetConfigurationTemplate2
 from thirdparty.cmake.cmakedeps.targets import TargetsTemplate2
+from thirdparty.errors import RecipeException
 from thirdparty.files import save
-from thirdparty._internal.util.files import load
 
 FIND_MODE_MODULE = "module"
 FIND_MODE_CONFIG = "config"
@@ -45,8 +45,9 @@ class CMakeDeps:
 
     @build_context_activated.setter
     def build_context_activated(self, value):
-        self._recipe.output.warning("CMakeDeps.build_context_activated is deprecated, "
-                                       "not used anymore", warn_tag="deprecated")
+        self._recipe.output.warning(
+            "CMakeDeps.build_context_activated is deprecated, "
+            "not used anymore", warn_tag="deprecated")
         self._build_context_activated = value
 
     @property
@@ -55,8 +56,9 @@ class CMakeDeps:
 
     @build_context_build_modules.setter
     def build_context_build_modules(self, value):
-        self._recipe.output.warning("CMakeDeps.build_context_build_modules is deprecated, "
-                                       "not used anymore", warn_tag="deprecated")
+        self._recipe.output.warning(
+            "CMakeDeps.build_context_build_modules is deprecated, "
+            "not used anymore", warn_tag="deprecated")
         self._build_context_build_modules = value
 
     @property
@@ -65,8 +67,9 @@ class CMakeDeps:
 
     @build_context_suffix.setter
     def build_context_suffix(self, value):
-        self._recipe.output.warning("CMakeDeps.build_context_suffix is deprecated, "
-                                       "not used anymore", warn_tag="deprecated")
+        self._recipe.output.warning(
+            "CMakeDeps.build_context_suffix is deprecated, "
+            "not used anymore", warn_tag="deprecated")
         self._build_context_suffix = value
 
     @property
@@ -75,17 +78,19 @@ class CMakeDeps:
 
     @check_components_exist.setter
     def check_components_exist(self, value):
-        self._recipe.output.warning("CMakeDeps.check_components_exist is deprecated, "
-                                       "not used anymore", warn_tag="deprecated")
+        self._recipe.output.warning(
+            "CMakeDeps.check_components_exist is deprecated, "
+            "not used anymore", warn_tag="deprecated")
         self._check_components_exist = value
 
     def generate(self):
         """
         This method will save the generated files to the ``recipe.folders.generators`` folder
         """
-        self._recipe.output.warning("CMakeDeps is experimental, and might get "
-                                       "breaking changes in future releases",
-                                       warn_tag="experimental")
+        self._recipe.output.warning(
+            "CMakeDeps is experimental, and might get "
+            "breaking changes in future releases",
+            warn_tag="experimental")
         # Current directory is the generators_folder
         generator_files = self._content()
         for generator_file, content in generator_files.items():
@@ -107,11 +112,12 @@ class CMakeDeps:
             if cmake_find_mode == FIND_MODE_NONE:
                 continue
             if cmake_find_mode in (FIND_MODE_MODULE, FIND_MODE_BOTH):
-                Output(self._recipe.ref).warning("CMakeDeps does not support "
-                                                         f"module find mode in {dep}.\n"
-                                                         f"Config mode will be used regardless.",
-                                                         # Should this be risk?
-                                                         warn_tag="deprecated")
+                Output(self._recipe.ref).warning(
+                    "CMakeDeps does not support "
+                    f"module find mode in {dep}.\n"
+                    f"Config mode will be used regardless.",
+                    # Should this be risk?
+                    warn_tag="deprecated")
 
             if require.direct:
                 direct_deps.append((require, dep))
@@ -171,8 +177,9 @@ class CMakeDeps:
         try:
             value = self._properties[f"{dep_comp}{build_suffix}"][prop]
             if check_type is not None and not isinstance(value, check_type):
-                raise RecipeException(f'The expected type for {prop} is "{check_type.__name__}", '
-                                     f'but "{type(value).__name__}" was found')
+                raise RecipeException(
+                    f'The expected type for {prop} is "{check_type.__name__}", '
+                    f'but "{type(value).__name__}" was found')
             return value
         except KeyError:
             # Here we are not using the cpp_info = deduce_cpp_info(dep) because it is not
@@ -224,7 +231,7 @@ class _PathGenerator:
             "libdirs": "CMAKE_LIBRARY_PATH",
             "includedirs": "CMAKE_INCLUDE_PATH",
             "frameworkdirs": "CMAKE_FRAMEWORK_PATH",
-            "builddirs": "CMAKE_MODULE_PATH"
+            "builddirs": "CMAKE_MODULE_PATH",
         }
         for req, dep in requirements:
             cppinfo = dep.cpp_info.aggregated_components()
@@ -233,49 +240,51 @@ class _PathGenerator:
                 continue
             previous = paths.get(req.ref.name)
             if previous:
-                self._recipe.output.info(f"There is already a '{req.ref}' package contributing"
-                                            f" to {cmake_vars[dirs_name]}. Using the one"
-                                            f" defined by the context={dep.context}.")
+                self._recipe.output.info(
+                    f"There is already a '{req.ref}' package contributing"
+                    f" to {cmake_vars[dirs_name]}. Using the one"
+                    f" defined by the context={dep.context}.")
             paths[req.ref.name] = cppinfo_dirs
         return [d for dirs in paths.values() for d in dirs]
 
     def generate(self):
-        template = textwrap.dedent("""\
-        set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
-
-        {% if prefix_paths %}
-        list(PREPEND CMAKE_PREFIX_PATH {{ prefix_paths }})
-        {% endif %}
-        {% for pkg_name, folder in pkg_paths.items() %}
-        set({{pkg_name}}_DIR "{{folder}}")
-        {% endfor %}
-        {% for pkg_name, folders in pkg_paths_multi.items() %}
-        {% for folder in folders %}
-        list(APPEND RECIPE_{{pkg_name}}_DIR_MULTI "{{folder}}")
-        {% endfor %}
-        {% endfor %}
-        {% if host_runtime_dirs %}
-        set(RECIPE_RUNTIME_LIB_DIRS {{ host_runtime_dirs }} )
-        # Only for VS, needs CMake>=3.27
-        set(CMAKE_VS_DEBUGGER_ENVIRONMENT "PATH=${RECIPE_RUNTIME_LIB_DIRS};%PATH%")
-        {% endif %}
-        {% if cmake_program_path %}
-        list(PREPEND CMAKE_PROGRAM_PATH {{ cmake_program_path }})
-        {% endif %}
-        {% if cmake_library_path %}
-        list(PREPEND CMAKE_LIBRARY_PATH {{ cmake_library_path }})
-        {% endif %}
-        {% if cmake_include_path %}
-        list(PREPEND CMAKE_INCLUDE_PATH {{ cmake_include_path }})
-        {% endif %}
-        {% if cmake_framework_path %}
-        list(PREPEND CMAKE_FRAMEWORK_PATH {{ cmake_framework_path }})
-        {% endif %}
-        # Definition of CMAKE_MODULE_PATH to be able to include(module)
-        {% if cmake_module_path %}
-        list(PREPEND CMAKE_MODULE_PATH {{ cmake_module_path }})
-        {% endif %}
-        """)
+        template = textwrap.dedent(
+            """
+            set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)
+    
+            {% if prefix_paths %}
+            list(PREPEND CMAKE_PREFIX_PATH {{ prefix_paths }})
+            {% endif %}
+            {% for pkg_name, folder in pkg_paths.items() %}
+            set({{pkg_name}}_DIR "{{folder}}")
+            {% endfor %}
+            {% for pkg_name, folders in pkg_paths_multi.items() %}
+            {% for folder in folders %}
+            list(APPEND RECIPE_{{pkg_name}}_DIR_MULTI "{{folder}}")
+            {% endfor %}
+            {% endfor %}
+            {% if host_runtime_dirs %}
+            set(RECIPE_RUNTIME_LIB_DIRS {{ host_runtime_dirs }} )
+            # Only for VS, needs CMake>=3.27
+            set(CMAKE_VS_DEBUGGER_ENVIRONMENT "PATH=${RECIPE_RUNTIME_LIB_DIRS};%PATH%")
+            {% endif %}
+            {% if cmake_program_path %}
+            list(PREPEND CMAKE_PROGRAM_PATH {{ cmake_program_path }})
+            {% endif %}
+            {% if cmake_library_path %}
+            list(PREPEND CMAKE_LIBRARY_PATH {{ cmake_library_path }})
+            {% endif %}
+            {% if cmake_include_path %}
+            list(PREPEND CMAKE_INCLUDE_PATH {{ cmake_include_path }})
+            {% endif %}
+            {% if cmake_framework_path %}
+            list(PREPEND CMAKE_FRAMEWORK_PATH {{ cmake_framework_path }})
+            {% endif %}
+            # Definition of CMAKE_MODULE_PATH to be able to include(module)
+            {% if cmake_module_path %}
+            list(PREPEND CMAKE_MODULE_PATH {{ cmake_module_path }})
+            {% endif %}
+            """)
         host_req = self._recipe.dependencies.host
         build_req = self._recipe.dependencies.direct_build
         test_req = self._recipe.dependencies.test
@@ -303,12 +312,14 @@ class _PathGenerator:
             cmake_find_mode = cmake_find_mode.lower()
 
             cmake_filename = self._cmakedeps.get_cmake_filename(dep)
-            extra_variants = self._cmakedeps.get_property("cmake_file_name_variants", dep,
-                                                          check_type=list) or []
+            extra_variants = self._cmakedeps.get_property(
+                "cmake_file_name_variants", dep,
+                check_type=list) or []
             lowercase_variants = {variant.lower() for variant in extra_variants}
             if len(lowercase_variants) > 1:
-                raise RecipeException(f"'{dep.ref}' 'cmake_file_name_variants' property contains different words. "
-                                     "They should be the same with different upper/lower cases only.")
+                raise RecipeException(
+                    f"'{dep.ref}' 'cmake_file_name_variants' property contains different words. "
+                    "They should be the same with different upper/lower cases only.")
             if lowercase_variants:
                 if cmake_filename.lower() not in lowercase_variants:
                     is_cmake_filename_defined = self._cmakedeps.get_property("cmake_file_name", dep) is not None
@@ -335,10 +346,12 @@ class _PathGenerator:
                     build_dir = dep.folders.package
                 pkg_folder = os.fspath(build_dir).replace("\\", "/") if build_dir else None
                 if pkg_folder:
-                    if any(os.path.isfile(os.path.join(pkg_folder, f + ext)) for f in pkg_names
-                           for ext in ("-config.cmake", "Config.cmake")):
-                        relative_path = relativize_path(pkg_folder, self._recipe,
-                                                        "${CMAKE_CURRENT_LIST_DIR}")
+                    if any(
+                        os.path.isfile(os.path.join(pkg_folder, f + ext)) for f in pkg_names
+                        for ext in ("-config.cmake", "Config.cmake")):
+                        relative_path = relativize_path(
+                            pkg_folder, self._recipe,
+                            "${CMAKE_CURRENT_LIST_DIR}")
                         for pkg_name in pkg_names:
                             pkg_paths[pkg_name] = relative_path
 
@@ -352,8 +365,9 @@ class _PathGenerator:
                 # Gazebo libs) install their own config files in nested folders not matched by
                 # the builddir check above.
                 if dep.folders.package:
-                    rel_root = relativize_path(dep.folders.package.as_posix(),
-                                               self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
+                    rel_root = relativize_path(
+                        dep.folders.package.as_posix(),
+                        self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
                     if rel_root not in prefix_paths:
                         prefix_paths.append(rel_root)
                 continue
@@ -369,16 +383,17 @@ class _PathGenerator:
         cmake_include_path = self._get_cmake_paths(host_test_reqs, "includedirs")
         cmake_framework_path = self._get_cmake_paths(host_test_reqs, "frameworkdirs")
         cmake_module_path = self._get_cmake_paths(all_reqs, "builddirs")
-        context = {"host_runtime_dirs": self._get_host_runtime_dirs(),
-                   "pkg_paths": pkg_paths,
-                   "pkg_paths_multi": pkg_paths_multi,
-                   "prefix_paths": _join_paths(self._recipe, prefix_paths),
-                   "cmake_program_path": _join_paths(self._recipe, cmake_program_path),
-                   "cmake_library_path": _join_paths(self._recipe, cmake_library_path),
-                   "cmake_include_path": _join_paths(self._recipe, cmake_include_path),
-                   "cmake_framework_path": _join_paths(self._recipe, cmake_framework_path),
-                   "cmake_module_path": _join_paths(self._recipe, cmake_module_path)
-                   }
+        context = {
+            "host_runtime_dirs": self._get_host_runtime_dirs(),
+            "pkg_paths": pkg_paths,
+            "pkg_paths_multi": pkg_paths_multi,
+            "prefix_paths": _join_paths(self._recipe, prefix_paths),
+            "cmake_program_path": _join_paths(self._recipe, cmake_program_path),
+            "cmake_library_path": _join_paths(self._recipe, cmake_library_path),
+            "cmake_include_path": _join_paths(self._recipe, cmake_include_path),
+            "cmake_framework_path": _join_paths(self._recipe, cmake_framework_path),
+            "cmake_module_path": _join_paths(self._recipe, cmake_module_path),
+        }
         content = Template(template, trim_blocks=True, lstrip_blocks=True).render(context)
         save(self._recipe, self._recipe_cmakedeps_paths, content)
 

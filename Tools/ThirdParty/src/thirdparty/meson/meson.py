@@ -1,7 +1,7 @@
 import os
 
-from thirdparty.errors import RecipeException
 from thirdparty.build import build_jobs
+from thirdparty.errors import RecipeException
 from thirdparty.meson.toolchain import MesonToolchain
 
 
@@ -30,16 +30,18 @@ class Meson:
         :param reconfigure: ``bool`` value that adds ``--reconfigure`` param to the final command.
         """
         if reconfigure:
-            self._recipe.output.warning("reconfigure param has been deprecated."
-                                           " Removing in Recipe 2.x.", warn_tag="deprecated")
+            self._recipe.output.warning(
+                "reconfigure param has been deprecated."
+                " Removing in Recipe 2.x.", warn_tag="deprecated")
         source_folder = self._recipe.folders.source
         build_folder = self._recipe.folders.build
         generators_folder = self._recipe.folders.generators
         cross = os.path.join(generators_folder, MesonToolchain.cross_filename)
         native = os.path.join(generators_folder, MesonToolchain.native_filename)
         is_cross_build = os.path.exists(cross)
-        machine_files = self._recipe.conf.get("tools.meson.mesontoolchain:extra_machine_files",
-                                                 default=[], check_type=list)
+        machine_files = self._recipe.conf.get(
+            "tools.meson.mesontoolchain:extra_machine_files",
+            default=[], check_type=list)
         cmd = "meson setup "
         if is_cross_build:
             machine_files.insert(0, cross)
@@ -50,9 +52,9 @@ class Meson:
                 cmd += " ".join([f'--native-file "{file}"' for file in machine_files])
             else:  # extra native file for cross-building scenarios
                 cmd += f' --native-file "{native}"'
-        cmd += ' "{}" "{}"'.format(build_folder, source_folder)
+        cmd += f' "{build_folder}" "{source_folder}"'
         cmd += f" --prefix={self._prefix}"
-        self._recipe.output.info("Meson configure cmd: {}".format(cmd))
+        self._recipe.output.info(f"Meson configure cmd: {cmd}")
         self._recipe.run(cmd)
 
     def build(self, target=None):
@@ -64,16 +66,16 @@ class Meson:
         :param target: ``str`` Specifies the target to be executed.
         """
         meson_build_folder = self._recipe.folders.build
-        cmd = 'meson compile -C "{}"'.format(meson_build_folder)
+        cmd = f'meson compile -C "{meson_build_folder}"'
         njobs = build_jobs(self._recipe)
         if njobs:
-            cmd += " -j{}".format(njobs)
+            cmd += f" -j{njobs}"
         if target:
-            cmd += " {}".format(target)
+            cmd += f" {target}"
         verbosity = self._build_verbosity
         if verbosity:
             cmd += " " + verbosity
-        self._recipe.output.info("Meson build cmd: {}".format(cmd))
+        self._recipe.output.info(f"Meson build cmd: {cmd}")
         self._recipe.run(cmd)
 
     def install(self, cli_args=None):
@@ -107,7 +109,7 @@ class Meson:
         if self._recipe.conf.get("tools.build:skip_test", check_type=bool):
             return
         meson_build_folder = self._recipe.folders.build
-        cmd = 'meson test -v -C "{}"'.format(meson_build_folder)
+        cmd = f'meson test -v -C "{meson_build_folder}"'
         # TODO: Do we need vcvars for test?
         # TODO: This should use runenvenv, but what if meson itself is a build-require?
         self._recipe.run(cmd)
@@ -116,8 +118,9 @@ class Meson:
     def _build_verbosity(self):
         # verbosity of build tools. This passes -v to ninja, for example.
         # See https://github.com/mesonbuild/meson/blob/master/mesonbuild/mcompile.py#L156
-        verbosity = self._recipe.conf.get("tools.compilation:verbosity",
-                                             choices=("quiet", "verbose"))
+        verbosity = self._recipe.conf.get(
+            "tools.compilation:verbosity",
+            choices=("quiet", "verbose"))
         return "--verbose" if verbosity == "verbose" else ""
 
     @property

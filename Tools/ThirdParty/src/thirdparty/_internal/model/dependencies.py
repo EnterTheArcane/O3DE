@@ -1,14 +1,15 @@
 from collections import OrderedDict
 
-from thirdparty._internal.model.refs import RecipeReference
-from thirdparty.errors import RecipeException
 from thirdparty._internal.graph.graph import RECIPE_PLATFORM
 from thirdparty._internal.model.recipe_interface import RecipeInterface
+from thirdparty._internal.model.refs import RecipeReference
+from thirdparty.errors import RecipeException
 
 
 class UserRequirementsDict:
     """ user facing dict to allow access of dependencies by name
     """
+
     def __init__(self, data, require_filter=None):
         self._data = data  # dict-like
         self._require_filter = require_filter  # dict {trait: value} for requirements
@@ -19,6 +20,7 @@ class UserRequirementsDict:
                 if getattr(require, k) != v:
                     return False
             return True
+
         data = OrderedDict((k, v) for k, v in self._data.items() if filter_fn(k))
         return UserRequirementsDict(data, require_filter)
 
@@ -51,11 +53,12 @@ class UserRequirementsDict:
                     ret.append((require, value))
         if len(ret) > 1:
             current_filters = data._require_filter or "{}"
-            requires = "\n".join(["- {}".format(require) for require, _ in ret])
-            raise RecipeException("There are more than one requires matching the specified filters:"
-                                 " {}\n{}".format(current_filters, requires))
+            requires = "\n".join([f"- {require}" for require, _ in ret])
+            raise RecipeException(
+                "There are more than one requires matching the specified filters:"
+                f" {current_filters}\n{requires}")
         if not ret:
-            raise KeyError("'{}' not found in the dependency set".format(ref))
+            raise KeyError(f"'{ref}' not found in the dependency set")
 
         key, value = ret[0]
         return key, value
@@ -93,8 +96,9 @@ class RecipeDependencies(UserRequirementsDict):
 
     @staticmethod
     def from_node(node):
-        d = OrderedDict((require, RecipeInterface(transitive.node.recipe, node.recipe))
-                        for require, transitive in node.transitive_deps.items())
+        d = OrderedDict(
+            (require, RecipeInterface(transitive.node.recipe, node.recipe))
+            for require, transitive in node.transitive_deps.items())
         if node.replaced_requires:
             cant_be_removed = set()
             for old_req, new_req in node.replaced_requires.items():

@@ -1,22 +1,21 @@
 import copy
+import fnmatch
 import hashlib
 import numbers
+import os
 import platform
 import re
-import os
-import fnmatch
 import textwrap
 
 from jinja2 import Environment, FileSystemLoader
 
-from thirdparty.errors import RecipeException
-from thirdparty._internal.util import detect_api
-from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.model.settings import SettingsItem
+from thirdparty._internal.util import detect_api
 from thirdparty._internal.util.files import load, save
-
+from thirdparty._internal.util.home_paths import HomePaths
+from thirdparty.errors import RecipeException
 
 BUILT_IN_CONFS = {
     "core:non_interactive": "Disable interactive user input, raises error if input necessary",
@@ -149,9 +148,8 @@ BUILT_IN_CONFS = {
 
 BUILT_IN_CONFS = {key: value for key, value in sorted(BUILT_IN_CONFS.items())}
 
-
 _BUILT_IN_CONFS_TYPES = {
-    "tools.microsoft:msvc_update": str
+    "tools.microsoft:msvc_update": str,
 }
 
 CORE_CONF_PATTERN = re.compile(r"^(core\..+|core):.*")
@@ -183,7 +181,7 @@ class _ConfValue:
     @staticmethod
     def parse(name, value, path=False, update=None):
         if name != name.lower():
-            raise RecipeException("Conf '{}' must be lowercase".format(name))
+            raise RecipeException(f"Conf '{name}' must be lowercase")
         name, important = (name[:-1], True) if name[-1] == "!" else (name, False)
         if isinstance(value, (_PackageOption, SettingsItem)):
             raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
@@ -202,19 +200,20 @@ class _ConfValue:
 
     def copy(self):
         # Using copy for when self._value is a mutable list
-        return _ConfValue(self.name, copy.copy(self._value), self._path, self._update,
-                          self._important)
+        return _ConfValue(
+            self.name, copy.copy(self._value), self._path, self._update,
+            self._important)
 
     def dumps(self):
         name = f"{self.name}!" if self._important else self.name
         if self._value is None:
-            return "{}=!".format(name)  # unset
+            return f"{name}=!"  # unset
         elif self._value_type is list and _ConfVarPlaceHolder in self._value:
             v = self._value[:]
             v.remove(_ConfVarPlaceHolder)
-            return "{}={}".format(name, v)
+            return f"{name}={v}"
         else:
-            return "{}={}".format(name, self._value)
+            return f"{name}={self._value}"
 
     def serialize(self):
         name = f"{self.name}!" if self._important else self.name
@@ -303,8 +302,9 @@ class _ConfValue:
                 self._value = other._value
                 self._value_type = other._value_type
         elif o_type != v_type:
-            raise RecipeException("It's not possible to compose {} values "
-                                 "and {} ones.".format(v_type.__name__, o_type.__name__))
+            raise RecipeException(
+                f"It's not possible to compose {v_type.__name__} values "
+                f"and {o_type.__name__} ones.")
         # TODO: In case of any other object types?
         elif important:  # equal type, but just string
             self._value = other._value
@@ -371,17 +371,19 @@ class Conf:
                     return False
                 if str(v).lower() in Conf.boolean_true_expressions:
                     return True
-                raise RecipeException(f"[conf] {conf_name} must be a boolean-like object "
-                                     f"(true/false, 1/0, on/off) and value '{v}' does not match it.")
+                raise RecipeException(
+                    f"[conf] {conf_name} must be a boolean-like object "
+                    f"(true/false, 1/0, on/off) and value '{v}' does not match it.")
             elif check_type is str and not isinstance(v, str):
                 # TODO: this would be converting things like lists to strings without
                 #   proper error, is it worth trying to change it?
                 return str(v)
             elif (check_type is not None and not isinstance(v, check_type) or
                   check_type is int and isinstance(v, bool)):
-                raise RecipeException(f"[conf] {conf_name} must be a "
-                                     f"{check_type.__name__}-like object. The value '{v}' "
-                                     f"introduced is a {type(v).__name__} object")
+                raise RecipeException(
+                    f"[conf] {conf_name} must be a "
+                    f"{check_type.__name__}-like object. The value '{v}' "
+                    f"introduced is a {type(v).__name__} object")
             return v
         else:
             return default
@@ -505,7 +507,7 @@ class Conf:
         if conf_value:
             conf_value.remove(value)
         else:
-            raise RecipeException("Conf {} does not exist.".format(name))
+            raise RecipeException(f"Conf {name} does not exist.")
 
     def compose_conf(self, other):
         """
@@ -565,14 +567,17 @@ class Conf:
             if USER_CONF_PATTERN.match(conf) is None:
                 raise RecipeException(f"User conf '{conf}' invalid format, not 'user.org.group:conf'")
         elif conf not in BUILT_IN_CONFS:
-            raise RecipeException(f"[conf] '{conf}' does not exist in configuration list. "
-                                 "Run 'recipe config list' to see all the available confs.")
+            raise RecipeException(
+                f"[conf] '{conf}' does not exist in configuration list. "
+                "Run 'recipe config list' to see all the available confs.")
 
 
 class ConfDefinition:
     # Order is important, "define" must be latest
-    actions = (("+=", "append"), ("=+", "prepend"),
-               ("=!", "unset"), ("*=", "update"), ("=", "define"))
+    actions = (
+        ("+=", "append"), ("=+", "prepend"),
+        ("=!", "unset"), ("*=", "update"), ("=", "define"),
+    )
 
     def __init__(self):
         self._pattern_confs = {}
@@ -585,8 +590,9 @@ class ConfDefinition:
         Get the value of the conf name requested and convert it to the [type]-like passed.
         """
         pattern, name = self._split_pattern_name(conf_name)
-        return self._pattern_confs.get(pattern, Conf()).get(name, default=default,
-                                                            check_type=check_type, choices=choices)
+        return self._pattern_confs.get(pattern, Conf()).get(
+            name, default=default,
+            check_type=check_type, choices=choices)
 
     def show(self, fnpattern):
         """
@@ -601,8 +607,9 @@ class ConfDefinition:
                 patter_key += ":"
 
             pattern_values = patter_conf.show(fnpattern, patter_key)
-            result.update({patter_key + pattern_subkey: pattern_subvalue
-                           for pattern_subkey, pattern_subvalue in pattern_values.items()})
+            result.update(
+                {patter_key + pattern_subkey: pattern_subvalue
+                 for pattern_subkey, pattern_subvalue in pattern_values.items()})
 
         return result
 
@@ -670,9 +677,9 @@ class ConfDefinition:
 
         if not _is_profile_module(name):
             if profile:
-                raise RecipeException("[conf] '{}' not allowed in profiles".format(key))
+                raise RecipeException(f"[conf] '{key}' not allowed in profiles")
             if pattern is not None:
-                raise RecipeException("Conf '{}' cannot have a package pattern".format(key))
+                raise RecipeException(f"Conf '{key}' cannot have a package pattern")
 
         # strip whitespaces before/after =
         # values are not strip() unless they are a path, to preserve potential whitespaces
@@ -693,8 +700,10 @@ class ConfDefinition:
             if pattern is None:
                 result.append(conf.dumps())
             else:
-                result.append("\n".join("{}:{}".format(pattern, line) if line else ""
-                                        for line in conf.dumps().splitlines()))
+                result.append(
+                    "\n".join(
+                        f"{pattern}:{line}" if line else ""
+                        for line in conf.dumps().splitlines()))
         if result:
             result.append("")
         return "\n".join(result)
@@ -720,7 +729,7 @@ class ConfDefinition:
             value = _v.strip()
         else:
             if not isinstance(value, (numbers.Number, bool, dict, list, set, tuple)) \
-                    and value is not None:
+                and value is not None:
                 # If it is quoted string we respect it as-is
                 value = _v.strip()
         return value
@@ -744,7 +753,7 @@ class ConfDefinition:
                 self.update(pattern_name, parsed_value, profile=profile, method=method)
                 break
             else:
-                raise RecipeException("Bad conf definition: {}".format(line))
+                raise RecipeException(f"Bad conf definition: {line}")
 
     def validate(self):
         for conf in self._pattern_confs.values():
@@ -752,52 +761,3 @@ class ConfDefinition:
 
     def clear(self):
         self._pattern_confs.clear()
-
-
-def load_global_conf(home_folder):
-    home_paths = HomePaths(home_folder)
-    global_conf_path = home_paths.global_conf_path
-    new_config = ConfDefinition()
-    if os.path.exists(global_conf_path):
-        text = load(global_conf_path)
-        distro = None
-        if platform.system() in ["Linux", "FreeBSD"]:
-            import distro
-        template = Environment(loader=FileSystemLoader(home_folder)).from_string(text)
-        home_folder = home_folder.replace("\\", "/")
-        from thirdparty import recipe_version
-        content = template.render({"platform": platform, "os": os, "distro": distro,
-                                   "recipe_version": recipe_version,
-                                   "recipe_home_folder": home_folder,
-                                   "detect_api": detect_api,
-                                   "hashlib": hashlib})
-        new_config.loads(content)
-    else:  # creation of a blank global.conf file for user convenience
-        default_global_conf = textwrap.dedent("""\
-            # Core configuration (type 'recipe config list' to list possible values)
-            # e.g, for CI systems, to raise if user input would block
-            # core:non_interactive = True
-            # some tools.xxx config also possible, though generally better in profiles
-            # tools.android:ndk_path = my/path/to/android/ndk
-            """)
-        save(global_conf_path, default_global_conf)
-
-    # TODO: This is a bit repeated, to be refactored later, to keep PR clear
-    global_conf_path_user = home_paths.global_conf_path_user
-    if os.path.exists(global_conf_path_user):
-        text = load(global_conf_path_user)
-        distro = None
-        if platform.system() in ["Linux", "FreeBSD"]:
-            import distro
-        template = Environment(loader=FileSystemLoader(home_folder)).from_string(text)
-        from thirdparty import recipe_version
-        home_folder_fwd = home_folder.replace("\\", "/")
-        content = template.render({"platform": platform, "os": os, "distro": distro,
-                                   "recipe_version": recipe_version,
-                                   "recipe_home_folder": home_folder_fwd,
-                                   "detect_api": detect_api,
-                                   "hashlib": hashlib})
-        user_conf = ConfDefinition()
-        user_conf.loads(content)
-        new_config.update_conf_definition(user_conf)
-    return new_config

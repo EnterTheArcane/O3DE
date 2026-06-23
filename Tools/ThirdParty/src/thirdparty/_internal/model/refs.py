@@ -1,9 +1,8 @@
 import fnmatch
-import re
 from functools import total_ordering
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
+from thirdparty.errors import RecipeException
 
 
 @total_ordering

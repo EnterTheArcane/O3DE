@@ -1,14 +1,16 @@
-from thirdparty.errors import RecipeException
 from thirdparty._internal.model.refs import RecipeReference
+from thirdparty.errors import RecipeException
 
 
 class Requirement:
     """ A user definition of a requires in a recipe
     """
-    def __init__(self, ref, *, headers=None, libs=None, build=False, run=None, visible=None,
-                 transitive_headers=None, transitive_libs=None, test=None, package_id_mode=None,
-                 force=None, override=None, direct=None, options=None, no_skip=False,
-                 consistent=None):
+
+    def __init__(
+        self, ref, *, headers=None, libs=None, build=False, run=None, visible=None,
+        transitive_headers=None, transitive_libs=None, test=None, package_id_mode=None,
+        force=None, override=None, direct=None, options=None, no_skip=False,
+        consistent=None):
         # * prevents the usage of more positional parameters, always ref + **kwargs
         # By default this is a generic library requirement
         self.ref = ref
@@ -40,8 +42,9 @@ class Requirement:
         # computed ones, not default ones
         self.consistent_policy_new = False
         if self.visible and not self.consistent:
-            raise RecipeException(f"Requirement {ref} with visible=True and consistent=False is not"
-                                 f" supported. Please open a Github ticket to report it")
+            raise RecipeException(
+                f"Requirement {ref} with visible=True and consistent=False is not"
+                f" supported. Please open a Github ticket to report it")
 
     @property
     def files(self):  # require needs some files in dependency package
@@ -164,27 +167,31 @@ class Requirement:
         return repr(self.__dict__)
 
     def __str__(self):
-        traits = 'build={}, headers={}, libs={}, '  \
-                 'run={}, visible={}'.format(self.build, self.headers, self.libs, self.run,
-                                             self.visible)
-        return "{}, Traits: {}".format(self.ref, traits)
+        traits = (f'build={self.build}, headers={self.headers}, libs={self.libs}, '
+                  f'run={self.run}, visible={self.visible}')
+        return f"{self.ref}, Traits: {traits}"
 
     def serialize(self):
-        result = {"ref": str(self.ref),
-                  "require": str(self._required_ref)}
-        serializable = ("run", "libs", "skip", "test", "force", "direct", "build",
-                        "transitive_headers", "transitive_libs", "headers",
-                        "package_id_mode", "visible")
+        result = {
+            "ref": str(self.ref),
+            "require": str(self._required_ref),
+        }
+        serializable = (
+            "run", "libs", "skip", "test", "force", "direct", "build",
+            "transitive_headers", "transitive_libs", "headers",
+            "package_id_mode", "visible",
+        )
         for attribute in serializable:
             result[attribute] = getattr(self, attribute)
         return result
 
     def copy_requirement(self):
-        return Requirement(self.ref, headers=self.headers, libs=self.libs, build=self.build,
-                           run=self.run, visible=self.visible,
-                           transitive_headers=self.transitive_headers,
-                           transitive_libs=self.transitive_libs,
-                           consistent=self.consistent)
+        return Requirement(
+            self.ref, headers=self.headers, libs=self.libs, build=self.build,
+            run=self.run, visible=self.visible,
+            transitive_headers=self.transitive_headers,
+            transitive_libs=self.transitive_libs,
+            consistent=self.consistent)
 
     @property
     def alias(self):
@@ -240,18 +247,21 @@ class Requirement:
             self.package_id_mode = other.package_id_mode
         self.required_nodes.update(other.required_nodes)
 
+
 class BuildRequirements:
     # Just a wrapper around requires for backwards compatibility with self.build_requires() syntax
     def __init__(self, requires):
         self._requires = requires
         self._called = False
 
-    def __call__(self, ref, package_id_mode=None, visible=False, run=None, options=None,
-                 override=None):
+    def __call__(
+        self, ref, package_id_mode=None, visible=False, run=None, options=None,
+        override=None):
         self._called = True
         # TODO: Check which arguments could be user-defined
-        self._requires.build_require(ref, package_id_mode=package_id_mode, visible=visible, run=run,
-                                     options=options, override=override)
+        self._requires.build_require(
+            ref, package_id_mode=package_id_mode, visible=visible, run=run,
+            options=options, override=override)
 
 
 class ToolRequirements:
@@ -259,11 +269,13 @@ class ToolRequirements:
     def __init__(self, requires):
         self._requires = requires
 
-    def __call__(self, ref, package_id_mode=None, visible=False, run=True, options=None,
-                 override=None):
+    def __call__(
+        self, ref, package_id_mode=None, visible=False, run=True, options=None,
+        override=None):
         # TODO: Check which arguments could be user-defined
-        self._requires.tool_require(ref, package_id_mode=package_id_mode, visible=visible, run=run,
-                                    options=options, override=override)
+        self._requires.tool_require(
+            ref, package_id_mode=package_id_mode, visible=visible, run=run,
+            options=options, override=override)
 
 
 class TestRequirements:
@@ -278,8 +290,10 @@ class TestRequirements:
 class Requirements:
     """ User definitions of all requires in a recipe
     """
-    def __init__(self, declared=None, declared_build=None, declared_test=None,
-                 declared_build_tool=None):
+
+    def __init__(
+        self, declared=None, declared_build=None, declared_test=None,
+        declared_build_tool=None):
         self._requires = {}
         # Construct from the class definitions
         if declared is not None:
@@ -293,8 +307,9 @@ class Requirements:
                             raise RecipeException(f"Incompatible 1.X requires declaration '{item}'")
                         self.__call__(item)
                 except TypeError:
-                    raise RecipeException("Wrong 'requires' definition, "
-                                         "did you mean 'requirements()'?")
+                    raise RecipeException(
+                        "Wrong 'requires' definition, "
+                        "did you mean 'requirements()'?")
         if declared_build is not None:
             if isinstance(declared_build, str):
                 self.build_require(declared_build)
@@ -303,8 +318,9 @@ class Requirements:
                     for item in declared_build:
                         self.build_require(item)
                 except TypeError:
-                    raise RecipeException("Wrong 'build_requires' definition, "
-                                         "did you mean 'requirements()'?")
+                    raise RecipeException(
+                        "Wrong 'build_requires' definition, "
+                        "did you mean 'requirements()'?")
         if declared_test is not None:
             if isinstance(declared_test, str):
                 self.test_require(declared_test)
@@ -313,8 +329,9 @@ class Requirements:
                     for item in declared_test:
                         self.test_require(item)
                 except TypeError:
-                    raise RecipeException("Wrong 'test_requires' definition, "
-                                         "did you mean 'requirements()'?")
+                    raise RecipeException(
+                        "Wrong 'test_requires' definition, "
+                        "did you mean 'requirements()'?")
         if declared_build_tool is not None:
             if isinstance(declared_build_tool, str):
                 self.build_require(declared_build_tool, run=True)
@@ -323,8 +340,9 @@ class Requirements:
                     for item in declared_build_tool:
                         self.build_require(item, run=True)
                 except TypeError:
-                    raise RecipeException("Wrong 'tool_requires' definition, "
-                                         "did you mean 'requirements()'?")
+                    raise RecipeException(
+                        "Wrong 'tool_requires' definition, "
+                        "did you mean 'requirements()'?")
 
     def reindex(self, require, new_name):
         """ This operation is necessary when the reference name of a package is changed
@@ -348,11 +366,12 @@ class Requirements:
         ref = RecipeReference.loads(str_ref)
         req = Requirement(ref, **kwargs)
         if self._requires.get(req):
-            raise RecipeException("Duplicated requirement: {}".format(ref))
+            raise RecipeException(f"Duplicated requirement: {ref}")
         self._requires[req] = req
 
-    def build_require(self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
-                      run=None, options=None, override=None):
+    def build_require(
+        self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
+        run=None, options=None, override=None):
         """
              Represent a generic build require, could be a tool, like "cmake" or a bundle of build
              scripts.
@@ -367,11 +386,12 @@ class Requirements:
             return
         # FIXME: This raise_if_duplicated is ugly, possibly remove
         ref = RecipeReference.loads(ref)
-        req = Requirement(ref, headers=False, libs=False, build=True, run=run, visible=visible,
-                          package_id_mode=package_id_mode, options=options, override=override)
+        req = Requirement(
+            ref, headers=False, libs=False, build=True, run=run, visible=visible,
+            package_id_mode=package_id_mode, options=options, override=override)
 
         if raise_if_duplicated and self._requires.get(req):
-            raise RecipeException("Duplicated requirement: {}".format(ref))
+            raise RecipeException(f"Duplicated requirement: {ref}")
         self._requires[req] = req
 
     def test_require(self, ref, run=None, options=None, force=None):
@@ -389,14 +409,16 @@ class Requirements:
         # build = False => They run in host context, e.g the gtest application is a host app
         # libs = True => We need to link with it
         # headers = True => We need to include it
-        req = Requirement(ref, headers=True, libs=True, build=False, run=run, visible=False,
-                          test=True, package_id_mode=None, options=options, force=force)
+        req = Requirement(
+            ref, headers=True, libs=True, build=False, run=run, visible=False,
+            test=True, package_id_mode=None, options=options, force=force)
         if self._requires.get(req):
-            raise RecipeException("Duplicated requirement: {}".format(ref))
+            raise RecipeException(f"Duplicated requirement: {ref}")
         self._requires[req] = req
 
-    def tool_require(self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
-                     run=True, options=None, override=None):
+    def tool_require(
+        self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
+        run=True, options=None, override=None):
         """
          Represent a build tool like "cmake".
 
@@ -409,10 +431,11 @@ class Requirements:
             return
         # FIXME: This raise_if_duplicated is ugly, possibly remove
         ref = RecipeReference.loads(ref)
-        req = Requirement(ref, headers=False, libs=False, build=True, run=run, visible=visible,
-                          package_id_mode=package_id_mode, options=options, override=override)
+        req = Requirement(
+            ref, headers=False, libs=False, build=True, run=run, visible=visible,
+            package_id_mode=package_id_mode, options=options, override=override)
         if raise_if_duplicated and self._requires.get(req):
-            raise RecipeException("Duplicated requirement: {}".format(ref))
+            raise RecipeException(f"Duplicated requirement: {ref}")
         self._requires[req] = req
 
     def __repr__(self):

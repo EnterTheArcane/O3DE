@@ -5,8 +5,8 @@ import subprocess
 from multiprocessing import cpu_count
 
 from thirdparty._internal.default_settings import default_settings_yml
-from thirdparty._internal.model.settings import Settings
 from thirdparty._internal.model.conf import Conf
+from thirdparty._internal.model.settings import Settings
 
 
 def _detect_msvc_version():
@@ -18,9 +18,11 @@ def _detect_msvc_version():
         return None
     try:
         install_path = subprocess.check_output(
-            [vswhere, "-latest",
-             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-             "-property", "installationPath"],
+            [
+                vswhere, "-latest",
+                "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+                "-property", "installationPath",
+            ],
             text=True, stderr=subprocess.DEVNULL,
         ).strip()
         if not install_path:
@@ -126,47 +128,52 @@ def detect_settings(build_type="Release", target_os=None, target_arch=None):
     the_os = normalize_os(target_os) or machine_os
     arch = normalize_arch(target_arch) or _machine_arch()
 
-    settings.update_values([
-        ("os", the_os),
-        ("arch", arch),
-        ("build_type", build_type),
-    ], raise_undefined=False)
+    settings.update_values(
+        [
+            ("os", the_os),
+            ("arch", arch),
+            ("build_type", build_type),
+        ], raise_undefined=False)
 
     # Compiler detection is keyed on the BUILD MACHINE os (the locally available toolchain).
     if machine_os == "Windows":
         msvc_ver = _detect_msvc_version()
         if msvc_ver:
-            settings.update_values([
-                ("compiler", "msvc"),
-                ("compiler.version", msvc_ver),
-                ("compiler.runtime", "dynamic"),
-                ("compiler.cppstd", "17"),
-            ], raise_undefined=False)
+            settings.update_values(
+                [
+                    ("compiler", "msvc"),
+                    ("compiler.version", msvc_ver),
+                    ("compiler.runtime", "dynamic"),
+                    ("compiler.cppstd", "17"),
+                ], raise_undefined=False)
     elif machine_os == "Mac":
         ver = _detect_apple_clang_version()
         if ver:
-            settings.update_values([
-                ("compiler", "apple-clang"),
-                ("compiler.version", ver + ".0"),
-                ("compiler.libcxx", "libc++"),
-                ("compiler.cppstd", "17"),
-            ], raise_undefined=False)
+            settings.update_values(
+                [
+                    ("compiler", "apple-clang"),
+                    ("compiler.version", ver + ".0"),
+                    ("compiler.libcxx", "libc++"),
+                    ("compiler.cppstd", "17"),
+                ], raise_undefined=False)
     else:
         compiler, ver = _detect_linux_compiler()
         if compiler == "gcc":
-            settings.update_values([
-                ("compiler", "gcc"),
-                ("compiler.version", ver),
-                ("compiler.libcxx", "libstdc++11"),
-                ("compiler.cppstd", "17"),
-            ], raise_undefined=False)
+            settings.update_values(
+                [
+                    ("compiler", "gcc"),
+                    ("compiler.version", ver),
+                    ("compiler.libcxx", "libstdc++11"),
+                    ("compiler.cppstd", "17"),
+                ], raise_undefined=False)
         elif compiler == "clang":
-            settings.update_values([
-                ("compiler", "clang"),
-                ("compiler.version", ver),
-                ("compiler.libcxx", "libc++"),
-                ("compiler.cppstd", "17"),
-            ], raise_undefined=False)
+            settings.update_values(
+                [
+                    ("compiler", "clang"),
+                    ("compiler.version", ver),
+                    ("compiler.libcxx", "libc++"),
+                    ("compiler.cppstd", "17"),
+                ], raise_undefined=False)
 
     # os.version (deployment target) applies to the TARGET os; only known when the build
     # machine is itself a Mac.
@@ -178,8 +185,6 @@ def detect_settings(build_type="Release", target_os=None, target_arch=None):
             settings.update_values([("os.version", _os_version)], raise_undefined=False)
 
     return settings
-
-
 
 
 def platform_tag(settings) -> str:

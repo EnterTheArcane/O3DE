@@ -151,7 +151,7 @@ class Recipe(RecipeBase):
         if self.options.secure:
             name += "-secure"
         if self.settings.build_type not in ("Release", "RelWithDebInfo", "MinSizeRel"):
-            name += "-{}".format(str(self.settings.build_type).lower())
+            name += f"-{str(self.settings.build_type).lower()}"
         return name
 
     @property
@@ -163,7 +163,7 @@ class Recipe(RecipeBase):
         if self.options.secure:
             name += "-secure"
         if self.settings.build_type not in ("Release", "RelWithDebInfo", "MinSizeRel"):
-            name += "-{}".format(str(self.settings.build_type).lower())
+            name += f"-{str(self.settings.build_type).lower()}"
         return name
 
     def package_info(self):
@@ -178,7 +178,7 @@ class Recipe(RecipeBase):
 
         if self.options.get_safe("single_object"):
             obj_ext = "o"
-            obj_file = "{}.{}".format(self._obj_name, obj_ext)
+            obj_file = f"{self._obj_name}.{obj_ext}"
             obj_path = os.path.join(self.folders.package, "lib", obj_file)
             self.cpp_info.exelinkflags = [obj_path]
             self.cpp_info.sharedlinkflags = [obj_path]

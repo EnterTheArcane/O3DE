@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from thirdparty._internal.model.recipe_base import RecipeBase  # noqa: F401
 
 # Recipe-origin states (assigned to Node.recipe).
-RECIPE_INCACHE = "Cache"      # a normal, locally-resolved recipe
+RECIPE_INCACHE = "Cache"  # a normal, locally-resolved recipe
 RECIPE_EDITABLE = "Editable"
 RECIPE_CONSUMER = "Consumer"  # the user-facing recipe being built
 RECIPE_PLATFORM = "Platform"  # a platform-provided (system) requirement
@@ -31,9 +31,10 @@ class Node:
     ``build.py`` and assigned to ``recipe._recipe_node``.
     """
 
-    def __init__(self, name: str, version: str, recipe_cls: "type[RecipeBase] | None" = None,
-                 host_deps: "list[str] | None" = None, tool_deps: "list[str] | None" = None,
-                 *, context: str = CONTEXT_HOST, recipe_state: "str | None" = None) -> None:
+    def __init__(
+        self, name: str, version: str, recipe_cls: "type[RecipeBase] | None" = None,
+        host_deps: "list[str] | None" = None, tool_deps: "list[str] | None" = None,
+        *, context: str = CONTEXT_HOST, recipe_state: "str | None" = None) -> None:
         self._name: str = name
         self._version: str = version
         self.recipe_cls: "type[RecipeBase] | None" = recipe_cls
@@ -196,16 +197,17 @@ class Graph:
                 continue
             version = resolve_version(cls)
             try:
-                probe = make_probe_recipe(cls, recipes_root, name, version, build_type, jobs=jobs,
-                                          target_os=target_os, target_arch=target_arch)
+                probe = make_probe_recipe(
+                    cls, recipes_root, name, version, build_type, jobs=jobs,
+                    target_os=target_os, target_arch=target_arch)
                 host_deps, tool_deps = discover_requires(probe)
             except Exception:
                 host_deps, tool_deps = [], []
-            nodes[name] = Node(name=name, version=version, recipe_cls=cls,
-                               host_deps=host_deps, tool_deps=tool_deps)
+            nodes[name] = Node(
+                name=name, version=version, recipe_cls=cls,
+                host_deps=host_deps, tool_deps=tool_deps)
             if transitive:
                 for dep in host_deps + tool_deps:
                     if dep not in seen:
                         queue.append(dep)
         return Graph(nodes)
-

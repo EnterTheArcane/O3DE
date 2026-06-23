@@ -1,18 +1,19 @@
 import fnmatch
 import os
 
-from thirdparty._internal.output import Color
-from thirdparty.files import chdir
-from thirdparty.errors import RecipeException
 from thirdparty._internal.model.conf import ConfDefinition
+from thirdparty._internal.output import Color
 from thirdparty._internal.util.files import mkdir
 from thirdparty._internal.util.runners import check_output_runner
+from thirdparty.errors import RecipeException
+from thirdparty.files import chdir
 
 
 class Git:
     """
     Git is a wrapper for several common patterns used with *git* tool.
     """
+
     def __init__(self, recipe, folder=".", excluded=None):
         """
         :param recipe: Recipefile instance.
@@ -48,7 +49,7 @@ class Git:
             # We tried to use self.recipe.run(), but it didn't work:
             #  - when using win_bash, crashing because access to .settings (forbidden in source())
             #  - the ``recipe source`` command, not passing profiles, buildenv not injected
-            return check_output_runner("git {}".format(cmd)).strip()
+            return check_output_runner(f"git {cmd}").strip()
 
     def get_commit(self, repository=False):
         """
@@ -76,7 +77,7 @@ class Git:
         **Warning!**
         Be aware that This method will get the output from ``git remote -v``.
         If you added tokens or credentials to the remote in the URL, they will be exposed.
-        Credentials shouldn’t be added to git remotes definitions, but using a credentials manager
+        Credentials shouldn't be added to git remotes definitions, but using a credentials manager
         or similar mechanism. If you still want to use this approach, it is your responsibility
         to strip the credentials from the result.
 
@@ -109,8 +110,8 @@ class Git:
         # Potentially do two checks here.  If the clone is a shallow clone, then we won't be
         # able to find the commit.
         try:
-            branches = self.run("branch -r --contains {}".format(commit))
-            if "{}/".format(remote) in branches:
+            branches = self.run(f"branch -r --contains {commit}")
+            if f"{remote}/" in branches:
                 return True
         except Exception as e:
             raise RecipeException("Unable to check remote commit in '%s': %s" % (self.folder, str(e)))
@@ -124,7 +125,7 @@ class Git:
             # upstream issue 18470, then lets try the old approach
             try:
                 # This will raise if commit not present.
-                self.run("fetch {} --dry-run --depth=1 {}".format(remote, commit))
+                self.run(f"fetch {remote} --dry-run --depth=1 {commit}")
                 return True
             except (Exception,):
                 # Don't raise an error because it could fail for many more reasons.
@@ -160,11 +161,11 @@ class Git:
         This method is intended to capture the current remote coordinates for a package creation,
         so that can be used later to build again from sources from the same commit. This is the behavior:
 
-        * If the repository is dirty, it will raise an exception. Doesn’t make sense to capture coordinates
+        * If the repository is dirty, it will raise an exception. Doesn't make sense to capture coordinates
           of something dirty, as it will not be reproducible. If there are local changes, and the
           user wants to test a local recipe create, should commit the changes first (locally, not push the changes).
 
-        * If the repository is not dirty, but the commit doesn’t exist in the given remote, the method
+        * If the repository is not dirty, but the commit doesn't exist in the given remote, the method
           will return that commit and the URL of the local user checkout. This way, a package can be
           recipe create created locally, testing everything works, before pushing some changes to the remote.
 
@@ -174,7 +175,7 @@ class Git:
         **Warning!**
         Be aware that This method will get the output from ``git remote -v``.
         If you added tokens or credentials to the remote in the URL, they will be exposed.
-        Credentials shouldn’t be added to git remotes definitions, but using a credentials manager
+        Credentials shouldn't be added to git remotes definitions, but using a credentials manager
         or similar mechanism. If you still want to use this approach, it is your responsibility
         to strip the credentials from the result.
 
@@ -185,21 +186,23 @@ class Git:
         """
         dirty = self.is_dirty(repository=repository)
         if dirty:
-            raise RecipeException("Repo is dirty, cannot capture url and commit: "
-                                 "{}".format(self.folder))
+            raise RecipeException(
+                f"Repo is dirty, cannot capture url and commit: {self.folder}")
         commit = self.get_commit(repository=repository)
         url = self.get_remote_url(remote=remote)
         in_remote = self.commit_in_remote(commit, remote=remote)
         if in_remote:
             return url, commit
         if self._local_url == "block":
-            raise RecipeException(f"Current commit {commit} doesn't exist in remote {remote}\n"
-                                 "Failing according to 'core.scm:local_url=block' conf")
+            raise RecipeException(
+                f"Current commit {commit} doesn't exist in remote {remote}\n"
+                "Failing according to 'core.scm:local_url=block' conf")
 
         if self._local_url != "allow":
-            self._recipe.output.warning("Current commit {} doesn't exist in remote {}\n"
-                                           "This revision will not be buildable in other "
-                                           "computer".format(commit, remote))
+            self._recipe.output.warning(
+                f"Current commit {commit} doesn't exist in remote {remote}\n"
+                "This revision will not be buildable in other "
+                "computer")
         return self.get_repo_root(), commit
 
     def get_repo_root(self):
@@ -228,8 +231,9 @@ class Git:
         self._recipe.output.info("Cloning git repo")
         target_path = f'"{target}"' if target else ""  # quote in case there are spaces in path
         # Avoid printing the clone command, it can contain tokens
-        self.run('clone "{}" {} {}'.format(url, " ".join(args), target_path),
-                 hidden_output=url if hide_url else None)
+        self.run(
+            f'clone "{url}" {" ".join(args)} {target_path}',
+            hidden_output=url if hide_url else None)
 
     def fetch_commit(self, url, commit, hide_url=True):
         """
@@ -256,8 +260,8 @@ class Git:
 
         :param commit: Commit to checkout.
         """
-        self._recipe.output.info("Checkout: {}".format(commit))
-        self.run('checkout {}'.format(commit))
+        self._recipe.output.info(f"Checkout: {commit}")
+        self.run(f'checkout {commit}')
 
     def included_files(self):
         """

@@ -1,8 +1,8 @@
 import operator
 
-from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
-from thirdparty._internal.util.detect_api import default_cstd as default_cstd_
 from thirdparty._internal.model.version import Version
+from thirdparty._internal.util.detect_api import default_cstd as default_cstd_
+from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 
 
 def check_min_cstd(recipe, cstd, gnu_extensions=False):
@@ -108,12 +108,13 @@ def supported_cstd(recipe, compiler=None, compiler_version=None):
     if not compiler or not compiler_version:
         raise RecipeException("Called supported_cstd with no compiler or no compiler.version")
 
-    func = {"apple-clang": _apple_clang_supported_cstd,
-            "gcc": _gcc_supported_cstd,
-            "msvc": _msvc_supported_cstd,
-            "clang": _clang_supported_cstd,
-            "emcc": _emcc_supported_cstd,
-            }.get(compiler)
+    func = {
+        "apple-clang": _apple_clang_supported_cstd,
+        "gcc": _gcc_supported_cstd,
+        "msvc": _msvc_supported_cstd,
+        "clang": _clang_supported_cstd,
+        "emcc": _emcc_supported_cstd,
+    }.get(compiler)
     if func:
         return func(Version(compiler_version))
     return None
@@ -160,8 +161,9 @@ def _check_cstd(recipe, cstd, comparator, gnu_extensions):
 
     if not compare(current_cstd, cstd, comparator):
         raise RecipeInvalidConfiguration(
-            "Current cstd ({}) is {} than the required C standard ({}).".format(
-                current_cstd, "higher" if comparator == operator.gt else "lower", cstd))
+            f"Current cstd ({current_cstd}) is "
+            f"{'higher' if comparator == operator.gt else 'lower'} "
+            f"than the required C standard ({cstd}).")
 
 
 def _apple_clang_supported_cstd(version):

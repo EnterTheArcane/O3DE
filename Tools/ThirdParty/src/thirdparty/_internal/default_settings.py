@@ -1,4 +1,4 @@
-default_settings_yml = """\
+default_settings_yml = """
 build_type:
   - null
   - Debug

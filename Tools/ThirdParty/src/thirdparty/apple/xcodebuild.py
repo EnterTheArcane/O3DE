@@ -15,8 +15,9 @@ class XcodeBuild:
     @property
     def _verbosity(self):
         verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose")) \
-                    or self._recipe.conf.get("tools.compilation:verbosity",
-                                                choices=("quiet", "verbose"))
+                    or self._recipe.conf.get(
+            "tools.compilation:verbosity",
+            choices=("quiet", "verbose"))
         return "-" + verbosity if verbosity is not None else ""
 
     @property
@@ -26,8 +27,8 @@ class XcodeBuild:
         # chosen by the build system
         sdk = self._recipe.conf.get("tools.apple:sdk_path")
         if not sdk and self._sdk:
-            sdk = "{}{}".format(self._sdk, self._sdk_version)
-        return "SDKROOT={}".format(sdk) if sdk else ""
+            sdk = f"{self._sdk}{self._sdk_version}"
+        return f"SDKROOT={sdk}" if sdk else ""
 
     def build(self, xcodeproj, target=None, configuration=None, cli_args=None):
         """
@@ -44,11 +45,10 @@ class XcodeBuild:
                               Xcode build settings like ``["BUILD_LIBRARY_FOR_DISTRIBUTION=YES"]``.
         :return: the return code for the launched ``xcodebuild`` command.
         """
-        target = "-target '{}'".format(target) if target else "-alltargets"
+        target = f"-target '{target}'" if target else "-alltargets"
         build_config = configuration or self._build_type
-        cmd = "xcodebuild -project '{}' -configuration {} -arch {} " \
-              "{} {} {}".format(xcodeproj, build_config, self._arch, self._sdkroot,
-                                self._verbosity, target)
+        cmd = (f"xcodebuild -project '{xcodeproj}' -configuration {build_config} "
+               f"-arch {self._arch} {self._sdkroot} {self._verbosity} {target}")
         deployment_target_key = xcodebuild_deployment_target_key(self._os)
         if deployment_target_key and self._os_version:
             cmd += f" {deployment_target_key}={self._os_version}"

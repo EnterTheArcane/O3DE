@@ -690,9 +690,9 @@ class Recipe(RecipeBase):
                 args.append("--disable-outdev=audiotoolbox")
 
         if tc.cflags:
-            args.append("--extra-cflags={}".format(" ".join(tc.cflags)))
+            args.append(f"--extra-cflags={' '.join(tc.cflags)}")
         if tc.ldflags:
-            args.append("--extra-ldflags={}".format(" ".join(tc.ldflags)))
+            args.append(f"--extra-ldflags={' '.join(tc.ldflags)}")
         tc.configure_args.extend(args)
         tc.generate()
 

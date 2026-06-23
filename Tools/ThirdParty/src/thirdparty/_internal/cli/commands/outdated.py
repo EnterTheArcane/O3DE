@@ -8,9 +8,9 @@ from pathlib import Path
 import colorama
 from colorama import Fore, Style
 
-from thirdparty._internal.model.version import Version
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.loader import try_load_recipe_class
+from thirdparty._internal.model.version import Version
 
 _BUMP_COLOR = {
     "major": Fore.RED,
@@ -82,6 +82,7 @@ def outdated(args: argparse.Namespace) -> None:
 
 def _bump_level(current: str, latest: str) -> str:
     """Return 'major', 'minor', or 'patch' based on which component first differs."""
+
     def parts(v: str) -> list[int]:
         segs: list[int] = []
         for x in v.split("."):
@@ -131,7 +132,7 @@ def _print_missing(rows: list[tuple[str, str]]) -> None:
         print("All recipes have a latest_version() method.")
         return
     name_w = max(len("recipe"), max(len(r[0]) for r in rows))
-    ver_w  = max(len("version"), max(len(r[1]) for r in rows))
+    ver_w = max(len("version"), max(len(r[1]) for r in rows))
     print(f"{'recipe':<{name_w}}  {'version':<{ver_w}}")
     print(f"{'-' * name_w}  {'-' * ver_w}")
     for name, version in rows:
@@ -142,9 +143,9 @@ def _print_table(rows: list[tuple[str, str, str, str, str | None]]) -> None:
     if not rows:
         print("No recipes with latest_version() defined.")
         return
-    name_w = max(len("recipe"),  max(len(r[0]) for r in rows))
-    cur_w  = max(len("current"), max(len(r[1]) for r in rows))
-    lat_w  = max(len("latest"),  max(len(r[2]) for r in rows))
+    name_w = max(len("recipe"), max(len(r[0]) for r in rows))
+    cur_w = max(len("current"), max(len(r[1]) for r in rows))
+    lat_w = max(len("latest"), max(len(r[2]) for r in rows))
 
     print(f"{'recipe':<{name_w}}  {'current':<{cur_w}}  {'latest':<{lat_w}}  status")
     print(f"{'-' * name_w}  {'-' * cur_w}  {'-' * lat_w}  ------")

@@ -40,7 +40,7 @@ def _vs_installation_path(version):
         # Append products without "productId" (Legacy installations)
         for product in products:
             if (product["installationVersion"].startswith(f"{version}.")
-                    and "productId" not in product):
+                and "productId" not in product):
                 return product["installationPath"], product["installationVersion"]
 
     # If vswhere does not find anything or not available, try with vs_comntools
@@ -49,14 +49,14 @@ def _vs_installation_path(version):
         sub_path_to_remove = os.path.join("", "Common7", "Tools", "")
         # Remove '\\Common7\\Tools\\' to get same output as vswhere
         if vs_path.endswith(sub_path_to_remove):
-            vs_path = vs_path[:-(len(sub_path_to_remove)+1)]
+            vs_path = vs_path[:-(len(sub_path_to_remove) + 1)]
 
     return vs_path, None
 
 
-def vswhere(all_=False, prerelease=True, products=None, requires=None, version="", latest=False,
-            legacy=False, property_="", nologo=True):
-
+def vswhere(
+    all_=False, prerelease=True, products=None, requires=None, version="", latest=False,
+    legacy=False, property_="", nologo=True):
     # 'version' option only works if Visual Studio 2017 is installed:
     # https://github.com/Microsoft/vswhere/issues/91
 
@@ -64,21 +64,24 @@ def vswhere(all_=False, prerelease=True, products=None, requires=None, version="
     requires = list() if requires is None else requires
 
     if legacy and (products or requires):
-        raise RecipeException("The 'legacy' parameter cannot be specified with either the "
-                             "'products' or 'requires' parameter")
+        raise RecipeException(
+            "The 'legacy' parameter cannot be specified with either the "
+            "'products' or 'requires' parameter")
 
     installer_path = None
     program_files = os.environ.get("ProgramFiles(x86)") or os.environ.get("ProgramFiles")
     if program_files:
-        expected_path = os.path.join(program_files, "Microsoft Visual Studio", "Installer",
-                                     "vswhere.exe")
+        expected_path = os.path.join(
+            program_files, "Microsoft Visual Studio", "Installer",
+            "vswhere.exe")
         if os.path.isfile(expected_path):
             installer_path = expected_path
     vswhere_path = installer_path or which("vswhere")
 
     if not vswhere_path:
-        raise RecipeException("Cannot locate vswhere in 'Program Files'/'Program Files (x86)' "
-                             "directory nor in PATH")
+        raise RecipeException(
+            "Cannot locate vswhere in 'Program Files'/'Program Files (x86)' "
+            "directory nor in PATH")
 
     arguments = list()
     arguments.append(vswhere_path)
@@ -125,8 +128,9 @@ def vswhere(all_=False, prerelease=True, products=None, requires=None, version="
         output = check_output_runner(cmd).strip()
         # Ignore the "description" field, that even decoded contains non valid charsets for json
         # (ignored ones)
-        output = "\n".join([line for line in output.splitlines()
-                            if not line.strip().startswith('"description"')])
+        output = "\n".join(
+            [line for line in output.splitlines()
+             if not line.strip().startswith('"description"')])
 
     except (ValueError, UnicodeDecodeError) as e:
         raise RecipeException("vswhere error: %s" % str(e))

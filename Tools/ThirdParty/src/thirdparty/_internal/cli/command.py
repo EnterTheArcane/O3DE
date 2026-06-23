@@ -11,8 +11,12 @@ CommandFn = Callable[[argparse.Namespace], None]
 
 @overload
 def command(fn: CommandFn) -> CommandFn: ...
+
+
 @overload
 def command(*, name: str) -> Callable[[CommandFn], CommandFn]: ...
+
+
 def command(fn: CommandFn | None = None, *, name: str | None = None):
     """Decorator that registers a function as a CLI subcommand.
 
@@ -24,10 +28,12 @@ def command(fn: CommandFn | None = None, *, name: str | None = None):
     Each command function must accept exactly one argument: the
     ``argparse.Namespace`` produced by parsing the command's sub-parser.
     """
+
     def deco(f: CommandFn) -> CommandFn:
         setattr(f, _COMMAND_ATTR, True)
         setattr(f, _COMMAND_NAME_ATTR, name or f.__name__)
         return f
+
     return deco(fn) if fn is not None else deco
 
 

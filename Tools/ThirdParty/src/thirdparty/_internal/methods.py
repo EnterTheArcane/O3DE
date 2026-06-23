@@ -28,9 +28,10 @@ def run_configure_method(recipe):
     _auto_fpic_configure(recipe)
 
     if initial_requires_count != len(recipe.requires):
-        recipe.output.warning("Requirements should only be added in the requirements() method, "
-                              "not configure()/config_options().",
-                              warn_tag="deprecated")
+        recipe.output.warning(
+            "Requirements should only be added in the requirements() method, "
+            "not configure()/config_options().",
+            warn_tag="deprecated")
 
     recipe.build_requires = BuildRequirements(recipe.requires)
     recipe.test_requires = TestRequirements(recipe.requires)

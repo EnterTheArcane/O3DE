@@ -9,19 +9,22 @@ import colorama
 from colorama import Fore, Style
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.util.detect import detect_platform_tag
 from thirdparty._internal.graph.graph import Node, Graph, is_built
 from thirdparty._internal.loader import make_probe_recipe
+from thirdparty._internal.util.detect import detect_platform_tag
 from thirdparty.errors import RecipeInvalidConfiguration
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
-    p.add_argument("recipe", metavar="<recipe>", nargs="*",
-                   help="Recipe name(s) or glob pattern(s) to list (default: all)")
-    p.add_argument("--deps", action="store_true",
-                   help="Show each recipe's direct dependencies")
-    p.add_argument("--build-order", action="store_true", dest="build_order",
-                   help="List in dependency (build) order instead of alphabetically")
+    p.add_argument(
+        "recipe", metavar="<recipe>", nargs="*",
+        help="Recipe name(s) or glob pattern(s) to list (default: all)")
+    p.add_argument(
+        "--deps", action="store_true",
+        help="Show each recipe's direct dependencies")
+    p.add_argument(
+        "--build-order", action="store_true", dest="build_order",
+        help="List in dependency (build) order instead of alphabetically")
     p.add_argument(
         "--build-type",
         default="Release",

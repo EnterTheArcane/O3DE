@@ -29,8 +29,9 @@ class AutotoolsDeps:
         flags = []
         for dep in self.ordered_deps:
             if dep.options.get_safe("shared"):
-                flags.extend(["-Wl,-rpath -Wl,{}".format(libdir) for libdir in
-                              dep.cpp_info.aggregated_components().libdirs])
+                flags.extend(
+                    [f"-Wl,-rpath -Wl,{libdir}" for libdir in
+                     dep.cpp_info.aggregated_components().libdirs])
         return flags
 
     @property

@@ -1,11 +1,11 @@
 import copy
 from collections import OrderedDict, defaultdict
 
-from thirdparty.errors import RecipeException
-from thirdparty.env.environment import ProfileEnvironment
 from thirdparty._internal.model.conf import ConfDefinition
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
+from thirdparty.env.environment import ProfileEnvironment
+from thirdparty.errors import RecipeException
 
 
 class Profile:
@@ -38,6 +38,7 @@ class Profile:
         def _serialize_tool_requires():
             return {pattern: [repr(ref) for ref in refs]
                     for pattern, refs in self.tool_requires.items()}
+
         result = {
             "settings": self.settings,
             "package_settings": self.package_settings,
@@ -45,7 +46,7 @@ class Profile:
             "tool_requires": _serialize_tool_requires(),
             "conf": self.conf.serialize(),
             # FIXME: Perform a serialize method for ProfileEnvironment
-            "build_env": self.buildenv.dumps()
+            "build_env": self.buildenv.dumps(),
         }
 
         if self.replace_requires:
@@ -140,11 +141,11 @@ class Profile:
                 for br in existing_build_requires:
                     # TODO: Understand why sometimes they are str and other are RecipeReference
                     r = RecipeReference.loads(br) \
-                         if not isinstance(br, RecipeReference) else br
+                        if not isinstance(br, RecipeReference) else br
                     existing[r.name] = br
             for req in req_list:
                 r = RecipeReference.loads(req) \
-                     if not isinstance(req, RecipeReference) else req
+                    if not isinstance(req, RecipeReference) else req
                 existing[r.name] = req
             self.tool_requires[pattern] = list(existing.values())
 
@@ -154,8 +155,9 @@ class Profile:
         runner_type = self.runner.get("type")
         other_runner_type = other.runner.get("type")
         if runner_type and other_runner_type and runner_type != other_runner_type:
-            raise RecipeException(f"Found different runner types in profile composition "
-                                 f"({runner_type} and {other_runner_type})")
+            raise RecipeException(
+                f"Found different runner types in profile composition "
+                f"({runner_type} and {other_runner_type})")
         self.runner.update(other.runner)
 
         current_platform_tool_requires = {r.name: r for r in self.platform_tool_requires}

@@ -1,8 +1,8 @@
 import os
 import tempfile
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
+from thirdparty.errors import RecipeException
 
 
 def is_consumer(recipe):
@@ -60,8 +60,8 @@ def cmake_layout(recipe, generator=None, src_folder=".", build_folder="build"):
     recipe.cpp.source.includedirs = ["include"]
 
     if multi:
-        recipe.cpp.build.libdirs = ["{}".format(build_type)]
-        recipe.cpp.build.bindirs = ["{}".format(build_type)]
+        recipe.cpp.build.libdirs = [build_type]
+        recipe.cpp.build.bindirs = [build_type]
     else:
         recipe.cpp.build.libdirs = ["."]
         recipe.cpp.build.bindirs = ["."]
@@ -73,8 +73,10 @@ def get_build_folder_custom_vars(recipe):
     if recipe.tested_reference_str:
         if build_vars is None:  # The user can define conf build_folder_vars = [] for no vars
             build_vars = recipe_vars or \
-                     ["settings.compiler", "settings.compiler.version", "settings.arch",
-                      "settings.compiler.cppstd", "settings.build_type", "options.shared"]
+                         [
+                             "settings.compiler", "settings.compiler.version", "settings.arch",
+                             "settings.compiler.cppstd", "settings.build_type", "options.shared",
+                         ]
     else:
         if is_consumer(recipe):
             if build_vars is None:
@@ -96,14 +98,15 @@ def get_build_folder_custom_vars(recipe):
                 if var == "shared":
                     tmp = "shared" if value else "static"
                 else:
-                    tmp = "{}_{}".format(var, value)
+                    tmp = f"{var}_{value}"
         elif group == "self":
             tmp = getattr(recipe, var, None)
         elif group == "const":
             tmp = var
         else:
-            raise RecipeException("Invalid 'tools.cmake.cmake_layout:build_folder_vars' value, it has"
-                                 f" to start with 'settings.', 'options.', 'self.' or 'const.': {s}")
+            raise RecipeException(
+                "Invalid 'tools.cmake.cmake_layout:build_folder_vars' value, it has"
+                f" to start with 'settings.', 'options.', 'self.' or 'const.': {s}")
         if tmp:
             ret.append(tmp.lower())
 

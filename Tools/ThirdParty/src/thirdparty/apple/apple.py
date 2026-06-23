@@ -15,8 +15,10 @@ def is_apple_os(recipe, build_context=False):
 
 def _to_apple_arch(arch, default=None):
     """converts recipe-style architecture into Apple-style arch"""
-    return {'X64': 'x86_64',
-            'ARM': 'arm64'}.get(str(arch), default)
+    return {
+        'X64': 'x86_64',
+        'ARM': 'arm64',
+    }.get(str(arch), default)
 
 
 def to_apple_arch(recipe, default=None):
@@ -49,9 +51,9 @@ def get_apple_sdk_fullname(recipe):
     os_sdk = recipe.settings.get_safe('os.sdk')
     os_sdk_version = recipe.settings.get_safe('os.sdk_version') or ""
     if os_sdk:
-        return "{}{}".format(os_sdk, os_sdk_version)
+        return f"{os_sdk}{os_sdk_version}"
     elif os_ == "Mac":  # it has only a single value for all the architectures
-        return "{}{}".format("macosx", os_sdk_version)
+        return f"macosx{os_sdk_version}"
     elif is_apple_os(recipe):
         raise RecipeException("Please, specify a suitable value for os.sdk.")
 
@@ -98,8 +100,9 @@ def resolve_apple_flags(recipe, is_cross_building=False, is_universal=False):
 
     if is_universal:
         arch_ = recipe.settings.get_safe("arch")
-        apple_arch_flags = " ".join([f"-arch {_to_apple_arch(arch, default=arch)}" for arch in
-                                     arch_.split(universal_arch_separator)])
+        apple_arch_flags = " ".join(
+            [f"-arch {_to_apple_arch(arch, default=arch)}" for arch in
+             arch_.split(universal_arch_separator)])
         sdk_path = recipe.conf.get("tools.apple:sdk_path")
         if sdk_path:
             # Ideally, -isysroot should be added whenever sdk_path is defined.
@@ -273,7 +276,7 @@ def fix_apple_shared_install_name(recipe):
         for count, text in enumerate(otool_output):
             pass
             if "LC_RPATH" in text:
-                rpath_entry = otool_output[count+2].split("path ")[1].split(" ")[0]
+                rpath_entry = otool_output[count + 2].split("path ")[1].split(" ")[0]
                 entries.append(rpath_entry)
         return entries
 
@@ -289,8 +292,9 @@ def fix_apple_shared_install_name(recipe):
         for libdir in libdirs:
             full_folder = os.path.join(recipe.folders.package, libdir)
             if not os.path.exists(full_folder):
-                raise RecipeException(f"Trying to locate shared libraries, but `{libdir}` "
-                                     f" not found inside package folder {recipe.folders.package}")
+                raise RecipeException(
+                    f"Trying to locate shared libraries, but `{libdir}` "
+                    f" not found inside package folder {recipe.folders.package}")
             shared_libs = _darwin_collect_binaries(full_folder, "DYLIB")
             # fix LC_ID_DYLIB in first pass
             for shared_lib in shared_libs:
@@ -324,8 +328,9 @@ def fix_apple_shared_install_name(recipe):
                 # Fix install names of libraries from within the same package
                 deps = _get_shared_dependencies(executable)
                 for dep in deps:
-                    dep_base = os.path.join(os.path.dirname(dep),
-                                            os.path.basename(dep).split('.')[0])
+                    dep_base = os.path.join(
+                        os.path.dirname(dep),
+                        os.path.basename(dep).split('.')[0])
                     match = [k for k in substitutions.keys() if k.startswith(dep_base)]
                     if match:
                         _fix_dep_name(executable, dep, substitutions[match[0]])

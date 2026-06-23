@@ -1,12 +1,12 @@
-from thirdparty.build.flags import architecture_flag, architecture_link_flag, libcxx_flags, threads_flags
 import os
 import textwrap
 from pathlib import Path
 
-from thirdparty.env.virtualbuildenv import VirtualBuildEnv
 from jinja2 import Template
 
 from thirdparty.build.cross_building import cross_building
+from thirdparty.build.flags import architecture_flag, architecture_link_flag, libcxx_flags, threads_flags
+from thirdparty.env.virtualbuildenv import VirtualBuildEnv
 from thirdparty.files import save
 from thirdparty.microsoft.visual import VCVars
 from thirdparty.premake.premakedeps import PREMAKE_ROOT_FILE
@@ -14,7 +14,7 @@ from thirdparty.premake.premakedeps import PREMAKE_ROOT_FILE
 
 def _generate_flags(self, recipe):
     template = textwrap.dedent(
-        """\
+        """
         {% if extra_cflags %}
         -- C flags retrieved from CFLAGS environment, thirdparty.conf(tools.build:cflags), extra_cflags and compiler settings
         filter { files { "**.c" } }
@@ -41,8 +41,7 @@ def _generate_flags(self, recipe):
         -- Defines retrieved from DEFINES environment, thirdparty.conf(tools.build:defines) and extra_defines
         defines { {{ extra_defines }} }
         {% endif %}
-    """
-    )
+        """)
 
     def format_list(items):
         return ", ".join(f'"{item}"' for item in items) if items else None
@@ -98,16 +97,15 @@ def _generate_flags(self, recipe):
 
 class _PremakeProject:
     _premake_project_template = textwrap.dedent(
-        """\
-    project "{{ name }}"
-        {% if kind %}
-        kind "{{ kind }}"
-        {% endif %}
-        {% if flags %}
-    {{ flags | indent(indent_level, first=True) }}
-        {% endif %}
-    """
-    )
+        """
+        project "{{ name }}"
+            {% if kind %}
+            kind "{{ kind }}"
+            {% endif %}
+            {% if flags %}
+        {{ flags | indent(indent_level, first=True) }}
+            {% endif %}
+        """)
 
     def __init__(self, name, recipe) -> None:
         self.name = name
@@ -138,81 +136,80 @@ class PremakeToolchain:
     filename = "recipe_toolchain.premake5.lua"
     # Keep template indented correctly for Lua output
     _premake_file_template = textwrap.dedent(
-        """\
-    #!lua
-    -- Recipe auto-generated toolchain file
-    {% if has_recipe_deps %}
-    -- Include recipe_deps.premake5.lua with Recipe dependency setup
-    include("recipe_deps.premake5.lua")
-    {% endif %}
+        """
+        #!lua
+        -- Recipe auto-generated toolchain file
+        {% if has_recipe_deps %}
+        -- Include recipe_deps.premake5.lua with Recipe dependency setup
+        include("recipe_deps.premake5.lua")
+        {% endif %}
 
-    -- Base build directory
-    local locationDir = path.normalize("{{ build_folder }}")
+        -- Base build directory
+        local locationDir = path.normalize("{{ build_folder }}")
 
-    -- Generate workspace configurations
-    for wks in premake.global.eachWorkspace() do
-        workspace(wks.name)
-            -- Set base location for all workspaces
-            location(locationDir)
-            targetdir(path.join(locationDir, "bin"))
-            objdir(path.join(locationDir, "obj"))
+        -- Generate workspace configurations
+        for wks in premake.global.eachWorkspace() do
+            workspace(wks.name)
+                -- Set base location for all workspaces
+                location(locationDir)
+                targetdir(path.join(locationDir, "bin"))
+                objdir(path.join(locationDir, "obj"))
 
-            {% if cppstd %}
-            cppdialect "{{ cppstd }}"
-            {% endif %}
-            {% if cstd %}
-            cdialect "{{ cstd }}"
-            {% endif %}
-            {% if shared != None %}
-            -- IMPORTANT: this global setting will only apply `project`s which do not have `kind` set.
-            -- IMPORTANT: This will not override existing `kind` set in `project` block.
-            -- To let recipe take control over `kind` of the libraries, DO NOT SET `kind` (StaticLib or
-            -- SharedLib) in `project` block.
-            kind "{{ "SharedLib" if shared else "StaticLib" }}"
-            {% endif %}
-            {% if fpic != None %}
-            -- Enable position independent code
-            pic "{{ "On" if fpic else "Off" }}"
-            {% endif %}
-            filter { "architecture: not wasm64" }
-                -- TODO: There is an issue with premake and "wasm64" when system is declared "emscripten"
-                system "{{ target_build_os }}"
-            filter {}
-            {% if macho_to_amd64 %}
-            -- TODO: this should be fixed by premake: https://github.com/premake/premake-core/issues/2136
-            buildoptions "-arch x86_64"
-            linkoptions "-arch x86_64"
-            {% endif %}
-            {% if target_build_os == "emscripten" %}
-            filter { "system:emscripten", "kind:ConsoleApp or WindowedApp" }
-                -- Replace built in .wasm extension to .js to generate also a JavaScript files
-                targetextension ".js"
-            filter {}
-            {% endif %}
-            {% if flags %}
-    {{ flags | indent(indent_level, first=True) }}
-            {% endif %}
+                {% if cppstd %}
+                cppdialect "{{ cppstd }}"
+                {% endif %}
+                {% if cstd %}
+                cdialect "{{ cstd }}"
+                {% endif %}
+                {% if shared != None %}
+                -- IMPORTANT: this global setting will only apply `project`s which do not have `kind` set.
+                -- IMPORTANT: This will not override existing `kind` set in `project` block.
+                -- To let recipe take control over `kind` of the libraries, DO NOT SET `kind` (StaticLib or
+                -- SharedLib) in `project` block.
+                kind "{{ "SharedLib" if shared else "StaticLib" }}"
+                {% endif %}
+                {% if fpic != None %}
+                -- Enable position independent code
+                pic "{{ "On" if fpic else "Off" }}"
+                {% endif %}
+                filter { "architecture: not wasm64" }
+                    -- TODO: There is an issue with premake and "wasm64" when system is declared "emscripten"
+                    system "{{ target_build_os }}"
+                filter {}
+                {% if macho_to_amd64 %}
+                -- TODO: this should be fixed by premake: https://github.com/premake/premake-core/issues/2136
+                buildoptions "-arch x86_64"
+                linkoptions "-arch x86_64"
+                {% endif %}
+                {% if target_build_os == "emscripten" %}
+                filter { "system:emscripten", "kind:ConsoleApp or WindowedApp" }
+                    -- Replace built in .wasm extension to .js to generate also a JavaScript files
+                    targetextension ".js"
+                filter {}
+                {% endif %}
+                {% if flags %}
+        {{ flags | indent(indent_level, first=True) }}
+                {% endif %}
 
-            filter { "system:macosx" }
-                -- SHARED LIBS
-                -- In the future we could add an opt in configuration to run
-                -- fix_apple_shared_install_name on executables to have a similar behavior as CMake
-                -- generator. Premake does not allow adding absolute RCPATHS
-                -- Due to this limitation, if a consumer depends on a premake shared recipe, it will
-                -- require to run runenv script to setup proper DYLD_LIBRARY_PATH
-                -- Reference: https://github.com/premake/premake-core/issues/2262#issuecomment-2378250385
-                linkoptions { "-Wl,-rpath,@loader_path" }
-            filter {}
+                filter { "system:macosx" }
+                    -- SHARED LIBS
+                    -- In the future we could add an opt in configuration to run
+                    -- fix_apple_shared_install_name on executables to have a similar behavior as CMake
+                    -- generator. Premake does not allow adding absolute RCPATHS
+                    -- Due to this limitation, if a consumer depends on a premake shared recipe, it will
+                    -- require to run runenv script to setup proper DYLD_LIBRARY_PATH
+                    -- Reference: https://github.com/premake/premake-core/issues/2262#issuecomment-2378250385
+                    linkoptions { "-Wl,-rpath,@loader_path" }
+                filter {}
 
-            recipe_setup()
-    end
+                recipe_setup()
+        end
 
-        {% for project in projects.values() %}
+            {% for project in projects.values() %}
 
-    {{ project._generate() }}
-        {% endfor %}
-    """
-    )
+        {{ project._generate() }}
+            {% endfor %}
+        """)
 
     def __init__(self, recipe):
         """

@@ -1,14 +1,14 @@
 import textwrap
 from pathlib import Path
 
-from thirdparty.build.cpu import build_jobs
 from jinja2 import Template
 
+from thirdparty.build.cpu import build_jobs
 from thirdparty.errors import RecipeException
 from thirdparty.files import save
 from thirdparty.microsoft.msbuild import MSBuild
-from thirdparty.premake.toolchain import PremakeToolchain
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
+from thirdparty.premake.toolchain import PremakeToolchain
 
 # Source: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 PREMAKE_VS_VERSION = {
@@ -17,7 +17,7 @@ PREMAKE_VS_VERSION = {
     '192': '2019',
     '193': '2022',
     '194': '2022',  # still 2022
-    '195': '2026'
+    '195': '2026',
 }
 
 
@@ -33,12 +33,11 @@ class Premake:
 
     # Recipe premake file which will preconfigure toolchain and then will call the user's premake file
     _premake_file_template = textwrap.dedent(
-        """\
-    #!lua
-    include("{{luafile}}")
-    include("{{premake_recipe_toolchain}}")
-    """
-    )
+        """
+        #!lua
+        include("{{luafile}}")
+        include("{{premake_recipe_toolchain}}")
+        """)
 
     def __init__(self, recipe):
         """

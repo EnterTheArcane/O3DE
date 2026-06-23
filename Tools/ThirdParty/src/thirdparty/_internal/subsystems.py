@@ -44,11 +44,12 @@ def command_env_wrapper(recipe, command, envfiles, envfiles_folder, scope="build
     active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
     subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
     if platform.system() == "Windows" and (
-            (recipe.win_bash and scope == "build") or
-            (recipe.win_bash_run and scope == "run")):
+        (recipe.win_bash and scope == "build") or
+        (recipe.win_bash_run and scope == "run")):
         if subsystem is None:
-            raise RecipeException("win_bash/win_bash_run defined but no "
-                                 "tools.microsoft.bash:subsystem")
+            raise RecipeException(
+                "win_bash/win_bash_run defined but no "
+                "tools.microsoft.bash:subsystem")
         if active:
             wrapped_cmd = environment_wrap_command(recipe, envfiles, envfiles_folder, command)
         else:
@@ -69,8 +70,9 @@ def _windows_bash_wrapper(recipe, command, env, envfiles_folder):
 
     shell_path = recipe.conf.get("tools.microsoft.bash:path")
     if not shell_path:
-        raise RecipeException("The config 'tools.microsoft.bash:path' is "
-                             "needed to run commands in a Windows subsystem")
+        raise RecipeException(
+            "The config 'tools.microsoft.bash:path' is "
+            "needed to run commands in a Windows subsystem")
     shell_path = shell_path.replace("\\", "/")  # Should work in all terminals
     env = env or []
     if subsystem == MSYS2:
@@ -93,17 +95,19 @@ def _windows_bash_wrapper(recipe, command, env, envfiles_folder):
         env.append(path)
 
     wrapped_shell = '"%s"' % shell_path if " " in shell_path else shell_path
-    wrapped_shell = environment_wrap_command(recipe, env, envfiles_folder, wrapped_shell,
-                                             accepted_extensions=("bat", "ps1"))
+    wrapped_shell = environment_wrap_command(
+        recipe, env, envfiles_folder, wrapped_shell,
+        accepted_extensions=("bat", "ps1"))
 
     # Wrapping the inside_command enable to prioritize our environment, otherwise /usr/bin go
     # first and there could be commands that we want to skip
-    wrapped_user_cmd = environment_wrap_command(recipe, env, envfiles_folder, command,
-                                                accepted_extensions=("sh", ))
+    wrapped_user_cmd = environment_wrap_command(
+        recipe, env, envfiles_folder, command,
+        accepted_extensions=("sh",))
     wrapped_user_cmd = _escape_windows_cmd(wrapped_user_cmd)
     # according to https://www.msys2.org/wiki/Launchers/, it is necessary to use --login shell
     # running without it is discouraged
-    final_command = '{} --login -c {}'.format(wrapped_shell, wrapped_user_cmd)
+    final_command = f'{wrapped_shell} --login -c {wrapped_user_cmd}'
     return final_command
 
 
@@ -141,11 +145,13 @@ def deduce_subsystem(recipe, scope):
     subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
     if not subsystem:
         if recipe.win_bash:
-            raise RecipeException("win_bash=True but tools.microsoft.bash:subsystem "
-                                 "configuration not defined")
+            raise RecipeException(
+                "win_bash=True but tools.microsoft.bash:subsystem "
+                "configuration not defined")
         if recipe.win_bash_run:
-            raise RecipeException("win_bash_run=True but tools.microsoft.bash:subsystem "
-                                 "configuration not defined")
+            raise RecipeException(
+                "win_bash_run=True but tools.microsoft.bash:subsystem "
+                "configuration not defined")
         return WINDOWS
     active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
     if active:

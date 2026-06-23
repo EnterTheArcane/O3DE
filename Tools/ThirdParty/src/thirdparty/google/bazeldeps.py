@@ -4,8 +4,8 @@ import textwrap
 
 from jinja2 import Template, StrictUndefined
 
-from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.model.cpp_info import PackageType
+from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
 
 
@@ -39,116 +39,117 @@ class _BazelDepBuildGenerator:
     # If both files exist, BUILD.bazel takes precedence over BUILD
     # https://bazel.build/concepts/build-files
     dep_build_filename = "BUILD.bazel"
-    dep_build_template = textwrap.dedent("""\
-    {% macro cc_import_macro(libs) %}
-    {% for lib_info in libs %}
-    cc_import(
-        name = "{{ lib_info['name'] }}_precompiled",
-        {% if lib_info['is_shared'] %}
-        shared_library = "{{ lib_info['lib_path'] }}",
-        {% else %}
-        static_library = "{{ lib_info['lib_path'] }}",
+    dep_build_template = textwrap.dedent(
+        """
+        {% macro cc_import_macro(libs) %}
+        {% for lib_info in libs %}
+        cc_import(
+            name = "{{ lib_info['name'] }}_precompiled",
+            {% if lib_info['is_shared'] %}
+            shared_library = "{{ lib_info['lib_path'] }}",
+            {% else %}
+            static_library = "{{ lib_info['lib_path'] }}",
+            {% endif %}
+            {% if lib_info['import_lib_path'] %}
+            interface_library = "{{ lib_info['import_lib_path'] }}",
+            {% endif %}
+            {% if lib_info["linkopts"] %}
+            linkopts = [
+                {% for linkopt in lib_info["linkopts"] %}
+                {{ linkopt }},
+                {% endfor %}
+            ],
+            {% endif %}
+        )
+        {% endfor %}
+        {% endmacro %}
+        {% macro cc_library_macro(obj) %}
+        cc_library(
+            name = "{{ obj["name"] }}",
+            {% if obj["headers"] %}
+            hdrs = glob([
+                {% for header in obj["headers"] %}
+                {{ header }},
+                {% endfor %}
+            ],
+            allow_empty = True
+            ),
+            {% endif %}
+            {% if obj["includes"] %}
+            includes = [
+                {% for include in obj["includes"] %}
+                {{ include }},
+                {% endfor %}
+            ],
+            {% endif %}
+            {% if obj["defines"] %}
+            defines = [
+                {% for define in obj["defines"] %}
+                {{ define }},
+                {% endfor %}
+            ],
+            {% endif %}
+            {% if obj["linkopts"] %}
+            linkopts = [
+                {% for linkopt in obj["linkopts"] %}
+                {{ linkopt }},
+                {% endfor %}
+            ],
+            {% endif %}
+            {% if obj["copts"] %}
+            copts = [
+                {% for copt in obj["copts"] %}
+                {{ copt }},
+                {% endfor %}
+            ],
+            {% endif %}
+            visibility = ["//visibility:public"],
+            {% if obj["libs"] or obj["dependencies"] or obj.get("component_names", []) %}
+            deps = [
+                # do not sort
+                {% for lib in obj["libs"] %}
+                ":{{ lib.name }}_precompiled",
+                {% endfor %}
+                {% for name in obj.get("component_names", []) %}
+                ":{{ name }}",
+                {% endfor %}
+                {% for dep in obj["dependencies"] %}
+                "{{ dep }}",
+                {% endfor %}
+            ],
+            {% endif %}
+        )
+        {% endmacro %}
+        {% macro filegroup_bindirs_macro(obj) %}
+        {% if obj["bindirs"] %}
+        filegroup(
+            name = "{{ obj["name"] }}_binaries",
+            srcs = glob([
+                {% for bindir in obj["bindirs"] %}
+                "{{ bindir }}/**",
+                {% endfor %}
+            ],
+            allow_empty = True
+            ),
+            visibility = ["//visibility:public"],
+        )
         {% endif %}
-        {% if lib_info['import_lib_path'] %}
-        interface_library = "{{ lib_info['import_lib_path'] }}",
-        {% endif %}
-        {% if lib_info["linkopts"] %}
-        linkopts = [
-            {% for linkopt in lib_info["linkopts"] %}
-            {{ linkopt }},
-            {% endfor %}
-        ],
-        {% endif %}
-    )
-    {% endfor %}
-    {% endmacro %}
-    {% macro cc_library_macro(obj) %}
-    cc_library(
-        name = "{{ obj["name"] }}",
-        {% if obj["headers"] %}
-        hdrs = glob([
-            {% for header in obj["headers"] %}
-            {{ header }},
-            {% endfor %}
-        ],
-        allow_empty = True
-        ),
-        {% endif %}
-        {% if obj["includes"] %}
-        includes = [
-            {% for include in obj["includes"] %}
-            {{ include }},
-            {% endfor %}
-        ],
-        {% endif %}
-        {% if obj["defines"] %}
-        defines = [
-            {% for define in obj["defines"] %}
-            {{ define }},
-            {% endfor %}
-        ],
-        {% endif %}
-        {% if obj["linkopts"] %}
-        linkopts = [
-            {% for linkopt in obj["linkopts"] %}
-            {{ linkopt }},
-            {% endfor %}
-        ],
-        {% endif %}
-        {% if obj["copts"] %}
-        copts = [
-            {% for copt in obj["copts"] %}
-            {{ copt }},
-            {% endfor %}
-        ],
-        {% endif %}
-        visibility = ["//visibility:public"],
-        {% if obj["libs"] or obj["dependencies"] or obj.get("component_names", []) %}
-        deps = [
-            # do not sort
-            {% for lib in obj["libs"] %}
-            ":{{ lib.name }}_precompiled",
-            {% endfor %}
-            {% for name in obj.get("component_names", []) %}
-            ":{{ name }}",
-            {% endfor %}
-            {% for dep in obj["dependencies"] %}
-            "{{ dep }}",
-            {% endfor %}
-        ],
-        {% endif %}
-    )
-    {% endmacro %}
-    {% macro filegroup_bindirs_macro(obj) %}
-    {% if obj["bindirs"] %}
-    filegroup(
-        name = "{{ obj["name"] }}_binaries",
-        srcs = glob([
-            {% for bindir in obj["bindirs"] %}
-            "{{ bindir }}/**",
-            {% endfor %}
-        ],
-        allow_empty = True
-        ),
-        visibility = ["//visibility:public"],
-    )
-    {% endif %}
-    {% endmacro %}
-    # Components precompiled libs
-    {% for component in components %}
-    {{ cc_import_macro(component["libs"]) }}
-    {% endfor %}
-    # Root package precompiled libs
-    {{ cc_import_macro(root["libs"]) }}
-    # Components libraries declaration
-    {% for component in components %}
-    {{ cc_library_macro(component) }}
-    {% endfor %}
-    # Package library declaration
-    {{ cc_library_macro(root) }}
-    # Filegroup library declaration
-    {{ filegroup_bindirs_macro(root) }}
-    """)
+        {% endmacro %}
+        # Components precompiled libs
+        {% for component in components %}
+        {{ cc_import_macro(component["libs"]) }}
+        {% endfor %}
+        # Root package precompiled libs
+        {{ cc_import_macro(root["libs"]) }}
+        # Components libraries declaration
+        {% for component in components %}
+        {{ cc_library_macro(component) }}
+        {% endfor %}
+        # Package library declaration
+        {{ cc_library_macro(root) }}
+        # Filegroup library declaration
+        {{ filegroup_bindirs_macro(root) }}
+        """)
 
     def __init__(self, recipe, dep, require):
         self._recipe = recipe
@@ -204,14 +205,14 @@ class _BazelDepBuildGenerator:
         return comp_name or f"{pkg_name}-{comp_ref_name}"
 
     def _get_headers(self, cpp_info):
-        return ['"{}/**"'.format(_relativize_path(path, self._package_folder))
+        return [f'"{_relativize_path(path, self._package_folder)}/**"'
                 for path in cpp_info.includedirs]
 
     def _get_bindirs(self, cpp_info):
         return [_relativize_path(bindir, self._package_folder) for bindir in cpp_info.bindirs]
 
     def _get_includes(self, cpp_info):
-        return ['"{}"'.format(_relativize_path(path, self._package_folder))
+        return [f'"{_relativize_path(path, self._package_folder)}"'
                 for path in cpp_info.includedirs]
 
     @staticmethod
@@ -290,7 +291,7 @@ class _BazelDepBuildGenerator:
                 "is_shared": virtual_cpp_info.type == PackageType.SHARED,
                 "lib_path": _relativize_path(virtual_cpp_info.location, self._package_folder),
                 "import_lib_path": _relativize_path(virtual_cpp_info.link_location, self._package_folder),
-                "linkopts": []
+                "linkopts": [],
             }
             if info['is_shared'] and info["lib_path"] and not info["lib_path"].endswith(".dll"):
                 # Issue: upstream issue 19190
@@ -331,17 +332,18 @@ class _BazelDepBuildGenerator:
                 comp_requires_names = self._get_component_requirement_names(cmp_cpp_info)
                 comp_name = self._get_component_name(self._dep, comp_ref_name)
                 component_names.append(comp_name)
-                build_content["components"].append({
-                    "name": comp_name,
-                    "libs": self._get_lib_info(cmp_cpp_info, deduced_cpp_info, component_name=comp_ref_name),
-                    "bindirs": self._get_bindirs(cmp_cpp_info),
-                    "headers": self._get_headers(cmp_cpp_info),
-                    "includes": self._get_includes(cmp_cpp_info),
-                    "defines": self._get_defines(cmp_cpp_info),
-                    "linkopts": self._get_linkopts(cmp_cpp_info),
-                    "copts": self._get_copts(cmp_cpp_info),
-                    "dependencies": comp_requires_names,
-                })
+                build_content["components"].append(
+                    {
+                        "name": comp_name,
+                        "libs": self._get_lib_info(cmp_cpp_info, deduced_cpp_info, component_name=comp_ref_name),
+                        "bindirs": self._get_bindirs(cmp_cpp_info),
+                        "headers": self._get_headers(cmp_cpp_info),
+                        "includes": self._get_includes(cmp_cpp_info),
+                        "defines": self._get_defines(cmp_cpp_info),
+                        "linkopts": self._get_linkopts(cmp_cpp_info),
+                        "copts": self._get_copts(cmp_cpp_info),
+                        "dependencies": comp_requires_names,
+                    })
 
         pkg_name = self._get_target_name(self._dep)
         # At first, let's check if we have defined some global requires, e.g., "other::cmp1"
@@ -365,7 +367,7 @@ class _BazelDepBuildGenerator:
             "linkopts": self._get_linkopts(cpp_info),
             "copts": self._get_copts(cpp_info),
             "dependencies": requires,
-            "component_names": component_names
+            "component_names": component_names,
         }
         return build_content
 
@@ -381,8 +383,9 @@ class _BazelDepBuildGenerator:
         }
 
     def items(self):
-        template = Template(self.dep_build_template, trim_blocks=True, lstrip_blocks=True,
-                            undefined=StrictUndefined)
+        template = Template(
+            self.dep_build_template, trim_blocks=True, lstrip_blocks=True,
+            undefined=StrictUndefined)
         content = template.render(self._get_build_file_context())
         return {self._build_file_path: content}.items()
 
@@ -403,7 +406,8 @@ class _BazelPathsGenerator:
     repository_filename = "dependencies.bzl"
     modules_filename = "recipe_deps_module_extension.bzl"
     repository_rules_filename = "recipe_deps_repo_rules.bzl"
-    repository_template = textwrap.dedent("""\
+    repository_template = textwrap.dedent(
+        """
         # This Bazel module should be loaded by your WORKSPACE file.
         # Add these lines to your WORKSPACE one (assuming that you're using the "bazel_layout"):
         # load("@//recipe:dependencies.bzl", "load_recipe_dependencies")
@@ -418,7 +422,8 @@ class _BazelPathsGenerator:
             )
         {% endfor %}
         """)
-    module_template = textwrap.dedent("""\
+    module_template = textwrap.dedent(
+        """
         # This module provides a repo for each requires-dependency in your recipe.
         # It's generated by the BazelDeps, and should be used in your Module.bazel file.
         load(":recipe_deps_repo_rules.bzl", "recipe_dependency_repo")
@@ -455,7 +460,8 @@ class _BazelPathsGenerator:
             arch_dependent = True,
         )
         """)
-    repository_rules_content = textwrap.dedent("""\
+    repository_rules_content = textwrap.dedent(
+        """
         # This bazel repository rule is used to load Recipe dependencies into the Bazel workspace.
         # It's used by a generated module file that provides information about the recipe packages.
         # Each recipe package is loaded into a bazel repository rule, with having the name of the
@@ -490,19 +496,21 @@ class _BazelPathsGenerator:
         if not dependencies_context:
             return {}
         # Bazel 6.x, but it'll likely be dropped soon
-        repository_template = Template(cls.repository_template, trim_blocks=True,
-                                       lstrip_blocks=True,
-                                       undefined=StrictUndefined)
+        repository_template = Template(
+            cls.repository_template, trim_blocks=True,
+            lstrip_blocks=True,
+            undefined=StrictUndefined)
         content_6x = repository_template.render(dependencies=dependencies_context)
         # Bazel 7.x files
-        module_template = Template(cls.module_template, trim_blocks=True, lstrip_blocks=True,
-                                   undefined=StrictUndefined)
+        module_template = Template(
+            cls.module_template, trim_blocks=True, lstrip_blocks=True,
+            undefined=StrictUndefined)
         content = module_template.render(dependencies=dependencies_context)
         return {
             cls.repository_filename: content_6x,  # bazel 6.x compatible
             cls.modules_filename: content,
             cls.repository_rules_filename: cls.repository_rules_content,
-            "BUILD.bazel": "# This is an empty BUILD file."  # Bazel needs this file in each subfolder
+            "BUILD.bazel": "# This is an empty BUILD file.",  # Bazel needs this file in each subfolder
         }.items()
 
 

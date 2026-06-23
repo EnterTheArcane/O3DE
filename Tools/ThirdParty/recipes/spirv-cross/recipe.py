@@ -110,12 +110,12 @@ class Recipe(RecipeBase):
         content = ""
         for alias, aliased in targets.items():
             content += textwrap.dedent(
-                f"""\
+                f"""
                 if(TARGET {aliased} AND NOT TARGET {alias})
                     add_library({alias} INTERFACE IMPORTED)
                     set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
                 endif()
-            """)
+                """)
         save(self, module_file, content)
 
     @property

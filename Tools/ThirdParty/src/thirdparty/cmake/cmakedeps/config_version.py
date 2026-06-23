@@ -10,13 +10,15 @@ class ConfigVersionTemplate2:
     """
     foo-config-version.cmake
     """
+
     def __init__(self, cmakedeps, recipe):
         self._cmakedeps = cmakedeps
         self._recipe = recipe
 
     def content(self):
-        t = Template(self._template, trim_blocks=True, lstrip_blocks=True,
-                     undefined=jinja2.StrictUndefined)
+        t = Template(
+            self._template, trim_blocks=True, lstrip_blocks=True,
+            undefined=jinja2.StrictUndefined)
         return t.render(self._context)
 
     @property
@@ -33,15 +35,18 @@ class ConfigVersionTemplate2:
             raise RecipeException(f"Unknown cmake_config_version_compat={policy} in {self._recipe}")
         version = self._cmakedeps.get_property("system_package_version", self._recipe)
         version = version or self._recipe.ref.version
-        return {"version": version,
-                "policy": policy}
+        return {
+            "version": version,
+            "policy": policy,
+        }
 
     @property
     def _template(self):
         # https://gitlab.kitware.com/cmake/cmake/blob/master/Modules/BasicConfigVersion-SameMajorVersion.cmake.in
         # This will be at XXX-config-version.cmake
         # AnyNewerVersion|SameMajorVersion|SameMinorVersion|ExactVersion
-        ret = textwrap.dedent("""\
+        ret = textwrap.dedent(
+            """
             set(PACKAGE_VERSION "{{ version }}")
 
             if(PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION)
@@ -71,9 +76,9 @@ class ConfigVersionTemplate2:
                 endif()
                 if((PACKAGE_FIND_VERSION_MAJOR STREQUAL CVF_VERSION_MAJOR) AND
                     (PACKAGE_FIND_VERSION_MINOR STREQUAL CVF_VERSION_MINOR))
-                  set(PACKAGE_VERSION_COMPATIBLE TRUE)
+                    set(PACKAGE_VERSION_COMPATIBLE TRUE)
                 else()
-                  set(PACKAGE_VERSION_COMPATIBLE FALSE)
+                    set(PACKAGE_VERSION_COMPATIBLE FALSE)
                 endif()
                 {% elif policy == "ExactVersion" %}
                 if("{{ version }}" MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
@@ -88,9 +93,9 @@ class ConfigVersionTemplate2:
                 if((PACKAGE_FIND_VERSION_MAJOR STREQUAL CVF_VERSION_MAJOR) AND
                     (PACKAGE_FIND_VERSION_MINOR STREQUAL CVF_VERSION_MINOR) AND
                     (PACKAGE_FIND_VERSION_PATCH STREQUAL CVF_VERSION_PATCH))
-                  set(PACKAGE_VERSION_COMPATIBLE TRUE)
+                    set(PACKAGE_VERSION_COMPATIBLE TRUE)
                 else()
-                  set(PACKAGE_VERSION_COMPATIBLE FALSE)
+                    set(PACKAGE_VERSION_COMPATIBLE FALSE)
                 endif()
                 {% endif %}
 

@@ -140,7 +140,7 @@ class Recipe(RecipeBase):
         abseil_components = json.loads(components_json_file)
         for pkgconfig_name, values in abseil_components.items():
             cmake_target = values["cmake_target"]
-            self.cpp_info.components[pkgconfig_name].set_property("cmake_target_name", "absl::{}".format(cmake_target))
+            self.cpp_info.components[pkgconfig_name].set_property("cmake_target_name", f"absl::{cmake_target}")
             self.cpp_info.components[pkgconfig_name].set_property("pkg_config_name", pkgconfig_name)
             self.cpp_info.components[pkgconfig_name].libs = values.get("libs", [])
             self.cpp_info.components[pkgconfig_name].defines = values.get("defines", [])

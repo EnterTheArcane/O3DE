@@ -14,10 +14,11 @@ def recipe_remove_attr(recipe, names, method):
     def _prop(attr_name):
         def _m(_):
             raise RecipeException(f"'self.{attr_name}' access in '{method}()' method is forbidden")
+
         return property(_m)
 
     try:
-        new_class = type(original_class.__name__, (original_class, ), {})
+        new_class = type(original_class.__name__, (original_class,), {})
         recipe.__class__ = new_class
         for name in names:
             setattr(new_class, name, _prop(name))
@@ -35,7 +36,7 @@ def recipe_exception_formatter(recipe, funcname):
         yield
     except RecipeInvalidConfiguration as exc:
         # TODO: This is never called from `recipe.validate()` but could be called from others
-        msg = "{}: Invalid configuration: {}".format(str(recipe), exc)
+        msg = f"{str(recipe)}: Invalid configuration: {exc}"
         raise RecipeInvalidConfiguration(msg)
     except Exception as exc:
         m = scoped_traceback(f"{recipe}: Error in {funcname}() method", exc, scope="recipe.py")
@@ -132,10 +133,12 @@ class PackageNotFoundException(NotFoundException):
         super().__init__(f"Binary package not found: '{pref.repr_notime()}'")
 
 
-EXCEPTION_CODE_MAPPING = {InternalErrorException: 500,
-                          RequestErrorException: 400,
-                          AuthenticationException: 401,
-                          ForbiddenException: 403,
-                          NotFoundException: 404,
-                          RecipeNotFoundException: 404,
-                          PackageNotFoundException: 404}
+EXCEPTION_CODE_MAPPING = {
+    InternalErrorException: 500,
+    RequestErrorException: 400,
+    AuthenticationException: 401,
+    ForbiddenException: 403,
+    NotFoundException: 404,
+    RecipeNotFoundException: 404,
+    PackageNotFoundException: 404,
+}

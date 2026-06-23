@@ -11,8 +11,9 @@ from thirdparty._internal.graph.graph import Graph
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
-    p.add_argument("recipe", metavar="<recipe>", nargs="*",
-                   help="Root recipe name(s) or glob pattern(s) (default: all)")
+    p.add_argument(
+        "recipe", metavar="<recipe>", nargs="*",
+        help="Root recipe name(s) or glob pattern(s) (default: all)")
     p.add_argument(
         "--format", "-f",
         default="tree",
@@ -20,8 +21,9 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
         dest="fmt",
         help="Output format (default: tree)",
     )
-    p.add_argument("--no-tools", action="store_false", dest="tools",
-                   help="Exclude tool_requires (build tools) from the graph")
+    p.add_argument(
+        "--no-tools", action="store_false", dest="tools",
+        help="Exclude tool_requires (build tools) from the graph")
     p.add_argument(
         "--build-type",
         default="Release",

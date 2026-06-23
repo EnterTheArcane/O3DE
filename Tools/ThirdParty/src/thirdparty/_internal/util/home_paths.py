@@ -7,6 +7,7 @@ _PLUGINS = "plugins"
 class HomePaths:
     """ pure computing of paths in the home, not caching anything
     """
+
     def __init__(self, home_folder):
         self._home = home_folder
 
@@ -33,6 +34,3 @@ class HomePaths:
     @property
     def settings_path_user(self):
         return os.path.join(self._home, "settings_user.yml")
-
-
-

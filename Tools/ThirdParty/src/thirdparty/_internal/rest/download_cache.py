@@ -6,9 +6,9 @@ from threading import Lock
 
 import fasteners
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.util.dates import timestamp_now
 from thirdparty._internal.util.files import load, save, remove_if_dirty
+from thirdparty.errors import RecipeException
 
 
 class DownloadCache:
@@ -66,16 +66,18 @@ class DownloadCache:
             excluded_urls = []
 
         def has_excluded_urls(backup_urls):
-            return all(any(url.startswith(excluded_url)
-                           for excluded_url in excluded_urls)
-                       for url in backup_urls)
+            return all(
+                any(
+                    url.startswith(excluded_url)
+                    for excluded_url in excluded_urls)
+                for url in backup_urls)
 
         all_refs = set()
         if package_list is not None:
             for ref, packages in package_list.items():
                 ref_info = package_list.recipe_dict(ref)
                 if (not only_upload or ref_info.get("upload")
-                        or any(package_list.package_dict(p).get("upload") for p in packages)):
+                    or any(package_list.package_dict(p).get("upload") for p in packages)):
                     all_refs.add(str(ref))
 
         path_backups_contents = []

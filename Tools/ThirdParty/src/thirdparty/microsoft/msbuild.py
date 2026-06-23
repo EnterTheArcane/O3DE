@@ -55,17 +55,18 @@ class MSBuild:
 
         verbosity = msbuild_verbosity_cmd_line_arg(self._recipe)
         if verbosity:
-            cmd += " {}".format(verbosity)
+            cmd += f" {verbosity}"
 
-        maxcpucount = self._recipe.conf.get("tools.microsoft.msbuild:max_cpu_count",
-                                               check_type=int)
+        maxcpucount = self._recipe.conf.get(
+            "tools.microsoft.msbuild:max_cpu_count",
+            check_type=int)
         if maxcpucount is not None:
             cmd += f' -m:"{maxcpucount}"' if maxcpucount > 0 else " -m"
 
         if targets:
             if not isinstance(targets, list):
                 raise RecipeException("targets argument should be a list")
-            cmd += ' -target:"{}"'.format(";".join(targets))
+            cmd += f' -target:"{";".join(targets)}"'
 
         return cmd
 
@@ -81,5 +82,6 @@ class MSBuild:
 
     @staticmethod
     def get_version(_):
-        return NotImplementedError("get_version() method is not supported in MSBuild "
-                                   "toolchain helper")
+        return NotImplementedError(
+            "get_version() method is not supported in MSBuild "
+            "toolchain helper")

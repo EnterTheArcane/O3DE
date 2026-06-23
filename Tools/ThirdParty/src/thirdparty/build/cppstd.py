@@ -1,8 +1,8 @@
 import operator
 
-from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
-from thirdparty._internal.util.detect_api import default_cppstd as default_cppstd_
 from thirdparty._internal.model.version import Version
+from thirdparty._internal.util.detect_api import default_cppstd as default_cppstd_
+from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 
 
 def check_min_cppstd(recipe, cppstd, gnu_extensions=False):
@@ -98,14 +98,15 @@ def supported_cppstd(recipe, compiler=None, compiler_version=None):
     if not compiler or not compiler_version:
         raise RecipeException("Called supported_cppstd with no compiler or no compiler.version")
 
-    func = {"apple-clang": _apple_clang_supported_cppstd,
-            "gcc": _gcc_supported_cppstd,
-            "msvc": _msvc_supported_cppstd,
-            "clang": _clang_supported_cppstd,
-            "mcst-lcc": _mcst_lcc_supported_cppstd,
-            "qcc": _qcc_supported_cppstd,
-            "emcc": _emcc_supported_cppstd,
-            }.get(compiler)
+    func = {
+        "apple-clang": _apple_clang_supported_cppstd,
+        "gcc": _gcc_supported_cppstd,
+        "msvc": _msvc_supported_cppstd,
+        "clang": _clang_supported_cppstd,
+        "mcst-lcc": _mcst_lcc_supported_cppstd,
+        "qcc": _qcc_supported_cppstd,
+        "emcc": _emcc_supported_cppstd,
+    }.get(compiler)
     if func:
         return func(Version(compiler_version))
     return None
@@ -147,8 +148,9 @@ def _check_cppstd(recipe, cppstd, comparator, gnu_extensions):
 
     if not compare(current_cppstd, cppstd, comparator):
         raise RecipeInvalidConfiguration(
-            "Current cppstd ({}) is {} than the required C++ standard ({}).".format(
-                current_cppstd, "higher" if comparator == operator.gt else "lower", cppstd))
+            f"Current cppstd ({current_cppstd}) is "
+            f"{'higher' if comparator == operator.gt else 'lower'} "
+            f"than the required C++ standard ({cppstd}).")
 
 
 def _apple_clang_supported_cppstd(version):
@@ -168,11 +170,15 @@ def _apple_clang_supported_cppstd(version):
     # upstream PR 17092 doesn't show c++23 full support until 16
     # but it was this before Recipe 2.9, so keeping it to not break
     if version < "16.0":
-        return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20",
-                "23", "gnu23"]
+        return [
+            "98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20",
+            "23", "gnu23",
+        ]
 
-    return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23",
-            "26", "gnu26"]
+    return [
+        "98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23",
+        "26", "gnu26",
+    ]
 
 
 def _gcc_supported_cppstd(version):
@@ -193,11 +199,15 @@ def _gcc_supported_cppstd(version):
         return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20"]
     # upstream PR 17092
     if version < "14.0":
-        return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20",
-                "23", "gnu23"]
+        return [
+            "98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20",
+            "23", "gnu23",
+        ]
 
-    return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23",
-            "26", "gnu26"]
+    return [
+        "98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23",
+        "26", "gnu26",
+    ]
 
 
 def _msvc_supported_cppstd(version):
@@ -236,10 +246,14 @@ def _clang_supported_cppstd(version):
         return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20"]
     # upstream PR 17092
     if version < "17.0":
-        return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20",
-                "23", "gnu23"]
-    return ["98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23",
-            "26", "gnu26"]
+        return [
+            "98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20",
+            "23", "gnu23",
+        ]
+    return [
+        "98", "gnu98", "11", "gnu11", "14", "gnu14", "17", "gnu17", "20", "gnu20", "23", "gnu23",
+        "26", "gnu26",
+    ]
 
 
 def _mcst_lcc_supported_cppstd(version):

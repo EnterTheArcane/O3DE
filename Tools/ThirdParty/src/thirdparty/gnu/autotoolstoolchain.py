@@ -1,6 +1,5 @@
 import os
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.apple.apple import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.build import cmd_args_to_string, save_toolchain_args
@@ -8,6 +7,7 @@ from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, build_type_flags, cppstd_flag, \
     build_type_link_flags, libcxx_flags, cstd_flag, llvm_clang_front, threads_flags
 from thirdparty.env import Environment, VirtualBuildEnv
+from thirdparty.errors import RecipeException
 from thirdparty.gnu.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
 
@@ -59,8 +59,9 @@ class AutotoolsToolchain:
         if llvm_clang_front(self._recipe) == "clang":
             self.msvc_runtime_link_flags = ["-fuse-ld=lld-link"]
 
-        self._is_universal_arch = is_universal_arch(recipe.settings.get_safe("arch"),
-                                                    recipe.settings.possible_values().get("arch"))
+        self._is_universal_arch = is_universal_arch(
+            recipe.settings.get_safe("arch"),
+            recipe.settings.possible_values().get("arch"))
         if self._is_universal_arch and not is_apple_os(self._recipe):
             arch_str = recipe.settings.get_safe('arch')
             raise RecipeException(f"Universal arch '{arch_str}' is only supported in Apple OSes")
@@ -96,9 +97,10 @@ class AutotoolsToolchain:
         else:
             self.sysroot_flag = None
 
-        extra_configure_args = self._recipe.conf.get("tools.gnu:extra_configure_args",
-                                                        check_type=list,
-                                                        default=[])
+        extra_configure_args = self._recipe.conf.get(
+            "tools.gnu:extra_configure_args",
+            check_type=list,
+            default=[])
 
         self.configure_args = (self._default_configure_shared_flags() +
                                self._default_configure_install_flags() +
@@ -113,8 +115,9 @@ class AutotoolsToolchain:
                                  and not self._is_universal_arch)
 
         min_flag, arch_flags, isysroot_flag = (
-            resolve_apple_flags(recipe, is_cross_building=is_cross_building_osx,
-                                is_universal=self._is_universal_arch)
+            resolve_apple_flags(
+                recipe, is_cross_building=is_cross_building_osx,
+                is_universal=self._is_universal_arch)
         )
         # https://man.archlinux.org/man/clang.1.en#Target_Selection_Options
         self.apple_arch_flag = arch_flags
@@ -130,16 +133,19 @@ class AutotoolsToolchain:
             return ret
         # Setting host if it was not already defined yet
         arch = self._recipe.settings.get_safe("arch")
-        android_target = {'ARM': 'aarch64-linux-android',
-                          'X64': 'x86_64-linux-android'}.get(arch)
+        android_target = {
+            'ARM': 'aarch64-linux-android',
+            'X64': 'x86_64-linux-android',
+        }.get(arch)
         self._host = self._host or android_target
         # Automatic guessing made by Recipe (need the NDK path variable defined)
         recipe_vars = {}
         ndk_path = self._recipe.conf.get("tools.android:ndk_path", check_type=str)
         if ndk_path:
             if self._recipe.conf.get("tools.build:compiler_executables"):
-                self._recipe.output.warning("tools.build:compiler_executables conf has no effect"
-                                               " when tools.android:ndk_path is defined too.")
+                self._recipe.output.warning(
+                    "tools.build:compiler_executables conf has no effect"
+                    " when tools.android:ndk_path is defined too.")
             os_build = self._recipe.settings_build.get_safe("os")
             ndk_os_folder = {
                 'Mac': 'darwin',
@@ -149,11 +155,12 @@ class AutotoolsToolchain:
                 'Linux': 'linux',
                 'Windows': 'windows',
                 'WindowsCE': 'windows',
-                'WindowsStore': 'windows'
+                'WindowsStore': 'windows',
             }.get(os_build, "linux")
             ext = ".cmd" if os_build == "Windows" else ""
-            ndk_bin = os.path.join(ndk_path, "toolchains", "llvm", "prebuilt",
-                                   f"{ndk_os_folder}-x86_64", "bin")
+            ndk_bin = os.path.join(
+                ndk_path, "toolchains", "llvm", "prebuilt",
+                f"{ndk_os_folder}-x86_64", "bin")
             android_api_level = self._recipe.settings.get_safe("os.api_level")
             recipe_vars = {
                 "CC": os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang{ext}"),
@@ -168,7 +175,7 @@ class AutotoolsToolchain:
                 "OBJCOPY": os.path.join(ndk_bin, "llvm-objcopy"),
                 "OBJDUMP": os.path.join(ndk_bin, "llvm-objdump"),
                 "READELF": os.path.join(ndk_bin, "llvm-readelf"),
-                "ELFEDIT": os.path.join(ndk_bin, "llvm-elfedit")
+                "ELFEDIT": os.path.join(ndk_bin, "llvm-elfedit"),
             }
         build_env = VirtualBuildEnv(self._recipe, auto_generate=True).vars()
         for var_name, var_path in recipe_vars.items():
@@ -190,12 +197,13 @@ class AutotoolsToolchain:
 
         flag = msvc_runtime_flag(self._recipe)
         if flag:
-            flag = "-{}".format(flag)
+            flag = f"-{flag}"
         return flag
 
     def _msvc_extra_flags(self):
-        if is_msvc(self._recipe) and check_min_vs(self._recipe, "180",
-                                                     raise_invalid=False):
+        if is_msvc(self._recipe) and check_min_vs(
+            self._recipe, "180",
+            raise_invalid=False):
             return ["-FS"]
         return []
 
@@ -210,8 +218,10 @@ class AutotoolsToolchain:
     @property
     def cxxflags(self):
         fpic = "-fPIC" if self.fpic else None
-        ret = [self.libcxx, self.cppstd, self.arch_flag, fpic, self.msvc_runtime_flag,
-               self.sysroot_flag] + self.threads_flags
+        ret = [
+                  self.libcxx, self.cppstd, self.arch_flag, fpic, self.msvc_runtime_flag,
+                  self.sysroot_flag,
+              ] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
         apple_flags += self.apple_extra_flags
         conf_flags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
@@ -235,12 +245,16 @@ class AutotoolsToolchain:
         ret = [self.arch_flag, self.sysroot_flag, self.arch_ld_flag] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
         apple_flags += self.apple_extra_flags
-        conf_flags = self._recipe.conf.get("tools.build:sharedlinkflags", default=[],
-                                              check_type=list)
-        conf_flags.extend(self._recipe.conf.get("tools.build:exelinkflags", default=[],
-                                                   check_type=list))
-        linker_scripts = self._recipe.conf.get("tools.build:linker_scripts", default=[],
-                                                  check_type=list)
+        conf_flags = self._recipe.conf.get(
+            "tools.build:sharedlinkflags", default=[],
+            check_type=list)
+        conf_flags.extend(
+            self._recipe.conf.get(
+                "tools.build:exelinkflags", default=[],
+                check_type=list))
+        linker_scripts = self._recipe.conf.get(
+            "tools.build:linker_scripts", default=[],
+            check_type=list)
         conf_flags.extend(["-T'" + linker_script + "'" for linker_script in linker_scripts])
         ret = ret + self.build_type_link_flags + apple_flags + self.extra_ldflags + conf_flags
         ret = ret + self.msvc_runtime_link_flags
@@ -277,12 +291,15 @@ class AutotoolsToolchain:
                 env.define(env_var, unix_env_value)
         else:
             # Setting user custom compiler executables flags
-            compilers_by_conf = self._recipe.conf.get("tools.build:compiler_executables",
-                                                         default={},
-                                                         check_type=dict)
+            compilers_by_conf = self._recipe.conf.get(
+                "tools.build:compiler_executables",
+                default={},
+                check_type=dict)
             if compilers_by_conf:
-                compilers_mapping = {"c": "CC", "cpp": "CXX", "cuda": "NVCC", "fortran": "FC",
-                                     "rc": "RC"}
+                compilers_mapping = {
+                    "c": "CC", "cpp": "CXX", "cuda": "NVCC", "fortran": "FC",
+                    "rc": "RC",
+                }
                 for comp, env_var in compilers_mapping.items():
                     if comp in compilers_by_conf:
                         compiler = compilers_by_conf[comp]
@@ -296,7 +313,7 @@ class AutotoolsToolchain:
                     env.define("CC", "cl")
                     env.define("CXX", "cl")
 
-        env.append("CPPFLAGS", ["-D{}".format(d) for d in self.defines])
+        env.append("CPPFLAGS", [f"-D{d}" for d in self.defines])
         env.append("CXXFLAGS", self.cxxflags)
         env.append("CFLAGS", self.cflags)
         env.append("LDFLAGS", self.ldflags)
@@ -308,8 +325,9 @@ class AutotoolsToolchain:
         # Issue related: upstream issue 15486
         if self._is_cross_building and self._recipe.conf_build:
             compilers_build_mapping = (
-                self._recipe.conf_build.get("tools.build:compiler_executables", default={},
-                                               check_type=dict)
+                self._recipe.conf_build.get(
+                    "tools.build:compiler_executables", default={},
+                    check_type=dict)
             )
             if "c" in compilers_build_mapping:
                 env.define("CC_FOR_BUILD", compilers_build_mapping["c"])
@@ -343,16 +361,19 @@ class AutotoolsToolchain:
 
         def _get_argument(argument_name, cppinfo_name):
             elements = getattr(self._recipe.cpp.package, cppinfo_name)
-            return "--{}=${{prefix}}/{}".format(argument_name, elements[0]) if elements else ""
+            return f"--{argument_name}=${{prefix}}/{elements[0]}" if elements else ""
 
         # If someone want arguments but not the defaults can pass them in args manually
-        configure_install_flags.extend([f"--prefix={self._prefix}",
-                                       _get_argument("bindir", "bindirs"),
-                                       _get_argument("sbindir", "bindirs"),
-                                       _get_argument("libdir", "libdirs"),
-                                       _get_argument("includedir", "includedirs"),
-                                       _get_argument("oldincludedir", "includedirs"),
-                                       _get_argument("datarootdir", "resdirs")])
+        configure_install_flags.extend(
+            [
+                f"--prefix={self._prefix}",
+                _get_argument("bindir", "bindirs"),
+                _get_argument("sbindir", "bindirs"),
+                _get_argument("libdir", "libdirs"),
+                _get_argument("includedir", "includedirs"),
+                _get_argument("oldincludedir", "includedirs"),
+                _get_argument("datarootdir", "resdirs"),
+            ])
         return [el for el in configure_install_flags if el]
 
     @staticmethod
@@ -361,8 +382,10 @@ class AutotoolsToolchain:
 
     def _get_triplets(self):
         triplets = []
-        for flag, value in (("--host=", self._host), ("--build=", self._build),
-                            ("--target=", self._target)):
+        for flag, value in (
+                ("--host=", self._host), ("--build=", self._build),
+                ("--target=", self._target),
+        ):
             if value:
                 triplets.append(f'{flag}{value}')
         return triplets
@@ -420,7 +443,9 @@ class AutotoolsToolchain:
         setattr(self, attr_name, _dict_to_list(options))
 
     def generate_args(self):
-        args = {"configure_args": cmd_args_to_string(self.configure_args),
-                "make_args":  cmd_args_to_string(self.make_args),
-                "autoreconf_args": cmd_args_to_string(self.autoreconf_args)}
+        args = {
+            "configure_args": cmd_args_to_string(self.configure_args),
+            "make_args": cmd_args_to_string(self.make_args),
+            "autoreconf_args": cmd_args_to_string(self.autoreconf_args),
+        }
         save_toolchain_args(args, namespace=self._namespace)

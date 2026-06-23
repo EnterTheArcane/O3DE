@@ -2,17 +2,16 @@ import os
 import subprocess
 from typing import Any
 
-from thirdparty._internal.output import Output, Color, LEVEL_QUIET
-from thirdparty._internal.subsystems import command_env_wrapper
-from thirdparty.env import Environment
-from thirdparty.errors import RecipeException
-from thirdparty._internal.model.cpp_info import MockInfoProperty
 from thirdparty._internal.model.conf import Conf
+from thirdparty._internal.model.cpp_info import MockInfoProperty
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.layout import Folders, Infos, Layouts
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.requires import Requirements
-from thirdparty._internal.model.settings import Settings
+from thirdparty._internal.output import Output, Color, LEVEL_QUIET
+from thirdparty._internal.subsystems import command_env_wrapper
+from thirdparty.env import Environment
+from thirdparty.errors import RecipeException
 
 
 class RecipeBase:
@@ -79,8 +78,9 @@ class RecipeBase:
 
         if isinstance(self.settings, str):
             self.settings = [self.settings]
-        self.requires = Requirements(self.requires, self.build_requires, self.test_requires,
-                                     self.tool_requires)
+        self.requires = Requirements(
+            self.requires, self.build_requires, self.test_requires,
+            self.tool_requires)
         if self.build_requires:
             self.output.warning(
                 "build_requires is deprecated, prefer to use tool_requires with correct traits",
@@ -133,8 +133,9 @@ class RecipeBase:
         # Lazy computation of the package buildenv based on the profileone
         from thirdparty.env import Environment
         if not isinstance(self._recipe_buildenv, Environment):
-            self._recipe_buildenv = self._recipe_buildenv.get_profile_env(self.ref,
-                                                                        self._is_consumer_recipe)
+            self._recipe_buildenv = self._recipe_buildenv.get_profile_env(
+                self.ref,
+                self._is_consumer_recipe)
         return self._recipe_buildenv
 
     @property
@@ -142,8 +143,9 @@ class RecipeBase:
         # Lazy computation of the package runenv based on the profile one
         from thirdparty.env import Environment
         if not isinstance(self._recipe_runenv, Environment):
-            self._recipe_runenv = self._recipe_runenv.get_profile_env(self.ref,
-                                                                    self._is_consumer_recipe)
+            self._recipe_runenv = self._recipe_runenv.get_profile_env(
+                self.ref,
+                self._is_consumer_recipe)
         return self._recipe_runenv
 
     @property
@@ -158,8 +160,9 @@ class RecipeBase:
     def cpp_info(self, value):
         self.cpp.package = value
 
-    def run(self, command: str, stdout=None, cwd=None, ignore_errors=False, env="", quiet=False,
-            shell=True, scope="build", stderr=None):
+    def run(
+        self, command: str, stdout=None, cwd=None, ignore_errors=False, env="", quiet=False,
+        shell=True, scope="build", stderr=None):
         """ Run a command in the current package context.
 
         :parameter command: The command to run.
@@ -187,8 +190,9 @@ class RecipeBase:
         env = [env] if env and isinstance(env, str) else (env or [])
         assert isinstance(env, list), "env argument to RecipeBase.run() should be a list"
         envfiles_folder = self.folders.generators or os.getcwd()
-        wrapped_cmd = command_env_wrapper(self, command, env, envfiles_folder=envfiles_folder,
-                                          scope=scope)
+        wrapped_cmd = command_env_wrapper(
+            self, command, env, envfiles_folder=envfiles_folder,
+            scope=scope)
         from thirdparty._internal.util.runners import run_command
         if not quiet:
             self.output.info(f"RUN: {command}", fg=Color.BRIGHT_BLUE)

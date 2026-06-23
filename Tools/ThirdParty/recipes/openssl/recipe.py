@@ -393,21 +393,21 @@ class Recipe(RecipeBase):
 
     def _create_targets(self, cflags, cxxflags, defines, ldflags):
         config_template = textwrap.dedent(
-            """\
-                        {targets} = (
-                            "{target}" => {{
-                                inherit_from => {ancestor},
-                                cflags => add("{cflags}"),
-                                cxxflags => add("{cxxflags}"),
-                                {defines}
-                                lflags => add("{lflags}"),
-                                {shared_target}
-                                {shared_cflag}
-                                {shared_extension}
-                                {perlasm_scheme}
-                            }},
-                        );
-                    """)
+            """
+            {targets} = (
+                "{target}" => {{
+                    inherit_from => {ancestor},
+                    cflags => add("{cflags}"),
+                    cxxflags => add("{cxxflags}"),
+                    {defines}
+                    lflags => add("{lflags}"),
+                    {shared_target}
+                    {shared_cflag}
+                    {shared_extension}
+                    {perlasm_scheme}
+                }},
+            );
+            """)
 
         perlasm_scheme = ""
         if self._perlasm_scheme:
@@ -544,44 +544,44 @@ class Recipe(RecipeBase):
 
     def _create_cmake_module_variables(self, module_file):
         content = textwrap.dedent(
-            """\
-                        set(OPENSSL_FOUND TRUE)
-                        if(DEFINED OpenSSL_INCLUDE_DIR)
-                            set(OPENSSL_INCLUDE_DIR ${OpenSSL_INCLUDE_DIR})
-                        endif()
-                        if(DEFINED OpenSSL_Crypto_LIBS)
-                            set(OPENSSL_CRYPTO_LIBRARY ${OpenSSL_Crypto_LIBS})
-                            set(OPENSSL_CRYPTO_LIBRARIES ${OpenSSL_Crypto_LIBS}
-                                                         ${OpenSSL_Crypto_DEPENDENCIES}
-                                                         ${OpenSSL_Crypto_FRAMEWORKS}
-                                                         ${OpenSSL_Crypto_SYSTEM_LIBS})
-                        elseif(DEFINED openssl_OpenSSL_Crypto_LIBS_%(config)s)
-                            set(OPENSSL_CRYPTO_LIBRARY ${openssl_OpenSSL_Crypto_LIBS_%(config)s})
-                            set(OPENSSL_CRYPTO_LIBRARIES ${openssl_OpenSSL_Crypto_LIBS_%(config)s}
-                                                         ${openssl_OpenSSL_Crypto_DEPENDENCIES_%(config)s}
-                                                         ${openssl_OpenSSL_Crypto_FRAMEWORKS_%(config)s}
-                                                         ${openssl_OpenSSL_Crypto_SYSTEM_LIBS_%(config)s})
-                        endif()
-                        if(DEFINED OpenSSL_SSL_LIBS)
-                            set(OPENSSL_SSL_LIBRARY ${OpenSSL_SSL_LIBS})
-                            set(OPENSSL_SSL_LIBRARIES ${OpenSSL_SSL_LIBS}
-                                                      ${OpenSSL_SSL_DEPENDENCIES}
-                                                      ${OpenSSL_SSL_FRAMEWORKS}
-                                                      ${OpenSSL_SSL_SYSTEM_LIBS})
-                        elseif(DEFINED openssl_OpenSSL_SSL_LIBS_%(config)s)
-                            set(OPENSSL_SSL_LIBRARY ${openssl_OpenSSL_SSL_LIBS_%(config)s})
-                            set(OPENSSL_SSL_LIBRARIES ${openssl_OpenSSL_SSL_LIBS_%(config)s}
-                                                      ${openssl_OpenSSL_SSL_DEPENDENCIES_%(config)s}
-                                                      ${openssl_OpenSSL_SSL_FRAMEWORKS_%(config)s}
-                                                      ${openssl_OpenSSL_SSL_SYSTEM_LIBS_%(config)s})
-                        endif()
-                        if(DEFINED OpenSSL_LIBRARIES)
-                            set(OPENSSL_LIBRARIES ${OpenSSL_LIBRARIES})
-                        endif()
-                        if(DEFINED OpenSSL_VERSION)
-                            set(OPENSSL_VERSION ${OpenSSL_VERSION})
-                        endif()
-                    """ % {"config": str(self.settings.build_type).upper()})
+            """
+            set(OPENSSL_FOUND TRUE)
+            if(DEFINED OpenSSL_INCLUDE_DIR)
+                set(OPENSSL_INCLUDE_DIR ${OpenSSL_INCLUDE_DIR})
+            endif()
+            if(DEFINED OpenSSL_Crypto_LIBS)
+                set(OPENSSL_CRYPTO_LIBRARY ${OpenSSL_Crypto_LIBS})
+                set(OPENSSL_CRYPTO_LIBRARIES ${OpenSSL_Crypto_LIBS}
+                                                ${OpenSSL_Crypto_DEPENDENCIES}
+                                                ${OpenSSL_Crypto_FRAMEWORKS}
+                                                ${OpenSSL_Crypto_SYSTEM_LIBS})
+            elseif(DEFINED openssl_OpenSSL_Crypto_LIBS_%(config)s)
+                set(OPENSSL_CRYPTO_LIBRARY ${openssl_OpenSSL_Crypto_LIBS_%(config)s})
+                set(OPENSSL_CRYPTO_LIBRARIES ${openssl_OpenSSL_Crypto_LIBS_%(config)s}
+                                                ${openssl_OpenSSL_Crypto_DEPENDENCIES_%(config)s}
+                                                ${openssl_OpenSSL_Crypto_FRAMEWORKS_%(config)s}
+                                                ${openssl_OpenSSL_Crypto_SYSTEM_LIBS_%(config)s})
+            endif()
+            if(DEFINED OpenSSL_SSL_LIBS)
+                set(OPENSSL_SSL_LIBRARY ${OpenSSL_SSL_LIBS})
+                set(OPENSSL_SSL_LIBRARIES ${OpenSSL_SSL_LIBS}
+                                            ${OpenSSL_SSL_DEPENDENCIES}
+                                            ${OpenSSL_SSL_FRAMEWORKS}
+                                            ${OpenSSL_SSL_SYSTEM_LIBS})
+            elseif(DEFINED openssl_OpenSSL_SSL_LIBS_%(config)s)
+                set(OPENSSL_SSL_LIBRARY ${openssl_OpenSSL_SSL_LIBS_%(config)s})
+                set(OPENSSL_SSL_LIBRARIES ${openssl_OpenSSL_SSL_LIBS_%(config)s}
+                                            ${openssl_OpenSSL_SSL_DEPENDENCIES_%(config)s}
+                                            ${openssl_OpenSSL_SSL_FRAMEWORKS_%(config)s}
+                                            ${openssl_OpenSSL_SSL_SYSTEM_LIBS_%(config)s})
+            endif()
+            if(DEFINED OpenSSL_LIBRARIES)
+                set(OPENSSL_LIBRARIES ${OpenSSL_LIBRARIES})
+            endif()
+            if(DEFINED OpenSSL_VERSION)
+                set(OPENSSL_VERSION ${OpenSSL_VERSION})
+            endif()
+            """ % {"config": str(self.settings.build_type).upper()})
         save(self, module_file, content)
 
     @property

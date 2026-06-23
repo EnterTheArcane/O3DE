@@ -1,13 +1,15 @@
-from thirdparty.errors import RecipeException
 from thirdparty._internal.model.version import Version
+from thirdparty.errors import RecipeException
 
 
 def disable_flag(recipe, flag):
     disable_flags = recipe.conf.get("tools.gnu:disable_flags", check_type=list)
     if disable_flags is None:
         return False
-    valid = ["arch", "arch_link", "libcxx", "build_type", "build_type_link", "threads",
-             "cppstd", "cstd"]
+    valid = [
+        "arch", "arch_link", "libcxx", "build_type", "build_type_link", "threads",
+        "cppstd", "cstd",
+    ]
     for v in disable_flags:
         if v not in valid:
             raise RecipeException(f"tools.gnu:disable_flags value '{v}', must be one of: {valid}")
@@ -35,8 +37,9 @@ def architecture_flag(recipe):
         return ""
 
     if compiler == "clang" and the_os == "Windows":
-        comp_exes = recipe.conf.get("tools.build:compiler_executables", check_type=dict,
-                                       default={})
+        comp_exes = recipe.conf.get(
+            "tools.build:compiler_executables", check_type=dict,
+            default={})
         clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
         if clangcl:
             return ""  # Do not add arch flags for clang-cl, can happen in cross-build runtime=None
@@ -61,19 +64,21 @@ def architecture_flag(recipe):
         elif arch in ['s390']:
             return '-m31'
         elif arch in ['tc131', 'tc16', 'tc161', 'tc162', 'tc18']:
-            return '-m{}'.format(arch)
+            return f'-m{arch}'
         elif the_os == 'AIX':
             if arch in ['ppc32']:
                 return '-maix32'
             elif arch in ['ppc64']:
                 return '-maix64'
     elif compiler == "mcst-lcc":
-        return {"e2k-v2": "-march=elbrus-v2",
-                "e2k-v3": "-march=elbrus-v3",
-                "e2k-v4": "-march=elbrus-v4",
-                "e2k-v5": "-march=elbrus-v5",
-                "e2k-v6": "-march=elbrus-v6",
-                "e2k-v7": "-march=elbrus-v7"}.get(arch, "")
+        return {
+            "e2k-v2": "-march=elbrus-v2",
+            "e2k-v3": "-march=elbrus-v3",
+            "e2k-v4": "-march=elbrus-v4",
+            "e2k-v5": "-march=elbrus-v5",
+            "e2k-v6": "-march=elbrus-v6",
+            "e2k-v7": "-march=elbrus-v7",
+        }.get(arch, "")
     elif compiler == "emcc":
         if arch == "wasm64":
             return "-sMEMORY64=1"
@@ -114,19 +119,21 @@ def libcxx_flags(recipe):
             lib = "-stdlib=libstdc++"
         # FIXME, something to do with the other values? Android c++_shared?
     elif compiler == "sun-cc":
-        lib = {"libCstd": "-library=Cstd",
-               "libstdcxx": "-library=stdcxx4",
-               "libstlport": "-library=stlport4",
-               "libstdc++": "-library=stdcpp"
-               }.get(libcxx)
+        lib = {
+            "libCstd": "-library=Cstd",
+            "libstdcxx": "-library=stdcxx4",
+            "libstlport": "-library=stlport4",
+            "libstdc++": "-library=stdcpp",
+        }.get(libcxx)
     elif compiler == "qcc":
         lib = f'-Y _{libcxx}'
 
     if compiler in ['clang', 'apple-clang', 'gcc', 'emcc']:
         if libcxx == "libstdc++":
             stdlib11 = "_GLIBCXX_USE_CXX11_ABI=0"
-        elif libcxx == "libstdc++11" and recipe.conf.get("tools.gnu:define_libcxx11_abi",
-                                                            check_type=bool):
+        elif libcxx == "libstdc++11" and recipe.conf.get(
+            "tools.gnu:define_libcxx11_abi",
+            check_type=bool):
             stdlib11 = "_GLIBCXX_USE_CXX11_ABI=1"
     return lib, stdlib11
 
@@ -165,8 +172,9 @@ def build_type_flags(recipe):
     if not compiler or not build_type:
         return []
 
-    comp_exes = recipe.conf.get("tools.build:compiler_executables", check_type=dict,
-                                   default={})
+    comp_exes = recipe.conf.get(
+        "tools.build:compiler_executables", check_type=dict,
+        default={})
     clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
 
     if compiler == "msvc" or clangcl:
@@ -174,17 +182,19 @@ def build_type_flags(recipe):
         # Modules/Platform/Windows-MSVC.cmake
         # FIXME: This condition seems legacy, as no more "clang" exists in Recipe toolsets
         if vs_toolset and "clang" in vs_toolset:
-            flags = {"Debug": ["-gline-tables-only", "-fno-inline", "-O0"],
-                     "Release": ["-O2"],
-                     "RelWithDebInfo": ["-gline-tables-only", "-O2", "-fno-inline"],
-                     "MinSizeRel": []
-                     }.get(build_type, ["-O2", "-Ob2"])
+            flags = {
+                "Debug": ["-gline-tables-only", "-fno-inline", "-O0"],
+                "Release": ["-O2"],
+                "RelWithDebInfo": ["-gline-tables-only", "-O2", "-fno-inline"],
+                "MinSizeRel": [],
+            }.get(build_type, ["-O2", "-Ob2"])
         else:
-            flags = {"Debug": ["-Zi", "-Ob0", "-Od"],
-                     "Release": ["-O2", "-Ob2"],
-                     "RelWithDebInfo": ["-Zi", "-O2", "-Ob1"],
-                     "MinSizeRel": ["-O1", "-Ob1"],
-                     }.get(build_type, [])
+            flags = {
+                "Debug": ["-Zi", "-Ob0", "-Od"],
+                "Release": ["-O2", "-Ob2"],
+                "RelWithDebInfo": ["-Zi", "-O2", "-Ob1"],
+                "MinSizeRel": ["-O1", "-Ob1"],
+            }.get(build_type, [])
         return flags
     else:
         # https://github.com/Kitware/CMake/blob/f3bbb37b253a1f4a26809d6f132b3996aa2e16fc/
@@ -192,20 +202,22 @@ def build_type_flags(recipe):
         # clang include the gnu (overriding some things, but not build type) and apple clang
         # overrides clang but it doesn't touch clang either
         if compiler in ["clang", "gcc", "apple-clang", "qcc", "mcst-lcc"]:
-            flags = {"Debug": ["-g"],
-                     "Release": ["-O3"],
-                     "RelWithDebInfo": ["-O2", "-g"],
-                     "MinSizeRel": ["-Os"],
-                     }.get(build_type, [])
+            flags = {
+                "Debug": ["-g"],
+                "Release": ["-O3"],
+                "RelWithDebInfo": ["-O2", "-g"],
+                "MinSizeRel": ["-Os"],
+            }.get(build_type, [])
             return flags
         elif compiler == "sun-cc":
             # https://github.com/Kitware/CMake/blob/f3bbb37b253a1f4a26809d6f132b3996aa2e16fc/
             # Modules/Compiler/SunPro-CXX.cmake
-            flags = {"Debug": ["-g"],
-                     "Release": ["-xO3"],
-                     "RelWithDebInfo": ["-xO2", "-g"],
-                     "MinSizeRel": ["-xO2", "-xspace"],
-                     }.get(build_type, [])
+            flags = {
+                "Debug": ["-g"],
+                "Release": ["-xO3"],
+                "RelWithDebInfo": ["-xO2", "-g"],
+                "MinSizeRel": ["-xO2", "-xspace"],
+            }.get(build_type, [])
             return flags
     return []
 
@@ -229,8 +241,8 @@ def threads_flags(recipe):
 def llvm_clang_front(recipe):
     # Only Windows clang with MSVC backend (LLVM/Clang, not MSYS2 clang)
     if (recipe.settings.get_safe("os") != "Windows" or
-            recipe.settings.get_safe("compiler") != "clang" or
-            not recipe.settings.get_safe("compiler.runtime")):
+        recipe.settings.get_safe("compiler") != "clang" or
+        not recipe.settings.get_safe("compiler.runtime")):
         return
     compilers = recipe.conf.get("tools.build:compiler_executables", default={})
     if "clang-cl" in compilers.get("c", "") or "clang-cl" in compilers.get("cpp", ""):
@@ -262,11 +274,13 @@ def cppstd_flag(recipe) -> str:
     if disable_flag(recipe, "cppstd"):
         return ""
 
-    func = {"gcc": _cppstd_gcc,
-            "clang": _cppstd_clang,
-            "apple-clang": _cppstd_apple_clang,
-            "msvc": _cppstd_msvc,
-            "mcst-lcc": _cppstd_mcst_lcc}.get(compiler)
+    func = {
+        "gcc": _cppstd_gcc,
+        "clang": _cppstd_clang,
+        "apple-clang": _cppstd_apple_clang,
+        "msvc": _cppstd_msvc,
+        "mcst-lcc": _cppstd_mcst_lcc,
+    }.get(compiler)
     flag = None
     if func:
         flag = func(Version(compiler_version), str(cppstd))
@@ -349,13 +363,15 @@ def _cppstd_apple_clang(clang_version, cppstd):
         v23 = "c++2b"
         vgnu23 = "gnu++2b"
 
-    flag = {"98": v98, "gnu98": vgnu98,
-            "11": v11, "gnu11": vgnu11,
-            "14": v14, "gnu14": vgnu14,
-            "17": v17, "gnu17": vgnu17,
-            "20": v20, "gnu20": vgnu20,
-            "23": v23, "gnu23": vgnu23,
-            "26": v26, "gnu26": vgnu26}.get(cppstd)
+    flag = {
+        "98": v98, "gnu98": vgnu98,
+        "11": v11, "gnu11": vgnu11,
+        "14": v14, "gnu14": vgnu14,
+        "17": v17, "gnu17": vgnu17,
+        "20": v20, "gnu20": vgnu20,
+        "23": v23, "gnu23": vgnu23,
+        "26": v26, "gnu26": vgnu26,
+    }.get(cppstd)
 
     return f'-std={flag}' if flag else None
 
@@ -413,13 +429,15 @@ def _cppstd_clang(clang_version, cppstd):
         v26 = "c++26"
         vgnu26 = "gnu++26"
 
-    flag = {"98": v98, "gnu98": vgnu98,
-            "11": v11, "gnu11": vgnu11,
-            "14": v14, "gnu14": vgnu14,
-            "17": v17, "gnu17": vgnu17,
-            "20": v20, "gnu20": vgnu20,
-            "23": v23, "gnu23": vgnu23,
-            "26": v26, "gnu26": vgnu26}.get(cppstd)
+    flag = {
+        "98": v98, "gnu98": vgnu98,
+        "11": v11, "gnu11": vgnu11,
+        "14": v14, "gnu14": vgnu14,
+        "17": v17, "gnu17": vgnu17,
+        "20": v20, "gnu20": vgnu20,
+        "23": v23, "gnu23": vgnu23,
+        "26": v26, "gnu26": vgnu26,
+    }.get(cppstd)
     return f'-std={flag}' if flag else None
 
 
@@ -470,13 +488,15 @@ def _cppstd_gcc(gcc_version, cppstd):
         v26 = "c++26"
         vgnu26 = "gnu++26"
 
-    flag = {"98": v98, "gnu98": vgnu98,
-            "11": v11, "gnu11": vgnu11,
-            "14": v14, "gnu14": vgnu14,
-            "17": v17, "gnu17": vgnu17,
-            "20": v20, "gnu20": vgnu20,
-            "23": v23, "gnu23": vgnu23,
-            "26": v26, "gnu26": vgnu26}.get(cppstd)
+    flag = {
+        "98": v98, "gnu98": vgnu98,
+        "11": v11, "gnu11": vgnu11,
+        "14": v14, "gnu14": vgnu14,
+        "17": v17, "gnu17": vgnu17,
+        "20": v20, "gnu20": vgnu20,
+        "23": v23, "gnu23": vgnu23,
+        "26": v26, "gnu26": vgnu26,
+    }.get(cppstd)
     return f'-std={flag}' if flag else None
 
 
@@ -498,12 +518,14 @@ def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
         vgnu20 = "gnu++2a"
 
     # FIXME: What is this "03"?? that is not a valid cppstd in the settings.yml
-    flag = {"98": "c++98", "gnu98": "gnu++98",
-            "03": "c++03", "gnu03": "gnu++03",
-            "11": v11, "gnu11": vgnu11,
-            "14": v14, "gnu14": vgnu14,
-            "17": v17, "gnu17": vgnu17,
-            "20": v20, "gnu20": vgnu20}.get(cppstd)
+    flag = {
+        "98": "c++98", "gnu98": "gnu++98",
+        "03": "c++03", "gnu03": "gnu++03",
+        "11": v11, "gnu11": vgnu11,
+        "14": v14, "gnu14": vgnu14,
+        "17": v17, "gnu17": vgnu17,
+        "20": v20, "gnu20": vgnu20,
+    }.get(cppstd)
     return f'-std={flag}' if flag else None
 
 
@@ -531,10 +553,12 @@ def cstd_flag(recipe) -> str:
     if disable_flag(recipe, "cstd"):
         return ""
 
-    func = {"gcc": _cstd_gcc,
-            "clang": _cstd_clang,
-            "apple-clang": _cstd_apple_clang,
-            "msvc": _cstd_msvc}.get(compiler)
+    func = {
+        "gcc": _cstd_gcc,
+        "clang": _cstd_clang,
+        "apple-clang": _cstd_apple_clang,
+        "msvc": _cstd_msvc,
+    }.get(compiler)
     flag = None
     if func:
         flag = func(Version(compiler_version), str(cstd))
@@ -543,28 +567,34 @@ def cstd_flag(recipe) -> str:
 
 def _cstd_gcc(gcc_version, cstd):
     # TODO: Verify flags per version
-    flag = {"99": "c99",
-            "11": "c11",
-            "17": "c17",
-            "23": "c23"}.get(cstd, cstd)
+    flag = {
+        "99": "c99",
+        "11": "c11",
+        "17": "c17",
+        "23": "c23",
+    }.get(cstd, cstd)
     return f'-std={flag}' if flag else None
 
 
 def _cstd_clang(gcc_version, cstd):
     # TODO: Verify flags per version
-    flag = {"99": "c99",
-            "11": "c11",
-            "17": "c17",
-            "23": "c23"}.get(cstd, cstd)
+    flag = {
+        "99": "c99",
+        "11": "c11",
+        "17": "c17",
+        "23": "c23",
+    }.get(cstd, cstd)
     return f'-std={flag}' if flag else None
 
 
 def _cstd_apple_clang(gcc_version, cstd):
     # TODO: Verify flags per version
-    flag = {"99": "c99",
-            "11": "c11",
-            "17": "c17",
-            "23": "c23"}.get(cstd, cstd)
+    flag = {
+        "99": "c99",
+        "11": "c11",
+        "17": "c17",
+        "23": "c23",
+    }.get(cstd, cstd)
     return f'-std={flag}' if flag else None
 
 

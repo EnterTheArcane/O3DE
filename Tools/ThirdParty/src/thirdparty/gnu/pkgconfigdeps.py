@@ -5,14 +5,14 @@ from pathlib import Path
 
 from jinja2 import Template, StrictUndefined
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
+from thirdparty.errors import RecipeException
 
 
 class _PCFilesDeps:
-
-    template = textwrap.dedent("""\
+    template = textwrap.dedent(
+        """
         {% for k, v in pc_variables.items() %}
         {{ "{}={}".format(k, v) }}
         {% endfor %}
@@ -29,14 +29,15 @@ class _PCFilesDeps:
         {% if requires|length %}
         Requires: {{ requires|join(' ') }}
         {% endif %}
-    """)
+        """)
 
-    alias_template = textwrap.dedent("""\
+    alias_template = textwrap.dedent(
+        """
         Name: {{name}}
         Description: Alias {{name}} for {{aliased}}
         Version: {{version}}
         Requires: {{aliased}}
-    """)
+        """)
 
     def __init__(self, pkgconfigdeps, dep, suffix=""):
         self._recipe = pkgconfigdeps._recipe  # noqa
@@ -58,11 +59,13 @@ class _PCFilesDeps:
             if (dep.ref.name == comp_ref_name or
                 # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
                 # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
-                    (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
+                (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_aliases()
-            raise RecipeException("Component '{name}::{cname}' not found in '{name}' "
-                                 "package requirement".format(name=dep.ref.name,
-                                                              cname=comp_ref_name))
+            raise RecipeException(
+                "Component '{name}::{cname}' not found in '{name}' "
+                "package requirement".format(
+                    name=dep.ref.name,
+                    cname=comp_ref_name))
         comp_aliases = self._get_property("pkg_config_aliases", dep, comp_ref_name, check_type=list)
         return comp_aliases or []
 
@@ -78,11 +81,13 @@ class _PCFilesDeps:
             if (dep.ref.name == comp_ref_name or
                 # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
                 # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
-                    (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
+                (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_name()
-            raise RecipeException("Component '{name}::{cname}' not found in '{name}' "
-                                 "package requirement".format(name=dep.ref.name,
-                                                              cname=comp_ref_name))
+            raise RecipeException(
+                "Component '{name}::{cname}' not found in '{name}' "
+                "package requirement".format(
+                    name=dep.ref.name,
+                    cname=comp_ref_name))
         comp_name = self._get_property("pkg_config_name", dep, comp_ref_name)
         if comp_name:
             return f"{comp_name}{self._suffix}"
@@ -110,6 +115,7 @@ class _PCFilesDeps:
         users (through ``pkg_config_custom_content``). This last ones will override the
         Recipe defined variables.
         """
+
         def apply_custom_content():
             if isinstance(custom_content, dict):
                 pc_variables.update(custom_content)
@@ -244,19 +250,22 @@ class _PCFilesDeps:
                 "version": version,
                 "requires": comp_requires,
                 "pc_variables": pc_variables,
-                "cflags": self._get_cflags([d for d in pc_variables if d.startswith("includedir")],
-                                           comp_cpp_info),
-                "libflags": self._get_lib_flags([d for d in pc_variables if d.startswith("libdir")],
-                                                comp_cpp_info)
+                "cflags": self._get_cflags(
+                    [d for d in pc_variables if d.startswith("includedir")],
+                    comp_cpp_info),
+                "libflags": self._get_lib_flags(
+                    [d for d in pc_variables if d.startswith("libdir")],
+                    comp_cpp_info),
             }
             pc_files[comp_name] = self._get_pc_content(pc_context)
             # Aliases
             for alias in self._get_aliases(self._dep, pkg_name, comp_ref_name):
-                pc_alias_files[alias] = self._get_alias_pc_content({
-                    "name": alias,
-                    "version": version,
-                    "aliased": comp_name
-                })
+                pc_alias_files[alias] = self._get_alias_pc_content(
+                    {
+                        "name": alias,
+                        "version": version,
+                        "aliased": comp_name,
+                    })
         # Second, let's load the root package's PC file ONLY
         # if it does not already exist in components one
         # Issue related: upstream issue 10341
@@ -281,31 +290,36 @@ class _PCFilesDeps:
                 "version": version,
                 "requires": requires,
                 "pc_variables": pc_variables,
-                "cflags": self._get_cflags([d for d in pc_variables if d.startswith("includedir")],
-                                           cpp_info),
-                "libflags": self._get_lib_flags([d for d in pc_variables if d.startswith("libdir")],
-                                                cpp_info)
+                "cflags": self._get_cflags(
+                    [d for d in pc_variables if d.startswith("includedir")],
+                    cpp_info),
+                "libflags": self._get_lib_flags(
+                    [d for d in pc_variables if d.startswith("libdir")],
+                    cpp_info),
             }
             pc_files[pkg_name] = self._get_pc_content(pc_context)
             # Aliases
             for alias in self._get_aliases(self._dep):
-                pc_alias_files[alias] = self._get_alias_pc_content({
-                    "name": alias,
-                    "version": version,
-                    "aliased": pkg_name
-                })
+                pc_alias_files[alias] = self._get_alias_pc_content(
+                    {
+                        "name": alias,
+                        "version": version,
+                        "aliased": pkg_name,
+                    })
         # Adding the aliases
         pc_files.update(pc_alias_files)
         return pc_files.items()
 
     def _get_pc_content(self, context):
-        template = Template(self.template, trim_blocks=True, lstrip_blocks=True,
-                            undefined=StrictUndefined)
+        template = Template(
+            self.template, trim_blocks=True, lstrip_blocks=True,
+            undefined=StrictUndefined)
         return template.render(context)
 
     def _get_alias_pc_content(self, context):
-        template = Template(self.alias_template, trim_blocks=True, lstrip_blocks=True,
-                            undefined=StrictUndefined, keep_trailing_newline=True)
+        template = Template(
+            self.alias_template, trim_blocks=True, lstrip_blocks=True,
+            undefined=StrictUndefined, keep_trailing_newline=True)
         return template.render(context)
 
 
@@ -371,6 +385,7 @@ class PkgConfigDeps:
         """
         Save all the `*.pc` files
         """
+
         def _pc_file_name(name_, is_build_context=False, has_suffix=False):
             # If no suffix is defined, we can save the *.pc file in the build_context_folder
             build = is_build_context and self.build_context_folder and not has_suffix
@@ -382,8 +397,9 @@ class PkgConfigDeps:
             suffix = self.build_context_suffix.get(require.ref.name, "") if require.build else ""
             # Save all the *.pc files and their contents
             for name, content in _PCFilesDeps(self, dep, suffix=suffix).items():
-                pc_name = _pc_file_name(name, is_build_context=require.build,
-                                        has_suffix=bool(suffix))
+                pc_name = _pc_file_name(
+                    name, is_build_context=require.build,
+                    has_suffix=bool(suffix))
                 save(pc_name, content)
 
     def set_property(self, dep, prop, value):

@@ -119,16 +119,16 @@ class Recipe(RecipeBase):
         replace_in_file(self, freetype_config, r"-lfreetype", libs)
         replace_in_file(
             self, freetype_config, r"export LC_ALL", textwrap.dedent(
-                """\
-                            export LC_ALL
-                            BINDIR=$(dirname $0)
-                            recipe_prefix=$(dirname $BINDIR)
-                            recipe_exec_prefix=${{recipe_prefix}}/bin
-                            recipe_includedir=${{recipe_prefix}}/include
-                            recipe_libdir=${{recipe_prefix}}/lib
-                            recipe_ftversion={version}
-                            recipe_staticlibs="{staticlibs}"
-                        """).format(version=version, staticlibs=staticlibs))
+                """
+                export LC_ALL
+                BINDIR=$(dirname $0)
+                recipe_prefix=$(dirname $BINDIR)
+                recipe_exec_prefix=${{recipe_prefix}}/bin
+                recipe_includedir=${{recipe_prefix}}/include
+                recipe_libdir=${{recipe_prefix}}/lib
+                recipe_ftversion={version}
+                recipe_staticlibs="{staticlibs}"
+                """).format(version=version, staticlibs=staticlibs))
 
     def _extract_libtool_version(self):
         conf_raw = load(self, os.path.join(self.folders.source, "builds", "unix", "configure.raw"))
@@ -164,7 +164,7 @@ class Recipe(RecipeBase):
 
     def _create_cmake_module_variables(self, module_file):
         content = textwrap.dedent(
-            f"""\
+            f"""
             set(FREETYPE_FOUND TRUE)
             if(DEFINED Freetype_INCLUDE_DIRS)
                 set(FREETYPE_INCLUDE_DIRS ${{Freetype_INCLUDE_DIRS}})
@@ -173,19 +173,19 @@ class Recipe(RecipeBase):
                 set(FREETYPE_LIBRARIES ${{Freetype_LIBRARIES}})
             endif()
             set(FREETYPE_VERSION_STRING "{self.version}")
-        """)
+            """)
         save(self, module_file, content)
 
     def _create_cmake_module_alias_targets(self, module_file, targets):
         content = ""
         for alias, aliased in targets.items():
             content += textwrap.dedent(
-                """\
-                                if(TARGET {aliased} AND NOT TARGET {alias})
-                                    add_library({alias} INTERFACE IMPORTED)
-                                    set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
-                                endif()
-                            """.format(alias=alias, aliased=aliased))
+                """
+                if(TARGET {aliased} AND NOT TARGET {alias})
+                    add_library({alias} INTERFACE IMPORTED)
+                    set_property(TARGET {alias} PROPERTY INTERFACE_LINK_LIBRARIES {aliased})
+                endif()
+                """.format(alias=alias, aliased=aliased))
         save(self, module_file, content)
 
     @property

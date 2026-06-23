@@ -1,22 +1,23 @@
 import os
 import textwrap
-from shlex import quote
 from collections import OrderedDict
 from contextlib import contextmanager
+from shlex import quote
 
+from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
-from thirdparty.errors import RecipeException
-from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.util.files import save
+from thirdparty.errors import RecipeException
 
 
 class _EnvVarPlaceHolder:
     pass
 
 
-def environment_wrap_command(recipe, env_filenames, env_folder, cmd, subsystem=None,
-                             accepted_extensions=None):
+def environment_wrap_command(
+    recipe, env_filenames, env_folder, cmd, subsystem=None,
+    accepted_extensions=None):
     if not env_filenames:
         return cmd
     filenames = [env_filenames] if not isinstance(env_filenames, list) else env_filenames
@@ -37,9 +38,9 @@ def environment_wrap_command(recipe, env_filenames, env_folder, cmd, subsystem=N
             if os.path.isfile(f):
                 ps1s.append(f)
         else:  # Simple name like "runenvenv"
-            path_bat = "{}.bat".format(f)
-            path_sh = "{}.sh".format(f)
-            path_ps1 = "{}.ps1".format(f)
+            path_bat = f"{f}.bat"
+            path_sh = f"{f}.sh"
+            path_ps1 = f"{f}.ps1"
             if os.path.isfile(path_bat) and "bat" in accept:
                 bats.append(path_bat)
             if os.path.isfile(path_ps1) and "ps1" in accept:
@@ -49,26 +50,26 @@ def environment_wrap_command(recipe, env_filenames, env_folder, cmd, subsystem=N
                 shs.append(path_sh)
 
     if bool(bats + ps1s) + bool(shs) > 1:
-        raise RecipeException("Cannot wrap command with different envs,"
-                             "{} - {}".format(bats+ps1s, shs))
+        raise RecipeException(
+            f"Cannot wrap command with different envs,{bats + ps1s} - {shs}")
 
     powershell = recipe.conf.get("tools.env.virtualenv:powershell", default="powershell.exe")
 
     if bats:
-        launchers = " && ".join('"{}"'.format(b) for b in bats)
+        launchers = " && ".join(f'"{b}"' for b in bats)
         if ps1s:
-            ps1_launchers = f'{powershell} -Command "' + " ; ".join('&\'{}\''.format(f) for f in ps1s) + '"'
+            ps1_launchers = f'{powershell} -Command "' + " ; ".join(f"&'{f}'" for f in ps1s) + '"'
             cmd = cmd.replace('"', r'\"')
-            return '{} && {} ; cmd /c "{}"'.format(launchers, ps1_launchers, cmd)
+            return f'{launchers} && {ps1_launchers} ; cmd /c "{cmd}"'
         else:
-            return '{} && {}'.format(launchers, cmd)
+            return f'{launchers} && {cmd}'
     elif shs:
-        launchers = " && ".join('. "{}"'.format(f) for f in shs)
-        return '{} && {}'.format(launchers, cmd)
+        launchers = " && ".join(f'. "{f}"' for f in shs)
+        return f'{launchers} && {cmd}'
     elif ps1s:
-        ps1_launchers = f'{powershell} -Command "' + " ; ".join('&\'{}\''.format(f) for f in ps1s) + '"'
+        ps1_launchers = f'{powershell} -Command "' + " ; ".join(f"&'{f}'" for f in ps1s) + '"'
         cmd = cmd.replace('"', r'\"')
-        return '{} ; cmd /c "{}"'.format(ps1_launchers, cmd)
+        return f'{ps1_launchers} ; cmd /c "{cmd}"'
     else:
         return cmd
 
@@ -88,17 +89,17 @@ class _EnvValue:
         path = "(path)" if self._path else ""
         sep = f"(sep={self._sep})" if self._sep != " " and not self._path else ""
         if not self._values:  # Empty means unset
-            result.append("{}=!".format(self._name))
+            result.append(f"{self._name}=!")
         elif _EnvVarPlaceHolder in self._values:
             index = self._values.index(_EnvVarPlaceHolder)
             for v in reversed(self._values[:index]):  # Reverse to prepend
-                result.append("{}=+{}{}{}".format(self._name, path, sep, v))
-            for v in self._values[index+1:]:
-                result.append("{}+={}{}{}".format(self._name, path, sep, v))
+                result.append(f"{self._name}=+{path}{sep}{v}")
+            for v in self._values[index + 1:]:
+                result.append(f"{self._name}+={path}{sep}{v}")
         else:
             append = ""
             for v in self._values:
-                result.append("{}{}={}{}{}".format(self._name, append, path, sep, v))
+                result.append(f"{self._name}{append}={path}{sep}{v}")
                 append = "+"
         return "\n".join(result)
 
@@ -343,6 +344,7 @@ class EnvVars:
     Represents an instance of environment variables for a given system. It is obtained from the generic Environment class.
 
     """
+
     def __init__(self, recipe, values, scope):
         self._values = values  # {var_name: _EnvValue}, just a reference to the Environment
         self._recipe = recipe
@@ -411,18 +413,19 @@ class EnvVars:
         result = []
         for varname, varvalues in self._values.items():
             value = varvalues.get_value(subsystem=self._subsystem, pathsep=self._pathsep)
-            result.append('{}="{}"'.format(varname, value))
+            result.append(f'{varname}="{value}"')
         content = "\n".join(result)
         save(file_location, content)
 
     def save_bat(self, file_location, generate_deactivate=True):
         _, filename = os.path.split(file_location)
-        deactivate_file = "deactivate_{}".format(filename)
+        deactivate_file = f"deactivate_{filename}"
         is_function = self._deactivation_mode == "function"
         deactivates_variable = f"_RECIPE_{self._scope}_DEACTIVATES_DIR"
         dest_variable = f"%{deactivates_variable}%" if is_function else "%~dp0"
 
-        function_preamble = textwrap.dedent(f"""
+        function_preamble = textwrap.dedent(
+            f"""
             set "local_defined=0"
             if defined {deactivates_variable} goto skip_deactivate_variable
 
@@ -432,18 +435,20 @@ class EnvVars:
             set "PATH=%{deactivates_variable}%;%PATH%"
 
             :skip_deactivate_variable
-        """) if is_function else ""
+            """) if is_function else ""
 
-        function_epilogue = textwrap.dedent(f"""
+        function_epilogue = textwrap.dedent(
+            f"""
             if %local_defined% == 0 goto end
             echo set "PATH=%%PATH:%{deactivates_variable}%;=%%" >> "{dest_variable}/{deactivate_file}"
             echo set "{deactivates_variable}=">> "{dest_variable}/{deactivate_file}"
             :end
-        """) if is_function else ""
+            """) if is_function else ""
 
         variables = " ".join(self._values.keys())
 
-        deactivate = textwrap.dedent(f"""\
+        deactivate = textwrap.dedent(
+            f"""
             @echo off
             {function_preamble}
 
@@ -466,7 +471,8 @@ class EnvVars:
 
             {function_epilogue}
             """)
-        capture = textwrap.dedent("""\
+        capture = textwrap.dedent(
+            """
             @echo off
             chcp 65001 > nul
             {deactivate}
@@ -474,12 +480,15 @@ class EnvVars:
         result = [capture]
         abs_base_path, new_path = _relativize_paths(self._recipe, "%~dp0")
         for varname, varvalues in self._values.items():
-            value = varvalues.get_str("%{name}%", subsystem=self._subsystem, pathsep=self._pathsep,
-                                      root_path=abs_base_path, script_path=new_path)
-            no_value = varvalues.get_str("", subsystem=self._subsystem, pathsep=self._pathsep,
-                                         root_path=abs_base_path, script_path=new_path)
+            value = varvalues.get_str(
+                "%{name}%", subsystem=self._subsystem, pathsep=self._pathsep,
+                root_path=abs_base_path, script_path=new_path)
+            no_value = varvalues.get_str(
+                "", subsystem=self._subsystem, pathsep=self._pathsep,
+                root_path=abs_base_path, script_path=new_path)
             if value != no_value:
-                set_value = textwrap.dedent(f"""\
+                set_value = textwrap.dedent(
+                    f"""
                     if defined {varname} (
                         set "{varname}={value}"
                     ) else (
@@ -503,10 +512,12 @@ class EnvVars:
             result.append(_ps1_deactivate_contents(self._deactivation_mode, self._values, filename))
         abs_base_path, new_path = _relativize_paths(self._recipe, "$PSScriptRoot")
         for varname, varvalues in self._values.items():
-            value = varvalues.get_str("$env:{name}", subsystem=self._subsystem, pathsep=self._pathsep,
-                                      root_path=abs_base_path, script_path=new_path)
-            no_value = varvalues.get_str("", subsystem=self._subsystem, pathsep=self._pathsep,
-                                         root_path=abs_base_path, script_path=new_path)
+            value = varvalues.get_str(
+                "$env:{name}", subsystem=self._subsystem, pathsep=self._pathsep,
+                root_path=abs_base_path, script_path=new_path)
+            no_value = varvalues.get_str(
+                "", subsystem=self._subsystem, pathsep=self._pathsep,
+                root_path=abs_base_path, script_path=new_path)
             if generate_deactivate and self._deactivation_mode == "function":
                 # Check environment variable existence before saving value
                 result.append(
@@ -517,18 +528,19 @@ class EnvVars:
                 no_value = no_value.replace('"', '`"')  # escape quotes
 
                 if value != no_value:
-                    set_value = textwrap.dedent(f"""\
-                       if ($env:{varname}) {{
-                           $env:{varname}="{value}"
-                       }} else {{
-                           $env:{varname}="{no_value}"
-                       }}
-                       """)
+                    set_value = textwrap.dedent(
+                        f"""
+                        if ($env:{varname}) {{
+                            $env:{varname}="{value}"
+                        }} else {{
+                            $env:{varname}="{no_value}"
+                        }}
+                        """)
                 else:
                     set_value = f'$env:{varname}="{value}"'
                 result.append(set_value)
             else:
-                result.append('if (Test-Path env:{0}) {{ Remove-Item env:{0} }}'.format(varname))
+                result.append(f'if (Test-Path env:{varname}) {{ Remove-Item env:{varname} }}')
 
         content = "\n".join(result)
         # It is very important to save it correctly with utf-16, the Recipe util save() is broken
@@ -544,8 +556,9 @@ class EnvVars:
             result.append(_sh_deactivate_contents(self._deactivation_mode, self._values, filename))
         abs_base_path, new_path = _relativize_paths(self._recipe, "$script_folder")
         for varname, varvalues in self._values.items():
-            value = varvalues.get_str("${name}", self._subsystem, pathsep=self._pathsep,
-                                      root_path=abs_base_path, script_path=new_path)
+            value = varvalues.get_str(
+                "${name}", self._subsystem, pathsep=self._pathsep,
+                root_path=abs_base_path, script_path=new_path)
             placeholder = f"${varname}"
             sep = self._pathsep if varvalues._path else varvalues._sep  # noqa
             if value.endswith(sep + placeholder):
@@ -606,10 +619,11 @@ class EnvVars:
             arch = self._recipe.settings.get_safe("arch")
             name = name.replace(bt.lower(), bt) if bt else name
             name = name.replace(arch.lower(), arch) if arch else name
-            Output().warning(f"Creating dotenv file: {name}.env\n"
-                                  "Files generated with absolute paths, not interpolated.\n"
-                                  "When https://github.com/microsoft/vscode-cpptools/issues/13781 "
-                                  "solved, it will get interpolation", warn_tag="experimental")
+            Output().warning(
+                f"Creating dotenv file: {name}.env\n"
+                "Files generated with absolute paths, not interpolated.\n"
+                "When https://github.com/microsoft/vscode-cpptools/issues/13781 "
+                "solved, it will get interpolation", warn_tag="experimental")
             self.save_dotenv(f"{name}.env")
 
         if self._scope:
@@ -629,7 +643,8 @@ def _ps1_deactivate_contents(deactivation_mode, values, filename):
     if deactivation_mode == "function":
         var_prefix = _old_env_prefix(filename)
         func_name = _deactivate_func_name(filename)
-        return textwrap.dedent(f"""\
+        return textwrap.dedent(
+            f"""
             function global:deactivate_{func_name} {{
                 Write-Host "Restoring environment"
                 foreach ($v in @({vars_list})) {{
@@ -644,10 +659,11 @@ def _ps1_deactivate_contents(deactivation_mode, values, filename):
                 }}
                 Remove-Item -Path function:deactivate_{func_name} -ErrorAction SilentlyContinue
             }}
-        """)
+            """)
 
-    deactivate_file = "deactivate_{}".format(filename)
-    return textwrap.dedent(f"""\
+    deactivate_file = f"deactivate_{filename}"
+    return textwrap.dedent(
+        f"""
         Push-Location $PSScriptRoot
         "echo `"Restoring environment`"" | Out-File -FilePath "{deactivate_file}"
         $vars = (Get-ChildItem env:*).name
@@ -666,14 +682,15 @@ def _ps1_deactivate_contents(deactivation_mode, values, filename):
             }}
         }}
         Pop-Location
-    """)
+        """)
 
 
 def _sh_deactivate_contents(deactivation_mode, values, filename):
     vars_list = " ".join(quote(v) for v in values.keys())
     if deactivation_mode == "function":
         func_name = _deactivate_func_name(filename)
-        return textwrap.dedent(f"""\
+        return textwrap.dedent(
+            f"""
             # sh-like function to restore environment
             deactivate_{func_name} () {{
                 echo "Restoring environment"
@@ -691,9 +708,10 @@ def _sh_deactivate_contents(deactivation_mode, values, filename):
                 done
                 unset -f deactivate_{func_name}
             }}
-        """)
-    deactivate_file = os.path.join("$script_folder", "deactivate_{}".format(filename))
-    return textwrap.dedent(f"""\
+            """)
+    deactivate_file = os.path.join("$script_folder", f"deactivate_{filename}")
+    return textwrap.dedent(
+        f"""
         echo "echo Restoring environment" > "{deactivate_file}"
         for v in {vars_list}
         do
@@ -706,7 +724,7 @@ def _sh_deactivate_contents(deactivation_mode, values, filename):
                echo unset $v >> "{deactivate_file}"
            fi
         done
-    """)
+        """)
 
 
 class ProfileEnvironment:
@@ -749,8 +767,10 @@ class ProfileEnvironment:
             if pattern is None:
                 result.append(env.dumps())
             else:
-                result.append("\n".join("{}:{}".format(pattern, line) if line else ""
-                                        for line in env.dumps().splitlines()))
+                result.append(
+                    "\n".join(
+                        f"{pattern}:{line}" if line else ""
+                        for line in env.dumps().splitlines()))
         if result:
             result.append("")
         return "\n".join(result)
@@ -762,8 +782,10 @@ class ProfileEnvironment:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            for op, method in (("+=", "append"), ("=+", "prepend"),
-                               ("=!", "unset"), ("=", "define")):
+            for op, method in (
+                    ("+=", "append"), ("=+", "prepend"),
+                    ("=!", "unset"), ("=", "define"),
+            ):
                 tokens = line.split(op, 1)
                 if len(tokens) != 2:
                     continue
@@ -804,7 +826,7 @@ class ProfileEnvironment:
                     result._environments[pattern] = env.compose_env(existing)
                 break
             else:
-                raise RecipeException("Bad env definition: {}".format(line))
+                raise RecipeException(f"Bad env definition: {line}")
         return result
 
 
@@ -842,13 +864,12 @@ def register_env_script(recipe, env_script_path, scope="build"):
 
 
 def generate_aggregated_env(recipe):
-
     def deactivates(filenames):
         # FIXME: Probably the order needs to be reversed
         result = []
         for s in reversed(filenames):
             folder, f = os.path.split(s)
-            result.append(os.path.join(folder, "deactivate_{}".format(f)))
+            result.append(os.path.join(folder, f"deactivate_{f}"))
         return result
 
     def deactivate_function_names(filenames):
@@ -867,28 +888,30 @@ def generate_aggregated_env(recipe):
             # Only the .bat and .ps1 are made relative to current script
             if env_script.endswith(".bat"):
                 path = os.path.relpath(path, recipe.folders.generators)
-                bats.append("%~dp0/"+path)
+                bats.append("%~dp0/" + path)
             elif env_script.endswith(".sh"):
                 shs.append(subsystem_path(subsystem, path))
             elif env_script.endswith(".ps1"):
                 path = os.path.relpath(path, recipe.folders.generators)
                 # This $PSScriptRoot uses the current script directory
-                ps1s.append("$PSScriptRoot/"+path)
+                ps1s.append("$PSScriptRoot/" + path)
         if shs:
             def sh_content(files):
-                content = ". " + " && . ".join('"{}"'.format(s) for s in files)
+                content = ". " + " && . ".join(f'"{s}"' for s in files)
                 if deactivation_mode == "function":
                     content += f"\n\ndeactivate_env_{group}() {{\n"
                     for deactivate_name in deactivate_function_names(shs):
                         content += f"    deactivate_{deactivate_name}\n"
                     content += f"    unset -f deactivate_env_{group}\n}}\n"
                 return content
-            filename = "env_{}.sh".format(group)
+
+            filename = f"env_{group}.sh"
             generated.append(filename)
             save(os.path.join(recipe.folders.generators, filename), sh_content(shs))
             if not deactivation_mode:
-                save(os.path.join(recipe.folders.generators, "deactivate_{}".format(filename)),
-                     sh_content(deactivates(shs)))
+                save(
+                    os.path.join(recipe.folders.generators, f"deactivate_{filename}"),
+                    sh_content(deactivates(shs)))
         if bats:
             filename = f"env_{group}.bat"
             deactivate_filename = f"deactivate_{filename}"
@@ -901,7 +924,7 @@ def generate_aggregated_env(recipe):
                     deactivates_var = f"_RECIPE_{group}_DEACTIVATES_DIR"
                     content += [
                         f'set "{deactivates_var}=%TEMP%\\recipe_{group}_%RANDOM%"',
-                        f'mkdir "%{deactivates_var}%"'
+                        f'mkdir "%{deactivates_var}%"',
                     ]
                     # TODO: Find a better way to get rid of vcvars deactivation
                     f = [f for f in files if f != f"%~dp0/{RECIPE_VCVARS}.bat"]
@@ -914,10 +937,14 @@ def generate_aggregated_env(recipe):
                                 for b in deactivate_filenames]
                     # See https://ss64.com/nt/syntax-replace.html for the syntax below to remove
                     # the deactivation path from PATH when the deactivation script is called
-                    content += [f'echo set "PATH=%%PATH:%{deactivates_var}%;=%%" >> '
-                                f'"%{deactivates_var}%\\{deactivate_filename}"']
-                    content += [f'echo set "{deactivates_var}=" >> '
-                                f'"%{deactivates_var}%\\{deactivate_filename}"']
+                    content += [
+                        f'echo set "PATH=%%PATH:%{deactivates_var}%;=%%" >> '
+                        f'"%{deactivates_var}%\\{deactivate_filename}"',
+                    ]
+                    content += [
+                        f'echo set "{deactivates_var}=" >> '
+                        f'"%{deactivates_var}%\\{deactivate_filename}"',
+                    ]
 
                 content += [f'call "{b}"' for b in files]
 
@@ -926,12 +953,13 @@ def generate_aggregated_env(recipe):
             generated.append(filename)
             save(os.path.join(recipe.folders.generators, filename), bat_content(bats))
             if not deactivation_mode:
-                save(os.path.join(recipe.folders.generators, deactivate_filename),
-                     bat_content(deactivates(bats)))
+                save(
+                    os.path.join(recipe.folders.generators, deactivate_filename),
+                    bat_content(deactivates(bats)))
 
         if ps1s:
             def ps1_content(files):
-                content = "\r\n".join(['& "{}"'.format(b) for b in files])
+                content = "\r\n".join([f'& "{b}"' for b in files])
                 if deactivation_mode == "function":
                     content += f"\n\nfunction global:deactivate_env_{group} {{\n"
                     for deactivate_name in deactivate_function_names(ps1s):
@@ -940,12 +968,14 @@ def generate_aggregated_env(recipe):
                                 "-ErrorAction SilentlyContinue"
                                 "\n}\n")
                 return content
-            filename = "env_{}.ps1".format(group)
+
+            filename = f"env_{group}.ps1"
             generated.append(filename)
             save(os.path.join(recipe.folders.generators, filename), ps1_content(ps1s))
             if not deactivation_mode:
-                save(os.path.join(recipe.folders.generators, "deactivate_{}".format(filename)),
-                     ps1_content(deactivates(ps1s)))
+                save(
+                    os.path.join(recipe.folders.generators, f"deactivate_{filename}"),
+                    ps1_content(deactivates(ps1s)))
     if generated:
         recipe.output.highlight("Generating aggregated env files")
         recipe.output.info(f"Generated aggregated env files: {generated}")

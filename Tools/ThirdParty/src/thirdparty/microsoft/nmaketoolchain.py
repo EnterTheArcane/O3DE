@@ -1,4 +1,3 @@
-
 from thirdparty.build.flags import build_type_flags, cppstd_flag, build_type_link_flags
 from thirdparty.env import Environment
 from thirdparty.microsoft.nmakedeps import format_defines
@@ -13,6 +12,7 @@ class NMakeToolchain:
     but not possible, because it cannot include other files, it will also potentially collide with
     a user Tool.ini, without easy resolution. At least the environment is additive.
     """
+
     def __init__(self, recipe):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
@@ -45,8 +45,10 @@ class NMakeToolchain:
         cppstd = cppstd_flag(self._recipe)
         if cppstd:
             cxxflags.append(cppstd)
-        cxxflags.extend(self._recipe.conf.get("tools.build:cxxflags", default=[],
-                                                 check_type=list))
+        cxxflags.extend(
+            self._recipe.conf.get(
+                "tools.build:cxxflags", default=[],
+                check_type=list))
         cxxflags.extend(self.extra_cxxflags)
 
         defines = []
@@ -66,10 +68,14 @@ class NMakeToolchain:
 
         ldflags = []
         ldflags.extend(bt_ldflags)
-        ldflags.extend(self._recipe.conf.get("tools.build:sharedlinkflags", default=[],
-                                                check_type=list))
-        ldflags.extend(self._recipe.conf.get("tools.build:exelinkflags", default=[],
-                                                check_type=list))
+        ldflags.extend(
+            self._recipe.conf.get(
+                "tools.build:sharedlinkflags", default=[],
+                check_type=list))
+        ldflags.extend(
+            self._recipe.conf.get(
+                "tools.build:exelinkflags", default=[],
+                check_type=list))
         ldflags.extend(self.extra_ldflags)
 
         return ["/nologo"] + self._format_options(ldflags)
@@ -91,8 +97,9 @@ class NMakeToolchain:
             env.append("RCFLAGS", self._rcflags)
         # Also define some special env-vars which can override special NMake macros:
         # https://learn.microsoft.com/en-us/cpp/build/reference/special-nmake-macros
-        conf_compilers = self._recipe.conf.get("tools.build:compiler_executables", default={},
-                                                  check_type=dict)
+        conf_compilers = self._recipe.conf.get(
+            "tools.build:compiler_executables", default={},
+            check_type=dict)
         if conf_compilers:
             compilers_mapping = {
                 "AS": "asm",

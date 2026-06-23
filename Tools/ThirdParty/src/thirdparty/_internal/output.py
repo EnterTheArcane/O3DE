@@ -140,18 +140,19 @@ class Output:
 
     @classmethod
     def valid_log_levels(cls):
-        return {"quiet": LEVEL_QUIET,  # -vquiet 80
-                "error": LEVEL_ERROR,  # -verror 70
-                "warning": LEVEL_WARNING,  # -vwaring 60
-                "notice": LEVEL_NOTICE,  # -vnotice 50
-                "status": LEVEL_STATUS,  # -vstatus 40
-                None: LEVEL_VERBOSE,  # -v 30
-                "verbose": LEVEL_VERBOSE,  # -vverbose 30
-                "debug": LEVEL_DEBUG,  # -vdebug 20
-                "v": LEVEL_DEBUG,  # -vv 20
-                "trace": LEVEL_TRACE,  # -vtrace 10
-                "vv": LEVEL_TRACE  # -vvv 10
-                }
+        return {
+            "quiet": LEVEL_QUIET,  # -vquiet 80
+            "error": LEVEL_ERROR,  # -verror 70
+            "warning": LEVEL_WARNING,  # -vwaring 60
+            "notice": LEVEL_NOTICE,  # -vnotice 50
+            "status": LEVEL_STATUS,  # -vstatus 40
+            None: LEVEL_VERBOSE,  # -v 30
+            "verbose": LEVEL_VERBOSE,  # -vverbose 30
+            "debug": LEVEL_DEBUG,  # -vdebug 20
+            "v": LEVEL_DEBUG,  # -vv 20
+            "trace": LEVEL_TRACE,  # -vtrace 10
+            "vv": LEVEL_TRACE,  # -vvv 10
+        }
 
     @classmethod
     def define_log_level(cls, v):
@@ -225,7 +226,7 @@ class Output:
             # For traces we can receive a dict already, we try to transform then into more natural
             # text
             msg = ", ".join([f"{k}: {v}" for k, v in msg.items()])
-            msg = "=> {}".format(msg)
+            msg = f"=> {msg}"
             # msg = json.dumps(msg, sort_keys=True, default=json_encoder)
 
         if Output._scoped_recipe_output and self._scope:
@@ -263,7 +264,7 @@ class Output:
         This message won't be printed unless the user has set the log level to trace
         (e.g., using the ``-vvv`` option in the command line).
 
-        It’s used when full visibility of everything happening in the system is required,
+        It's used when full visibility of everything happening in the system is required,
         but should be used carefully due to the large amount of information it can generate."""
         if self._output_level <= LEVEL_TRACE:
             self._write_message(msg, fg=Color.BLUE)
@@ -288,7 +289,7 @@ class Output:
         This message won't be printed unless the user has set the log level to verbose
         (e.g., using the ``-v`` option in the command line).
 
-        It’s appropriate for gaining more context without overloading the logs with
+        It's appropriate for gaining more context without overloading the logs with
         excessive detail. Useful when more clarity is needed than a simple info."""
         if self._output_level <= LEVEL_VERBOSE:
             self._write_message(msg, fg=fg, bg=bg)
@@ -308,19 +309,19 @@ class Output:
     def title(self, msg: str):
         """ Draws a title around the message, useful for important messages"""
         if self._output_level <= LEVEL_NOTICE:
-            self._write_message("\n======== {} ========".format(msg),
-                                fg=Color.BRIGHT_MAGENTA)
+            self._write_message(
+                f"\n======== {msg} ========",
+                fg=Color.BRIGHT_MAGENTA)
         return self
 
     def subtitle(self, msg: str):
         """ Draws a subtitle around the message, useful for important messages"""
         if self._output_level <= LEVEL_NOTICE:
-            self._write_message("\n-------- {} --------".format(msg),
-                                fg=Color.BRIGHT_MAGENTA)
+            self._write_message(f"\n-------- {msg} --------", fg=Color.BRIGHT_MAGENTA)
         return self
 
     def highlight(self, msg: str):
-        """ Marks or emphasizes important events or processes that need to stand out but don’t necessarily
+        """ Marks or emphasizes important events or processes that need to stand out but don't necessarily
         indicate success or error.
 
         These messages draw attention to key points that may be relevant for the user or administrator."""
@@ -347,13 +348,13 @@ class Output:
         could cause problems in the future or under certain conditions.
 
         Warnings signal abnormal situations that should be
-        reviewed but don’t necessarily cause an immediate halt in operations.
+        reviewed but don't necessarily cause an immediate halt in operations.
         Notice that if the tag matches the pattern in the ``core:warnings_as_errors`` configuration,
         and is not skipped, this will be upgraded to an error, and raise an exception
         when the output is printed, so that the error does not pass unnoticed."""
         _treat_as_error = self._warn_tag_matches(warn_tag, self._warnings_as_errors)
         if (self._output_level <= LEVEL_WARNING or
-                (_treat_as_error and self._output_level <= LEVEL_ERROR)):
+            (_treat_as_error and self._output_level <= LEVEL_ERROR)):
             if self._warn_tag_matches(warn_tag, self._silent_warn_tags):
                 return self
             warn_tag_msg = "" if warn_tag is None else f"{warn_tag}: "
@@ -377,7 +378,7 @@ class Output:
         if self._warnings_as_errors and error_type != "exception":
             raise RecipeException(msg)
         if self._output_level <= LEVEL_ERROR:
-            self._write_message("ERROR: {}".format(msg), Color.RED)
+            self._write_message(f"ERROR: {msg}", Color.RED)
         return self
 
     def flush(self):

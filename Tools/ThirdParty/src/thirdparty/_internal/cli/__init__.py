@@ -3,8 +3,8 @@ import importlib
 import pkgutil
 import sys
 from collections.abc import Callable
-from typing import cast
 from types import ModuleType
+from typing import cast
 
 import thirdparty._internal.cli.commands as _commands_pkg
 from thirdparty._internal.cli.command import CommandFn, is_command, command_name

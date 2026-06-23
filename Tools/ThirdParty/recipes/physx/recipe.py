@@ -169,11 +169,11 @@ class Recipe(RecipeBase):
             replace_in_file(
                 self, mac_cmake,
                 'SET(OSX_BITNESS "-arch x86_64")',
-                'SET(OSX_BITNESS "-arch {}")'.format(_osx_arch))
+                f'SET(OSX_BITNESS "-arch {_osx_arch}")')
             replace_in_file(
                 self, mac_cmake,
                 'SET(CMAKE_OSX_ARCHITECTURES "x86_64")',
-                'SET(CMAKE_OSX_ARCHITECTURES "{}")'.format(_osx_arch))
+                f'SET(CMAKE_OSX_ARCHITECTURES "{_osx_arch}")')
             # -msse2 is x86-only; remove it for arm64
             if _osx_arch != "x86_64":
                 replace_in_file(self, mac_cmake, " -msse2", "")
@@ -260,7 +260,7 @@ class Recipe(RecipeBase):
             package_dst_bin_dir = os.path.join(self.folders.package, "bin")
 
             for dll_info in dll_info_list:
-                dll_subdir = "win.{0}.{1}.mt".format(physx_arch, dll_info.get("vc_ver"))
+                dll_subdir = f"win.{physx_arch}.{dll_info.get('vc_ver')}.mt"
                 dll_dir = os.path.join(external_bin_dir, dll_subdir, physx_build_type)
                 copy(self, pattern=dll_info.get("pattern"), dst=package_dst_bin_dir, src=dll_dir, keep_path=False)
 

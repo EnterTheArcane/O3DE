@@ -27,8 +27,9 @@ def parse_extra_variable(source, key, value):
             if not var_type:
                 raise RecipeException(f'{source} "{key}" needs "type" defined for cache variable')
             if var_type not in CMAKE_CACHE_TYPES:
-                raise RecipeException(f'{source} "{key}" invalid type "{var_type}" for cache variable.'
-                                     f' Possible types: {", ".join(CMAKE_CACHE_TYPES)}')
+                raise RecipeException(
+                    f'{source} "{key}" invalid type "{var_type}" for cache variable.'
+                    f' Possible types: {", ".join(CMAKE_CACHE_TYPES)}')
             # Set docstring as variable name if not defined
             docstring = value.get("docstring") or key
             force_str = " FORCE" if is_force else ""  # Support python < 3.11
@@ -37,8 +38,9 @@ def parse_extra_variable(source, key, value):
             if is_force:
                 raise RecipeException(f'{source} "{key}" "force" is only allowed for cache variables')
             return var_value
-    raise RecipeException(f'{source} "{key}" has invalid type. Allowed types: str, int, float, dict,'
-                         f' got {type(value)}')
+    raise RecipeException(
+        f'{source} "{key}" has invalid type. Allowed types: str, int, float, dict,'
+        f' got {type(value)}')
 
 
 def cmake_escape_value(v):

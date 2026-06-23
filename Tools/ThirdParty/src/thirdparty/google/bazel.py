@@ -34,8 +34,10 @@ class Bazel:
             bazelrc_paths.append(self._recipe_bazelrc)
         # User bazelrc paths have more prio than Recipe one
         # See more info in https://bazel.build/run/bazelrc
-        bazelrc_paths.extend(self._recipe.conf.get("tools.google.bazel:bazelrc_path", default=[],
-                                                      check_type=list))
+        bazelrc_paths.extend(
+            self._recipe.conf.get(
+                "tools.google.bazel:bazelrc_path", default=[],
+                check_type=list))
         opts = " ".join(["--bazelrc=" + rc.replace("\\", "/") for rc in bazelrc_paths])
         return f" {opts}" if opts else ""
 
@@ -62,9 +64,11 @@ class Bazel:
         if self._use_recipe_config:
             bazelrc_build_configs.append(BazelToolchain.bazelrc_config)
         command = "bazel" + self._startup_opts + " build"
-        bazelrc_build_configs.extend(self._recipe.conf.get("tools.google.bazel:configs",
-                                                              default=[],
-                                                              check_type=list))
+        bazelrc_build_configs.extend(
+            self._recipe.conf.get(
+                "tools.google.bazel:configs",
+                default=[],
+                check_type=list))
         for config in bazelrc_build_configs:
             command += f" --config={config}"
         if args:

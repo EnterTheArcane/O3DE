@@ -895,7 +895,7 @@ class Recipe(RecipeBase):
             if not exe_path:
                 self.output.warning(f"Could not find path to {target}{extension}")
             filecontents += textwrap.dedent(
-                f"""\
+                f"""
                 if(NOT TARGET ${{QT_CMAKE_EXPORT_NAMESPACE}}::{target})
                     add_executable(${{QT_CMAKE_EXPORT_NAMESPACE}}::{target} IMPORTED)
                     set_target_properties(${{QT_CMAKE_EXPORT_NAMESPACE}}::{target} PROPERTIES IMPORTED_LOCATION ${{CMAKE_CURRENT_LIST_DIR}}/../../../{exe_path})
@@ -903,7 +903,7 @@ class Recipe(RecipeBase):
                 """)
 
         filecontents += textwrap.dedent(
-            f"""\
+            f"""
             if(NOT DEFINED QT_DEFAULT_MAJOR_VERSION)
                 set(QT_DEFAULT_MAJOR_VERSION {ver.major})
             endif()
@@ -914,21 +914,22 @@ class Recipe(RecipeBase):
         def _create_private_module(module, dependencies):
             dependencies_string = ';'.join(f"Qt6::{dependency}" for dependency in dependencies)
             contents = textwrap.dedent(
-                f"""\
-            if(NOT TARGET Qt6::{module}Private)
-                add_library(Qt6::{module}Private INTERFACE IMPORTED)
+                f"""
+                if(NOT TARGET Qt6::{module}Private)
+                    add_library(Qt6::{module}Private INTERFACE IMPORTED)
 
-                set_target_properties(Qt6::{module}Private PROPERTIES
-                    INTERFACE_INCLUDE_DIRECTORIES "${{CMAKE_CURRENT_LIST_DIR}}/../../../include/Qt{module}/{self.version};${{CMAKE_CURRENT_LIST_DIR}}/../../../include/Qt{module}/{self.version}/Qt{module}"
-                    INTERFACE_LINK_LIBRARIES "{dependencies_string}"
-                )
+                    set_target_properties(Qt6::{module}Private PROPERTIES
+                        INTERFACE_INCLUDE_DIRECTORIES "${{CMAKE_CURRENT_LIST_DIR}}/../../../include/Qt{module}/{self.version};${{CMAKE_CURRENT_LIST_DIR}}/../../../include/Qt{module}/{self.version}/Qt{module}"
+                        INTERFACE_LINK_LIBRARIES "{dependencies_string}"
+                    )
 
-                add_library(Qt::{module}Private INTERFACE IMPORTED)
-                set_target_properties(Qt::{module}Private PROPERTIES
-                    INTERFACE_LINK_LIBRARIES "Qt6::{module}Private"
-                    _qt_is_versionless_target "TRUE"
-                )
-            endif()""")
+                    add_library(Qt::{module}Private INTERFACE IMPORTED)
+                    set_target_properties(Qt::{module}Private PROPERTIES
+                        INTERFACE_LINK_LIBRARIES "Qt6::{module}Private"
+                        _qt_is_versionless_target "TRUE"
+                    )
+                endif()
+                """)
 
             save(self, os.path.join(self.folders.package, self._cmake_qt6_private_file(module)), contents)
 
@@ -944,28 +945,28 @@ class Recipe(RecipeBase):
             _create_private_module("Qml", ["CorePrivate", "Qml"])
             save(
                 self, os.path.join(self.folders.package, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"), textwrap.dedent(
-                    """\
-                                        set(QT_KNOWN_POLICY_QTP0001 TRUE)
-                                        set(QT_KNOWN_POLICY_QTP0004 TRUE)
-                                        set(QT_KNOWN_POLICY_QTP0005 TRUE)
-                                        """))
+                    """
+                    set(QT_KNOWN_POLICY_QTP0001 TRUE)
+                    set(QT_KNOWN_POLICY_QTP0004 TRUE)
+                    set(QT_KNOWN_POLICY_QTP0005 TRUE)
+                    """))
             if self.options.gui and self.options.qtshadertools:
                 _create_private_module("Quick", ["CorePrivate", "GuiPrivate", "QmlPrivate", "Quick"])
 
         if self.settings.os in ["Windows", "iOS"]:
             contents = textwrap.dedent(
-                """\
-                                set(entrypoint_conditions "$<NOT:$<BOOL:$<TARGET_PROPERTY:qt_no_entrypoint>>>")
-                                list(APPEND entrypoint_conditions "$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>")
-                                if(WIN32)
-                                    list(APPEND entrypoint_conditions "$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>")
-                                endif()
-                                list(JOIN entrypoint_conditions "," entrypoint_conditions)
-                                set(entrypoint_conditions "$<AND:${entrypoint_conditions}>")
-                                set_property(
-                                    TARGET ${QT_CMAKE_EXPORT_NAMESPACE}::Core
-                                    APPEND PROPERTY INTERFACE_LINK_LIBRARIES "$<${entrypoint_conditions}:${QT_CMAKE_EXPORT_NAMESPACE}::EntryPointPrivate>"
-                                )""")
+                """
+                set(entrypoint_conditions "$<NOT:$<BOOL:$<TARGET_PROPERTY:qt_no_entrypoint>>>")
+                list(APPEND entrypoint_conditions "$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>")
+                if(WIN32)
+                    list(APPEND entrypoint_conditions "$<BOOL:$<TARGET_PROPERTY:WIN32_EXECUTABLE>>")
+                endif()
+                list(JOIN entrypoint_conditions "," entrypoint_conditions)
+                set(entrypoint_conditions "$<AND:${entrypoint_conditions}>")
+                set_property(
+                    TARGET ${QT_CMAKE_EXPORT_NAMESPACE}::Core
+                    APPEND PROPERTY INTERFACE_LINK_LIBRARIES "$<${entrypoint_conditions}:${QT_CMAKE_EXPORT_NAMESPACE}::EntryPointPrivate>"
+                )""")
             save(self, os.path.join(self.folders.package, self._cmake_entry_point_file), contents)
 
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtPlatformTargetHelpers.cmake#L68
@@ -974,26 +975,26 @@ class Recipe(RecipeBase):
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtFlagHandlingHelpers.cmake#L402
         if self.settings.os == "Windows" or is_msvc(self):
             contents = textwrap.dedent(
-                """\
-                                set(utf8_flags "")
-                                if(MSVC)
-                                    list(APPEND utf8_flags "$<$<CXX_COMPILER_ID:MSVC>:-utf-8>")
-                                endif()
-                
-                                if(utf8_flags)
-                                    set(opt_out_condition "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UTF8_SOURCE>>>")
-                                    set(language_condition "$<COMPILE_LANGUAGE:C,CXX>")
-                                    set(genex_condition "$<AND:${opt_out_condition},${language_condition}>")
-                                    set(utf8_flags "$<${genex_condition}:${utf8_flags}>")
-                                    target_compile_options(Qt6::Platform INTERFACE "${utf8_flags}")
-                                endif()
-                
-                                if(WIN32)
-                                    set(no_unicode_condition
-                                        "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UNICODE_DEFINES>>>")
-                                    target_compile_definitions(Qt6::Platform
-                                        INTERFACE "$<${no_unicode_condition}:UNICODE$<SEMICOLON>_UNICODE>")
-                                endif()""")
+                """
+                set(utf8_flags "")
+                if(MSVC)
+                    list(APPEND utf8_flags "$<$<CXX_COMPILER_ID:MSVC>:-utf-8>")
+                endif()
+
+                if(utf8_flags)
+                    set(opt_out_condition "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UTF8_SOURCE>>>")
+                    set(language_condition "$<COMPILE_LANGUAGE:C,CXX>")
+                    set(genex_condition "$<AND:${opt_out_condition},${language_condition}>")
+                    set(utf8_flags "$<${genex_condition}:${utf8_flags}>")
+                    target_compile_options(Qt6::Platform INTERFACE "${utf8_flags}")
+                endif()
+
+                if(WIN32)
+                    set(no_unicode_condition
+                        "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UNICODE_DEFINES>>>")
+                    target_compile_definitions(Qt6::Platform
+                        INTERFACE "$<${no_unicode_condition}:UNICODE$<SEMICOLON>_UNICODE>")
+                endif()""")
             save(self, os.path.join(self.folders.package, self._cmake_platform_target_setup_file), contents)
 
     def package_info(self):

@@ -6,11 +6,11 @@ from xml.dom import minidom
 
 from jinja2 import Template
 
-from thirdparty.errors import RecipeException
-from thirdparty._internal.util.generators import relativize_path
 from thirdparty._internal.model.dependencies import get_transitive_requires
-from thirdparty.microsoft.visual import msvc_platform_from_arch
 from thirdparty._internal.util.files import load, save
+from thirdparty._internal.util.generators import relativize_path
+from thirdparty.errors import RecipeException
+from thirdparty.microsoft.visual import msvc_platform_from_arch
 
 VALID_LIB_EXTENSIONS = (".so", ".lib", ".a", ".dylib", ".bc")
 
@@ -21,10 +21,11 @@ class MSBuildDeps:
     recipe_deps.props: unconditional import of all *direct* dependencies only
     """
 
-    _vars_props = textwrap.dedent("""\
+    _vars_props = textwrap.dedent(
+        """
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-          <PropertyGroup Label="RecipeVariables">
+            <PropertyGroup Label="RecipeVariables">
             <Recipe{{name}}RootFolder>{{root_folder}}</Recipe{{name}}RootFolder>
             <Recipe{{name}}BinaryDirectories>{{bin_dirs}}</Recipe{{name}}BinaryDirectories>
             {% if host_context %}
@@ -37,55 +38,56 @@ class MSBuildDeps:
             <Recipe{{name}}Libraries>{{libs}}</Recipe{{name}}Libraries>
             <Recipe{{name}}SystemLibs>{{system_libs}}</Recipe{{name}}SystemLibs>
             {% endif %}
-          </PropertyGroup>
+            </PropertyGroup>
         </Project>
         """)
 
-    _conf_props = textwrap.dedent("""\
+    _conf_props = textwrap.dedent(
+        """
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-          <ImportGroup Label="PropertySheets">
+            <ImportGroup Label="PropertySheets">
             {% for dep in deps %}
             <Import Condition="'$(recipe_{{dep}}_props_imported)' != 'True'" Project="recipe_{{dep}}.props"/>
             {% endfor %}
-          </ImportGroup>
-          <ImportGroup Label="PropertySheets">
+            </ImportGroup>
+            <ImportGroup Label="PropertySheets">
             <Import Project="{{vars_filename}}"/>
-          </ImportGroup>
-          {% if host_context %}
-          <PropertyGroup>
+            </ImportGroup>
+            {% if host_context %}
+            <PropertyGroup>
             <RecipeDebugPath>$(Recipe{{name}}BinaryDirectories);$(RecipeDebugPath)</RecipeDebugPath>
             <LocalDebuggerEnvironment>PATH=$(RecipeDebugPath);%PATH%</LocalDebuggerEnvironment>
             <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
             {% if ca_exclude %}
             <CAExcludePath>$(Recipe{{name}}IncludeDirectories);$(CAExcludePath)</CAExcludePath>
             {% endif %}
-          </PropertyGroup>
-          <ItemDefinitionGroup>
+            </PropertyGroup>
+            <ItemDefinitionGroup>
             <ClCompile>
-              <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-              <PreprocessorDefinitions>$(Recipe{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
-              <AdditionalOptions>$(Recipe{{name}}CompilerFlags) %(AdditionalOptions)</AdditionalOptions>
+                <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+                <PreprocessorDefinitions>$(Recipe{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
+                <AdditionalOptions>$(Recipe{{name}}CompilerFlags) %(AdditionalOptions)</AdditionalOptions>
             </ClCompile>
             <Link>
-              <AdditionalLibraryDirectories>$(Recipe{{name}}LibraryDirectories)%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-              <AdditionalDependencies>$(Recipe{{name}}Libraries)%(AdditionalDependencies)</AdditionalDependencies>
-              <AdditionalDependencies>$(Recipe{{name}}SystemLibs)%(AdditionalDependencies)</AdditionalDependencies>
-              <AdditionalOptions>$(Recipe{{name}}LinkerFlags) %(AdditionalOptions)</AdditionalOptions>
+                <AdditionalLibraryDirectories>$(Recipe{{name}}LibraryDirectories)%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+                <AdditionalDependencies>$(Recipe{{name}}Libraries)%(AdditionalDependencies)</AdditionalDependencies>
+                <AdditionalDependencies>$(Recipe{{name}}SystemLibs)%(AdditionalDependencies)</AdditionalDependencies>
+                <AdditionalOptions>$(Recipe{{name}}LinkerFlags) %(AdditionalOptions)</AdditionalOptions>
             </Link>
             <Midl>
-              <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+                <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
             </Midl>
             <ResourceCompile>
-              <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-              <PreprocessorDefinitions>$(Recipe{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
+                <AdditionalIncludeDirectories>$(Recipe{{name}}IncludeDirectories)%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+                <PreprocessorDefinitions>$(Recipe{{name}}PreprocessorDefinitions)%(PreprocessorDefinitions)</PreprocessorDefinitions>
             </ResourceCompile>
-          </ItemDefinitionGroup>
-          {% else %}
-          <PropertyGroup>
+            </ItemDefinitionGroup>
+            {% else %}
+            <PropertyGroup>
             <ExecutablePath>$(Recipe{{name}}BinaryDirectories)$(ExecutablePath)</ExecutablePath>
-          </PropertyGroup>
-          {% endif %}
+            </PropertyGroup>
+            {% endif %}
         </Project>
         """)
 
@@ -126,14 +128,18 @@ class MSBuildDeps:
             save(generator_file, content)
 
     def _config_filename(self):
-        props = [self.configuration,
-                 self.platform]
+        props = [
+            self.configuration,
+            self.platform,
+        ]
         name = "".join("_%s" % v for v in props)
         return name.lower()
 
     def _condition(self):
-        props = [(self.configuration_key, self.configuration),
-                 (self.platform_key, self.platform)]
+        props = [
+            (self.configuration_key, self.configuration),
+            (self.platform_key, self.platform),
+        ]
         condition = " And ".join("'$(%s)' == '%s'" % (k, v) for k, v in props)
         return condition
 
@@ -167,7 +173,7 @@ class MSBuildDeps:
                     lib_name = meson_name
             return f"{lib_name};"
 
-        pkg_placeholder = "$(Recipe{}RootFolder)".format(name)
+        pkg_placeholder = f"$(Recipe{name}RootFolder)"
 
         def escape_path(path):
             # https://docs.microsoft.com/en-us/visualstudio/msbuild/
@@ -179,19 +185,20 @@ class MSBuildDeps:
             # TODO: ALmost copied from CMakeDeps TargetDataContext
             ret = []
             for p in paths:
-                assert os.path.isabs(p), "{} is not absolute".format(p)
+                assert os.path.isabs(p), f"{p} is not absolute"
                 full_path = escape_path(p)
                 if full_path.startswith(root_folder):
-                    rel = full_path[len(root_folder)+1:]
+                    rel = full_path[len(root_folder) + 1:]
                     full_path = ("%s/%s" % (pkg_placeholder, rel))
                 ret.append(full_path)
-            return "".join("{};".format(e) for e in ret)
+            return "".join(f"{e};" for e in ret)
 
         root_folder = dep.recipe_folder if dep.folders.package is None else dep.folders.package
         root_folder = escape_path(root_folder)
         # Make the root_folder relative to the generated recipe_vars_xxx.props file
-        relative_root_folder = relativize_path(root_folder, self._recipe,
-                                               "$(MSBuildThisFileDirectory)", normalize=False)
+        relative_root_folder = relativize_path(
+            root_folder, self._recipe,
+            "$(MSBuildThisFileDirectory)", normalize=False)
 
         bin_dirs = join_paths(cpp_info.bindirs)
         res_dirs = join_paths(cpp_info.resdirs)
@@ -230,10 +237,11 @@ class MSBuildDeps:
             'definitions': definitions,
             'compiler_flags': compiler_flags,
             'linker_flags': linker_flags,
-            'host_context': not build
+            'host_context': not build,
         }
-        formatted_template = Template(self._vars_props, trim_blocks=True,
-                                      lstrip_blocks=True).render(**fields)
+        formatted_template = Template(
+            self._vars_props, trim_blocks=True,
+            lstrip_blocks=True).render(**fields)
         return formatted_template
 
     def _activate_props_file(self, dep_name, vars_filename, deps, build):
@@ -249,8 +257,9 @@ class MSBuildDeps:
         # Probably also the negation pattern, exclude all not @mycompany/*
         ca_exclude = any(fnmatch.fnmatch(dep_name, p) for p in self.exclude_code_analysis or ())
         template = Template(self._conf_props, trim_blocks=True, lstrip_blocks=True)
-        content_multi = template.render(host_context=not build, name=dep_name, ca_exclude=ca_exclude,
-                                        vars_filename=vars_filename, deps=deps)
+        content_multi = template.render(
+            host_context=not build, name=dep_name, ca_exclude=ca_exclude,
+            vars_filename=vars_filename, deps=deps)
         return content_multi
 
     @staticmethod
@@ -265,16 +274,17 @@ class MSBuildDeps:
         elif os.path.isfile(filename):
             content_multi = load(filename)
         else:
-            content_multi = textwrap.dedent("""\
-            <?xml version="1.0" encoding="utf-8"?>
-            <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-              <ImportGroup Label="PropertySheets">
-              </ImportGroup>
-              <PropertyGroup>
-                <recipe_{{name}}_props_imported>True</recipe_{{name}}_props_imported>
-              </PropertyGroup>
-            </Project>
-            """)
+            content_multi = textwrap.dedent(
+                """
+                <?xml version="1.0" encoding="utf-8"?>
+                <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                    <ImportGroup Label="PropertySheets">
+                    </ImportGroup>
+                    <PropertyGroup>
+                    <recipe_{{name}}_props_imported>True</recipe_{{name}}_props_imported>
+                    </PropertyGroup>
+                </Project>
+                """)
             content_multi = Template(content_multi).render({"name": dep_name})
         # parse the multi_file and add new import statement if needed
         dom = minidom.parseString(content_multi)
@@ -284,7 +294,7 @@ class MSBuildDeps:
         children = import_vars.getElementsByTagName("Import")
         for node in children:
             if aggregated_filename == node.getAttribute("Project") \
-                    and condition == node.getAttribute("Condition"):
+                and condition == node.getAttribute("Condition"):
                 break
         else:  # create a new import statement
             import_node = dom.createElement('Import')
@@ -303,41 +313,42 @@ class MSBuildDeps:
         content_multi = "\n".join(line for line in content_multi.splitlines() if line.strip())
         return content_multi
 
-    _recipe_dedup_props = textwrap.dedent("""\
+    _recipe_dedup_props = textwrap.dedent(
+        """
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-          <PropertyGroup>
-            <RecipeDedupPropsImported>True</RecipeDedupPropsImported>
-          </PropertyGroup>
-          <Target Name="RecipeDeduplicatePaths"
-                  BeforeTargets="ClCompile;Link;Midl;ResourceCompile"
-                  Condition="'$(RecipeDedupTargetDefined)' != 'True'">
             <PropertyGroup>
-              <RecipeDedupTargetDefined>True</RecipeDedupTargetDefined>
+            <RecipeDedupPropsImported>True</RecipeDedupPropsImported>
+            </PropertyGroup>
+            <Target Name="RecipeDeduplicatePaths"
+                    BeforeTargets="ClCompile;Link;Midl;ResourceCompile"
+                    Condition="'$(RecipeDedupTargetDefined)' != 'True'">
+            <PropertyGroup>
+                <RecipeDedupTargetDefined>True</RecipeDedupTargetDefined>
             </PropertyGroup>
             <ItemGroup>
-              <_RecipeIncludePaths Include="%(ClCompile.AdditionalIncludeDirectories)" />
+                <_RecipeIncludePaths Include="%(ClCompile.AdditionalIncludeDirectories)" />
             </ItemGroup>
             <RemoveDuplicates Inputs="@(_RecipeIncludePaths)">
-              <Output TaskParameter="Filtered" ItemName="_RecipeUniqueIncludePaths" />
+                <Output TaskParameter="Filtered" ItemName="_RecipeUniqueIncludePaths" />
             </RemoveDuplicates>
             <ItemGroup>
-              <ClCompile Condition="'@(_RecipeUniqueIncludePaths)' != ''">
+                <ClCompile Condition="'@(_RecipeUniqueIncludePaths)' != ''">
                 <AdditionalIncludeDirectories>@(_RecipeUniqueIncludePaths)</AdditionalIncludeDirectories>
-              </ClCompile>
+                </ClCompile>
             </ItemGroup>
             <ItemGroup>
-              <_RecipeLibPaths Include="%(Link.AdditionalLibraryDirectories)" />
+                <_RecipeLibPaths Include="%(Link.AdditionalLibraryDirectories)" />
             </ItemGroup>
             <RemoveDuplicates Inputs="@(_RecipeLibPaths)">
-              <Output TaskParameter="Filtered" ItemName="_RecipeUniqueLibPaths" />
+                <Output TaskParameter="Filtered" ItemName="_RecipeUniqueLibPaths" />
             </RemoveDuplicates>
             <ItemGroup>
-              <Link Condition="'@(_RecipeUniqueLibPaths)' != ''">
+                <Link Condition="'@(_RecipeUniqueLibPaths)' != ''">
                 <AdditionalLibraryDirectories>@(_RecipeUniqueLibPaths)</AdditionalLibraryDirectories>
-              </Link>
+                </Link>
             </ItemGroup>
-          </Target>
+            </Target>
         </Project>
         """)
 
@@ -347,20 +358,22 @@ class MSBuildDeps:
         # Current directory is the generators_folder
         recipe_deps_filename = "recipe_deps.props"
         direct_deps = self._recipe.dependencies.filter({"direct": True})
-        pkg_aggregated_content = textwrap.dedent("""\
+        pkg_aggregated_content = textwrap.dedent(
+            """
             <?xml version="1.0" encoding="utf-8"?>
             <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-              <ImportGroup Label="PropertySheets">
-              </ImportGroup>
+                <ImportGroup Label="PropertySheets">
+                </ImportGroup>
             </Project>
             """)
         for req, dep in direct_deps.items():
             dep_name = self._dep_name(dep, req.build)
             filename = "recipe_%s.props" % dep_name
             comp_condition = "'$(recipe_%s_props_imported)' != 'True'" % dep_name
-            pkg_aggregated_content = self._dep_props_file("", recipe_deps_filename, filename,
-                                                          condition=comp_condition,
-                                                          content=pkg_aggregated_content)
+            pkg_aggregated_content = self._dep_props_file(
+                "", recipe_deps_filename, filename,
+                condition=comp_condition,
+                content=pkg_aggregated_content)
         return {recipe_deps_filename: pkg_aggregated_content}
 
     def _package_props_files(self, require, dep, build=False):
@@ -378,7 +391,7 @@ class MSBuildDeps:
         if dep.cpp_info.has_components:
             pkg_aggregated_content = None
             for comp_name, comp_info in dep.cpp_info.components.items():
-                full_comp_name = "{}_{}".format(dep_name, self._get_valid_xml_format(comp_name))
+                full_comp_name = f"{dep_name}_{self._get_valid_xml_format(comp_name)}"
                 vars_filename = "recipe_%s_vars%s.props" % (full_comp_name, conf_name)
                 activate_filename = "recipe_%s%s.props" % (full_comp_name, conf_name)
                 comp_filename = "recipe_%s.props" % full_comp_name
@@ -393,21 +406,26 @@ class MSBuildDeps:
                             required = None
                         if required:  # The transitive dep might have been skipped
                             required_name = self._dep_name(required, build)
-                            public_deps.append(required_name if required_pkg == required_comp
-                                               else "{}_{}".format(required_name, required_comp))
+                            public_deps.append(
+                                required_name if required_pkg == required_comp
+                                else f"{required_name}_{required_comp}")
                     else:  # Points to a component of same package
-                        public_deps.append("{}_{}".format(dep_name, required_comp))
+                        public_deps.append(f"{dep_name}_{required_comp}")
                 public_deps = [self._get_valid_xml_format(d) for d in public_deps]
-                result[vars_filename] = self._vars_props_file(require, dep, full_comp_name,
-                                                              comp_info, build=build)
-                result[activate_filename] = self._activate_props_file(full_comp_name, vars_filename,
-                                                                      public_deps, build=build)
-                result[comp_filename] = self._dep_props_file(full_comp_name, comp_filename,
-                                                             activate_filename, condition)
+                result[vars_filename] = self._vars_props_file(
+                    require, dep, full_comp_name,
+                    comp_info, build=build)
+                result[activate_filename] = self._activate_props_file(
+                    full_comp_name, vars_filename,
+                    public_deps, build=build)
+                result[comp_filename] = self._dep_props_file(
+                    full_comp_name, comp_filename,
+                    activate_filename, condition)
                 comp_condition = "'$(recipe_%s_props_imported)' != 'True'" % full_comp_name
-                pkg_aggregated_content = self._dep_props_file(dep_name, pkg_filename, comp_filename,
-                                                              condition=comp_condition,
-                                                              content=pkg_aggregated_content)
+                pkg_aggregated_content = self._dep_props_file(
+                    dep_name, pkg_filename, comp_filename,
+                    condition=comp_condition,
+                    content=pkg_aggregated_content)
                 result[pkg_filename] = pkg_aggregated_content
         else:
             cpp_info = dep.cpp_info
@@ -416,12 +434,15 @@ class MSBuildDeps:
             pkg_filename = "recipe_%s.props" % dep_name
             public_deps = [self._dep_name(d, build) for d in pkg_deps.values()]
 
-            result[vars_filename] = self._vars_props_file(require, dep, dep_name, cpp_info,
-                                                          build=build)
-            result[activate_filename] = self._activate_props_file(dep_name, vars_filename,
-                                                                  public_deps, build=build)
-            result[pkg_filename] = self._dep_props_file(dep_name, pkg_filename, activate_filename,
-                                                        condition=condition)
+            result[vars_filename] = self._vars_props_file(
+                require, dep, dep_name, cpp_info,
+                build=build)
+            result[activate_filename] = self._activate_props_file(
+                dep_name, vars_filename,
+                public_deps, build=build)
+            result[pkg_filename] = self._dep_props_file(
+                dep_name, pkg_filename, activate_filename,
+                condition=condition)
         return result
 
     def _content(self):

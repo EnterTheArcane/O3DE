@@ -1,4 +1,3 @@
-
 def cross_building(recipe=None, skip_x64_x86=False):
     """
     Check if we are cross building comparing the *build* and *host* settings. Returns ``True``
@@ -20,9 +19,9 @@ def cross_building(recipe=None, skip_x64_x86=False):
     host_arch = recipe.settings.get_safe("arch")
 
     if skip_x64_x86 and host_os is not None and (build_os == host_os) and \
-            host_arch is not None and ((build_arch == "x86_64") and (host_arch == "x86") or
-                                       (build_arch == "sparcv9") and (host_arch == "sparc") or
-                                       (build_arch == "ppc64") and (host_arch == "ppc32")):
+        host_arch is not None and ((build_arch == "x86_64") and (host_arch == "x86") or
+                                   (build_arch == "sparcv9") and (host_arch == "sparc") or
+                                   (build_arch == "ppc64") and (host_arch == "ppc32")):
         return False
 
     if host_os is not None and (build_os != host_os):
@@ -36,7 +35,7 @@ def cross_building(recipe=None, skip_x64_x86=False):
 def can_run(recipe):
     """
     Validates whether is possible to run a non-native app on the same architecture.
-    It’s a useful feature for the case your architecture can run more than one target.
+    It's a useful feature for the case your architecture can run more than one target.
     For instance, Mac M1 machines can run both `armv8` and `x86_64`.
 
     :param recipe: The current recipe object. Always use ``self``.

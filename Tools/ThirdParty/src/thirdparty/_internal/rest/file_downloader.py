@@ -2,13 +2,13 @@ import os
 import re
 import time
 
-
+from thirdparty._internal.errors import (
+    ConnectionErrorException, RequestErrorException,
+    AuthenticationException, ForbiddenException, NotFoundException, )
 from thirdparty._internal.output import Output, TimedOutput
 from thirdparty._internal.rest import response_to_str
-from thirdparty._internal.errors import (ConnectionErrorException, RequestErrorException,
-                                   AuthenticationException, ForbiddenException, NotFoundException)
-from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import human_size, check_with_algorithm_sum
+from thirdparty.errors import RecipeException
 
 
 class FileDownloader:
@@ -18,8 +18,9 @@ class FileDownloader:
         self._requester = requester
         self._source_credentials = source_credentials
 
-    def download(self, url, file_path, retry=2, retry_wait=0, verify_ssl=True, auth=None,
-                 overwrite=False, headers=None, md5=None, sha1=None, sha256=None):
+    def download(
+        self, url, file_path, retry=2, retry_wait=0, verify_ssl=True, auth=None,
+        overwrite=False, headers=None, md5=None, sha1=None, sha256=None):
         """ in order to make the download concurrent, the folder for file_path MUST exist
         """
         assert file_path, "Recipe 2.0 always downloads files to disk, not to memory"
@@ -38,8 +39,10 @@ class FileDownloader:
                 try:
                     self._download_file(url, auth, headers, file_path, verify_ssl)
                     break
-                except (NotFoundException, ForbiddenException, AuthenticationException,
-                        RequestErrorException):
+                except (
+                        NotFoundException, ForbiddenException, AuthenticationException,
+                        RequestErrorException,
+                ):
                     raise
                 except RecipeException as exc:
                     if counter == retry:
@@ -69,14 +72,15 @@ class FileDownloader:
         if try_resume and os.path.exists(file_path):
             range_start = os.path.getsize(file_path)
             headers = headers.copy() if headers else {}
-            headers["range"] = "bytes={}-".format(range_start)
+            headers["range"] = f"bytes={range_start}-"
         else:
             range_start = 0
 
         try:
-            response = self._requester.get(url, stream=True, verify=verify_ssl, auth=auth,
-                                           headers=headers,
-                                           source_credentials=self._source_credentials)
+            response = self._requester.get(
+                url, stream=True, verify=verify_ssl, auth=auth,
+                headers=headers,
+                source_credentials=self._source_credentials)
         except Exception as exc:
             raise RecipeException("Error downloading file %s: '%s'" % (url, exc))
 
@@ -97,8 +101,9 @@ class FileDownloader:
                 content_range = response.headers.get("Content-Range", "")
                 match = re.match(r"^bytes (\d+)-(\d+)/(\d+)", content_range)
                 if not match or range_start != int(match.group(1)):
-                    raise RecipeException("Error in resumed download from %s\n"
-                                         "Incorrect Content-Range header %s" % (url, content_range))
+                    raise RecipeException(
+                        "Error in resumed download from %s\n"
+                        "Incorrect Content-Range header %s" % (url, content_range))
                 return int(match.group(3))
             else:
                 total_size = response.headers.get('Content-Length') or len(response.content)
@@ -112,6 +117,7 @@ class FileDownloader:
             def msg_format(msg, downloaded):
                 perc = int(total_downloaded_size * 100 / total_length)
                 return msg + f" {human_size(downloaded)} {perc}% {base_name}"
+
             timed_output = TimedOutput(10, out=self._output, msg_format=msg_format)
 
             if is_large_file:
@@ -134,12 +140,14 @@ class FileDownloader:
             # it seems that if gzip we don't know the size, cannot resume and shouldn't raise
             if total_downloaded_size != total_length and not gzip:
                 if (total_length > total_downloaded_size > range_start
-                        and response.headers.get("Accept-Ranges") == "bytes"):
+                    and response.headers.get("Accept-Ranges") == "bytes"):
                     self._download_file(url, auth, headers, file_path, verify_ssl, try_resume=True)
                 else:
-                    raise RecipeException("Transfer interrupted before complete: %s < %s"
-                                         % (total_downloaded_size, total_length))
+                    raise RecipeException(
+                        "Transfer interrupted before complete: %s < %s"
+                        % (total_downloaded_size, total_length))
         except Exception as e:
             # If this part failed, it means problems with the connection to server
-            raise ConnectionErrorException("Download failed, check server, possibly try again\n%s"
-                                           % str(e))
+            raise ConnectionErrorException(
+                "Download failed, check server, possibly try again\n%s"
+                % str(e))

@@ -28,13 +28,12 @@ The recipe_deps.mk file layout is as follows:
 import os
 import re
 import textwrap
+from typing import Optional
 
 from jinja2 import Template, StrictUndefined
-from typing import Optional
 
 from thirdparty._internal.output import Output
 from thirdparty.files import save
-
 
 RECIPE_MAKEFILE_FILENAME = "recipe_deps.mk"
 
@@ -154,41 +153,42 @@ def _jinja_format_list_values() -> str:
         value1 \
         value2
     """
-    return textwrap.dedent("""\
-            {%- macro define_variable_value_safe(var, object, attribute) -%}
-            {%- if attribute in object -%}
-            {{ define_variable_value("{}".format(var), object[attribute]) }}
-            {%- endif -%}
-            {%- endmacro %}
+    return textwrap.dedent(
+        """
+        {%- macro define_variable_value_safe(var, object, attribute) -%}
+        {%- if attribute in object -%}
+        {{ define_variable_value("{}".format(var), object[attribute]) }}
+        {%- endif -%}
+        {%- endmacro %}
 
-            {%- macro define_multiple_variable_value(var, values) -%}
-            {% for property_name, value in values.items() %}
-            {{ var }}_{{ property_name }} = {{ value }}
-            {% endfor %}
-            {%- endmacro %}
+        {%- macro define_multiple_variable_value(var, values) -%}
+        {% for property_name, value in values.items() %}
+        {{ var }}_{{ property_name }} = {{ value }}
+        {% endfor %}
+        {%- endmacro %}
 
-            {%- macro define_variable_value(var, values) -%}
-            {%- if values is not none -%}
-            {%- if values|length > 0 -%}
-            {{ var }} = {{ format_list_values(values) }}
-            {%- endif -%}
-            {%- endif -%}
-            {%- endmacro %}
+        {%- macro define_variable_value(var, values) -%}
+        {%- if values is not none -%}
+        {%- if values|length > 0 -%}
+        {{ var }} = {{ format_list_values(values) }}
+        {%- endif -%}
+        {%- endif -%}
+        {%- endmacro %}
 
-            {%- macro format_list_values(values) -%}
-            {% if values|length == 1 %}
-            {{ values[0] }}
+        {%- macro format_list_values(values) -%}
+        {% if values|length == 1 %}
+        {{ values[0] }}
 
-            {% elif values|length > 1 %}
-            \\
-            {% for value in values[:-1] %}
-            \t{{ value }} \\
-            {% endfor %}
-            \t{{ values|last }}
+        {% elif values|length > 1 %}
+        \\
+        {% for value in values[:-1] %}
+        \t{{ value }} \\
+        {% endfor %}
+        \t{{ values|last }}
 
-            {% endif %}
-            {%- endmacro %}
-            """)
+        {% endif %}
+        {%- endmacro %}
+        """)
 
 
 class MakeInfo:
@@ -242,32 +242,33 @@ class GlobalContentGenerator:
     Generates the formatted content for global variables (e.g. RECIPE_DEPS, RECIPE_LIBS)
     """
 
-    template = textwrap.dedent("""\
+    template = textwrap.dedent(
+        """
+        # Aggregated global variables
 
-            # Aggregated global variables
+        {{ define_variable_value("RECIPE_INCLUDE_DIRS", deps_cpp_info_dirs.include_dirs) -}}
+        {{- define_variable_value("RECIPE_LIB_DIRS", deps_cpp_info_dirs.lib_dirs) -}}
+        {{- define_variable_value("RECIPE_BIN_DIRS", deps_cpp_info_dirs.bin_dirs) -}}
+        {{- define_variable_value("RECIPE_SRC_DIRS", deps_cpp_info_dirs.src_dirs) -}}
+        {{- define_variable_value("RECIPE_BUILD_DIRS", deps_cpp_info_dirs.build_dirs) -}}
+        {{- define_variable_value("RECIPE_RES_DIRS", deps_cpp_info_dirs.res_dirs) -}}
+        {{- define_variable_value("RECIPE_FRAMEWORK_DIRS", deps_cpp_info_dirs.framework_dirs) -}}
+        {{- define_variable_value("RECIPE_OBJECTS", deps_cpp_info_flags.objects) -}}
+        {{- define_variable_value("RECIPE_LIBS", deps_cpp_info_flags.libs) -}}
+        {{- define_variable_value("RECIPE_DEFINES", deps_cpp_info_flags.defines) -}}
+        {{- define_variable_value("RECIPE_CFLAGS", deps_cpp_info_flags.cflags) -}}
+        {{- define_variable_value("RECIPE_CXXFLAGS", deps_cpp_info_flags.cxxflags) -}}
+        {{- define_variable_value("RECIPE_SHAREDLINKFLAGS", deps_cpp_info_flags.sharedlinkflags) -}}
+        {{- define_variable_value("RECIPE_EXELINKFLAGS", deps_cpp_info_flags.exelinkflags) -}}
+        {{- define_variable_value("RECIPE_FRAMEWORKS", deps_cpp_info_flags.frameworks) -}}
+        {{- define_variable_value("RECIPE_REQUIRES", deps_cpp_info_flags.requires) -}}
+        {{- define_variable_value("RECIPE_SYSTEM_LIBS", deps_cpp_info_flags.system_libs) -}}
+        """)
 
-            {{ define_variable_value("RECIPE_INCLUDE_DIRS", deps_cpp_info_dirs.include_dirs) -}}
-            {{- define_variable_value("RECIPE_LIB_DIRS", deps_cpp_info_dirs.lib_dirs) -}}
-            {{- define_variable_value("RECIPE_BIN_DIRS", deps_cpp_info_dirs.bin_dirs) -}}
-            {{- define_variable_value("RECIPE_SRC_DIRS", deps_cpp_info_dirs.src_dirs) -}}
-            {{- define_variable_value("RECIPE_BUILD_DIRS", deps_cpp_info_dirs.build_dirs) -}}
-            {{- define_variable_value("RECIPE_RES_DIRS", deps_cpp_info_dirs.res_dirs) -}}
-            {{- define_variable_value("RECIPE_FRAMEWORK_DIRS", deps_cpp_info_dirs.framework_dirs) -}}
-            {{- define_variable_value("RECIPE_OBJECTS", deps_cpp_info_flags.objects) -}}
-            {{- define_variable_value("RECIPE_LIBS", deps_cpp_info_flags.libs) -}}
-            {{- define_variable_value("RECIPE_DEFINES", deps_cpp_info_flags.defines) -}}
-            {{- define_variable_value("RECIPE_CFLAGS", deps_cpp_info_flags.cflags) -}}
-            {{- define_variable_value("RECIPE_CXXFLAGS", deps_cpp_info_flags.cxxflags) -}}
-            {{- define_variable_value("RECIPE_SHAREDLINKFLAGS", deps_cpp_info_flags.sharedlinkflags) -}}
-            {{- define_variable_value("RECIPE_EXELINKFLAGS", deps_cpp_info_flags.exelinkflags) -}}
-            {{- define_variable_value("RECIPE_FRAMEWORKS", deps_cpp_info_flags.frameworks) -}}
-            {{- define_variable_value("RECIPE_REQUIRES", deps_cpp_info_flags.requires) -}}
-            {{- define_variable_value("RECIPE_SYSTEM_LIBS", deps_cpp_info_flags.system_libs) -}}
-            """)
-
-    template_deps = textwrap.dedent("""\
-            {{ define_variable_value("RECIPE_DEPS", deps) }}
-            """)
+    template_deps = textwrap.dedent(
+        """
+        {{ define_variable_value("RECIPE_DEPS", deps) }}
+        """)
 
     def content(self, deps_cpp_info_dirs: dict, deps_cpp_info_flags: dict) -> str:
         """
@@ -275,10 +276,13 @@ class GlobalContentGenerator:
         :param deps_cpp_info_dirs: Formatted dependencies folders
         :param deps_cpp_info_flags: Formatted dependencies variables
         """
-        context = {"deps_cpp_info_dirs": deps_cpp_info_dirs,
-                   "deps_cpp_info_flags": deps_cpp_info_flags}
-        template = Template(_jinja_format_list_values() + self.template, trim_blocks=True,
-                            lstrip_blocks=True, undefined=StrictUndefined)
+        context = {
+            "deps_cpp_info_dirs": deps_cpp_info_dirs,
+            "deps_cpp_info_flags": deps_cpp_info_flags,
+        }
+        template = Template(
+            _jinja_format_list_values() + self.template, trim_blocks=True,
+            lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
     def deps_content(self, dependencies_names: list) -> str:
@@ -287,8 +291,9 @@ class GlobalContentGenerator:
         :param dependencies_names: Non-formatted dependencies names
         """
         context = {"deps": dependencies_names}
-        template = Template(_jinja_format_list_values() + self.template_deps, trim_blocks=True,
-                            lstrip_blocks=True, undefined=StrictUndefined)
+        template = Template(
+            _jinja_format_list_values() + self.template_deps, trim_blocks=True,
+            lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
 
@@ -348,7 +353,8 @@ class DepComponentContentGenerator:
     Generates Makefile content for each dependency component
     """
 
-    template = textwrap.dedent("""\
+    template = textwrap.dedent(
+        """
         # {{ dep.ref.name }}::{{ comp_name }}
 
         {{  define_variable_value_safe("RECIPE_INCLUDE_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'include_dirs') -}}
@@ -397,8 +403,9 @@ class DepComponentContentGenerator:
             "cpp_info_flags": self._flags,
             "properties": _makefy_properties(_filter_properties(self._dep.cpp_info.components[self._name]._properties, self._output)),
         }
-        template = Template(_jinja_format_list_values() + self.template, trim_blocks=True,
-                            lstrip_blocks=True, undefined=StrictUndefined)
+        template = Template(
+            _jinja_format_list_values() + self.template, trim_blocks=True,
+            lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
 
@@ -407,8 +414,8 @@ class DepContentGenerator:
     Generates Makefile content for a dependency
     """
 
-    template = textwrap.dedent("""\
-
+    template = textwrap.dedent(
+        """
         # {{ dep.ref }}{% if not req.direct %} (indirect dependency){% endif +%}
 
         RECIPE_NAME_{{ name }} = {{ dep.ref.name }}
@@ -463,8 +470,9 @@ class DepContentGenerator:
             "cpp_info_flags": self._flags,
             "properties": _makefy_properties(_filter_properties(self._dep.cpp_info._properties, self._output)),
         }
-        template = Template(_jinja_format_list_values() + self.template, trim_blocks=True,
-                            lstrip_blocks=True, undefined=StrictUndefined)
+        template = Template(
+            _jinja_format_list_values() + self.template, trim_blocks=True,
+            lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
 

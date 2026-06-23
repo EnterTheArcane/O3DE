@@ -5,9 +5,8 @@ import tempfile
 from contextlib import contextmanager
 from io import StringIO
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.util.files import load
-
+from thirdparty.errors import RecipeException
 
 if getattr(sys, 'frozen', False) and 'LD_LIBRARY_PATH' in os.environ:
 
@@ -16,13 +15,15 @@ if getattr(sys, 'frozen', False) and 'LD_LIBRARY_PATH' in os.environ:
         os.environ.get('LD_LIBRARY_PATH_ORIG', ''), ''
     ).strip(';:')
 
+
     @contextmanager
     def pyinstaller_bundle_env_cleaned():
         """Removes the pyinstaller bundle directory from LD_LIBRARY_PATH
         """
         ld_library_path = os.environ['LD_LIBRARY_PATH']
-        os.environ['LD_LIBRARY_PATH'] = ld_library_path.replace(pyinstaller_bundle_dir,
-                                                                '').strip(';:')
+        os.environ['LD_LIBRARY_PATH'] = ld_library_path.replace(
+            pyinstaller_bundle_dir,
+            '').strip(';:')
         yield
         os.environ['LD_LIBRARY_PATH'] = ld_library_path
 
@@ -64,8 +65,9 @@ def run_command(command, stdout=None, stderr=None, cwd=None, shell=True):
 
 def detect_runner(command):
     # Running detect.py automatic detection of profile
-    proc = subprocess.Popen(command, shell=True, bufsize=1, universal_newlines=True,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(
+        command, shell=True, bufsize=1, universal_newlines=True,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     output_buffer = []
     while True:
@@ -87,7 +89,7 @@ def check_output_runner(cmd, stderr=None, ignore_error=False):
     try:
         # We don't want stderr to print warnings that will mess the pristine outputs
         stderr = stderr or subprocess.PIPE
-        command = '{} > "{}"'.format(cmd, tmp_file)
+        command = f'{cmd} > "{tmp_file}"'
         process = subprocess.Popen(command, shell=True, stderr=stderr)
         stdout, stderr = process.communicate()
 

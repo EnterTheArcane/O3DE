@@ -71,8 +71,8 @@ class Recipe(RecipeBase):
             tc.configure_args.extend(
                 [
                     "--enable-threads",
-                    "--enable-symbols={}".format(yes_no(self.settings.build_type == "Debug")),
-                    "--enable-64bit={}".format(yes_no(self.settings.arch == "X64")),
+                    f"--enable-symbols={yes_no(self.settings.build_type == 'Debug')}",
+                    f"--enable-64bit={yes_no(self.settings.arch == 'X64')}",
                 ])
             if self.settings.os == "Linux":
                 # Ensure the library has a soname, fix https://github.com/recipe-io/recipe-center-index/issues/27691

@@ -9,15 +9,6 @@ import time
 from collections import OrderedDict
 from pathlib import Path
 
-from thirdparty._internal.model.refs import RecipeReference
-from thirdparty._internal.model.recipe_base import RecipeBase
-from thirdparty._internal.model.recipe_interface import RecipeInterface
-from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.requires import Requirement
-from thirdparty.errors import RecipeException
-from thirdparty.env import Environment
-from thirdparty.env.environment import generate_aggregated_env
-from thirdparty._internal.util.detect import detect_settings, make_conf, detect_platform_tag
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph.graph import (
     Node as _Node,
@@ -35,7 +26,16 @@ from thirdparty._internal.loader import (
     resolve_version as _resolve_version,
 )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
+from thirdparty._internal.model.dependencies import RecipeDependencies
+from thirdparty._internal.model.recipe_base import RecipeBase
+from thirdparty._internal.model.recipe_interface import RecipeInterface
+from thirdparty._internal.model.refs import RecipeReference
+from thirdparty._internal.model.requires import Requirement
+from thirdparty._internal.util.detect import detect_settings, make_conf, detect_platform_tag
 from thirdparty._internal.util.files import rmdir as _rmdir
+from thirdparty.env import Environment
+from thirdparty.env.environment import generate_aggregated_env
+from thirdparty.errors import RecipeException
 
 
 def _wipe(path) -> None:
@@ -50,8 +50,9 @@ def _wipe(path) -> None:
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
-    p.add_argument("recipe", metavar="<recipe>", nargs="*",
-                   help="Recipe name(s) or glob pattern(s) to build (e.g. 'abseil' or '*'); omit to build all")
+    p.add_argument(
+        "recipe", metavar="<recipe>", nargs="*",
+        help="Recipe name(s) or glob pattern(s) to build (e.g. 'abseil' or '*'); omit to build all")
     p.add_argument(
         "--build-type",
         default="Release",
@@ -73,24 +74,31 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
         dest="generate_only",
         help="Run only through generate() (no source download, build, or package)",
     )
-    p.add_argument("--resume", metavar="NAME", default=None,
-                   help="Skip all recipes before NAME in build order (multi-recipe builds)")
-    p.add_argument("--target-os", default=None, dest="target_os", metavar="<os>",
-                   help="Cross-compile target OS (e.g. Windows, Linux, Mac, Android); "
-                        "default: build machine")
-    p.add_argument("--target-arch", default=None, dest="target_arch", metavar="<arch>",
-                   help="Cross-compile target architecture (X64 or ARM); "
-                        "default: build machine")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Print build plan without building")
-    p.add_argument("--force", "--clean", action="store_true", dest="force",
-                   help="Rebuild even if already built (wipe source/build/package first)")
-    p.add_argument("--exact", action="store_true",
-                   help="Build ONLY the explicitly named recipe(s); their dependencies are "
-                        "still resolved so generators (CMakeDeps, etc.) can reference them, "
-                        "but no dependency is ever built, wiped, or otherwise modified")
-    p.add_argument("--fail-fast", action="store_true", dest="fail_fast",
-                   help="Stop after the first recipe failure")
+    p.add_argument(
+        "--resume", metavar="NAME", default=None,
+        help="Skip all recipes before NAME in build order (multi-recipe builds)")
+    p.add_argument(
+        "--target-os", default=None, dest="target_os", metavar="<os>",
+        help="Cross-compile target OS (e.g. Windows, Linux, Mac, Android); "
+             "default: build machine")
+    p.add_argument(
+        "--target-arch", default=None, dest="target_arch", metavar="<arch>",
+        help="Cross-compile target architecture (X64 or ARM); "
+             "default: build machine")
+    p.add_argument(
+        "--dry-run", action="store_true",
+        help="Print build plan without building")
+    p.add_argument(
+        "--force", "--clean", action="store_true", dest="force",
+        help="Rebuild even if already built (wipe source/build/package first)")
+    p.add_argument(
+        "--exact", action="store_true",
+        help="Build ONLY the explicitly named recipe(s); their dependencies are "
+             "still resolved so generators (CMakeDeps, etc.) can reference them, "
+             "but no dependency is ever built, wiped, or otherwise modified")
+    p.add_argument(
+        "--fail-fast", action="store_true", dest="fail_fast",
+        help="Stop after the first recipe failure")
 
 
 @command
@@ -154,9 +162,10 @@ def build(args: argparse.Namespace) -> None:
             target_os=target_os, target_arch=target_arch, exact_set=exact_set,
         )
     else:
-        _build_recipe(recipes_root, build_root, names[0], build_type, set(),
-                      jobs=args.jobs, generate_only=generate_only, force=force,
-                      target_os=target_os, target_arch=target_arch, exact_set=exact_set)
+        _build_recipe(
+            recipes_root, build_root, names[0], build_type, set(),
+            jobs=args.jobs, generate_only=generate_only, force=force,
+            target_os=target_os, target_arch=target_arch, exact_set=exact_set)
 
 
 def _load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase]:
@@ -186,12 +195,14 @@ def _instantiate(
     target_arch: str | None,
     jobs: int | None = None,
 ) -> RecipeBase:
-    recipe = make_probe_recipe(recipe_cls, recipes_root, name, version, build_type, jobs=jobs,
-                               target_os=target_os, target_arch=target_arch)
+    recipe = make_probe_recipe(
+        recipe_cls, recipes_root, name, version, build_type, jobs=jobs,
+        target_os=target_os, target_arch=target_arch)
     # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeDeps
     # and anything reading ``recipe.ref`` rely on this being present.
-    recipe._recipe_node = _Node(name, version, context=_CONTEXT_HOST,
-                                recipe_state=_RECIPE_INCACHE)
+    recipe._recipe_node = _Node(
+        name, version, context=_CONTEXT_HOST,
+        recipe_state=_RECIPE_INCACHE)
 
     platform_tag = detect_platform_tag(target_os, target_arch)
     pkg_root = build_root / name / version / platform_tag
@@ -258,8 +269,9 @@ def _build_dep_graph(
             # build dep's bindir to PATH when its requirement has run=True.
             existing = next((r for r in deps_dict if str(r.ref.name) == dep_name), None)
             if existing is None:
-                new_req = Requirement(cached_req.ref, build=is_build, run=cached_req.run,
-                                      direct=direct)
+                new_req = Requirement(
+                    cached_req.ref, build=is_build, run=cached_req.run,
+                    direct=direct)
                 deps_dict[new_req] = cached_iface
             else:
                 # A dep reached both transitively (direct=False) and as a direct require must
@@ -302,8 +314,9 @@ def _build_dep_graph(
         dep._recipe_buildenv = Environment()
         dep._recipe_runenv = Environment()
 
-        dep._recipe_node = _Node(dep_name, dep_version, context=_CONTEXT_HOST,
-                                 recipe_state=_RECIPE_INCACHE)
+        dep._recipe_node = _Node(
+            dep_name, dep_version, context=_CONTEXT_HOST,
+            recipe_state=_RECIPE_INCACHE)
 
         # Full config phase (config_options/configure + auto-fPIC + package-type +
         # requirements); populates dep.requires for the sub-graph below.
@@ -315,8 +328,9 @@ def _build_dep_graph(
         # Register in cache BEFORE recursing to handle diamond/cycle deps.
         ref = RecipeReference(dep_name, dep_version)
         if is_build:
-            req = Requirement(ref, headers=False, libs=False, build=True, run=True,
-                              visible=False, direct=direct)
+            req = Requirement(
+                ref, headers=False, libs=False, build=True, run=True,
+                visible=False, direct=direct)
         else:
             # Set run=True if the package contains shared libraries so that
             # VirtualRunEnv adds its lib dir to DYLD_LIBRARY_PATH / LD_LIBRARY_PATH.
@@ -357,8 +371,9 @@ def _build_dep_graph(
         for trans_req, trans_iface in dep._recipe_dependencies._data.items():
             trans_name = str(trans_req.ref.name)
             if not any(str(r.ref.name) == trans_name for r in deps_dict.keys()):
-                non_direct_req = Requirement(trans_req.ref, build=trans_req.build,
-                                             run=trans_req.run, direct=False)
+                non_direct_req = Requirement(
+                    trans_req.ref, build=trans_req.build,
+                    run=trans_req.run, direct=False)
                 deps_dict[non_direct_req] = trans_iface
 
         if hasattr(dep, "package_info"):
@@ -383,6 +398,7 @@ def _is_sourced(build_root: Path, name: str, version: str, platform_tag: str) ->
 
 
 _RECIPE_SKIP_NAMES = {"recipe.py", "__pycache__"}
+
 
 def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
     """Copy auxiliary files (CMakeLists.txt, patches/, etc.) from the recipe directory
@@ -430,14 +446,16 @@ def _build_ordered(
     fail_fast: bool = False,
     exact_set: set[str] | None = None,
 ) -> None:
-    rgraph = _Graph.build(recipes_root, names, build_type, jobs=jobs,
-                          target_os=target_os, target_arch=target_arch)
+    rgraph = _Graph.build(
+        recipes_root, names, build_type, jobs=jobs,
+        target_os=target_os, target_arch=target_arch)
     order = rgraph.topo_order()
 
     if resume:
         if resume not in order:
-            print(f"[thirdparty] error: --resume '{resume}' not found in build order",
-                  file=sys.stderr)
+            print(
+                f"[thirdparty] error: --resume '{resume}' not found in build order",
+                file=sys.stderr)
             sys.exit(1)
         order = order[order.index(resume):]
 
@@ -496,9 +514,10 @@ def _build_ordered(
             continue
         t0 = time.time()
         try:
-            _build_recipe(recipes_root, build_root, name, build_type, visited,
-                          n_to, n_ta, jobs=jobs, generate_only=generate_only, force=force,
-                          exact_set=exact_set)
+            _build_recipe(
+                recipes_root, build_root, name, build_type, visited,
+                n_to, n_ta, jobs=jobs, generate_only=generate_only, force=force,
+                exact_set=exact_set)
             elapsed = time.time() - t0
             results.append((name, version, elapsed, None))
         except Exception as exc:
@@ -510,12 +529,12 @@ def _build_ordered(
                 traceback.print_exc()
                 sys.exit(1)
 
-    ok   = [(n, v, t) for n, v, t, e in results if e is None]
+    ok = [(n, v, t) for n, v, t, e in results if e is None]
     fail = [(n, v, e) for n, v, t, e in results if e is not None]
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"=== Summary: {len(ok)} built, {len(fail)} failed, {len(skipped)} skipped ===")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
     if ok:
         print(f"\nBuilt ({len(ok)}):")
         for n, v, t in ok:
@@ -572,16 +591,18 @@ def _build_recipe(
 
     # Probe the recipe to discover its direct dependencies (even when pre-built,
     # so we can return the correct transitive dep list to our caller).
-    probe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type,
-                         target_os, target_arch, jobs=jobs)
+    probe = _instantiate(
+        recipe_cls, recipes_root, build_root, name, version, build_type,
+        target_os, target_arch, jobs=jobs)
     direct_deps, direct_tools = _get_requires(probe)
 
     # Recursively build tool dependencies that have local recipes — for the BUILD MACHINE.
     for tool_name in direct_tools:
         if (recipes_root / tool_name / "recipe.py").exists():
-            _build_recipe(recipes_root, build_root, tool_name, build_type, visited,
-                          None, None, jobs=jobs, generate_only=generate_only, force=force,
-                          exact_set=exact_set)
+            _build_recipe(
+                recipes_root, build_root, tool_name, build_type, visited,
+                None, None, jobs=jobs, generate_only=generate_only, force=force,
+                exact_set=exact_set)
 
     # Recursively build deps (inheriting this recipe's target) and collect their dep lists.
     transitive: list[str] = []
@@ -589,9 +610,10 @@ def _build_recipe(
         if not (recipes_root / dep_name / "recipe.py").exists():
             print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
             continue
-        sub = _build_recipe(recipes_root, build_root, dep_name, build_type, visited,
-                            target_os, target_arch, jobs=jobs,
-                            generate_only=generate_only, force=force, exact_set=exact_set)
+        sub = _build_recipe(
+            recipes_root, build_root, dep_name, build_type, visited,
+            target_os, target_arch, jobs=jobs,
+            generate_only=generate_only, force=force, exact_set=exact_set)
         for d in sub:
             if d not in transitive:
                 transitive.append(d)
@@ -611,13 +633,15 @@ def _build_recipe(
         return transitive
 
     # Build the dependency graph for this recipe from all transitive deps.
-    dep_graph = _build_dep_graph(recipes_root, build_root, transitive, build_type,
-                                 target_os, target_arch, jobs=jobs, tool_names=direct_tools)
+    dep_graph = _build_dep_graph(
+        recipes_root, build_root, transitive, build_type,
+        target_os, target_arch, jobs=jobs, tool_names=direct_tools)
 
     print(f"\n[thirdparty] === Building {name}/{version} ({build_type}) ===\n")
 
-    recipe = _instantiate(recipe_cls, recipes_root, build_root, name, version, build_type,
-                          target_os, target_arch, jobs=jobs)
+    recipe = _instantiate(
+        recipe_cls, recipes_root, build_root, name, version, build_type,
+        target_os, target_arch, jobs=jobs)
     recipe._recipe_dependencies = dep_graph
 
     # Propagate conf_info from tool dependencies into recipe.conf so that, e.g.,

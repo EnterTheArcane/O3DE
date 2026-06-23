@@ -1,11 +1,11 @@
 import os
 import textwrap
 
-from thirdparty._internal.util.detect_vs import vs_installation_path
 from thirdparty._internal.model.recipe_base import RecipeBase
+from thirdparty._internal.util.detect_vs import vs_installation_path
+from thirdparty._internal.util.files import save
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.scm import Version
-from thirdparty._internal.util.files import save
 
 RECIPE_VCVARS = "vcvars_env"
 
@@ -31,18 +31,20 @@ def check_min_vs(recipe, version, raise_invalid=True):
     compiler_version = None
     if compiler == "Visual Studio":
         compiler_version = recipe.settings.get_safe("compiler.version")
-        compiler_version = {"17": "193",
-                            "16": "192",
-                            "15": "191",
-                            "14": "190",
-                            "12": "180",
-                            "11": "170"}.get(compiler_version)
+        compiler_version = {
+            "17": "193",
+            "16": "192",
+            "15": "191",
+            "14": "190",
+            "12": "180",
+            "11": "170",
+        }.get(compiler_version)
     elif compiler == "msvc":
         compiler_version = recipe.settings.get_safe("compiler.version")
         msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
         compiler_update = msvc_update or recipe.settings.get_safe("compiler.update")
         if compiler_version and compiler_update is not None:
-            compiler_version += ".{}".format(compiler_update)
+            compiler_version += f".{compiler_update}"
 
     if compiler_version and Version(compiler_version) < version:
         if raise_invalid:
@@ -61,14 +63,16 @@ def msvc_version_to_vs_ide_version(version):
     :param version: ``str`` or ``int`` msvc version
     :return: VS IDE version
     """
-    _visuals = {'170': '11',
-                '180': '12',
-                '190': '14',
-                '191': '15',
-                '192': '16',
-                '193': '17',
-                '194': '17',  # Note both 193 and 194 belong to VS 17 2022
-                '195': '18'}
+    _visuals = {
+        '170': '11',
+        '180': '12',
+        '190': '14',
+        '191': '15',
+        '192': '16',
+        '193': '17',
+        '194': '17',  # Note both 193 and 194 belong to VS 17 2022
+        '195': '18',
+    }
     return _visuals[str(version)]
 
 
@@ -79,14 +83,16 @@ def msvc_version_to_toolset_version(version):
     :param version: ``str`` or ``int`` msvc version
     :return: VS IDE toolset version
     """
-    toolsets = {'170': 'v110',
-                '180': 'v120',
-                '190': 'v140',
-                '191': 'v141',
-                '192': 'v142',
-                "193": 'v143',
-                "194": 'v143',
-                "195": 'v145'}
+    toolsets = {
+        '170': 'v110',
+        '180': 'v120',
+        '190': 'v140',
+        '191': 'v141',
+        '192': 'v142',
+        "193": 'v143',
+        "194": 'v143',
+        "195": 'v145',
+    }
     return toolsets.get(str(version))
 
 
@@ -146,11 +152,13 @@ class VCVars:
         # C:\Program Files (x86)\Microsoft Visual Studio\2019\Community
         # C:\Program Files (x86)\Microsoft Visual Studio\2017\Community
         # C:\Program Files (x86)\Microsoft Visual Studio 14.0
-        vcvars = vcvars_command(vs_version, architecture=vcvarsarch, platform_type=None,
-                                winsdk_version=winsdk_version, vcvars_ver=vcvars_ver,
-                                vs_install_path=vs_install_path)
+        vcvars = vcvars_command(
+            vs_version, architecture=vcvarsarch, platform_type=None,
+            winsdk_version=winsdk_version, vcvars_ver=vcvars_ver,
+            vs_install_path=vs_install_path)
 
-        content = textwrap.dedent(f"""\
+        content = textwrap.dedent(
+            f"""
             @echo off
             set __VSCMD_ARG_NO_LOGO=1
             set VSCMD_SKIP_SENDTELEMETRY=1
@@ -164,18 +172,19 @@ class VCVars:
 
         is_ps1 = self._recipe.conf.get("tools.env.virtualenv:powershell", check_type=str)
         if is_ps1:
-            content_ps1 = textwrap.dedent(rf"""
-            if (-not $env:VSCMD_ARG_VCVARS_VER){{
-                Push-Location "$PSScriptRoot"
-                cmd /c "vcvars_env.bat&set" |
-                foreach {{
-                  if ($_ -match "=") {{
-                    $v = $_.split("=", 2); set-item -force -path "ENV:\$($v[0])"  -value "$($v[1])"
-                  }}
-                }}
-                Pop-Location
-                write-host vcvars_env.ps1: Activated environment}}
-            """).strip()
+            content_ps1 = textwrap.dedent(
+                rf"""
+                if (-not $env:VSCMD_ARG_VCVARS_VER){{
+                    Push-Location "$PSScriptRoot"
+                    cmd /c "vcvars_env.bat&set" |
+                    foreach {{
+                    if ($_ -match "=") {{
+                        $v = $_.split("=", 2); set-item -force -path "ENV:\$($v[0])"  -value "$($v[1])"
+                    }}
+                    }}
+                    Pop-Location
+                    write-host vcvars_env.ps1: Activated environment}}
+                """).strip()
             recipe_vcvars_ps1 = f"{RECIPE_VCVARS}.ps1"
             create_env_script(recipe, content_ps1, recipe_vcvars_ps1, scope)
             _create_deactivate_vcvars_file(recipe, recipe_vcvars_ps1)
@@ -234,13 +243,14 @@ def msvc_runtime_flag(recipe):
             raise RecipeException("compiler.runtime should be 'static' or 'dynamic'")
         runtime_type = settings.get_safe("compiler.runtime_type")
         if runtime_type == "Debug":
-            runtime = "{}d".format(runtime)
+            runtime = f"{runtime}d"
         return runtime
     return ""
 
 
-def vcvars_command(version, architecture=None, platform_type=None, winsdk_version=None,
-                   vcvars_ver=None, start_dir_cd=True, vs_install_path=None):
+def vcvars_command(
+    version, architecture=None, platform_type=None, winsdk_version=None,
+    vcvars_ver=None, start_dir_cd=True, vs_install_path=None):
     """
     Recipe-agnostic construction of vcvars command
     https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
@@ -276,9 +286,10 @@ def _vcvars_path(version, vs_install_path):
     # TODO: This comes from upstream_source/client/tools/win.py vcvars_command()
     vs_path = vs_install_path or vs_installation_path(version)
     if not vs_path or not os.path.isdir(vs_path):
-        raise RecipeException(f"VS non-existing installation: Visual Studio {version}. "
-                             "If using a non-default toolset from a VS IDE version consider "
-                             "specifying it with the 'tools.microsoft.msbuild:vs_version' conf")
+        raise RecipeException(
+            f"VS non-existing installation: Visual Studio {version}. "
+            "If using a non-default toolset from a VS IDE version consider "
+            "specifying it with the 'tools.microsoft.msbuild:vs_version' conf")
 
     if int(version) > 14:
         vcpath = os.path.join(vs_path, "VC/Auxiliary/Build/vcvarsall.bat")
@@ -297,22 +308,27 @@ def _vcvars_versions(recipe):
             # NMake Makefiles will need vcvars activated, for VS target, defined with runtime
             return None, None
         toolset_version = recipe.settings.get_safe("compiler.runtime_version")
-        vs_version = {"v140": "14",
-                      "v141": "15",
-                      "v142": "16",
-                      "v143": "17",
-                      "v144": "17",
-                      "v145": "18"}.get(toolset_version)
+        vs_version = {
+            "v140": "14",
+            "v141": "15",
+            "v142": "16",
+            "v143": "17",
+            "v144": "17",
+            "v145": "18",
+        }.get(toolset_version)
         if vs_version is None:
-            raise RecipeException("Visual Studio Runtime version (v140-v145) not defined. Please, "
-                                 "add the compiler.runtime_version=[v140-v145] setting to your "
-                                 "profile.")
-        vcvars_ver = {"v140": "14.0",
-                      "v141": "14.1",
-                      "v142": "14.2",
-                      "v143": "14.3",
-                      "v144": "14.4",
-                      "v145": "14.5"}.get(toolset_version)
+            raise RecipeException(
+                "Visual Studio Runtime version (v140-v145) not defined. Please, "
+                "add the compiler.runtime_version=[v140-v145] setting to your "
+                "profile.")
+        vcvars_ver = {
+            "v140": "14.0",
+            "v141": "14.1",
+            "v142": "14.2",
+            "v143": "14.3",
+            "v144": "14.4",
+            "v145": "14.5",
+        }.get(toolset_version)
         if vcvars_ver and msvc_update is not None:
             vcvars_ver += f"{msvc_update}"
     else:
@@ -323,7 +339,7 @@ def _vcvars_versions(recipe):
             compiler_version = str(recipe.settings.compiler.version)
             compiler_update = msvc_update or recipe.settings.get_safe("compiler.update", "")
             # The equivalent of compiler 19.26 is toolset 14.26
-            vcvars_ver = "14.{}{}".format(compiler_version[-1], compiler_update)
+            vcvars_ver = f"14.{compiler_version[-1]}{compiler_update}"
     return vs_version, vcvars_ver
 
 
@@ -340,11 +356,15 @@ def _vcvars_arch(recipe):
 
     arch = None
     if arch_build == 'X64':
-        arch = {'X64': 'amd64',
-                'ARM': 'amd64_arm64'}.get(arch_host)
+        arch = {
+            'X64': 'amd64',
+            'ARM': 'amd64_arm64',
+        }.get(arch_host)
     elif arch_build == 'ARM':
-        arch = {'X64': 'arm64_x64',
-                'ARM': 'arm64'}.get(arch_host)
+        arch = {
+            'X64': 'arm64_x64',
+            'ARM': 'arm64',
+        }.get(arch_host)
 
     if not arch:
         raise RecipeException('vcvars unsupported architectures %s-%s' % (arch_build, arch_host))

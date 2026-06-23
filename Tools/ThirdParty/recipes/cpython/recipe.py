@@ -135,14 +135,14 @@ class Recipe(RecipeBase):
         yes_no = lambda v: "yes" if v else "no"
         tc.configure_args += [
             "--enable-shared" if self.options.shared else "--disable-shared",
-            "--with-doc-strings={}".format(yes_no(self.options.docstrings)),
-            "--with-pymalloc={}".format(yes_no(self.options.pymalloc)),
+            f"--with-doc-strings={yes_no(self.options.docstrings)}",
+            f"--with-pymalloc={yes_no(self.options.pymalloc)}",
             "--with-system-expat",
-            "--enable-optimizations={}".format(yes_no(self.options.optimizations)),
-            "--with-lto={}".format(yes_no(self.options.lto)),
-            "--with-pydebug={}".format(yes_no(self.settings.build_type == "Debug")),
+            f"--enable-optimizations={yes_no(self.options.optimizations)}",
+            f"--with-lto={yes_no(self.options.lto)}",
+            f"--with-pydebug={yes_no(self.settings.build_type == 'Debug')}",
             "--with-system-libmpdec",
-            "--with-openssl={}".format(self.dependencies["openssl"].folders.package),
+            f"--with-openssl={self.dependencies['openssl'].folders.package}",
         ]
         if Version(self.version) < "3.12":
             tc.configure_args.append("--with-system-ffi")
@@ -150,9 +150,8 @@ class Recipe(RecipeBase):
             tc.configure_args.append("--disable-test-modules")
         if self.options.get_safe("with_sqlite3"):
             tc.configure_args.append(
-                "--enable-loadable-sqlite-extensions={}".format(
-                    yes_no(not self.dependencies["sqlite3"].options.omit_load_extension)
-                ))
+                f"--enable-loadable-sqlite-extensions={yes_no(not self.dependencies['sqlite3'].options.omit_load_extension)}"
+            )
         if self.options.with_tkinter and Version(self.version) < "3.11":
             tcltk_includes = []
             tcltk_libs = []
@@ -166,8 +165,8 @@ class Recipe(RecipeBase):
                 # FIXME: use info from xorg.components (x11, xscrnsaver)
                 tcltk_libs.extend([f"-l{lib}" for lib in ("X11", "Xss")])
             tc.configure_args += [
-                "--with-tcltk-includes={}".format(" ".join(tcltk_includes)),
-                "--with-tcltk-libs={}".format(" ".join(tcltk_libs)),
+                f"--with-tcltk-includes={' '.join(tcltk_includes)}",
+                f"--with-tcltk-libs={' '.join(tcltk_libs)}",
             ]
         if self._supports_modules and "mpdecimal" in self.dependencies:
             # mpdecimal >= 4.0 renamed CONFIG_64/CONFIG_32 → MPD_CONFIG_64/MPD_CONFIG_32.
@@ -242,7 +241,7 @@ class Recipe(RecipeBase):
             replace_in_file(
                 self, setup_py,
                 "curses_libs = ",
-                "curses_libs = {} #".format(repr(libs)))
+                f"curses_libs = {repr(libs)} #")
 
         if self._supports_modules:
             openssl = self.dependencies["openssl"].cpp_info.aggregated_components()
@@ -664,35 +663,35 @@ class Recipe(RecipeBase):
     def _write_cmake_findpython_wrapper_file(self):
         template = textwrap.dedent(
             """
-                    if (DEFINED Python3_VERSION_STRING)
-                        set(_RECIPE_PYTHON_SUFFIX "3")
-                    else()
-                        set(_RECIPE_PYTHON_SUFFIX "")
-                    endif()
-                    set(Python${_RECIPE_PYTHON_SUFFIX}_EXECUTABLE @PYTHON_EXECUTABLE@)
-                    set(Python${_RECIPE_PYTHON_SUFFIX}_LIBRARY @PYTHON_LIBRARY@)
-            
-                    # Fails if these are set beforehand
-                    unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIRS)
-                    unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIR)
-            
-                    include(${CMAKE_ROOT}/Modules/FindPython${_RECIPE_PYTHON_SUFFIX}.cmake)
-            
-                    # Sanity check: The former comes from FindPython(3), the latter comes from the injected find module
-                    if(NOT Python${_RECIPE_PYTHON_SUFFIX}_VERSION STREQUAL Python${_RECIPE_PYTHON_SUFFIX}_VERSION_STRING)
-                        message(FATAL_ERROR "CMake detected wrong cpython version - this is likely a bug with the cpython Recipe package")
-                    endif()
-            
-                    if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Module)
-                        set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Module PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
-                    endif()
-                    if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::SABIModule)
-                        set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
-                    endif()
-                    if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Python)
-                        set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Python PROPERTIES INTERFACE_LINK_LIBRARIES cpython::embed)
-                    endif()
-                    """)
+            if (DEFINED Python3_VERSION_STRING)
+                set(_RECIPE_PYTHON_SUFFIX "3")
+            else()
+                set(_RECIPE_PYTHON_SUFFIX "")
+            endif()
+            set(Python${_RECIPE_PYTHON_SUFFIX}_EXECUTABLE @PYTHON_EXECUTABLE@)
+            set(Python${_RECIPE_PYTHON_SUFFIX}_LIBRARY @PYTHON_LIBRARY@)
+    
+            # Fails if these are set beforehand
+            unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIRS)
+            unset(Python${_RECIPE_PYTHON_SUFFIX}_INCLUDE_DIR)
+    
+            include(${CMAKE_ROOT}/Modules/FindPython${_RECIPE_PYTHON_SUFFIX}.cmake)
+    
+            # Sanity check: The former comes from FindPython(3), the latter comes from the injected find module
+            if(NOT Python${_RECIPE_PYTHON_SUFFIX}_VERSION STREQUAL Python${_RECIPE_PYTHON_SUFFIX}_VERSION_STRING)
+                message(FATAL_ERROR "CMake detected wrong cpython version - this is likely a bug with the cpython Recipe package")
+            endif()
+    
+            if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Module)
+                set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Module PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+            endif()
+            if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::SABIModule)
+                set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::SABIModule PROPERTIES INTERFACE_LINK_LIBRARIES cpython::python)
+            endif()
+            if (TARGET Python${_RECIPE_PYTHON_SUFFIX}::Python)
+                set_target_properties(Python${_RECIPE_PYTHON_SUFFIX}::Python PROPERTIES INTERFACE_LINK_LIBRARIES cpython::embed)
+            endif()
+            """)
 
         # In order for the package to be relocatable, these variables must be relative to the installed CMake file
         if is_msvc(self):
@@ -739,16 +738,16 @@ class Recipe(RecipeBase):
                 with open(filepath, "wb") as fn:
                     fn.write(
                         textwrap.dedent(
-                            f"""\
-                        #!/bin/sh
-                        ''':'
-                        __file__="$0"
-                        while [ -L "$__file__" ]; do
-                            __file__="$(dirname "$__file__")/$(readlink "$__file__")"
-                        done
-                        exec "$(dirname "$__file__")/python{self._version_suffix}" "$0" "$@"
-                        '''
-                        """).encode())
+                            f"""
+                            #!/bin/sh
+                            ''':'
+                            __file__="$0"
+                            while [ -L "$__file__" ]; do
+                                __file__="$(dirname "$__file__")/$(readlink "$__file__")"
+                            done
+                            exec "$(dirname "$__file__")/python{self._version_suffix}" "$0" "$@"
+                            '''
+                            """).encode())
                     fn.write(text)
 
             if not os.path.exists(self._cpython_symlink):

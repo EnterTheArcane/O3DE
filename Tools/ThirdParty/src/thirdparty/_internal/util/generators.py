@@ -6,7 +6,7 @@ def relativize_path(path, recipe, placeholder, normalize=True):
     relative path from the "generators_folder" to "path", asuming the root file, like
     recipe_toolchain.cmake will be directly in the "generators_folder"
     """
-    base_common_folder = recipe.folders._base_generators # noqa
+    base_common_folder = recipe.folders._base_generators  # noqa
     if not base_common_folder or not os.path.isabs(base_common_folder):
         return path
     try:

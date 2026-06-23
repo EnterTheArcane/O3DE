@@ -41,9 +41,9 @@ def patch(recipe, base_path=None, patch_file=None, patch_string=None, strip=0, f
     patch_description = kwargs.get('patch_description')
 
     if patch_type or patch_description:
-        patch_type_str = ' ({})'.format(patch_type) if patch_type else ''
-        patch_description_str = ': {}'.format(patch_description) if patch_description else ''
-        recipe.output.info('Apply patch{}{}'.format(patch_type_str, patch_description_str))
+        patch_type_str = f' ({patch_type})' if patch_type else ''
+        patch_description_str = f': {patch_description}' if patch_description else ''
+        recipe.output.info(f'Apply patch{patch_type_str}{patch_description_str}')
 
     patchlog = logging.getLogger("patch_ng")
     patchlog.handlers = []
@@ -83,4 +83,3 @@ def apply_patches(recipe):
             raise RecipeException(f"Failed to parse patch: {patch_name}")
         if not patchset.apply(root=recipe.folders.source):
             raise RecipeException(f"Failed to apply patch: {patch_name}")
-

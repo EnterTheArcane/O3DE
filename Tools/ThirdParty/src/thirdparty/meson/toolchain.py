@@ -3,18 +3,19 @@ import textwrap
 
 from jinja2 import Template, StrictUndefined
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.internal_tools import raise_on_universal_arch
+from thirdparty._internal.util.files import save
 from thirdparty.apple.apple import is_apple_os, apple_min_version_flag, \
     resolve_apple_flags, apple_extra_flags
 from thirdparty.build.cross_building import cross_building, can_run
-from thirdparty.build.flags import (architecture_link_flag, libcxx_flags, architecture_flag,
-                                     threads_flags)
+from thirdparty.build.flags import (
+    architecture_link_flag, libcxx_flags, architecture_flag,
+    threads_flags, )
 from thirdparty.env import VirtualBuildEnv
+from thirdparty.errors import RecipeException
 from thirdparty.meson.helpers import get_apple_subsystem, to_cppstd_flag, to_cstd_flag, \
     to_meson_machine, to_meson_value
 from thirdparty.microsoft import VCVars, msvc_runtime_flag
-from thirdparty._internal.util.files import save
 
 
 class MesonToolchain:
@@ -28,90 +29,91 @@ class MesonToolchain:
     # Ninja backend that make_conf() configures for Meson.
     _implicit_tool_requires = ("meson", "ninja")
 
-    _meson_file_template = textwrap.dedent("""\
-    [properties]
-    {% for it, value in properties.items() -%}
-    {{it}} = {{value}}
-    {% endfor %}
-
-    [constants]
-    preprocessor_definitions = [{% for it, value in preprocessor_definitions.items() -%}
-    '-D{{ it }}="{{ value}}"'{%- if not loop.last %}, {% endif %}{% endfor %}]
-
-    [project options]
-    {% for it, value in project_options.items() -%}
-    {{it}} = {{value}}
-    {% endfor %}
-
-    {% for subproject, listkeypair in subproject_options -%}
-    [{{subproject}}:project options]
-    {% for keypair in listkeypair -%}
-    {% for it, value in keypair.items() -%}
-    {{it}} = {{value}}
-    {% endfor %}
-    {% endfor %}
-    {% endfor %}
-
-    [binaries]
-    {% for it, value in binaries.items() -%}
-    {{it}} = {{value}}
-    {% endfor %}
-
-    [built-in options]
-    {% if buildtype %}
-    buildtype = '{{buildtype}}'
-    {% endif %}
-    {% if default_library %}
-    default_library = '{{default_library}}'
-    {% endif %}
-    {% if b_vscrt %}
-    b_vscrt = '{{b_vscrt}}'
-    {% endif %}
-    {% if b_ndebug %}
-    b_ndebug = {{b_ndebug}}
-    {% endif %}
-    {% if b_staticpic %}
-    b_staticpic = {{b_staticpic}}
-    {% endif %}
-    {% if cpp_std %}
-    cpp_std = '{{cpp_std}}'
-    {% endif %}
-    {% if c_std %}
-    c_std = '{{c_std}}'
-    {% endif %}
-    {% if backend %}
-    backend = '{{backend}}'
-    {% endif %}
-    {% if pkg_config_path %}
-    pkg_config_path = '{{pkg_config_path}}'
-    {% endif %}
-    {% if build_pkg_config_path %}
-    build.pkg_config_path = '{{build_pkg_config_path}}'
-    {% endif %}
-    # C/C++ arguments
-    c_args = {{c_args}} + preprocessor_definitions
-    c_link_args = {{c_link_args}}
-    cpp_args = {{cpp_args}} + preprocessor_definitions
-    cpp_link_args = {{cpp_link_args}}
-    {% if is_apple_system %}
-    # Objective-C/C++ arguments
-    objc_args = {{objc_args}} + preprocessor_definitions
-    objc_link_args = {{objc_link_args}}
-    objcpp_args = {{objcpp_args}} + preprocessor_definitions
-    objcpp_link_args = {{objcpp_link_args}}
-    {% endif %}
-
-    {% for context, values in cross_build.items() %}
-    [{{context}}_machine]
-    system = '{{values["system"]}}'
-    {% if values.get("subsystem") %}
-    subsystem = '{{values["subsystem"]}}'
-    {% endif %}
-    cpu_family = '{{values["cpu_family"]}}'
-    cpu = '{{values["cpu"]}}'
-    endian = '{{values["endian"]}}'
-    {% endfor %}
-    """)
+    _meson_file_template = textwrap.dedent(
+        """
+        [properties]
+        {% for it, value in properties.items() -%}
+        {{it}} = {{value}}
+        {% endfor %}
+    
+        [constants]
+        preprocessor_definitions = [{% for it, value in preprocessor_definitions.items() -%}
+        '-D{{ it }}="{{ value}}"'{%- if not loop.last %}, {% endif %}{% endfor %}]
+    
+        [project options]
+        {% for it, value in project_options.items() -%}
+        {{it}} = {{value}}
+        {% endfor %}
+    
+        {% for subproject, listkeypair in subproject_options -%}
+        [{{subproject}}:project options]
+        {% for keypair in listkeypair -%}
+        {% for it, value in keypair.items() -%}
+        {{it}} = {{value}}
+        {% endfor %}
+        {% endfor %}
+        {% endfor %}
+    
+        [binaries]
+        {% for it, value in binaries.items() -%}
+        {{it}} = {{value}}
+        {% endfor %}
+    
+        [built-in options]
+        {% if buildtype %}
+        buildtype = '{{buildtype}}'
+        {% endif %}
+        {% if default_library %}
+        default_library = '{{default_library}}'
+        {% endif %}
+        {% if b_vscrt %}
+        b_vscrt = '{{b_vscrt}}'
+        {% endif %}
+        {% if b_ndebug %}
+        b_ndebug = {{b_ndebug}}
+        {% endif %}
+        {% if b_staticpic %}
+        b_staticpic = {{b_staticpic}}
+        {% endif %}
+        {% if cpp_std %}
+        cpp_std = '{{cpp_std}}'
+        {% endif %}
+        {% if c_std %}
+        c_std = '{{c_std}}'
+        {% endif %}
+        {% if backend %}
+        backend = '{{backend}}'
+        {% endif %}
+        {% if pkg_config_path %}
+        pkg_config_path = '{{pkg_config_path}}'
+        {% endif %}
+        {% if build_pkg_config_path %}
+        build.pkg_config_path = '{{build_pkg_config_path}}'
+        {% endif %}
+        # C/C++ arguments
+        c_args = {{c_args}} + preprocessor_definitions
+        c_link_args = {{c_link_args}}
+        cpp_args = {{cpp_args}} + preprocessor_definitions
+        cpp_link_args = {{cpp_link_args}}
+        {% if is_apple_system %}
+        # Objective-C/C++ arguments
+        objc_args = {{objc_args}} + preprocessor_definitions
+        objc_link_args = {{objc_link_args}}
+        objcpp_args = {{objcpp_args}} + preprocessor_definitions
+        objcpp_link_args = {{objcpp_link_args}}
+        {% endif %}
+    
+        {% for context, values in cross_build.items() %}
+        [{{context}}_machine]
+        system = '{{values["system"]}}'
+        {% if values.get("subsystem") %}
+        subsystem = '{{values["subsystem"]}}'
+        {% endif %}
+        cpu_family = '{{values["cpu_family"]}}'
+        cpu = '{{values["cpu"]}}'
+        endian = '{{values["endian"]}}'
+        {% endfor %}
+        """)
 
     def __init__(self, recipe, backend=None, native=False):
         """
@@ -129,8 +131,9 @@ class MesonToolchain:
         self._is_apple_system = is_apple_os(self._recipe)
         is_cross_building = cross_building(recipe)  # x86_64->x86 is considered cross-building
         if not is_cross_building and native:
-            raise RecipeException("You can only pass native=True if you're cross-building, "
-                                 "otherwise, it could cause unexpected results.")
+            raise RecipeException(
+                "You can only pass native=True if you're cross-building, "
+                "otherwise, it could cause unexpected results.")
         self._recipe_conf = self._recipe.conf_build if native else self._recipe.conf
         # Values are kept as Python built-ins so users can modify them more easily, and they are
         # only converted to Meson file syntax for rendering
@@ -139,10 +142,12 @@ class MesonToolchain:
         self.backend = backend or 'ninja'
         build_type = self._recipe.settings.get_safe("build_type")
         #: Build type to use.
-        self.buildtype = {"Debug": "debug",  # Note, it is not "'debug'"
-                          "Release": "release",
-                          "MinSizeRel": "minsize",
-                          "RelWithDebInfo": "debugoptimized"}.get(build_type, build_type)
+        self.buildtype = {
+            "Debug": "debug",  # Note, it is not "'debug'"
+            "Release": "release",
+            "MinSizeRel": "minsize",
+            "RelWithDebInfo": "debugoptimized",
+        }.get(build_type, build_type)
         #: Disable asserts.
         self.b_ndebug = "true" if self.buildtype != "debug" else "false"
 
@@ -200,7 +205,7 @@ class MesonToolchain:
         self.binaries = {}
         #: Dict-like object that defines Meson ``project options`` with ``key=value`` format
         self.project_options = {
-            "wrap_mode": "nofallback"  # upstream issue 10671
+            "wrap_mode": "nofallback",  # upstream issue 10671
         }
         #: Dict-like object that defines Meson ``preprocessor definitions``
         self.preprocessor_definitions = {}
@@ -261,8 +266,9 @@ class MesonToolchain:
         self._sys_root = self._recipe_conf.get("tools.build:sysroot", check_type=str)
 
         # Read configuration for compilers
-        compilers_by_conf = self._recipe_conf.get("tools.build:compiler_executables", default={},
-                                                     check_type=dict)
+        compilers_by_conf = self._recipe_conf.get(
+            "tools.build:compiler_executables", default={},
+            check_type=dict)
         # Read the VirtualBuildEnv to update the variables
         build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (
             VirtualBuildEnv(self._recipe, auto_generate=True).vars())
@@ -344,6 +350,7 @@ class MesonToolchain:
             - upstream issue 9713
             - upstream issue 11596
         """
+
         def _get_cpp_info_value(name):
             elements = getattr(self._recipe.cpp.package, name)
             return elements[0] if elements else None
@@ -354,18 +361,20 @@ class MesonToolchain:
         libdir = _get_cpp_info_value("libdirs")
         includedir = _get_cpp_info_value("includedirs")
         if bindir:
-            ret.update({
-                'bindir': bindir,
-                'sbindir': bindir,
-                'libexecdir': bindir
-            })
+            ret.update(
+                {
+                    'bindir': bindir,
+                    'sbindir': bindir,
+                    'libexecdir': bindir,
+                })
         if datadir:
-            ret.update({
-                'datadir': datadir,
-                'localedir': datadir,
-                'mandir': datadir,
-                'infodir': datadir
-            })
+            ret.update(
+                {
+                    'datadir': datadir,
+                    'localedir': datadir,
+                    'mandir': datadir,
+                    'infodir': datadir,
+                })
         if includedir:
             ret["includedir"] = includedir
         if libdir:
@@ -401,16 +410,20 @@ class MesonToolchain:
 
         ndk_path = self._recipe_conf.get("tools.android:ndk_path")
         if not ndk_path:
-            raise RecipeException("You must provide a NDK path. Use 'tools.android:ndk_path' "
-                                 "configuration field.")
+            raise RecipeException(
+                "You must provide a NDK path. Use 'tools.android:ndk_path' "
+                "configuration field.")
 
         arch = self._recipe.settings.get_safe("arch")
         os_build = self.cross_build["build"]["system"]
-        ndk_bin = os.path.join(ndk_path, "toolchains",
-                               "llvm", "prebuilt", "{}-x86_64".format(os_build), "bin")
+        ndk_bin = os.path.join(
+            ndk_path, "toolchains",
+            "llvm", "prebuilt", f"{os_build}-x86_64", "bin")
         android_api_level = self._recipe.settings.get_safe("os.api_level")
-        android_target = {'ARM': 'aarch64-linux-android',
-                          'X64': 'x86_64-linux-android'}.get(arch)
+        android_target = {
+            'ARM': 'aarch64-linux-android',
+            'X64': 'x86_64-linux-android',
+        }.get(arch)
         os_build = self._recipe.settings_build.get_safe('os')
         compile_ext = ".cmd" if os_build == "Windows" else ""
         # User has more prio than Recipe
@@ -434,12 +447,15 @@ class MesonToolchain:
         # Now, it's time to get all the flags defined by the user
         cxxflags = self._recipe_conf.get("tools.build:cxxflags", default=[], check_type=list)
         cflags = self._recipe_conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._recipe_conf.get("tools.build:sharedlinkflags", default=[],
-                                                   check_type=list)
-        exelinkflags = self._recipe_conf.get("tools.build:exelinkflags", default=[],
-                                                check_type=list)
-        linker_scripts = self._recipe_conf.get("tools.build:linker_scripts", default=[],
-                                                  check_type=list)
+        sharedlinkflags = self._recipe_conf.get(
+            "tools.build:sharedlinkflags", default=[],
+            check_type=list)
+        exelinkflags = self._recipe_conf.get(
+            "tools.build:exelinkflags", default=[],
+            check_type=list)
+        linker_scripts = self._recipe_conf.get(
+            "tools.build:linker_scripts", default=[],
+            check_type=list)
         linker_script_flags = ['-T' + linker_script for linker_script in linker_scripts]
         defines = self._recipe_conf.get("tools.build:defines", default=[], check_type=list)
         sys_root = [f"--sysroot={self._sys_root}"] if self._sys_root else [""]
@@ -454,7 +470,7 @@ class MesonToolchain:
                          + self.threads_flags),
             "cflags": [self.arch_flag] + cflags + sys_root + self.extra_cflags + self.threads_flags,
             "ldflags": [self.arch_flag] + [self.arch_link_flag] + ld + self._rpath_link_flag,
-            "defines": [f"-D{d}" for d in (defines + self.extra_defines)]
+            "defines": [f"-D{d}" for d in (defines + self.extra_defines)],
         }
 
     @staticmethod
@@ -490,13 +506,14 @@ class MesonToolchain:
             "as": self.as_,
             "windres": self.windres,
             "pkgconfig": self.pkgconfig,
-            "pkg-config": self.pkgconfig
+            "pkg-config": self.pkgconfig,
         }
         if self._is_apple_system:
-            ret.update({
-                "objc": self.objc,
-                "objcpp": self.objcpp,
-            })
+            ret.update(
+                {
+                    "objc": self.objc,
+                    "objcpp": self.objcpp,
+                })
         # Let's give more prio to any value entered by the new binaries attribute
         ret.update(self.binaries)
         return ret
@@ -526,7 +543,7 @@ class MesonToolchain:
             self.cpp_args.append(self.libcxx)
             self.cpp_link_args.append(self.libcxx)
         if self.gcc_cxx11_abi:
-            self.cpp_args.append("-D{}".format(self.gcc_cxx11_abi))
+            self.cpp_args.append(f"-D{self.gcc_cxx11_abi}")
 
         subproject_options = {}
         for subproject, listkeypair in self.subproject_options.items():
@@ -549,8 +566,9 @@ class MesonToolchain:
             # https://mesonbuild.com/Builtin-options.html#core-options
             "buildtype": self.buildtype,
             "default_library": self.default_library,
-            "backend": self._recipe_conf.get("tools.meson.mesontoolchain:backend",
-                                                default=self.backend),
+            "backend": self._recipe_conf.get(
+                "tools.meson.mesontoolchain:backend",
+                default=self.backend),
             # https://mesonbuild.com/Builtin-options.html#base-options
             "b_vscrt": self.b_vscrt,
             "b_staticpic": to_meson_value(self.b_staticpic),  # boolean
@@ -571,7 +589,7 @@ class MesonToolchain:
             #: Deprecated: Dict-like object that defines Meson ``preprocessor definitions``. Use the extra_defines attribute instead.
             "preprocessor_definitions": self.preprocessor_definitions,
             "cross_build": self.cross_build,
-            "is_apple_system": self._is_apple_system
+            "is_apple_system": self._is_apple_system,
         }
 
     @property
@@ -591,8 +609,9 @@ class MesonToolchain:
         :return: ``str`` whole Meson context content.
         """
         context = self._context
-        content = Template(self._meson_file_template, trim_blocks=True, lstrip_blocks=True,
-                           undefined=StrictUndefined).render(context)
+        content = Template(
+            self._meson_file_template, trim_blocks=True, lstrip_blocks=True,
+            undefined=StrictUndefined).render(context)
         return content
 
     def generate(self):

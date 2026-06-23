@@ -35,9 +35,9 @@ def _tag_version(tag: str) -> Version | None:
     if had_prefix and v.main[0].value >= 1000:
         return None
     if (not had_prefix and len(v.main) == 3
-            and v.main[0].value > 1970
-            and 1 <= v.main[1].value <= 12
-            and 1 <= v.main[2].value <= 31):
+        and v.main[0].value > 1970
+        and 1 <= v.main[1].value <= 12
+        and 1 <= v.main[2].value <= 31):
         return None
     return v
 

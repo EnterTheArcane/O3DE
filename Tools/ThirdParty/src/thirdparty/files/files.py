@@ -1,20 +1,19 @@
 import gzip
 import io
 import os
-import stat
 import platform
 import shutil
+import stat
 import subprocess
-from typing import Optional
 from contextlib import contextmanager
 from fnmatch import fnmatch
 from shutil import which
+from typing import Optional
 
-
-from thirdparty._internal.rest.caching_file_downloader import SourcesCachingDownloader
 from thirdparty._internal.output import TimedOutput
-from thirdparty.errors import RecipeException
+from thirdparty._internal.rest.caching_file_downloader import SourcesCachingDownloader
 from thirdparty._internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
+from thirdparty.errors import RecipeException
 
 
 class FileProgress(io.FileIO):
@@ -111,9 +110,10 @@ def rm(recipe, pattern, folder, recursive=False, excludes=None):
             break
 
 
-def get(recipe, url, md5=None, sha1=None, sha256=None, destination=".", filename="",
-        keep_permissions=False, pattern=None, verify=True, retry=None, retry_wait=None,
-        auth=None, headers=None, strip_root=False, extract_filter=None, excludes=None):
+def get(
+    recipe, url, md5=None, sha1=None, sha256=None, destination=".", filename="",
+    keep_permissions=False, pattern=None, verify=True, retry=None, retry_wait=None,
+    auth=None, headers=None, strip_root=False, extract_filter=None, excludes=None):
     """
     High level download and decompressing of a tgz, zip or other compressed format file.
     Just a high level wrapper for download, unzip, and remove the temporary zip file once unzipped.
@@ -143,16 +143,19 @@ def get(recipe, url, md5=None, sha1=None, sha256=None, destination=".", filename
     if not filename:  # deduce filename from the URL
         url_base = url[0] if isinstance(url, (list, tuple)) else url
         if "?" in url_base or "=" in url_base:
-            raise RecipeException("Cannot deduce file name from the url: '{}'. Use 'filename' "
-                                 "parameter.".format(url_base))
+            raise RecipeException(
+                f"Cannot deduce file name from the url: '{url_base}'. Use 'filename' "
+                "parameter.")
         filename = os.path.basename(url_base)
 
-    download(recipe, url, filename, verify=verify,
-             retry=retry, retry_wait=retry_wait, auth=auth, headers=headers,
-             md5=md5, sha1=sha1, sha256=sha256)
-    unzip(recipe, filename, destination=destination, keep_permissions=keep_permissions,
-          pattern=pattern, strip_root=strip_root, extract_filter=extract_filter,
-          excludes=excludes)
+    download(
+        recipe, url, filename, verify=verify,
+        retry=retry, retry_wait=retry_wait, auth=auth, headers=headers,
+        md5=md5, sha1=sha1, sha256=sha256)
+    unzip(
+        recipe, filename, destination=destination, keep_permissions=keep_permissions,
+        pattern=pattern, strip_root=strip_root, extract_filter=extract_filter,
+        excludes=excludes)
     os.unlink(filename)
 
 
@@ -194,14 +197,15 @@ def ftp_download(recipe, host, filename, login='', password='', secure=False):
             ftp.quit()
 
 
-def download(recipe, url, filename, verify=True, retry=None, retry_wait=None,
-             auth=None, headers=None, md5=None, sha1=None, sha256=None):
+def download(
+    recipe, url, filename, verify=True, retry=None, retry_wait=None,
+    auth=None, headers=None, md5=None, sha1=None, sha256=None):
     """
     Retrieves a file from a given URL into a file with a given filename. It uses certificates from
     a list of known verifiers for https downloads, but this can be optionally disabled.
 
     You can pass hash checking parameters: ``md5``, ``sha1``, ``sha256``. All the specified
-    algorithms will be checked. If any of them doesn’t match, the downloaded file will be removed
+    algorithms will be checked. If any of them doesn't match, the downloaded file will be removed
     and it will raise a ``RecipeException``.
 
     :param recipe: The current recipe object. Always use ``self``.
@@ -250,23 +254,24 @@ def rename(recipe, src, dst):
     # FIXME: This function has been copied from legacy. Needs to fix: which()
     # call and wrap subprocess call.
     if os.path.exists(dst):
-        raise RecipeException("rename {} to {} failed, dst exists.".format(src, dst))
+        raise RecipeException(f"rename {src} to {dst} failed, dst exists.")
 
     if platform.system() == "Windows" and which("robocopy") and os.path.isdir(src):
         # /move Moves files and directories, and deletes them from the source after they are copied.
         # /e Copies subdirectories. Note that this option includes empty directories.
         # /ndl Specifies that directory names are not to be logged.
         # /nfl Specifies that file names are not to be logged.
-        process = subprocess.Popen(["robocopy", "/move", "/e", "/ndl", "/nfl", src, dst],
-                                   stdout=subprocess.PIPE)
+        process = subprocess.Popen(
+            ["robocopy", "/move", "/e", "/ndl", "/nfl", src, dst],
+            stdout=subprocess.PIPE)
         process.communicate()
         if process.returncode > 7:  # https://ss64.com/nt/robocopy-exit.html
-            raise RecipeException("rename {} to {} failed.".format(src, dst))
+            raise RecipeException(f"rename {src} to {dst} failed.")
     else:
         try:
             os.rename(src, dst)
         except Exception as err:
-            raise RecipeException("rename {} to {} failed: {}".format(src, dst, err))
+            raise RecipeException(f"rename {src} to {dst} failed: {err}")
 
 
 @contextmanager
@@ -286,8 +291,9 @@ def chdir(recipe, newdir):
         os.chdir(old_path)
 
 
-def chmod(recipe, path: str, read: Optional[bool] = None, write: Optional[bool] = None,
-          execute: Optional[bool] = None, recursive: bool = False):
+def chmod(
+    recipe, path: str, read: Optional[bool] = None, write: Optional[bool] = None,
+    execute: Optional[bool] = None, recursive: bool = False):
     """Change file or directory permissions cross-platform.
 
     .. versionadded:: 2.15
@@ -346,7 +352,7 @@ def chmod(recipe, path: str, read: Optional[bool] = None, write: Optional[bool] 
         permissions = [
             (read, stat.S_IRUSR),
             (write, stat.S_IWUSR),
-            (execute, stat.S_IXUSR)
+            (execute, stat.S_IXUSR),
         ]
         for enabled, mask in permissions:
             if enabled is None:
@@ -365,8 +371,9 @@ def chmod(recipe, path: str, read: Optional[bool] = None, write: Optional[bool] 
         _change_permission(path)
 
 
-def unzip(recipe, filename, destination=".", keep_permissions=False, pattern=None,
-          strip_root=False, extract_filter=None, excludes=None):
+def unzip(
+    recipe, filename, destination=".", keep_permissions=False, pattern=None,
+    strip_root=False, extract_filter=None, excludes=None):
     """
     Extract different compressed formats
 
@@ -393,10 +400,11 @@ def unzip(recipe, filename, destination=".", keep_permissions=False, pattern=Non
     extract_filter = recipe.conf.get("tools.files.unzip:filter") or extract_filter
     output.info(f"Uncompressing {filename} to {destination}")
     if (filename.endswith(".tar.gz") or filename.endswith(".tgz") or
-            filename.endswith(".tbz2") or filename.endswith(".tar.bz2") or
-            filename.endswith(".tar")):
-        return untargz(filename, destination, pattern, strip_root, extract_filter,
-                       excludes=excludes)
+        filename.endswith(".tbz2") or filename.endswith(".tar.bz2") or
+        filename.endswith(".tar")):
+        return untargz(
+            filename, destination, pattern, strip_root, extract_filter,
+            excludes=excludes)
     if filename.endswith(".gz"):
         target_name = filename[:-3] if destination == "." else destination
         target_dir = os.path.dirname(target_name)
@@ -407,8 +415,9 @@ def unzip(recipe, filename, destination=".", keep_permissions=False, pattern=Non
                 shutil.copyfileobj(fin, fout)
         return
     if filename.endswith(".tar.xz") or filename.endswith(".txz"):
-        return untargz(filename, destination, pattern, strip_root, extract_filter,
-                       excludes=excludes)
+        return untargz(
+            filename, destination, pattern, strip_root, extract_filter,
+            excludes=excludes)
 
     import zipfile
     full_path = os.path.normpath(os.path.join(os.getcwd(), destination))
@@ -463,8 +472,9 @@ def unzip(recipe, filename, destination=".", keep_permissions=False, pattern=Non
         output.writeln("")
 
 
-def untargz(filename, destination=".", pattern=None, strip_root=False, extract_filter=None,
-            excludes=None):
+def untargz(
+    filename, destination=".", pattern=None, strip_root=False, extract_filter=None,
+    excludes=None):
     # NOT EXPOSED at `thirdparty.tools.files` but used in tests
     import tarfile
     with tarfile.TarFile.open(filename, mode='r:*') as tarredgzippedFile:
@@ -481,7 +491,7 @@ def untargz(filename, destination=".", pattern=None, strip_root=False, extract_f
             members = []
             for member in tarredgzippedFile:
                 if pattern and not fnmatch(member.name, pattern):
-                    continue  # Skip files that don’t match the pattern
+                    continue  # Skip files that don't match the pattern
                 if excludes and any(fnmatch(member.name, pat) for pat in excludes):
                     continue  # Skip files that match the excludes
 
@@ -513,7 +523,7 @@ def untargz(filename, destination=".", pattern=None, strip_root=False, extract_f
 def check_sha1(recipe, file_path, signature):
     """
     Check that the specified ``SHA-1`` hash of the ``file_path`` matches the actual hash.
-    If doesn’t match it will raise a ``RecipeException``.
+    If doesn't match it will raise a ``RecipeException``.
 
     :param recipe: Recipefile object.
     :param file_path: Path of the file to check.
@@ -525,7 +535,7 @@ def check_sha1(recipe, file_path, signature):
 def check_md5(recipe, file_path, signature):
     """
     Check that the specified ``MD5`` hash of the ``file_path`` matches the actual hash.
-    If doesn’t match it will raise a ``RecipeException``.
+    If doesn't match it will raise a ``RecipeException``.
 
     :param recipe: The current recipe object. Always use ``self``.
     :param file_path: Path of the file to check.
@@ -537,7 +547,7 @@ def check_md5(recipe, file_path, signature):
 def check_sha256(recipe, file_path, signature):
     """
     Check that the specified ``SHA-256`` hash of the ``file_path`` matches the actual hash.
-    If doesn’t match it will raise a ``RecipeException``.
+    If doesn't match it will raise a ``RecipeException``.
 
     :param recipe: Recipefile object.
     :param file_path: Path of the file to check.
@@ -600,8 +610,9 @@ def collect_libs(recipe, folder=None):
     ref_libs = {}
     for lib_folder in lib_folders:
         if not os.path.exists(lib_folder):
-            recipe.output.warning("Lib folder doesn't exist, can't collect libraries: "
-                                     "{0}".format(lib_folder))
+            recipe.output.warning(
+                "Lib folder doesn't exist, can't collect libraries: "
+                f"{lib_folder}")
             continue
         # In case of symlinks, only keep shortest file name in the same "group"
         files = os.listdir(lib_folder)

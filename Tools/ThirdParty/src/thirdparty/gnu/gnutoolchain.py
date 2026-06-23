@@ -1,6 +1,5 @@
 import os
 
-from thirdparty.errors import RecipeException
 from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.apple.apple import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.build import cmd_args_to_string, save_toolchain_args
@@ -9,6 +8,7 @@ from thirdparty.build.flags import architecture_flag, architecture_link_flag, bu
     build_type_link_flags, \
     libcxx_flags, llvm_clang_front, threads_flags
 from thirdparty.env import Environment, VirtualBuildEnv
+from thirdparty.errors import RecipeException
 from thirdparty.gnu.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
 
@@ -65,21 +65,23 @@ class GnuToolchain:
         if llvm_clang_front(self._recipe) == "clang":
             self.msvc_runtime_link_flags = ["-fuse-ld=lld-link"]
 
-        self._is_universal_arch = is_universal_arch(recipe.settings.get_safe("arch"),
-                                                    recipe.settings.possible_values().get("arch"))
+        self._is_universal_arch = is_universal_arch(
+            recipe.settings.get_safe("arch"),
+            recipe.settings.possible_values().get("arch"))
         if self._is_universal_arch and not is_apple_os(self._recipe):
             arch_str = recipe.settings.get_safe('arch')
             raise RecipeException(f"Universal arch '{arch_str}' is only supported in Apple OSes")
 
-        extra_configure_args = self._recipe.conf.get("tools.gnu:extra_configure_args",
-                                                        check_type=list,
-                                                        default=[])
+        extra_configure_args = self._recipe.conf.get(
+            "tools.gnu:extra_configure_args",
+            check_type=list,
+            default=[])
         extra_configure_args = {it: None for it in extra_configure_args}
 
         # Host/Build triplets
         self.triplets_info = {
             "host": {"triplet": self._recipe.conf.get("tools.gnu:host_triplet")},
-            "build": {"triplet": self._recipe.conf.get("tools.gnu:build_triplet")}
+            "build": {"triplet": self._recipe.conf.get("tools.gnu:build_triplet")},
         }
         self._is_cross_building = not self._is_universal_arch and cross_building(self._recipe)
         if self._is_cross_building:
@@ -118,8 +120,9 @@ class GnuToolchain:
                                  and not self._is_universal_arch)
 
         min_flag, arch_flags, isysroot_flag = (
-            resolve_apple_flags(recipe, is_cross_building=is_cross_building_osx,
-                                is_universal=self._is_universal_arch)
+            resolve_apple_flags(
+                recipe, is_cross_building=is_cross_building_osx,
+                is_universal=self._is_universal_arch)
         )
         # https://man.archlinux.org/man/clang.1.en#Target_Selection_Options
         self.apple_arch_flag = arch_flags
@@ -151,8 +154,10 @@ class GnuToolchain:
             return ret
         # Setting host if it was not already defined yet
         arch = self._recipe.settings.get_safe("arch")
-        android_target = {'ARM': 'aarch64-linux-android',
-                          'X64': 'x86_64-linux-android'}.get(arch)
+        android_target = {
+            'ARM': 'aarch64-linux-android',
+            'X64': 'x86_64-linux-android',
+        }.get(arch)
         if self.triplets_info["host"]["triplet"] is None:
             self.triplets_info["host"]["triplet"] = android_target
         # Automatic guessing made by Recipe (need the NDK path variable defined)
@@ -168,11 +173,12 @@ class GnuToolchain:
                 'Linux': 'linux',
                 'Windows': 'windows',
                 'WindowsCE': 'windows',
-                'WindowsStore': 'windows'
+                'WindowsStore': 'windows',
             }.get(os_build, "linux")
             ext = ".cmd" if os_build == "Windows" else ""
-            ndk_bin = os.path.join(ndk_path, "toolchains", "llvm", "prebuilt",
-                                   f"{ndk_os_folder}-x86_64", "bin")
+            ndk_bin = os.path.join(
+                ndk_path, "toolchains", "llvm", "prebuilt",
+                f"{ndk_os_folder}-x86_64", "bin")
             android_api_level = self._recipe.settings.get_safe("os.api_level")
             recipe_vars = {
                 "CC": os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang{ext}"),
@@ -187,7 +193,7 @@ class GnuToolchain:
                 "OBJCOPY": os.path.join(ndk_bin, "llvm-objcopy"),
                 "OBJDUMP": os.path.join(ndk_bin, "llvm-objdump"),
                 "READELF": os.path.join(ndk_bin, "llvm-readelf"),
-                "ELFEDIT": os.path.join(ndk_bin, "llvm-elfedit")
+                "ELFEDIT": os.path.join(ndk_bin, "llvm-elfedit"),
             }
         build_env = VirtualBuildEnv(self._recipe, auto_generate=True).vars()
         for var_name, var_path in recipe_vars.items():
@@ -200,12 +206,15 @@ class GnuToolchain:
     def _resolve_compilers_mapping_variables(self):
         ret = {}
         # Configuration map
-        compilers_mapping = {"c": "CC", "cpp": "CXX", "cuda": "NVCC", "fortran": "FC",
-                             "rc": "RC", "nm": "NM", "ranlib": "RANLIB",
-                             "objdump": "OBJDUMP", "strip": "STRIP"}
+        compilers_mapping = {
+            "c": "CC", "cpp": "CXX", "cuda": "NVCC", "fortran": "FC",
+            "rc": "RC", "nm": "NM", "ranlib": "RANLIB",
+            "objdump": "OBJDUMP", "strip": "STRIP",
+        }
         # Compiler definitions by conf
-        compilers_by_conf = self._recipe.conf.get("tools.build:compiler_executables",
-                                                     default={}, check_type=dict)
+        compilers_by_conf = self._recipe.conf.get(
+            "tools.build:compiler_executables",
+            default={}, check_type=dict)
         if compilers_by_conf:
             for comp, env_var in compilers_mapping.items():
                 if comp in compilers_by_conf:
@@ -222,20 +231,23 @@ class GnuToolchain:
         if not extra_env_vars:
             # Normally, these are the most common default flags used by MSVC in Windows
             if is_msvc(self._recipe):
-                extra_env_vars = {"CC": "cl -nologo",
-                                  "CXX": "cl -nologo",
-                                  "LD": "link -nologo",
-                                  "AR": "lib",
-                                  "NM": "dumpbin -symbols",
-                                  "OBJDUMP": ":",
-                                  "RANLIB": ":",
-                                  "STRIP": ":"}
+                extra_env_vars = {
+                    "CC": "cl -nologo",
+                    "CXX": "cl -nologo",
+                    "LD": "link -nologo",
+                    "AR": "lib",
+                    "NM": "dumpbin -symbols",
+                    "OBJDUMP": ":",
+                    "RANLIB": ":",
+                    "STRIP": ":",
+                }
             extra_env_vars.update(self._resolve_compilers_mapping_variables())
         # Issue related: upstream issue 15486
         if self._is_cross_building and self._recipe.conf_build:
             compilers_build_mapping = (
-                self._recipe.conf_build.get("tools.build:compiler_executables", default={},
-                                               check_type=dict)
+                self._recipe.conf_build.get(
+                    "tools.build:compiler_executables", default={},
+                    check_type=dict)
             )
             if "c" in compilers_build_mapping:
                 extra_env_vars["CC_FOR_BUILD"] = compilers_build_mapping["c"]
@@ -277,8 +289,10 @@ class GnuToolchain:
     @property
     def cxxflags(self):
         fpic = "-fPIC" if self.fpic else None
-        ret = [self.libcxx, self.cppstd, self.arch_flag, fpic, self.msvc_runtime_flag,
-               self.sysroot_flag] + self.threads_flags
+        ret = [
+                  self.libcxx, self.cppstd, self.arch_flag, fpic, self.msvc_runtime_flag,
+                  self.sysroot_flag,
+              ] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
         apple_flags += self.apple_extra_flags
         conf_flags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
@@ -302,12 +316,16 @@ class GnuToolchain:
         ret = [self.arch_flag, self.sysroot_flag, self.arch_ld_flag] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
         apple_flags += self.apple_extra_flags
-        conf_flags = self._recipe.conf.get("tools.build:sharedlinkflags", default=[],
-                                              check_type=list)
-        conf_flags.extend(self._recipe.conf.get("tools.build:exelinkflags", default=[],
-                                                   check_type=list))
-        linker_scripts = self._recipe.conf.get("tools.build:linker_scripts", default=[],
-                                                  check_type=list)
+        conf_flags = self._recipe.conf.get(
+            "tools.build:sharedlinkflags", default=[],
+            check_type=list)
+        conf_flags.extend(
+            self._recipe.conf.get(
+                "tools.build:exelinkflags", default=[],
+                check_type=list))
+        linker_scripts = self._recipe.conf.get(
+            "tools.build:linker_scripts", default=[],
+            check_type=list)
         conf_flags.extend(["-T'" + linker_script + "'" for linker_script in linker_scripts])
         ret = ret + self.build_type_link_flags + apple_flags + self.extra_ldflags + conf_flags
         ret = ret + self.msvc_runtime_link_flags
@@ -337,10 +355,12 @@ class GnuToolchain:
     def _get_default_configure_install_flags(self):
         configure_install_flags = {"--prefix": self._prefix}
         # If someone want arguments but not the defaults can pass them in args manually
-        for flag_name, cppinfo_name in [("bindir", "bindirs"), ("sbindir", "bindirs"),
-                                        ("libdir", "libdirs"), ("includedir", "includedirs"),
-                                        ("oldincludedir", "includedirs"),
-                                        ("datarootdir", "resdirs")]:
+        for flag_name, cppinfo_name in [
+            ("bindir", "bindirs"), ("sbindir", "bindirs"),
+            ("libdir", "libdirs"), ("includedir", "includedirs"),
+            ("oldincludedir", "includedirs"),
+            ("datarootdir", "resdirs"),
+        ]:
             elements = getattr(self._recipe.cpp.package, cppinfo_name)
             cppinfo_value = f"${{prefix}}/{elements[0]}" if elements else None
             if cppinfo_value:
@@ -369,7 +389,7 @@ class GnuToolchain:
     def _environment(self):
         env = Environment()
         # Flags and defines
-        env.append("CPPFLAGS", ["-D{}".format(d) for d in self.defines])
+        env.append("CPPFLAGS", [f"-D{d}" for d in self.defines])
         env.append("CXXFLAGS", self.cxxflags)
         env.append("CFLAGS", self.cflags)
         env.append("LDFLAGS", self.ldflags)
@@ -389,7 +409,7 @@ class GnuToolchain:
         args = {
             "configure_args": cmd_args_to_string(self._dict_to_list(self.configure_args)),
             "make_args": cmd_args_to_string(self._dict_to_list(self.make_args)),
-            "autoreconf_args": cmd_args_to_string(self._dict_to_list(self.autoreconf_args))
+            "autoreconf_args": cmd_args_to_string(self._dict_to_list(self.autoreconf_args)),
         }
         save_toolchain_args(args, namespace=self._namespace)
         VCVars(self._recipe).generate()

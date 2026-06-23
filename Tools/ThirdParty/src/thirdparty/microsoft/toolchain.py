@@ -5,11 +5,11 @@ from xml.dom import minidom
 from jinja2 import Template
 
 from thirdparty._internal.util.detect_vs import vs_installation_path
+from thirdparty._internal.util.files import save, load
 from thirdparty.build import build_jobs
+from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
     msvc_platform_from_arch, vs_ide_version
-from thirdparty.errors import RecipeException
-from thirdparty._internal.util.files import save, load
 
 
 class MSBuildToolchain:
@@ -19,29 +19,30 @@ class MSBuildToolchain:
 
     filename = "recipe_toolchain.props"
 
-    _config_toolchain_props = textwrap.dedent("""\
+    _config_toolchain_props = textwrap.dedent(
+        """
         <?xml version="1.0" encoding="utf-8"?>
         <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-          {% if toolset_version_full_path %}
-          <Import Project="{{toolset_version_full_path}}" />
-          {% endif %}
-          <ItemDefinitionGroup>
+            {% if toolset_version_full_path %}
+            <Import Project="{{toolset_version_full_path}}" />
+            {% endif %}
+            <ItemDefinitionGroup>
             <ClCompile>
-              <PreprocessorDefinitions>{{ defines }}%(PreprocessorDefinitions)</PreprocessorDefinitions>
-              <AdditionalOptions>{{ compiler_flags }} %(AdditionalOptions)</AdditionalOptions>
-              <RuntimeLibrary>{{ runtime_library }}</RuntimeLibrary>
-              {% if cstd %}<LanguageStandard_C>{{ cstd }}</LanguageStandard_C>{% endif %}
-              <LanguageStandard>{{ cppstd }}</LanguageStandard>{{ parallel }}{{ compile_options }}
+                <PreprocessorDefinitions>{{ defines }}%(PreprocessorDefinitions)</PreprocessorDefinitions>
+                <AdditionalOptions>{{ compiler_flags }} %(AdditionalOptions)</AdditionalOptions>
+                <RuntimeLibrary>{{ runtime_library }}</RuntimeLibrary>
+                {% if cstd %}<LanguageStandard_C>{{ cstd }}</LanguageStandard_C>{% endif %}
+                <LanguageStandard>{{ cppstd }}</LanguageStandard>{{ parallel }}{{ compile_options }}
             </ClCompile>
             <Link>
-              <AdditionalOptions>{{ linker_flags }} %(AdditionalOptions)</AdditionalOptions>
+                <AdditionalOptions>{{ linker_flags }} %(AdditionalOptions)</AdditionalOptions>
             </Link>
             <ResourceCompile>
-              <PreprocessorDefinitions>{{ defines }}%(PreprocessorDefinitions)</PreprocessorDefinitions>
-              {% if rc_flags %}<AdditionalOptions>{{ rc_flags }} %(AdditionalOptions)</AdditionalOptions>{% endif %}
+                <PreprocessorDefinitions>{{ defines }}%(PreprocessorDefinitions)</PreprocessorDefinitions>
+                {% if rc_flags %}<AdditionalOptions>{{ rc_flags }} %(AdditionalOptions)</AdditionalOptions>{% endif %}
             </ResourceCompile>
-          </ItemDefinitionGroup>
-          <PropertyGroup Label="Configuration">
+            </ItemDefinitionGroup>
+            <PropertyGroup Label="Configuration">
             {% if winsdk_version %}
             <WindowsTargetPlatformVersion>{{ winsdk_version}}</WindowsTargetPlatformVersion>
             {% endif %}
@@ -49,9 +50,9 @@ class MSBuildToolchain:
             {% for k, v in properties.items() %}
             <{{k}}>{{ v }}</{{k}}>
             {% endfor %}
-          </PropertyGroup>
+            </PropertyGroup>
         </Project>
-    """)
+        """)
 
     def __init__(self, recipe):
         """
@@ -85,8 +86,10 @@ class MSBuildToolchain:
 
     def _name_condition(self, settings):
         platform = msvc_platform_from_arch(settings.get_safe("arch"))
-        props = [("Configuration", self.configuration),
-                 ("Platform", platform)]
+        props = [
+            ("Configuration", self.configuration),
+            ("Platform", platform),
+        ]
 
         name = "".join("_%s" % v for _, v in props if v is not None)
         condition = " And ".join("'$(%s)' == '%s'" % (k, v) for k, v in props if v is not None)
@@ -100,7 +103,7 @@ class MSBuildToolchain:
         last one emulates the ``vcvarsall.bat`` env script. See also :class:`VCVars`.
         """
         name, condition = self._name_condition(self._recipe.settings)
-        config_filename = "recipe_toolchain{}.props".format(name)
+        config_filename = f"recipe_toolchain{name}.props"
         # Writing the props files
         self._write_config_toolchain(config_filename)
         self._write_main_toolchain(config_filename, condition)
@@ -121,8 +124,9 @@ class MSBuildToolchain:
             return '%s=%s' % (key, value) if value is not None else key
 
         cxxflags, cflags, defines, sharedlinkflags, exelinkflags, rcflags = self._get_extra_flags()
-        preprocessor_definitions = "".join(["%s;" % format_macro(k, v)
-                                            for k, v in self.preprocessor_definitions.items()])
+        preprocessor_definitions = "".join(
+            ["%s;" % format_macro(k, v)
+             for k, v in self.preprocessor_definitions.items()])
         defines = preprocessor_definitions + "".join("%s;" % d for d in defines)
         self.cxxflags.extend(cxxflags)
         self.cflags.extend(cflags)
@@ -133,17 +137,21 @@ class MSBuildToolchain:
         cstd = f"stdc{self.cstd}" if self.cstd else ""
         runtime_library = self.runtime_library
         toolset = self.toolset or ""
-        conf_options = self._recipe.conf.get("tools.microsoft.msbuildtoolchain:compile_options",
-                                                default={}, check_type=dict)
+        conf_options = self._recipe.conf.get(
+            "tools.microsoft.msbuildtoolchain:compile_options",
+            default={}, check_type=dict)
         self.compile_options.update(conf_options)
         parallel = ""
         njobs = build_jobs(self._recipe)
         if njobs:
             parallel = "".join(
-                ["\n      <MultiProcessorCompilation>True</MultiProcessorCompilation>",
-                 "\n      <ProcessorNumber>{}</ProcessorNumber>".format(njobs)])
-        compile_options = "".join("\n      <{k}>{v}</{k}>".format(k=k, v=v)
-                                  for k, v in self.compile_options.items())
+                [
+                    "\n      <MultiProcessorCompilation>True</MultiProcessorCompilation>",
+                    f"\n      <ProcessorNumber>{njobs}</ProcessorNumber>",
+                ])
+        compile_options = "".join(
+            f"\n      <{k}>{v}</{k}>"
+            for k, v in self.compile_options.items())
 
         winsdk_version = self._recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
         winsdk_version = winsdk_version or self._recipe.settings.get_safe("os.version")
@@ -161,13 +169,14 @@ class MSBuildToolchain:
             "parallel": parallel,
             "properties": self.properties,
             "winsdk_version": winsdk_version,
-            "toolset_version_full_path": self.toolset_version_full_path
+            "toolset_version_full_path": self.toolset_version_full_path,
         }
 
     def _write_config_toolchain(self, config_filename):
         config_filepath = os.path.join(self._recipe.folders.generators, config_filename)
-        config_props = Template(self._config_toolchain_props, trim_blocks=True,
-                                lstrip_blocks=True).render(**self.context_config_toolchain)
+        config_props = Template(
+            self._config_toolchain_props, trim_blocks=True,
+            lstrip_blocks=True).render(**self.context_config_toolchain)
         self._recipe.output.info("MSBuildToolchain created %s" % config_filename)
         save(config_filepath, config_props)
 
@@ -176,7 +185,8 @@ class MSBuildToolchain:
         if os.path.isfile(main_toolchain_path):
             content = load(main_toolchain_path)
         else:
-            content = textwrap.dedent("""\
+            content = textwrap.dedent(
+                """
                 <?xml version="1.0" encoding="utf-8"?>
                 <Project ToolsVersion="4.0"
                         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -197,11 +207,11 @@ class MSBuildToolchain:
         try:
             import_group = dom.getElementsByTagName('ImportGroup')[0]
         except Exception:
-            raise RecipeException("Broken {}. Remove the file and try again".format(self.filename))
+            raise RecipeException(f"Broken {self.filename}. Remove the file and try again")
         children = import_group.getElementsByTagName("Import")
         for node in children:
             if (config_filename == node.getAttribute("Project") and
-                    condition == node.getAttribute("Condition")):
+                condition == node.getAttribute("Condition")):
                 break  # the import statement already exists
         else:  # create a new import statement
             import_node = dom.createElement('Import')
@@ -211,17 +221,19 @@ class MSBuildToolchain:
 
         recipe_toolchain = dom.toprettyxml()
         recipe_toolchain = "\n".join(line for line in recipe_toolchain.splitlines() if line.strip())
-        self._recipe.output.info("MSBuildToolchain writing {}".format(self.filename))
+        self._recipe.output.info(f"MSBuildToolchain writing {self.filename}")
         save(main_toolchain_path, recipe_toolchain)
 
     def _get_extra_flags(self):
         # Now, it's time to get all the flags defined by the user
         cxxflags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
         cflags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._recipe.conf.get("tools.build:sharedlinkflags", default=[],
-                                                   check_type=list)
-        exelinkflags = self._recipe.conf.get("tools.build:exelinkflags", default=[],
-                                                check_type=list)
+        sharedlinkflags = self._recipe.conf.get(
+            "tools.build:sharedlinkflags", default=[],
+            check_type=list)
+        exelinkflags = self._recipe.conf.get(
+            "tools.build:exelinkflags", default=[],
+            check_type=list)
         rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
         defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
         return cxxflags, cflags, defines, sharedlinkflags, exelinkflags, rcflags
@@ -244,7 +256,7 @@ def _get_toolset_props(recipe):
     basebuild = os.path.normpath(os.path.join(vs_path, "VC/Auxiliary/Build"))
     # The equivalent of compiler 19.26 is toolset 14.26
     compiler_version = str(recipe.settings.compiler.version)
-    vcvars_ver = "14.{}{}".format(compiler_version[-1], compiler_update)
+    vcvars_ver = f"14.{compiler_version[-1]}{compiler_update}"
     for folder in os.listdir(basebuild):
         if not os.path.isdir(os.path.join(basebuild, folder)):
             continue

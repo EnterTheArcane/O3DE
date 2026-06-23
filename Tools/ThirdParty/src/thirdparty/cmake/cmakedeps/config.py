@@ -2,8 +2,9 @@ import textwrap
 
 import jinja2
 from jinja2 import Template
-from thirdparty.cmake.utils import parse_extra_variable, cmake_escape_value
+
 from thirdparty._internal.util.generators import relativize_path
+from thirdparty.cmake.utils import parse_extra_variable, cmake_escape_value
 
 
 class ConfigTemplate2:
@@ -11,6 +12,7 @@ class ConfigTemplate2:
     FooConfig.cmake
     foo-config.cmake
     """
+
     def __init__(self, cmakedeps, require, recipe, full_cpp_info):
         self._cmakedeps = cmakedeps
         self._require = require
@@ -18,8 +20,9 @@ class ConfigTemplate2:
         self._full_cpp_info = full_cpp_info
 
     def content(self):
-        t = Template(self._template, trim_blocks=True, lstrip_blocks=True,
-                     undefined=jinja2.StrictUndefined)
+        t = Template(
+            self._template, trim_blocks=True, lstrip_blocks=True,
+            undefined=jinja2.StrictUndefined)
         return t.render(self._context)
 
     @property
@@ -32,51 +35,61 @@ class ConfigTemplate2:
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         targets_include = f"{f}Targets.cmake"
         pkg_name = self._recipe.ref.name
-        build_modules_paths = self._cmakedeps.get_property("cmake_build_modules", self._recipe,
-                                                           check_type=list) or []
+        build_modules_paths = self._cmakedeps.get_property(
+            "cmake_build_modules", self._recipe,
+            check_type=list) or []
         # FIXME: Proper escaping of paths for CMake and relativization
         # FIXME: build_module_paths coming from last config only
         build_modules_paths = [f.replace("\\", "/") for f in build_modules_paths]
-        build_modules_paths = [relativize_path(p, self._cmakedeps._recipe,
-                                               "${CMAKE_CURRENT_LIST_DIR}")
+        build_modules_paths = [relativize_path(
+            p, self._cmakedeps._recipe,
+            "${CMAKE_CURRENT_LIST_DIR}")
                                for p in build_modules_paths]
-        components = self._cmakedeps.get_property("cmake_components", self._recipe,
-                                                  check_type=list)
+        components = self._cmakedeps.get_property(
+            "cmake_components", self._recipe,
+            check_type=list)
         if components is None:  # Lets compute the default components names
             components = []
             # This assumes that cmake_components is only defined with not multi .libs=[lib1, lib2]
             for name in self._recipe.cpp_info.components:
                 if name.startswith("_"):  # Skip private components
                     continue
-                comp_components = self._cmakedeps.get_property("cmake_components", self._recipe,
-                                                               name, check_type=list)
+                comp_components = self._cmakedeps.get_property(
+                    "cmake_components", self._recipe,
+                    name, check_type=list)
                 if comp_components:
                     components.extend(comp_components)
                 else:
-                    cmakename = self._cmakedeps.get_property("cmake_target_name", self._recipe,
-                                                             name)
+                    cmakename = self._cmakedeps.get_property(
+                        "cmake_target_name", self._recipe,
+                        name)
                     if cmakename and "::" in cmakename:  # Remove package namespace
                         cmakename = cmakename.split("::", 1)[1]
                     components.append(cmakename or name)
         components = " ".join(components) if components else ""
 
-        result = {"filename": f,
-                  "components": components,
-                  "pkg_name": pkg_name,
-                  "targets_include_file": targets_include,
-                  "build_modules_paths": build_modules_paths}
+        result = {
+            "filename": f,
+            "components": components,
+            "pkg_name": pkg_name,
+            "targets_include_file": targets_include,
+            "build_modules_paths": build_modules_paths,
+        }
 
-        conf_extra_variables = self._recipe.conf.get("tools.cmake.cmaketoolchain:extra_variables",
-                                                        default={}, check_type=dict)
-        dep_extra_variables = self._cmakedeps.get_property("cmake_extra_variables", self._recipe,
-                                                           check_type=dict) or {}
+        conf_extra_variables = self._recipe.conf.get(
+            "tools.cmake.cmaketoolchain:extra_variables",
+            default={}, check_type=dict)
+        dep_extra_variables = self._cmakedeps.get_property(
+            "cmake_extra_variables", self._recipe,
+            check_type=dict) or {}
         # The configuration variables have precedence over the dependency ones
         extra_variables = {dep: value for dep, value in dep_extra_variables.items()
                            if dep not in conf_extra_variables}
         parsed_extra_variables = {}
         for key, value in extra_variables.items():
-            parsed_extra_variables[key] = parse_extra_variable("cmake_extra_variables",
-                                                               key, value)
+            parsed_extra_variables[key] = parse_extra_variable(
+                "cmake_extra_variables",
+                key, value)
         result["extra_variables"] = parsed_extra_variables
 
         result.update(self._get_legacy_vars())
@@ -85,8 +98,9 @@ class ConfigTemplate2:
     def _get_legacy_vars(self):
         # Auxiliary variables for legacy consumption and try_compile cases
         pkg_name = self._recipe.ref.name
-        prefixes = self._cmakedeps.get_property("cmake_additional_variables_prefixes",
-                                                self._recipe, check_type=list) or []
+        prefixes = self._cmakedeps.get_property(
+            "cmake_additional_variables_prefixes",
+            self._recipe, check_type=list) or []
 
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         prefixes = [f] + prefixes
@@ -103,74 +117,78 @@ class ConfigTemplate2:
             libraries = []
             if self._full_cpp_info.has_components:
                 for component in self._full_cpp_info.components.keys():
-                    root_target_name = self._cmakedeps.get_property("cmake_target_name",
-                                                                    self._recipe,
-                                                                    comp_name=component)
+                    root_target_name = self._cmakedeps.get_property(
+                        "cmake_target_name",
+                        self._recipe,
+                        comp_name=component)
                     libraries.append(root_target_name or f"{pkg_name}::{component}")
             else:
                 root_target_name = self._cmakedeps.get_property("cmake_target_name", self._recipe)
                 libraries.append(root_target_name or f"{pkg_name}::{pkg_name}")
             libraries = " ".join(libraries) if libraries else ""
-        return {"additional_variables_prefixes": prefixes,
-                "version": self._recipe.ref.version,
-                "include_dirs": include_dirs,
-                "definitions": definitions,
-                "libraries": libraries}
+        return {
+            "additional_variables_prefixes": prefixes,
+            "version": self._recipe.ref.version,
+            "include_dirs": include_dirs,
+            "definitions": definitions,
+            "libraries": libraries,
+        }
 
     @property
     def _template(self):
-        return textwrap.dedent("""\
-        # Requires CMake > 3.15
-        if(${CMAKE_VERSION} VERSION_LESS "3.15")
-            message(FATAL_ERROR "The 'CMakeDeps' generator only works with CMake >= 3.15")
-        endif()
-
-        include(${CMAKE_CURRENT_LIST_DIR}/{{ targets_include_file }})
-
-        get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-        if(NOT isMultiConfig AND NOT CMAKE_BUILD_TYPE)
-           message(FATAL_ERROR "Please, set the CMAKE_BUILD_TYPE variable when calling to CMake "
-                               "adding the '-DCMAKE_BUILD_TYPE=<build_type>' argument.")
-        endif()
-
-        {% if components %}
-        set({{filename}}_PACKAGE_PROVIDED_COMPONENTS {{components}})
-        foreach(comp {%raw%}${{%endraw%}{{filename}}_FIND_COMPONENTS})
-          if(NOT ${comp} IN_LIST {{filename}}_PACKAGE_PROVIDED_COMPONENTS)
-            if({%raw%}${{%endraw%}{{filename}}_FIND_REQUIRED_${comp}})
-              message(STATUS "Recipe: Error: '{{pkg_name}}' required COMPONENT '${comp}' not found")
-              set({{filename}}_FOUND FALSE)
+        return textwrap.dedent(
+            """
+            # Requires CMake > 3.15
+            if(${CMAKE_VERSION} VERSION_LESS "3.15")
+                message(FATAL_ERROR "The 'CMakeDeps' generator only works with CMake >= 3.15")
             endif()
-          endif()
-        endforeach()
-        {% endif %}
-
-        ################# Global variables for try compile and legacy ##############
-        {% for prefix in additional_variables_prefixes %}
-        set({{ prefix }}_VERSION_STRING "{{ version }}")
-        {% if include_dirs is not none %}
-        set({{ prefix }}_INCLUDE_DIRS "{{ include_dirs }}" )
-        set({{ prefix }}_INCLUDE_DIR "{{ include_dirs }}" )
-        {% endif %}
-        {% if libraries is not none %}
-        set({{ prefix }}_LIBRARIES {{ libraries }} )
-        {% endif %}
-        {% if definitions is not none %}
-        set({{ prefix }}_DEFINITIONS "{{ definitions}}" )
-        {% endif %}
-        {% endfor %}
-
-        # build_modules_paths comes from last configuration only
-        # Some build modules in RecipeCenter use try_compile variables and legacy, so this
-        # include() needs to happen after the above variables are defined
-        {% for build_module in build_modules_paths %}
-        message(STATUS "Recipe: Including build module from '{{build_module}}'")
-        include("{{ build_module }}")
-        {% endfor %}
-
-        # Definition of extra CMake variables from cmake_extra_variables
-
-        {% for key, value in extra_variables.items() %}
-        set({{ key }} {{ value }})
-        {% endfor %}
-        """)
+    
+            include(${CMAKE_CURRENT_LIST_DIR}/{{ targets_include_file }})
+    
+            get_property(isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+            if(NOT isMultiConfig AND NOT CMAKE_BUILD_TYPE)
+                message(FATAL_ERROR "Please, set the CMAKE_BUILD_TYPE variable when calling to CMake "
+                                    "adding the '-DCMAKE_BUILD_TYPE=<build_type>' argument.")
+            endif()
+    
+            {% if components %}
+            set({{filename}}_PACKAGE_PROVIDED_COMPONENTS {{components}})
+            foreach(comp {%raw%}${{%endraw%}{{filename}}_FIND_COMPONENTS})
+                if(NOT ${comp} IN_LIST {{filename}}_PACKAGE_PROVIDED_COMPONENTS)
+                if({%raw%}${{%endraw%}{{filename}}_FIND_REQUIRED_${comp}})
+                    message(STATUS "Recipe: Error: '{{pkg_name}}' required COMPONENT '${comp}' not found")
+                    set({{filename}}_FOUND FALSE)
+                endif()
+                endif()
+            endforeach()
+            {% endif %}
+    
+            ################# Global variables for try compile and legacy ##############
+            {% for prefix in additional_variables_prefixes %}
+            set({{ prefix }}_VERSION_STRING "{{ version }}")
+            {% if include_dirs is not none %}
+            set({{ prefix }}_INCLUDE_DIRS "{{ include_dirs }}" )
+            set({{ prefix }}_INCLUDE_DIR "{{ include_dirs }}" )
+            {% endif %}
+            {% if libraries is not none %}
+            set({{ prefix }}_LIBRARIES {{ libraries }} )
+            {% endif %}
+            {% if definitions is not none %}
+            set({{ prefix }}_DEFINITIONS "{{ definitions}}" )
+            {% endif %}
+            {% endfor %}
+    
+            # build_modules_paths comes from last configuration only
+            # Some build modules in RecipeCenter use try_compile variables and legacy, so this
+            # include() needs to happen after the above variables are defined
+            {% for build_module in build_modules_paths %}
+            message(STATUS "Recipe: Including build module from '{{build_module}}'")
+            include("{{ build_module }}")
+            {% endfor %}
+    
+            # Definition of extra CMake variables from cmake_extra_variables
+    
+            {% for key, value in extra_variables.items() %}
+            set({{ key }} {{ value }})
+            {% endfor %}
+            """)

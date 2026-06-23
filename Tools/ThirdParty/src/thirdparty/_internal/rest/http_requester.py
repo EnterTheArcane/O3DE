@@ -9,20 +9,17 @@ import urllib3
 from jinja2 import Template
 from requests.adapters import HTTPAdapter
 
-from thirdparty._internal.output import Output
-from thirdparty._internal.util.home_paths import HomePaths
-
-from thirdparty._internal.loader import load_python_file
 from thirdparty._internal.errors import scoped_traceback
-from thirdparty.errors import RecipeException
-
+from thirdparty._internal.loader import load_python_file
+from thirdparty._internal.output import Output
 # Capture SSL warnings as pointed out here:
 # https://urllib3.readthedocs.org/en/latest/security.html#insecureplatformwarning
 # TODO: Fix this security warning
 from thirdparty._internal.util.files import load
+from thirdparty._internal.util.home_paths import HomePaths
+from thirdparty.errors import RecipeException
 
 logging.captureWarnings(True)
-
 
 DEFAULT_TIMEOUT = (30, 60)  # connect, read timeouts
 INFINITE_TIMEOUT = -1
@@ -32,6 +29,7 @@ class _SourceURLCredentials:
     """
     Only for sources download (get(), download(), recipe config install
     """
+
     def __init__(self, cache_folder):
         self._urls = {}
         self._auth_source_plugin = None
@@ -45,7 +43,7 @@ class _SourceURLCredentials:
 
         def _get_auth(credentials):
             if ("headers" in credentials or "token" in credentials or
-               ("user" in credentials and "password" in credentials)):
+                ("user" in credentials and "password" in credentials)):
                 return credentials
             raise RecipeException(f"Unknown credentials method for '{credentials['url']}'")
 
@@ -106,11 +104,15 @@ class HttpRequester:
         self._proxies = config.get("core.net.http:proxies")
         self._cacert_path = config.get("core.net.http:cacert_path", check_type=str)
         self._client_certificates = config.get("core.net.http:client_cert")
-        self._clean_system_proxy = config.get("core.net.http:clean_system_proxy", default=False,
-                                              check_type=bool)
-        platform_info = "; ".join([" ".join([platform.system(), platform.release()]),
-                                   "Python " + platform.python_version(),
-                                   platform.machine()])
+        self._clean_system_proxy = config.get(
+            "core.net.http:clean_system_proxy", default=False,
+            check_type=bool)
+        platform_info = "; ".join(
+            [
+                " ".join([platform.system(), platform.release()]),
+                "Python " + platform.python_version(),
+                platform.machine(),
+            ])
         self._user_agent = "O3DE-ThirdParty/1.0 (%s)" % (platform_info)
 
     @staticmethod
@@ -125,7 +127,7 @@ class HttpRequester:
             requests.codes.gateway_timeout,
             requests.codes.variant_also_negotiates,
             requests.codes.insufficient_storage,
-            requests.codes.bandwidth_limit_exceeded
+            requests.codes.bandwidth_limit_exceeded,
         }
         return urllib3.Retry(
             total=retry,

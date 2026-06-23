@@ -9,6 +9,7 @@ class TextINIParse:
     as parser.section
     Currently used in PackageIdInfo and RecipeTextLoader
     """
+
     def __init__(self, text, allowed_fields=None, strip_comments=False):
         self._sections = {}
         self._allowed_fields = allowed_fields or []
