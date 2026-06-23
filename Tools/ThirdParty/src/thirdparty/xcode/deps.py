@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 import os
 import re
 import textwrap
+from typing import TYPE_CHECKING
 
 from jinja2 import Template
 
 from thirdparty._internal.util.files import load, save
 from thirdparty.apple.utils import _to_apple_arch
 from thirdparty.errors import RecipeException
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 GLOBAL_XCCONFIG_TEMPLATE = textwrap.dedent(
     """
@@ -109,7 +115,7 @@ class XcodeDeps:
         // Includes all components for the package
         """)
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         self.configuration = recipe.settings.get_safe("build_type")
         arch = recipe.settings.get_safe("arch")

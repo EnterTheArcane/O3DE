@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import textwrap
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import Template
 
@@ -9,6 +12,9 @@ from thirdparty.files import save
 from thirdparty.msbuild import MSBuild
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 from thirdparty.premake.toolchain import PremakeToolchain
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 # Source: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 PREMAKE_VS_VERSION = {
@@ -39,7 +45,12 @@ class Premake:
         include("{{premake_recipe_toolchain}}")
         """)
 
-    def __init__(self, recipe):
+    _recipe: RecipeBase
+    luafile: str
+    arguments: dict[str, Any]
+    action: str
+
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
@@ -58,7 +69,7 @@ class Premake:
         self._premake_recipe_toolchain = Path(self._recipe.folders.generators) / PremakeToolchain.filename
 
     @staticmethod
-    def _expand_args(args):
+    def _expand_args(args: dict[str, Any]) -> str:
         return ' '.join([f'--{key}={value}' for key, value in args.items()])
 
     def configure(self):

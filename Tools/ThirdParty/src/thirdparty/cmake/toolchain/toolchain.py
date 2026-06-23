@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 import textwrap
 from collections import OrderedDict
+from typing import TYPE_CHECKING
 
 from jinja2 import Template
 
@@ -27,6 +30,9 @@ from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft import VCVars
 from thirdparty.microsoft.visual import vs_ide_version
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class Variables(OrderedDict):
@@ -92,7 +98,19 @@ class CMakeToolchain:
     variables: Variables
     cache_variables: Variables
 
-    def __init__(self, recipe, generator=None):
+    _recipe: RecipeBase
+    preprocessor_definitions: Variables
+    extra_cxxflags: list[str]
+    extra_cflags: list[str]
+    extra_sharedlinkflags: list[str]
+    extra_exelinkflags: list[str]
+    add_rpath_link: bool
+    find_builddirs: bool
+    user_presets_path: str
+    presets_prefix: str
+    absolute_paths: bool
+
+    def __init__(self, recipe: RecipeBase, generator: str | None = None):
         self._recipe = recipe
         self.generator = self._get_generator(generator)
         self.variables = Variables()

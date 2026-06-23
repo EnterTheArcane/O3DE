@@ -1,7 +1,9 @@
 import configparser
 import os
 import sys
+from collections.abc import Iterable
 from shlex import quote
+from typing import TYPE_CHECKING, Any
 
 from thirdparty.build.compiler import check_min_compiler_version
 from thirdparty.build.cppstd import check_max_cppstd, check_min_cppstd, \
@@ -14,11 +16,14 @@ from thirdparty.build.flags import cppstd_flag
 from thirdparty.build.stdcpp_library import stdcpp_library
 from thirdparty.errors import RecipeException
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 RECIPE_TOOLCHAIN_ARGS_FILE = "buildenv.conf"
 RECIPE_TOOLCHAIN_ARGS_SECTION = "toolchain"
 
 
-def use_win_mingw(recipe):
+def use_win_mingw(recipe: RecipeBase) -> bool:
     os_build = recipe.settings_build.get_safe('os')
     if os_build == "Windows":
         compiler_ = recipe.settings.get_safe("compiler")
@@ -30,7 +35,7 @@ def use_win_mingw(recipe):
     return False
 
 
-def cmd_args_to_string(args):
+def cmd_args_to_string(args: Iterable[str] | None) -> str:
     if not args:
         return ""
     if sys.platform == 'win32':
@@ -39,12 +44,12 @@ def cmd_args_to_string(args):
         return _unix_cmd_args_to_string(args)
 
 
-def _unix_cmd_args_to_string(args):
+def _unix_cmd_args_to_string(args: Iterable[str]) -> str:
     """Return a shell-escaped string from *split_command*."""
     return ' '.join(quote(arg) for arg in args)
 
 
-def _windows_cmd_args_to_string(args):
+def _windows_cmd_args_to_string(args: Iterable[str]) -> str:
     # FIXME: This is not managing all the parsing from list2cmdline, but covering simplified cases
     ret = []
     for arg in args:
@@ -64,7 +69,8 @@ def _windows_cmd_args_to_string(args):
     return " ".join(ret)
 
 
-def load_toolchain_args(generators_folder=None, namespace=None):
+def load_toolchain_args(generators_folder: str | None = None,
+                        namespace: str | None = None) -> configparser.SectionProxy:
     """
     Helper function to load the content of any RECIPE_TOOLCHAIN_ARGS_FILE
 
@@ -91,7 +97,8 @@ def load_toolchain_args(generators_folder=None, namespace=None):
             (RECIPE_TOOLCHAIN_ARGS_SECTION, args_file))
 
 
-def save_toolchain_args(content, generators_folder=None, namespace=None):
+def save_toolchain_args(content: dict[str, Any], generators_folder: str | None = None,
+                        namespace: str | None = None):
     """
     Helper function to save the content into the RECIPE_TOOLCHAIN_ARGS_FILE
 

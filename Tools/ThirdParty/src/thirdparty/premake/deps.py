@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import glob
 import itertools
 import re
+from typing import TYPE_CHECKING
 
 from thirdparty._internal.util.files import save
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 # Filename format strings
 PREMAKE_VAR_FILE = "recipe_{pkgname}_vars_{config}.premake5.lua"
@@ -138,7 +144,7 @@ class PremakeDeps:
     recipe_deps.premake5.lua: unconditional import of all *direct* dependencies only
     """
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """

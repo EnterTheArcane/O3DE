@@ -6,6 +6,7 @@ import os
 import platform
 import re
 import textwrap
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -345,7 +346,8 @@ class Conf:
         for k, v in self._values.items():
             yield k, v.value
 
-    def get(self, conf_name, default=None, check_type=None, choices=None):
+    def get(self, conf_name: str, default: Any = None, check_type: Any = None,
+            choices: Any = None) -> Any:
         """
         Get all the values of the given configuration name.
 

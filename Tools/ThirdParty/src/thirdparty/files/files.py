@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gzip
 import io
 import os
@@ -5,15 +7,19 @@ import platform
 import shutil
 import stat
 import subprocess
+from collections.abc import Iterator
 from contextlib import contextmanager
 from fnmatch import fnmatch
 from shutil import which
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from thirdparty._internal.output import TimedOutput
 from thirdparty._internal.rest.caching_file_downloader import SourcesCachingDownloader
 from thirdparty._internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
 from thirdparty.errors import RecipeException
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class FileProgress(io.FileIO):
@@ -34,7 +40,7 @@ class FileProgress(io.FileIO):
         return block
 
 
-def load(recipe, path, encoding="utf-8"):
+def load(recipe: RecipeBase, path: str | os.PathLike[str], encoding: str = "utf-8") -> str:
     """
     Utility function to load files in one line. It will manage the open and close of the file,
     and load binary encodings. Returns the content of the file.
@@ -49,7 +55,8 @@ def load(recipe, path, encoding="utf-8"):
         return tmp
 
 
-def save(recipe, path, content, append=False, encoding="utf-8"):
+def save(recipe: RecipeBase, path: str | os.PathLike[str], content: str, append: bool = False,
+         encoding: str = "utf-8"):
     """
     Utility function to save files in one line. It will manage the open and close of the file
     and creating directories if necessary.
@@ -68,7 +75,7 @@ def save(recipe, path, content, append=False, encoding="utf-8"):
         handle.write(content)
 
 
-def mkdir(recipe, path):
+def mkdir(recipe: RecipeBase, path: str | os.PathLike[str]):
     """
     Utility functions to create a directory. The existence of the specified directory is checked,
     so mkdir() will do nothing if the directory already exists.
@@ -81,11 +88,12 @@ def mkdir(recipe, path):
     os.makedirs(path)
 
 
-def rmdir(recipe, path):
+def rmdir(recipe: RecipeBase, path: str | os.PathLike[str]):
     _internal_rmdir(path)
 
 
-def rm(recipe, pattern, folder, recursive=False, excludes=None):
+def rm(recipe: RecipeBase, pattern: str, folder: str | os.PathLike[str],
+       recursive: bool = False, excludes: Any = None):
     """
     Utility functions to remove files matching a ``pattern`` in a ``folder``.
 
@@ -275,7 +283,7 @@ def rename(recipe, src, dst):
 
 
 @contextmanager
-def chdir(recipe, newdir):
+def chdir(recipe: RecipeBase, newdir: str | os.PathLike[str]) -> Iterator[None]:
     """
     This is a context manager that allows to temporary change the current directory in your recipe
 

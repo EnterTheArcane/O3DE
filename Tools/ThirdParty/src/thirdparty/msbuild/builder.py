@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
-def msbuild_verbosity_cmd_line_arg(recipe):
+
+def msbuild_verbosity_cmd_line_arg(recipe: RecipeBase) -> str:
     """
     Controls msbuild verbosity.
     See https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-command-line-reference
@@ -23,7 +30,11 @@ class MSBuild:
     MSBuild build helper class
     """
 
-    def __init__(self, recipe):
+    _recipe: RecipeBase
+    build_type: str | None
+    platform: str | None
+
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
@@ -40,7 +51,7 @@ class MSBuild:
         #: Defines the platform name, e.g., ``ARM`` if ``settings.arch == "armv7"``.
         self.platform = msvc_platform
 
-    def command(self, sln, targets=None):
+    def command(self, sln: str, targets: list[str] | None = None) -> str:
         """
         Gets the ``msbuild`` command line. For instance,
         :command:`msbuild.exe "MyProject.sln" -p:Configuration=<conf> -p:Platform=<platform>`.
@@ -70,7 +81,7 @@ class MSBuild:
 
         return cmd
 
-    def build(self, sln, targets=None):
+    def build(self, sln: str, targets: list[str] | None = None):
         """
         Runs the ``msbuild`` command line obtained from ``self.command(sln)``.
 

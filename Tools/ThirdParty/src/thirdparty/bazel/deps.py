@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 import re
 import textwrap
+from typing import TYPE_CHECKING
 
 from jinja2 import Template, StrictUndefined
 
@@ -8,8 +11,11 @@ from thirdparty._internal.model.cpp_info import PackageType
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
-def _relativize_path(path, start_folder):
+
+def _relativize_path(path: str, start_folder: str) -> str:
     """
     Returns a relative path with regard to the given folder.
 
@@ -516,7 +522,7 @@ class _BazelPathsGenerator:
 
 class BazelDeps:
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """

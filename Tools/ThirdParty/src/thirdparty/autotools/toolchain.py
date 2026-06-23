@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+from typing import TYPE_CHECKING, Any
 
 from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.apple.utils import is_apple_os, resolve_apple_flags, apple_extra_flags
@@ -11,10 +14,13 @@ from thirdparty.errors import RecipeException
 from thirdparty.autotools.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class AutotoolsToolchain:
 
-    def __init__(self, recipe, namespace=None, prefix="/"):
+    def __init__(self, recipe: RecipeBase, namespace: str | None = None, prefix: str = "/"):
         """
         :param recipe: The current recipe object. Always use ``self``.
         :param namespace: This argument avoids collisions when you have multiple toolchain calls in
@@ -126,7 +132,7 @@ class AutotoolsToolchain:
         self.apple_min_version_flag = min_flag
         self.apple_extra_flags = apple_extra_flags(self._recipe)
 
-    def yes_no(self, option_name, default=None, negated=False):
+    def yes_no(self, option_name: str, default: Any = None, negated: bool = False) -> str:
         """
         Simple wrapper to return "yes" or "no" depending on whether ``option_name`` evaluates
         as True or False.  Convenient for autotools ``--enable-x=yes/no`` configure arguments.
@@ -140,7 +146,7 @@ class AutotoolsToolchain:
         option_value = not option_value if negated else option_value
         return "yes" if option_value else "no"
 
-    def _resolve_android_cross_compilation(self):
+    def _resolve_android_cross_compilation(self) -> dict[str, str]:
         # Issue related: upstream issue 13443
         ret = {}
         if not self._is_cross_building or not self._recipe.settings.get_safe("os") == "Android":
@@ -199,7 +205,7 @@ class AutotoolsToolchain:
                 ret[var_name] = var_path
         return ret
 
-    def _get_msvc_runtime_flag(self):
+    def _get_msvc_runtime_flag(self) -> str:
         if llvm_clang_front(self._recipe) == "clang":
             if self._recipe.settings.compiler.runtime == "dynamic":
                 runtime_type = self._recipe.settings.get_safe("compiler.runtime_type")
@@ -214,23 +220,23 @@ class AutotoolsToolchain:
             flag = f"-{flag}"
         return flag
 
-    def _msvc_extra_flags(self):
+    def _msvc_extra_flags(self) -> list[str]:
         if is_msvc(self._recipe) and check_min_vs(
             self._recipe, "180",
             raise_invalid=False):
             return ["-FS"]
         return []
 
-    def _add_msvc_flags(self, flags):
+    def _add_msvc_flags(self, flags: list[str]) -> list[str]:
         # This is to avoid potential duplicate with users recipes -FS (already some in RecipeCenter)
         return [f for f in self.msvc_extra_flags if f not in flags]
 
     @staticmethod
-    def _filter_list_empty_fields(v):
+    def _filter_list_empty_fields(v: list[str | None]) -> list[str]:
         return list(filter(bool, v))
 
     @property
-    def cxxflags(self):
+    def cxxflags(self) -> list[str]:
         fpic = "-fPIC" if self.fpic else None
         ret = [
                   self.libcxx, self.cppstd, self.arch_flag, fpic, self.msvc_runtime_flag,
@@ -244,7 +250,7 @@ class AutotoolsToolchain:
         return self._filter_list_empty_fields(ret)
 
     @property
-    def cflags(self):
+    def cflags(self) -> list[str]:
         fpic = "-fPIC" if self.fpic else None
         ret = [self.cstd, self.arch_flag, fpic, self.msvc_runtime_flag, self.sysroot_flag] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
@@ -255,7 +261,7 @@ class AutotoolsToolchain:
         return self._filter_list_empty_fields(ret)
 
     @property
-    def ldflags(self):
+    def ldflags(self) -> list[str]:
         ret = [self.arch_flag, self.sysroot_flag, self.arch_ld_flag] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
         apple_flags += self.apple_extra_flags
@@ -275,17 +281,17 @@ class AutotoolsToolchain:
         return self._filter_list_empty_fields(ret)
 
     @property
-    def defines(self):
+    def defines(self) -> list[str]:
         conf_flags = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
         ret = [self.ndebug, self.gcc_cxx11_abi] + self.extra_defines + conf_flags
         return self._filter_list_empty_fields(ret)
 
     @property
-    def rcflags(self):
+    def rcflags(self) -> list[str]:
         conf_flags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
         return self._filter_list_empty_fields(conf_flags)
 
-    def _include_obj_arc_flags(self, env):
+    def _include_obj_arc_flags(self, env: Environment):
         enable_arc = self._recipe.conf.get("tools.apple:enable_arc", check_type=bool)
         fobj_arc = ""
         if enable_arc:
@@ -296,7 +302,7 @@ class AutotoolsToolchain:
             env.append('OBJCFLAGS', [fobj_arc])
             env.append('OBJCXXFLAGS', [fobj_arc])
 
-    def environment(self):
+    def environment(self) -> Environment:
         env = Environment()
         # Setting Android cross-compilation flags (if exist)
         if self.android_cross_flags:
@@ -359,14 +365,14 @@ class AutotoolsToolchain:
     def vars(self):
         return self.environment().vars(self._recipe, scope="build")
 
-    def generate(self, env=None, scope="build"):
+    def generate(self, env: Environment | None = None, scope: str = "build"):
         env = env or self.environment()
         env = env.vars(self._recipe, scope=scope)
         env.save_script("autotoolstoolchain")
         self.generate_args()
         VCVars(self._recipe).generate(scope=scope)
 
-    def _default_configure_shared_flags(self):
+    def _default_configure_shared_flags(self) -> list[str]:
         args = []
         # Just add these flags if there's a shared option defined (never add to exe's)
         shared = self._recipe.options.get_safe("shared")
@@ -377,7 +383,7 @@ class AutotoolsToolchain:
 
         return args
 
-    def _default_configure_install_flags(self):
+    def _default_configure_install_flags(self) -> list[str]:
         configure_install_flags = []
 
         def _get_argument(argument_name, cppinfo_name):
@@ -398,10 +404,10 @@ class AutotoolsToolchain:
         return [el for el in configure_install_flags if el]
 
     @staticmethod
-    def _default_autoreconf_flags():
+    def _default_autoreconf_flags() -> list[str]:
         return ["--force", "--install"]
 
-    def _get_triplets(self):
+    def _get_triplets(self) -> list[str]:
         triplets = []
         for flag, value in (
                 ("--host=", self._host), ("--build=", self._build),
@@ -411,7 +417,7 @@ class AutotoolsToolchain:
                 triplets.append(f'{flag}{value}')
         return triplets
 
-    def update_configure_args(self, updated_flags):
+    def update_configure_args(self, updated_flags: dict[str, Any]):
         """
         Helper to update/prune flags from ``self.configure_args``.
 
@@ -420,7 +426,7 @@ class AutotoolsToolchain:
         """
         self._update_flags("configure_args", updated_flags)
 
-    def update_make_args(self, updated_flags):
+    def update_make_args(self, updated_flags: dict[str, Any]):
         """
         Helper to update/prune arguments from ``self.make_args``.
 
@@ -429,7 +435,7 @@ class AutotoolsToolchain:
         """
         self._update_flags("make_args", updated_flags)
 
-    def update_autoreconf_args(self, updated_flags):
+    def update_autoreconf_args(self, updated_flags: dict[str, Any]):
         """
         Helper to update/prune arguments from ``self.autoreconf_args``.
 
@@ -439,7 +445,7 @@ class AutotoolsToolchain:
         self._update_flags("autoreconf_args", updated_flags)
 
     # FIXME: Remove all these update_xxxx whenever xxxx_args are dicts or new ones replace them
-    def _update_flags(self, attr_name, updated_flags):
+    def _update_flags(self, attr_name: str, updated_flags: dict[str, Any]):
 
         def _list_to_dict(flags):
             ret = {}

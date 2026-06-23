@@ -1,14 +1,26 @@
+from __future__ import annotations
+
 import textwrap
 from io import StringIO
+from typing import TYPE_CHECKING, Any
 
 from thirdparty.build import cmd_args_to_string
 from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class PkgConfig:
 
-    def __init__(self, recipe, library, pkg_config_path=None):
+    _recipe: RecipeBase
+    _library: str
+    _info: dict[str, str]
+    _pkg_config_path: str | None
+    _variables: dict[str, str] | None
+
+    def __init__(self, recipe: RecipeBase, library: str, pkg_config_path: str | None = None):
         """
 
         :param recipe: The current recipe object. Always use ``self``.
@@ -22,7 +34,7 @@ class PkgConfig:
         self._pkg_config_path = pkg_config_path
         self._variables = None
 
-    def _parse_output(self, option):
+    def _parse_output(self, option: str) -> str:
         executable = self._recipe.conf.get("tools.gnu:pkg_config", default="pkg-config")
         command = cmd_args_to_string([executable, '--' + option, self._library, '--print-errors'])
 
@@ -43,47 +55,47 @@ class PkgConfig:
         value = output.getvalue().strip()
         return value
 
-    def _get_option(self, option):
+    def _get_option(self, option: str) -> str:
         if option not in self._info:
             self._info[option] = self._parse_output(option)
         return self._info[option]
 
     @property
-    def includedirs(self):
+    def includedirs(self) -> list[str]:
         return [include[2:] for include in self._get_option('cflags-only-I').split()]
 
     @property
-    def cflags(self):
+    def cflags(self) -> list[str]:
         return [flag for flag in self._get_option('cflags-only-other').split()
                 if not flag.startswith("-D")]
 
     @property
-    def defines(self):
+    def defines(self) -> list[str]:
         return [flag[2:] for flag in self._get_option('cflags-only-other').split()
                 if flag.startswith("-D")]
 
     @property
-    def libdirs(self):
+    def libdirs(self) -> list[str]:
         return [lib[2:] for lib in self._get_option('libs-only-L').split()]
 
     @property
-    def libs(self):
+    def libs(self) -> list[str]:
         return [lib[2:] for lib in self._get_option('libs-only-l').split()]
 
     @property
-    def linkflags(self):
+    def linkflags(self) -> list[str]:
         return self._get_option('libs-only-other').split()
 
     @property
-    def provides(self):
+    def provides(self) -> str:
         return self._get_option('print-provides')
 
     @property
-    def version(self):
+    def version(self) -> str:
         return self._get_option('modversion')
 
     @property
-    def variables(self):
+    def variables(self) -> dict[str, str]:
         if self._variables is None:
             variable_names = self._parse_output('print-variables').split()
             self._variables = {}
@@ -91,7 +103,8 @@ class PkgConfig:
                 self._variables[name] = self._parse_output('variable=%s' % name)
         return self._variables
 
-    def fill_cpp_info(self, cpp_info, is_system=True, system_libs=None):
+    def fill_cpp_info(self, cpp_info: Any, is_system: bool = True,
+                      system_libs: list[str] | None = None):
         """
         Method to fill a cpp_info object from the PkgConfig configuration
 

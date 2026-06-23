@@ -1,19 +1,25 @@
+from __future__ import annotations
+
 import os
 from io import StringIO
+from typing import TYPE_CHECKING, Any
 
 from thirdparty._internal.internal_tools import universal_arch_separator
 from thirdparty._internal.util.runners import check_output_runner
 from thirdparty.build import cmd_args_to_string
 from thirdparty.errors import RecipeException
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
-def is_apple_os(recipe, build_context=False):
+
+def is_apple_os(recipe: RecipeBase, build_context: bool = False) -> bool:
     """returns True if OS is Apple one (Mac, iOS, tvOS or visionOS)"""
     settings = recipe.settings_build if build_context else recipe.settings
     return str(settings.get_safe("os")) in ['Mac', 'iOS', 'tvOS', 'visionOS']
 
 
-def _to_apple_arch(arch, default=None):
+def _to_apple_arch(arch: str | None, default: Any = None) -> str | None:
     """converts recipe-style architecture into Apple-style arch"""
     return {
         'X64': 'x86_64',
@@ -21,13 +27,13 @@ def _to_apple_arch(arch, default=None):
     }.get(str(arch), default)
 
 
-def to_apple_arch(recipe, default=None):
+def to_apple_arch(recipe: RecipeBase, default: Any = None) -> str | None:
     """converts recipe-style architecture into Apple-style arch"""
     arch_ = recipe.settings.get_safe("arch")
     return _to_apple_arch(arch_, default)
 
 
-def apple_sdk_path(recipe, is_cross_building=True):
+def apple_sdk_path(recipe: RecipeBase, is_cross_building: bool = True):
     sdk_path = recipe.conf.get("tools.apple:sdk_path")
     if not sdk_path:
         # XCRun already knows how to extract os.sdk from recipe.settings
@@ -58,7 +64,7 @@ def get_apple_sdk_fullname(recipe):
         raise RecipeException("Please, specify a suitable value for os.sdk.")
 
 
-def apple_min_version_flag(recipe):
+def apple_min_version_flag(recipe: RecipeBase) -> str:
     """compiler flag name which controls deployment target"""
     os_ = recipe.settings.get_safe('os')
     os_sdk = recipe.settings.get_safe('os.sdk')
@@ -82,7 +88,8 @@ def apple_min_version_flag(recipe):
     }.get(os_sdk, "")
 
 
-def resolve_apple_flags(recipe, is_cross_building=False, is_universal=False):
+def resolve_apple_flags(recipe: RecipeBase, is_cross_building: bool = False,
+                        is_universal: bool = False):
     """
     Gets the most common flags in Apple systems. If it's a cross-building context
     SDK path is mandatory so if it could raise an exception if SDK is not found.
@@ -118,7 +125,7 @@ def resolve_apple_flags(recipe, is_cross_building=False, is_universal=False):
     return min_version_flag, apple_arch_flags, apple_isysroot_flag
 
 
-def xcodebuild_deployment_target_key(os_name):
+def xcodebuild_deployment_target_key(os_name: str) -> str:
     return {
         "Mac": "MACOSX_DEPLOYMENT_TARGET",
         "iOS": "IPHONEOS_DEPLOYMENT_TARGET",

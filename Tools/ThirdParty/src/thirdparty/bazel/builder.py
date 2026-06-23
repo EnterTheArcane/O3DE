@@ -1,12 +1,23 @@
+from __future__ import annotations
+
 import os
 import platform
+from typing import TYPE_CHECKING
 
 from thirdparty.bazel.toolchain import BazelToolchain
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class Bazel:
 
-    def __init__(self, recipe):
+    _recipe: RecipeBase
+    _recipe_bazelrc: str
+    _use_recipe_config: bool
+    _startup_opts: str
+
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
@@ -16,7 +27,7 @@ class Bazel:
         self._use_recipe_config = os.path.exists(self._recipe_bazelrc)
         self._startup_opts = self._get_startup_command_options()
 
-    def _safe_run_command(self, command):
+    def _safe_run_command(self, command: str):
         """
         Windows is having problems stopping bazel processes, so it ends up locking
         some files if something goes wrong. Better to shut down the Bazel server after running
@@ -28,7 +39,7 @@ class Bazel:
             if platform.system() == "Windows":
                 self._recipe.run("bazel" + self._startup_opts + " shutdown")
 
-    def _get_startup_command_options(self):
+    def _get_startup_command_options(self) -> str:
         bazelrc_paths = []
         if self._use_recipe_config:
             bazelrc_paths.append(self._recipe_bazelrc)

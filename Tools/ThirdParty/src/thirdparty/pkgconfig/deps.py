@@ -1,13 +1,19 @@
+from __future__ import annotations
+
 import os
 import re
 import textwrap
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
 from thirdparty.errors import RecipeException
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class _PCFilesDeps:
@@ -325,7 +331,7 @@ class _PCFilesDeps:
 
 class PkgConfigDeps:
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         # Activate the build *.pc files for the specified libraries
         self.build_context_activated = []

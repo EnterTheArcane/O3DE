@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import Any
+from typing import IO, Any
 
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.cpp_info import MockInfoProperty
@@ -60,7 +60,7 @@ class RecipeBase:
     buildenv_info: Environment  # Environment
     runenv_info: Environment  # Environment
     conf_info: "Conf | None" = None
-    conf: "Conf | None" = None
+    conf: Conf
 
     def __init__(self, display_name=""):
         self.display_name: str = display_name
@@ -106,7 +106,7 @@ class RecipeBase:
         self.layouts = Layouts()
 
     @property
-    def output(self):
+    def output(self) -> Output:
         # an output stream (writeln, info, warn error)
         scope = self.display_name
         if not scope:
@@ -161,8 +161,9 @@ class RecipeBase:
         self.cpp.package = value
 
     def run(
-        self, command: str, stdout=None, cwd=None, ignore_errors=False, env="", quiet=False,
-        shell=True, scope="build", stderr=None):
+        self, command: str, stdout: IO[Any] | None = None, cwd: str | None = None,
+        ignore_errors: bool = False, env: str | list[str] | None = "", quiet: bool = False,
+        shell: bool = True, scope: str = "build", stderr: IO[Any] | None = None) -> int:
         """ Run a command in the current package context.
 
         :parameter command: The command to run.

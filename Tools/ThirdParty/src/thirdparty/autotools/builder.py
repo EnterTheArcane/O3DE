@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import os
 import re
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
 from thirdparty.build import build_jobs, cmd_args_to_string, load_toolchain_args
@@ -7,14 +11,22 @@ from thirdparty.errors import RecipeException
 from thirdparty.files import chdir
 from thirdparty.microsoft import unix_path
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
-def join_arguments(args):
+
+def join_arguments(args: Iterable[str | None]) -> str:
     return " ".join(filter(None, args))
 
 
 class Autotools:
 
-    def __init__(self, recipe, namespace=None):
+    _recipe: RecipeBase
+    _configure_args: str | None
+    _make_args: str | None
+    _autoreconf_args: str | None
+
+    def __init__(self, recipe: RecipeBase, namespace: str | None = None):
         """
         :param recipe: The current recipe object. Always use ``self``.
         :param namespace: this argument avoids collisions when you have multiple toolchain calls in
@@ -35,7 +47,7 @@ class Autotools:
         self._make_args = toolchain_file_content.get("make_args")
         self._autoreconf_args = toolchain_file_content.get("autoreconf_args")
 
-    def configure(self, build_script_folder=None, args=None):
+    def configure(self, build_script_folder: str | None = None, args: list[str] | None = None):
         """
         Call the configure script.
 
@@ -59,7 +71,8 @@ class Autotools:
         cmd = f'"{configure_cmd}" {self._configure_args}'
         self._recipe.run(cmd)
 
-    def make(self, target=None, args=None, makefile=None):
+    def make(self, target: str | None = None, args: list[str] | None = None,
+             makefile: str | None = None):
         """
         Call the make program.
 
@@ -89,7 +102,8 @@ class Autotools:
         command = join_arguments([make_program, str_makefile, target, str_args, str_extra_args, jobs])
         self._recipe.run(command)
 
-    def install(self, args=None, target=None, makefile=None):
+    def install(self, args: list[str] | None = None, target: str | None = None,
+                makefile: str | None = None):
         """
         This is just an "alias" of ``self.make(target="install")`` or ``self.make(target="install-strip")``
 
@@ -114,7 +128,7 @@ class Autotools:
             args.insert(0, f"DESTDIR={unix_path(self._recipe, self._recipe.folders.package)}")
         self.make(target=target, args=args, makefile=makefile)
 
-    def autoreconf(self, build_script_folder=None, args=None):
+    def autoreconf(self, build_script_folder: str | None = None, args: list[str] | None = None):
         """
         Call ``autoreconf``
 
@@ -130,7 +144,7 @@ class Autotools:
         with chdir(self, script_folder):
             self._recipe.run(command)
 
-    def _use_win_mingw(self):
+    def _use_win_mingw(self) -> bool:
         os_build = self._recipe.settings_build.get_safe('os')
 
         if os_build == "Windows":

@@ -1,14 +1,20 @@
+from __future__ import annotations
+
 import os
 import textwrap
 from collections import OrderedDict
 from contextlib import contextmanager
 from shlex import quote
+from typing import TYPE_CHECKING
 
 from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
 from thirdparty._internal.util.files import save
 from thirdparty.errors import RecipeException
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class _EnvVarPlaceHolder:
@@ -227,7 +233,7 @@ class Environment:
         """
         return "\n".join([v.dumps() for v in reversed(self._values.values())])
 
-    def define(self, name, value, separator=" "):
+    def define(self, name: str, value: str, separator: str = " "):
         """
         Define `name` environment variable with value `value`
 
@@ -237,10 +243,10 @@ class Environment:
         """
         self._values[name] = _EnvValue(name, value, separator, path=False)
 
-    def define_path(self, name, value):
+    def define_path(self, name: str, value: str):
         self._values[name] = _EnvValue(name, value, path=True)
 
-    def unset(self, name):
+    def unset(self, name: str):
         """
         clears the variable, equivalent to a unset or set XXX=
 
@@ -248,7 +254,7 @@ class Environment:
         """
         self._values[name] = _EnvValue(name, None)
 
-    def append(self, name, value, separator=None):
+    def append(self, name: str, value: str | list[str], separator: str | None = None):
         """
         Append the `value` to an environment variable `name`
 
@@ -258,7 +264,7 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder)).append(value, separator)
 
-    def append_path(self, name, value):
+    def append_path(self, name: str, value: str):
         """
         Similar to "append" method but indicating that the variable is a filesystem path. It will automatically handle the path separators depending on the operating system.
 
@@ -267,7 +273,7 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder, path=True)).append(value)
 
-    def prepend(self, name, value, separator=None):
+    def prepend(self, name: str, value: str | list[str], separator: str | None = None):
         """
         Prepend the `value` to an environment variable `name`
 
@@ -277,7 +283,7 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder)).prepend(value, separator)
 
-    def prepend_path(self, name, value):
+    def prepend_path(self, name: str, value: str):
         """
         Similar to "prepend" method but indicating that the variable is a filesystem path. It will automatically handle the path separators depending on the operating system.
 
@@ -286,7 +292,7 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder, path=True)).prepend(value)
 
-    def remove(self, name, value):
+    def remove(self, name: str, value: str):
         """
         Removes the `value` from the variable `name`.
 
@@ -295,7 +301,7 @@ class Environment:
         """
         self._values[name].remove(value)
 
-    def compose_env(self, other):
+    def compose_env(self, other: "Environment") -> "Environment":
         """
         Compose an Environment object with another one.
         ``self`` has precedence, the "other" will add/append if possible and not
@@ -321,7 +327,7 @@ class Environment:
         """
         return other._values == self._values
 
-    def vars(self, recipe, scope="build"):
+    def vars(self, recipe: RecipeBase, scope: str = "build") -> "EnvVars":
         """
         :param recipe: Instance of a recipe, usually ``self`` in a recipe
         :param scope: Determine the scope of the declared variables.

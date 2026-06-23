@@ -1,7 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from thirdparty.build.flags import build_type_flags, cppstd_flag, build_type_link_flags
 from thirdparty.env import Environment
 from thirdparty.nmake.deps import format_defines
 from thirdparty.microsoft.visual import msvc_runtime_flag, VCVars
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class NMakeToolchain:
@@ -13,7 +20,13 @@ class NMakeToolchain:
     a user Tool.ini, without easy resolution. At least the environment is additive.
     """
 
-    def __init__(self, recipe):
+    _recipe: RecipeBase
+    extra_cflags: list[str]
+    extra_cxxflags: list[str]
+    extra_ldflags: list[str]
+    extra_defines: list[str]
+
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
@@ -26,7 +39,7 @@ class NMakeToolchain:
         self.extra_defines = []
 
     @staticmethod
-    def _format_options(options):
+    def _format_options(options: list[str]) -> list[str]:
         return [f"{opt[0].replace('-', '/')}{opt[1:]}" for opt in options if len(opt) > 1]
 
     @property

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import fnmatch
 import os
 import re
 import textwrap
+from typing import TYPE_CHECKING
 from xml.dom import minidom
 
 from jinja2 import Template
@@ -11,6 +14,9 @@ from thirdparty._internal.util.files import load, save
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 VALID_LIB_EXTENSIONS = (".so", ".lib", ".a", ".dylib", ".bc")
 
@@ -91,7 +97,13 @@ class MSBuildDeps:
         </Project>
         """)
 
-    def __init__(self, recipe):
+    _recipe: RecipeBase
+    configuration: str | None
+    configuration_key: str
+    platform: str
+    platform_key: str
+
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """

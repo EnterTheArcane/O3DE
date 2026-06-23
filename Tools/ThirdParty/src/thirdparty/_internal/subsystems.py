@@ -22,9 +22,13 @@ Potential scenarios:
 import os
 import platform
 import re
+from typing import TYPE_CHECKING
 
 from thirdparty.build import cmd_args_to_string
 from thirdparty.errors import RecipeException
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 WINDOWS = "windows"
 MSYS2 = 'msys2'
@@ -33,7 +37,8 @@ CYGWIN = 'cygwin'
 WSL = 'wsl'  # Windows Subsystem for Linux
 
 
-def command_env_wrapper(recipe, command, envfiles, envfiles_folder, scope="build"):
+def command_env_wrapper(recipe: RecipeBase, command: str, envfiles: list[str],
+                        envfiles_folder: str, scope: str = "build") -> str:
     from thirdparty.env.environment import environment_wrap_command
     if getattr(recipe, "conf", None) is None:
         # TODO: No conf, no profile defined!! This happens at ``export()`` time
@@ -59,7 +64,8 @@ def command_env_wrapper(recipe, command, envfiles, envfiles_folder, scope="build
     return wrapped_cmd
 
 
-def _windows_bash_wrapper(recipe, command, env, envfiles_folder):
+def _windows_bash_wrapper(recipe: RecipeBase, command: str, env: list[str],
+                          envfiles_folder: str) -> str:
     from thirdparty.env import Environment
     from thirdparty.env.environment import environment_wrap_command
     """ Will wrap a unix command inside a bash terminal It requires to have MSYS2, CYGWIN, or WSL"""
@@ -111,7 +117,7 @@ def _windows_bash_wrapper(recipe, command, env, envfiles_folder):
     return final_command
 
 
-def _escape_windows_cmd(command):
+def _escape_windows_cmd(command: str) -> str:
     """ To use in a regular windows cmd.exe
         1. Adds escapes so the argument can be unpacked by CommandLineToArgvW()
         2. Adds escapes for cmd.exe so the argument survives cmd.exe's substitutions.
@@ -122,7 +128,7 @@ def _escape_windows_cmd(command):
     return "".join(["^%s" % arg if arg in r'()%!^"<>&|' else arg for arg in quoted_arg])
 
 
-def deduce_subsystem(recipe, scope):
+def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
     """ used by:
     - EnvVars: to decide if using :  ; as path separator, translate paths to subsystem
                and decide to generate a .bat or .sh
@@ -167,7 +173,7 @@ def deduce_subsystem(recipe, scope):
     return WINDOWS
 
 
-def subsystem_path(subsystem, path):
+def subsystem_path(subsystem: str | None, path: str) -> str | None:
     """"Used to translate windows paths to MSYS unix paths like
     c/users/path/to/file. Not working in a regular console or MinGW!
     """
@@ -197,7 +203,7 @@ def subsystem_path(subsystem, path):
     return None
 
 
-def get_cased_path(name):
+def get_cased_path(name: str) -> str:
     if platform.system() != "Windows":
         return name
     if not os.path.isabs(name):

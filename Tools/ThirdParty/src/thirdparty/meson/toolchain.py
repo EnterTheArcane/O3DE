@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import os
 import textwrap
+from typing import TYPE_CHECKING
 
 from jinja2 import Template, StrictUndefined
 
@@ -13,6 +16,9 @@ from thirdparty.build.flags import (
     threads_flags, )
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeException
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty.meson.helpers import get_apple_subsystem, to_cppstd_flag, to_cstd_flag, \
     to_meson_machine, to_meson_value
 from thirdparty.microsoft import VCVars, msvc_runtime_flag
@@ -115,7 +121,7 @@ class MesonToolchain:
         {% endfor %}
         """)
 
-    def __init__(self, recipe, backend=None, native=False):
+    def __init__(self, recipe: RecipeBase, backend: str | None = None, native: bool = False):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         :param backend: (**DEPRECATED**, use ``self.backend`` instead) ``str`` ``backend`` Meson variable

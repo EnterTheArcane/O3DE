@@ -10,14 +10,14 @@ from thirdparty._internal.model.version import Version
 RECIPE_VCVARS = "vcvars_env"
 
 
-def msvc_platform_from_arch(arch):
+def msvc_platform_from_arch(arch: str) -> str:
     return {
         "X64": "x64",
         "ARM": "ARM64",
     }.get(arch)
 
 
-def check_min_vs(recipe, version, raise_invalid=True):
+def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True):
     """
     This is a helper method to allow the migration of 1.X -> 2.0 and VisualStudio -> msvc settings
     without breaking recipes.
@@ -56,7 +56,7 @@ def check_min_vs(recipe, version, raise_invalid=True):
     return True
 
 
-def msvc_version_to_vs_ide_version(version):
+def msvc_version_to_vs_ide_version(version: str) -> str:
     """
     Gets the Visual Studio IDE version given the ``msvc`` compiler one.
 
@@ -76,7 +76,7 @@ def msvc_version_to_vs_ide_version(version):
     return _visuals[str(version)]
 
 
-def msvc_version_to_toolset_version(version):
+def msvc_version_to_toolset_version(version: str) -> str:
     """
     Gets the Visual Studio IDE toolset version given the ``msvc`` compiler one.
 
@@ -107,13 +107,13 @@ class VCVars:
     Then, it is not necessary to explicitly instantiate this generator in most cases.
     """
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``RecipeBase object`` The current recipe object. Always use ``self``.
         """
         self._recipe = recipe
 
-    def generate(self, scope="build"):
+    def generate(self, scope: str = "build"):
         """
         Creates a ``vcvars_env.bat`` file that calls Visual ``vcvars`` with the necessary
         args to activate the correct Visual Studio prompt matching the Recipe settings.
@@ -190,7 +190,7 @@ class VCVars:
             _create_deactivate_vcvars_file(recipe, recipe_vcvars_ps1)
 
 
-def _create_deactivate_vcvars_file(recipe, filename):
+def _create_deactivate_vcvars_file(recipe: RecipeBase, filename: str):
     if recipe.conf.get("tools.env:deactivation_mode") == "function":
         return
     deactivate_filename = f"deactivate_{filename}"
@@ -204,7 +204,7 @@ def _create_deactivate_vcvars_file(recipe, filename):
     save(path, content)
 
 
-def vs_ide_version(recipe):
+def vs_ide_version(recipe: RecipeBase) -> str:
     """
     Gets the VS IDE version as string. It'll use the ``compiler.version`` (if exists) and/or the
     ``tools.microsoft.msbuild:vs_version`` if ``compiler`` is ``msvc``.
@@ -225,7 +225,7 @@ def vs_ide_version(recipe):
     return visual_version
 
 
-def msvc_runtime_flag(recipe):
+def msvc_runtime_flag(recipe: RecipeBase) -> str:
     """
     Gets the MSVC runtime flag given the ``compiler.runtime`` value from the settings.
 
@@ -282,7 +282,7 @@ def vcvars_command(
     return " ".join(cmd)
 
 
-def _vcvars_path(version, vs_install_path):
+def _vcvars_path(version: str, vs_install_path: str | None) -> str:
     # TODO: This comes from upstream_source/client/tools/win.py vcvars_command()
     vs_path = vs_install_path or vs_installation_path(version)
     if not vs_path or not os.path.isdir(vs_path):
@@ -299,7 +299,7 @@ def _vcvars_path(version, vs_install_path):
     return vcpath
 
 
-def _vcvars_versions(recipe):
+def _vcvars_versions(recipe: RecipeBase) -> list[str]:
     compiler = recipe.settings.get_safe("compiler")
     msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
     if compiler == "clang":
@@ -343,7 +343,7 @@ def _vcvars_versions(recipe):
     return vs_version, vcvars_ver
 
 
-def _vcvars_arch(recipe):
+def _vcvars_arch(recipe: RecipeBase) -> str:
     """
     Computes the vcvars command line architecture based on recipe settings (host) and
     settings_build.
@@ -387,7 +387,7 @@ def is_msvc(recipe: RecipeBase, build_context=False) -> bool:
     return settings.get_safe("compiler") == "msvc"
 
 
-def is_msvc_static_runtime(recipe):
+def is_msvc_static_runtime(recipe: RecipeBase) -> bool:
     """
     Validates when building with Visual Studio or msvc and MT on runtime.
 
@@ -397,7 +397,7 @@ def is_msvc_static_runtime(recipe):
     return is_msvc(recipe) and "MT" in msvc_runtime_flag(recipe)
 
 
-def msvs_toolset(recipe):
+def msvs_toolset(recipe: RecipeBase) -> str | None:
     """
     Returns the corresponding platform toolset based on the compiler setting.
     In case no toolset is configured in the profile, it will return a toolset based on the

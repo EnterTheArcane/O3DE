@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import os
+from typing import TYPE_CHECKING
 
 from thirdparty import CppInfo
 from thirdparty.env import Environment
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
-def format_defines(defines, toolchain=False):
+
+def format_defines(defines: list[str], toolchain: bool = False) -> list[str]:
     def is_hex_or_numeric(s):
         try:
             # Check for Hexadecimal (base 16)

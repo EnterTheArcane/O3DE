@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 import textwrap
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from jinja2 import Template
 
@@ -10,6 +13,9 @@ from thirdparty.env.virtualbuildenv import VirtualBuildEnv
 from thirdparty.files import save
 from thirdparty.microsoft.visual import VCVars
 from thirdparty.premake.deps import PREMAKE_ROOT_FILE
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 def _generate_flags(self, recipe):
@@ -211,7 +217,7 @@ class PremakeToolchain:
             {% endfor %}
         """)
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """

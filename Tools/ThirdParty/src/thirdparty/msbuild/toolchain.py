@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import os
 import textwrap
+from typing import TYPE_CHECKING
 from xml.dom import minidom
 
 from jinja2 import Template
@@ -8,6 +11,9 @@ from thirdparty._internal.util.detect_vs import vs_installation_path
 from thirdparty._internal.util.files import save, load
 from thirdparty.build import build_jobs
 from thirdparty.errors import RecipeException
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
     msvc_platform_from_arch, vs_ide_version
 
@@ -54,7 +60,7 @@ class MSBuildToolchain:
         </Project>
         """)
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """

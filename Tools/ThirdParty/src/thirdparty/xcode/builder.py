@@ -1,9 +1,25 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key
 from thirdparty.build import cmd_args_to_string
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class XcodeBuild:
-    def __init__(self, recipe):
+
+    _recipe: RecipeBase
+    _build_type: str | None
+    _arch: str | None
+    _sdk: str
+    _sdk_version: str
+    _os: str | None
+    _os_version: str | None
+
+    def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         self._build_type = recipe.settings.get_safe("build_type")
         self._arch = to_apple_arch(self._recipe)
@@ -13,7 +29,7 @@ class XcodeBuild:
         self._os_version = recipe.settings.get_safe("os.version")
 
     @property
-    def _verbosity(self):
+    def _verbosity(self) -> str:
         verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose")) \
                     or self._recipe.conf.get(
             "tools.compilation:verbosity",
@@ -21,7 +37,7 @@ class XcodeBuild:
         return "-" + verbosity if verbosity is not None else ""
 
     @property
-    def _sdkroot(self):
+    def _sdkroot(self) -> str:
         # User's sdk_path has priority, then if specified try to compose sdk argument
         # with sdk/sdk_version settings, leave blank otherwise and the sdk will be automatically
         # chosen by the build system
@@ -30,7 +46,8 @@ class XcodeBuild:
             sdk = f"{self._sdk}{self._sdk_version}"
         return f"SDKROOT={sdk}" if sdk else ""
 
-    def build(self, xcodeproj, target=None, configuration=None, cli_args=None):
+    def build(self, xcodeproj: str, target: str | None = None, configuration: str | None = None,
+              cli_args: list[str] | None = None):
         """
         Call to ``xcodebuild`` to build a Xcode project.
 

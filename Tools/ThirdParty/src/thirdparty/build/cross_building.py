@@ -1,4 +1,12 @@
-def cross_building(recipe=None, skip_x64_x86=False):
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def cross_building(recipe: RecipeBase | None = None, skip_x64_x86: bool = False) -> bool:
     """
     Check if we are cross building comparing the *build* and *host* settings. Returns ``True``
     in the case that we are cross-building.
@@ -32,7 +40,7 @@ def cross_building(recipe=None, skip_x64_x86=False):
     return False
 
 
-def can_run(recipe):
+def can_run(recipe: RecipeBase) -> bool:
     """
     Validates whether is possible to run a non-native app on the same architecture.
     It's a useful feature for the case your architecture can run more than one target.

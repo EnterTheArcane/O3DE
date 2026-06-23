@@ -1,22 +1,34 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from thirdparty import CppInfo
 from thirdparty.env import Environment
 from thirdparty.build.gnudeps_flags import GnuDepsFlags
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class AutotoolsDeps:
-    def __init__(self, recipe):
+
+    _recipe: RecipeBase
+    _environment: Environment | None
+    _ordered_deps: list[Any] | None
+
+    def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         self._environment = None
         self._ordered_deps = None
 
     @property
-    def ordered_deps(self):
+    def ordered_deps(self) -> list[Any]:
         if self._ordered_deps is None:
             deps = self._recipe.dependencies.host.topological_sort
             self._ordered_deps = [dep for dep in reversed(deps.values())]
         return self._ordered_deps
 
-    def _get_cpp_info(self):
+    def _get_cpp_info(self) -> CppInfo:
         ret = CppInfo(self._recipe)
         for dep in self.ordered_deps:
             dep_cppinfo = dep.cpp_info.aggregated_components()
@@ -25,7 +37,7 @@ class AutotoolsDeps:
             ret.merge(dep_cppinfo)
         return ret
 
-    def _rpaths_flags(self):
+    def _rpaths_flags(self) -> list[str]:
         flags = []
         for dep in self.ordered_deps:
             if dep.options.get_safe("shared"):
@@ -35,7 +47,7 @@ class AutotoolsDeps:
         return flags
 
     @property
-    def environment(self):
+    def environment(self) -> Environment:
         """
 
         :return: An ``Environment`` object containing the computed variables. If you need
@@ -77,8 +89,8 @@ class AutotoolsDeps:
             self._environment = env
         return self._environment
 
-    def vars(self, scope="build"):
+    def vars(self, scope: str = "build"):
         return self.environment.vars(self._recipe, scope=scope)
 
-    def generate(self, scope="build"):
+    def generate(self, scope: str = "build"):
         self.vars(scope).save_script("autotoolsdeps")

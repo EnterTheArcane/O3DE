@@ -1,7 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from thirdparty._internal.util import cpu_count
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
-def build_jobs(recipe):
+
+def build_jobs(recipe: RecipeBase) -> int:
     """
     Returns the number of CPUs available for parallel builds.
     It returns the configuration value for ``tools.build:jobs`` if exists, otherwise,

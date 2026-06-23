@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 import re
 import textwrap
+from typing import TYPE_CHECKING
 
 from jinja2 import Template
 
@@ -15,6 +18,9 @@ from thirdparty.cmake.deps.targets import TargetsTemplate2
 from thirdparty.errors import RecipeException
 from thirdparty.files import save
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 FIND_MODE_MODULE = "module"
 FIND_MODE_CONFIG = "config"
 FIND_MODE_NONE = "none"
@@ -23,7 +29,7 @@ FIND_MODE_BOTH = "both"
 
 class CMakeDeps:
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """

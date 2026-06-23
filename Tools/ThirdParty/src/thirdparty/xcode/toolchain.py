@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import textwrap
+from typing import TYPE_CHECKING
 
 from thirdparty._internal.util.files import save
 from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key
 from thirdparty.xcode.deps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, \
     _add_includes_to_file_or_create, _xcconfig_settings_filename, _xcconfig_conditional
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class XcodeToolchain:
@@ -34,7 +40,7 @@ class XcodeToolchain:
 
         """)
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         arch = recipe.settings.get_safe("arch")
         self.architecture = to_apple_arch(self._recipe, default=arch)

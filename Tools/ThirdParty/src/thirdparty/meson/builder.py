@@ -1,8 +1,14 @@
+from __future__ import annotations
+
 import os
+from typing import TYPE_CHECKING
 
 from thirdparty.build import build_jobs
 from thirdparty.errors import RecipeException
 from thirdparty.meson.toolchain import MesonToolchain
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class Meson:
@@ -15,13 +21,15 @@ class Meson:
     # Ninja backend that make_conf() configures for Meson.
     _implicit_tool_requires = ("meson", "ninja")
 
-    def __init__(self, recipe):
+    _recipe: RecipeBase
+
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
         self._recipe = recipe
 
-    def configure(self, reconfigure=False):
+    def configure(self, reconfigure: bool = False):
         """
         Runs ``meson setup [FILE] "BUILD_FOLDER" "SOURCE_FOLDER" [-Dprefix=/]``
         command, where ``FILE`` could be ``--native-file recipe_meson_native.ini``
@@ -57,7 +65,7 @@ class Meson:
         self._recipe.output.info(f"Meson configure cmd: {cmd}")
         self._recipe.run(cmd)
 
-    def build(self, target=None):
+    def build(self, target: str | None = None):
         """
         Runs ``meson compile -C . -j[N_JOBS] [TARGET]`` in the build folder.
         You can specify ``N_JOBS`` through the configuration line ``tools.build:jobs=N_JOBS``
@@ -78,7 +86,7 @@ class Meson:
         self._recipe.output.info(f"Meson build cmd: {cmd}")
         self._recipe.run(cmd)
 
-    def install(self, cli_args=None):
+    def install(self, cli_args: list[str] | None = None):
         """
         Runs ``meson install -C "." --destdir ..`` in the build folder.
 
@@ -115,7 +123,7 @@ class Meson:
         self._recipe.run(cmd)
 
     @property
-    def _build_verbosity(self):
+    def _build_verbosity(self) -> str:
         # verbosity of build tools. This passes -v to ninja, for example.
         # See https://github.com/mesonbuild/meson/blob/master/mesonbuild/mcompile.py#L156
         verbosity = self._recipe.conf.get(
@@ -124,7 +132,7 @@ class Meson:
         return "--verbose" if verbosity == "verbose" else ""
 
     @property
-    def _install_verbosity(self):
+    def _install_verbosity(self) -> str:
         # https://github.com/mesonbuild/meson/blob/master/mesonbuild/minstall.py#L81
         # Errors are always logged, and status about installed files is controlled by this flag,
         # so it's a bit backwards
@@ -132,7 +140,7 @@ class Meson:
         return "--quiet" if verbosity == "quiet" else ""
 
     @property
-    def _prefix(self):
+    def _prefix(self) -> str:
         """Generate a valid ``--prefix`` argument value for meson.
         For this recipe system, the prefix must be similar to the Unix root directory ``/``.
 

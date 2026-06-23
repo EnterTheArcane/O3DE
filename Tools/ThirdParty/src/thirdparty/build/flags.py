@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 from thirdparty._internal.model.version import Version
 from thirdparty.errors import RecipeException
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
-def disable_flag(recipe, flag):
+
+def disable_flag(recipe: RecipeBase, flag: str):
     disable_flags = recipe.conf.get("tools.gnu:disable_flags", check_type=list)
     if disable_flags is None:
         return False
@@ -16,7 +23,7 @@ def disable_flag(recipe, flag):
     return flag in disable_flags
 
 
-def architecture_flag(recipe):
+def architecture_flag(recipe: RecipeBase) -> str:
     """
     returns flags specific to the target architecture and compiler
     Used by CMakeToolchain and AutotoolsToolchain
@@ -85,7 +92,7 @@ def architecture_flag(recipe):
     return ""
 
 
-def architecture_link_flag(recipe):
+def architecture_link_flag(recipe: RecipeBase) -> str:
     """
     returns exclusively linker flags specific to the target architecture and compiler
     """
@@ -101,7 +108,7 @@ def architecture_link_flag(recipe):
     return ""
 
 
-def libcxx_flags(recipe):
+def libcxx_flags(recipe: RecipeBase):
     libcxx = recipe.settings.get_safe("compiler.libcxx")
     if not libcxx:
         return None, None
@@ -138,7 +145,7 @@ def libcxx_flags(recipe):
     return lib, stdlib11
 
 
-def build_type_link_flags(settings):
+def build_type_link_flags(settings: Any) -> list[str]:
     """
     returns link flags specific to the build type (Debug, Release, etc.)
     [-debug]
@@ -157,7 +164,7 @@ def build_type_link_flags(settings):
     return []
 
 
-def build_type_flags(recipe):
+def build_type_flags(recipe: RecipeBase) -> list[str]:
     """
     returns flags specific to the build type (Debug, Release, etc.)
     (-s, -g, /Zi, etc.)
@@ -222,7 +229,7 @@ def build_type_flags(recipe):
     return []
 
 
-def threads_flags(recipe):
+def threads_flags(recipe: RecipeBase) -> list[str]:
     """
     returns flags specific to the threading model used by the compiler
     """
@@ -238,7 +245,7 @@ def threads_flags(recipe):
     return []
 
 
-def llvm_clang_front(recipe):
+def llvm_clang_front(recipe: RecipeBase) -> str | None:
     # Only Windows clang with MSVC backend (LLVM/Clang, not MSYS2 clang)
     if (recipe.settings.get_safe("os") != "Windows" or
         recipe.settings.get_safe("compiler") != "clang" or
@@ -250,7 +257,7 @@ def llvm_clang_front(recipe):
     return "clang"  # The GNU-compatible front
 
 
-def cppstd_flag(recipe) -> str:
+def cppstd_flag(recipe: RecipeBase) -> str:
     """
     Returns flags specific to the C++ standard based on the ``recipe.settings.compiler``,
     ``recipe.settings.compiler.version`` and ``recipe.settings.compiler.cppstd``.
@@ -529,7 +536,7 @@ def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
     return f'-std={flag}' if flag else None
 
 
-def cstd_flag(recipe) -> str:
+def cstd_flag(recipe: RecipeBase) -> str:
     """
     Returns flags specific to the C+standard based on the ``recipe.settings.compiler``,
     ``recipe.settings.compiler.version`` and ``recipe.settings.compiler.cstd``.

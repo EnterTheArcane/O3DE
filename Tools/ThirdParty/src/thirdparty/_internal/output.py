@@ -3,7 +3,7 @@ import os
 import sys
 import time
 from threading import Lock
-from typing import TextIO
+from typing import Any, TextIO
 
 import colorama
 from colorama import Fore, Style
@@ -190,10 +190,11 @@ class Output:
     def is_terminal(self):
         return hasattr(self.stream, "isatty") and self.stream.isatty()
 
-    def writeln(self, data, fg=None, bg=None):
+    def writeln(self, data: str, fg: str | None = None, bg: str | None = None):
         return self.write(data, fg, bg, newline=True)
 
-    def write(self, data, fg=None, bg=None, newline=False):
+    def write(self, data: str, fg: str | None = None, bg: str | None = None,
+              newline: bool = False):
         if self._output_level > LEVEL_NOTICE:
             return self
         if self._color and (fg or bg):
@@ -216,12 +217,13 @@ class Output:
         self.writeln(f"**************************************************\n", fg=color)
         return self
 
-    def login_msg(self, msg, newline=False):
+    def login_msg(self, msg: str, newline: bool = False):
         # unconditional to the error level, this has to show always
         self._write_message(msg, newline=newline)
         return self
 
-    def _write_message(self, msg, fg=None, bg=None, newline=True):
+    def _write_message(self, msg: str | dict[Any, Any], fg: str | None = None,
+                       bg: str | None = None, newline: bool = True):
         if isinstance(msg, dict):
             # For traces we can receive a dict already, we try to transform then into more natural
             # text
@@ -270,7 +272,7 @@ class Output:
             self._write_message(msg, fg=Color.BLUE)
         return self
 
-    def debug(self, msg: str, fg: str = Color.MAGENTA, bg: str = None):
+    def debug(self, msg: str, fg: str = Color.MAGENTA, bg: str | None = None):
         """ With a high level of detail, it is mainly used for debugging code.
 
         This message won't be printed unless the user has set the log level to debug
@@ -282,7 +284,7 @@ class Output:
             self._write_message(msg, fg=fg, bg=bg)
         return self
 
-    def verbose(self, msg: str, fg: str = None, bg: str = None):
+    def verbose(self, msg: str, fg: str | None = None, bg: str | None = None):
         """ Displays additional and detailed information that, while not critical,
         can be useful for better understanding how the system is working.
 
@@ -295,7 +297,7 @@ class Output:
             self._write_message(msg, fg=fg, bg=bg)
         return self
 
-    def status(self, msg: str, fg: str = None, bg: str = None, newline: bool = True):
+    def status(self, msg: str, fg: str | None = None, bg: str | None = None, newline: bool = True):
         """ Provides general information about the system or ongoing operations.
 
         Info messages are basic and used to inform about common events,
@@ -343,7 +345,7 @@ class Output:
         lookup_tag = warn_tag or "unknown"
         return any(fnmatch.fnmatch(lookup_tag, pattern) for pattern in patterns)
 
-    def warning(self, msg: str, warn_tag: str = None):
+    def warning(self, msg: str, warn_tag: str | None = None):
         """ Highlights a potential issue that, while not stopping the system,
         could cause problems in the future or under certain conditions.
 
@@ -366,7 +368,7 @@ class Output:
                 self._write_message(f"WARN: {output}", Color.YELLOW)
         return self
 
-    def error(self, msg: str, error_type: str = None):
+    def error(self, msg: str, error_type: str | None = None):
         """ Indicates that a serious issue has occurred that prevents the system
         or application from continuing to function correctly.
 
@@ -385,7 +387,8 @@ class Output:
         self.stream.flush()
 
 
-def cli_out_write(data, fg=None, bg=None, endline="\n", indentation=0):
+def cli_out_write(data: str, fg: str | None = None, bg: str | None = None,
+                  endline: str = "\n", indentation: int = 0):
     """
     Output to be used by formatters to dump information to stdout
     """
