@@ -133,12 +133,12 @@ class Profile:
         self.update_settings(other.settings)
         self.update_package_settings(other.package_settings)
         self.options.update_options(other.options)
-        # It is possible that build_requires are repeated, or same package but different versions
+        # It is possible that tool requirements are repeated, or same package but different versions
         for pattern, req_list in other.tool_requires.items():
-            existing_build_requires = self.tool_requires.get(pattern)
+            existing_tool_requires = self.tool_requires.get(pattern)
             existing = OrderedDict()
-            if existing_build_requires is not None:
-                for br in existing_build_requires:
+            if existing_tool_requires is not None:
+                for br in existing_tool_requires:
                     # TODO: Understand why sometimes they are str and other are RecipeReference
                     r = RecipeReference.loads(br) \
                         if not isinstance(br, RecipeReference) else br

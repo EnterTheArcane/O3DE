@@ -330,7 +330,7 @@ _DROP_LINE_RE: list[re.Pattern] = [
 # Strip version specifiers from dependency declarations.  All packages must use
 # the single version built in this repo; versioned requires are never resolved.
 _STRIP_DEP_VERSION_RE = re.compile(
-    r"""(self\.(?:requires?|tool_requires?|build_requires?)\s*\(\s*["'])([^/"']+)/[^"']*(["'])"""
+    r"""(self\.(?:requires?|tool_requires?)\s*\(\s*["'])([^/"']+)/[^"']*(["'])"""
 )
 
 # _settings_build property block: always equals self.settings in our build system

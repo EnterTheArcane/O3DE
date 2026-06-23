@@ -1,5 +1,5 @@
 from thirdparty._internal.errors import recipe_exception_formatter
-from thirdparty._internal.model.requires import BuildRequirements, TestRequirements, ToolRequirements
+from thirdparty._internal.model.requires import ToolRequirements
 
 
 def run_configure_method(recipe):
@@ -33,8 +33,6 @@ def run_configure_method(recipe):
             "not configure()/config_options().",
             warn_tag="deprecated")
 
-    recipe.build_requires = BuildRequirements(recipe.requires)
-    recipe.test_requires = TestRequirements(recipe.requires)
     recipe.tool_requires = ToolRequirements(recipe.requires)
 
     if hasattr(recipe, "requirements"):

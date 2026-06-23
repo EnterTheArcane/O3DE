@@ -263,7 +263,7 @@ class XcodeDeps:
 
         :param cpp_info: current CppInfo being processed (root or component)
         :param pkg_dep: dependency object owning the cpp_info
-        :param all_deps: dict {ref.name: dep} of all available host/test deps
+        :param all_deps: dict {ref.name: dep} of all available host deps
         :param collected: output list accumulating the CppInfo objects
         :param visited: set of id(cpp_info) already processed (created automatically)
         """
@@ -324,9 +324,7 @@ class XcodeDeps:
         # If a package has no components the name is recipe_pkgname_pkgname.xcconfig
         # All components are included in the recipe_pkgname.xcconfig file
         host_req = self._recipe.dependencies.host
-        test_req = self._recipe.dependencies.test
-        all_deps = {dep.ref.name: dep
-                    for _, dep in list(host_req.items()) + list(test_req.items())}
+        all_deps = {dep.ref.name: dep for _, dep in host_req.items()}
 
         direct_deps = self._recipe.dependencies.filter(
             {

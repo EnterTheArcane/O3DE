@@ -15,7 +15,7 @@ def runenv_from_cpp_info(dep, os_name):
             dyn_runenv.prepend_path(envvar, existing)
 
     _prepend_path("PATH", cpp_info.bindirs)
-    # If it is a build_require this will be the build-os, otherwise it will be the host-os
+    # For tool requirements this will be the build OS, otherwise it will be the host OS.
     if os_name and not os_name.startswith("Windows"):
         _prepend_path("LD_LIBRARY_PATH", cpp_info.libdirs)
         _prepend_path("DYLD_LIBRARY_PATH", cpp_info.libdirs)
@@ -71,8 +71,7 @@ class VirtualRunEnv:
         self._runenv.compose_env(profile_env)
 
         host_req = self._recipe.dependencies.host
-        test_req = self._recipe.dependencies.test
-        for require, dep in list(host_req.items()) + list(test_req.items()):
+        for require, dep in host_req.items():
             if dep.runenv_info:
                 self._runenv.compose_env(dep.runenv_info)
             if require.run:  # Only if the require is run (shared or application to be run)

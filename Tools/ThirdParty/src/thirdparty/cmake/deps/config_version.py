@@ -1,17 +1,20 @@
 import textwrap
+from typing import TYPE_CHECKING
 
 import jinja2
 from jinja2 import Template
 
 from thirdparty.errors import RecipeException
 
+if TYPE_CHECKING:
+    from thirdparty.cmake.deps.cmakedeps import CMakeDeps
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class ConfigVersionTemplate2:
-    """
-    foo-config-version.cmake
-    """
+    _cmakedeps: CMakeDeps
 
-    def __init__(self, cmakedeps, recipe):
+    def __init__(self, cmakedeps: CMakeDeps, recipe: RecipeBase):
         self._cmakedeps = cmakedeps
         self._recipe = recipe
 

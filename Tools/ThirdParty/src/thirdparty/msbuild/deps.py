@@ -464,12 +464,10 @@ class MSBuildDeps:
 
         for req, dep in self._recipe.dependencies.host.items():
             result.update(self._package_props_files(req, dep, build=False))
-        for req, dep in self._recipe.dependencies.test.items():
-            result.update(self._package_props_files(req, dep, build=False))
         for req, dep in self._recipe.dependencies.build.items():
             result.update(self._package_props_files(req, dep, build=True))
 
-        # Include all direct build_requires for host context. This might change
+        # Include all direct tool requirements for host context. This might change
         result.update(self._recipe_deps())
 
         result["recipe_dedup.props"] = self._recipe_dedup_props

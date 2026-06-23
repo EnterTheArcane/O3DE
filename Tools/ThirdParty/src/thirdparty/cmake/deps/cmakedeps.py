@@ -106,12 +106,11 @@ class CMakeDeps:
     def _content(self):
         host_req = self._recipe.dependencies.host
         build_req = self._recipe.dependencies.direct_build
-        test_req = self._recipe.dependencies.test
 
         # Iterate all the transitive requires
         ret = {}
         direct_deps = []
-        for require, dep in list(host_req.items()) + list(build_req.items()) + list(test_req.items()):
+        for require, dep in list(host_req.items()) + list(build_req.items()):
             cmake_find_mode = self.get_property("cmake_find_mode", dep)
             cmake_find_mode = cmake_find_mode or FIND_MODE_CONFIG
             cmake_find_mode = cmake_find_mode.lower()
@@ -224,6 +223,8 @@ def _join_paths(recipe, paths):
 
 
 class _PathGenerator:
+    _recipe: RecipeBase
+    _cmakedeps: CMakeDeps
     _recipe_cmakedeps_paths = "recipe_cmakedeps_paths.cmake"
 
     def __init__(self, cmakedeps, recipe):
@@ -293,9 +294,7 @@ class _PathGenerator:
             """)
         host_req = self._recipe.dependencies.host
         build_req = self._recipe.dependencies.direct_build
-        test_req = self._recipe.dependencies.test
-        host_test_reqs = list(host_req.items()) + list(test_req.items())
-        all_reqs = host_test_reqs + list(build_req.items())
+        all_reqs = list(host_req.items()) + list(build_req.items())
         # gen_folder = self._recipe.folders.generators.as_posix()
         # if not, test_cmake_add_subdirectory test fails
         # content.append('set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)')
@@ -420,8 +419,7 @@ class _PathGenerator:
         is_win = self._recipe.settings.get_safe("os") == "Windows"
 
         host_req = self._recipe.dependencies.host
-        test_req = self._recipe.dependencies.test
-        for req in list(host_req.values()) + list(test_req.values()):
+        for req in host_req.values():
             config = req.settings.get_safe("build_type", self._cmakedeps.configuration)
             aggregated_cppinfo = req.cpp_info.aggregated_components()
             runtime_dirs = aggregated_cppinfo.bindirs if is_win else aggregated_cppinfo.libdirs

@@ -73,8 +73,8 @@ class Recipe(RecipeBase):
         deps = PkgConfigDeps(self)
         if not can_run(self):
             deps.build_context_activated = ["wayland"]
-        elif self.dependencies["expat"].is_build_context:  # wayland is being built as build_require
-            # If wayland is the build_require, all its dependencies are treated as build_requires
+        elif self.dependencies["expat"].is_build_context:  # wayland is being built as a tool
+            # If wayland is a tool requirement, all its dependencies are in the build context
             deps.build_context_activated = [dep.ref.name for _, dep in self.dependencies.host.items()]
         deps.generate()
         tc = MesonToolchain(self)

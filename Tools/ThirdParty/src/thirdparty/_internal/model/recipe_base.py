@@ -45,8 +45,6 @@ class RecipeBase:
     # #### Requirements
     requires: Any = None
     tool_requires: Any = None
-    build_requires: Any = None
-    test_requires: Any = None
     tested_reference_str: str | None = None
 
     recipe_folder: str | None = None
@@ -69,7 +67,7 @@ class RecipeBase:
         self._recipe_runtime: Any = None
         self.buildenv_info = Environment()
         self.runenv_info = Environment()
-        # At the moment only for build_requires, others will be ignored
+        # At the moment only for tool requirements, others will be ignored
         self.conf_info = Conf()
         self.info: Any = None
         self._recipe_buildenv: Any = None  # The profile buildenv, will be assigned initialize()
@@ -79,12 +77,8 @@ class RecipeBase:
         if isinstance(self.settings, str):
             self.settings = [self.settings]
         self.requires = Requirements(
-            self.requires, self.build_requires, self.test_requires,
-            self.tool_requires)
-        if self.build_requires:
-            self.output.warning(
-                "build_requires is deprecated, prefer to use tool_requires with correct traits",
-                warn_tag="deprecated")
+            declared=self.requires,
+            declared_tool=self.tool_requires)
 
         self.options = Options(self.options or {}, self.default_options)
 

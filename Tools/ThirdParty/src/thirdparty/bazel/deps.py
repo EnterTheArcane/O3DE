@@ -160,7 +160,7 @@ class _BazelDepBuildGenerator:
     def __init__(self, recipe, dep, require):
         self._recipe = recipe
         self._dep = dep
-        self._is_build_require = require.build
+        self._is_tool_require = require.build
         self._transitive_reqs = get_transitive_requires(self._recipe, dep)
 
     @property
@@ -191,7 +191,7 @@ class _BazelDepBuildGenerator:
 
     def _get_repository_name(self, dep):
         pkg_name = dep.cpp_info.get_property("bazel_repository_name") or dep.ref.name
-        return f"build-{pkg_name}" if self._is_build_require else pkg_name
+        return f"build-{pkg_name}" if self._is_tool_require else pkg_name
 
     @staticmethod
     def _get_target_name(dep):
@@ -532,18 +532,16 @@ class BazelDeps:
 
     def _get_requirements(self, build_context_activated):
         """
-        Simply save the activated requirements (host + build + test), and the deactivated ones
+        Simply save the activated requirements (host + build), and the deactivated ones
         """
         # All the requirements
         host_req = self._recipe.dependencies.host
         build_req = self._recipe.dependencies.direct_build  # tool_requires
-        test_req = self._recipe.dependencies.test
 
-        for require, dep in (list(host_req.items()) + list(build_req.items())
-                             + list(test_req.items())):
+        for require, dep in list(host_req.items()) + list(build_req.items()):
             # Require is not used at the moment, but its information could be used,
             # and will be used in Recipe 2.0
-            # Filter the build_requires not activated with self.build_context_activated
+            # Filter the tool requirements not activated with self.build_context_activated
             if require.build and dep.ref.name not in build_context_activated:
                 continue
             yield require, dep

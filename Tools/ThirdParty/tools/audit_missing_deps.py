@@ -5,10 +5,9 @@ from conan-center-index that we don't already ship under ``recipes/``.
 
 This is a static, AST-only analysis: nothing is imported and no network is
 touched. We walk each existing recipe's matching CCI recipe, extract every
-``self.requires(...)``, ``self.tool_requires(...)``, and
-``self.test_requires(...)`` call, climb the enclosing ``if`` chain to capture
-the gating expression, and then recurse into any unfamiliar dependency by
-looking up *its* CCI recipe.
+``self.requires(...)`` and ``self.tool_requires(...)`` call, climb the enclosing
+``if`` chain to capture the gating expression, and then recurse into any
+unfamiliar dependency by looking up *its* CCI recipe.
 
 Each missing dependency is tagged with the conditions under which it would be
 pulled in, so platform-only or option-gated deps stand out from unconditional
@@ -110,11 +109,11 @@ HOST_TOOLS_ALLOWLIST = frozenset({
 
 @dataclass
 class Edge:
-    """A single requires() / tool_requires() / test_requires() call."""
+    """A single requires() / tool_requires() call."""
 
     from_pkg: str
     to_pkg: str
-    context: str          # "host" | "build" | "test"
+    context: str          # "host" | "build"
     conditions: list[str] = field(default_factory=list)
 
 
@@ -132,8 +131,6 @@ class MissingPkg:
             tags.append("unconditional")
         if "build" in contexts and "host" not in contexts:
             tags.append("build-tool-only")
-        if "test" in contexts and contexts <= {"test"}:
-            tags.append("test-only")
 
         os_tags = _gating_os(all_conds)
         if os_tags:
@@ -226,12 +223,11 @@ def _pkg_name_from_ref(ref: str) -> Optional[str]:
 REQ_METHODS = {
     "requires": "host",
     "tool_requires": "build",
-    "test_requires": "test",
 }
 
 
 def extract_edges(pkg: str, recipe: Path) -> list[Edge]:
-    """Return every requires/tool_requires/test_requires edge in *recipe*."""
+    """Return every requires/tool_requires edge in *recipe*."""
     try:
         tree = ast.parse(recipe.read_text(encoding="utf-8"))
     except (OSError, SyntaxError):
@@ -278,7 +274,7 @@ def extract_edges(pkg: str, recipe: Path) -> list[Edge]:
                 if not isinstance(target, ast.Name):
                     continue
                 attr = target.id
-                if attr not in {"requires", "tool_requires", "test_requires"}:
+                if attr not in {"requires", "tool_requires"}:
                     continue
                 context = REQ_METHODS[attr]
                 values: list[ast.AST] = []

@@ -214,11 +214,10 @@ class PremakeDeps:
         # passed first, the linker will not be able to resolve the symbols in the dependent libraries
         # as they will have been removed
         host_req = self._recipe.dependencies.host.topological_sort
-        test_req = self._recipe.dependencies.test.topological_sort
         build_req = self._recipe.dependencies.direct_build.topological_sort
 
         # Merge into one list
-        full_req = list(host_req.items()) + list(test_req.items()) + list(build_req.items())
+        full_req = list(host_req.items()) + list(build_req.items())
 
         # Process dependencies and accumulate globally required data
         pkg_files = []

@@ -77,7 +77,7 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
     """Drive the recipe's config phase and return ``(host_dep_names, tool_dep_names)``.
 
     host_dep_names — regular library dependencies (build=False)
-    tool_dep_names — tool_requires / build_requires (build=True)
+    tool_dep_names — tool_requires (build=True)
 
     The whole config phase (config_options/configure + default auto-fPIC handling +
     requirements) is delegated to ``run_configure_method``.  Errors are

@@ -336,7 +336,7 @@ class PkgConfigDeps:
         # Activate the build *.pc files for the specified libraries
         self.build_context_activated = []
         # If specified, the files/requires/names for the build context will be renamed appending
-        # a suffix. It is necessary in case of same require and build_require and will cause an error
+        # a suffix. It is necessary when the same package is both a host and tool requirement.
         # DEPRECATED: consumers should use build_context_folder instead
         # FIXME: Recipe 3.x: Remove build_context_suffix attribute
         self.build_context_suffix = {}
@@ -354,8 +354,7 @@ class PkgConfigDeps:
         # Get all the dependencies
         host_req = self._recipe.dependencies.host
         build_req = self._recipe.dependencies.build  # tool_requires
-        test_req = self._recipe.dependencies.test
-        # If self.build_context_suffix is not defined, the build requires will be saved
+        # If self.build_context_suffix is not defined, the tool requirements will be saved
         # in the self.build_context_folder
         # FIXME: Recipe 3.x: Remove build_context_suffix attribute and the validation function
         if self.build_context_folder is None:  # Legacy flow
@@ -365,7 +364,7 @@ class PkgConfigDeps:
                     "PkgConfigDeps.build_context_suffix attribute has been "
                     "deprecated. Use PkgConfigDeps.build_context_folder instead."
                 )
-            # Check if it exists both as require and as build require without a suffix
+            # Check if it exists both as a host and tool requirement without a suffix
             activated_br = {r.ref.name for r in build_req.values()
                             if r.ref.name in self.build_context_activated}
             common_names = {r.ref.name for r in host_req.values()}.intersection(activated_br)
@@ -381,8 +380,8 @@ class PkgConfigDeps:
                 "It's not allowed to define both PkgConfigDeps.build_context_folder "
                 "and PkgConfigDeps.build_context_suffix (deprecated).")
 
-        for require, dep in list(host_req.items()) + list(build_req.items()) + list(test_req.items()):
-            # Filter the build_requires not activated with PkgConfigDeps.build_context_activated
+        for require, dep in list(host_req.items()) + list(build_req.items()):
+            # Filter the tool requirements not activated with PkgConfigDeps.build_context_activated
             if require.build and dep.ref.name not in self.build_context_activated:
                 continue
             yield require, dep

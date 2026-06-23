@@ -24,13 +24,15 @@ from thirdparty.errors import RecipeInvalidConfiguration
 # always detected from the build machine; only the target os/arch vary, which is what surfaces
 # platform-specific config_options()/configure()/requirements() bugs.
 _PLATFORMS = [
-    ("Windows", "X64"),
-    ("Linux", "X64"),
+    ("Android", "ARM"),
+    ("Android", "X64"),
+    ("iOS", "ARM"),
     ("Linux", "ARM"),
+    ("Linux", "X64"),
     ("Mac", "ARM"),
     ("Mac", "X64"),
-    ("Android", "ARM"),
-    ("iOS", "ARM"),
+    ("Windows", "ARM"),
+    ("Windows", "X64"),
 ]
 
 _CLASS_RE = re.compile(r"^class\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)

@@ -8,7 +8,7 @@ class Requirement:
 
     def __init__(
         self, ref, *, headers=None, libs=None, build=False, run=None, visible=None,
-        transitive_headers=None, transitive_libs=None, test=None, package_id_mode=None,
+        transitive_headers=None, transitive_libs=None, package_id_mode=None,
         force=None, override=None, direct=None, options=None, no_skip=False,
         consistent=None):
         # * prevents the usage of more positional parameters, always ref + **kwargs
@@ -22,7 +22,6 @@ class Requirement:
         self._visible = visible  # Even if not libsed or visible, the node is unique, can conflict
         self._transitive_headers = transitive_headers
         self._transitive_libs = transitive_libs
-        self._test = test
         self._package_id_mode = package_id_mode
         self._force = force
         self._override = override
@@ -35,7 +34,6 @@ class Requirement:
         self.defining_require = self  # if not overriden, it points to itself
         self.overriden_ref = None  # to store if the requirement has been overriden (store old ref)
         self.override_ref = None  # to store if the requirement has been overriden (store new ref)
-        self.is_test = test  # to store that it was a test, even if used as regular requires too
         self.skip = False
         self.required_nodes = set()  # store which intermediate nodes are required, to compute "Skip"
         self.no_skip = no_skip
@@ -79,14 +77,6 @@ class Requirement:
         self._visible = value
 
     @property
-    def test(self):
-        return self._default_if_none(self._test, False)
-
-    @test.setter
-    def test(self, value):
-        self._test = value
-
-    @property
     def force(self):
         return self._default_if_none(self._force, False)
 
@@ -114,9 +104,9 @@ class Requirement:
     def consistent(self):
         # Host by default has to be consistent too
         if self.consistent_policy_new:
-            default_consistent = self.visible or self.test or not self.build
+            default_consistent = self.visible or not self.build
         else:
-            default_consistent = self.visible or self.test
+            default_consistent = self.visible
         return self._default_if_none(self._consistent, default_consistent)
 
     @consistent.setter
@@ -177,7 +167,7 @@ class Requirement:
             "require": str(self._required_ref),
         }
         serializable = (
-            "run", "libs", "skip", "test", "force", "direct", "build",
+            "run", "libs", "skip", "force", "direct", "build",
             "transitive_headers", "transitive_libs", "headers",
             "package_id_mode", "visible",
         )
@@ -237,10 +227,6 @@ class Requirement:
         self.direct |= other.direct
         self.transitive_headers = self.transitive_headers or other.transitive_headers
         self.transitive_libs = self.transitive_libs or other.transitive_libs
-        if not other.test:
-            self.test = False  # it it was previously a test, but also required by non-test
-        # necessary even if no propagation, order of requires matter
-        self.is_test = self.is_test or other.is_test
         # package_id_mode is not being propagated downstream. So it is enough to check if the
         # current require already defined it or not
         if self.package_id_mode is None:
@@ -248,24 +234,7 @@ class Requirement:
         self.required_nodes.update(other.required_nodes)
 
 
-class BuildRequirements:
-    # Just a wrapper around requires for backwards compatibility with self.build_requires() syntax
-    def __init__(self, requires):
-        self._requires = requires
-        self._called = False
-
-    def __call__(
-        self, ref, package_id_mode=None, visible=False, run=None, options=None,
-        override=None):
-        self._called = True
-        # TODO: Check which arguments could be user-defined
-        self._requires.build_require(
-            ref, package_id_mode=package_id_mode, visible=visible, run=run,
-            options=options, override=override)
-
-
 class ToolRequirements:
-    # Just a wrapper around requires for backwards compatibility with self.build_requires() syntax
     def __init__(self, requires):
         self._requires = requires
 
@@ -278,22 +247,11 @@ class ToolRequirements:
             options=options, override=override)
 
 
-class TestRequirements:
-    # Just a wrapper around requires for backwards compatibility with self.build_requires() syntax
-    def __init__(self, requires):
-        self._requires = requires
-
-    def __call__(self, ref, run=None, options=None, force=None):
-        self._requires.test_require(ref, run=run, options=options, force=force)
-
-
 class Requirements:
     """ User definitions of all requires in a recipe
     """
 
-    def __init__(
-        self, declared=None, declared_build=None, declared_test=None,
-        declared_build_tool=None):
+    def __init__(self, declared=None, declared_tool=None):
         self._requires = {}
         # Construct from the class definitions
         if declared is not None:
@@ -310,35 +268,13 @@ class Requirements:
                     raise RecipeException(
                         "Wrong 'requires' definition, "
                         "did you mean 'requirements()'?")
-        if declared_build is not None:
-            if isinstance(declared_build, str):
-                self.build_require(declared_build)
+        if declared_tool is not None:
+            if isinstance(declared_tool, str):
+                self.tool_require(declared_tool)
             else:
                 try:
-                    for item in declared_build:
-                        self.build_require(item)
-                except TypeError:
-                    raise RecipeException(
-                        "Wrong 'build_requires' definition, "
-                        "did you mean 'requirements()'?")
-        if declared_test is not None:
-            if isinstance(declared_test, str):
-                self.test_require(declared_test)
-            else:
-                try:
-                    for item in declared_test:
-                        self.test_require(item)
-                except TypeError:
-                    raise RecipeException(
-                        "Wrong 'test_requires' definition, "
-                        "did you mean 'requirements()'?")
-        if declared_build_tool is not None:
-            if isinstance(declared_build_tool, str):
-                self.build_require(declared_build_tool, run=True)
-            else:
-                try:
-                    for item in declared_build_tool:
-                        self.build_require(item, run=True)
+                    for item in declared_tool:
+                        self.tool_require(item)
                 except TypeError:
                     raise RecipeException(
                         "Wrong 'tool_requires' definition, "
@@ -365,53 +301,6 @@ class Requirements:
         assert isinstance(str_ref, str)
         ref = RecipeReference.loads(str_ref)
         req = Requirement(ref, **kwargs)
-        if self._requires.get(req):
-            raise RecipeException(f"Duplicated requirement: {ref}")
-        self._requires[req] = req
-
-    def build_require(
-        self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
-        run=None, options=None, override=None):
-        """
-             Represent a generic build require, could be a tool, like "cmake" or a bundle of build
-             scripts.
-
-             visible = False => Only the direct consumer can see it, won't conflict
-             build = True => They run in the build machine (e.g cmake)
-             libs = False => We won't link with it, is a tool, no propagate the libs.
-             headers = False => We won't include headers, is a tool, no propagate the includes.
-             run = None => It will be determined by the package_type of the ref
-        """
-        if ref is None:
-            return
-        # FIXME: This raise_if_duplicated is ugly, possibly remove
-        ref = RecipeReference.loads(ref)
-        req = Requirement(
-            ref, headers=False, libs=False, build=True, run=run, visible=visible,
-            package_id_mode=package_id_mode, options=options, override=override)
-
-        if raise_if_duplicated and self._requires.get(req):
-            raise RecipeException(f"Duplicated requirement: {ref}")
-        self._requires[req] = req
-
-    def test_require(self, ref, run=None, options=None, force=None):
-        """
-             Represent a testing framework like gtest
-
-             visible = False => Only the direct consumer can see it, won't conflict
-             build = False => The test are linked in the host context to run in the host machine
-             libs = True => We need to link with gtest
-             headers = True => We need to include gtest.
-             run = None => It will be determined by the package_type of ref, maybe is gtest shared
-        """
-        ref = RecipeReference.loads(ref)
-        # visible = False => Only the direct consumer can see it, won't conflict
-        # build = False => They run in host context, e.g the gtest application is a host app
-        # libs = True => We need to link with it
-        # headers = True => We need to include it
-        req = Requirement(
-            ref, headers=True, libs=True, build=False, run=run, visible=False,
-            test=True, package_id_mode=None, options=options, force=force)
         if self._requires.get(req):
             raise RecipeException(f"Duplicated requirement: {ref}")
         self._requires[req] = req

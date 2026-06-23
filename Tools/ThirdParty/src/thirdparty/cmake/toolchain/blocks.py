@@ -156,10 +156,7 @@ class VSDebuggerEnvironment(Block):
                 config_dict = dict(matches)
 
         host_deps = self._recipe.dependencies.host.values()
-        test_deps = self._recipe.dependencies.test.values()
         bin_dirs = [p for dep in host_deps for p in dep.cpp_info.aggregated_components().bindirs]
-        test_bindirs = [p for dep in test_deps for p in dep.cpp_info.aggregated_components().bindirs]
-        bin_dirs.extend(test_bindirs)
         bin_dirs = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
                     for p in bin_dirs]
         bin_dirs = [p.replace("\\", "/") for p in bin_dirs]

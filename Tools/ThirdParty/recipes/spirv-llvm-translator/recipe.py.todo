@@ -32,8 +32,6 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("llvm")
         self.requires("spirv-headers")
-
-    def build_requirements(self):
         self.tool_requires("cmake")
 
     def latest_version(self):

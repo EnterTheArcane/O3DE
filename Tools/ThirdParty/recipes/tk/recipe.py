@@ -41,7 +41,7 @@ class Recipe(RecipeBase):
                     and not self.conf.get("tools.microsoft.bash:path")
                     and not self.conf.get("tools.microsoft.bash:subsystem")
             ):
-                self.build_requires("msys2")
+                self.tool_requires("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "tcltk/tk")

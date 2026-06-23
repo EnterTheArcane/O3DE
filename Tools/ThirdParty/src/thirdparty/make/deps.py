@@ -670,13 +670,12 @@ class MakeDeps:
         """
 
         host_req = self._recipe.dependencies.host
-        test_req = self._recipe.dependencies.test
 
         content_buffer = f"{self._title}\n"
         deps_buffer = ""
 
-        # Filter the build_requires not activated for any requirement
-        dependencies = list(host_req.items()) + list(test_req.items())
+        # Tool requirements are not emitted by MakeDeps.
+        dependencies = list(host_req.items())
 
         make_infos = []
 
