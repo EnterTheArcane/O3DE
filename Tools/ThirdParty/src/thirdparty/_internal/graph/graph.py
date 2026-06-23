@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from graphlib import TopologicalSorter
 from typing import TYPE_CHECKING
 
 from thirdparty._internal.model.refs import RecipeReference
@@ -105,25 +106,6 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
     return host_names, tool_names
 
 
-def _topo_sort(graph: dict[str, list[str]]) -> list[str]:
-    in_degree = {n: len([d for d in deps if d in graph]) for n, deps in graph.items()}
-    queue = sorted(n for n, d in in_degree.items() if d == 0)
-    order: list[str] = []
-    while queue:
-        node = queue.pop(0)
-        order.append(node)
-        for n, deps in graph.items():
-            if n not in order and node in deps:
-                in_degree[n] -= 1
-                if in_degree[n] == 0:
-                    queue.append(n)
-                    queue.sort()
-    for n in graph:
-        if n not in order:
-            order.append(n)
-    return order
-
-
 class Graph:
     """A resolved dependency graph over a set of local recipes.
 
@@ -151,11 +133,22 @@ class Graph:
         dependencies are ignored for ordering.  Ties are broken alphabetically for
         deterministic output.
         """
-        graph: dict[str, list[str]] = {
+        sorter = TopologicalSorter({
             name: [d for d in node.all_deps if d in self.nodes]
             for name, node in self.nodes.items()
-        }
-        return _topo_sort(graph)
+        })
+        sorter.prepare()
+
+        order: list[str] = []
+        ready = sorted(sorter.get_ready())
+        while ready:
+            node = ready.pop(0)
+            order.append(node)
+            sorter.done(node)
+            ready.extend(sorter.get_ready())
+            ready.sort()
+
+        return order
 
     @staticmethod
     def build(
