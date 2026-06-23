@@ -9,7 +9,7 @@ from thirdparty._internal.model.version import Version
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS
 from thirdparty._internal.util.files import load
 from thirdparty._internal.util.generators import relativize_path
-from thirdparty.android.utils import android_abi
+from thirdparty.android import android_abi
 from thirdparty.apple.apple import get_apple_sdk_fullname, _to_apple_arch
 from thirdparty.apple.apple import is_apple_os, to_apple_arch
 from thirdparty.build import build_jobs

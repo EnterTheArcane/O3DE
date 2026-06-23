@@ -2,6 +2,7 @@ import os
 import platform
 import re
 import subprocess
+from functools import lru_cache
 from multiprocessing import cpu_count
 
 from thirdparty._internal.default_settings import default_settings_yml
@@ -9,6 +10,18 @@ from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.settings import Settings
 
 
+@lru_cache(maxsize=1)
+def _settings_template():
+    """Parse the (static) settings definition once.
+
+    ``detect_settings`` is called once per recipe (often hundreds of times for ``list`` /
+    ``graph`` / the config-probe); the YAML never changes, so parse it a single time and hand
+    each caller an independent ``.copy()`` to mutate.
+    """
+    return Settings.loads(default_settings_yml)
+
+
+@lru_cache(maxsize=1)
 def _detect_msvc_version():
     vswhere = os.path.join(
         os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
@@ -43,6 +56,7 @@ def _detect_msvc_version():
         return None
 
 
+@lru_cache(maxsize=1)
 def _detect_apple_clang_version():
     for cmd in (["xcrun", "clang", "--version"], ["clang", "--version"]):
         try:
@@ -55,6 +69,7 @@ def _detect_apple_clang_version():
     return None
 
 
+@lru_cache(maxsize=1)
 def _detect_linux_compiler():
     for exe in ("gcc", "clang", "cc"):
         try:
@@ -122,7 +137,7 @@ def detect_settings(build_type="Release", target_os=None, target_arch=None):
     the target arch flows into the toolchain via ``settings.arch`` (and, for MSVC + Ninja,
     into the vcvars argument computed from ``settings_build.arch`` vs ``settings.arch``).
     """
-    settings = Settings.loads(default_settings_yml)
+    settings = _settings_template().copy()
 
     machine_os = _machine_os()
     the_os = normalize_os(target_os) or machine_os
