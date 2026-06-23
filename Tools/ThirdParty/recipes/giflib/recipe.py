@@ -41,7 +41,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["GIFLIB_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["GIFLIB_SRC_DIR"] = self.folders.source.as_posix()
         tc.variables["UTILS"] = self.options.utils
         tc.generate()
 

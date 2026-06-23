@@ -61,7 +61,7 @@ class Recipe(RecipeBase):
         # ============
 
         # Required by the project's CMakeLists.txt
-        tc.variables["SPIRV-Headers_SOURCE_DIR"] = self.dependencies["spirv-headers"].folders.package.replace("\\", "/")
+        tc.variables["SPIRV-Headers_SOURCE_DIR"] = self.dependencies["spirv-headers"].folders.package.as_posix()
 
         # There are some switch( ) statements that are causing errors
         # need to turn this off

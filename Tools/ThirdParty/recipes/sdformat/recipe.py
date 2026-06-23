@@ -45,7 +45,7 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        tinyxml2_pkg = self.dependencies["tinyxml2"].folders.package.replace("\\", "/")
+        tinyxml2_pkg = self.dependencies["tinyxml2"].folders.package.as_posix()
         tinyxml2_lib = self.dependencies["tinyxml2"].cpp_info.libs[0]
 
         tc = CMakeToolchain(self)

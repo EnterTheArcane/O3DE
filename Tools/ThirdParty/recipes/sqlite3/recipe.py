@@ -94,7 +94,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["SQLITE3_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["SQLITE3_SRC_DIR"] = self.folders.source.as_posix()
         tc.variables["SQLITE3_VERSION"] = self.version
         tc.variables["SQLITE3_BUILD_EXECUTABLE"] = self.options.build_executable
         tc.variables["THREADSAFE"] = self.options.threadsafe

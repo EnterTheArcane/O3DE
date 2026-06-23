@@ -76,16 +76,17 @@ class Recipe(RecipeBase):
 
     @property
     def _dist_folder(self):
-        vcbuild_folder = self.build_path / "vcbuild"
         arch_ext = "32" if self.settings.arch == "x86" else "64"
-        return vcbuild_folder / f"dist{arch_ext}"
+        return self.folders.build / "vcbuild" / f"dist{arch_ext}"
 
     def _build_msvc(self):
-        libmpdec_folder = self.source_path / "libmpdec"
-        libmpdecpp_folder = self.source_path / "libmpdec++"
+        source_dir = self.folders.source
+        build_dir = self.folders.build
+        libmpdec_folder = source_dir / "libmpdec"
+        libmpdecpp_folder = source_dir / "libmpdec++"
 
-        copy(self, "Makefile.vc", libmpdec_folder, self.build_path)
-        rename(self, self.build_path / "Makefile.vc", libmpdec_folder / "Makefile")
+        copy(self, "Makefile.vc", libmpdec_folder, build_dir)
+        rename(self, build_dir / "Makefile.vc", libmpdec_folder / "Makefile")
 
         mpdec_target = "libmpdec-{}.{}".format(self.version, "dll" if self.options.shared else "lib")
         mpdecpp_target = "libmpdec++-{}.{}".format(self.version, "dll" if self.options.shared else "lib")
@@ -145,35 +146,40 @@ class Recipe(RecipeBase):
         if is_msvc(self):
             self._build_msvc()
         else:
+            source_dir = self.folders.source
+            build_dir = self.folders.build
             autotools = Autotools(self)
             autotools.configure()
             # self.output.info(load(self, pathlib.Path("libmpdec", "Makefile")))
             libmpdec, libmpdecpp = self._target_names
-            copy(self, "*", self.source_path / "libmpdec", self.build_path / "libmpdec")
+            copy(self, "*", source_dir / "libmpdec", build_dir / "libmpdec")
             with chdir(self, "libmpdec"):
                 autotools.make(target=libmpdec)
             if self.options.cxx:
-                copy(self, "*", self.source_path / "libmpdec++", self.build_path / "libmpdec++")
+                copy(self, "*", source_dir / "libmpdec++", build_dir / "libmpdec++")
                 with chdir(self, "libmpdec++"):
                     autotools.make(target=libmpdecpp)
 
     def package(self):
-        pkg_dir = self.package_path
+        pkg_dir = self.folders.package
         copy(self, "LICENSE.txt", src=self.folders.source, dst=pkg_dir / "licenses")
         if is_msvc(self):
+            source_dir = self.folders.source
             distfolder = self._dist_folder
-            copy(self, "vc*.h", src=self.source_path / "libmpdec", dst=pkg_dir / "include")
+            copy(self, "vc*.h", src=source_dir / "libmpdec", dst=pkg_dir / "include")
             copy(self, "*.h", src=distfolder, dst=pkg_dir / "include")
             if self.options.cxx:
                 copy(self, "*.hh", src=distfolder, dst=pkg_dir / "include")
             copy(self, "*.lib", src=distfolder, dst=pkg_dir / "lib")
             copy(self, "*.dll", src=distfolder, dst=pkg_dir / "bin")
         else:
-            mpdecdir = self.build_path / "libmpdec"
-            mpdecppdir = self.build_path / "libmpdec++"
+            build_dir = self.folders.build
+            source_dir = self.folders.source
+            mpdecdir = build_dir / "libmpdec"
+            mpdecppdir = build_dir / "libmpdec++"
             copy(self, "mpdecimal.h", src=mpdecdir, dst=pkg_dir / "include")
             if self.options.cxx:
-                copy(self, "decimal.hh", src=self.source_path / "libmpdec++", dst=pkg_dir / "include")
+                copy(self, "decimal.hh", src=source_dir / "libmpdec++", dst=pkg_dir / "include")
             builddirs = [mpdecdir]
             if self.options.cxx:
                 builddirs.append(mpdecppdir)

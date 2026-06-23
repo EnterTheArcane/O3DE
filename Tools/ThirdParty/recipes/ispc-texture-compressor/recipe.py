@@ -33,7 +33,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["ISPC_TEXCOMP_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["ISPC_TEXCOMP_SRC_DIR"] = self.folders.source.as_posix()
         tc.generate()
 
     def build(self):

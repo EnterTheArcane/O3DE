@@ -28,53 +28,6 @@ def detect_arch():
     return None
 
 
-
-def _get_solaris_architecture():
-    # under intel solaris, platform.machine()=='i86pc' so we need to handle
-    # it early to suport 64-bit
-    processor = platform.processor()
-    kernel_bitness, elf = platform.architecture()
-    if "sparc" in processor:
-        return "sparcv9" if kernel_bitness == "64bit" else "sparc"
-    elif "i386" in processor:
-        return "x86_64" if kernel_bitness == "64bit" else "x86"
-
-
-def _get_aix_conf(options=None):
-    options = " %s" % options if options else ""
-    try:
-        ret = check_output_runner("getconf%s" % options).strip()
-        return ret
-    except Exception as e:
-        Output(scope="detect_api").warning(f"Couldn't get aix getconf {e}")
-        return None
-
-
-def _get_aix_architecture():
-    processor = platform.processor()
-    if "powerpc" in processor:
-        kernel_bitness = _get_aix_conf("KERNEL_BITMODE")
-        if kernel_bitness:
-            return "ppc64" if kernel_bitness == "64" else "ppc32"
-    elif "rs6000" in processor:
-        return "ppc32"
-
-
-def _get_e2k_architecture():
-    return {
-        "E1C+": "e2k-v4",  # Elbrus 1C+ and Elbrus 1CK
-        "E2C+": "e2k-v2",  # Elbrus 2CM
-        "E2C+DSP": "e2k-v2",  # Elbrus 2C+
-        "E2C3": "e2k-v6",  # Elbrus 2C3
-        "E2S": "e2k-v3",  # Elbrus 2S (aka Elbrus 4C)
-        "E8C": "e2k-v4",  # Elbrus 8C and Elbrus 8C1
-        "E8C2": "e2k-v5",  # Elbrus 8C2 (aka Elbrus 8CB)
-        "E12C": "e2k-v6",  # Elbrus 12C
-        "E16C": "e2k-v6",  # Elbrus 16C
-        "E32C": "e2k-v7",  # Elbrus 32C
-    }.get(platform.processor())
-
-
 def _parse_gnu_libc(ldd_output):
     first_line = ldd_output.partition("\n")[0]
     if any(glibc_indicator in first_line for glibc_indicator in ["GNU libc", "GLIBC"]):
@@ -236,7 +189,7 @@ def default_msvc_runtime(compiler):
 
 
 def detect_msvc_update(version):
-    from thirdparty._internal.detect_vs import vs_detect_update
+    from thirdparty._internal.util.detect_vs import vs_detect_update
     return vs_detect_update(version)
 
 
@@ -400,7 +353,7 @@ def default_msvc_ide_version(version):
 
 
 def _detect_vs_ide_version():
-    from thirdparty._internal.detect_vs import vs_installation_path
+    from thirdparty._internal.util.detect_vs import vs_installation_path
     msvc_versions = "18", "17", "16", "15"
     for version in msvc_versions:
         vs_path = os.getenv('vs%s0comntools' % version)

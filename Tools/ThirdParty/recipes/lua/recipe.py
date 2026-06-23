@@ -46,7 +46,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["LUA_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["LUA_SRC_DIR"] = self.folders.source.as_posix()
         tc.variables["COMPILE_AS_CPP"] = self.options.compile_as_cpp
         tc.variables["SKIP_INSTALL_TOOLS"] = not self.options.with_tools
         tc.variables["WITH_READLINE"] = self.options.with_readline

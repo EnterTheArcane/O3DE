@@ -1,7 +1,7 @@
 import os
 import textwrap
 
-from thirdparty._internal.detect_vs import vs_installation_path
+from thirdparty._internal.util.detect_vs import vs_installation_path
 from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.scm import Version

@@ -35,7 +35,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["PYSTRING_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["PYSTRING_SRC_DIR"] = self.folders.source.as_posix()
         tc.generate()
 
     def build(self):

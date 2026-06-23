@@ -14,9 +14,10 @@ from thirdparty._internal.model.recipe_base import RecipeBase
 from thirdparty._internal.model.recipe_interface import RecipeInterface
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.requires import Requirement
+from thirdparty.errors import RecipeException
 from thirdparty.env import Environment
 from thirdparty.env.environment import generate_aggregated_env
-from thirdparty._internal.detect import detect_settings, make_conf, detect_platform_tag
+from thirdparty._internal.util.detect import detect_settings, make_conf, detect_platform_tag
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph.graph import (
     Node as _Node,
@@ -29,7 +30,6 @@ from thirdparty._internal.graph.graph import (
 )
 from thirdparty._internal.loader import (
     RecipeRuntime as _RecipeRuntime,
-    VersionResolvingRequirements as _VersionResolvingRequirements,
     make_probe_recipe,
     try_load_recipe_class as _try_load_recipe_class,
     resolve_version as _resolve_version,
@@ -273,8 +273,11 @@ def _build_dep_graph(
 
         recipe_path = recipes_root / dep_name / "recipe.py"
         if not recipe_path.exists():
-            print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
-            return
+            raise RecipeException(
+                f"'{dep_name}' is required but has no recipe (recipes/{dep_name}/recipe.py). "
+                f"Every dependency must be vendored: create that recipe, or remove the "
+                f"requirement on '{dep_name}'."
+            )
 
         dep_cls = _load_recipe_class(recipes_root, dep_name)
         dep_version = _resolve_version(dep_cls)
@@ -298,7 +301,6 @@ def _build_dep_graph(
         dep._recipe_dependencies = RecipeDependencies(OrderedDict())
         dep._recipe_buildenv = Environment()
         dep._recipe_runenv = Environment()
-        dep.requires = _VersionResolvingRequirements(dep.requires, recipes_root)
 
         dep._recipe_node = _Node(dep_name, dep_version, context=_CONTEXT_HOST,
                                  recipe_state=_RECIPE_INCACHE)
@@ -319,7 +321,7 @@ def _build_dep_graph(
             # Set run=True if the package contains shared libraries so that
             # VirtualRunEnv adds its lib dir to DYLD_LIBRARY_PATH / LD_LIBRARY_PATH.
             # Pattern is keyed on the dep's TARGET os (not the build machine).
-            from thirdparty._internal.detect import normalize_os, _machine_os
+            from thirdparty._internal.util.detect import normalize_os, _machine_os
             _dep_os = normalize_os(dep_os) or _machine_os()
             _lib_path = Path(pkg_dir) / "lib"
             if _dep_os == "Mac":

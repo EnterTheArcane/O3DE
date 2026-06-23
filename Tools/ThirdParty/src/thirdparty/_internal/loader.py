@@ -1,237 +1,60 @@
 import traceback
 from collections import OrderedDict
-from importlib import invalidate_caches, util as imp_util
+from importlib import util as imp_util
 import inspect
 import os
 import sys
-import types
 import uuid
 from threading import Lock
 
 from pathlib import Path
 
-from thirdparty._internal.output import Output
-from thirdparty.cmake import cmake_layout
-from thirdparty.google import bazel_layout
-from thirdparty.microsoft import vs_layout
-from thirdparty._internal.errors import recipe_exception_formatter, NotFoundException
+from thirdparty._internal.errors import NotFoundException
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.recipe_base import RecipeBase
-from thirdparty._internal.model.options import Options
-from thirdparty._internal.model.refs import RecipeReference
-from thirdparty._internal.util.config_parser import TextINIParse
-from thirdparty._internal.util.files import chdir, load_user_encoded
-from thirdparty._internal.detect import detect_settings, make_conf
+from thirdparty._internal.util.files import chdir
+from thirdparty._internal.util.detect import detect_settings, make_conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty.env import Environment
 
 
 class RecipeLoader:
+    """Loads and caches recipe CLASSES from ``recipes/<name>/recipe.py``.
 
-    def __init__(self, pyreq_loader=None, recipe_helpers=None):
-        self._pyreq_loader = pyreq_loader
-        self._cached_recipe_classes = {}
-        self._recipe_helpers = recipe_helpers
-        invalidate_caches()
+    The parsed recipe class is cached per path, so repeated lookups — version injection
+    during ``requirements()``, the config-probe, graph resolution — don't re-parse the same
+    file.  Instantiation is left to the caller (``make_probe_recipe`` / build.py), since each
+    build/probe needs a fresh recipe object with its own folders + settings.
+    """
 
-    def load_basic(self, recipe_path, graph_lock=None, display="",
-                   update=None, check_update=None):
-        """ loads a recipe basic object without evaluating anything
-        """
-        return self.load_basic_module(recipe_path, graph_lock, display,
-                                      update, check_update)[0]
+    def __init__(self):
+        self._cache: dict[str, type[RecipeBase] | None] = {}
 
-    def load_basic_module(self, recipe_path, graph_lock=None, display="",
-                          update=None, check_update=None, tested_python_requires=None):
-        """ loads a recipe basic object without evaluating anything, returns the module too
-        """
-        cached = self._cached_recipe_classes.get(recipe_path)
-        if cached:
-            recipe = cached[0](display)
-            recipe._recipe_runtime = self._recipe_helpers
-            if hasattr(recipe, "init") and callable(recipe.init):
-                with recipe_exception_formatter(recipe, "init"):
-                    recipe.init()
-            return recipe, cached[1]
-
-        try:
-            module, recipe = _parse_recipe(recipe_path)
-            if isinstance(tested_python_requires, RecipeReference):
-                if getattr(recipe, "python_requires", None) == "tested_reference_str":
-                    recipe.python_requires = tested_python_requires.repr_notime()
-            elif tested_python_requires:
-                if getattr(recipe, "python_requires", None) != "tested_reference_str":
-                    Output().warning("test_package/recipe.py should declare 'python_requires"
-                                          " = \"tested_reference_str\"'", warn_tag="deprecated")
-                recipe.python_requires = tested_python_requires
-
-            if self._pyreq_loader:
-                self._pyreq_loader.load_py_requires(recipe, self, graph_lock, None,
-                                                    update, check_update)
-
-            recipe.recipe_folder = os.path.dirname(recipe_path)
-            recipe.recipe_path = Path(recipe.recipe_folder)
-
-            self._cached_recipe_classes[recipe_path] = (recipe, module)
-            result = recipe(display)
-
-            result._recipe_runtime = self._recipe_helpers
-            if hasattr(result, "init") and callable(result.init):
-                with recipe_exception_formatter(result, "init"):
-                    result.init()
-            return result, module
-        except RecipeException as e:
-            raise RecipeException("Error loading recipe at '{}': {}".format(recipe_path, e))
-
-    def load_named(self, recipe_path, name, version, graph_lock=None,
-                   update=None, check_update=None, tested_python_requires=None):
-        """ loads the basic recipe object and evaluates its name and version
-        """
-        recipe, _ = self.load_basic_module(recipe_path, graph_lock,
-                                              update=update, check_update=check_update,
-                                              tested_python_requires=tested_python_requires)
-
-        # Export does a check on existing name & version
-        if name:
-            if recipe.name and name != recipe.name:
-                raise RecipeException("Package recipe with name %s!=%s" % (name, recipe.name))
-            recipe.name = name
-
-        if version:
-            if recipe.version and version != recipe.version:
-                raise RecipeException("Package recipe with version %s!=%s"
-                                     % (version, recipe.version))
-            recipe.version = version
-
-        if hasattr(recipe, "set_name"):
-            with recipe_exception_formatter("recipe.py", "set_name"):
-                recipe.set_name()
-        if hasattr(recipe, "set_version"):
-            with recipe_exception_formatter("recipe.py", "set_version"):
-                recipe.set_version()
-
-        return recipe
-
-    def load_export(self, recipe_path, name, version, graph_lock=None):
-        """ loads the recipe and evaluates its name, version, and enforce its existence
-        """
-        recipe = self.load_named(recipe_path, name, version, graph_lock)
-        if not recipe.name:
-            raise RecipeException("recipe didn't specify name")
-        if not recipe.version:
-            raise RecipeException("recipe didn't specify version")
-
-        ref = RecipeReference(recipe.name, recipe.version)
-        recipe.display_name = str(ref)
-        return recipe
-
-    def load_consumer(self, recipe_path, name=None, version=None,
-                      graph_lock=None, update=None, check_update=None,
-                      tested_python_requires=None):
-        """ loads a recipe.py in user space. Might have name/version or not
-        """
-        recipe = self.load_named(recipe_path, name, version, graph_lock,
-                                    update, check_update,
-                                    tested_python_requires=tested_python_requires)
-
-        ref = RecipeReference(recipe.name, recipe.version)
-        if str(ref):
-            recipe.display_name = "%s (%s)" % (os.path.basename(recipe_path), str(ref))
-        else:
-            recipe.display_name = os.path.basename(recipe_path)
-        recipe._is_consumer_recipe = True
-        return recipe
-
-    def load_recipe(self, recipe_path, ref, graph_lock=None,
-                       update=None, check_update=None):
-        """ load a recipe with a full reference, name, version, user and channel are obtained
-        from the reference, not evaluated. Main way to load from the cache
-        """
-        try:
-            recipe, _ = self.load_basic_module(recipe_path, graph_lock, str(ref),
-                                                  update=update, check_update=check_update)
-        except Exception as e:
-            raise RecipeException("%s: Cannot load recipe.\n%s" % (str(ref), str(e)))
-
-        recipe.name = ref.name
-        recipe.version = str(ref.version)
-        return recipe
-
-    def load_recipe_txt(self, recipe_txt_path):
-        if not os.path.exists(recipe_txt_path):
-            raise NotFoundException("Recipe file not found!")
-
-        try:
-            contents = load_user_encoded(recipe_txt_path)
-        except Exception as e:
-            raise RecipeException(f"Cannot load recipe.txt:\n{e}")
-        path, basename = os.path.split(recipe_txt_path)
-        display_name = basename
-        recipe = self._parse_recipe_txt(contents, path, display_name)
-        recipe._recipe_runtime = self._recipe_helpers
-        recipe._is_consumer_recipe = True
-        return recipe
+    def load_class(self, recipes_root: Path, name: str) -> type[RecipeBase] | None:
+        recipe_path = Path(recipes_root) / name / "recipe.py"
+        key = str(recipe_path)
+        if key not in self._cache:
+            self._cache[key] = self._parse_class(recipe_path)
+        return self._cache[key]
 
     @staticmethod
-    def _parse_recipe_txt(contents, path, display_name):
-        recipe = RecipeBase(display_name)
-
+    def _parse_class(recipe_path: Path) -> type[RecipeBase] | None:
+        if not recipe_path.exists():
+            return None
         try:
-            parser = RecipeTextLoader(contents)
-        except Exception as e:
-            raise RecipeException("%s:\n%s" % (path, str(e)))
-        for reference in parser.requirements:
-            recipe.requires(reference)
-        for build_reference in parser.tool_requirements:
-            # TODO: Improve this interface
-            recipe.requires.tool_require(build_reference)
-        for ref in parser.test_requirements:
-            # TODO: Improve this interface
-            recipe.requires.test_require(ref)
-
-        if parser.layout:
-            layout_method = {"cmake_layout": cmake_layout,
-                             "vs_layout": vs_layout,
-                             "bazel_layout": bazel_layout}.get(parser.layout)
-            if not layout_method:
-                raise RecipeException("Unknown predefined layout '{}' declared in "
-                                     "recipe.txt".format(parser.layout))
-
-            def layout(_self):
-                layout_method(_self)
-
-            recipe.layout = types.MethodType(layout, recipe)
-
-        try:
-            recipe.options = Options.loads(parser.options)
+            module, cls = _parse_recipe(str(recipe_path))
+            if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
+                return None
+            # Collect implicit tool_requires from the recipe's DIRECT imports only.  A module's
+            # namespace contains only the names it imported/defined itself, so build-system
+            # helpers pulled in transitively by thirdparty.* are never counted here.
+            implicit: set[str] = set()
+            for obj in vars(module).values():
+                implicit.update(getattr(obj, "_implicit_tool_requires", ()))
+            cls._implicit_tool_requires = frozenset(implicit)
+            return cls
         except Exception:
-            raise RecipeException("Error while parsing [options] in recipe.txt\n"
-                                 "Options should be specified as 'pkg/*:option=value'")
-        return recipe
-
-    def load_virtual(self, requires=None, tool_requires=None, python_requires=None, graph_lock=None,
-                     update=None, check_updates=None):
-        # If user don't specify namespace in options, assume that it is
-        # for the reference (keep compatibility)
-        recipe = RecipeBase(display_name="cli")
-        recipe._recipe_runtime = self._recipe_helpers
-
-        if tool_requires:
-            for reference in tool_requires:
-                recipe.requires.tool_require(repr(reference))
-        if requires:
-            for reference in requires:
-                recipe.requires(repr(reference))
-
-        if python_requires:
-            recipe.python_requires = [pr.repr_notime() for pr in python_requires]
-
-        if self._pyreq_loader:
-            self._pyreq_loader.load_py_requires(recipe, self, graph_lock, None,
-                                                update, check_updates)
-
-        recipe._is_consumer_recipe = True
-        return recipe
+            return None
 
 
 def _parse_module(recipe_module, module_id):
@@ -270,31 +93,21 @@ def _parse_recipe(recipe_path):
         raise RecipeException("%s: %s" % (recipe_path, str(e)))
 
 
-def try_load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase] | None:
-    """Load the recipe class from ``recipes/<name>/recipe.py``.
+# Shared loader instance: caches parsed recipe classes so repeated lookups (version
+# injection during requirements(), the config-probe, graph resolution) don't re-parse the
+# same recipe.py file.
+_RECIPE_LOADER = RecipeLoader()
 
-    Delegates to the central recipe parser (``_parse_recipe``), which loads the file under
-    a lock with a unique module id, inserts the recipe directory on ``sys.path`` so recipes
-    can import sibling helpers, and validates that exactly one RecipeBase subclass is
-    defined.  Returns ``None`` if the recipe is missing or fails to load/validate.
+
+def try_load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase] | None:
+    """Load (and cache) the recipe class from ``recipes/<name>/recipe.py``.
+
+    Delegates to the shared :class:`RecipeLoader`, which parses the file under a lock with a
+    unique module id, inserts the recipe directory on ``sys.path`` so recipes can import
+    sibling helpers, validates that exactly one RecipeBase subclass is defined, and caches
+    the result.  Returns ``None`` if the recipe is missing or fails to load/validate.
     """
-    recipe_path = recipes_root / name / "recipe.py"
-    if not recipe_path.exists():
-        return None
-    try:
-        module, cls = _parse_recipe(str(recipe_path))
-        if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
-            return None
-        # Collect implicit tool_requires from the recipe's DIRECT imports only.  A module's
-        # namespace contains only the names it imported/defined itself, so build-system
-        # helpers pulled in transitively by thirdparty.* are never counted here.
-        implicit: set[str] = set()
-        for obj in vars(module).values():
-            implicit.update(getattr(obj, "_implicit_tool_requires", ()))
-        cls._implicit_tool_requires = frozenset(implicit)
-        return cls
-    except Exception:
-        return None
+    return _RECIPE_LOADER.load_class(recipes_root, name)
 
 
 def resolve_version(recipe_cls: type[RecipeBase]) -> str:
@@ -323,54 +136,6 @@ class RecipeRuntime:
         # recipe reads a dependency's cflags/cxxflags/linkflags.  This system has no flags
         # plugin, so it stays None (flags are returned unchanged) — matching Conan's default.
         self.flags_map = None
-
-
-class VersionResolvingRequirements:
-    """Wraps the requirements object to accept bare package names (no version).
-
-    Recipes in this system use ``self.requires("abseil")`` without a version.  The underlying
-    Requirements model rejects that, so we intercept every call, look up the matching local
-    recipe to find its version, and convert the ref to ``"abseil/20260107.1"`` before forwarding.
-    """
-
-    def __init__(self, inner, recipes_root: Path) -> None:
-        self._inner = inner
-        self._recipes_root = recipes_root
-
-    def _resolve(self, ref: str) -> str:
-        if ref and "/" not in ref and "@" not in ref:
-            cls = try_load_recipe_class(self._recipes_root, ref)
-            if cls:
-                return f"{ref}/{resolve_version(cls)}"
-        return ref
-
-    def __call__(self, str_ref, **kwargs):
-        resolved = self._resolve(str_ref)
-        # Skip host requires with no local recipe (and no explicit version) — these are
-        # system-provided libraries (e.g. libalsa/libudev/libusb on Linux) that this framework
-        # does not vendor; the build links the system copy via find_package/pkg-config.
-        if resolved and "/" not in resolved:
-            return
-        return self._inner(resolved, **kwargs)
-
-    def tool_require(self, ref, **kwargs):
-        resolved = self._resolve(ref)
-        # Skip tool deps that have no local recipe and no explicit version — they are
-        # system-provided tools (e.g. gperf, pkg-config) and cannot be version-resolved.
-        # Passing an unversioned name to Requirements.tool_require() raises an error that
-        # would abort the entire build_requirements() call, preventing later tool_requires
-        # (e.g. meson) from being registered.
-        if resolved and "/" not in resolved:
-            return
-        return self._inner.tool_require(resolved, **kwargs)
-
-    def __len__(self):
-        # Dunder lookups bypass __getattr__, so delegate explicitly (run_configure_method
-        # uses len(recipe.requires) to detect requires added during configure()).
-        return len(self._inner)
-
-    def __getattr__(self, name):
-        return getattr(self._inner, name)
 
 
 def make_probe_recipe(
@@ -407,7 +172,6 @@ def make_probe_recipe(
     recipe._recipe_dependencies = RecipeDependencies(OrderedDict())
     recipe._recipe_buildenv = Environment()
     recipe._recipe_runenv = Environment()
-    recipe.requires = VersionResolvingRequirements(recipe.requires, recipes_root)
     # Give the probe a graph node so recipes can read self.ref / self.context during
     # config/requirements (e.g. cross-build recipes doing tool_requires(str(self.ref))).
     from thirdparty._internal.graph.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
@@ -486,49 +250,3 @@ def _load_python_file(recipe_path):
     loaded.print = new_print
     return loaded, module_id
 
-
-class RecipeTextLoader:
-    """Parse a recipe.txt file"""
-
-    def __init__(self, input_text):
-        # Prefer composition over inheritance, the __getattr__ was breaking things
-        self._config_parser = TextINIParse(input_text,  ["requires", "options",
-                                                         "imports", "tool_requires", "test_requires",
-                                                         "layout"],
-                                           strip_comments=True)
-
-    @property
-    def layout(self):
-        """returns the declared layout"""
-        tmp = [r.strip() for r in self._config_parser.layout.splitlines()]
-        if len(tmp) > 1:
-            raise RecipeException("Only one layout can be declared in the [layout] section of "
-                                 "the recipe.txt")
-        return tmp[0] if tmp else None
-
-    @property
-    def requirements(self):
-        """returns a list of requires
-        EX:  "OpenCV/2.4.10@phil/stable"
-        """
-        return [r.strip() for r in self._config_parser.requires.splitlines()]
-
-    @property
-    def tool_requirements(self):
-        """returns a list of tool_requires
-        EX:  "OpenCV/2.4.10@phil/stable"
-        """
-
-        return [r.strip() for r in self._config_parser.tool_requires.splitlines()]
-
-    @property
-    def test_requirements(self):
-        """returns a list of test_requires
-        EX:  "gtest/2.4.10@phil/stable"
-        """
-
-        return [r.strip() for r in self._config_parser.test_requires.splitlines()]
-
-    @property
-    def options(self):
-        return self._config_parser.options

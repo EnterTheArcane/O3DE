@@ -75,7 +75,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["PX_GENERATE_STATIC_LIBRARIES"] = not self.options.shared
         tc.cache_variables["PX_EXPORT_LOWLEVEL_PDB"] = False
         tc.cache_variables["PXSHARED_PATH"] = os.path.join(self.folders.source, "pxshared").replace("\\", "/")
-        tc.cache_variables["PXSHARED_INSTALL_PREFIX"] = self.folders.package.replace("\\", "/")
+        tc.cache_variables["PXSHARED_INSTALL_PREFIX"] = self.folders.package.as_posix()
         tc.cache_variables["PX_GENERATE_SOURCE_DISTRO"] = False
 
         # Options defined in externals/cmakemodules/NVidiaBuildOptions.cmake

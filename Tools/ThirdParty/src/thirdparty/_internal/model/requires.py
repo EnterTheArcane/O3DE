@@ -1,6 +1,5 @@
 from thirdparty.errors import RecipeException
 from thirdparty._internal.model.refs import RecipeReference
-from thirdparty._internal.model.version_range import VersionRange
 
 
 class Requirement:
@@ -186,15 +185,6 @@ class Requirement:
                            transitive_headers=self.transitive_headers,
                            transitive_libs=self.transitive_libs,
                            consistent=self.consistent)
-
-    @property
-    def version_range(self):
-        """ returns the version range expression, without brackets []
-        or None if it is not an expression
-        """
-        version = repr(self.ref.version)
-        if version[0] == "[" and version[-1] == "]":
-            return VersionRange(version[1:-1])
 
     @property
     def alias(self):

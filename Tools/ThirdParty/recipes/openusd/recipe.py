@@ -80,7 +80,7 @@ class Recipe(RecipeBase):
         tc.variables["PXR_VALIDATE_GENERATED_CODE"] = False
 
         python_pkg = self.dependencies["cpython"]
-        python_root = python_pkg.folders.package.replace("\\", "/")
+        python_root = python_pkg.folders.package.as_posix()
         tc.variables["Python3_ROOT_DIR"] = python_root
         tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
         if self.settings.os == "Windows":

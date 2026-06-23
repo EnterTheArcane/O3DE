@@ -114,7 +114,7 @@ class CMake:
             toolpath = toolpath.replace("\\", "/")
             arg_list.append('-DCMAKE_TOOLCHAIN_FILE="{}"'.format(toolpath))
         if self._recipe.folders.package:
-            pkg_folder = self._recipe.folders.package.replace("\\", "/")
+            pkg_folder = self._recipe.folders.package.as_posix()
             arg_list.append('-DCMAKE_INSTALL_PREFIX="{}"'.format(pkg_folder))
 
         if not variables:

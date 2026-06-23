@@ -473,7 +473,7 @@ def untargz(filename, destination=".", pattern=None, strip_root=False, extract_f
         # https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry
         # File I/O functions in the Windows API convert "/" to "\" as part of converting
         # the name to an NT-style name, except when using the "\\?\" prefix
-        using_long_path_prefix = destination.startswith("\\\\?\\")
+        using_long_path_prefix = str(destination).startswith("\\\\?\\")
         if not pattern and not excludes and not strip_root and not using_long_path_prefix:
             tarredgzippedFile.extractall(destination)
         else:

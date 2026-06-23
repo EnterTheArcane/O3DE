@@ -59,7 +59,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["MVK_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["MVK_SRC_DIR"] = self.folders.source.as_posix()
         tc.variables["MVK_VERSION"] = self.version
         tc.variables["MVK_WITH_SPIRV_TOOLS"] = True
         tc.variables["MVK_BUILD_SHADERCONVERTER_TOOL"] = self.options.tools

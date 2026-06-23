@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BZ2_BUILD_EXE"] = self.options.build_executable
-        tc.variables["BZ2_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["BZ2_SRC_DIR"] = self.folders.source.as_posix()
         tc.variables["BZ2_VERSION_MAJOR"] = Version(self.version).major
         tc.variables["BZ2_VERSION_STRING"] = self.version
         tc.generate()

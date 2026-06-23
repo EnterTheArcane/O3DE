@@ -4,7 +4,7 @@ from xml.dom import minidom
 
 from jinja2 import Template
 
-from thirdparty._internal.detect_vs import vs_installation_path
+from thirdparty._internal.util.detect_vs import vs_installation_path
 from thirdparty.build import build_jobs
 from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
     msvc_platform_from_arch, vs_ide_version

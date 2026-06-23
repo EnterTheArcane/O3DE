@@ -1,6 +1,7 @@
 import os
 import re
 import textwrap
+from pathlib import Path
 
 from jinja2 import Template, StrictUndefined
 
@@ -121,8 +122,8 @@ class _PCFilesDeps:
                         pc_variables[key] = value
 
         # If editable, package_folder can be None
-        prefix_path = (dep.recipe_folder if dep.folders.package is None
-                       else dep.folders.package).replace("\\", "/")
+        prefix_path = Path(dep.recipe_folder).as_posix() if dep.folders.package is None \
+            else dep.folders.package.as_posix()
         pc_variables = {"prefix": prefix_path}
         # Already formatted directories
         pc_variables.update(self._get_formatted_dirs("libdir", cpp_info.libdirs, prefix_path))

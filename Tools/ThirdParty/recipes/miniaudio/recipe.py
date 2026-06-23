@@ -51,7 +51,7 @@ class Recipe(RecipeBase):
         if self.options.header_only:
             return
         tc = CMakeToolchain(self)
-        tc.variables["MINIAUDIO_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["MINIAUDIO_SRC_DIR"] = self.folders.source.as_posix()
         tc.variables["MINIAUDIO_VERSION_STRING"] = self.version
         tc.generate()
 

@@ -35,31 +35,41 @@ class RecipeReference:
     def __str__(self):
         if self.name is None:
             return ""
+        if self.version is None:
+            return self.name
         return "/".join([self.name, str(self.version)])
 
     def __lt__(self, ref):
-        return (self.name, self.version) < (ref.name, ref.version)
+        # Identity is by NAME only: this system has exactly one recipe per name, so the
+        # version is never part of dependency lookup/dedup/ordering (it is only carried for
+        # layout paths, generators like config-version.cmake, and publishing/out-of-date).
+        return self.name < ref.name
 
     def __eq__(self, ref):
         if ref is None:
             return False
-        return (self.name, self.version) == (ref.name, ref.version)
+        return self.name == ref.name
 
     def __hash__(self):
-        return hash((self.name, self.version))
+        return hash(self.name)
 
     @staticmethod
     def loads(rref):
         try:
             # Tolerate (and discard) any legacy @user/channel, #revision or %timestamp suffix.
             text = rref.split("%", 1)[0].split("#", 1)[0].split("@", 1)[0]
-            name, version = text.split("/", 1)
-            assert name and version
-            return RecipeReference(name, version)
+            # A dep is identified by NAME; the version lives in its own recipe.  Accept a bare
+            # name (``abseil``) as well as the explicit ``name/version`` form.
+            if "/" in text:
+                name, version = text.split("/", 1)
+                assert name and version
+                return RecipeReference(name, version)
+            assert text
+            return RecipeReference(text, None)
         except Exception:
             raise RecipeException(
                 f"{rref} is not a valid recipe reference, provide a reference"
-                f" in the form name/version"
+                f" in the form name or name/version"
             )
 
     def validate_ref(self, allow_uppercase=False):
@@ -111,51 +121,3 @@ class RecipeReference:
             partial += token
             if pattern.match(partial):
                 return True
-
-
-class PkgReference:
-    def __init__(self, ref=None, package_id=None):
-        self.ref = ref
-        self.package_id = package_id
-
-    def __repr__(self):
-        return str(self)
-
-    def repr_notime(self):
-        return str(self)
-
-    def repr_humantime(self):
-        return str(self)
-
-    def __str__(self):
-        if self.ref is None:
-            return ""
-        result = str(self.ref)
-        if self.package_id:
-            result += f":{self.package_id}"
-        return result
-
-    def __lt__(self, ref):
-        raise Exception("WHO IS COMPARING PACKAGE REFERENCES?")
-
-    def __eq__(self, other):
-        return self.ref == other.ref and self.package_id == other.package_id
-
-    def __hash__(self):
-        return hash((self.ref, self.package_id))
-
-    @staticmethod
-    def loads(pkg_ref):
-        try:
-            tokens = pkg_ref.split(":", 1)
-            assert len(tokens) == 2
-            ref, pkg_id = tokens
-            ref = RecipeReference.loads(ref)
-            # Tolerate (and discard) any legacy #revision or %timestamp suffix on the package id.
-            package_id = pkg_id.split("%", 1)[0].split("#", 1)[0]
-            return PkgReference(ref, package_id)
-        except Exception:
-            raise RecipeException(
-                f"{pkg_ref} is not a valid package reference, provide a reference"
-                f" in the form name/version:package_id"
-            )

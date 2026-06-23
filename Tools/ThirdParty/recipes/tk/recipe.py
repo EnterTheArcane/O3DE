@@ -257,5 +257,5 @@ class Recipe(RecipeBase):
         ).replace("\\", "/")
         self.runenv_info.define("TK_LIBRARY", tk_library)
 
-        tk_root = self.folders.package.replace("\\", "/")
+        tk_root = self.folders.package.as_posix()
         self.runenv_info.define("TK_ROOT", tk_root)

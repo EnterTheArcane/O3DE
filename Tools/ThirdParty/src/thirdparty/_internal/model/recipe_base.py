@@ -1,6 +1,5 @@
 import os
 import subprocess
-from pathlib import Path
 from typing import Any
 
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
@@ -130,10 +129,6 @@ class RecipeBase:
         return self._recipe_node.ref
 
     @property
-    def pref(self):
-        return self._recipe_node.pref
-
-    @property
     def buildenv(self):
         # Lazy computation of the package buildenv based on the profileone
         from thirdparty.env import Environment
@@ -162,36 +157,6 @@ class RecipeBase:
     @cpp_info.setter
     def cpp_info(self, value):
         self.cpp.package = value
-
-    @property
-    def source_path(self) -> Path:
-        assert self.folders.source is not None, "`source` folder is `None`"
-        return Path(self.folders.source)
-
-    @property
-    def export_sources_path(self) -> Path:
-        assert self.folders.export_sources is not None, "`export_sources` folder is `None`"
-        return Path(self.folders.export_sources)
-
-    @property
-    def export_path(self) -> Path:
-        assert self.folders.export is not None, "`export` folder is `None`"
-        return Path(self.folders.export)
-
-    @property
-    def build_path(self) -> Path:
-        assert self.folders.build is not None, "`build` folder is `None`"
-        return Path(self.folders.build)
-
-    @property
-    def package_path(self) -> Path:
-        assert self.folders.package is not None, "`package` folder is `None`"
-        return Path(self.folders.package)
-
-    @property
-    def generators_path(self) -> Path:
-        assert self.folders.generators is not None, "`generators` folder is `None`"
-        return Path(self.folders.generators)
 
     def run(self, command: str, stdout=None, cwd=None, ignore_errors=False, env="", quiet=False,
             shell=True, scope="build", stderr=None):
@@ -242,9 +207,3 @@ class RecipeBase:
 
     def __repr__(self):
         return self.display_name
-
-    def set_deploy_folder(self, deploy_folder):
-        self.cpp_info.deploy_base_folder(self.folders.package, deploy_folder)
-        self.buildenv_info.deploy_base_folder(self.folders.package, deploy_folder)
-        self.runenv_info.deploy_base_folder(self.folders.package, deploy_folder)
-        self.folders.set_base_package(deploy_folder)

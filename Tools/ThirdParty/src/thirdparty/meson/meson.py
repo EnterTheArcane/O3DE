@@ -83,8 +83,8 @@ class Meson:
         :param cli_args: List of arguments to be added to the command:
                     ``meson install -C "." --destdir ... arg1 arg2``
         """
-        meson_build_folder = self._recipe.folders.build.replace("\\", "/")
-        meson_package_folder = self._recipe.folders.package.replace("\\", "/")
+        meson_build_folder = self._recipe.folders.build.as_posix()
+        meson_package_folder = self._recipe.folders.package.as_posix()
         # Assuming meson >= 0.57.0
         cmd = f'meson install -C "{meson_build_folder}" --destdir "{meson_package_folder}"'
         verbosity = self._install_verbosity

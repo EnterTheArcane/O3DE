@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from thirdparty._internal.graph.graph import CONTEXT_BUILD
 
 
@@ -36,17 +34,8 @@ class RecipeInterface:
         return self._recipe.recipe_folder
 
     @property
-    def package_path(self) -> Path:
-        assert self.folders.package is not None, "`package` folder is `None`"
-        return Path(self.folders.package)
-
-    @property
     def ref(self):
         return self._recipe.ref
-
-    @property
-    def pref(self):
-        return self._recipe.pref
 
     @property
     def buildenv_info(self):
@@ -93,9 +82,6 @@ class RecipeInterface:
     @property
     def info(self):
         return self._recipe.info
-
-    def set_deploy_folder(self, deploy_folder):
-        self._recipe.set_deploy_folder(deploy_folder)
 
     @property
     def license(self):

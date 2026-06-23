@@ -32,7 +32,7 @@ class Recipe(RecipeBase):
         tc.variables["LUAU_WERROR"] = False
         tc.variables["LUAU_STATIC_CRT"] = False
         tc.variables["LUAU_NATIVE"] = True
-        tc.variables["LUAU_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["LUAU_SRC_DIR"] = self.folders.source.as_posix()
         tc.generate()
 
     def build(self):

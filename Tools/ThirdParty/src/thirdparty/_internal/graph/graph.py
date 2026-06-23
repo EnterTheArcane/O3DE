@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from thirdparty._internal.model.refs import PkgReference, RecipeReference
+from thirdparty._internal.model.refs import RecipeReference
 
 if TYPE_CHECKING:
     from pathlib import Path  # noqa: F401  (annotation only)
@@ -42,7 +42,6 @@ class Node:
         self.context: str = context
         # Recipe-origin state (RECIPE_CONSUMER / RECIPE_INCACHE / RECIPE_PLATFORM / ...).
         self.recipe: "str | None" = recipe_state
-        self._package_id: "str | None" = None
 
     @property
     def name(self) -> str:
@@ -59,20 +58,6 @@ class Node:
     @property
     def all_deps(self) -> list[str]:
         return self.host_deps + self.tool_deps
-
-    @property
-    def package_id(self) -> "str | None":
-        return self._package_id
-
-    @package_id.setter
-    def package_id(self, pkg_id: str) -> None:
-        assert self._package_id is None, "Trying to override an existing package_id"
-        self._package_id = pkg_id
-
-    @property
-    def pref(self) -> PkgReference:
-        assert self._package_id is not None, "Node %s has no package_id" % self._name
-        return PkgReference(self.ref, self.package_id)
 
 
 COMPLETE_MARKER = ".complete"

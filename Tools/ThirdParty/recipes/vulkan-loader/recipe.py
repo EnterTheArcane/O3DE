@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTS"] = False
         tc.variables["LOADER_CODEGEN"] = False
-        vulkan_headers = self.dependencies["vulkan-headers"].folders.package.replace("\\", "/")
+        vulkan_headers = self.dependencies["vulkan-headers"].folders.package.as_posix()
         tc.variables["VULKAN_HEADERS_INSTALL_DIR"] = vulkan_headers
         tc.generate()
         deps = CMakeDeps(self)

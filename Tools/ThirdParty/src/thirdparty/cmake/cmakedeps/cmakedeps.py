@@ -281,7 +281,7 @@ class _PathGenerator:
         test_req = self._recipe.dependencies.test
         host_test_reqs = list(host_req.items()) + list(test_req.items())
         all_reqs = host_test_reqs + list(build_req.items())
-        # gen_folder = self._recipe.folders.generators.replace("\\", "/")
+        # gen_folder = self._recipe.folders.generators.as_posix()
         # if not, test_cmake_add_subdirectory test fails
         # content.append('set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)')
         pkg_paths = {}
@@ -352,7 +352,7 @@ class _PathGenerator:
                 # Gazebo libs) install their own config files in nested folders not matched by
                 # the builddir check above.
                 if dep.folders.package:
-                    rel_root = relativize_path(dep.folders.package.replace("\\", "/"),
+                    rel_root = relativize_path(dep.folders.package.as_posix(),
                                                self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
                     if rel_root not in prefix_paths:
                         prefix_paths.append(rel_root)

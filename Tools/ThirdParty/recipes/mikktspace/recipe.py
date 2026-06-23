@@ -37,7 +37,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["MIKKTSPACE_SRC_DIR"] = self.folders.source.replace("\\", "/")
+        tc.variables["MIKKTSPACE_SRC_DIR"] = self.folders.source.as_posix()
         tc.generate()
 
     def build(self):

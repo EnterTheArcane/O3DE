@@ -1,7 +1,7 @@
 import operator
 
 from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
-from thirdparty._internal.detect_api import default_cstd as default_cstd_
+from thirdparty._internal.util.detect_api import default_cstd as default_cstd_
 from thirdparty._internal.model.version import Version
 
 

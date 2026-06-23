@@ -1,11 +1,11 @@
 import os
+from pathlib import Path
 
 from thirdparty._internal.model.cpp_info import CppInfo
 from thirdparty._internal.model.conf import Conf
 
 
 class Infos:
-
     def __init__(self):
         self.source = CppInfo()
         self.build = CppInfo()
@@ -25,6 +25,14 @@ class PartialLayout:
         self.conf_info.set_relative_base_folder(folder)
 
 
+def _folder_path(base_folder, relative_folder=""):
+    if base_folder is None:
+        return None
+    if not relative_folder:
+        return Path(os.path.normpath(base_folder))
+    return Path(os.path.normpath(os.path.join(base_folder, relative_folder)))
+
+
 class Layouts:
     def __init__(self):
         self.source = PartialLayout()
@@ -33,7 +41,6 @@ class Layouts:
 
 
 class Folders:
-
     def __init__(self):
         self._base_source = None
         self._base_build = None
@@ -85,12 +92,7 @@ class Folders:
 
     @property
     def source(self):
-        if self._base_source is None:
-            return None
-        if not self._source:
-            return os.path.normpath(self._base_source)
-
-        return os.path.normpath(os.path.join(self._base_source, self._source))
+        return _folder_path(self._base_source, self._source)
 
     @property
     def base_source(self):
@@ -101,11 +103,7 @@ class Folders:
 
     @property
     def build(self):
-        if self._base_build is None:
-            return None
-        if not self._build:
-            return os.path.normpath(self._base_build)
-        return os.path.normpath(os.path.join(self._base_build, self._build))
+        return _folder_path(self._base_build, self._build)
 
     @property
     def recipe_metadata(self):
@@ -138,7 +136,7 @@ class Folders:
     @property
     def package(self):
         """For the cache, the package folder is only the base"""
-        return self._base_package
+        return _folder_path(self._base_package)
 
     def set_finalize_folder(self, folder):
         self._immutable_package_folder = self.package
@@ -150,11 +148,7 @@ class Folders:
 
     @property
     def generators(self):
-        if self._base_generators is None:
-            return None
-        if not self._generators:
-            return os.path.normpath(self._base_generators)
-        return os.path.normpath(os.path.join(self._base_generators, self._generators))
+        return _folder_path(self._base_generators, self._generators)
 
     def set_base_generators(self, folder):
         self._base_generators = folder
@@ -175,8 +169,8 @@ class Folders:
 
     @property
     def export(self):
-        return self._base_export
+        return _folder_path(self._base_export)
 
     @property
     def export_sources(self):
-        return self._base_export_sources
+        return _folder_path(self._base_export_sources)
