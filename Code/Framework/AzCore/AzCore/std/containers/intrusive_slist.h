@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_INTRUSIVE_SLIST_H
-#define AZSTD_INTRUSIVE_SLIST_H 1
+
+#pragma once
 
 #include <AzCore/std/algorithm.h>
 #include <AzCore/std/createdestroy.h>
@@ -1036,6 +1036,3 @@ namespace AZStd
         return !(&left == &right);
     }
 }
-
-#endif // AZSTD_INTRUSIVE_SLIST_H
-#pragma once

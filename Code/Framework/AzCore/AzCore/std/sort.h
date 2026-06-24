@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_SORT_H
-#define AZSTD_SORT_H 1
+
+#pragma once
 
 #include <AzCore/std/createdestroy.h>
 #include <AzCore/std/algorithm.h>
@@ -1067,6 +1067,3 @@ namespace AZStd
 
     //////////////////////////////////////////////////////////////////////////
 }
-
-#endif // AZSTD_SORT_H
-#pragma once

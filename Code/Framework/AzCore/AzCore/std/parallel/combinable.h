@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_PARALLEL_COMBINABLE_H
-#define AZSTD_PARALLEL_COMBINABLE_H 1
+
+#pragma once
 
 #include <AzCore/std/parallel/atomic.h>
 #include <AzCore/std/functional.h>
@@ -236,6 +236,3 @@ namespace AZStd
         AZStd::function<T ()> m_initFunc;
     };
 }
-
-#endif
-#pragma once

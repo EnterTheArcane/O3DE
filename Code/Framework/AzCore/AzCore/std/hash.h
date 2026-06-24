@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_HASH_H
-#define AZSTD_HASH_H 1
+
+#pragma once
 
 #include <limits>
 #include <AzCore/std/function/invoke.h>
@@ -222,6 +222,3 @@ namespace AZStd
     // Bucket size suitable to hold n elements.
     AZCORE_API AZStd::size_t hash_next_bucket_size(AZStd::size_t n);
 }
-
-#endif // AZSTD_HASH_H
-#pragma once

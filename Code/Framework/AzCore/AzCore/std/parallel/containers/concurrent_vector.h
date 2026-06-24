@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_PARALLEL_CONTAINERS_CONCURRENT_VECTOR_H
-#define AZSTD_PARALLEL_CONTAINERS_CONCURRENT_VECTOR_H 1
+
+#pragma once
 
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/parallel/atomic.h>
@@ -153,6 +153,3 @@ namespace AZStd
         Allocator m_alloc;
     };
 }
-
-#endif
-#pragma once

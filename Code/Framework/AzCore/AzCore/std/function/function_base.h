@@ -5,10 +5,11 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
+#pragma once
+
 // Based on boost 1.39.0
 
-#ifndef AZSTD_FUNCTION_BASE_HEADER
-#define AZSTD_FUNCTION_BASE_HEADER
 
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/base.h>
@@ -791,6 +792,3 @@ namespace AZStd
 #undef AZSTD_FUNCTION_ENABLE_IF_NOT_INTEGRAL
 //#undef aztypeid
 //#undef aztypeid_cmp
-
-#endif // AZSTD_FUNCTION_BASE_HEADER
-#pragma once
