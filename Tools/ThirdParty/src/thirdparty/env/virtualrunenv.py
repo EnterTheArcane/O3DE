@@ -7,7 +7,7 @@ from thirdparty.env import Environment
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def runenv_from_cpp_info(dep, os_name):

@@ -6,14 +6,13 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
 from thirdparty.errors import RecipeException
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class _PCFilesDeps:
@@ -288,13 +287,13 @@ class _PCFilesDeps:
         return pc_files.items()
 
     def _get_pc_content(self, context: Any) -> str:
-        template = Template(
-            self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        template = jinja2.Template(
+            self.template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return template.render(context)
 
     def _get_alias_pc_content(self, context: Any) -> str:
-        template = Template(
-            self.alias_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined, keep_trailing_newline=True)
+        template = jinja2.Template(
+            self.alias_template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined, keep_trailing_newline=True)
         return template.render(context)
 
 

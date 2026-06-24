@@ -4,9 +4,8 @@ import os
 import textwrap
 
 import jinja2
-from jinja2 import Template
 
-from thirdparty._internal.graph.graph import CONTEXT_BUILD
+from thirdparty._internal.graph import CONTEXT_BUILD
 from thirdparty._internal.model.info import PackageType
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty.cmake.utils import cmake_escape_value
@@ -15,7 +14,7 @@ from thirdparty.errors import RecipeException
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 # Source-language tokens (from Info.languages) that CMake recognizes as link-interface
@@ -50,7 +49,7 @@ class TargetConfigurationTemplate2:
         self._full_cpp_info = full_cpp_info
 
     def content(self) -> str:
-        t = Template(
+        t = jinja2.Template(
             self._template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return t.render(self._context)
 

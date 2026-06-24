@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def cross_building(recipe: RecipeBase | None = None, skip_x64_x86: bool = False) -> bool:

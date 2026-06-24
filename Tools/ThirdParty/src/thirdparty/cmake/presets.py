@@ -17,7 +17,7 @@ from thirdparty.microsoft import is_msvc
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def write_cmake_presets(

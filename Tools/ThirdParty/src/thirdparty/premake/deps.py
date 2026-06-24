@@ -9,7 +9,7 @@ from thirdparty._internal.util.files import save
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 # Filename format strings
 PREMAKE_VAR_FILE = "recipe_{pkgname}_vars_{config}.premake5.lua"

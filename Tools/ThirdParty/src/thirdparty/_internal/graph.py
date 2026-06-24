@@ -7,7 +7,7 @@ from thirdparty._internal.model.refs import RecipeReference
 
 if TYPE_CHECKING:
     from pathlib import Path  # noqa: F401  (annotation only)
-    from thirdparty._internal.model.recipe_base import RecipeBase  # noqa: F401
+    from thirdparty._internal.model.recipe import RecipeBase  # noqa: F401
 
 # Recipe-origin states (assigned to Node.recipe).
 RECIPE_INCACHE = "Cache"  # a normal, locally-resolved recipe

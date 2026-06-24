@@ -5,7 +5,6 @@ import re
 import textwrap
 from typing import TYPE_CHECKING, Any
 
-from jinja2 import Template
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.output import Color, Output
@@ -19,7 +18,7 @@ from thirdparty.errors import RecipeException
 from thirdparty.files import save
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 FIND_MODE_MODULE = "module"
 FIND_MODE_CONFIG = "config"
@@ -339,7 +338,7 @@ class _PathGenerator:
             "cmake_framework_path": _join_paths(self._recipe, cmake_framework_path),
             "cmake_module_path": _join_paths(self._recipe, cmake_module_path),
         }
-        content = Template(template, trim_blocks=True, lstrip_blocks=True).render(context)
+        content = jinja2.Template(template, trim_blocks=True, lstrip_blocks=True).render(context)
         save(self._recipe, self._recipe_cmakedeps_paths, content)
 
     def _get_host_runtime_dirs(self) -> dict[str, Any]:

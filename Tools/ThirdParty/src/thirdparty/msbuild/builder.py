@@ -6,7 +6,7 @@ from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def msbuild_verbosity_cmd_line_arg(recipe: RecipeBase) -> str:

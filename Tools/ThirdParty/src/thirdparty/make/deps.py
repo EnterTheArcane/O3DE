@@ -31,7 +31,6 @@ import re
 import textwrap
 from typing import Any, Optional
 
-from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.output import Output
 from thirdparty.files import save
@@ -39,7 +38,7 @@ from thirdparty.files import save
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 RECIPE_MAKEFILE_FILENAME = "recipe_deps.mk"
 
@@ -129,7 +128,7 @@ def _common_cppinfo_dirs() -> dict[str, Any]:
 
 def _jinja_format_list_values() -> str:
     """
-    Template method to format a list of values in a Makefile,
+    jinja2.Template method to format a list of values in a Makefile,
     - Empty variables are not exposed in the Makefile
     - Single value variables are exposed in a single line
     - Multiple value variables are exposed in multiple lines with a tabulation
@@ -270,8 +269,8 @@ class GlobalContentGenerator:
         context = {
             "deps_cpp_info_dirs": deps_cpp_info_dirs, "deps_cpp_info_flags": deps_cpp_info_flags,
         }
-        template = Template(
-            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        template = jinja2.Template(
+            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return template.render(context)
 
     def deps_content(self, dependencies_names: list[Any]) -> str:
@@ -280,8 +279,8 @@ class GlobalContentGenerator:
         :param dependencies_names: Non-formatted dependencies names
         """
         context = {"deps": dependencies_names}
-        template = Template(
-            _jinja_format_list_values() + self.template_deps, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        template = jinja2.Template(
+            _jinja_format_list_values() + self.template_deps, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return template.render(context)
 
 
@@ -388,8 +387,8 @@ class DepComponentContentGenerator:
             "cpp_info_flags": self._flags,
             "properties": _makefy_properties(_filter_properties(self._dep.info.components[self._name]._properties, self._output)),
         }
-        template = Template(
-            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        template = jinja2.Template(
+            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return template.render(context)
 
 
@@ -454,8 +453,8 @@ class DepContentGenerator:
             "cpp_info_flags": self._flags,
             "properties": _makefy_properties(_filter_properties(self._dep.info._properties, self._output)),
         }
-        template = Template(
-            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        template = jinja2.Template(
+            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return template.render(context)
 
 

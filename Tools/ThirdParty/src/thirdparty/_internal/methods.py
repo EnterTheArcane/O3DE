@@ -4,7 +4,7 @@ from thirdparty._internal.errors import recipe_exception_formatter
 from thirdparty._internal.model.requires import ToolRequirements
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def run_configure_method(recipe: RecipeBase):

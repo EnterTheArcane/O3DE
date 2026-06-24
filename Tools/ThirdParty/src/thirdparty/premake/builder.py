@@ -4,7 +4,6 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from jinja2 import Template
 
 from thirdparty.build.cpu import build_jobs
 from thirdparty.errors import RecipeException
@@ -14,7 +13,7 @@ from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 from thirdparty.premake.toolchain import PremakeToolchain
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 # Source: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 PREMAKE_VS_VERSION = {
@@ -73,7 +72,7 @@ class Premake:
         Runs ``premake5 <action> [FILE]`` which will generate respective build scripts depending on the ``action``.
         """
         if self._premake_recipe_toolchain.exists():
-            content = Template(self._premake_file_template).render(
+            content = jinja2.Template(self._premake_file_template).render(
                 premake_recipe_toolchain=self._premake_recipe_toolchain.as_posix(), luafile=self.luafile)
             recipe_luafile = Path(self._recipe.folders.build) / self.filename
             save(self._recipe, recipe_luafile, content)

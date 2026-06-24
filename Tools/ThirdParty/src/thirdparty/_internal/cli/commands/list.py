@@ -9,7 +9,7 @@ import colorama
 from colorama import Fore, Style
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.graph import Node, Graph, is_built
+from thirdparty._internal.graph import Node, Graph, is_built
 from thirdparty._internal.loader import make_probe_recipe
 from thirdparty._internal.util.detect import detect_platform_tag
 from thirdparty.errors import RecipeInvalidConfiguration

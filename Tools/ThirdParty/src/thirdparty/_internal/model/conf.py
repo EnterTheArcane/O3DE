@@ -10,7 +10,6 @@ import re
 import textwrap
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader
 
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.model.refs import ref_matches

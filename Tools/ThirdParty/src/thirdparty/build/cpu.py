@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from thirdparty._internal.util import cpu_count
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def build_jobs(recipe: RecipeBase) -> int:

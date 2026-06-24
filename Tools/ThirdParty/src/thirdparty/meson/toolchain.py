@@ -4,7 +4,6 @@ import os
 import textwrap
 from typing import TYPE_CHECKING, Any
 
-from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.internal_tools import raise_on_universal_arch
 from thirdparty._internal.util.files import save
@@ -16,7 +15,7 @@ from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeException
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty.meson.helpers import get_apple_subsystem, to_cppstd_flag, to_cstd_flag, to_meson_machine, to_meson_value
 from thirdparty.microsoft import VCVars, msvc_runtime_flag
 
@@ -574,8 +573,8 @@ class MesonToolchain:
         :return: ``str`` whole Meson context content.
         """
         context = self._context
-        content = Template(
-            self._meson_file_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined).render(context)
+        content = jinja2.Template(
+            self._meson_file_template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined).render(context)
         return content
 
     def generate(self):

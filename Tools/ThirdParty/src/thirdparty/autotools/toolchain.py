@@ -14,7 +14,7 @@ from thirdparty.autotools.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class AutotoolsToolchain:

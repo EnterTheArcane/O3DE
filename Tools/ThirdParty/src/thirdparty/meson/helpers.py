@@ -7,7 +7,7 @@ from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 # https://mesonbuild.com/Reference-tables.html#operating-system-names
 _meson_system_map = {

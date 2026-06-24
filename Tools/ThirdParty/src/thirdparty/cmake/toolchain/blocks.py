@@ -4,7 +4,6 @@ import os
 import re
 import textwrap
 
-from jinja2 import Template
 
 from thirdparty._internal.internal_tools import universal_arch_separator, is_universal_arch
 from thirdparty._internal.model.version import Version
@@ -25,7 +24,7 @@ from thirdparty.microsoft.visual import msvc_version_to_toolset_version, msvc_pl
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class Block:
@@ -51,7 +50,7 @@ class Block:
             return
 
         template = f"########## '{self._name}' block #############\n" + self.template + "\n\n"
-        template = Template(template, trim_blocks=True, lstrip_blocks=True)
+        template = jinja2.Template(template, trim_blocks=True, lstrip_blocks=True)
         return template.render(**context)
 
     def context(self) -> dict[str, Any] | None:

@@ -15,7 +15,7 @@ import thirdparty
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.loader import _parse_recipe, make_probe_recipe, resolve_version
 from thirdparty._internal.methods import run_configure_method
-from thirdparty._internal.model.recipe_base import RecipeBase
+from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty.errors import RecipeInvalidConfiguration
 
 # (os, arch) target matrix exercised by the recipes check.  These are the canonical INTERNAL

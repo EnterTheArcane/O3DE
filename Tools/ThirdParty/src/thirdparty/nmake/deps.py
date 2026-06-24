@@ -7,7 +7,7 @@ from thirdparty import Info
 from thirdparty.env import Environment
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def format_defines(defines: list[str], toolchain: bool = False) -> list[str]:

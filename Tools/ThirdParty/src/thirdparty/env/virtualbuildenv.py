@@ -6,7 +6,7 @@ from thirdparty.env.virtualrunenv import runenv_from_cpp_info
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class VirtualBuildEnv:

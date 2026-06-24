@@ -5,7 +5,6 @@ import textwrap
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
-from jinja2 import Template
 
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.output import Output
@@ -48,7 +47,7 @@ from thirdparty.microsoft import VCVars
 from thirdparty.microsoft.visual import vs_ide_version
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class Variables(OrderedDict):
@@ -193,7 +192,7 @@ class CMakeToolchain:
     @property
     def content(self):
         context = self._context()
-        content = Template(
+        content = jinja2.Template(
             self._template, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True).render(**context)
         return content
 

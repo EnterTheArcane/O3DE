@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Any
 
-from thirdparty._internal.graph.graph import RECIPE_PLATFORM
+from thirdparty._internal.graph import RECIPE_PLATFORM
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty.errors import RecipeException
 

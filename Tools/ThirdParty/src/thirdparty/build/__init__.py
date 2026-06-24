@@ -15,7 +15,7 @@ from thirdparty.build.stdcpp_library import stdcpp_library
 from thirdparty.errors import RecipeException
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 RECIPE_TOOLCHAIN_ARGS_FILE = "buildenv.conf"
 RECIPE_TOOLCHAIN_ARGS_SECTION = "toolchain"

@@ -8,7 +8,7 @@ from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_k
 from thirdparty.xcode.deps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, _add_includes_to_file_or_create, _xcconfig_settings_filename, _xcconfig_conditional
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class XcodeToolchain:

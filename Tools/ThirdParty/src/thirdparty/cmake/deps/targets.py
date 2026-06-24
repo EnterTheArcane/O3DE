@@ -3,12 +3,11 @@ from __future__ import annotations
 import textwrap
 
 import jinja2
-from jinja2 import Template
 
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class TargetsTemplate2:
@@ -21,7 +20,7 @@ class TargetsTemplate2:
         self._recipe = recipe
 
     def content(self) -> str:
-        t = Template(
+        t = jinja2.Template(
             self._template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return t.render(self._context)
 

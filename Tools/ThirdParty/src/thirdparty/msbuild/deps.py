@@ -7,7 +7,6 @@ import textwrap
 from typing import TYPE_CHECKING, Any
 from xml.dom import minidom
 
-from jinja2 import Template
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import load, save
@@ -16,7 +15,7 @@ from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 VALID_LIB_EXTENSIONS = (".so", ".lib", ".a", ".dylib", ".bc")
 
@@ -237,7 +236,7 @@ class MSBuildDeps:
             'name': name, 'root_folder': relative_root_folder, 'bin_dirs': bin_dirs, 'res_dirs': res_dirs, 'include_dirs': include_dirs, 'lib_dirs': lib_dirs, 'libs': libs, # TODO: Missing objects
             'system_libs': system_libs, 'definitions': definitions, 'compiler_flags': compiler_flags, 'linker_flags': linker_flags, 'host_context': not build,
         }
-        formatted_template = Template(
+        formatted_template = jinja2.Template(
             self._vars_props, trim_blocks=True, lstrip_blocks=True).render(**fields)
         return formatted_template
 
@@ -253,7 +252,7 @@ class MSBuildDeps:
         # TODO: This must include somehow the user/channel, most likely pattern to exclude/include
         # Probably also the negation pattern, exclude all not @mycompany/*
         ca_exclude = any(fnmatch.fnmatch(dep_name, p) for p in self.exclude_code_analysis or ())
-        template = Template(self._conf_props, trim_blocks=True, lstrip_blocks=True)
+        template = jinja2.Template(self._conf_props, trim_blocks=True, lstrip_blocks=True)
         content_multi = template.render(
             host_context=not build, name=dep_name, ca_exclude=ca_exclude, vars_filename=vars_filename, deps=deps)
         return content_multi
@@ -281,7 +280,7 @@ class MSBuildDeps:
                     </PropertyGroup>
                 </Project>
                 """)
-            content_multi = Template(content_multi).render({"name": dep_name})
+            content_multi = jinja2.Template(content_multi).render({"name": dep_name})
         # parse the multi_file and add new import statement if needed
         dom = minidom.parseString(content_multi)
         import_vars = dom.getElementsByTagName('ImportGroup')[0]

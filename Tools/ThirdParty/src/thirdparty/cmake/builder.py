@@ -11,7 +11,7 @@ from thirdparty.files import chdir, mkdir
 from thirdparty.msbuild.builder import msbuild_verbosity_cmd_line_arg
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]:

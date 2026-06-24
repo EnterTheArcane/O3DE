@@ -1,18 +1,18 @@
 from __future__ import annotations
 
+import jinja2
 import os
 import re
 import textwrap
 from typing import TYPE_CHECKING, Any
 
-from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.model.info import PackageType
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def _relativize_path(path: str, start_folder: str) -> str:
@@ -380,8 +380,8 @@ class _BazelDepBuildGenerator:
         }
 
     def items(self):
-        template = Template(
-            self.dep_build_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        template = jinja2.Template(
+            self.dep_build_template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         content = template.render(self._get_build_file_context())
         return {self._build_file_path: content}.items()
 
@@ -492,12 +492,12 @@ class _BazelPathsGenerator:
         if not dependencies_context:
             return {}
         # Bazel 6.x, but it'll likely be dropped soon
-        repository_template = Template(
-            cls.repository_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        repository_template = jinja2.Template(
+            cls.repository_template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         content_6x = repository_template.render(dependencies=dependencies_context)
         # Bazel 7.x files
-        module_template = Template(
-            cls.module_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        module_template = jinja2.Template(
+            cls.module_template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         content = module_template.render(dependencies=dependencies_context)
         return {
             cls.repository_filename: content_6x,  # bazel 6.x compatible

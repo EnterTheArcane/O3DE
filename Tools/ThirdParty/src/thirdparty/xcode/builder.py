@@ -6,7 +6,7 @@ from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_k
 from thirdparty.build import cmd_args_to_string
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class XcodeBuild:

@@ -11,7 +11,7 @@ from typing import Any
 
 from thirdparty._internal.errors import NotFoundException
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.recipe_base import RecipeBase
+from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty._internal.util.detect import detect_settings, make_conf
 from thirdparty._internal.util.files import chdir
 from thirdparty.env import Environment
@@ -161,7 +161,7 @@ def make_probe_recipe(
     recipe._recipe_runenv = Environment()
     # Give the probe a graph node so recipes can read self.ref / self.context during
     # config/requirements (e.g. cross-build recipes doing tool_requires(str(self.ref))).
-    from thirdparty._internal.graph.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
+    from thirdparty._internal.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
     recipe._recipe_node = Node(name, version, context=CONTEXT_HOST, recipe_state=RECIPE_INCACHE)
     # Mirror RecipeLoader: run the recipe's init() hook if it defines one.
     if hasattr(recipe, "init") and callable(recipe.init):

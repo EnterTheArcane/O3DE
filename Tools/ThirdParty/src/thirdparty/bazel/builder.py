@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from thirdparty.bazel.toolchain import BazelToolchain
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class Bazel:

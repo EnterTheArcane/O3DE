@@ -10,13 +10,13 @@ from collections import OrderedDict
 from pathlib import Path
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.graph import (
+from thirdparty._internal.graph import (
     Node as _Node, Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER, CONTEXT_HOST as _CONTEXT_HOST, RECIPE_INCACHE as _RECIPE_INCACHE, )
 from thirdparty._internal.loader import (
     RecipeRuntime as _RecipeRuntime, make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.recipe_base import RecipeBase
+from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
 from thirdparty._internal.util.detect import detect_settings, make_conf, detect_platform_tag

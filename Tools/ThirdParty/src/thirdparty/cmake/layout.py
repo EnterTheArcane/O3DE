@@ -3,13 +3,13 @@ from __future__ import annotations
 import os
 import tempfile
 
-from thirdparty._internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
+from thirdparty._internal.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
 from thirdparty.errors import RecipeException
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def is_consumer(recipe: RecipeBase):

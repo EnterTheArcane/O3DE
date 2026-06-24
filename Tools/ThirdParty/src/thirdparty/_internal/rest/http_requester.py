@@ -1,3 +1,4 @@
+import jinja2
 import fnmatch
 import json
 import logging
@@ -6,7 +7,6 @@ import platform
 
 import requests
 import urllib3
-from jinja2 import Template
 from requests.adapters import HTTPAdapter
 from typing import Any
 
@@ -42,7 +42,7 @@ class _SourceURLCredentials:
             raise RecipeException(f"Unknown credentials method for '{credentials['url']}'")
 
         try:
-            template = Template(load(creds_path))
+            template = jinja2.Template(load(creds_path))
             content = template.render({"platform": platform, "os": os})
             content = json.loads(content)
             self._urls = {credentials["url"]: _get_auth(credentials) for credentials in content["credentials"]}

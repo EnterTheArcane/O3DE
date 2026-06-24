@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from thirdparty._internal.cli.command import command
-from thirdparty._internal.graph.graph import Graph
+from thirdparty._internal.graph import Graph
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:

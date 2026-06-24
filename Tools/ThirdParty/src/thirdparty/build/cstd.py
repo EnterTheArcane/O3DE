@@ -9,7 +9,7 @@ from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def check_min_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False):

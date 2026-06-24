@@ -8,7 +8,7 @@ from thirdparty.nmake.deps import format_defines
 from thirdparty.microsoft.visual import msvc_runtime_flag, VCVars
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class NMakeToolchain:

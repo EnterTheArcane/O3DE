@@ -10,7 +10,7 @@ from thirdparty.apple.utils import is_apple_os
 from thirdparty.microsoft import is_msvc
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class GnuDepsFlags:

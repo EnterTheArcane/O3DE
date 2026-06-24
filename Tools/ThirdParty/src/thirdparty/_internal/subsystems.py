@@ -28,7 +28,7 @@ from thirdparty.build import cmd_args_to_string
 from thirdparty.errors import RecipeException
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 WINDOWS = "windows"
 MSYS2 = 'msys2'

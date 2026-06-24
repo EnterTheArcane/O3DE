@@ -5,14 +5,13 @@ import re
 import textwrap
 from typing import TYPE_CHECKING, Any
 
-from jinja2 import Template
 
 from thirdparty._internal.util.files import load, save
 from thirdparty.apple.utils import _to_apple_arch
 from thirdparty.errors import RecipeException
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 GLOBAL_XCCONFIG_TEMPLATE = textwrap.dedent(
     """
@@ -175,7 +174,7 @@ class XcodeDeps:
             fields["linker_flags"] = ""
             fields["exe_flags"] = ""
 
-        template = Template(self._conf_xconfig)
+        template = jinja2.Template(self._conf_xconfig)
         content_multi = template.render(**fields)
         return content_multi
 
@@ -192,7 +191,7 @@ class XcodeDeps:
                 # for components (dep::component) include recipe_dep_component.xcconfig
                 return [f"recipe_{_format_name(component[0])}.xcconfig" if component[0] == component[1] else f"recipe_{_format_name(component[0])}_{_format_name(component[1])}.xcconfig" for component in components]
 
-            content_multi = Template(content_multi).render(
+            content_multi = jinja2.Template(content_multi).render(
                 {
                     "pkg_name": pkg_name, "comp_name": comp_name, "dep_xconfig_filename": dep_xconfig_filename, "deps_includes": _get_includes(reqs),
                 })

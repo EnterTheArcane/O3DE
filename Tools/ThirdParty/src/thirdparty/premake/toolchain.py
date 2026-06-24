@@ -5,7 +5,6 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from jinja2 import Template
 
 from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, libcxx_flags, threads_flags
@@ -15,7 +14,7 @@ from thirdparty.microsoft.visual import VCVars
 from thirdparty.premake.deps import PREMAKE_ROOT_FILE
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def _generate_flags(self, recipe: RecipeBase):
@@ -70,7 +69,7 @@ def _generate_flags(self, recipe: RecipeBase):
         recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list) + recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list) + self.extra_ldflags + arch_flags + arch_link_flags + thread_flags_list)
     extra_rc_flags = format_list(recipe.conf.get("tools.build:rcflags", default=[], check_type=list))
 
-    return (Template(template, trim_blocks=True, lstrip_blocks=True).render(
+    return (jinja2.Template(template, trim_blocks=True, lstrip_blocks=True).render(
         extra_defines=extra_defines, extra_cflags=extra_c_flags, extra_cxxflags=extra_cxx_flags, extra_ldflags=extra_ld_flags, extra_rcflags=extra_rc_flags, ).strip())
 
 
@@ -99,7 +98,7 @@ class _PremakeProject:
     def _generate(self):
         """Generates project block"""
         flags_content = _generate_flags(self, self._recipe)  # Generate flags specific to this project
-        return Template(self._premake_project_template, trim_blocks=True, lstrip_blocks=True).render(
+        return jinja2.Template(self._premake_project_template, trim_blocks=True, lstrip_blocks=True).render(
             name=self.name, kind="None" if self.disable else self.kind, flags=flags_content, indent_level=4, )
 
 
@@ -241,7 +240,7 @@ class PremakeToolchain:
 
         macho_to_amd64 = (self._recipe.settings.arch if cross_building(self._recipe) and self._recipe.settings.os == "Mac" else None)
 
-        content = Template(self._premake_file_template, trim_blocks=True, lstrip_blocks=True).render(
+        content = jinja2.Template(self._premake_file_template, trim_blocks=True, lstrip_blocks=True).render(
             # Pass posix path for better cross-platform compatibility in Lua
             build_folder=Path(self._recipe.folders.build).as_posix(),
             has_recipe_deps=premake_recipe_deps.exists(),

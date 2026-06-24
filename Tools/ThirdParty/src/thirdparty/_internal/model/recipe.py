@@ -2,7 +2,7 @@ import os
 import subprocess
 from typing import IO, Any
 
-from thirdparty._internal.graph.graph import CONTEXT_BUILD
+from thirdparty._internal.graph import CONTEXT_BUILD
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.layout import Folders, Infos

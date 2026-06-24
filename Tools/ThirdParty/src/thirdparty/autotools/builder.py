@@ -12,7 +12,7 @@ from thirdparty.files import chdir
 from thirdparty.microsoft import unix_path
 
 if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe_base import RecipeBase
+    from thirdparty._internal.model.recipe import RecipeBase
 
 
 def join_arguments(args: Iterable[str | None]) -> str:
