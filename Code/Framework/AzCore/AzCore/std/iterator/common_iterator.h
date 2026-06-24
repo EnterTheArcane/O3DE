@@ -11,6 +11,7 @@
 #include <AzCore/std/base.h>
 #include <AzCore/std/containers/variant.h>
 #include <AzCore/std/iterator/iterator_primitives.h>
+#include <AzCore/std/typetraits/remove_cvref.h>
 
 namespace AZStd
 {
@@ -20,15 +21,41 @@ namespace AZStd
 
 namespace AZStd::Internal
 {
-    template<class I>
-    concept has_operator_arrow = requires(I value) { value.operator->(); };
+    template<class>
+    inline constexpr bool is_std_move_iterator_v = false;
 
-    template <class T>
-    concept can_reference_post_increment =
-        requires(T value)
+    template<class I>
+    inline constexpr bool is_std_move_iterator_v<std::move_iterator<I>> = true;
+
+    template<class I>
+    concept std_move_iterator = is_std_move_iterator_v<remove_cvref_t<I>>;
+
+#if defined(_LIBCPP_VERSION) || defined(__GLIBCXX__)
+    template<class I1, class I2>
+    concept common_iterator_move_iterator_equality_comparable_with =
+        (!std_move_iterator<I1> || !std_move_iterator<I2>)
+        || requires(const typename remove_cvref_t<I1>::iterator_type& i1, const typename remove_cvref_t<I2>::iterator_type& i2)
         {
-            *value++;
-        }
+            { i1 == i2 } -> convertible_to<bool>;
+        };
+#else
+    template<class I1, class I2>
+    concept common_iterator_move_iterator_equality_comparable_with = true;
+#endif
+
+    template<class I1, class I2>
+    concept common_iterator_iter_equality_comparable_with =
+        equality_comparable_with<I1, I2>
+        && common_iterator_move_iterator_equality_comparable_with<I1, I2>;
+
+    template<class I>
+    concept has_operator_arrow =
+        (!std_move_iterator<I>)
+        && requires(I value) { value.operator->(); };
+
+    template<class T>
+    concept can_reference_post_increment =
+        requires(T value) { *value++; }
         && can_reference<decltype(*declval<T>()++)>;
 }
 
@@ -198,7 +225,7 @@ namespace AZStd
 
         template<class I2, sentinel_for<I> S2>
             requires sentinel_for<S, I2>
-                && (!equality_comparable_with<I, I2>)
+                && (!Internal::common_iterator_iter_equality_comparable_with<I, I2>)
         friend constexpr bool operator==(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
         #if __cpp_constexpr_dynamic_alloc >= 201907L
@@ -221,7 +248,7 @@ namespace AZStd
         }
         template<class I2, sentinel_for<I> S2>
             requires sentinel_for<S, I2>
-                && (!equality_comparable_with<I, I2>)
+                && (!Internal::common_iterator_iter_equality_comparable_with<I, I2>)
         friend constexpr bool operator!=(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
             return !operator==(x, y);
@@ -229,7 +256,7 @@ namespace AZStd
 
         template<class I2, sentinel_for<I> S2>
             requires sentinel_for<S, I2>
-                && equality_comparable_with<I, I2>
+                && Internal::common_iterator_iter_equality_comparable_with<I, I2>
         friend constexpr bool operator==(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
         #if __cpp_constexpr_dynamic_alloc >= 201907L
@@ -261,7 +288,7 @@ namespace AZStd
         }
         template<class I2, sentinel_for<I> S2>
             requires sentinel_for<S, I2>
-                && equality_comparable_with<I, I2>
+                && Internal::common_iterator_iter_equality_comparable_with<I, I2>
         friend constexpr bool operator!=(const common_iterator& x, const common_iterator<I2, S2>& y)
         {
             return !operator==(x, y);
