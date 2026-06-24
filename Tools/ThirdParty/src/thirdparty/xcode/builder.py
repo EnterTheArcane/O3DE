@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 
 class XcodeBuild:
-
     _recipe: RecipeBase
     _build_type: str | None
     _arch: str | None
@@ -30,10 +29,8 @@ class XcodeBuild:
 
     @property
     def _verbosity(self) -> str:
-        verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose")) \
-                    or self._recipe.conf.get(
-            "tools.compilation:verbosity",
-            choices=("quiet", "verbose"))
+        verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose")) or self._recipe.conf.get(
+            "tools.compilation:verbosity", choices=("quiet", "verbose"))
         return "-" + verbosity if verbosity is not None else ""
 
     @property
@@ -46,8 +43,8 @@ class XcodeBuild:
             sdk = f"{self._sdk}{self._sdk_version}"
         return f"SDKROOT={sdk}" if sdk else ""
 
-    def build(self, xcodeproj: str, target: str | None = None, configuration: str | None = None,
-              cli_args: list[str] | None = None):
+    def build(
+        self, xcodeproj: str, target: str | None = None, configuration: str | None = None, cli_args: list[str] | None = None):
         """
         Call to ``xcodebuild`` to build a Xcode project.
 

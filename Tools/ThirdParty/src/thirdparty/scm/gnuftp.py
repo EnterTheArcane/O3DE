@@ -7,9 +7,14 @@ import requests
 
 from thirdparty._internal.model.version import Version
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class GnuFtp:
-    def __init__(self, recipe, package: str, url: str | None = None) -> None:
+    def __init__(self, recipe: RecipeBase, package: str, url: str | None = None) -> None:
         self._recipe = recipe
         self._package = package
         self._url = url or f"https://ftp.gnu.org/gnu/{package}/"
@@ -19,8 +24,7 @@ class GnuFtp:
         resp = requests.get(self._url, timeout=30)
         resp.raise_for_status()
         pattern = re.compile(
-            rf'{re.escape(self._package)}-(\d[\d.]+)\.(tar\.(gz|bz2|xz|lz))'
-        )
+            rf'{re.escape(self._package)}-(\d[\d.]+)\.(tar\.(gz|bz2|xz|lz))')
         best_str: str | None = None
         best_version: Version | None = None
         for m in pattern.finditer(resp.text):

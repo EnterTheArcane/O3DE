@@ -24,15 +24,7 @@ from thirdparty.errors import RecipeInvalidConfiguration
 # always detected from the build machine; only the target os/arch vary, which is what surfaces
 # platform-specific config_options()/configure()/requirements() bugs.
 _PLATFORMS = [
-    ("Android", "ARM"),
-    ("Android", "X64"),
-    ("iOS", "ARM"),
-    ("Linux", "ARM"),
-    ("Linux", "X64"),
-    ("Mac", "ARM"),
-    ("Mac", "X64"),
-    ("Windows", "ARM"),
-    ("Windows", "X64"),
+    ("Android", "ARM"), ("Android", "X64"), ("iOS", "ARM"), ("Linux", "ARM"), ("Linux", "X64"), ("Mac", "ARM"), ("Mac", "X64"), ("Windows", "ARM"), ("Windows", "X64"),
 ]
 
 _CLASS_RE = re.compile(r"^class\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
@@ -40,21 +32,15 @@ _CLASS_RE = re.compile(r"^class\s+([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument(
-        "recipe", metavar="<recipe>", nargs="*",
-        help="Recipe name(s) or glob pattern(s) for the recipes check (default: all)")
+        "recipe", metavar="<recipe>", nargs="*", help="Recipe name(s) or glob pattern(s) for the recipes check (default: all)")
     p.add_argument(
-        "--build-type", default="Release",
-        choices=["Debug", "Release", "RelWithDebInfo"],
-        dest="build_type", metavar="<type>")
+        "--build-type", default="Release", choices=["Debug", "Release", "RelWithDebInfo"], dest="build_type", metavar="<type>")
     p.add_argument(
-        "--imports", action="store_true",
-        help="Run only the imports check")
+        "--imports", action="store_true", help="Run only the imports check")
     p.add_argument(
-        "--recipes", action="store_true",
-        help="Run only the recipes (config) check")
+        "--recipes", action="store_true", help="Run only the recipes (config) check")
     p.add_argument(
-        "--duplicates", action="store_true",
-        help="Run only the duplicate-class check")
+        "--duplicates", action="store_true", help="Run only the duplicate-class check")
 
 
 def _check_imports() -> tuple[bool, int, list[tuple[str, str]]]:
@@ -75,8 +61,7 @@ def _check_imports() -> tuple[bool, int, list[tuple[str, str]]]:
 
 
 def _check_recipes(
-    recipes_root: Path, names: list[str], build_type: str,
-) -> tuple[bool, int, int, int, list[tuple[str, str, str]]]:
+    recipes_root: Path, names: list[str], build_type: str, ) -> tuple[bool, int, int, int, list[tuple[str, str, str]]]:
     """Load each recipe and drive config_options/configure/requirements on every target
     platform.  Returns (ok, n_recipes, n_configs_ok, n_skipped, failures)."""
     failures: list[tuple[str, str, str]] = []
@@ -99,8 +84,7 @@ def _check_recipes(
         for target_os, target_arch in _PLATFORMS:
             try:
                 probe = make_probe_recipe(
-                    cls, recipes_root, name, version, build_type,
-                    target_os=target_os, target_arch=target_arch)
+                    cls, recipes_root, name, version, build_type, target_os=target_os, target_arch=target_arch)
                 run_configure_method(probe)
                 n_ok += 1
             except RecipeInvalidConfiguration:
@@ -162,8 +146,7 @@ def check(args: argparse.Namespace) -> None:
 
     if run_all or args.recipes:
         all_names = sorted(
-            d.name for d in recipes_root.iterdir()
-            if d.is_dir() and (d / "recipe.py").exists())
+            d.name for d in recipes_root.iterdir() if d.is_dir() and (d / "recipe.py").exists())
         patterns = args.recipe or ["*"]
         names: list[str] = []
         for pat in patterns:

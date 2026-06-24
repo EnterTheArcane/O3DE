@@ -10,7 +10,7 @@ class TextINIParse:
     Currently used in PackageIdInfo and RecipeTextLoader
     """
 
-    def __init__(self, text, allowed_fields=None, strip_comments=False):
+    def __init__(self, text, allowed_fields=None, strip_comments: bool = False):
         self._sections = {}
         self._allowed_fields = allowed_fields or []
         pattern = re.compile(r"^\[([a-z_]{2,50})]")

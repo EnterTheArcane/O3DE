@@ -77,8 +77,7 @@ class RecipeBase:
         if isinstance(self.settings, str):
             self.settings = [self.settings]
         self.requires = Requirements(
-            declared=self.requires,
-            declared_tool=self.tool_requires)
+            declared=self.requires, declared_tool=self.tool_requires)
 
         self.options = Options(self.options or {}, self.default_options)
 
@@ -128,8 +127,7 @@ class RecipeBase:
         from thirdparty.env import Environment
         if not isinstance(self._recipe_buildenv, Environment):
             self._recipe_buildenv = self._recipe_buildenv.get_profile_env(
-                self.ref,
-                self._is_consumer_recipe)
+                self.ref, self._is_consumer_recipe)
         return self._recipe_buildenv
 
     @property
@@ -138,8 +136,7 @@ class RecipeBase:
         from thirdparty.env import Environment
         if not isinstance(self._recipe_runenv, Environment):
             self._recipe_runenv = self._recipe_runenv.get_profile_env(
-                self.ref,
-                self._is_consumer_recipe)
+                self.ref, self._is_consumer_recipe)
         return self._recipe_runenv
 
     @property
@@ -155,9 +152,16 @@ class RecipeBase:
         self.cpp.package = value
 
     def run(
-        self, command: str, stdout: IO[Any] | None = None, cwd: str | None = None,
-        ignore_errors: bool = False, env: str | list[str] | None = "", quiet: bool = False,
-        shell: bool = True, scope: str = "build", stderr: IO[Any] | None = None) -> int:
+        self,
+        command: str,
+        stdout: IO[Any] | None = None,
+        cwd: str | None = None,
+        ignore_errors: bool = False,
+        env: str | list[str] | None = "",
+        quiet: bool = False,
+        shell: bool = True,
+        scope: str = "build",
+        stderr: IO[Any] | None = None) -> int:
         """ Run a command in the current package context.
 
         :parameter command: The command to run.
@@ -186,8 +190,7 @@ class RecipeBase:
         assert isinstance(env, list), "env argument to RecipeBase.run() should be a list"
         envfiles_folder = self.folders.generators or os.getcwd()
         wrapped_cmd = command_env_wrapper(
-            self, command, env, envfiles_folder=envfiles_folder,
-            scope=scope)
+            self, command, env, envfiles_folder=envfiles_folder, scope=scope)
         from thirdparty._internal.util.runners import run_command
         if not quiet:
             self.output.info(f"RUN: {command}", fg=Color.BRIGHT_BLUE)

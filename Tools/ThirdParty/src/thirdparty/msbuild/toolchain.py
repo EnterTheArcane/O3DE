@@ -14,8 +14,7 @@ from thirdparty.errors import RecipeException
 
 if TYPE_CHECKING:
     from thirdparty._internal.model.recipe_base import RecipeBase
-from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, \
-    msvc_platform_from_arch, vs_ide_version
+from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, msvc_platform_from_arch, vs_ide_version
 
 
 class MSBuildToolchain:
@@ -93,8 +92,7 @@ class MSBuildToolchain:
     def _name_condition(self, settings):
         platform = msvc_platform_from_arch(settings.get_safe("arch"))
         props = [
-            ("Configuration", self.configuration),
-            ("Platform", platform),
+            ("Configuration", self.configuration), ("Platform", platform),
         ]
 
         name = "".join("_%s" % v for _, v in props if v is not None)
@@ -117,10 +115,7 @@ class MSBuildToolchain:
 
     def _runtime_library(self):
         return {
-            "MT": "MultiThreaded",
-            "MTd": "MultiThreadedDebug",
-            "MD": "MultiThreadedDLL",
-            "MDd": "MultiThreadedDebugDLL",
+            "MT": "MultiThreaded", "MTd": "MultiThreadedDebug", "MD": "MultiThreadedDLL", "MDd": "MultiThreadedDebugDLL",
         }.get(msvc_runtime_flag(self._recipe), "")
 
     @property
@@ -131,8 +126,7 @@ class MSBuildToolchain:
 
         cxxflags, cflags, defines, sharedlinkflags, exelinkflags, rcflags = self._get_extra_flags()
         preprocessor_definitions = "".join(
-            ["%s;" % format_macro(k, v)
-             for k, v in self.preprocessor_definitions.items()])
+            ["%s;" % format_macro(k, v) for k, v in self.preprocessor_definitions.items()])
         defines = preprocessor_definitions + "".join("%s;" % d for d in defines)
         self.cxxflags.extend(cxxflags)
         self.cflags.extend(cflags)
@@ -144,20 +138,17 @@ class MSBuildToolchain:
         runtime_library = self.runtime_library
         toolset = self.toolset or ""
         conf_options = self._recipe.conf.get(
-            "tools.microsoft.msbuildtoolchain:compile_options",
-            default={}, check_type=dict)
+            "tools.microsoft.msbuildtoolchain:compile_options", default={}, check_type=dict)
         self.compile_options.update(conf_options)
         parallel = ""
         njobs = build_jobs(self._recipe)
         if njobs:
             parallel = "".join(
                 [
-                    "\n      <MultiProcessorCompilation>True</MultiProcessorCompilation>",
-                    f"\n      <ProcessorNumber>{njobs}</ProcessorNumber>",
+                    "\n      <MultiProcessorCompilation>True</MultiProcessorCompilation>", f"\n      <ProcessorNumber>{njobs}</ProcessorNumber>",
                 ])
         compile_options = "".join(
-            f"\n      <{k}>{v}</{k}>"
-            for k, v in self.compile_options.items())
+            f"\n      <{k}>{v}</{k}>" for k, v in self.compile_options.items())
 
         winsdk_version = self._recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
         winsdk_version = winsdk_version or self._recipe.settings.get_safe("os.version")
@@ -181,8 +172,7 @@ class MSBuildToolchain:
     def _write_config_toolchain(self, config_filename):
         config_filepath = os.path.join(self._recipe.folders.generators, config_filename)
         config_props = Template(
-            self._config_toolchain_props, trim_blocks=True,
-            lstrip_blocks=True).render(**self.context_config_toolchain)
+            self._config_toolchain_props, trim_blocks=True, lstrip_blocks=True).render(**self.context_config_toolchain)
         self._recipe.output.info("MSBuildToolchain created %s" % config_filename)
         save(config_filepath, config_props)
 
@@ -216,8 +206,7 @@ class MSBuildToolchain:
             raise RecipeException(f"Broken {self.filename}. Remove the file and try again")
         children = import_group.getElementsByTagName("Import")
         for node in children:
-            if (config_filename == node.getAttribute("Project") and
-                condition == node.getAttribute("Condition")):
+            if (config_filename == node.getAttribute("Project") and condition == node.getAttribute("Condition")):
                 break  # the import statement already exists
         else:  # create a new import statement
             import_node = dom.createElement('Import')
@@ -235,17 +224,15 @@ class MSBuildToolchain:
         cxxflags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
         cflags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
         sharedlinkflags = self._recipe.conf.get(
-            "tools.build:sharedlinkflags", default=[],
-            check_type=list)
+            "tools.build:sharedlinkflags", default=[], check_type=list)
         exelinkflags = self._recipe.conf.get(
-            "tools.build:exelinkflags", default=[],
-            check_type=list)
+            "tools.build:exelinkflags", default=[], check_type=list)
         rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
         defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
         return cxxflags, cflags, defines, sharedlinkflags, exelinkflags, rcflags
 
 
-def _get_toolset_props(recipe):
+def _get_toolset_props(recipe: RecipeBase):
     msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
     compiler_update = msvc_update or recipe.settings.get_safe("compiler.update")
     if compiler_update is None:

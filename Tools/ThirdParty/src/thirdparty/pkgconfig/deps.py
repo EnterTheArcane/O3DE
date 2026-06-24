@@ -4,7 +4,7 @@ import os
 import re
 import textwrap
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import Template, StrictUndefined
 
@@ -45,14 +45,14 @@ class _PCFilesDeps:
         Requires: {{aliased}}
         """)
 
-    def __init__(self, pkgconfigdeps, dep, suffix=""):
+    def __init__(self, pkgconfigdeps: Any, dep: Any, suffix: str = ""):
         self._recipe = pkgconfigdeps._recipe  # noqa
         self._properties = pkgconfigdeps._properties  # noqa
         self._transitive_reqs = get_transitive_requires(self._recipe, dep)
         self._dep = dep
         self._suffix = suffix
 
-    def _get_aliases(self, dep, pkg_name=None, comp_ref_name=None):
+    def _get_aliases(self, dep: Any, pkg_name: str | None = None, comp_ref_name: str | None = None) -> list[Any]:
         def _get_dep_aliases():
             pkg_aliases = self._get_property("pkg_config_aliases", dep, check_type=list)
             return pkg_aliases or []
@@ -62,20 +62,18 @@ class _PCFilesDeps:
             return _get_dep_aliases()
         if comp_ref_name not in dep.cpp_info.components:
             # Either foo::foo might be referencing the root cpp_info
-            if (dep.ref.name == comp_ref_name or
-                # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
+            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
                 # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
                 (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_aliases()
             raise RecipeException(
                 "Component '{name}::{cname}' not found in '{name}' "
                 "package requirement".format(
-                    name=dep.ref.name,
-                    cname=comp_ref_name))
+                    name=dep.ref.name, cname=comp_ref_name))
         comp_aliases = self._get_property("pkg_config_aliases", dep, comp_ref_name, check_type=list)
         return comp_aliases or []
 
-    def _get_name(self, dep, pkg_name=None, comp_ref_name=None):
+    def _get_name(self, dep: Any, pkg_name: str | None = None, comp_ref_name: str | None = None) -> str:
         def _get_dep_name():
             dep_name = self._get_property("pkg_config_name", dep) or dep.ref.name
             return f"{dep_name}{self._suffix}"
@@ -84,16 +82,14 @@ class _PCFilesDeps:
             return _get_dep_name()
         if comp_ref_name not in dep.cpp_info.components:
             # Either foo::foo might be referencing the root cpp_info
-            if (dep.ref.name == comp_ref_name or
-                # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
+            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
                 # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
                 (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_name()
             raise RecipeException(
                 "Component '{name}::{cname}' not found in '{name}' "
                 "package requirement".format(
-                    name=dep.ref.name,
-                    cname=comp_ref_name))
+                    name=dep.ref.name, cname=comp_ref_name))
         comp_name = self._get_property("pkg_config_name", dep, comp_ref_name)
         if comp_name:
             return f"{comp_name}{self._suffix}"
@@ -102,7 +98,7 @@ class _PCFilesDeps:
             # Creating a component name with namespace, e.g., dep-comp1
             return f"{dep_name}-{comp_ref_name}"
 
-    def _get_property(self, prop, dep, comp_name=None, check_type=None):
+    def _get_property(self, prop: str, dep: Any, comp_name: str | None = None, check_type: Any = None) -> Any:
         dep_name = dep.ref.name
         dep_comp = f"{str(dep_name)}::{comp_name}" if comp_name else f"{str(dep_name)}"
         try:
@@ -112,10 +108,9 @@ class _PCFilesDeps:
                     f'The expected type for {prop} is "{check_type.__name__}", but "{type(value).__name__}" was found')
             return value
         except KeyError:
-            return dep.cpp_info.get_property(prop, check_type=check_type) if not comp_name \
-                else dep.cpp_info.components[comp_name].get_property(prop, check_type=check_type)
+            return dep.cpp_info.get_property(prop, check_type=check_type) if not comp_name else dep.cpp_info.components[comp_name].get_property(prop, check_type=check_type)
 
-    def _get_pc_variables(self, dep, cpp_info, custom_content=None):
+    def _get_pc_variables(self, dep: Any, cpp_info: Any, custom_content: Any = None) -> dict[str, Any]:
         """
         Get all the freeform variables defined by Recipe and
         users (through ``pkg_config_custom_content``). This last ones will override the
@@ -134,8 +129,7 @@ class _PCFilesDeps:
                         pc_variables[key] = value
 
         # If editable, package_folder can be None
-        prefix_path = Path(dep.recipe_folder).as_posix() if dep.folders.package is None \
-            else dep.folders.package.as_posix()
+        prefix_path = Path(dep.recipe_folder).as_posix() if dep.folders.package is None else dep.folders.package.as_posix()
         pc_variables = {"prefix": prefix_path}
         # Already formatted directories
         pc_variables.update(self._get_formatted_dirs("libdir", cpp_info.libdirs, prefix_path))
@@ -146,7 +140,7 @@ class _PCFilesDeps:
         return pc_variables
 
     @staticmethod
-    def _get_formatted_dirs(folder_name, folders, prefix_path_):
+    def _get_formatted_dirs(folder_name: str, folders: Any, prefix_path_: str) -> dict[str, str]:
         ret = {}
         for i, directory in enumerate(folders):
             directory = os.path.normpath(directory).replace("\\", "/")
@@ -160,14 +154,14 @@ class _PCFilesDeps:
             ret[var_name] = f"{prefix}{directory}"
         return ret
 
-    def _get_framework_flags(self, cpp_info):
+    def _get_framework_flags(self, cpp_info: Any) -> list[str]:
         # FIXME: GnuDepsFlags used only here. Let's adapt the code and remove this dependency.
         #        self._recipe is also used only here.
         from thirdparty.build.gnudeps_flags import GnuDepsFlags
         gnudeps_flags = GnuDepsFlags(self._recipe, cpp_info)
         return gnudeps_flags.frameworks + gnudeps_flags.framework_paths
 
-    def _get_lib_flags(self, libdirvars, cpp_info):
+    def _get_lib_flags(self, libdirvars: Any, cpp_info: Any) -> str:
         framework_flags = self._get_framework_flags(cpp_info)
         libdirsflags = ['-L"${%s}"' % d for d in libdirvars]
         system_libs = ["-l%s" % li for li in (cpp_info.libs + cpp_info.system_libs)]
@@ -175,14 +169,14 @@ class _PCFilesDeps:
         return " ".join(libdirsflags + system_libs + shared_flags + framework_flags)
 
     @staticmethod
-    def _get_cflags(includedirvars, cpp_info):
+    def _get_cflags(includedirvars: Any, cpp_info: Any) -> str:
         includedirsflags = ['-I"${%s}"' % d for d in includedirvars]
         cxxflags = [var.replace('"', '\\"') for var in cpp_info.cxxflags]
         cflags = [var.replace('"', '\\"') for var in cpp_info.cflags]
         defines = ["-D%s" % var.replace('"', '\\"') for var in cpp_info.defines]
         return " ".join(includedirsflags + cxxflags + cflags + defines)
 
-    def _get_component_requirement_names(self, cpp_info):
+    def _get_component_requirement_names(self, cpp_info: Any) -> list[str]:
         """
         Get all the pkg-config valid names from the requirements ones given a CppInfo object.
 
@@ -245,32 +239,20 @@ class _PCFilesDeps:
             # At first, let's check if we have defined some components requires, e.g., "dep::cmp1"
             comp_requires = self._get_component_requirement_names(comp_cpp_info)
             comp_name = self._get_name(self._dep, pkg_name, comp_ref_name)
-            version = (self._get_property("component_version", self._dep, comp_ref_name) or
-                       self._get_property("system_package_version", self._dep, comp_ref_name) or
-                       self._dep.ref.version)
+            version = (self._get_property("component_version", self._dep, comp_ref_name) or self._get_property("system_package_version", self._dep, comp_ref_name) or self._dep.ref.version)
             custom_content = self._get_property("pkg_config_custom_content", self._dep, comp_ref_name)
             pc_variables = self._get_pc_variables(self._dep, comp_cpp_info, custom_content)
             pc_context = {
-                "name": comp_name,
-                "description": f"Recipe component: {comp_name}",
-                "version": version,
-                "requires": comp_requires,
-                "pc_variables": pc_variables,
-                "cflags": self._get_cflags(
-                    [d for d in pc_variables if d.startswith("includedir")],
-                    comp_cpp_info),
-                "libflags": self._get_lib_flags(
-                    [d for d in pc_variables if d.startswith("libdir")],
-                    comp_cpp_info),
+                "name": comp_name, "description": f"Recipe component: {comp_name}", "version": version, "requires": comp_requires, "pc_variables": pc_variables, "cflags": self._get_cflags(
+                    [d for d in pc_variables if d.startswith("includedir")], comp_cpp_info), "libflags": self._get_lib_flags(
+                    [d for d in pc_variables if d.startswith("libdir")], comp_cpp_info),
             }
             pc_files[comp_name] = self._get_pc_content(pc_context)
             # Aliases
             for alias in self._get_aliases(self._dep, pkg_name, comp_ref_name):
                 pc_alias_files[alias] = self._get_alias_pc_content(
                     {
-                        "name": alias,
-                        "version": version,
-                        "aliased": comp_name,
+                        "name": alias, "version": version, "aliased": comp_name,
                     })
         # Second, let's load the root package's PC file ONLY
         # if it does not already exist in components one
@@ -286,46 +268,33 @@ class _PCFilesDeps:
                 # If no requires were found, let's try to get all the direct visible dependencies,
                 # e.g., requires = "other_pkg/1.0"
                 requires = [self._get_name(req) for req in self._transitive_reqs.values()]
-            version = (self._get_property("system_package_version", self._dep)
-                       or self._dep.ref.version)
+            version = (self._get_property("system_package_version", self._dep) or self._dep.ref.version)
             custom_content = self._get_property("pkg_config_custom_content", self._dep)
             pc_variables = self._get_pc_variables(self._dep, cpp_info, custom_content)
             pc_context = {
-                "name": pkg_name,
-                "description": f"Recipe package: {pkg_name}",
-                "version": version,
-                "requires": requires,
-                "pc_variables": pc_variables,
-                "cflags": self._get_cflags(
-                    [d for d in pc_variables if d.startswith("includedir")],
-                    cpp_info),
-                "libflags": self._get_lib_flags(
-                    [d for d in pc_variables if d.startswith("libdir")],
-                    cpp_info),
+                "name": pkg_name, "description": f"Recipe package: {pkg_name}", "version": version, "requires": requires, "pc_variables": pc_variables, "cflags": self._get_cflags(
+                    [d for d in pc_variables if d.startswith("includedir")], cpp_info), "libflags": self._get_lib_flags(
+                    [d for d in pc_variables if d.startswith("libdir")], cpp_info),
             }
             pc_files[pkg_name] = self._get_pc_content(pc_context)
             # Aliases
             for alias in self._get_aliases(self._dep):
                 pc_alias_files[alias] = self._get_alias_pc_content(
                     {
-                        "name": alias,
-                        "version": version,
-                        "aliased": pkg_name,
+                        "name": alias, "version": version, "aliased": pkg_name,
                     })
         # Adding the aliases
         pc_files.update(pc_alias_files)
         return pc_files.items()
 
-    def _get_pc_content(self, context):
+    def _get_pc_content(self, context: Any) -> str:
         template = Template(
-            self.template, trim_blocks=True, lstrip_blocks=True,
-            undefined=StrictUndefined)
+            self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
-    def _get_alias_pc_content(self, context):
+    def _get_alias_pc_content(self, context: Any) -> str:
         template = Template(
-            self.alias_template, trim_blocks=True, lstrip_blocks=True,
-            undefined=StrictUndefined, keep_trailing_newline=True)
+            self.alias_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined, keep_trailing_newline=True)
         return template.render(context)
 
 
@@ -334,7 +303,7 @@ class PkgConfigDeps:
     def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         # Activate the build *.pc files for the specified libraries
-        self.build_context_activated = []
+        self.build_context_activated: list[Any] = []
         # If specified, the files/requires/names for the build context will be renamed appending
         # a suffix. It is necessary when the same package is both a host and tool requirement.
         # DEPRECATED: consumers should use build_context_folder instead
@@ -362,14 +331,11 @@ class PkgConfigDeps:
                 # deprecation warning
                 self._recipe.output.warning(
                     "PkgConfigDeps.build_context_suffix attribute has been "
-                    "deprecated. Use PkgConfigDeps.build_context_folder instead."
-                )
+                    "deprecated. Use PkgConfigDeps.build_context_folder instead.")
             # Check if it exists both as a host and tool requirement without a suffix
-            activated_br = {r.ref.name for r in build_req.values()
-                            if r.ref.name in self.build_context_activated}
+            activated_br = {r.ref.name for r in build_req.values() if r.ref.name in self.build_context_activated}
             common_names = {r.ref.name for r in host_req.values()}.intersection(activated_br)
-            without_suffixes = [common_name for common_name in common_names
-                                if not self.build_context_suffix.get(common_name)]
+            without_suffixes = [common_name for common_name in common_names if not self.build_context_suffix.get(common_name)]
             if without_suffixes:
                 raise RecipeException(
                     f"The packages {without_suffixes} exist both as 'require' and as"
@@ -391,7 +357,7 @@ class PkgConfigDeps:
         Save all the `*.pc` files
         """
 
-        def _pc_file_name(name_, is_build_context=False, has_suffix=False):
+        def _pc_file_name(name_, is_build_context: bool = False, has_suffix: bool = False):
             # If no suffix is defined, we can save the *.pc file in the build_context_folder
             build = is_build_context and self.build_context_folder and not has_suffix
             # Issue: upstream issue 12342
@@ -403,11 +369,10 @@ class PkgConfigDeps:
             # Save all the *.pc files and their contents
             for name, content in _PCFilesDeps(self, dep, suffix=suffix).items():
                 pc_name = _pc_file_name(
-                    name, is_build_context=require.build,
-                    has_suffix=bool(suffix))
+                    name, is_build_context=require.build, has_suffix=bool(suffix))
                 save(pc_name, content)
 
-    def set_property(self, dep, prop, value):
+    def set_property(self, dep: Any, prop: str, value: Any):
         """
         Using this method you can overwrite the :ref:`property<PkgConfigDeps Properties>` values set by
         the Recipe recipes from the consumer. This can be done for `pkg_config_name`,

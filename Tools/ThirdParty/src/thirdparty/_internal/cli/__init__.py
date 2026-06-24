@@ -17,8 +17,7 @@ def _discover_commands() -> dict[str, _CommandEntry]:
     commands: dict[str, _CommandEntry] = {}
     for module_info in pkgutil.iter_modules(list(_commands_pkg.__path__)):
         module: ModuleType = importlib.import_module(
-            f"{_commands_pkg.__name__}.{module_info.name}"
-        )
+            f"{_commands_pkg.__name__}.{module_info.name}")
         for attr_name in dir(module):
             obj = getattr(module, attr_name)
             if is_command(obj):

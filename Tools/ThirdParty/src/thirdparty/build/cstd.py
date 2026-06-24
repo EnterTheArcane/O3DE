@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import operator
 
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.util.detect_api import default_cstd as default_cstd_
 from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 
+from typing import TYPE_CHECKING, Any
 
-def check_min_cstd(recipe, cstd, gnu_extensions=False):
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def check_min_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False):
     """ Check if current cstd fits the minimal version required.
 
         In case the current cstd doesn't fit the minimal version required
@@ -25,7 +32,7 @@ def check_min_cstd(recipe, cstd, gnu_extensions=False):
     _check_cstd(recipe, cstd, operator.lt, gnu_extensions)
 
 
-def check_max_cstd(recipe, cstd, gnu_extensions=False):
+def check_max_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False):
     """ Check if current cstd fits the maximum version required.
 
         In case the current cstd doesn't fit the maximum version required
@@ -45,7 +52,7 @@ def check_max_cstd(recipe, cstd, gnu_extensions=False):
     _check_cstd(recipe, cstd, operator.gt, gnu_extensions)
 
 
-def valid_min_cstd(recipe, cstd, gnu_extensions=False):
+def valid_min_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False) -> bool:
     """ Validate if current cstd fits the minimal version required.
 
     :param recipe: The current recipe object. Always use ``self``.
@@ -60,7 +67,7 @@ def valid_min_cstd(recipe, cstd, gnu_extensions=False):
     return True
 
 
-def valid_max_cstd(recipe, cstd, gnu_extensions=False):
+def valid_max_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False) -> bool:
     """ Validate if current cstd fits the maximum version required.
 
     :param recipe: The current recipe object. Always use ``self``.
@@ -75,7 +82,7 @@ def valid_max_cstd(recipe, cstd, gnu_extensions=False):
     return True
 
 
-def default_cstd(recipe, compiler=None, compiler_version=None):
+def default_cstd(recipe: RecipeBase, compiler: str | None = None, compiler_version: Any = None):
     """
     Get the default ``compiler.cstd`` for the "recipe.settings.compiler" and "recipe
     settings.compiler_version" or for the parameters "compiler" and "compiler_version" if specified.
@@ -92,7 +99,7 @@ def default_cstd(recipe, compiler=None, compiler_version=None):
     return default_cstd_(compiler, Version(compiler_version))
 
 
-def supported_cstd(recipe, compiler=None, compiler_version=None):
+def supported_cstd(recipe: RecipeBase, compiler: str | None = None, compiler_version: Any = None):
     """
     Get a list of supported ``compiler.cstd`` for the "recipe.settings.compiler" and
     "recipe.settings.compiler_version" or for the parameters "compiler" and "compiler_version"
@@ -109,18 +116,14 @@ def supported_cstd(recipe, compiler=None, compiler_version=None):
         raise RecipeException("Called supported_cstd with no compiler or no compiler.version")
 
     func = {
-        "apple-clang": _apple_clang_supported_cstd,
-        "gcc": _gcc_supported_cstd,
-        "msvc": _msvc_supported_cstd,
-        "clang": _clang_supported_cstd,
-        "emcc": _emcc_supported_cstd,
+        "apple-clang": _apple_clang_supported_cstd, "gcc": _gcc_supported_cstd, "msvc": _msvc_supported_cstd, "clang": _clang_supported_cstd, "emcc": _emcc_supported_cstd,
     }.get(compiler)
     if func:
         return func(Version(compiler_version))
     return None
 
 
-def _check_cstd(recipe, cstd, comparator, gnu_extensions):
+def _check_cstd(recipe: RecipeBase, cstd: Any, comparator: Any, gnu_extensions: bool):
     """ Check if current cstd fits the version required according to a given comparator.
 
         In case the current cstd doesn't fit the maximum version required
@@ -166,12 +169,12 @@ def _check_cstd(recipe, cstd, comparator, gnu_extensions):
             f"than the required C standard ({cstd}).")
 
 
-def _apple_clang_supported_cstd(version):
+def _apple_clang_supported_cstd(version: Any):
     # TODO: Per-version support
     return ["99", "gnu99", "11", "gnu11", "17", "gnu17", "23", "gnu23"]
 
 
-def _gcc_supported_cstd(version):
+def _gcc_supported_cstd(version: Any):
     if version < "4.7":
         return ["99", "gnu99"]
     if version < "8":
@@ -181,13 +184,13 @@ def _gcc_supported_cstd(version):
     return ["99", "gnu99", "11", "gnu11", "17", "gnu17", "23", "gnu23"]
 
 
-def _msvc_supported_cstd(version):
+def _msvc_supported_cstd(version: Any):
     if version < "192":
         return []
     return ["11", "17"]
 
 
-def _clang_supported_cstd(version):
+def _clang_supported_cstd(version: Any):
     if version < "3":
         return ["99", "gnu99"]
     if version < "6":
@@ -197,7 +200,7 @@ def _clang_supported_cstd(version):
     return ["99", "gnu99", "11", "gnu11", "17", "gnu17", "23", "gnu23"]
 
 
-def _emcc_supported_cstd(version):
+def _emcc_supported_cstd(version: Any):
     """
     emcc is based on clang but follow different versioning scheme.
     """

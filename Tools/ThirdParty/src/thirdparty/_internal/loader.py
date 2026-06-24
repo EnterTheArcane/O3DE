@@ -7,6 +7,7 @@ from collections import OrderedDict
 from importlib import util as imp_util
 from pathlib import Path
 from threading import Lock
+from typing import Any
 
 from thirdparty._internal.errors import NotFoundException
 from thirdparty._internal.model.dependencies import RecipeDependencies
@@ -56,15 +57,14 @@ class RecipeLoader:
             return None
 
 
-def _parse_module(recipe_module, module_id):
+def _parse_module(recipe_module: Any, module_id: Any):
     """ Parses a python in-memory module, to extract the class defining the Recipe.
     @param recipe_module: the module to be processed
     @return: the main RecipeBase class from the module
     """
     result = None
     for name, attr in recipe_module.__dict__.items():
-        if (name.startswith("_") or not inspect.isclass(attr) or
-            attr.__dict__.get("__module__") != module_id):
+        if (name.startswith("_") or not inspect.isclass(attr) or attr.__dict__.get("__module__") != module_id):
             continue
 
         if issubclass(attr, RecipeBase) and attr != RecipeBase:
@@ -82,7 +82,7 @@ def _parse_module(recipe_module, module_id):
 _load_python_lock = Lock()  # Loading our Python files is not thread-safe (modifies sys)
 
 
-def _parse_recipe(recipe_path):
+def _parse_recipe(recipe_path: Any):
     with _load_python_lock:
         module, module_id = _load_python_file(recipe_path)
     try:
@@ -124,7 +124,7 @@ class RecipeRuntime:
     this supplies the handful of services they reference (global conf + HTTP requester).
     """
 
-    def __init__(self, conf):
+    def __init__(self, conf: Any):
         # Lazy import: rest.http_requester imports loader.load_python_file, so a module-level
         # import here would be circular.
         from thirdparty._internal.rest.http_requester import HttpRequester
@@ -138,15 +138,7 @@ class RecipeRuntime:
 
 
 def make_probe_recipe(
-    recipe_cls: type[RecipeBase],
-    recipes_root: Path,
-    name: str,
-    version: str,
-    build_type: str,
-    jobs: int | None = None,
-    target_os: str | None = None,
-    target_arch: str | None = None,
-) -> RecipeBase:
+    recipe_cls: type[RecipeBase], recipes_root: Path, name: str, version: str, build_type: str, jobs: int | None = None, target_os: str | None = None, target_arch: str | None = None, ) -> RecipeBase:
     """Instantiate a recipe with just enough state (settings, conf, requires shim) to
     drive ``config_options()``/``configure()``/``requirements()``.
 
@@ -181,7 +173,7 @@ def make_probe_recipe(
     return recipe
 
 
-def load_python_file(recipe_path):
+def load_python_file(recipe_path: Any):
     """ From a given path, obtain the in memory python import module
     """
     with _load_python_lock:
@@ -189,14 +181,14 @@ def load_python_file(recipe_path):
     return module, module_id
 
 
-def _load_python_file(recipe_path):
+def _load_python_file(recipe_path: Any):
     """ From a given path, obtain the in memory python import module
     """
 
     if not os.path.exists(recipe_path):
         raise NotFoundException("%s not found!" % recipe_path)
 
-    def new_print(*args, **kwargs):  # Make sure that all user python files print() goes to stderr
+    def new_print(*args: Any, **kwargs: Any):  # Make sure that all user python files print() goes to stderr
         kwargs.setdefault("file", sys.stderr)
         print(*args, **kwargs)
 
@@ -243,8 +235,7 @@ def _load_python_file(recipe_path):
         trace = traceback.format_exc().split('\n')
         raise RecipeException(
             "Unable to load recipe in %s\n%s" % (
-                recipe_path,
-                '\n'.join(trace[3:]),
+                recipe_path, '\n'.join(trace[3:]),
             ))
     finally:
         sys.path.pop(0)

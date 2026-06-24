@@ -60,8 +60,7 @@ class NMakeToolchain:
             cxxflags.append(cppstd)
         cxxflags.extend(
             self._recipe.conf.get(
-                "tools.build:cxxflags", default=[],
-                check_type=list))
+                "tools.build:cxxflags", default=[], check_type=list))
         cxxflags.extend(self.extra_cxxflags)
 
         defines = []
@@ -71,8 +70,7 @@ class NMakeToolchain:
         defines.extend(self._recipe.conf.get("tools.build:defines", default=[], check_type=list))
         defines.extend(self.extra_defines)
 
-        return (["/nologo"] + self._format_options(bt_flags + rt_flags + cflags + cxxflags) +
-                format_defines(defines, toolchain=True))
+        return (["/nologo"] + self._format_options(bt_flags + rt_flags + cflags + cxxflags) + format_defines(defines, toolchain=True))
 
     @property
     def _link(self):
@@ -83,12 +81,10 @@ class NMakeToolchain:
         ldflags.extend(bt_ldflags)
         ldflags.extend(
             self._recipe.conf.get(
-                "tools.build:sharedlinkflags", default=[],
-                check_type=list))
+                "tools.build:sharedlinkflags", default=[], check_type=list))
         ldflags.extend(
             self._recipe.conf.get(
-                "tools.build:exelinkflags", default=[],
-                check_type=list))
+                "tools.build:exelinkflags", default=[], check_type=list))
         ldflags.extend(self.extra_ldflags)
 
         return ["/nologo"] + self._format_options(ldflags)
@@ -111,15 +107,10 @@ class NMakeToolchain:
         # Also define some special env-vars which can override special NMake macros:
         # https://learn.microsoft.com/en-us/cpp/build/reference/special-nmake-macros
         conf_compilers = self._recipe.conf.get(
-            "tools.build:compiler_executables", default={},
-            check_type=dict)
+            "tools.build:compiler_executables", default={}, check_type=dict)
         if conf_compilers:
             compilers_mapping = {
-                "AS": "asm",
-                "CC": "c",
-                "CPP": "cpp",
-                "CXX": "cpp",
-                "RC": "rc",
+                "AS": "asm", "CC": "c", "CPP": "cpp", "CXX": "cpp", "RC": "rc",
             }
             for env_var, comp in compilers_mapping.items():
                 if comp in conf_compilers:

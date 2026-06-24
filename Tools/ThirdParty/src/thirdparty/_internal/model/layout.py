@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.cpp_info import CppInfo
@@ -19,13 +20,13 @@ class PartialLayout:
         self.runenv_info = Environment()
         self.conf_info = Conf()
 
-    def set_relative_base_folder(self, folder):
+    def set_relative_base_folder(self, folder: str):
         self.buildenv_info.set_relative_base_folder(folder)
         self.runenv_info.set_relative_base_folder(folder)
         self.conf_info.set_relative_base_folder(folder)
 
 
-def _folder_path(base_folder, relative_folder=""):
+def _folder_path(base_folder: str | None, relative_folder: str = "") -> Path | None:
     if base_folder is None:
         return None
     if not relative_folder:
@@ -42,32 +43,32 @@ class Layouts:
 
 class Folders:
     def __init__(self):
-        self._base_source = None
-        self._base_build = None
-        self._base_package = None
-        self._base_generators = None
+        self._base_source: str | None = None
+        self._base_build: str | None = None
+        self._base_package: str | None = None
+        self._base_generators: str | None = None
 
-        self._base_export = None
-        self._base_export_sources = None
+        self._base_export: str | None = None
+        self._base_export_sources: str | None = None
 
-        self._base_recipe_metadata = None
-        self._base_pkg_metadata = None
-        self._immutable_package_folder = None
+        self._base_recipe_metadata: str | None = None
+        self._base_pkg_metadata: str | None = None
+        self._immutable_package_folder: Path | None = None
 
-        self._source = ""
-        self._build = ""
-        self._package = ""
-        self._generators = ""
+        self._source: str = ""
+        self._build: str = ""
+        self._package: str = ""
+        self._generators: str = ""
         # Relative location of the project root, if the recipe is not in that project root, but
         # in a subfolder: e.g: If the recipe is in a subfolder then self.root = ".."
-        self.root = None
+        self.root: str | None = None
         # The relative location with respect to the project root of the subproject containing the
         # recipe.py, that makes most of the output folders defined in layouts (cmake_layout, etc)
         # start from the subproject again
-        self.subproject = None
-        self.build_folder_vars = None
+        self.subproject: str | None = None
+        self.build_folder_vars: list[str] | None = None
 
-    def set_base_folders(self, recipe_folder, output_folder):
+    def set_base_folders(self, recipe_folder: str, output_folder: str | None):
         """ this methods can be used for defining all the base folders in the
         local flow (recipe install, source, build), where only the current recipe location
         and the potential --output-folder user argument are the folders to take into account
@@ -79,8 +80,7 @@ class Folders:
         the recipe location is used
         """
         # This must be called only after ``layout()`` has been called
-        base_folder = recipe_folder if self.root is None else \
-            os.path.normpath(os.path.join(recipe_folder, self.root))
+        base_folder = recipe_folder if self.root is None else os.path.normpath(os.path.join(recipe_folder, self.root))
 
         self._base_source = base_folder
         self._base_build = output_folder or base_folder
@@ -91,86 +91,86 @@ class Folders:
         self._base_pkg_metadata = output_folder or base_folder
 
     @property
-    def source(self):
+    def source(self) -> Path | None:
         return _folder_path(self._base_source, self._source)
 
     @property
-    def base_source(self):
+    def base_source(self) -> str | None:
         return self._base_source
 
-    def set_base_source(self, folder):
+    def set_base_source(self, folder: str | None):
         self._base_source = folder
 
     @property
-    def build(self):
+    def build(self) -> Path | None:
         return _folder_path(self._base_build, self._build)
 
     @property
-    def recipe_metadata(self):
+    def recipe_metadata(self) -> str | None:
         return self._base_recipe_metadata
 
-    def set_base_recipe_metadata(self, folder):
+    def set_base_recipe_metadata(self, folder: str | None):
         self._base_recipe_metadata = folder
 
     @property
-    def package_metadata(self):
+    def package_metadata(self) -> str | None:
         return self._base_pkg_metadata
 
-    def set_base_pkg_metadata(self, folder):
+    def set_base_pkg_metadata(self, folder: str | None):
         self._base_pkg_metadata = folder
 
     @property
-    def base_build(self):
+    def base_build(self) -> str | None:
         return self._base_build
 
-    def set_base_build(self, folder):
+    def set_base_build(self, folder: str | None):
         self._base_build = folder
 
     @property
-    def base_package(self):
+    def base_package(self) -> str | None:
         return self._base_package
 
-    def set_base_package(self, folder):
+    def set_base_package(self, folder: str | None):
         self._base_package = folder
 
     @property
-    def package(self):
+    def package(self) -> Path | None:
         """For the cache, the package folder is only the base"""
         return _folder_path(self._base_package)
 
-    def set_finalize_folder(self, folder):
+    def set_finalize_folder(self, folder: str | None):
         self._immutable_package_folder = self.package
         self.set_base_package(folder)
 
     @property
-    def immutable_package(self):
+    def immutable_package(self) -> Path | None:
         return self._immutable_package_folder or self.package
 
     @property
-    def generators(self):
+    def generators(self) -> Path | None:
         return _folder_path(self._base_generators, self._generators)
 
-    def set_base_generators(self, folder):
+    def set_base_generators(self, folder: str | None):
         self._base_generators = folder
 
     @property
-    def base_export(self):
+    def base_export(self) -> str | None:
         return self._base_export
 
-    def set_base_export(self, folder):
+    def set_base_export(self, folder: str | None):
         self._base_export = folder
 
     @property
-    def base_export_sources(self):
+    def base_export_sources(self) -> str | None:
         return self._base_export_sources
 
-    def set_base_export_sources(self, folder):
+    def set_base_export_sources(self, folder: str | None):
         self._base_export_sources = folder
 
     @property
-    def export(self):
+    def export(self) -> Path | None:
         return _folder_path(self._base_export)
 
     @property
-    def export_sources(self):
+    def export_sources(self) -> Path | None:
         return _folder_path(self._base_export_sources)

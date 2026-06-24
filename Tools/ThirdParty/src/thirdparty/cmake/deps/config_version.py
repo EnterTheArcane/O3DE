@@ -1,5 +1,5 @@
 import textwrap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import jinja2
 from jinja2 import Template
@@ -18,19 +18,18 @@ class ConfigVersionTemplate2:
         self._cmakedeps = cmakedeps
         self._recipe = recipe
 
-    def content(self):
+    def content(self) -> str:
         t = Template(
-            self._template, trim_blocks=True, lstrip_blocks=True,
-            undefined=jinja2.StrictUndefined)
+            self._template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return t.render(self._context)
 
     @property
-    def filename(self):
+    def filename(self) -> str:
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         return f"{f}-config-version.cmake" if f == f.lower() else f"{f}ConfigVersion.cmake"
 
     @property
-    def _context(self):
+    def _context(self) -> dict[str, Any]:
         policy = self._cmakedeps.get_property("cmake_config_version_compat", self._recipe)
         if policy is None:
             policy = "SameMajorVersion"
@@ -39,12 +38,11 @@ class ConfigVersionTemplate2:
         version = self._cmakedeps.get_property("system_package_version", self._recipe)
         version = version or self._recipe.ref.version
         return {
-            "version": version,
-            "policy": policy,
+            "version": version, "policy": policy,
         }
 
     @property
-    def _template(self):
+    def _template(self) -> str:
         # https://gitlab.kitware.com/cmake/cmake/blob/master/Modules/BasicConfigVersion-SameMajorVersion.cmake.in
         # This will be at XXX-config-version.cmake
         # AnyNewerVersion|SameMajorVersion|SameMinorVersion|ExactVersion

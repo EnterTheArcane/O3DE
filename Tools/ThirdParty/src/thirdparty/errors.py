@@ -10,6 +10,5 @@ class RecipeInvalidConfiguration(RecipeException):
 
 
 __all__ = [
-    "RecipeException",
-    "RecipeInvalidConfiguration",
+    "RecipeException", "RecipeInvalidConfiguration",
 ]

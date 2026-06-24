@@ -18,8 +18,7 @@ def msbuild_verbosity_cmd_line_arg(recipe: RecipeBase) -> str:
     verbosity = recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose"))
     if verbosity is not None:
         verbosity = {
-            "quiet": "Quiet",
-            "verbose": "Detailed",
+            "quiet": "Quiet", "verbose": "Detailed",
         }.get(verbosity)
         return f'-verbosity:{verbosity}'
     return ""
@@ -61,16 +60,14 @@ class MSBuild:
         :return: ``str`` msbuild command line.
         """
         # TODO: Enable output_binary_log via config
-        cmd = ('msbuild.exe "%s" -p:Configuration="%s" -p:Platform="%s"'
-               % (sln, self.build_type, self.platform))
+        cmd = ('msbuild.exe "%s" -p:Configuration="%s" -p:Platform="%s"' % (sln, self.build_type, self.platform))
 
         verbosity = msbuild_verbosity_cmd_line_arg(self._recipe)
         if verbosity:
             cmd += f" {verbosity}"
 
         maxcpucount = self._recipe.conf.get(
-            "tools.microsoft.msbuild:max_cpu_count",
-            check_type=int)
+            "tools.microsoft.msbuild:max_cpu_count", check_type=int)
         if maxcpucount is not None:
             cmd += f' -m:"{maxcpucount}"' if maxcpucount > 0 else " -m"
 

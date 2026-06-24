@@ -9,6 +9,11 @@ import gitlab.exceptions
 
 from thirdparty._internal.model.version import Version
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 def _tag_version(tag: str) -> Version | None:
     # Strip a leading identifier+separator prefix: "vulkan-sdk-", "nasm-", "m4-", etc.
@@ -34,10 +39,7 @@ def _tag_version(tag: str) -> Version | None:
         return None
     if had_prefix and v.main[0].value >= 1000:
         return None
-    if (not had_prefix and len(v.main) == 3
-        and v.main[0].value > 1970
-        and 1 <= v.main[1].value <= 12
-        and 1 <= v.main[2].value <= 31):
+    if (not had_prefix and len(v.main) == 3 and v.main[0].value > 1970 and 1 <= v.main[1].value <= 12 and 1 <= v.main[2].value <= 31):
         return None
     return v
 
@@ -54,7 +56,7 @@ class GitlabRepository:
     blocked on some instances without a token.
     """
 
-    def __init__(self, recipe, slug: str, host: str = "gitlab.com") -> None:
+    def __init__(self, recipe: RecipeBase, slug: str, host: str = "gitlab.com") -> None:
         self._recipe = recipe
         self._slug = slug
         self._host = host
@@ -77,8 +79,7 @@ class GitlabRepository:
         a strictly higher version, the tag is preferred.
         """
         releases = self._project.releases.list(
-            order_by="released_at", sort="desc", per_page=1, get_all=False
-        )
+            order_by="released_at", sort="desc", per_page=1, get_all=False)
         if not releases:
             return self._highest_tag()
         release_tag = releases[0].tag_name
@@ -102,8 +103,7 @@ class GitlabRepository:
     def latest_formal_release(self) -> str:
         """Raw tag_name of the most recently published release; no tag-scan fallback."""
         releases = self._project.releases.list(
-            order_by="released_at", sort="desc", per_page=1, get_all=False
-        )
+            order_by="released_at", sort="desc", per_page=1, get_all=False)
         if not releases:
             return self._highest_tag()
         return releases[0].tag_name
@@ -122,6 +122,5 @@ class GitlabRepository:
                 best_tag = tag.name
         if best_tag is None:
             raise RuntimeError(
-                f"no version-like tags found for {self._slug} on {self._host}"
-            )
+                f"no version-like tags found for {self._slug} on {self._host}")
         return best_tag

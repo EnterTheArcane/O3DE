@@ -12,25 +12,13 @@ from thirdparty._internal.graph.graph import Graph
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument(
-        "recipe", metavar="<recipe>", nargs="*",
-        help="Root recipe name(s) or glob pattern(s) (default: all)")
+        "recipe", metavar="<recipe>", nargs="*", help="Root recipe name(s) or glob pattern(s) (default: all)")
     p.add_argument(
-        "--format", "-f",
-        default="tree",
-        choices=["tree", "dot", "mermaid"],
-        dest="fmt",
-        help="Output format (default: tree)",
-    )
+        "--format", "-f", default="tree", choices=["tree", "dot", "mermaid"], dest="fmt", help="Output format (default: tree)", )
     p.add_argument(
-        "--no-tools", action="store_false", dest="tools",
-        help="Exclude tool_requires (build tools) from the graph")
+        "--no-tools", action="store_false", dest="tools", help="Exclude tool_requires (build tools) from the graph")
     p.add_argument(
-        "--build-type",
-        default="Release",
-        choices=["Debug", "Release", "RelWithDebInfo"],
-        dest="build_type",
-        metavar="<type>",
-    )
+        "--build-type", default="Release", choices=["Debug", "Release", "RelWithDebInfo"], dest="build_type", metavar="<type>", )
 
 
 @command
@@ -43,9 +31,7 @@ def graph(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     all_names = sorted(
-        d.name for d in recipes_root.iterdir()
-        if d.is_dir() and (d / "recipe.py").exists()
-    )
+        d.name for d in recipes_root.iterdir() if d.is_dir() and (d / "recipe.py").exists())
 
     patterns = args.recipe or ["*"]
     roots: list[str] = []

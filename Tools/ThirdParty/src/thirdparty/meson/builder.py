@@ -48,8 +48,7 @@ class Meson:
         native = os.path.join(generators_folder, MesonToolchain.native_filename)
         is_cross_build = os.path.exists(cross)
         machine_files = self._recipe.conf.get(
-            "tools.meson.mesontoolchain:extra_machine_files",
-            default=[], check_type=list)
+            "tools.meson.mesontoolchain:extra_machine_files", default=[], check_type=list)
         cmd = "meson setup "
         if is_cross_build:
             machine_files.insert(0, cross)
@@ -127,8 +126,7 @@ class Meson:
         # verbosity of build tools. This passes -v to ninja, for example.
         # See https://github.com/mesonbuild/meson/blob/master/mesonbuild/mcompile.py#L156
         verbosity = self._recipe.conf.get(
-            "tools.compilation:verbosity",
-            choices=("quiet", "verbose"))
+            "tools.compilation:verbosity", choices=("quiet", "verbose"))
         return "--verbose" if verbosity == "verbose" else ""
 
     @property

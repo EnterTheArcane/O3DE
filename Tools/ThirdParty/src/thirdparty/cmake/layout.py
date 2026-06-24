@@ -1,18 +1,25 @@
+from __future__ import annotations
+
 import os
 import tempfile
 
 from thirdparty._internal.graph.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
 from thirdparty.errors import RecipeException
 
+from typing import TYPE_CHECKING
 
-def is_consumer(recipe):
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def is_consumer(recipe: RecipeBase):
     try:
         return recipe._recipe_node.recipe in (RECIPE_CONSUMER, RECIPE_EDITABLE)  # noqa
     except AttributeError:
         pass
 
 
-def cmake_layout(recipe, generator=None, src_folder=".", build_folder="build"):
+def cmake_layout(recipe: RecipeBase, generator=None, src_folder=".", build_folder="build"):
     """
     :param recipe: The current recipe object. Always use ``self``.
     :param generator: Allow defining the CMake generator. In most cases it doesn't need to be passed,
@@ -67,16 +74,14 @@ def cmake_layout(recipe, generator=None, src_folder=".", build_folder="build"):
         recipe.cpp.build.bindirs = ["."]
 
 
-def get_build_folder_custom_vars(recipe):
+def get_build_folder_custom_vars(recipe: RecipeBase):
     recipe_vars = recipe.folders.build_folder_vars
     build_vars = recipe.conf.get("tools.cmake.cmake_layout:build_folder_vars", check_type=list)
     if recipe.tested_reference_str:
         if build_vars is None:  # The user can define conf build_folder_vars = [] for no vars
-            build_vars = recipe_vars or \
-                         [
-                             "settings.compiler", "settings.compiler.version", "settings.arch",
-                             "settings.compiler.cppstd", "settings.build_type", "options.shared",
-                         ]
+            build_vars = recipe_vars or [
+                "settings.compiler", "settings.compiler.version", "settings.arch", "settings.compiler.cppstd", "settings.build_type", "options.shared",
+            ]
     else:
         if is_consumer(recipe):
             if build_vars is None:

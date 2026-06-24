@@ -6,12 +6,10 @@ from shlex import quote
 from typing import TYPE_CHECKING, Any
 
 from thirdparty.build.compiler import check_min_compiler_version
-from thirdparty.build.cppstd import check_max_cppstd, check_min_cppstd, \
-    valid_max_cppstd, valid_min_cppstd, default_cppstd, supported_cppstd
+from thirdparty.build.cppstd import check_max_cppstd, check_min_cppstd, valid_max_cppstd, valid_min_cppstd, default_cppstd, supported_cppstd
 from thirdparty.build.cpu import build_jobs
 from thirdparty.build.cross_building import cross_building, can_run
-from thirdparty.build.cstd import check_max_cstd, check_min_cstd, \
-    valid_max_cstd, valid_min_cstd, default_cstd, supported_cstd
+from thirdparty.build.cstd import check_max_cstd, check_min_cstd, valid_max_cstd, valid_min_cstd, default_cstd, supported_cstd
 from thirdparty.build.flags import cppstd_flag
 from thirdparty.build.stdcpp_library import stdcpp_library
 from thirdparty.errors import RecipeException
@@ -69,8 +67,8 @@ def _windows_cmd_args_to_string(args: Iterable[str]) -> str:
     return " ".join(ret)
 
 
-def load_toolchain_args(generators_folder: str | None = None,
-                        namespace: str | None = None) -> configparser.SectionProxy:
+def load_toolchain_args(
+    generators_folder: str | None = None, namespace: str | None = None) -> configparser.SectionProxy:
     """
     Helper function to load the content of any RECIPE_TOOLCHAIN_ARGS_FILE
 
@@ -78,10 +76,8 @@ def load_toolchain_args(generators_folder: str | None = None,
     :param namespace: `str` namespace to be prepended to the filename.
     :return: <class 'configparser.SectionProxy'>
     """
-    namespace_name = f"{namespace}_{RECIPE_TOOLCHAIN_ARGS_FILE}" if namespace \
-        else RECIPE_TOOLCHAIN_ARGS_FILE
-    args_file = os.path.join(generators_folder, namespace_name) if generators_folder \
-        else namespace_name
+    namespace_name = f"{namespace}_{RECIPE_TOOLCHAIN_ARGS_FILE}" if namespace else RECIPE_TOOLCHAIN_ARGS_FILE
+    args_file = os.path.join(generators_folder, namespace_name) if generators_folder else namespace_name
     toolchain_config = configparser.ConfigParser()
     toolchain_file = toolchain_config.read(args_file)
     if not toolchain_file:
@@ -93,12 +89,11 @@ def load_toolchain_args(generators_folder: str | None = None,
     except KeyError:
         raise RecipeException(
             "The primary section [%s] does not exist in the file %s. Please, add it"
-            " as the default one of all your configuration variables." %
-            (RECIPE_TOOLCHAIN_ARGS_SECTION, args_file))
+            " as the default one of all your configuration variables." % (RECIPE_TOOLCHAIN_ARGS_SECTION, args_file))
 
 
-def save_toolchain_args(content: dict[str, Any], generators_folder: str | None = None,
-                        namespace: str | None = None):
+def save_toolchain_args(
+    content: dict[str, Any], generators_folder: str | None = None, namespace: str | None = None):
     """
     Helper function to save the content into the RECIPE_TOOLCHAIN_ARGS_FILE
 
@@ -108,10 +103,8 @@ def save_toolchain_args(content: dict[str, Any], generators_folder: str | None =
     """
     # Let's prune None values
     content_ = {k: v for k, v in content.items() if v is not None}
-    namespace_name = f"{namespace}_{RECIPE_TOOLCHAIN_ARGS_FILE}" if namespace \
-        else RECIPE_TOOLCHAIN_ARGS_FILE
-    args_file = os.path.join(generators_folder, namespace_name) if generators_folder \
-        else namespace_name
+    namespace_name = f"{namespace}_{RECIPE_TOOLCHAIN_ARGS_FILE}" if namespace else RECIPE_TOOLCHAIN_ARGS_FILE
+    args_file = os.path.join(generators_folder, namespace_name) if generators_folder else namespace_name
     toolchain_config = configparser.ConfigParser()
     toolchain_config[RECIPE_TOOLCHAIN_ARGS_SECTION] = content_
     with open(args_file, "w") as f:

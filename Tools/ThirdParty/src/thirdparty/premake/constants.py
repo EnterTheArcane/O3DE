@@ -1,5 +1,4 @@
 # Source: https://premake.github.io/docs/architecture/
 RECIPE_TO_PREMAKE_ARCH = {
-    "X64": "x86_64",
-    "ARM": "arm64",
+    "X64": "x86_64", "ARM": "arm64",
 }

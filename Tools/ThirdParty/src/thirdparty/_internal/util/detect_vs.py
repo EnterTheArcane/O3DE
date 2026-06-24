@@ -39,8 +39,7 @@ def _vs_installation_path(version):
 
         # Append products without "productId" (Legacy installations)
         for product in products:
-            if (product["installationVersion"].startswith(f"{version}.")
-                and "productId" not in product):
+            if (product["installationVersion"].startswith(f"{version}.") and "productId" not in product):
                 return product["installationPath"], product["installationVersion"]
 
     # If vswhere does not find anything or not available, try with vs_comntools
@@ -55,8 +54,7 @@ def _vs_installation_path(version):
 
 
 def vswhere(
-    all_=False, prerelease=True, products=None, requires=None, version="", latest=False,
-    legacy=False, property_="", nologo=True):
+    all_: bool = False, prerelease: bool = True, products=None, requires=None, version="", latest: bool = False, legacy: bool = False, property_="", nologo: bool = True):
     # 'version' option only works if Visual Studio 2017 is installed:
     # https://github.com/Microsoft/vswhere/issues/91
 
@@ -72,8 +70,7 @@ def vswhere(
     program_files = os.environ.get("ProgramFiles(x86)") or os.environ.get("ProgramFiles")
     if program_files:
         expected_path = os.path.join(
-            program_files, "Microsoft Visual Studio", "Installer",
-            "vswhere.exe")
+            program_files, "Microsoft Visual Studio", "Installer", "vswhere.exe")
         if os.path.isfile(expected_path):
             installer_path = expected_path
     vswhere_path = installer_path or which("vswhere")
@@ -129,8 +126,7 @@ def vswhere(
         # Ignore the "description" field, that even decoded contains non valid charsets for json
         # (ignored ones)
         output = "\n".join(
-            [line for line in output.splitlines()
-             if not line.strip().startswith('"description"')])
+            [line for line in output.splitlines() if not line.strip().startswith('"description"')])
 
     except (ValueError, UnicodeDecodeError) as e:
         raise RecipeException("vswhere error: %s" % str(e))

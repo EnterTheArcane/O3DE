@@ -1,4 +1,12 @@
-def stdcpp_library(recipe):
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def stdcpp_library(recipe: RecipeBase):
     """ Returns the name of the C++ standard library that can be passed
     to the linker, based on the current settings. Returs None if the name 
     of the C++ standard library file is not known.

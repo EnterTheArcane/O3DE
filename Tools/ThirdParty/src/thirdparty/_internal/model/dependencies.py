@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from collections import OrderedDict
+from typing import Any
 
 from thirdparty._internal.graph.graph import RECIPE_PLATFORM
 from thirdparty._internal.model.recipe_interface import RecipeInterface
@@ -10,11 +13,11 @@ class UserRequirementsDict:
     """ user facing dict to allow access of dependencies by name
     """
 
-    def __init__(self, data, require_filter=None):
+    def __init__(self, data: Any, require_filter: Any = None):
         self._data = data  # dict-like
         self._require_filter = require_filter  # dict {trait: value} for requirements
 
-    def filter(self, require_filter):
+    def filter(self, require_filter: Any) -> UserRequirementsDict:
         def filter_fn(require):
             for k, v in require_filter.items():
                 if getattr(require, k) != v:
@@ -24,13 +27,13 @@ class UserRequirementsDict:
         data = OrderedDict((k, v) for k, v in self._data.items() if filter_fn(k))
         return UserRequirementsDict(data, require_filter)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._data)
 
-    def get(self, ref, build=None, **kwargs):
+    def get(self, ref: str, build: Any = None, **kwargs: Any) -> Any:
         return self._get(ref, build, **kwargs)[1]
 
-    def _get(self, ref, build=None, **kwargs):
+    def _get(self, ref: str, build: Any = None, **kwargs: Any) -> tuple[Any, Any]:
         if build is None:
             current_filters = self._require_filter or {}
             if "build" not in current_filters:
@@ -63,10 +66,10 @@ class UserRequirementsDict:
         key, value = ret[0]
         return key, value
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> Any:
         return self.get(name)
 
-    def __delitem__(self, name):
+    def __delitem__(self, name: str):
         r, _ = self._get(name)
         del self._data[r]
 
@@ -76,7 +79,7 @@ class UserRequirementsDict:
     def values(self):
         return self._data.values()
 
-    def __contains__(self, item):
+    def __contains__(self, item: object) -> bool:
         try:
             self.get(item)
             return True
@@ -87,7 +90,7 @@ class UserRequirementsDict:
             # so it's definitely in the dict
             return True
 
-    def of(self, ref, build=None, **kwargs):
+    def of(self, ref: str, build: Any = None, **kwargs: Any) -> tuple[Any, Any]:
         # TODO: come up with a better name
         return self._get(ref, build, **kwargs)
 
@@ -95,10 +98,9 @@ class UserRequirementsDict:
 class RecipeDependencies(UserRequirementsDict):
 
     @staticmethod
-    def from_node(node):
+    def from_node(node: Any) -> RecipeDependencies:
         d = OrderedDict(
-            (require, RecipeInterface(transitive.node.recipe, node.recipe))
-            for require, transitive in node.transitive_deps.items())
+            (require, RecipeInterface(transitive.node.recipe, node.recipe)) for require, transitive in node.transitive_deps.items())
         if node.replaced_requires:
             cant_be_removed = set()
             for old_req, new_req in node.replaced_requires.items():
@@ -115,7 +117,7 @@ class RecipeDependencies(UserRequirementsDict):
                     d.pop(new_req, None)
         return RecipeDependencies(d)
 
-    def filter(self, require_filter, remove_system=True):
+    def filter(self, require_filter: Any, remove_system: bool = True) -> RecipeDependencies:
         # FIXME: Copy of hte above, to return RecipeDependencies class object
         def filter_fn(require):
             for k, v in require_filter.items():
@@ -128,7 +130,7 @@ class RecipeDependencies(UserRequirementsDict):
             data = OrderedDict((k, v) for k, v in data.items() if v.recipe != RECIPE_PLATFORM)
         return RecipeDependencies(data, require_filter)
 
-    def transitive_requires(self, other):
+    def transitive_requires(self, other: RecipeDependencies) -> RecipeDependencies:
         """
         :type other: RecipeDependencies
         """
@@ -140,7 +142,7 @@ class RecipeDependencies(UserRequirementsDict):
         return RecipeDependencies(data)
 
     @property
-    def topological_sort(self):
+    def topological_sort(self) -> RecipeDependencies:
         # Return first independent nodes, final ones are the more direct deps
         result = OrderedDict()
         opened = self._data.copy()
@@ -159,23 +161,23 @@ class RecipeDependencies(UserRequirementsDict):
         return RecipeDependencies(result)
 
     @property
-    def direct_host(self):
+    def direct_host(self) -> RecipeDependencies:
         return self.filter({"build": False, "direct": True, "skip": False})
 
     @property
-    def direct_build(self):
+    def direct_build(self) -> RecipeDependencies:
         return self.filter({"build": True, "direct": True})
 
     @property
-    def host(self):
+    def host(self) -> RecipeDependencies:
         return self.filter({"build": False, "skip": False})
 
     @property
-    def build(self):
+    def build(self) -> RecipeDependencies:
         return self.filter({"build": True})
 
 
-def get_transitive_requires(consumer, dependency):
+def get_transitive_requires(consumer: Any, dependency: Any) -> RecipeDependencies:
     """ the transitive requires that we need are the consumer ones, not the current dependencey
     ones, so we get the current ones, then look for them in the consumer, and return those
     """

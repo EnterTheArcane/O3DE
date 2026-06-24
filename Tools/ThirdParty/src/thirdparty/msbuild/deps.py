@@ -4,7 +4,7 @@ import fnmatch
 import os
 import re
 import textwrap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from xml.dom import minidom
 
 from jinja2 import Template
@@ -139,34 +139,32 @@ class MSBuildDeps:
         for generator_file, content in generator_files.items():
             save(generator_file, content)
 
-    def _config_filename(self):
+    def _config_filename(self) -> str:
         props = [
-            self.configuration,
-            self.platform,
+            self.configuration, self.platform,
         ]
         name = "".join("_%s" % v for v in props)
         return name.lower()
 
-    def _condition(self):
+    def _condition(self) -> str:
         props = [
-            (self.configuration_key, self.configuration),
-            (self.platform_key, self.platform),
+            (self.configuration_key, self.configuration), (self.platform_key, self.platform),
         ]
         condition = " And ".join("'$(%s)' == '%s'" % (k, v) for k, v in props)
         return condition
 
     @staticmethod
-    def _dep_name(dep, build):
+    def _dep_name(dep: Any, build: bool) -> str:
         dep_name = dep.ref.name
         if build:  # dep.context == CONTEXT_BUILD:
             dep_name += "_build"
         return MSBuildDeps._get_valid_xml_format(dep_name)
 
     @staticmethod
-    def _get_valid_xml_format(name):
+    def _get_valid_xml_format(name: str) -> str:
         return re.compile(r"[.+]").sub("_", name)
 
-    def _vars_props_file(self, require, dep, name, cpp_info, build):
+    def _vars_props_file(self, require: Any, dep: Any, name: str, cpp_info: Any, build: bool) -> str:
         """
         content for recipe_vars_poco_x86_release.props, containing the variables for 1 config
         This will be for 1 package or for one component of a package
@@ -209,8 +207,7 @@ class MSBuildDeps:
         root_folder = escape_path(root_folder)
         # Make the root_folder relative to the generated recipe_vars_xxx.props file
         relative_root_folder = relativize_path(
-            root_folder, self._recipe,
-            "$(MSBuildThisFileDirectory)", normalize=False)
+            root_folder, self._recipe, "$(MSBuildThisFileDirectory)", normalize=False)
 
         bin_dirs = join_paths(cpp_info.bindirs)
         res_dirs = join_paths(cpp_info.resdirs)
@@ -237,26 +234,14 @@ class MSBuildDeps:
             bin_dirs = ""
 
         fields = {
-            'name': name,
-            'root_folder': relative_root_folder,
-            'bin_dirs': bin_dirs,
-            'res_dirs': res_dirs,
-            'include_dirs': include_dirs,
-            'lib_dirs': lib_dirs,
-            'libs': libs,
-            # TODO: Missing objects
-            'system_libs': system_libs,
-            'definitions': definitions,
-            'compiler_flags': compiler_flags,
-            'linker_flags': linker_flags,
-            'host_context': not build,
+            'name': name, 'root_folder': relative_root_folder, 'bin_dirs': bin_dirs, 'res_dirs': res_dirs, 'include_dirs': include_dirs, 'lib_dirs': lib_dirs, 'libs': libs, # TODO: Missing objects
+            'system_libs': system_libs, 'definitions': definitions, 'compiler_flags': compiler_flags, 'linker_flags': linker_flags, 'host_context': not build,
         }
         formatted_template = Template(
-            self._vars_props, trim_blocks=True,
-            lstrip_blocks=True).render(**fields)
+            self._vars_props, trim_blocks=True, lstrip_blocks=True).render(**fields)
         return formatted_template
 
-    def _activate_props_file(self, dep_name, vars_filename, deps, build):
+    def _activate_props_file(self, dep_name: str, vars_filename: str, deps: Any, build: bool) -> str:
         """
         Actual activation of the VS variables, per configuration
             - recipe_pkgname_x86_release.props / recipe_pkgname_compname_x86_release.props
@@ -270,12 +255,11 @@ class MSBuildDeps:
         ca_exclude = any(fnmatch.fnmatch(dep_name, p) for p in self.exclude_code_analysis or ())
         template = Template(self._conf_props, trim_blocks=True, lstrip_blocks=True)
         content_multi = template.render(
-            host_context=not build, name=dep_name, ca_exclude=ca_exclude,
-            vars_filename=vars_filename, deps=deps)
+            host_context=not build, name=dep_name, ca_exclude=ca_exclude, vars_filename=vars_filename, deps=deps)
         return content_multi
 
     @staticmethod
-    def _dep_props_file(dep_name, filename, aggregated_filename, condition, content=None):
+    def _dep_props_file(dep_name: str, filename: str, aggregated_filename: str, condition: str, content: Any = None) -> str:
         """
         The file aggregating all configurations for a given pkg / component
             - recipe_pkgname.props
@@ -305,8 +289,7 @@ class MSBuildDeps:
         # Current vars
         children = import_vars.getElementsByTagName("Import")
         for node in children:
-            if aggregated_filename == node.getAttribute("Project") \
-                and condition == node.getAttribute("Condition"):
+            if aggregated_filename == node.getAttribute("Project") and condition == node.getAttribute("Condition"):
                 break
         else:  # create a new import statement
             import_node = dom.createElement('Import')
@@ -364,7 +347,7 @@ class MSBuildDeps:
         </Project>
         """)
 
-    def _recipe_deps(self):
+    def _recipe_deps(self) -> dict[str, str]:
         """ this is a .props file including direct declared dependencies
         """
         # Current directory is the generators_folder
@@ -383,12 +366,10 @@ class MSBuildDeps:
             filename = "recipe_%s.props" % dep_name
             comp_condition = "'$(recipe_%s_props_imported)' != 'True'" % dep_name
             pkg_aggregated_content = self._dep_props_file(
-                "", recipe_deps_filename, filename,
-                condition=comp_condition,
-                content=pkg_aggregated_content)
+                "", recipe_deps_filename, filename, condition=comp_condition, content=pkg_aggregated_content)
         return {recipe_deps_filename: pkg_aggregated_content}
 
-    def _package_props_files(self, require, dep, build=False):
+    def _package_props_files(self, require: Any, dep: Any, build: bool = False) -> dict[str, str]:
         """ all the files for a given package:
         - recipe_pkgname_vars_config.props: definition of variables, one per config
         - recipe_pkgname_config.props: The one using those variables. This is very different for
@@ -419,25 +400,19 @@ class MSBuildDeps:
                         if required:  # The transitive dep might have been skipped
                             required_name = self._dep_name(required, build)
                             public_deps.append(
-                                required_name if required_pkg == required_comp
-                                else f"{required_name}_{required_comp}")
+                                required_name if required_pkg == required_comp else f"{required_name}_{required_comp}")
                     else:  # Points to a component of same package
                         public_deps.append(f"{dep_name}_{required_comp}")
                 public_deps = [self._get_valid_xml_format(d) for d in public_deps]
                 result[vars_filename] = self._vars_props_file(
-                    require, dep, full_comp_name,
-                    comp_info, build=build)
+                    require, dep, full_comp_name, comp_info, build=build)
                 result[activate_filename] = self._activate_props_file(
-                    full_comp_name, vars_filename,
-                    public_deps, build=build)
+                    full_comp_name, vars_filename, public_deps, build=build)
                 result[comp_filename] = self._dep_props_file(
-                    full_comp_name, comp_filename,
-                    activate_filename, condition)
+                    full_comp_name, comp_filename, activate_filename, condition)
                 comp_condition = "'$(recipe_%s_props_imported)' != 'True'" % full_comp_name
                 pkg_aggregated_content = self._dep_props_file(
-                    dep_name, pkg_filename, comp_filename,
-                    condition=comp_condition,
-                    content=pkg_aggregated_content)
+                    dep_name, pkg_filename, comp_filename, condition=comp_condition, content=pkg_aggregated_content)
                 result[pkg_filename] = pkg_aggregated_content
         else:
             cpp_info = dep.cpp_info
@@ -447,17 +422,14 @@ class MSBuildDeps:
             public_deps = [self._dep_name(d, build) for d in pkg_deps.values()]
 
             result[vars_filename] = self._vars_props_file(
-                require, dep, dep_name, cpp_info,
-                build=build)
+                require, dep, dep_name, cpp_info, build=build)
             result[activate_filename] = self._activate_props_file(
-                dep_name, vars_filename,
-                public_deps, build=build)
+                dep_name, vars_filename, public_deps, build=build)
             result[pkg_filename] = self._dep_props_file(
-                dep_name, pkg_filename, activate_filename,
-                condition=condition)
+                dep_name, pkg_filename, activate_filename, condition=condition)
         return result
 
-    def _content(self):
+    def _content(self) -> dict[str, str]:
         if not self._recipe.settings.get_safe("build_type"):
             raise RecipeException("The 'msbuild' generator requires a 'build_type' setting value")
         result = {}

@@ -13,26 +13,16 @@ from thirdparty._internal.loader import try_load_recipe_class
 from thirdparty._internal.model.version import Version
 
 _BUMP_COLOR = {
-    "major": Fore.RED,
-    "minor": Fore.YELLOW,
-    "patch": Fore.CYAN,
+    "major": Fore.RED, "minor": Fore.YELLOW, "patch": Fore.CYAN,
 }
 
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
     g = p.add_mutually_exclusive_group()
     g.add_argument(
-        "--all",
-        action="store_true",
-        dest="all",
-        help="Include recipes that have no latest_version() method.",
-    )
+        "--all", action="store_true", dest="all", help="Include recipes that have no latest_version() method.", )
     g.add_argument(
-        "--missing",
-        action="store_true",
-        dest="missing",
-        help="List only recipes that have no latest_version() method.",
-    )
+        "--missing", action="store_true", dest="missing", help="List only recipes that have no latest_version() method.", )
 
 
 @command

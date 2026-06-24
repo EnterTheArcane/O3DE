@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import fnmatch
 import os
 
@@ -8,13 +10,18 @@ from thirdparty._internal.util.runners import check_output_runner
 from thirdparty.errors import RecipeException
 from thirdparty.files import chdir
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class Git:
     """
     Git is a wrapper for several common patterns used with *git* tool.
     """
 
-    def __init__(self, recipe, folder=".", excluded=None):
+    def __init__(self, recipe: RecipeBase, folder=".", excluded=None):
         """
         :param recipe: Recipefile instance.
         :param folder: Current directory, by default ``.``, the current working directory.
@@ -51,7 +58,7 @@ class Git:
             #  - the ``recipe source`` command, not passing profiles, buildenv not injected
             return check_output_runner(f"git {cmd}").strip()
 
-    def get_commit(self, repository=False):
+    def get_commit(self, repository: bool = False):
         """
         :param repository: By default gets the commit of the defined folder, use repo=True to get
                      the commit of the repository instead.
@@ -131,7 +138,7 @@ class Git:
                 # Don't raise an error because it could fail for many more reasons.
                 return False
 
-    def is_dirty(self, repository=False):
+    def is_dirty(self, repository: bool = False):
         """
         Returns if the current folder is dirty, running ``git status -s``
         The ``Git(..., excluded=[])`` argument and the ``core.scm:excluded`` configuration will
@@ -155,7 +162,7 @@ class Git:
         self._recipe.output.debug(f"Filtered git status: {lines}")
         return bool(lines)
 
-    def get_url_and_commit(self, remote="origin", repository=False):
+    def get_url_and_commit(self, remote="origin", repository: bool = False):
         """
         This is an advanced method, that returns both the current commit, and the remote repository url.
         This method is intended to capture the current remote coordinates for a package creation,
@@ -214,7 +221,7 @@ class Git:
         folder = self.run("rev-parse --show-toplevel")
         return folder.replace("\\", "/")
 
-    def clone(self, url, target="", args=None, hide_url=True):
+    def clone(self, url, target="", args=None, hide_url: bool = True):
         """
         Performs a ``git clone <url> <args> <target>`` operation, where target is the target directory.
 
@@ -232,10 +239,9 @@ class Git:
         target_path = f'"{target}"' if target else ""  # quote in case there are spaces in path
         # Avoid printing the clone command, it can contain tokens
         self.run(
-            f'clone "{url}" {" ".join(args)} {target_path}',
-            hidden_output=url if hide_url else None)
+            f'clone "{url}" {" ".join(args)} {target_path}', hidden_output=url if hide_url else None)
 
-    def fetch_commit(self, url, commit, hide_url=True):
+    def fetch_commit(self, url, commit, hide_url: bool = True):
         """
         Experimental: does a single commit fetch and checkout, instead of a full clone,
         should be faster.

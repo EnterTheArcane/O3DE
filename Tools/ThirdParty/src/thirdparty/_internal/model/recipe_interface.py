@@ -1,22 +1,29 @@
+from __future__ import annotations
+
 from thirdparty._internal.graph.graph import CONTEXT_BUILD
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class RecipeInterface:
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._recipe)
 
-    def __init__(self, recipe, consumer):
+    def __init__(self, recipe: RecipeBase, consumer: Any):
         self._recipe = recipe
         self._consumer = consumer
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """
         The recipe is a different entity per node, and recipe equality is identity
         :type other: RecipeInterface
         """
         return self._recipe == other._recipe
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self._recipe)
 
     @property

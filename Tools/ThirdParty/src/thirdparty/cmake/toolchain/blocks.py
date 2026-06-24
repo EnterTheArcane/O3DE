@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import textwrap
@@ -20,25 +22,30 @@ from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_version_to_toolset_version, msvc_platform_from_arch
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class Block:
-    def __init__(self, recipe, toolchain, name):
+    def __init__(self, recipe: RecipeBase, toolchain: Any, name: str):
         self._recipe = recipe
         self._toolchain = toolchain
-        self._context_values = None
+        self._context_values: dict[str, Any] | None = None
         self._name = name
 
     @property
-    def values(self):
+    def values(self) -> dict[str, Any] | None:
         if self._context_values is None:
             self._context_values = self.context()
         return self._context_values
 
     @values.setter
-    def values(self, context_values):
+    def values(self, context_values: dict[str, Any] | None):
         self._context_values = context_values
 
-    def get_rendered_content(self):
+    def get_rendered_content(self) -> str | None:
         context = self.values
         if context is None:
             return
@@ -47,11 +54,11 @@ class Block:
         template = Template(template, trim_blocks=True, lstrip_blocks=True)
         return template.render(**context)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         return {}
 
     @property
-    def template(self):
+    def template(self) -> str:
         raise NotImplementedError()
 
 
@@ -74,7 +81,7 @@ class VSRuntimeBlock(Block):
         set(CMAKE_MSVC_RUNTIME_LIBRARY "{{ genexpr.str }}")
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         # Parsing existing toolchain file to get existing configured runtimes
         settings = self._recipe.settings
         if settings.get_safe("os") != "Windows":
@@ -92,8 +99,7 @@ class VSRuntimeBlock(Block):
         if os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
             existing_include = load(RECIPE_TOOLCHAIN_FILENAME)
             msvc_runtime_value = re.search(
-                r"set\(CMAKE_MSVC_RUNTIME_LIBRARY \"([^)]*)\"\)",
-                existing_include)
+                r"set\(CMAKE_MSVC_RUNTIME_LIBRARY \"([^)]*)\"\)", existing_include)
             if msvc_runtime_value:
                 capture = msvc_runtime_value.group(1)
                 matches = re.findall(r"\$<\$<CONFIG:([A-Za-z]*)>:([A-Za-z]*)>", capture)
@@ -135,7 +141,7 @@ class VSDebuggerEnvironment(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         os_ = self._recipe.settings.get_safe("os")
         build_type = self._recipe.settings.get_safe("build_type")
 
@@ -157,8 +163,7 @@ class VSDebuggerEnvironment(Block):
 
         host_deps = self._recipe.dependencies.host.values()
         bin_dirs = [p for dep in host_deps for p in dep.cpp_info.aggregated_components().bindirs]
-        bin_dirs = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
-                    for p in bin_dirs]
+        bin_dirs = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in bin_dirs]
         bin_dirs = [p.replace("\\", "/") for p in bin_dirs]
         bin_dirs = ";".join(bin_dirs) if bin_dirs else None
         if bin_dirs:
@@ -185,7 +190,7 @@ class FPicBlock(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         fpic = self._recipe.options.get_safe("fPIC")
         if fpic is None:
             return None
@@ -212,7 +217,7 @@ class GLibCXXBlock(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         libcxx, stdlib11 = libcxx_flags(self._recipe)
         return {"set_libcxx": libcxx, "glibcxx": stdlib11}
 
@@ -232,7 +237,7 @@ class SkipRPath(Block):
 
     skip_rpath = False
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         return {"skip_rpath": self.skip_rpath}
 
 
@@ -262,15 +267,14 @@ class ArchitectureBlock(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         arch_flag = architecture_flag(self._recipe)
         arch_link_flag = architecture_link_flag(self._recipe)
         thread_flags_list = " ".join(threads_flags(self._recipe))
         if not arch_flag and not arch_link_flag and not thread_flags_list:
             return
         return {
-            "arch_flag": arch_flag, "arch_link_flag": arch_link_flag,
-            "thread_flags_list": thread_flags_list,
+            "arch_flag": arch_flag, "arch_link_flag": arch_link_flag, "thread_flags_list": thread_flags_list,
         }
 
 
@@ -284,7 +288,7 @@ class RpathLinkFlagsBlock(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         add_rpath_link = self._toolchain.add_rpath_link or self._recipe.conf.get("tools.build:add_rpath_link", check_type=bool)
         if add_rpath_link:
             runtime_dirs = []
@@ -309,14 +313,13 @@ class LinkerScriptsBlock(Block):
         string(APPEND RECIPE_EXE_LINKER_FLAGS " {{ linker_script_flags }}")
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         linker_scripts = self._recipe.conf.get(
             "tools.build:linker_scripts", check_type=list, default=[])
         if not linker_scripts:
             return
         linker_scripts = [linker_script.replace('\\', '/') for linker_script in linker_scripts]
-        linker_scripts = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
-                          for p in linker_scripts]
+        linker_scripts = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in linker_scripts]
         linker_script_flags = [r'-T\"' + linker_script + r'\"' for linker_script in linker_scripts]
         return {"linker_script_flags": " ".join(linker_script_flags)}
 
@@ -353,7 +356,7 @@ class CppStdBlock(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         compiler_cppstd = self._recipe.settings.get_safe("compiler.cppstd")
         compiler_cstd = self._recipe.settings.get_safe("compiler.cstd")
         result = {}
@@ -383,7 +386,7 @@ class SharedLibBock(Block):
         set(BUILD_SHARED_LIBS {{ shared_libs }} CACHE BOOL "Build shared libraries")
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         try:
             shared_libs = "ON" if self._recipe.options.shared else "OFF"
             return {"shared_libs": shared_libs}
@@ -400,7 +403,7 @@ class ParallelBlock(Block):
         string(APPEND RECIPE_C_FLAGS " /MP{{ parallel }}")
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         # TODO: Check this conf
 
         compiler = self._recipe.settings.get_safe("compiler")
@@ -433,7 +436,7 @@ class AndroidSystemBlock(Block):
         include("{{ android_ndk_path }}/build/cmake/android.toolchain.cmake")
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         os_ = self._recipe.settings.get_safe("os")
         if os_ != "Android":
             return
@@ -447,12 +450,10 @@ class AndroidSystemBlock(Block):
             raise RecipeException('CMakeToolchain needs tools.android:ndk_path configuration defined')
         android_ndk_path = android_ndk_path.replace("\\", "/")
         android_ndk_path = relativize_path(
-            android_ndk_path, self._recipe,
-            "${CMAKE_CURRENT_LIST_DIR}")
+            android_ndk_path, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
 
         use_cmake_legacy_toolchain = self._recipe.conf.get(
-            "tools.android:cmake_legacy_toolchain",
-            check_type=bool)
+            "tools.android:cmake_legacy_toolchain", check_type=bool)
         if use_cmake_legacy_toolchain is not None:
             use_cmake_legacy_toolchain = "ON" if use_cmake_legacy_toolchain else "OFF"
 
@@ -526,19 +527,18 @@ class AppleSystemBlock(Block):
         endif()
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         if not is_apple_os(self._recipe):
             return None
 
-        def to_apple_archs(recipe):
+        def to_apple_archs(recipe: RecipeBase):
             f"""converts recipe-style architectures into Apple-style archs
             to be used by CMake also supports multiple architectures
             separated by '{universal_arch_separator}'"""
             arch_ = recipe.settings.get_safe("arch") if recipe else None
             if arch_ is not None:
                 return ";".join(
-                    [_to_apple_arch(arch, default=arch) for arch in
-                     arch_.split(universal_arch_separator)])
+                    [_to_apple_arch(arch, default=arch) for arch in arch_.split(universal_arch_separator)])
 
         # check valid combinations of architecture - os ?
         # for iOS a FAT library valid for simulator and device can be generated
@@ -557,15 +557,11 @@ class AppleSystemBlock(Block):
         enable_visibility = self._recipe.conf.get("tools.apple:enable_visibility", check_type=bool)
 
         ctxt_toolchain = {
-            "enable_bitcode": enable_bitcode,
-            "enable_bitcode_marker": all([enable_bitcode, is_debug]),
-            "enable_arc": enable_arc,
-            "enable_visibility": enable_visibility,
+            "enable_bitcode": enable_bitcode, "enable_bitcode_marker": all([enable_bitcode, is_debug]), "enable_arc": enable_arc, "enable_visibility": enable_visibility,
         }
         if host_sdk_name:
             host_sdk_name = relativize_path(
-                host_sdk_name, self._recipe,
-                "${CMAKE_CURRENT_LIST_DIR}")
+                host_sdk_name, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
             ctxt_toolchain["cmake_osx_sysroot"] = host_sdk_name
         # this is used to initialize the OSX_ARCHITECTURES property on each target as it is created
         if host_architecture:
@@ -688,13 +684,12 @@ class FindFiles(Block):
         paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in paths]
         return " ".join([f'"{p}"' for p in paths])
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         # To find the generated cmake_find_package finders
         # TODO: Change this for parameterized output location of CMakeDeps
         find_package_prefer_config = "ON"  # assume ON by default if not specified in conf
         prefer_config = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:find_package_prefer_config",
-            check_type=bool)
+            "tools.cmake.cmaketoolchain:find_package_prefer_config", check_type=bool)
         if prefer_config is False:
             find_package_prefer_config = "OFF"
 
@@ -755,7 +750,7 @@ class PkgConfigBlock(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         pkg_config = self._recipe.conf.get("tools.gnu:pkg_config", check_type=str)
         if pkg_config:
             pkg_config = pkg_config.replace("\\", "/")
@@ -763,8 +758,7 @@ class PkgConfigBlock(Block):
         pathsep = ":" if subsystem != WINDOWS else ";"
         pkg_config_path = "${CMAKE_CURRENT_LIST_DIR}" + pathsep
         return {
-            "pkg_config": pkg_config,
-            "pkg_config_path": pkg_config_path,
+            "pkg_config": pkg_config, "pkg_config_path": pkg_config_path,
         }
 
 
@@ -779,13 +773,11 @@ class UserToolchain(Block):
         {% endfor %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         # This is global [conf] injection of extra toolchain files
         user_toolchain = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:user_toolchain",
-            default=[], check_type=list)
-        paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
-                 for p in user_toolchain]
+            "tools.cmake.cmaketoolchain:user_toolchain", default=[], check_type=list)
+        paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in user_toolchain]
         paths = [p.replace("\\", "/") for p in paths]
         return {"paths": paths}
 
@@ -827,7 +819,7 @@ class ExtraFlagsBlock(Block):
         """)
 
     @property
-    def template(self):
+    def template(self) -> str:
         if not is_multi_configuration(self._toolchain.generator):
             return self._template
 
@@ -858,7 +850,7 @@ class ExtraFlagsBlock(Block):
         sections = "\n".join(sections)
         return sections
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         # Now, it's time to get all the flags defined by the user
         cxxflags = self._toolchain.extra_cxxflags + self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
         cflags = self._toolchain.extra_cflags + self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
@@ -870,8 +862,7 @@ class ExtraFlagsBlock(Block):
         # See upstream issue 13374
         android_ndk_path = self._recipe.conf.get("tools.android:ndk_path")
         android_legacy_toolchain = self._recipe.conf.get(
-            "tools.android:cmake_legacy_toolchain",
-            check_type=bool)
+            "tools.android:cmake_legacy_toolchain", check_type=bool)
         if android_ndk_path and (cxxflags or cflags) and android_legacy_toolchain is not False:
             self._recipe.output.warning(
                 "tools.build:cxxflags or cflags are defined, but Android NDK toolchain may be overriding "
@@ -883,14 +874,7 @@ class ExtraFlagsBlock(Block):
             config = self._recipe.settings.get_safe("build_type")
             suffix = f"_{config.upper()}" if config else ""
         return {
-            "config": config,
-            "suffix": suffix,
-            "cxxflags": cxxflags,
-            "cflags": cflags,
-            "sharedlinkflags": sharedlinkflags,
-            "exelinkflags": exelinkflags,
-            "rcflags": rcflags,
-            "defines": [define.replace('"', '\\"') for define in defines],
+            "config": config, "suffix": suffix, "cxxflags": cxxflags, "cflags": cflags, "sharedlinkflags": sharedlinkflags, "exelinkflags": exelinkflags, "rcflags": rcflags, "defines": [define.replace('"', '\\"') for define in defines],
         }
 
 
@@ -958,7 +942,7 @@ class TryCompileBlock(Block):
         endif()
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         # Only for well known CMake configurations, but not for custom ones
         # Revert of upstream PR 18559, even if it was correct, there are
         # legacy code using check_function_exists that breaks in CMake with MSVC, see
@@ -978,18 +962,15 @@ class CompilersBlock(Block):
         {% endfor %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         # Reading configuration from "tools.build:compiler_executables" -> {"C": "/usr/bin/gcc"}
         compilers_by_conf = self._recipe.conf.get(
-            "tools.build:compiler_executables", default={},
-            check_type=dict)
+            "tools.build:compiler_executables", default={}, check_type=dict)
         # Map the possible languages
         compilers = {}
         # Allowed <LANG> variables (and <LANG>_LAUNCHER)
         compilers_mapping = {
-            "c": "C", "cuda": "CUDA", "cpp": "CXX", "objc": "OBJC",
-            "objcpp": "OBJCXX", "rc": "RC", 'fortran': "Fortran", 'asm': "ASM",
-            "hip": "HIP", "ispc": "ISPC",
+            "c": "C", "cuda": "CUDA", "cpp": "CXX", "objc": "OBJC", "objcpp": "OBJCXX", "rc": "RC", 'fortran': "Fortran", 'asm': "ASM", "hip": "HIP", "ispc": "ISPC",
         }
         for comp, lang in compilers_mapping.items():
             # To set CMAKE_<LANG>_COMPILER
@@ -1052,7 +1033,7 @@ class GenericSystemBlock(Block):
         """)
 
     @staticmethod
-    def get_toolset(generator, recipe):
+    def get_toolset(generator: str | None, recipe: RecipeBase) -> str | None:
         toolset = None
         if generator is None or ("Visual" not in generator and "Xcode" not in generator):
             return None
@@ -1088,7 +1069,7 @@ class GenericSystemBlock(Block):
         return toolset
 
     @staticmethod
-    def get_generator_platform(generator, recipe):
+    def get_generator_platform(generator: str | None, recipe: RecipeBase) -> str | None:
         settings = recipe.settings
         # Returns the generator platform to be used by CMake
         compiler = settings.get_safe("compiler")
@@ -1107,10 +1088,7 @@ class GenericSystemBlock(Block):
         arch_host = self._recipe.settings.get_safe("arch")
         arch_build = self._recipe.settings_build.get_safe("arch")
         cmake_system_name_map = {
-            "Neutrino": "QNX",
-            "": "Generic",
-            "baremetal": "Generic",
-            None: "Generic",
+            "Neutrino": "QNX", "": "Generic", "baremetal": "Generic", None: "Generic",
         }
         if os_host != os_build:
             # os_host would be 'baremetal' for tricore, but it's ideal to use the Generic-ELF
@@ -1125,16 +1103,14 @@ class GenericSystemBlock(Block):
     def _is_apple_cross_building(self):
 
         if is_universal_arch(
-            self._recipe.settings.get_safe("arch"),
-            self._recipe.settings.possible_values().get("arch")):
+            self._recipe.settings.get_safe("arch"), self._recipe.settings.possible_values().get("arch")):
             return False
 
         os_host = self._recipe.settings.get_safe("os")
         arch_host = self._recipe.settings.get_safe("arch")
         arch_build = self._recipe.settings_build.get_safe("arch")
         os_build = self._recipe.settings_build.get_safe("os")
-        return os_host in ('iOS', 'tvOS', 'visionOS') or (
-            os_host == 'Mac' and (arch_host != arch_build or os_build != os_host))
+        return os_host in ('iOS', 'tvOS', 'visionOS') or (os_host == 'Mac' and (arch_host != arch_build or os_build != os_host))
 
     @staticmethod
     def _get_darwin_version(os_name, os_version):
@@ -1142,19 +1118,12 @@ class GenericSystemBlock(Block):
         # but a more detailed version can be found in https://theapplewiki.com/wiki/Kernel
         version_mapping = {
             "Mac": {
-                "10.6": "10", "10.7": "11", "10.8": "12", "10.9": "13", "10.10": "14", "10.11": "15",
-                "10.12": "16", "10.13": "17", "10.14": "18", "10.15": "19", "11": "20", "12": "21",
-                "13": "22", "14": "23", "15": "24",
-            },
-            "iOS": {
-                "7": "14", "8": "14", "9": "15", "10": "16", "11": "17", "12": "18", "13": "19",
-                "14": "20", "15": "21", "16": "22", "17": "23", "18": "24",
-            },
-            "tvOS": {
-                "11": "17", "12": "18", "13": "19", "14": "20",
-                "15": "21", "16": "22", "17": "23", "18": "24",
-            },
-            "visionOS": {
+                "10.6": "10", "10.7": "11", "10.8": "12", "10.9": "13", "10.10": "14", "10.11": "15", "10.12": "16", "10.13": "17", "10.14": "18", "10.15": "19", "11": "20", "12": "21", "13": "22", "14": "23", "15": "24",
+            }, "iOS": {
+                "7": "14", "8": "14", "9": "15", "10": "16", "11": "17", "12": "18", "13": "19", "14": "20", "15": "21", "16": "22", "17": "23", "18": "24",
+            }, "tvOS": {
+                "11": "17", "12": "18", "13": "19", "14": "20", "15": "21", "16": "22", "17": "23", "18": "24",
+            }, "visionOS": {
                 "1": "23", "2": "24",
             },
         }
@@ -1169,8 +1138,7 @@ class GenericSystemBlock(Block):
 
         # try to detect automatically
         if not is_universal_arch(
-            self._recipe.settings.get_safe("arch"),
-            self._recipe.settings.possible_values().get("arch")):
+            self._recipe.settings.get_safe("arch"), self._recipe.settings.possible_values().get("arch")):
             os_host = self._recipe.settings.get_safe("os")
             os_host_version = self._recipe.settings.get_safe("os.version")
             arch_host = self._recipe.settings.get_safe("arch")
@@ -1224,14 +1192,13 @@ class GenericSystemBlock(Block):
                 winsdk_version = system_version
 
         gen_platform_sdk_version = [
-            generator_platform,
-            f"version={winsdk_version}" if winsdk_version else None,
+            generator_platform, f"version={winsdk_version}" if winsdk_version else None,
         ]
         gen_platform_sdk_version = ",".join(d for d in gen_platform_sdk_version if d)
 
         return system_version, winsdk_version, gen_platform_sdk_version
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         generator = self._toolchain.generator
         generator_platform = self.get_generator_platform(generator, self._recipe)
         toolset = self.get_toolset(generator, self._recipe)
@@ -1242,8 +1209,7 @@ class GenericSystemBlock(Block):
         cmake_sysroot = cmake_sysroot.replace("\\", "/") if cmake_sysroot is not None else None
         if cmake_sysroot is not None:
             cmake_sysroot = relativize_path(
-                cmake_sysroot, self._recipe,
-                "${CMAKE_CURRENT_LIST_DIR}")
+                cmake_sysroot, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
 
         result = self._get_winsdk_version(system_version, generator_platform)
         system_version, winsdk_version, gen_platform_sdk_version = result
@@ -1272,49 +1238,41 @@ class ExtraVariablesBlock(Block):
         {% endif %}
         """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         from thirdparty.cmake.utils import parse_extra_variable
         # Reading configuration from "tools.cmake.cmaketoolchain:extra_variables"
         extra_variables = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:extra_variables",
-            default={}, check_type=dict)
+            "tools.cmake.cmaketoolchain:extra_variables", default={}, check_type=dict)
         compilation_verbosity = self._recipe.conf.get(
-            "tools.compilation:verbosity",
-            choices=("quiet", "verbose"))
+            "tools.compilation:verbosity", choices=("quiet", "verbose"))
         build_verbosity = self._recipe.conf.get(
-            "tools.build:verbosity",
-            choices=("quiet", "verbose"))
+            "tools.build:verbosity", choices=("quiet", "verbose"))
         if build_verbosity == "quiet":
             build_verbosity = "error"
 
         if compilation_verbosity == "verbose":
             extra_variables.setdefault(
-                "CMAKE_VERBOSE_MAKEFILE",
-                {
-                    "cache": True, "type": "BOOL",
-                    "value": "ON",
+                "CMAKE_VERBOSE_MAKEFILE", {
+                    "cache": True, "type": "BOOL", "value": "ON",
                 })
 
         if build_verbosity:
             extra_variables.setdefault(
-                "CMAKE_MESSAGE_LOG_LEVEL",
-                {
-                    "cache": True, "type": "STRING",
-                    "value": build_verbosity.upper(),
+                "CMAKE_MESSAGE_LOG_LEVEL", {
+                    "cache": True, "type": "STRING", "value": build_verbosity.upper(),
                 })
 
         parsed_extra_variables = {}
         for key, value in extra_variables.items():
             parsed_extra_variables[key] = parse_extra_variable(
-                "tools.cmake.cmaketoolchain:extra_variables",
-                key, value)
+                "tools.cmake.cmaketoolchain:extra_variables", key, value)
         return {"extra_variables": parsed_extra_variables}
 
 
 class OutputDirsBlock(Block):
 
     @property
-    def template(self):
+    def template(self) -> str:
         return textwrap.dedent(
             """
             # Definition of CMAKE_INSTALL_XXX folders
@@ -1352,7 +1310,7 @@ class OutputDirsBlock(Block):
         elements = getattr(self._recipe.cpp.package, name)
         return elements[0] if elements else None
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         pf = self._recipe.folders.package
         return {
             "package_folder": pf.as_posix() if pf else None,
@@ -1365,7 +1323,7 @@ class OutputDirsBlock(Block):
 
 class VariablesBlock(Block):
     @property
-    def template(self):
+    def template(self) -> str:
         return textwrap.dedent(
             """
             # Definition of CMake variables from CMakeToolchain.variables values
@@ -1399,16 +1357,15 @@ class VariablesBlock(Block):
             {{ iterate_configs(variables_config, action='set') }}
             """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         return {
-            "variables": self._toolchain.variables,
-            "variables_config": self._toolchain.variables.configuration_types,
+            "variables": self._toolchain.variables, "variables_config": self._toolchain.variables.configuration_types,
         }
 
 
 class PreprocessorBlock(Block):
     @property
-    def template(self):
+    def template(self) -> str:
         return textwrap.dedent(
             """
             # Preprocessor definitions from CMakeToolchain.preprocessor_definitions values
@@ -1436,17 +1393,15 @@ class PreprocessorBlock(Block):
             {% endfor %}
             """)
 
-    def context(self):
+    def context(self) -> dict[str, Any] | None:
         return {
-            "preprocessor_definitions": self._toolchain.preprocessor_definitions,
-            "preprocessor_definitions_config":
-                self._toolchain.preprocessor_definitions.configuration_types,
+            "preprocessor_definitions": self._toolchain.preprocessor_definitions, "preprocessor_definitions_config": self._toolchain.preprocessor_definitions.configuration_types,
         }
 
 
 class ToolchainBlocks:
-    def __init__(self, recipe, toolchain, items=None):
-        self._blocks = {}
+    def __init__(self, recipe: RecipeBase, toolchain: Any, items: Any = None):
+        self._blocks: dict[str, Block] = {}
         self._recipe = recipe
         self._toolchain = toolchain
         if items:
@@ -1459,12 +1414,12 @@ class ToolchainBlocks:
     def items(self):
         return self._blocks.items()
 
-    def remove(self, name, *args):
+    def remove(self, name: str, *args: str):
         del self._blocks[name]
         for arg in args:
             del self._blocks[arg]
 
-    def select(self, name, *args):
+    def select(self, name: str, *args: str):
         """
         keep the blocks provided as arguments, remove the others, except pre-existing "variables"
         and "preprocessor", to not break behavior
@@ -1475,25 +1430,24 @@ class ToolchainBlocks:
         to_keep = [name] + list(args) + ["variables", "preprocessor"]
         self._blocks = {k: v for k, v in self._blocks.items() if k in to_keep}
 
-    def enabled(self, name, *args):
+    def enabled(self, name: str, *args: str):
         """
         keep the blocks provided as arguments, remove the others
         """
         to_keep = [name] + list(args)
         self._blocks = {k: v for k, v in self._blocks.items() if k in to_keep}
 
-    def __setitem__(self, name, block_type):
+    def __setitem__(self, name: str, block_type: Any):
         # Create a new class inheriting Block with the elements of the provided one
         block_type = type('proxyUserBlock', (Block,), dict(block_type.__dict__))
         self._blocks[name] = block_type(self._recipe, self._toolchain, name)
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str):
         return self._blocks[name]
 
     def process_blocks(self):
         blocks = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:enabled_blocks",
-            check_type=list)
+            "tools.cmake.cmaketoolchain:enabled_blocks", check_type=list)
         if blocks is not None:
             try:
                 new_blocks = {b: self._blocks[b] for b in blocks}

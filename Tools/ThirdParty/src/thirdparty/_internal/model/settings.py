@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+from typing import Any
 
 import yaml
 
@@ -9,18 +12,16 @@ from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty.errors import RecipeException
 
 
-def bad_value_msg(name, value, value_range):
+def bad_value_msg(name: str, value: Any, value_range: Any) -> str:
     return ("Invalid setting '%s' is not a valid '%s' value.\nPossible values are %s\n"
-            'Read "http://docs.thirdparty.io/2/knowledge/faq.html#error-invalid-setting"'
-            # value range can be either a list or a dict, we only want to list the keys
+            'Read "http://docs.thirdparty.io/2/knowledge/faq.html#error-invalid-setting"' # value range can be either a list or a dict, we only want to list the keys
             % (value, name, [v for v in value_range if v is not None]))
 
 
-def undefined_field(name, field, fields=None, value=None):
+def undefined_field(name: str, field: str, fields: Any = None, value: Any = None) -> RecipeException:
     value_str = " for '%s'" % value if value else ""
     result = [
-        "'%s.%s' doesn't exist%s" % (name, field, value_str),
-        "'%s' possible configurations are %s" % (name, fields or "none"),
+        "'%s.%s' doesn't exist%s" % (name, field, value_str), "'%s' possible configurations are %s" % (name, fields or "none"),
     ]
     return RecipeException("\n".join(result))
 
@@ -32,13 +33,13 @@ class SettingsItem:
     - A dict {subsetting: definition}, e.g. {version: [], runtime: []} for VS
     """
 
-    def __init__(self, definition, name, value):
+    def __init__(self, definition: Any, name: str, value: Any):
         self._definition = definition  # range of possible values
         self._name = name  # settings.compiler
         self._value = value  # gcc
 
     @staticmethod
-    def new(definition, name):
+    def new(definition: Any, name: str) -> SettingsItem:
         if definition is None:
             raise RecipeException(f"Definition of settings.yml '{name}' cannot be null")
         if isinstance(definition, dict):
@@ -53,10 +54,10 @@ class SettingsItem:
             parsed_definitions = [str(v) if v is not None else None for v in definition]
         return SettingsItem(parsed_definitions, name, None)
 
-    def __contains__(self, value):
+    def __contains__(self, value: object) -> bool:
         return value in (self._value or "")
 
-    def copy(self):
+    def copy(self) -> SettingsItem:
         """ deepcopy, recursive
         """
         if not isinstance(self._definition, dict):
@@ -65,7 +66,7 @@ class SettingsItem:
             definition = {k: v.copy() for k, v in self._definition.items()}
         return SettingsItem(definition, self._name, self._value)
 
-    def copy_package_id_info_settings(self):
+    def copy_package_id_info_settings(self) -> SettingsItem:
         """ deepcopy, recursive
         This function adds "ANY" to lists, to allow the ``package_id()`` method to modify some of
         values, but not all, just the "final" values without subsettings.
@@ -86,15 +87,15 @@ class SettingsItem:
             definition["ANY"] = Settings()
         return SettingsItem(definition, self._name, self._value)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         if not self._value:
             return False
         return self._value.lower() not in ["false", "none", "0", "off"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._value)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if other is None:
             return self._value is None
         # Note: comparison does NOT validate `other` against the defined value range.
@@ -105,38 +106,38 @@ class SettingsItem:
         other = str(other) if other is not None else None
         return other == self._value
 
-    def __delattr__(self, item):
+    def __delattr__(self, item: str):
         """ This is necessary to remove libcxx subsetting from compiler in config()
            del self.settings.compiler.stdlib
         """
         child_setting = self._get_child(self._value)
         delattr(child_setting, item)
 
-    def _validate(self, value):
+    def _validate(self, value: Any) -> str | None:
         value = str(value) if value is not None else None
         is_universal = is_universal_arch(value, self._definition) if self._name == "settings.arch" else False
         if "ANY" not in self._definition and value not in self._definition and not is_universal:
             raise RecipeException(bad_value_msg(self._name, value, self._definition))
         return value
 
-    def _get_child(self, item):
+    def _get_child(self, item: str) -> Settings:
         if not isinstance(self._definition, dict):
             raise undefined_field(self._name, item, None, self._value)
         if self._value is None:
             raise RecipeException("'%s' value not defined" % self._name)
         return self._get_definition()
 
-    def _get_definition(self):
+    def _get_definition(self) -> Settings:
         if self._value not in self._definition and "ANY" in self._definition:
             return self._definition["ANY"]
         return self._definition[self._value]
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         item = str(item)
         sub_config_dict = self._get_child(item)
         return getattr(sub_config_dict, item)
 
-    def __setattr__(self, item, value):
+    def __setattr__(self, item: str, value: Any):
         if item[0] == "_" or item.startswith("value"):
             return super(SettingsItem, self).__setattr__(item, value)
 
@@ -145,20 +146,20 @@ class SettingsItem:
         return setattr(sub_config_dict, item, value)
 
     @property
-    def value(self):
+    def value(self) -> str | None:
         return self._value
 
     @value.setter
-    def value(self, v):
+    def value(self, v: Any):
         self._value = self._validate(v)
 
     @property
-    def values_range(self):
+    def values_range(self) -> Any:
         # This needs to support 2 operations: "in" and iteration. Beware it can return "ANY"
         return self._definition
 
     @property
-    def values_list(self):
+    def values_list(self) -> list[Any]:
         if self._value is None:
             return []
         result = []
@@ -175,7 +176,7 @@ class SettingsItem:
         if isinstance(self._definition, dict):
             self._get_definition().validate()
 
-    def possible_values(self):
+    def possible_values(self) -> Any:
         if isinstance(self._definition, list):
             return self.values_range.copy()
         ret = {}
@@ -183,7 +184,7 @@ class SettingsItem:
             ret[key] = value.possible_values()
         return ret
 
-    def rm_safe(self, name):
+    def rm_safe(self, name: str):
         """ Iterates all possible subsettings, calling rm_safe() for all of them. If removing
         "compiler.cppstd", this will iterate msvc, gcc, clang, etc, calling rm_safe(cppstd) for
         all of them"""
@@ -194,7 +195,7 @@ class SettingsItem:
 
 
 class Settings:
-    def __init__(self, definition=None, name="settings", parent_value="settings"):
+    def __init__(self, definition: Any = None, name: str = "settings", parent_value: Any = "settings"):
         if parent_value is None and definition:
             raise RecipeException("settings.yml: null setting can't have subsettings")
         definition = definition or {}
@@ -203,10 +204,10 @@ class Settings:
             raise RecipeException(f"Invalid settings.yml format: '{name}{val}' is not a dictionary")
         self._name = name  # settings, settings.compiler
         self._parent_value = parent_value  # gcc, x86
-        self._data = {k: SettingsItem.new(v, f"{name}.{k}") for k, v in definition.items()}
+        self._data: dict[str, SettingsItem] = {k: SettingsItem.new(v, f"{name}.{k}") for k, v in definition.items()}
         self._frozen = False
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         """
         Returns a dictionary with all the settings (and sub-settings) as ``field: value``
         """
@@ -216,7 +217,7 @@ class Settings:
             ret.extend(s.values_list)
         return dict(ret)
 
-    def get_safe(self, name, default=None):
+    def get_safe(self, name: str, default: Any = None) -> Any:
         """
         Get the setting value avoiding throwing if it does not exist or has been removed
         :param name:
@@ -233,7 +234,7 @@ class Settings:
             return tmp.value
         return default
 
-    def rm_safe(self, name):
+    def rm_safe(self, name: str):
         """ Removes the setting or subsetting from the definition. For example,
         rm_safe("compiler.cppstd") remove all "cppstd" subsetting from all compilers, irrespective
         of the current value of the "compiler"
@@ -250,20 +251,20 @@ class Settings:
             else:
                 self._data.pop(name, None)
 
-    def copy(self):
+    def copy(self) -> Settings:
         """ deepcopy, recursive
         """
         result = Settings({}, name=self._name, parent_value=self._parent_value)
         result._data = {k: v.copy() for k, v in self._data.items()}
         return result
 
-    def copy_package_id_info_settings(self):
+    def copy_package_id_info_settings(self) -> Settings:
         result = Settings({}, name=self._name, parent_value=self._parent_value)
         result._data = {k: v.copy_package_id_info_settings() for k, v in self._data.items()}
         return result
 
     @staticmethod
-    def loads(text):
+    def loads(text: str) -> Settings:
         try:
             return Settings(yaml.safe_load(text) or {})
         except (yaml.YAMLError, AttributeError) as ye:
@@ -274,27 +275,27 @@ class Settings:
             child.validate()
 
     @property
-    def fields(self):
+    def fields(self) -> list[str]:
         return sorted(list(self._data.keys()))
 
     def clear(self):
         self._data = {}
 
-    def _check_field(self, field):
+    def _check_field(self, field: str):
         if field not in self._data:
             raise undefined_field(self._name, field, self.fields, self._parent_value)
 
-    def __getattr__(self, field):
+    def __getattr__(self, field: str) -> SettingsItem:
         assert field[0] != "_", "ERROR %s" % field
         self._check_field(field)
         return self._data[field]
 
-    def __delattr__(self, field):
+    def __delattr__(self, field: str):
         assert field[0] != "_", "ERROR %s" % field
         self._check_field(field)
         del self._data[field]
 
-    def __setattr__(self, field, value):
+    def __setattr__(self, field: str, value: Any):
         if field[0] == "_":
             return super(Settings, self).__setattr__(field, value)
 
@@ -304,7 +305,7 @@ class Settings:
         self._data[field].value = value
 
     @property
-    def values_list(self):
+    def values_list(self) -> list[Any]:
         # TODO: make it private, leave .items accessor only
         result = []
         for field in self.fields:
@@ -312,10 +313,10 @@ class Settings:
             result.extend(config_item.values_list)
         return result
 
-    def items(self):
+    def items(self) -> list[Any]:
         return self.values_list
 
-    def update_values(self, values, raise_undefined=True):
+    def update_values(self, values: Any, raise_undefined: bool = True):
         """
         Receives a list of tuples (compiler.version, value)
         This is more an updater than a setter.
@@ -334,7 +335,7 @@ class Settings:
                 if raise_undefined:
                     raise
 
-    def constrained(self, constraint_def):
+    def constrained(self, constraint_def: Any):
         """ allows to restrict a given Settings object with the input of another Settings object
         1. The other Settings object MUST be exclusively a subset of the former.
            No additions allowed
@@ -351,7 +352,7 @@ class Settings:
         for k in to_remove:
             del self._data[k]
 
-    def dumps(self):
+    def dumps(self) -> str:
         """ produces a text string with lines containing a flattened version:
         compiler.arch = XX
         compiler.arch.speed = YY
@@ -365,7 +366,7 @@ class Settings:
                 result.append("%s=%s" % (name, value))
         return '\n'.join(result)
 
-    def possible_values(self):
+    def possible_values(self) -> Any:
         """Check the range of values of the definition of a setting
         """
         ret = {}
@@ -374,7 +375,7 @@ class Settings:
         return ret
 
 
-def load_settings_yml(home_folder):
+def load_settings_yml(home_folder: Any) -> Settings:
     """Returns {setting: [value, ...]} defining all the possible
                settings without values"""
     _home_paths = HomePaths(home_folder)

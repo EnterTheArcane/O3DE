@@ -1,16 +1,21 @@
 """
     This is a helper class which offers a lot of useful methods and attributes
 """
-# FIXME: only for tools.gnu? perhaps it should be a global module
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
 from thirdparty.apple.utils import is_apple_os
 from thirdparty.microsoft import is_msvc
 
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class GnuDepsFlags:
 
-    def __init__(self, recipe, cpp_info):
+    def __init__(self, recipe: RecipeBase, cpp_info: Any):
         self._recipe = recipe
         self._subsystem = deduce_subsystem(recipe, scope="build")
 
@@ -29,18 +34,15 @@ class GnuDepsFlags:
         self.exelinkflags = cpp_info.exelinkflags or []
         self.system_libs = self._format_libraries(cpp_info.system_libs)
 
-        # Not used?
-        # self.bin_paths
-        # self.build_paths
-        # self.src_paths
+        # Not used?  # self.bin_paths  # self.build_paths  # self.src_paths
 
     _GCC_LIKE = ['clang', 'apple-clang', 'gcc']
 
     @staticmethod
-    def _format_defines(defines):
+    def _format_defines(defines: Any):
         return ["-D%s" % define for define in defines] if defines else []
 
-    def _format_frameworks(self, frameworks, is_path=False):
+    def _format_frameworks(self, frameworks: Any, is_path: bool = False):
         """
         returns an appropriate compiler flags to link with Apple Frameworks
         or an empty array, if Apple Frameworks aren't supported by the given compiler
@@ -55,21 +57,19 @@ class GnuDepsFlags:
         else:
             return ["-framework %s" % framework for framework in frameworks]
 
-    def _format_include_paths(self, include_paths):
+    def _format_include_paths(self, include_paths: Any):
         if not include_paths:
             return []
         pattern = "/I%s" if is_msvc(self._recipe) else "-I%s"
-        return [pattern % (self._adjust_path(include_path))
-                for include_path in include_paths if include_path]
+        return [pattern % (self._adjust_path(include_path)) for include_path in include_paths if include_path]
 
-    def _format_library_paths(self, library_paths):
+    def _format_library_paths(self, library_paths: Any):
         if not library_paths:
             return []
         pattern = "/LIBPATH:%s" if is_msvc(self._recipe) else "-L%s"
-        return [pattern % self._adjust_path(library_path)
-                for library_path in library_paths if library_path]
+        return [pattern % self._adjust_path(library_path) for library_path in library_paths if library_path]
 
-    def _format_libraries(self, libraries):
+    def _format_libraries(self, libraries: Any):
         if not libraries:
             return []
 
@@ -85,7 +85,7 @@ class GnuDepsFlags:
                 result.append("-l%s" % library)
         return result
 
-    def _adjust_path(self, path):
+    def _adjust_path(self, path: str):
         if is_msvc(self._recipe):
             path = path.replace('/', '\\')
         else:

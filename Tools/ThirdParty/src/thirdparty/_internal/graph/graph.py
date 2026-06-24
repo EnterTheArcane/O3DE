@@ -33,9 +33,7 @@ class Node:
     """
 
     def __init__(
-        self, name: str, version: str, recipe_cls: "type[RecipeBase] | None" = None,
-        host_deps: "list[str] | None" = None, tool_deps: "list[str] | None" = None,
-        *, context: str = CONTEXT_HOST, recipe_state: "str | None" = None) -> None:
+        self, name: str, version: str, recipe_cls: "type[RecipeBase] | None" = None, host_deps: "list[str] | None" = None, tool_deps: "list[str] | None" = None, *, context: str = CONTEXT_HOST, recipe_state: "str | None" = None) -> None:
         self._name: str = name
         self._version: str = version
         self.recipe_cls: "type[RecipeBase] | None" = recipe_cls
@@ -133,10 +131,8 @@ class Graph:
         dependencies are ignored for ordering.  Ties are broken alphabetically for
         deterministic output.
         """
-        sorter = TopologicalSorter({
-            name: [d for d in node.all_deps if d in self.nodes]
-            for name, node in self.nodes.items()
-        })
+        sorter = TopologicalSorter(
+            {name: [d for d in node.all_deps if d in self.nodes] for name, node in self.nodes.items()})
         sorter.prepare()
 
         order: list[str] = []
@@ -152,14 +148,7 @@ class Graph:
 
     @staticmethod
     def build(
-        recipes_root: Path,
-        names: list[str],
-        build_type: str,
-        jobs: int | None = None,
-        transitive: bool = False,
-        target_os: str | None = None,
-        target_arch: str | None = None,
-    ) -> "Graph":
+        recipes_root: Path, names: list[str], build_type: str, jobs: int | None = None, transitive: bool = False, target_os: str | None = None, target_arch: str | None = None, ) -> "Graph":
         """Resolve the dependencies of each recipe in ``names`` and return a graph.
 
         With ``transitive=False`` only the listed recipes become nodes.  With
@@ -173,8 +162,7 @@ class Graph:
         dependencies, so callers can report them rather than silently dropping them.
         """
         from thirdparty._internal.loader import (
-            try_load_recipe_class, resolve_version, make_probe_recipe,
-        )
+            try_load_recipe_class, resolve_version, make_probe_recipe, )
 
         nodes: dict[str, Node] = {}
         queue: list[str] = list(names)
@@ -191,14 +179,12 @@ class Graph:
             version = resolve_version(cls)
             try:
                 probe = make_probe_recipe(
-                    cls, recipes_root, name, version, build_type, jobs=jobs,
-                    target_os=target_os, target_arch=target_arch)
+                    cls, recipes_root, name, version, build_type, jobs=jobs, target_os=target_os, target_arch=target_arch)
                 host_deps, tool_deps = discover_requires(probe)
             except Exception:
                 host_deps, tool_deps = [], []
             nodes[name] = Node(
-                name=name, version=version, recipe_cls=cls,
-                host_deps=host_deps, tool_deps=tool_deps)
+                name=name, version=version, recipe_cls=cls, host_deps=host_deps, tool_deps=tool_deps)
             if transitive:
                 for dep in host_deps + tool_deps:
                     if dep not in seen:

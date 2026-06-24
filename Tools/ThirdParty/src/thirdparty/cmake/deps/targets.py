@@ -1,7 +1,14 @@
+from __future__ import annotations
+
 import textwrap
 
 import jinja2
 from jinja2 import Template
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class TargetsTemplate2:
@@ -9,32 +16,30 @@ class TargetsTemplate2:
     FooTargets.cmake
     """
 
-    def __init__(self, cmakedeps, recipe):
+    def __init__(self, cmakedeps: Any, recipe: RecipeBase):
         self._cmakedeps = cmakedeps
         self._recipe = recipe
 
-    def content(self):
+    def content(self) -> str:
         t = Template(
-            self._template, trim_blocks=True, lstrip_blocks=True,
-            undefined=jinja2.StrictUndefined)
+            self._template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return t.render(self._context)
 
     @property
-    def filename(self):
+    def filename(self) -> str:
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         return f"{f}Targets.cmake"
 
     @property
-    def _context(self):
+    def _context(self) -> dict[str, Any]:
         filename = self._cmakedeps.get_cmake_filename(self._recipe)
         ret = {
-            "ref": str(self._recipe.ref),
-            "filename": filename,
+            "ref": str(self._recipe.ref), "filename": filename,
         }
         return ret
 
     @property
-    def _template(self):
+    def _template(self) -> str:
         return textwrap.dedent(
             """
             include_guard()

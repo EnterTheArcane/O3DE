@@ -7,9 +7,14 @@ import requests
 
 from thirdparty._internal.model.version import Version
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class GoogleSourceRepository:
-    def __init__(self, recipe, url: str) -> None:
+    def __init__(self, recipe: RecipeBase, url: str) -> None:
         self._recipe = recipe
         self._url = url.rstrip("/")
 

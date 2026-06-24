@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import textwrap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import Template
 
@@ -24,24 +24,21 @@ GLOBAL_XCCONFIG_TEMPLATE = textwrap.dedent(
 GLOBAL_XCCONFIG_FILENAME = "recipe_config.xcconfig"
 
 
-def _format_name(name):
+def _format_name(name: str) -> str:
     return re.sub(r'[^A-Za-z0-9_]', '_', name).lower()
 
 
-def _xcconfig_settings_filename(settings, configuration):
+def _xcconfig_settings_filename(settings: Any, configuration: Any) -> str:
     arch = settings.get_safe("arch")
     architecture = _to_apple_arch(arch) or arch
     props = [
-        ("configuration", configuration),
-        ("architecture", architecture),
-        ("sdk name", settings.get_safe("os.sdk")),
-        ("sdk version", settings.get_safe("os.sdk_version")),
+        ("configuration", configuration), ("architecture", architecture), ("sdk name", settings.get_safe("os.sdk")), ("sdk version", settings.get_safe("os.sdk_version")),
     ]
     name = "".join(f"_{v}" for _, v in props if v is not None and v)
     return _format_name(name)
 
 
-def _xcconfig_conditional(settings, configuration):
+def _xcconfig_conditional(settings: Any, configuration: Any) -> str:
     sdk_condition = "*"
     arch = settings.get_safe("arch")
     architecture = _to_apple_arch(arch) or arch
@@ -52,7 +49,7 @@ def _xcconfig_conditional(settings, configuration):
     return f"[config={configuration}][arch={architecture}][sdk={sdk_condition}]"
 
 
-def _add_includes_to_file_or_create(filename, template, files_to_include):
+def _add_includes_to_file_or_create(filename: str, template: str, files_to_include: Any) -> str:
     if os.path.isfile(filename):
         content = load(filename)
     else:
@@ -133,7 +130,7 @@ class XcodeDeps:
         for generator_file, content in generator_files.items():
             save(generator_file, content)
 
-    def _conf_xconfig_file(self, require, pkg_name, comp_name, package_folder, transitive_cpp_infos):
+    def _conf_xconfig_file(self, require: Any, pkg_name: str, comp_name: str, package_folder: str, transitive_cpp_infos: Any) -> str:
         """
         content for recipe_poco_x86_release.xcconfig, containing the activation
         """
@@ -182,7 +179,7 @@ class XcodeDeps:
         content_multi = template.render(**fields)
         return content_multi
 
-    def _dep_xconfig_file(self, pkg_name, comp_name, name_general, dep_xconfig_filename, reqs):
+    def _dep_xconfig_file(self, pkg_name: str, comp_name: str, name_general: str, dep_xconfig_filename: str, reqs: Any) -> str:
         # Current directory is the generators_folder
         multi_path = name_general
         if os.path.isfile(multi_path):
@@ -193,27 +190,20 @@ class XcodeDeps:
             def _get_includes(components):
                 # if we require the root component dep::dep include recipe_dep.xcconfig
                 # for components (dep::component) include recipe_dep_component.xcconfig
-                return [f"recipe_{_format_name(component[0])}.xcconfig" if component[0] == component[1]
-                        else f"recipe_{_format_name(component[0])}_{_format_name(component[1])}.xcconfig"
-                        for component in components]
+                return [f"recipe_{_format_name(component[0])}.xcconfig" if component[0] == component[1] else f"recipe_{_format_name(component[0])}_{_format_name(component[1])}.xcconfig" for component in components]
 
             content_multi = Template(content_multi).render(
                 {
-                    "pkg_name": pkg_name,
-                    "comp_name": comp_name,
-                    "dep_xconfig_filename": dep_xconfig_filename,
-                    "deps_includes": _get_includes(reqs),
+                    "pkg_name": pkg_name, "comp_name": comp_name, "dep_xconfig_filename": dep_xconfig_filename, "deps_includes": _get_includes(reqs),
                 })
 
         if dep_xconfig_filename not in content_multi:
             content_multi = content_multi.replace(
-                '.xcconfig"',
-                f'.xcconfig"\n#include "{dep_xconfig_filename}"',
-                1)
+                '.xcconfig"', f'.xcconfig"\n#include "{dep_xconfig_filename}"', 1)
 
         return content_multi
 
-    def _all_xconfig_file(self, deps, content):
+    def _all_xconfig_file(self, deps: Any, content: Any) -> str:
         """
         this is a .xcconfig file including all declared dependencies
         """
@@ -225,7 +215,7 @@ class XcodeDeps:
                 content_multi = content_multi + f'\n#include "{include_file}"\n'
         return content_multi
 
-    def _pkg_xconfig_file(self, components):
+    def _pkg_xconfig_file(self, components: Any) -> str:
         """
         this is a .xcconfig file including the components for each package
         """
@@ -235,13 +225,11 @@ class XcodeDeps:
         return content_multi
 
     @property
-    def _global_xconfig_content(self):
+    def _global_xconfig_content(self) -> str:
         return _add_includes_to_file_or_create(
-            GLOBAL_XCCONFIG_FILENAME,
-            GLOBAL_XCCONFIG_TEMPLATE,
-            [self.general_name])
+            GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, [self.general_name])
 
-    def _get_content_for_component(self, require, pkg_name, component_name, package_folder, transitive_cpp_infos):
+    def _get_content_for_component(self, require: Any, pkg_name: str, component_name: str, package_folder: str, transitive_cpp_infos: Any) -> dict[str, str]:
         result = {}
 
         conf_name = _xcconfig_settings_filename(self._recipe.settings, self.configuration)
@@ -257,7 +245,7 @@ class XcodeDeps:
         return result
 
     @staticmethod
-    def _collect_all_transitive(cpp_info, pkg_dep, all_deps, collected, visited=None):
+    def _collect_all_transitive(cpp_info: Any, pkg_dep: Any, all_deps: Any, collected: Any, visited: Any = None):
         """Recursively collect all transitive CppInfo objects (internal and external)
         into a flat list.
 
@@ -281,18 +269,16 @@ class XcodeDeps:
                 if "::" not in req:
                     # Internal component from the same package
                     XcodeDeps._collect_all_transitive(
-                        pkg_dep.cpp_info.components.get(req), pkg_dep,
-                        all_deps, collected, visited)
+                        pkg_dep.cpp_info.components.get(req), pkg_dep, all_deps, collected, visited)
                 else:
                     XcodeDeps._resolve_external(req, all_deps, collected, visited)
         elif not pkg_dep.cpp_info.has_components:
             for _, d in pkg_dep.dependencies.direct_host.items():
                 XcodeDeps._resolve_external(
-                    f"{d.ref.name}::{d.ref.name}",
-                    all_deps, collected, visited)
+                    f"{d.ref.name}::{d.ref.name}", all_deps, collected, visited)
 
     @staticmethod
-    def _resolve_external(req, all_deps, collected, visited):
+    def _resolve_external(req: str, all_deps: Any, collected: Any, visited: Any):
         """Resolve and follow an external requirement (pkg::comp)."""
 
         ext_pkg, ext_comp = req.split("::", 1)
@@ -303,21 +289,18 @@ class XcodeDeps:
         if not ext_dep.cpp_info.has_components:
             # Package without components: use root cpp_info directly
             XcodeDeps._collect_all_transitive(
-                ext_dep.cpp_info, ext_dep, all_deps,
-                collected, visited)
+                ext_dep.cpp_info, ext_dep, all_deps, collected, visited)
         elif ext_pkg == ext_comp:
             # Dependency on the whole package (pkg::pkg): collect all its components
             for comp in ext_dep.cpp_info.get_sorted_components().values():
                 XcodeDeps._collect_all_transitive(
-                    comp, ext_dep, all_deps,
-                    collected, visited)
+                    comp, ext_dep, all_deps, collected, visited)
         else:
             # Dependency on a specific component (pkg::comp)
             XcodeDeps._collect_all_transitive(
-                ext_dep.cpp_info.components.get(ext_comp), ext_dep,
-                all_deps, collected, visited)
+                ext_dep.cpp_info.components.get(ext_comp), ext_dep, all_deps, collected, visited)
 
-    def _content(self):
+    def _content(self) -> dict[str, str]:
         result = {}
 
         # Generate the config files for each component with name recipe_pkgname_compname.xcconfig
@@ -328,9 +311,7 @@ class XcodeDeps:
 
         direct_deps = self._recipe.dependencies.filter(
             {
-                "direct": True,
-                "build": False,
-                "skip": False,
+                "direct": True, "build": False, "skip": False,
             })
         for require, dep in direct_deps.items():
 
@@ -345,27 +326,22 @@ class XcodeDeps:
 
                     transitive_cpp_infos = []
                     self._collect_all_transitive(
-                        comp_cpp_info, dep, all_deps,
-                        transitive_cpp_infos)
+                        comp_cpp_info, dep, all_deps, transitive_cpp_infos)
 
                     # In case dep is editable and package_folder=None
                     pkg_folder = dep.folders.package or dep.recipe_folder
                     component_content = self._get_content_for_component(
-                        require, dep_name, comp_name,
-                        pkg_folder,
-                        transitive_cpp_infos)
+                        require, dep_name, comp_name, pkg_folder, transitive_cpp_infos)
                     include_components_names.append((dep_name, comp_name))
                     result.update(component_content)
             else:
                 transitive_cpp_infos = []
                 self._collect_all_transitive(
-                    dep.cpp_info, dep, all_deps,
-                    transitive_cpp_infos)
+                    dep.cpp_info, dep, all_deps, transitive_cpp_infos)
                 # In case dep is editable and package_folder=None
                 pkg_folder = dep.folders.package or dep.recipe_folder
                 root_content = self._get_content_for_component(
-                    require, dep_name, dep_name, pkg_folder,
-                    transitive_cpp_infos)
+                    require, dep_name, dep_name, pkg_folder, transitive_cpp_infos)
                 include_components_names.append((dep_name, dep_name))
                 result.update(root_content)
 

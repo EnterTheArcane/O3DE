@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import fnmatch
 import hashlib
@@ -29,21 +31,18 @@ BUILT_IN_CONFS = {
     "core:allow_uppercase_pkg_names": "Temporarily (will be removed in 2.X) allow uppercase names",
     "core.version_ranges:resolve_prereleases": "Whether version ranges can resolve to pre-releases or not",
     "core.download:download_cache": "Define path to a source file download cache",
-    "core.cache:storage_path": "Absolute path where the packages and database are stored",
-    # Sources backup
+    "core.cache:storage_path": "Absolute path where the packages and database are stored", # Sources backup
     "core.sources:download_cache": "Folder to store the sources backup",
     "core.sources:download_urls": "List of URLs to download backup sources from",
     "core.sources:upload_url": "Remote URL to upload backup sources to",
     "core.sources:exclude_urls": "URLs which will not be backed up",
-    "core.sources.patch:extra_path": "Extra path to search for patch files for recipe create",
-    # Package ID
+    "core.sources.patch:extra_path": "Extra path to search for patch files for recipe create", # Package ID
     "core.package_id:default_unknown_mode": "By default, 'semver_mode'",
     "core.package_id:default_non_embed_mode": "By default, 'minor_mode'",
     "core.package_id:default_embed_mode": "By default, 'full_mode'",
     "core.package_id:default_python_mode": "By default, 'minor_mode'",
     "core.package_id:default_build_mode": "By default, 'None'",
-    "core.package_id:config_mode": "How the 'config_version' affects binaries. By default 'None'",
-    # General HTTP(python-requests) configuration
+    "core.package_id:config_mode": "How the 'config_version' affects binaries. By default 'None'", # General HTTP(python-requests) configuration
     "core.net.http:max_retries": "Maximum number of connection retries (requests library)",
     "core.net.http:timeout": "Number of seconds without response to timeout (requests library)",
     "core.net.http:no_proxy_match": "List of urls to skip from proxies configuration",
@@ -52,11 +51,9 @@ BUILT_IN_CONFS = {
     "core.net.http:client_cert": "Path or tuple of files containing a client cert (and key)",
     "core.net.http:clean_system_proxy": "If defined, the proxies system env-vars will be discarded",
     "core.gzip:compresslevel": "The Gzip compression level for Recipe artifacts (default=9)",
-    "core:compresslevel": "The compression level for Recipe artifacts (default zstd=3, gz=9)",
-    # Excluded from revision_mode = "scm" dirty and Git().is_dirty() checks
+    "core:compresslevel": "The compression level for Recipe artifacts (default zstd=3, gz=9)", # Excluded from revision_mode = "scm" dirty and Git().is_dirty() checks
     "core.scm:excluded": "List of excluded patterns for builtin git dirty checks",
-    "core.scm:local_url": "By default allows to store local folders as remote url, but not upload them. Use 'allow' for allowing upload and 'block' to completely forbid it",
-    # Tools
+    "core.scm:local_url": "By default allows to store local folders as remote url, but not upload them. Use 'allow' for allowing upload and 'block' to completely forbid it", # Tools
     "tools.android:ndk_path": "Argument for the CMAKE_ANDROID_NDK",
     "tools.android:cmake_legacy_toolchain": "Define to explicitly pass ANDROID_USE_LEGACY_TOOLCHAIN_FILE in CMake toolchain",
     "tools.build:skip_test": "Do not execute CMake.test() and Meson.test() when enabled",
@@ -129,8 +126,7 @@ BUILT_IN_CONFS = {
     "tools.apple:enable_visibility": "(boolean) Enable/Disable Visibility Apple Clang flags",
     "tools.env.virtualenv:powershell": "If specified, it generates PowerShell launchers (.ps1). Use this configuration setting the PowerShell executable you want to use (e.g., 'powershell.exe' or 'pwsh')",
     "tools.env:dotenv": "(Experimental) Generate dotenv environment files",
-    "tools.env:deactivation_mode": "(Experimental) If 'function', generate a deactivate function instead of a script to unset the environment variables",
-    # Compilers/Flags configurations
+    "tools.env:deactivation_mode": "(Experimental) If 'function', generate a deactivate function instead of a script to unset the environment variables", # Compilers/Flags configurations
     "tools.build:compiler_executables": "Defines a Python dict-like with the compilers path to be used. Allowed keys {'c', 'cpp', 'cuda', 'objc', 'objcxx', 'rc', 'fortran', 'asm', 'hip', 'ispc'}",
     "tools.build:cxxflags": "List of extra CXX flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:cflags": "List of extra C flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
@@ -138,11 +134,9 @@ BUILT_IN_CONFS = {
     "tools.build:sharedlinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:exelinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:rcflags": "List of extra RC (resource compiler) flags used by different toolchains like CMakeToolchain, MSBuildToolchain and MesonToolchain",
-    "tools.build:linker_scripts": "List of linker script files to pass to the linker used by different toolchains like CMakeToolchain, AutotoolsToolchain, and MesonToolchain",
-    # Toolchain installation
+    "tools.build:linker_scripts": "List of linker script files to pass to the linker used by different toolchains like CMakeToolchain, AutotoolsToolchain, and MesonToolchain", # Toolchain installation
     "tools.build:install_strip": "(boolean or list) True/False to strip on install for every CMake, Meson and Autotools "
-                                 "integration, or a list of 'cmake', 'meson', 'autotools' to strip only for those.",
-    # Package ID composition
+                                 "integration, or a list of 'cmake', 'meson', 'autotools' to strip only for those.", # Package ID composition
     "tools.info.package_id:confs": "List of existing configuration to be part of the package ID",
 }
 
@@ -170,7 +164,7 @@ class _ConfVarPlaceHolder:
 
 class _ConfValue:
 
-    def __init__(self, name, value, path=False, update=None, important=False):
+    def __init__(self, name: str, value: Any, path: bool = False, update: bool | None = None, important: bool = False):
         self.name = name
         self._important = important
         self._value = value
@@ -179,7 +173,7 @@ class _ConfValue:
         self._update = update
 
     @staticmethod
-    def parse(name, value, path=False, update=None):
+    def parse(name: str, value: Any, path: bool = False, update: bool | None = None) -> _ConfValue:
         if name != name.lower():
             raise RecipeException(f"Conf '{name}' must be lowercase")
         name, important = (name[:-1], True) if name[-1] == "!" else (name, False)
@@ -187,24 +181,23 @@ class _ConfValue:
             raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
         return _ConfValue(name, value, path=path, update=update, important=important)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._value)
 
     @property
-    def value(self):
+    def value(self) -> Any:
         if self._value_type is list and _ConfVarPlaceHolder in self._value:
             v = self._value[:]
             v.remove(_ConfVarPlaceHolder)
             return v
         return self._value
 
-    def copy(self):
+    def copy(self) -> _ConfValue:
         # Using copy for when self._value is a mutable list
         return _ConfValue(
-            self.name, copy.copy(self._value), self._path, self._update,
-            self._important)
+            self.name, copy.copy(self._value), self._path, self._update, self._important)
 
-    def dumps(self):
+    def dumps(self) -> str:
         name = f"{self.name}!" if self._important else self.name
         if self._value is None:
             return f"{name}=!"  # unset
@@ -215,7 +208,7 @@ class _ConfValue:
         else:
             return f"{name}={self._value}"
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         name = f"{self.name}!" if self._important else self.name
         if self._value is None:
             _value = "!"  # unset
@@ -227,18 +220,18 @@ class _ConfValue:
             _value = self._value
         return {name: _value}
 
-    def update(self, value):
+    def update(self, value: dict[Any, Any]):
         assert self._value_type is dict, "Only dicts can be updated"
         assert isinstance(value, dict), "Only dicts can update"
         self._value.update(value)
 
-    def remove(self, value):
+    def remove(self, value: Any):
         if self._value_type is list:
             self._value.remove(value)
         elif self._value_type is dict:
             self._value.pop(value, None)
 
-    def append(self, value):
+    def append(self, value: Any):
         if self._value_type is not list:
             raise RecipeException("Only list-like values can append other values.")
 
@@ -249,7 +242,7 @@ class _ConfValue:
                 raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
             self._value.append(value)
 
-    def prepend(self, value):
+    def prepend(self, value: Any):
         if self._value_type is not list:
             raise RecipeException("Only list-like values can prepend other values.")
 
@@ -260,7 +253,7 @@ class _ConfValue:
                 raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
             self._value.insert(0, value)
 
-    def compose_conf_value(self, other):
+    def compose_conf_value(self, other: _ConfValue):
         """
         self has precedence, the "other" will add/append if possible and not conflicting, but
         self mandates what to do. If self has define(), without placeholder, that will remain.
@@ -309,12 +302,11 @@ class _ConfValue:
         elif important:  # equal type, but just string
             self._value = other._value
 
-    def set_relative_base_folder(self, folder):
+    def set_relative_base_folder(self, folder: str):
         if not self._path:
             return
         if isinstance(self._value, list):
-            self._value = [os.path.join(folder, v) if v != _ConfVarPlaceHolder else v
-                           for v in self._value]
+            self._value = [os.path.join(folder, v) if v != _ConfVarPlaceHolder else v for v in self._value]
         if isinstance(self._value, dict):
             self._value = {k: os.path.join(folder, v) for k, v in self._value.items()}
         elif isinstance(self._value, str):
@@ -328,9 +320,9 @@ class Conf:
 
     def __init__(self):
         # It being ordered allows for Windows case-insensitive composition
-        self._values = {}  # {var_name: [] of values, including separators}
+        self._values: dict[str, _ConfValue] = {}  # {var_name: [] of values, including separators}
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._values)
 
     def clear(self):
@@ -345,8 +337,8 @@ class Conf:
         for k, v in self._values.items():
             yield k, v.value
 
-    def get(self, conf_name: str, default: Any = None, check_type: Any = None,
-            choices: Any = None) -> Any:
+    def get(
+        self, conf_name: str, default: Any = None, check_type: Any = None, choices: Any = None) -> Any:
         """
         Get all the values of the given configuration name.
 
@@ -379,8 +371,7 @@ class Conf:
                 # TODO: this would be converting things like lists to strings without
                 #   proper error, is it worth trying to change it?
                 return str(v)
-            elif (check_type is not None and not isinstance(v, check_type) or
-                  check_type is int and isinstance(v, bool)):
+            elif (check_type is not None and not isinstance(v, check_type) or check_type is int and isinstance(v, bool)):
                 raise RecipeException(
                     f"[conf] {conf_name} must be a "
                     f"{check_type.__name__}-like object. The value '{v}' "
@@ -389,7 +380,7 @@ class Conf:
         else:
             return default
 
-    def pop(self, conf_name, default=None):
+    def pop(self, conf_name: str, default: Any = None) -> Any:
         """
         Remove the given configuration, returning its value.
 
@@ -401,28 +392,26 @@ class Conf:
         self._values.pop(conf_name, None)
         return value
 
-    def show(self, fnpattern, pattern=""):
-        return {key: self.get(key)
-                for key in self._values.keys()
-                if fnmatch.fnmatch(pattern + key, fnpattern)}
+    def show(self, fnpattern: str, pattern: str = "") -> dict[str, Any]:
+        return {key: self.get(key) for key in self._values.keys() if fnmatch.fnmatch(pattern + key, fnpattern)}
 
-    def copy(self):
+    def copy(self) -> Conf:
         c = Conf()
         c._values = {k: v.copy() for k, v in self._values.items()}
         return c
 
-    def filter_core(self):
+    def filter_core(self) -> Conf:
         c = Conf()
         c._values = {k: v.copy() for k, v in self._values.items() if not CORE_CONF_PATTERN.match(k)}
         return c
 
-    def dumps(self):
+    def dumps(self) -> str:
         """
         Returns a string with the format ``name=conf-value``
         """
         return "\n".join([v.dumps() for v in sorted(self._values.values(), key=lambda x: x.name)])
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         """
         Returns a dict-like object, e.g., ``{"tools.xxxx": "value1"}``
         """
@@ -431,7 +420,7 @@ class Conf:
             ret.update(v.serialize())
         return ret
 
-    def define(self, name, value):
+    def define(self, name: str, value: Any):
         """
         Define a value for the given configuration name.
 
@@ -441,11 +430,11 @@ class Conf:
         v = _ConfValue.parse(name, value)
         self._values[v.name] = v
 
-    def define_path(self, name, value):
+    def define_path(self, name: str, value: Any):
         v = _ConfValue.parse(name, value, path=True)
         self._values[v.name] = v
 
-    def unset(self, name):
+    def unset(self, name: str):
         """
         Clears the variable, equivalent to a unset or set XXX=
 
@@ -454,7 +443,7 @@ class Conf:
         v = _ConfValue.parse(name, None)
         self._values[v.name] = v
 
-    def update(self, name, value):
+    def update(self, name: str, value: Any):
         """
         Update the value to the given configuration name.
 
@@ -465,11 +454,11 @@ class Conf:
         conf_value = _ConfValue.parse(name, {}, update=True)
         self._values.setdefault(conf_value.name, conf_value).update(value)
 
-    def update_path(self, name, value):
+    def update_path(self, name: str, value: Any):
         conf_value = _ConfValue.parse(name, {}, path=True, update=True)
         self._values.setdefault(conf_value.name, conf_value).update(value)
 
-    def append(self, name, value):
+    def append(self, name: str, value: Any):
         """
         Append a value to the given configuration name.
 
@@ -479,11 +468,11 @@ class Conf:
         conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder])
         self._values.setdefault(conf_value.name, conf_value).append(value)
 
-    def append_path(self, name, value):
+    def append_path(self, name: str, value: Any):
         conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder], path=True)
         self._values.setdefault(conf_value.name, conf_value).append(value)
 
-    def prepend(self, name, value):
+    def prepend(self, name: str, value: Any):
         """
         Prepend a value to the given configuration name.
 
@@ -493,11 +482,11 @@ class Conf:
         conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder])
         self._values.setdefault(conf_value.name, conf_value).prepend(value)
 
-    def prepend_path(self, name, value):
+    def prepend_path(self, name: str, value: Any):
         conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder], path=True)
         self._values.setdefault(conf_value.name, conf_value).prepend(value)
 
-    def remove(self, name, value):
+    def remove(self, name: str, value: Any):
         """
         Remove a value from the given configuration name.
 
@@ -510,7 +499,7 @@ class Conf:
         else:
             raise RecipeException(f"Conf {name} does not exist.")
 
-    def compose_conf(self, other):
+    def compose_conf(self, other: Conf) -> Conf:
         """
         :param other: other has less priority than current one
         :type other: Conf
@@ -523,7 +512,7 @@ class Conf:
                 existing.compose_conf_value(v)
         return self
 
-    def copy_package_id_info_conf(self):
+    def copy_package_id_info_conf(self) -> Conf:
         """
         Get a new `Conf()` object with all the configurations required by the consumer
         to be included in the final `PackageIdInfo().package_id()` computation. For instance, let's
@@ -558,12 +547,12 @@ class Conf:
                     result.define(name, value)
         return result
 
-    def set_relative_base_folder(self, folder):
+    def set_relative_base_folder(self, folder: str):
         for v in self._values.values():
             v.set_relative_base_folder(folder)
 
     @staticmethod
-    def _check_conf_name(conf):
+    def _check_conf_name(conf: str):
         if conf.startswith("user"):
             if USER_CONF_PATTERN.match(conf) is None:
                 raise RecipeException(f"User conf '{conf}' invalid format, not 'user.org.group:conf'")
@@ -576,26 +565,24 @@ class Conf:
 class ConfDefinition:
     # Order is important, "define" must be latest
     actions = (
-        ("+=", "append"), ("=+", "prepend"),
-        ("=!", "unset"), ("*=", "update"), ("=", "define"),
+        ("+=", "append"), ("=+", "prepend"), ("=!", "unset"), ("*=", "update"), ("=", "define"),
     )
 
     def __init__(self):
-        self._pattern_confs = {}
+        self._pattern_confs: dict[str | None, Conf] = {}
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._pattern_confs)
 
-    def get(self, conf_name, default=None, check_type=None, choices=None):
+    def get(self, conf_name: str, default: Any = None, check_type: Any = None, choices: Any = None) -> Any:
         """
         Get the value of the conf name requested and convert it to the [type]-like passed.
         """
         pattern, name = self._split_pattern_name(conf_name)
         return self._pattern_confs.get(pattern, Conf()).get(
-            name, default=default,
-            check_type=check_type, choices=choices)
+            name, default=default, check_type=check_type, choices=choices)
 
-    def show(self, fnpattern):
+    def show(self, fnpattern: str) -> dict[str, Any]:
         """
         Get the value of the confs that match the requested pattern
         """
@@ -609,12 +596,11 @@ class ConfDefinition:
 
             pattern_values = patter_conf.show(fnpattern, patter_key)
             result.update(
-                {patter_key + pattern_subkey: pattern_subvalue
-                 for pattern_subkey, pattern_subvalue in pattern_values.items()})
+                {patter_key + pattern_subkey: pattern_subvalue for pattern_subkey, pattern_subvalue in pattern_values.items()})
 
         return result
 
-    def pop(self, conf_name, default=None):
+    def pop(self, conf_name: str, default: Any = None) -> Any:
         """
         Remove the conf name passed.
         """
@@ -622,14 +608,14 @@ class ConfDefinition:
         return self._pattern_confs.get(pattern, Conf()).pop(name, default=default)
 
     @staticmethod
-    def _split_pattern_name(pattern_name):
+    def _split_pattern_name(pattern_name: str) -> tuple[str | None, str]:
         if pattern_name.count(":") >= 2:
             pattern, name = pattern_name.split(":", 1)
         else:
             pattern, name = None, pattern_name
         return pattern, name
 
-    def get_recipe_conf(self, ref, is_consumer=False):
+    def get_recipe_conf(self, ref: Any, is_consumer: bool = False) -> Conf:
         """ computes package-specific Conf
         it is only called when recipe.buildenv is called
         the last one found in the profile file has top priority
@@ -641,7 +627,7 @@ class ConfDefinition:
                 result = conf.copy().compose_conf(result)
         return result
 
-    def update_conf_definition(self, other):
+    def update_conf_definition(self, other: ConfDefinition):
         """
         :type other: ConfDefinition
         :param other: The argument profile has priority/precedence over the current one.
@@ -649,14 +635,14 @@ class ConfDefinition:
         for pattern, conf in other._pattern_confs.items():
             self._update_conf_definition(pattern, conf)
 
-    def _update_conf_definition(self, pattern, conf):
+    def _update_conf_definition(self, pattern: str | None, conf: Conf):
         existing = self._pattern_confs.get(pattern)
         if existing:
             self._pattern_confs[pattern] = conf.compose_conf(existing)
         else:
             self._pattern_confs[pattern] = conf
 
-    def rebase_conf_definition(self, global_conf):
+    def rebase_conf_definition(self, global_conf: ConfDefinition):
         """
         for taking the new global.conf and composing with the profile [conf]
         :type global_conf: ConfDefinition
@@ -669,7 +655,7 @@ class ConfDefinition:
         self._pattern_confs = result._pattern_confs
         return
 
-    def update(self, key, value, profile=False, method="define"):
+    def update(self, key: str, value: Any, profile: bool = False, method: str = "define"):
         """
         Define/append/prepend/unset any Conf line
         >> update("tools.build:verbosity", "verbose")
@@ -695,7 +681,7 @@ class ConfDefinition:
         # Update
         self._update_conf_definition(pattern, conf)
 
-    def dumps(self):
+    def dumps(self) -> str:
         result = []
         for pattern, conf in self._pattern_confs.items():
             if pattern is None:
@@ -703,13 +689,12 @@ class ConfDefinition:
             else:
                 result.append(
                     "\n".join(
-                        f"{pattern}:{line}" if line else ""
-                        for line in conf.dumps().splitlines()))
+                        f"{pattern}:{line}" if line else "" for line in conf.dumps().splitlines()))
         if result:
             result.append("")
         return "\n".join(result)
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         result = {}
         for pattern, conf in self._pattern_confs.items():
             if pattern is None:
@@ -720,7 +705,7 @@ class ConfDefinition:
         return result
 
     @staticmethod
-    def _get_evaluated_value(_v):
+    def _get_evaluated_value(_v: str) -> Any:
         """
         Function to avoid eval() catching local variables
         """
@@ -729,13 +714,12 @@ class ConfDefinition:
         except (Exception,):  # It means eval() failed because of a string without quotes
             value = _v.strip()
         else:
-            if not isinstance(value, (numbers.Number, bool, dict, list, set, tuple)) \
-                and value is not None:
+            if not isinstance(value, (numbers.Number, bool, dict, list, set, tuple)) and value is not None:
                 # If it is quoted string we respect it as-is
                 value = _v.strip()
         return value
 
-    def loads(self, text, profile=False):
+    def loads(self, text: str, profile: bool = False):
         self._pattern_confs = {}
 
         for line in text.splitlines():

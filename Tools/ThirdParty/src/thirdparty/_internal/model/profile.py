@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import copy
 from collections import OrderedDict, defaultdict
+from typing import Any
 
 from thirdparty._internal.model.conf import ConfDefinition
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
+from thirdparty._internal.model.settings import Settings
 from thirdparty.env.environment import ProfileEnvironment
 from thirdparty.errors import RecipeException
 
@@ -14,47 +18,40 @@ class Profile:
 
     def __init__(self):
         # Input sections, as defined by user profile files and command line
-        self.settings = OrderedDict()
-        self.package_settings = defaultdict(OrderedDict)
+        self.settings: OrderedDict[str, Any] = OrderedDict()
+        self.package_settings: dict[str, Any] = defaultdict(OrderedDict)
         self.options = Options()
-        self.tool_requires = OrderedDict()  # ref pattern: list of ref
-        self.replace_requires = {}
-        self.replace_tool_requires = {}
-        self.platform_tool_requires = []
-        self.platform_requires = []
+        self.tool_requires: OrderedDict[str, Any] = OrderedDict()  # ref pattern: list of ref
+        self.replace_requires: dict[Any, Any] = {}
+        self.replace_tool_requires: dict[Any, Any] = {}
+        self.platform_tool_requires: list[Any] = []
+        self.platform_requires: list[Any] = []
         self.conf = ConfDefinition()
         self.buildenv = ProfileEnvironment()
         self.runenv = ProfileEnvironment()
-        self.runner = {}
+        self.runner: dict[Any, Any] = {}
 
         # Cached processed values
-        self.processed_settings = None  # Settings with values, and smart completion
-        self._package_settings_values = None
+        self.processed_settings: Settings | None = None  # Settings with values, and smart completion
+        self._package_settings_values: dict[str, Any] | None = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.dumps()
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         def _serialize_tool_requires():
-            return {pattern: [repr(ref) for ref in refs]
-                    for pattern, refs in self.tool_requires.items()}
+            return {pattern: [repr(ref) for ref in refs] for pattern, refs in self.tool_requires.items()}
 
         result = {
-            "settings": self.settings,
-            "package_settings": self.package_settings,
-            "options": self.options.serialize(),
-            "tool_requires": _serialize_tool_requires(),
-            "conf": self.conf.serialize(),
+            "settings": self.settings, "package_settings": self.package_settings, "options": self.options.serialize(), "tool_requires": _serialize_tool_requires(), "conf": self.conf.serialize(),
             # FIXME: Perform a serialize method for ProfileEnvironment
             "build_env": self.buildenv.dumps(),
         }
 
         if self.replace_requires:
-            result["replace_requires"] = {str(pattern): str(replace) for pattern, replace in
-                                          self.replace_requires.items()}
+            result["replace_requires"] = {str(pattern): str(replace) for pattern, replace in self.replace_requires.items()}
         if self.replace_tool_requires:
-            result["replace_tool_requires"] = {str(pattern): str(replace) for pattern, replace in
-                                               self.replace_tool_requires.items()}
+            result["replace_tool_requires"] = {str(pattern): str(replace) for pattern, replace in self.replace_tool_requires.items()}
         if self.platform_tool_requires:
             result["platform_tool_requires"] = [str(t) for t in self.platform_tool_requires]
 
@@ -64,19 +61,19 @@ class Profile:
         return result
 
     @property
-    def package_settings_values(self):
+    def package_settings_values(self) -> dict[str, Any]:
         if self._package_settings_values is None:
             self._package_settings_values = {}
             for pkg, settings in self.package_settings.items():
                 self._package_settings_values[pkg] = list(settings.items())
         return self._package_settings_values
 
-    def process_settings(self, cache_settings):
+    def process_settings(self, cache_settings: Settings):
         assert self.processed_settings is None, "processed settings must be None"
         self.processed_settings = cache_settings.copy()
         self.processed_settings.update_values(list(self.settings.items()))
 
-    def dumps(self):
+    def dumps(self) -> str:
         result = ["[settings]"]
         for name, value in sorted(self.settings.items()):
             result.append("%s=%s" % (name, value))
@@ -129,7 +126,7 @@ class Profile:
 
         return "\n".join(result).replace("\n\n", "\n")
 
-    def compose_profile(self, other):
+    def compose_profile(self, other: Profile):
         self.update_settings(other.settings)
         self.update_package_settings(other.package_settings)
         self.options.update_options(other.options)
@@ -140,12 +137,10 @@ class Profile:
             if existing_tool_requires is not None:
                 for br in existing_tool_requires:
                     # TODO: Understand why sometimes they are str and other are RecipeReference
-                    r = RecipeReference.loads(br) \
-                        if not isinstance(br, RecipeReference) else br
+                    r = RecipeReference.loads(br) if not isinstance(br, RecipeReference) else br
                     existing[r.name] = br
             for req in req_list:
-                r = RecipeReference.loads(req) \
-                    if not isinstance(req, RecipeReference) else req
+                r = RecipeReference.loads(req) if not isinstance(req, RecipeReference) else req
                 existing[r.name] = req
             self.tool_requires[pattern] = list(existing.values())
 
@@ -171,7 +166,7 @@ class Profile:
         self.buildenv.update_profile_env(other.buildenv)  # Profile composition, last has priority
         self.runenv.update_profile_env(other.runenv)
 
-    def update_settings(self, new_settings):
+    def update_settings(self, new_settings: Any):
         """Mix the specified settings with the current profile.
         Specified settings are prioritized to profile"""
 
@@ -193,7 +188,7 @@ class Profile:
             res.update(new_settings)
             self.settings = res
 
-    def update_package_settings(self, package_settings):
+    def update_package_settings(self, package_settings: Any):
         """Mix the specified package settings with the specified profile.
         Specified package settings are prioritized to profile"""
         for package_name, settings in package_settings.items():

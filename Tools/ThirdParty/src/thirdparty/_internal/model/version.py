@@ -53,7 +53,7 @@ class Version:
     It is just a helper to parse "." or "-" and compare taking into account integers when possible
     """
 
-    def __init__(self, value, qualifier=False):
+    def __init__(self, value, qualifier: bool = False):
         value = str(value)
         self._value = value
         self._build = None
@@ -166,8 +166,7 @@ class Version:
         if not isinstance(other, Version):
             other = Version(other, self._qualifier)
 
-        return (self._nonzero_items, self._pre, self._build) == \
-            (other._nonzero_items, other._pre, other._build)
+        return (self._nonzero_items, self._pre, self._build) == (other._nonzero_items, other._pre, other._build)
 
     def __hash__(self):
         return hash((self._nonzero_items, self._pre, self._build))
@@ -180,8 +179,7 @@ class Version:
 
         if self._pre:
             if other._pre:  # both are pre-releases
-                return (self._nonzero_items, self._pre, self._build) < \
-                    (other._nonzero_items, other._pre, other._build)
+                return (self._nonzero_items, self._pre, self._build) < (other._nonzero_items, other._pre, other._build)
             else:  # Left hand is pre-release, right side is regular
                 if self._nonzero_items == other._nonzero_items:  # Problem only happens if both equal
                     return True

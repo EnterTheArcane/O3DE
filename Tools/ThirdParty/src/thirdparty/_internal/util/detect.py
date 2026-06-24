@@ -24,26 +24,18 @@ def _settings_template():
 @lru_cache(maxsize=1)
 def _detect_msvc_version():
     vswhere = os.path.join(
-        os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
-        "Microsoft Visual Studio", "Installer", "vswhere.exe",
-    )
+        os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"), "Microsoft Visual Studio", "Installer", "vswhere.exe", )
     if not os.path.exists(vswhere):
         return None
     try:
         install_path = subprocess.check_output(
             [
-                vswhere, "-latest",
-                "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-                "-property", "installationPath",
-            ],
-            text=True, stderr=subprocess.DEVNULL,
-        ).strip()
+                vswhere, "-latest", "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath",
+            ], text=True, stderr=subprocess.DEVNULL, ).strip()
         if not install_path:
             return None
         ver_file = os.path.join(
-            install_path, "VC", "Auxiliary", "Build",
-            "Microsoft.VCToolsVersion.default.txt",
-        )
+            install_path, "VC", "Auxiliary", "Build", "Microsoft.VCToolsVersion.default.txt", )
         if not os.path.exists(ver_file):
             return None
         with open(ver_file) as f:
@@ -74,8 +66,7 @@ def _detect_linux_compiler():
     for exe in ("gcc", "clang", "cc"):
         try:
             out = subprocess.check_output(
-                [exe, "--version"], text=True, stderr=subprocess.STDOUT,
-            )
+                [exe, "--version"], text=True, stderr=subprocess.STDOUT, )
             if "clang" in out.lower():
                 m = re.search(r"clang version (\d+)", out)
                 if m:
@@ -145,9 +136,7 @@ def detect_settings(build_type="Release", target_os=None, target_arch=None):
 
     settings.update_values(
         [
-            ("os", the_os),
-            ("arch", arch),
-            ("build_type", build_type),
+            ("os", the_os), ("arch", arch), ("build_type", build_type),
         ], raise_undefined=False)
 
     # Compiler detection is keyed on the BUILD MACHINE os (the locally available toolchain).
@@ -156,38 +145,26 @@ def detect_settings(build_type="Release", target_os=None, target_arch=None):
         if msvc_ver:
             settings.update_values(
                 [
-                    ("compiler", "msvc"),
-                    ("compiler.version", msvc_ver),
-                    ("compiler.runtime", "dynamic"),
-                    ("compiler.cppstd", "17"),
+                    ("compiler", "msvc"), ("compiler.version", msvc_ver), ("compiler.runtime", "dynamic"), ("compiler.cppstd", "17"),
                 ], raise_undefined=False)
     elif machine_os == "Mac":
         ver = _detect_apple_clang_version()
         if ver:
             settings.update_values(
                 [
-                    ("compiler", "apple-clang"),
-                    ("compiler.version", ver + ".0"),
-                    ("compiler.libcxx", "libc++"),
-                    ("compiler.cppstd", "17"),
+                    ("compiler", "apple-clang"), ("compiler.version", ver + ".0"), ("compiler.libcxx", "libc++"), ("compiler.cppstd", "17"),
                 ], raise_undefined=False)
     else:
         compiler, ver = _detect_linux_compiler()
         if compiler == "gcc":
             settings.update_values(
                 [
-                    ("compiler", "gcc"),
-                    ("compiler.version", ver),
-                    ("compiler.libcxx", "libstdc++11"),
-                    ("compiler.cppstd", "17"),
+                    ("compiler", "gcc"), ("compiler.version", ver), ("compiler.libcxx", "libstdc++11"), ("compiler.cppstd", "17"),
                 ], raise_undefined=False)
         elif compiler == "clang":
             settings.update_values(
                 [
-                    ("compiler", "clang"),
-                    ("compiler.version", ver),
-                    ("compiler.libcxx", "libc++"),
-                    ("compiler.cppstd", "17"),
+                    ("compiler", "clang"), ("compiler.version", ver), ("compiler.libcxx", "libc++"), ("compiler.cppstd", "17"),
                 ], raise_undefined=False)
 
     # os.version (deployment target) applies to the TARGET os; only known when the build

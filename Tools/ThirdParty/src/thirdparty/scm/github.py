@@ -10,6 +10,11 @@ from github.Repository import Repository
 
 from thirdparty._internal.model.version import Version
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 def _tag_version(tag: str) -> Version | None:
     # Strip a leading identifier+separator prefix: "vulkan-sdk-", "nasm-", "m4-",
@@ -41,10 +46,7 @@ def _tag_version(tag: str) -> Version | None:
     if had_prefix and v.main[0].value >= 1000:
         return None
     # Reject digit-starting YYYY-MM-DD style date tags (e.g. "2021-01-15").
-    if (not had_prefix and len(v.main) == 3
-        and v.main[0].value > 1970
-        and 1 <= v.main[1].value <= 12
-        and 1 <= v.main[2].value <= 31):
+    if (not had_prefix and len(v.main) == 3 and v.main[0].value > 1970 and 1 <= v.main[1].value <= 12 and 1 <= v.main[2].value <= 31):
         return None
     return v
 
@@ -60,7 +62,7 @@ class GithubRepository:
     (subject to GitHub's 60 req/hour unauthenticated rate limit).
     """
 
-    def __init__(self, recipe, slug: str) -> None:
+    def __init__(self, recipe: RecipeBase, slug: str) -> None:
         self._recipe = recipe
         self._slug = slug
 

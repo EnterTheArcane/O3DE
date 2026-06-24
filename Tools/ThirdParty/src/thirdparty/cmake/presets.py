@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import platform
@@ -12,18 +14,27 @@ from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft import is_msvc
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 def write_cmake_presets(
-    recipe, toolchain_file, generator, cache_variables,
-    user_presets_path=None, preset_prefix=None, buildenv=None, runenv=None,
-    cmake_executable=None, absolute_paths=None):
+    recipe: RecipeBase,
+    toolchain_file: Any,
+    generator: Any,
+    cache_variables: Any,
+    user_presets_path: Any = None,
+    preset_prefix: Any = None,
+    buildenv: Any = None,
+    runenv: Any = None,
+    cmake_executable: Any = None,
+    absolute_paths: Any = None):
     preset_path, preset_data = _CMakePresets.generate(
-        recipe, toolchain_file, generator,
-        cache_variables, preset_prefix, buildenv,
-        runenv, cmake_executable, absolute_paths)
+        recipe, toolchain_file, generator, cache_variables, preset_prefix, buildenv, runenv, cmake_executable, absolute_paths)
     _IncludingPresets.generate(
-        recipe, preset_path, user_presets_path, preset_prefix, preset_data,
-        absolute_paths)
+        recipe, preset_path, user_presets_path, preset_prefix, preset_data, absolute_paths)
 
 
 class _CMakePresets:
@@ -32,8 +43,7 @@ class _CMakePresets:
 
     @staticmethod
     def generate(
-        recipe, toolchain_file, generator, cache_variables, preset_prefix, buildenv,
-        runenv, cmake_executable, absolute_paths):
+        recipe: RecipeBase, toolchain_file: Any, generator: Any, cache_variables: Any, preset_prefix: Any, buildenv: Any, runenv: Any, cmake_executable: Any, absolute_paths: Any) -> tuple[str, dict[str, Any]]:
         toolchain_file = os.path.abspath(os.path.join(recipe.folders.generators, toolchain_file))
         if not absolute_paths:
             try:  # Make it relative to the build dir if possible
@@ -46,8 +56,7 @@ class _CMakePresets:
                 cache_variables["CMAKE_SH"] = "CMAKE_SH-NOTFOUND"
 
         cmake_make_program = recipe.conf.get(
-            "tools.gnu:make_program",
-            default=cache_variables.get("CMAKE_MAKE_PROGRAM"))
+            "tools.gnu:make_program", default=cache_variables.get("CMAKE_MAKE_PROGRAM"))
         if cmake_make_program:
             cmake_make_program = cmake_make_program.replace("\\", "/")
             cache_variables["CMAKE_MAKE_PROGRAM"] = cmake_make_program
@@ -73,21 +82,16 @@ class _CMakePresets:
             data = json.loads(load(preset_path))
             build_preset = _CMakePresets._build_preset_fields(recipe, multiconfig, preset_prefix)
             test_preset = _CMakePresets._test_preset_fields(
-                recipe, multiconfig, preset_prefix,
-                runenv)
+                recipe, multiconfig, preset_prefix, runenv)
             _CMakePresets._insert_preset(data, "buildPresets", build_preset)
             _CMakePresets._insert_preset(data, "testPresets", test_preset)
             configure_preset = _CMakePresets._configure_preset(
-                recipe, generator, cache_variables,
-                toolchain_file, multiconfig,
-                preset_prefix, buildenv,
-                cmake_executable)
+                recipe, generator, cache_variables, toolchain_file, multiconfig, preset_prefix, buildenv, cmake_executable)
             # Recipe generated presets should have only 1 configurePreset, no more, overwrite it
             data["configurePresets"] = [configure_preset]
         else:
             data = _CMakePresets._contents(
-                recipe, toolchain_file, cache_variables, generator,
-                preset_prefix, buildenv, runenv, cmake_executable)
+                recipe, toolchain_file, cache_variables, generator, preset_prefix, buildenv, runenv, cmake_executable)
 
         preset_content = json.dumps(data, indent=4)
         save(preset_path, preset_content)
@@ -95,7 +99,7 @@ class _CMakePresets:
         return preset_path, data
 
     @staticmethod
-    def _insert_preset(data, preset_type, preset):
+    def _insert_preset(data: Any, preset_type: str, preset: Any):
         presets = data.setdefault(preset_type, [])
         preset_name = preset["name"]
         positions = [index for index, p in enumerate(presets) if p["name"] == preset_name]
@@ -106,33 +110,24 @@ class _CMakePresets:
 
     @staticmethod
     def _contents(
-        recipe, toolchain_file, cache_variables, generator, preset_prefix, buildenv,
-        runenv, cmake_executable):
+        recipe: RecipeBase, toolchain_file: Any, cache_variables: Any, generator: Any, preset_prefix: Any, buildenv: Any, runenv: Any, cmake_executable: Any) -> dict[str, Any]:
         """
         Contents for the CMakePresets.json
         It uses schema version 3 unless it is forced to 2
         """
         multiconfig = is_multi_configuration(generator)
         conf = _CMakePresets._configure_preset(
-            recipe, generator, cache_variables, toolchain_file,
-            multiconfig, preset_prefix, buildenv,
-            cmake_executable)
+            recipe, generator, cache_variables, toolchain_file, multiconfig, preset_prefix, buildenv, cmake_executable)
         build = _CMakePresets._build_preset_fields(recipe, multiconfig, preset_prefix)
         test = _CMakePresets._test_preset_fields(recipe, multiconfig, preset_prefix, runenv)
         ret = {
-            "version": 3,
-            "vendor": {"recipe": {}},
-            "cmakeMinimumRequired": {"major": 3, "minor": 15, "patch": 0},
-            "configurePresets": [conf],
-            "buildPresets": [build],
-            "testPresets": [test],
+            "version": 3, "vendor": {"recipe": {}}, "cmakeMinimumRequired": {"major": 3, "minor": 15, "patch": 0}, "configurePresets": [conf], "buildPresets": [build], "testPresets": [test],
         }
         return ret
 
     @staticmethod
     def _configure_preset(
-        recipe, generator, cache_variables, toolchain_file, multiconfig,
-        preset_prefix, buildenv, cmake_executable):
+        recipe: RecipeBase, generator: Any, cache_variables: Any, toolchain_file: Any, multiconfig: bool, preset_prefix: Any, buildenv: Any, cmake_executable: Any) -> dict[str, Any]:
         build_type = recipe.settings.get_safe("build_type")
         name = _CMakePresets._configure_preset_name(recipe, multiconfig)
         if preset_prefix:
@@ -140,11 +135,7 @@ class _CMakePresets:
         if not multiconfig and build_type:
             cache_variables["CMAKE_BUILD_TYPE"] = build_type
         ret = {
-            "name": name,
-            "displayName": f"'{name}' config",
-            "description": f"'{name}' configure using '{generator}' generator",
-            "generator": generator,
-            "cacheVariables": cache_variables,
+            "name": name, "displayName": f"'{name}' config", "description": f"'{name}' configure using '{generator}' generator", "generator": generator, "cacheVariables": cache_variables,
         }
 
         if buildenv:
@@ -159,8 +150,7 @@ class _CMakePresets:
             # It seems "external" strategy is enough, as it is defined by toolchain
             if toolset:
                 ret["toolset"] = {
-                    "value": toolset,
-                    "strategy": "external",
+                    "value": toolset, "strategy": "external",
                 }
             arch = GenericSystemBlock.get_generator_platform("Visual", recipe)
             # https://learn.microsoft.com/en-us/cpp/build/cmake-presets-vs
@@ -168,8 +158,7 @@ class _CMakePresets:
                 arch = "x86"  # for command line, it is not Win32, it is x86
             if arch:
                 ret["architecture"] = {
-                    "value": arch,
-                    "strategy": "external",
+                    "value": arch, "strategy": "external",
                 }
 
         # Second attempt at upstream issue 13136
@@ -198,8 +187,7 @@ class _CMakePresets:
         if is_consumer(recipe) and recipe.tested_reference_str is None:
             # upstream PR 12034#issuecomment-1253776285
             vars_tip = " ".join([f"-D{k}={_format_val(v)}" for k, v in cache_variables.items()])
-            tc_tip = f"-DCMAKE_TOOLCHAIN_FILE=<output_folder>/{toolchain_file} " \
-                if "CMAKE_TOOLCHAIN_FILE" not in vars_tip else ""
+            tc_tip = f"-DCMAKE_TOOLCHAIN_FILE=<output_folder>/{toolchain_file} " if "CMAKE_TOOLCHAIN_FILE" not in vars_tip else ""
 
             msg = textwrap.dedent(
                 f"""
@@ -211,7 +199,7 @@ class _CMakePresets:
         return ret
 
     @staticmethod
-    def _common_preset_fields(recipe, multiconfig, preset_prefix):
+    def _common_preset_fields(recipe: RecipeBase, multiconfig: bool, preset_prefix: Any) -> dict[str, Any]:
         build_type = recipe.settings.get_safe("build_type")
         configure_preset_name = _CMakePresets._configure_preset_name(recipe, multiconfig)
         build_preset_name = _CMakePresets._build_and_test_preset_name(recipe)
@@ -224,7 +212,7 @@ class _CMakePresets:
         return ret
 
     @staticmethod
-    def _build_preset_fields(recipe, multiconfig, preset_prefix):
+    def _build_preset_fields(recipe: RecipeBase, multiconfig: bool, preset_prefix: Any) -> dict[str, Any]:
         ret = _CMakePresets._common_preset_fields(recipe, multiconfig, preset_prefix)
         build_preset_jobs = build_jobs(recipe)
         if build_preset_jobs:
@@ -232,7 +220,7 @@ class _CMakePresets:
         return ret
 
     @staticmethod
-    def _test_preset_fields(recipe, multiconfig, preset_prefix, runenv):
+    def _test_preset_fields(recipe: RecipeBase, multiconfig: bool, preset_prefix: Any, runenv: Any) -> dict[str, Any]:
         ret = _CMakePresets._common_preset_fields(recipe, multiconfig, preset_prefix)
         build_preset_jobs = build_jobs(recipe)
         if build_preset_jobs:
@@ -242,7 +230,7 @@ class _CMakePresets:
         return ret
 
     @staticmethod
-    def _build_and_test_preset_name(recipe):
+    def _build_and_test_preset_name(recipe: RecipeBase) -> str:
         build_type = recipe.settings.get_safe("build_type")
         custom_conf, user_defined_build = get_build_folder_custom_vars(recipe)
         if user_defined_build:
@@ -256,7 +244,7 @@ class _CMakePresets:
         return build_type.lower() if build_type else "default"
 
     @staticmethod
-    def _configure_preset_name(recipe, multiconfig):
+    def _configure_preset_name(recipe: RecipeBase, multiconfig: bool) -> str:
         build_type = recipe.settings.get_safe("build_type")
         custom_conf, user_defined_build = get_build_folder_custom_vars(recipe)
 
@@ -279,8 +267,7 @@ class _IncludingPresets:
 
     @staticmethod
     def generate(
-        recipe, preset_path, user_presets_path, preset_prefix, preset_data,
-        absolute_paths):
+        recipe: RecipeBase, preset_path: Any, user_presets_path: Any, preset_prefix: Any, preset_data: Any, absolute_paths: Any):
         if not user_presets_path:
             return
 
@@ -307,8 +294,7 @@ class _IncludingPresets:
 
         if not os.path.exists(user_presets_path):
             data = {
-                "version": 4,
-                "vendor": {"recipe": dict()},
+                "version": 4, "vendor": {"recipe": dict()},
             }
         else:
             data = json.loads(load(user_presets_path))
@@ -334,15 +320,13 @@ class _IncludingPresets:
         save(user_presets_path, data)
 
     @staticmethod
-    def _update_stubs(data, inherited_user, output_dir, absolute_paths):
+    def _update_stubs(data: Any, inherited_user: Any, output_dir: str, absolute_paths: Any) -> dict[str, Any]:
         """
         Set configurePresets/buildPresets/testPresets to stubs for recipe-* presets
         that the user inherits but that don't have a real preset of the same type in the includes.
         """
         real_preset_names_by_type = {
-            "configurePresets": set(),
-            "buildPresets": set(),
-            "testPresets": set(),
+            "configurePresets": set(), "buildPresets": set(), "testPresets": set(),
         }
         for inc in data.get("include", []):
             inc_path = os.path.join(output_dir, inc) if not absolute_paths else inc
@@ -371,7 +355,7 @@ class _IncludingPresets:
         return data
 
     @staticmethod
-    def _collect_user_inherits(output_dir, preset_prefix):
+    def _collect_user_inherits(output_dir: str, preset_prefix: Any) -> dict[str, Any]:
         # Collect all the existing targets in the user files, to create empty recipe- presets
         # so things doesn't break for multi-platform, when inherits don't exist
         collected_targets = {}
@@ -395,7 +379,7 @@ class _IncludingPresets:
         return collected_targets
 
     @staticmethod
-    def _append_user_preset_path(data, preset_path, output_dir):
+    def _append_user_preset_path(data: Any, preset_path: Any, output_dir: str) -> dict[str, Any]:
         """ - Appends a 'include' to preset_path if the schema supports it.
             - Otherwise it merges to "data" all the configurePresets, buildPresets etc from the
               read preset_path.
@@ -403,14 +387,13 @@ class _IncludingPresets:
         if "include" not in data:
             data["include"] = []
         # Clear the folders that have been deleted
-        data["include"] = [i for i in data.get("include", [])
-                           if os.path.exists(os.path.join(output_dir, i))]
+        data["include"] = [i for i in data.get("include", []) if os.path.exists(os.path.join(output_dir, i))]
         if preset_path not in data["include"]:
             data["include"].append(preset_path)
         return data
 
 
-def load_cmake_presets(folder):
+def load_cmake_presets(folder: str) -> dict[str, Any]:
     try:
         tmp = load(os.path.join(folder, "CMakePresets.json"))
     except FileNotFoundError:

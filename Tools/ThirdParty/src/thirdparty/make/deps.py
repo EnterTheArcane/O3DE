@@ -24,21 +24,27 @@ The recipe_deps.mk file layout is as follows:
 - Aggregated global variables for simplification, sum all dependencies to common variables (e.g. RECIPE_INCLUDE_DIRS)
 
 """
+from __future__ import annotations
 
 import os
 import re
 import textwrap
-from typing import Optional
+from typing import Any, Optional
 
 from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.output import Output
 from thirdparty.files import save
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 RECIPE_MAKEFILE_FILENAME = "recipe_deps.mk"
 
 
-def _get_formatted_dirs(folders: list, prefix_path_: str, name: str) -> list:
+def _get_formatted_dirs(folders: list[Any], prefix_path_: str, name: str) -> list[Any]:
     """ Format the directories to be used in the makefile, adding the prefix path if needed
     :param folders: list of directories
     :param prefix_path_: prefix path
@@ -70,7 +76,7 @@ def _makefy(name: str) -> str:
     return re.sub(r'[^0-9A-Z_]', '_', name.upper())
 
 
-def _makefy_properties(properties: Optional[dict]) -> dict:
+def _makefy_properties(properties: Optional[dict]) -> dict[str, Any]:
     """
     Convert property dictionary keys to Make-variable-friendly syntax
     :param properties: The property dictionary to be converted (None is also accepted)
@@ -87,7 +93,7 @@ def _check_property_value(name, value, output):
         return True
 
 
-def _filter_properties(properties: Optional[dict], output) -> dict:
+def _filter_properties(properties: Optional[dict], output) -> dict[str, Any]:
     """
     Filter out properties whose values contain newlines, because they would break the generated makefile
     :param properties: A property dictionary (None is also accepted)
@@ -103,36 +109,21 @@ def _recipe_prefix_flag(variable: str) -> str:
     return f"$(RECIPE_{variable.upper()}_FLAG)" if variable else ""
 
 
-def _common_cppinfo_variables() -> dict:
+def _common_cppinfo_variables() -> dict[str, Any]:
     """
     Regular cppinfo variables exported by any Recipefile and their Makefile prefixes
     """
     return {
-        "objects": None,
-        "libs": "lib",
-        "defines": "define",
-        "cflags": None,
-        "cxxflags": None,
-        "sharedlinkflags": None,
-        "exelinkflags": None,
-        "frameworks": None,
-        "requires": None,
-        "system_libs": "system_lib",
+        "objects": None, "libs": "lib", "defines": "define", "cflags": None, "cxxflags": None, "sharedlinkflags": None, "exelinkflags": None, "frameworks": None, "requires": None, "system_libs": "system_lib",
     }
 
 
-def _common_cppinfo_dirs() -> dict:
+def _common_cppinfo_dirs() -> dict[str, Any]:
     """
     Regular cppinfo folders exported by any Recipefile and their Makefile prefixes
     """
     return {
-        "includedirs": "include_dir",
-        "libdirs": "lib_dir",
-        "bindirs": "bin_dir",
-        "srcdirs": None,
-        "builddirs": None,
-        "resdirs": None,
-        "frameworkdirs": None,
+        "includedirs": "include_dir", "libdirs": "lib_dir", "bindirs": "bin_dir", "srcdirs": None, "builddirs": None, "resdirs": None, "frameworkdirs": None,
     }
 
 
@@ -196,7 +187,7 @@ class MakeInfo:
     Store temporary information about each dependency
     """
 
-    def __init__(self, name: str, dirs: list, flags: list):
+    def __init__(self, name: str, dirs: list[Any], flags: list[Any]):
         """
         :param name: Dependency or component raw name
         :param dirs: cpp_info folders supported by the dependency
@@ -211,14 +202,14 @@ class MakeInfo:
         return self._name
 
     @property
-    def dirs(self) -> list:
+    def dirs(self) -> list[Any]:
         """
         :return: List of cpp_info folders supported by the dependency without duplicates
         """
         return list(set(self._dirs))
 
     @property
-    def flags(self) -> list:
+    def flags(self) -> list[Any]:
         """
         :return: List of cpp_info variables supported by the dependency without duplicates
         """
@@ -270,30 +261,27 @@ class GlobalContentGenerator:
         {{ define_variable_value("RECIPE_DEPS", deps) }}
         """)
 
-    def content(self, deps_cpp_info_dirs: dict, deps_cpp_info_flags: dict) -> str:
+    def content(self, deps_cpp_info_dirs: dict[str, Any], deps_cpp_info_flags: dict[str, Any]) -> str:
         """
         Generate content for Cppinfo variables (e.g. RECIPE_LIBS, RECIPE_INCLUDE_DIRS)
         :param deps_cpp_info_dirs: Formatted dependencies folders
         :param deps_cpp_info_flags: Formatted dependencies variables
         """
         context = {
-            "deps_cpp_info_dirs": deps_cpp_info_dirs,
-            "deps_cpp_info_flags": deps_cpp_info_flags,
+            "deps_cpp_info_dirs": deps_cpp_info_dirs, "deps_cpp_info_flags": deps_cpp_info_flags,
         }
         template = Template(
-            _jinja_format_list_values() + self.template, trim_blocks=True,
-            lstrip_blocks=True, undefined=StrictUndefined)
+            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
-    def deps_content(self, dependencies_names: list) -> str:
+    def deps_content(self, dependencies_names: list[Any]) -> str:
         """
         Generate content for RECIPE_DEPS (e.g. RECIPE_DEPS = zlib, openssl)
         :param dependencies_names: Non-formatted dependencies names
         """
         context = {"deps": dependencies_names}
         template = Template(
-            _jinja_format_list_values() + self.template_deps, trim_blocks=True,
-            lstrip_blocks=True, undefined=StrictUndefined)
+            _jinja_format_list_values() + self.template_deps, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
 
@@ -302,30 +290,28 @@ class GlobalGenerator:
     Process all collected dependencies and parse to generate global content
     """
 
-    def __init__(self, recipe, make_infos):
+    def __init__(self, recipe: RecipeBase, make_infos: Any):
         self._recipe = recipe
         self._make_infos = make_infos
 
-    def _get_dependency_dirs(self) -> dict:
+    def _get_dependency_dirs(self) -> dict[str, Any]:
         """
         List regular directories from cpp_info and format them to be used in the makefile
         """
         dirs = {}
         for var in _common_cppinfo_dirs():
             key = var.replace("dirs", "_dirs")
-            dirs[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})"
-                         for makeinfo in self._make_infos if var in makeinfo.dirs]
+            dirs[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})" for makeinfo in self._make_infos if var in makeinfo.dirs]
         return dirs
 
-    def _get_dependency_flags(self) -> dict:
+    def _get_dependency_flags(self) -> dict[str, Any]:
         """
         List common variables from cpp_info and format them to be used in the makefile
         """
         flags = {}
         for var in _common_cppinfo_variables():
             key = var.replace("dirs", "_dirs")
-            flags[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})"
-                          for makeinfo in self._make_infos if var in makeinfo.flags]
+            flags[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})" for makeinfo in self._make_infos if var in makeinfo.flags]
         return flags
 
     def generate(self) -> str:
@@ -342,8 +328,7 @@ class GlobalGenerator:
         Process dependencies names and generates its Makefile content.
         It should be added as first variable in the Makefile.
         """
-        dependencies = [makeinfo.name for makeinfo in self._make_infos
-                        if makeinfo.name != self._recipe.name]
+        dependencies = [makeinfo.name for makeinfo in self._make_infos if makeinfo.name != self._recipe.name]
         glob_content_gen = GlobalContentGenerator()
         return glob_content_gen.deps_content(dependencies)
 
@@ -377,7 +362,7 @@ class DepComponentContentGenerator:
         {{- define_multiple_variable_value("RECIPE_PROPERTY_{}_{}".format(dep_name, name), properties) -}}
         """)
 
-    def __init__(self, dependency, component_name: str, dirs: dict, flags: dict, output):
+    def __init__(self, dependency: Any, component_name: str, dirs: dict[str, Any], flags: dict[str, Any], output: Any):
         """
         :param dependency: The dependency object that owns the component
         :param component_name: component raw name e.g. poco::poco_json
@@ -404,8 +389,7 @@ class DepComponentContentGenerator:
             "properties": _makefy_properties(_filter_properties(self._dep.cpp_info.components[self._name]._properties, self._output)),
         }
         template = Template(
-            _jinja_format_list_values() + self.template, trim_blocks=True,
-            lstrip_blocks=True, undefined=StrictUndefined)
+            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
 
@@ -446,7 +430,7 @@ class DepContentGenerator:
         {{- define_multiple_variable_value("RECIPE_PROPERTY_{}".format(name), properties) -}}
         """)
 
-    def __init__(self, dependency, require, root: str, sysroot, dirs: dict, flags: dict, output):
+    def __init__(self, dependency: Any, require: Any, root: str, sysroot: Any, dirs: dict[str, Any], flags: dict[str, Any], output: Any):
         self._dep = dependency
         self._req = require
         self._root = root
@@ -471,8 +455,7 @@ class DepContentGenerator:
             "properties": _makefy_properties(_filter_properties(self._dep.cpp_info._properties, self._output)),
         }
         template = Template(
-            _jinja_format_list_values() + self.template, trim_blocks=True,
-            lstrip_blocks=True, undefined=StrictUndefined)
+            _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         return template.render(context)
 
 
@@ -481,7 +464,7 @@ class DepComponentGenerator:
     Generates Makefile content for a dependency component
     """
 
-    def __init__(self, dependency, makeinfo: MakeInfo, component_name: str, component, root: str, output):
+    def __init__(self, dependency: Any, makeinfo: MakeInfo, component_name: str, component: Any, root: str, output: Any):
         """
         :param dependency: The dependency object that owns the component
         :param makeinfo: Makeinfo to store component variables
@@ -496,7 +479,7 @@ class DepComponentGenerator:
         self._makeinfo = makeinfo
         self._output = output
 
-    def _get_component_dirs(self) -> dict:
+    def _get_component_dirs(self) -> dict[str, Any]:
         """
         List regular directories from cpp_info and format them to be used in the makefile
         :return: A dictionary with regular folder name and its formatted path
@@ -513,7 +496,7 @@ class DepComponentGenerator:
         return dirs
 
     @staticmethod
-    def _rootify(root: str, root_id: str, path_list: list) -> list:
+    def _rootify(root: str, root_id: str, path_list: list[Any]) -> list[Any]:
         """
         Replaces component folder path by its root node folder path in case they match
         :param root: root folder path for component's father
@@ -524,10 +507,9 @@ class DepComponentGenerator:
         root_len = len(root)
         root_with_sep = root + os.sep
         root_var_ref = f"$(RECIPE_ROOT_{_makefy(root_id)})"
-        return [root_var_ref + path[root_len:].replace("\\", "/") if path.startswith(root_with_sep)
-                else path for path in path_list]
+        return [root_var_ref + path[root_len:].replace("\\", "/") if path.startswith(root_with_sep) else path for path in path_list]
 
-    def _get_component_flags(self) -> dict:
+    def _get_component_flags(self) -> dict[str, Any]:
         """
         List common variables from cpp_info and format them to be used in the makefile
         :return: A dictionary with regular flag/variable name and its formatted value with prefix
@@ -561,7 +543,7 @@ class DepGenerator:
     Process a dependency cpp_info variables and generate its Makefile content
     """
 
-    def __init__(self, dependency, require, output):
+    def __init__(self, dependency: Any, require: Any, output: Any):
         self._dep = dependency
         self._req = require
         self._info = MakeInfo(self._dep.ref.name, [], [])
@@ -574,7 +556,7 @@ class DepGenerator:
         """
         return self._info
 
-    def _get_dependency_dirs(self, root: str, dependency) -> dict:
+    def _get_dependency_dirs(self, root: str, dependency: Any) -> dict[str, Any]:
         """
         List regular directories from cpp_info and format them to be used in the makefile
         :param root: Package root folder
@@ -585,8 +567,7 @@ class DepGenerator:
         for var, prefix in _common_cppinfo_dirs().items():
             cppinfo_value = getattr(dependency.cpp_info, var)
             if not cppinfo_value:  # The root value is not defined, there might be components
-                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})"
-                                 for name, obj in dependency.cpp_info.components.items() if getattr(obj, var.lower())]
+                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.cpp_info.components.items() if getattr(obj, var.lower())]
                 prefix = ""
             formatted_dirs = _get_formatted_dirs(cppinfo_value, root, _makefy(dependency.ref.name))
             if formatted_dirs:
@@ -595,7 +576,7 @@ class DepGenerator:
                 dirs[var] = [_recipe_prefix_flag(prefix) + it for it in formatted_dirs]
         return dirs
 
-    def _get_dependency_flags(self, dependency) -> dict:
+    def _get_dependency_flags(self, dependency: Any) -> dict[str, Any]:
         """
         List common variables from cpp_info and format them to be used in the makefile
         :param dependency: Dependency object
@@ -615,7 +596,7 @@ class DepGenerator:
                 flags[var] = [_recipe_prefix_flag(prefix_var) + it for it in cppinfo_value]
         return flags
 
-    def _get_sysroot(self, root: str) -> list:
+    def _get_sysroot(self, root: str) -> list[Any]:
         """
         Get the sysroot of the dependency. Sysroot is a list of directories, or a single directory
         """
@@ -625,7 +606,7 @@ class DepGenerator:
             return []
         return _get_formatted_dirs(sysroot, root, _makefy(self._dep.ref.name)) if sysroot and sysroot[0] else None
 
-    def _get_root_folder(self):
+    def _get_root_folder(self) -> str:
         """
         Get the root folder of the dependency
         """
@@ -658,7 +639,7 @@ class MakeDeps:
 
     _title = "# This Makefile has been generated by Recipe. DO NOT EDIT!\n"
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """

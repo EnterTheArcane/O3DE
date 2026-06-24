@@ -7,9 +7,14 @@ import requests
 
 from thirdparty._internal.model.version import Version
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class BitbucketRepository:
-    def __init__(self, recipe, slug: str) -> None:
+    def __init__(self, recipe: RecipeBase, slug: str) -> None:
         self._recipe = recipe
         self._slug = slug
 

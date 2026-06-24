@@ -17,21 +17,13 @@ from thirdparty.errors import RecipeInvalidConfiguration
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument(
-        "recipe", metavar="<recipe>", nargs="*",
-        help="Recipe name(s) or glob pattern(s) to list (default: all)")
+        "recipe", metavar="<recipe>", nargs="*", help="Recipe name(s) or glob pattern(s) to list (default: all)")
     p.add_argument(
-        "--deps", action="store_true",
-        help="Show each recipe's direct dependencies")
+        "--deps", action="store_true", help="Show each recipe's direct dependencies")
     p.add_argument(
-        "--build-order", action="store_true", dest="build_order",
-        help="List in dependency (build) order instead of alphabetically")
+        "--build-order", action="store_true", dest="build_order", help="List in dependency (build) order instead of alphabetically")
     p.add_argument(
-        "--build-type",
-        default="Release",
-        choices=["Debug", "Release", "RelWithDebInfo"],
-        dest="build_type",
-        metavar="<type>",
-    )
+        "--build-type", default="Release", choices=["Debug", "Release", "RelWithDebInfo"], dest="build_type", metavar="<type>", )
 
 
 def _is_incompatible(recipes_root: Path, node: Node, build_type: str) -> bool:
@@ -68,9 +60,7 @@ def list_recipes(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     all_names = sorted(
-        d.name for d in recipes_root.iterdir()
-        if d.is_dir() and (d / "recipe.py").exists()
-    )
+        d.name for d in recipes_root.iterdir() if d.is_dir() and (d / "recipe.py").exists())
 
     patterns = args.recipe or ["*"]
     names: list[str] = []
@@ -126,5 +116,4 @@ def list_recipes(args: argparse.Namespace) -> None:
     pending_count = len(rows) - built_count - incompatible_count
     print(
         f"{len(rows)} recipes "
-        f"({built_count} built, {incompatible_count} incompatible, {pending_count} pending)"
-    )
+        f"({built_count} built, {incompatible_count} incompatible, {pending_count} pending)")

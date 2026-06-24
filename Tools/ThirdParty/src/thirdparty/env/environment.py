@@ -5,7 +5,7 @@ import textwrap
 from collections import OrderedDict
 from contextlib import contextmanager
 from shlex import quote
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.output import Output
@@ -22,8 +22,7 @@ class _EnvVarPlaceHolder:
 
 
 def environment_wrap_command(
-    recipe, env_filenames, env_folder, cmd, subsystem=None,
-    accepted_extensions=None):
+    recipe: RecipeBase, env_filenames, env_folder, cmd, subsystem=None, accepted_extensions=None):
     if not env_filenames:
         return cmd
     filenames = [env_filenames] if not isinstance(env_filenames, list) else env_filenames
@@ -81,16 +80,16 @@ def environment_wrap_command(
 
 
 class _EnvValue:
-    def __init__(self, name, value=None, separator=" ", path=False):
+    def __init__(self, name: str, value: Any = None, separator: str = " ", path: bool = False):
         self._name = name
-        self._values = [] if value is None else value if isinstance(value, list) else [value]
+        self._values: list[Any] = [] if value is None else value if isinstance(value, list) else [value]
         self._path = path
         self._sep = separator
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._values)  # Empty means unset
 
-    def dumps(self):
+    def dumps(self) -> str:
         result = []
         path = "(path)" if self._path else ""
         sep = f"(sep={self._sep})" if self._sep != " " and not self._path else ""
@@ -109,17 +108,17 @@ class _EnvValue:
                 append = "+"
         return "\n".join(result)
 
-    def copy(self):
+    def copy(self) -> _EnvValue:
         return _EnvValue(self._name, self._values, self._sep, self._path)
 
     @property
-    def is_path(self):
+    def is_path(self) -> bool:
         return self._path
 
-    def remove(self, value):
+    def remove(self, value: Any):
         self._values.remove(value)
 
-    def append(self, value, separator=None):
+    def append(self, value: Any, separator: str | None = None):
         if separator is not None:
             self._sep = separator
         if isinstance(value, list):
@@ -127,7 +126,7 @@ class _EnvValue:
         else:
             self._values.append(value)
 
-    def prepend(self, value, separator=None):
+    def prepend(self, value: Any, separator: str | None = None):
         if separator is not None:
             self._sep = separator
         if isinstance(value, list):
@@ -135,7 +134,7 @@ class _EnvValue:
         else:
             self._values.insert(0, value)
 
-    def compose_env_value(self, other):
+    def compose_env_value(self, other: _EnvValue):
         """
         :type other: _EnvValue
         """
@@ -148,7 +147,7 @@ class _EnvValue:
             new_value[index:index + 1] = other._values  # replace the placeholder
             self._values = new_value
 
-    def get_str(self, placeholder, subsystem, pathsep, root_path=None, script_path=None):
+    def get_str(self, placeholder: str | None, subsystem: Any, pathsep: str, root_path: str | None = None, script_path: str | None = None) -> str:
         """
         :param subsystem:
         :param placeholder: a OS dependant string pattern of the previous env-var value like
@@ -180,11 +179,11 @@ class _EnvValue:
 
         return self._sep.join(values)
 
-    def get_value(self, subsystem, pathsep):
+    def get_value(self, subsystem: Any, pathsep: str) -> str:
         previous_value = os.getenv(self._name)
         return self.get_str(previous_value, subsystem, pathsep)
 
-    def deploy_base_folder(self, package_folder, deploy_folder):
+    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
         """Make the path relative to the deploy_folder"""
         if not self._path:
             return
@@ -197,11 +196,10 @@ class _EnvValue:
                 continue
             self._values[i] = os.path.join(deploy_folder, rel_path)
 
-    def set_relative_base_folder(self, folder):
+    def set_relative_base_folder(self, folder: str):
         if not self._path:
             return
-        self._values = [os.path.join(folder, v) if v != _EnvVarPlaceHolder else v
-                        for v in self._values]
+        self._values = [os.path.join(folder, v) if v != _EnvVarPlaceHolder else v for v in self._values]
 
 
 class Environment:
@@ -211,21 +209,21 @@ class Environment:
 
     def __init__(self):
         # It being ordered allows for Windows case-insensitive composition
-        self._values = OrderedDict()  # {var_name: [] of values, including separators}
+        self._values: OrderedDict[str, _EnvValue] = OrderedDict()  # {var_name: [] of values, including separators}
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._values)
 
-    def copy(self):
+    def copy(self) -> Environment:
         e = Environment()
         for k, v in self._values.items():
             e._values[k] = v.copy()
         return e
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._values)
 
-    def dumps(self):
+    def dumps(self) -> str:
 
         """
         :return: A string with a profile-like original definition, not the full environment
@@ -320,14 +318,14 @@ class Environment:
 
         return self
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """
         :param other: the "other" environment
         :type other: class:`Environment`
         """
         return other._values == self._values
 
-    def vars(self, recipe: RecipeBase, scope: str = "build") -> "EnvVars":
+    def vars(self, recipe: RecipeBase, scope: str = "build") -> EnvVars:
         """
         :param recipe: Instance of a recipe, usually ``self`` in a recipe
         :param scope: Determine the scope of the declared variables.
@@ -335,12 +333,12 @@ class Environment:
         """
         return EnvVars(recipe, self._values, scope)
 
-    def deploy_base_folder(self, package_folder, deploy_folder):
+    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
         """Make the paths relative to the deploy_folder"""
         for varvalues in self._values.values():
             varvalues.deploy_base_folder(package_folder, deploy_folder)
 
-    def set_relative_base_folder(self, folder):
+    def set_relative_base_folder(self, folder: str):
         for v in self._values.values():
             v.set_relative_base_folder(folder)
 
@@ -351,7 +349,7 @@ class EnvVars:
 
     """
 
-    def __init__(self, recipe, values, scope):
+    def __init__(self, recipe: RecipeBase, values: Any, scope: str):
         self._values = values  # {var_name: _EnvValue}, just a reference to the Environment
         self._recipe = recipe
         self._scope = scope
@@ -359,16 +357,16 @@ class EnvVars:
         self._deactivation_mode = recipe.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
 
     @property
-    def _pathsep(self):
+    def _pathsep(self) -> str:
         return ":" if self._subsystem != WINDOWS else ";"
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> str:
         return self._values[name].get_value(self._subsystem, self._pathsep)
 
     def keys(self):
         return self._values.keys()
 
-    def get(self, name, default=None, variable_reference=None):
+    def get(self, name: str, default: Any = None, variable_reference: str | None = None) -> Any:
         """ get the value of a env-var
 
         :param name: The name of the environment variable.
@@ -385,7 +383,7 @@ class EnvVars:
         else:
             return v.get_value(self._subsystem, self._pathsep)
 
-    def items(self, variable_reference=None):
+    def items(self, variable_reference: str | None = None):
         """returns {str: str} (varname: value)
 
         :param variable_reference: if specified, use a variable reference instead of the
@@ -393,11 +391,9 @@ class EnvVars:
                                    can be used to refer to the name of the variable.
         """
         if variable_reference:
-            return {k: v.get_str(variable_reference, self._subsystem, self._pathsep)
-                    for k, v in self._values.items()}.items()
+            return {k: v.get_str(variable_reference, self._subsystem, self._pathsep) for k, v in self._values.items()}.items()
         else:
-            return {k: v.get_value(self._subsystem, self._pathsep)
-                    for k, v in self._values.items()}.items()
+            return {k: v.get_value(self._subsystem, self._pathsep) for k, v in self._values.items()}.items()
 
     @contextmanager
     def apply(self):
@@ -415,7 +411,7 @@ class EnvVars:
             os.environ.clear()
             os.environ.update(old_env)
 
-    def save_dotenv(self, file_location):
+    def save_dotenv(self, file_location: str):
         result = []
         for varname, varvalues in self._values.items():
             value = varvalues.get_value(subsystem=self._subsystem, pathsep=self._pathsep)
@@ -423,7 +419,7 @@ class EnvVars:
         content = "\n".join(result)
         save(file_location, content)
 
-    def save_bat(self, file_location, generate_deactivate=True):
+    def save_bat(self, file_location: str, generate_deactivate: bool = True):
         _, filename = os.path.split(file_location)
         deactivate_file = f"deactivate_{filename}"
         is_function = self._deactivation_mode == "function"
@@ -487,11 +483,9 @@ class EnvVars:
         abs_base_path, new_path = _relativize_paths(self._recipe, "%~dp0")
         for varname, varvalues in self._values.items():
             value = varvalues.get_str(
-                "%{name}%", subsystem=self._subsystem, pathsep=self._pathsep,
-                root_path=abs_base_path, script_path=new_path)
+                "%{name}%", subsystem=self._subsystem, pathsep=self._pathsep, root_path=abs_base_path, script_path=new_path)
             no_value = varvalues.get_str(
-                "", subsystem=self._subsystem, pathsep=self._pathsep,
-                root_path=abs_base_path, script_path=new_path)
+                "", subsystem=self._subsystem, pathsep=self._pathsep, root_path=abs_base_path, script_path=new_path)
             if value != no_value:
                 set_value = textwrap.dedent(
                     f"""
@@ -510,7 +504,7 @@ class EnvVars:
         with open(file_location, "w", encoding="utf-8") as f:
             f.write(content)
 
-    def save_ps1(self, file_location, generate_deactivate=True):
+    def save_ps1(self, file_location: str, generate_deactivate: bool = True):
         _, filename = os.path.split(file_location)
 
         result = []
@@ -519,16 +513,13 @@ class EnvVars:
         abs_base_path, new_path = _relativize_paths(self._recipe, "$PSScriptRoot")
         for varname, varvalues in self._values.items():
             value = varvalues.get_str(
-                "$env:{name}", subsystem=self._subsystem, pathsep=self._pathsep,
-                root_path=abs_base_path, script_path=new_path)
+                "$env:{name}", subsystem=self._subsystem, pathsep=self._pathsep, root_path=abs_base_path, script_path=new_path)
             no_value = varvalues.get_str(
-                "", subsystem=self._subsystem, pathsep=self._pathsep,
-                root_path=abs_base_path, script_path=new_path)
+                "", subsystem=self._subsystem, pathsep=self._pathsep, root_path=abs_base_path, script_path=new_path)
             if generate_deactivate and self._deactivation_mode == "function":
                 # Check environment variable existence before saving value
                 result.append(
-                    f'if ($env:{varname}) {{ $env:{_old_env_prefix(filename)}_{varname} = $env:{varname} }}'
-                )
+                    f'if ($env:{varname}) {{ $env:{_old_env_prefix(filename)}_{varname} = $env:{varname} }}')
             if varvalues:
                 value = value.replace('"', '`"')  # escape quotes
                 no_value = no_value.replace('"', '`"')  # escape quotes
@@ -555,7 +546,7 @@ class EnvVars:
         with open(file_location, "w", encoding="utf-16") as f:
             f.write(content)
 
-    def save_sh(self, file_location, generate_deactivate=True):
+    def save_sh(self, file_location: str, generate_deactivate: bool = True):
         filepath, filename = os.path.split(file_location)
         result = []
         if generate_deactivate:
@@ -563,8 +554,7 @@ class EnvVars:
         abs_base_path, new_path = _relativize_paths(self._recipe, "$script_folder")
         for varname, varvalues in self._values.items():
             value = varvalues.get_str(
-                "${name}", self._subsystem, pathsep=self._pathsep,
-                root_path=abs_base_path, script_path=new_path)
+                "${name}", self._subsystem, pathsep=self._pathsep, root_path=abs_base_path, script_path=new_path)
             placeholder = f"${varname}"
             sep = self._pathsep if varvalues._path else varvalues._sep  # noqa
             if value.endswith(sep + placeholder):
@@ -577,8 +567,7 @@ class EnvVars:
                 result.append(
                     f'if [ -n "${{{varname}+x}}" ]; then '
                     f'export {_old_env_prefix(filename)}_{varname}="${{{varname}}}"; '
-                    f'fi;'
-                )
+                    f'fi;')
             if varvalues:
                 result.append(f'export {varname}="{value}"')
             else:
@@ -588,7 +577,7 @@ class EnvVars:
         content = f'script_folder="{os.path.abspath(filepath)}"\n' + content
         save(file_location, content)
 
-    def save_script(self, filename):
+    def save_script(self, filename: str):
         """
         Saves a script file (bat, sh, ps1) with a launcher to set the environment.
         If the conf "tools.env.virtualenv:powershell" is not an empty string
@@ -636,15 +625,15 @@ class EnvVars:
             register_env_script(self._recipe, path, self._scope)
 
 
-def _deactivate_func_name(filename):
+def _deactivate_func_name(filename: str) -> str:
     return os.path.splitext(os.path.basename(filename))[0].replace("-", "_")
 
 
-def _old_env_prefix(filename):
+def _old_env_prefix(filename: str) -> str:
     return f"_RECIPE_OLD_{_deactivate_func_name(filename).upper()}"
 
 
-def _ps1_deactivate_contents(deactivation_mode, values, filename):
+def _ps1_deactivate_contents(deactivation_mode: str | None, values: Any, filename: str) -> str:
     vars_list = ", ".join(f'"{v}"' for v in values.keys())
     if deactivation_mode == "function":
         var_prefix = _old_env_prefix(filename)
@@ -691,7 +680,7 @@ def _ps1_deactivate_contents(deactivation_mode, values, filename):
         """)
 
 
-def _sh_deactivate_contents(deactivation_mode, values, filename):
+def _sh_deactivate_contents(deactivation_mode: str | None, values: Any, filename: str) -> str:
     vars_list = " ".join(quote(v) for v in values.keys())
     if deactivation_mode == "function":
         func_name = _deactivate_func_name(filename)
@@ -735,15 +724,15 @@ def _sh_deactivate_contents(deactivation_mode, values, filename):
 
 class ProfileEnvironment:
     def __init__(self):
-        self._environments = OrderedDict()
+        self._environments: OrderedDict[str | None, Environment] = OrderedDict()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self._environments)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self._environments)
 
-    def get_profile_env(self, ref, is_consumer=False):
+    def get_profile_env(self, ref: Any, is_consumer: bool = False) -> Environment:
         """ computes package-specific Environment
         it is only called when recipe.buildenv is called
         the last one found in the profile file has top priority
@@ -755,7 +744,7 @@ class ProfileEnvironment:
                 result = env.copy().compose_env(result)
         return result
 
-    def update_profile_env(self, other):
+    def update_profile_env(self, other: ProfileEnvironment):
         """
         :type other: ProfileEnvironment
         :param other: The argument profile has priority/precedence over the current one.
@@ -767,7 +756,7 @@ class ProfileEnvironment:
             else:
                 self._environments[pattern] = environment
 
-    def dumps(self):
+    def dumps(self) -> str:
         result = []
         for pattern, env in self._environments.items():
             if pattern is None:
@@ -775,22 +764,20 @@ class ProfileEnvironment:
             else:
                 result.append(
                     "\n".join(
-                        f"{pattern}:{line}" if line else ""
-                        for line in env.dumps().splitlines()))
+                        f"{pattern}:{line}" if line else "" for line in env.dumps().splitlines()))
         if result:
             result.append("")
         return "\n".join(result)
 
     @staticmethod
-    def loads(text):
+    def loads(text: str) -> ProfileEnvironment:
         result = ProfileEnvironment()
         for line in text.splitlines():
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
             for op, method in (
-                    ("+=", "append"), ("=+", "prepend"),
-                    ("=!", "unset"), ("=", "define"),
+                    ("+=", "append"), ("=+", "prepend"), ("=!", "unset"), ("=", "define"),
             ):
                 tokens = line.split(op, 1)
                 if len(tokens) != 2:
@@ -836,7 +823,7 @@ class ProfileEnvironment:
         return result
 
 
-def create_env_script(recipe, content, filename, scope="build"):
+def create_env_script(recipe: RecipeBase, content: str, filename: str, scope: str = "build"):
     """
     Create a file with any content which will be registered as a new script for the defined "scope".
 
@@ -853,7 +840,7 @@ def create_env_script(recipe, content, filename, scope="build"):
         register_env_script(recipe, path, scope)
 
 
-def register_env_script(recipe, env_script_path, scope="build"):
+def register_env_script(recipe: RecipeBase, env_script_path: str, scope: str = "build"):
     """
     Add the "env_script_path" to the current list of registered scripts for defined "scope"
     These will be mapped to files:
@@ -869,7 +856,7 @@ def register_env_script(recipe, env_script_path, scope="build"):
         existing.append(env_script_path)
 
 
-def generate_aggregated_env(recipe):
+def generate_aggregated_env(recipe: RecipeBase):
     def deactivates(filenames):
         # FIXME: Probably the order needs to be reversed
         result = []
@@ -879,8 +866,7 @@ def generate_aggregated_env(recipe):
         return result
 
     def deactivate_function_names(filenames):
-        return [os.path.splitext(os.path.basename(s))[0].replace("-", "_")
-                for s in reversed(filenames)]
+        return [os.path.splitext(os.path.basename(s))[0].replace("-", "_") for s in reversed(filenames)]
 
     deactivation_mode = recipe.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
     generated = []
@@ -916,8 +902,7 @@ def generate_aggregated_env(recipe):
             save(os.path.join(recipe.folders.generators, filename), sh_content(shs))
             if not deactivation_mode:
                 save(
-                    os.path.join(recipe.folders.generators, f"deactivate_{filename}"),
-                    sh_content(deactivates(shs)))
+                    os.path.join(recipe.folders.generators, f"deactivate_{filename}"), sh_content(deactivates(shs)))
         if bats:
             filename = f"env_{group}.bat"
             deactivate_filename = f"deactivate_{filename}"
@@ -929,18 +914,15 @@ def generate_aggregated_env(recipe):
                     from thirdparty.microsoft.visual import RECIPE_VCVARS
                     deactivates_var = f"_RECIPE_{group}_DEACTIVATES_DIR"
                     content += [
-                        f'set "{deactivates_var}=%TEMP%\\recipe_{group}_%RANDOM%"',
-                        f'mkdir "%{deactivates_var}%"',
+                        f'set "{deactivates_var}=%TEMP%\\recipe_{group}_%RANDOM%"', f'mkdir "%{deactivates_var}%"',
                     ]
                     # TODO: Find a better way to get rid of vcvars deactivation
                     f = [f for f in files if f != f"%~dp0/{RECIPE_VCVARS}.bat"]
-                    deactivate_filenames = [f.replace("%~dp0\\", "")
-                                            for f in deactivates(f)]
+                    deactivate_filenames = [f.replace("%~dp0\\", "") for f in deactivates(f)]
 
                     content += [f'set PATH=%{deactivates_var}%;%PATH%']
                     content += [f'echo @echo off > "%{deactivates_var}%\\{deactivate_filename}"']
-                    content += [f'echo call "{b}" >> "%{deactivates_var}%\\{deactivate_filename}"'
-                                for b in deactivate_filenames]
+                    content += [f'echo call "{b}" >> "%{deactivates_var}%\\{deactivate_filename}"' for b in deactivate_filenames]
                     # See https://ss64.com/nt/syntax-replace.html for the syntax below to remove
                     # the deactivation path from PATH when the deactivation script is called
                     content += [
@@ -960,8 +942,7 @@ def generate_aggregated_env(recipe):
             save(os.path.join(recipe.folders.generators, filename), bat_content(bats))
             if not deactivation_mode:
                 save(
-                    os.path.join(recipe.folders.generators, deactivate_filename),
-                    bat_content(deactivates(bats)))
+                    os.path.join(recipe.folders.generators, deactivate_filename), bat_content(deactivates(bats)))
 
         if ps1s:
             def ps1_content(files):
@@ -980,14 +961,13 @@ def generate_aggregated_env(recipe):
             save(os.path.join(recipe.folders.generators, filename), ps1_content(ps1s))
             if not deactivation_mode:
                 save(
-                    os.path.join(recipe.folders.generators, f"deactivate_{filename}"),
-                    ps1_content(deactivates(ps1s)))
+                    os.path.join(recipe.folders.generators, f"deactivate_{filename}"), ps1_content(deactivates(ps1s)))
     if generated:
         recipe.output.highlight("Generating aggregated env files")
         recipe.output.info(f"Generated aggregated env files: {generated}")
 
 
-def _relativize_paths(recipe, placeholder):
+def _relativize_paths(recipe: RecipeBase, placeholder):
     abs_base_path = recipe.folders._base_generators  # noqa
     if not abs_base_path or not os.path.isabs(abs_base_path):
         return None, None

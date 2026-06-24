@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 
 from thirdparty._internal.util.files import save
 from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key
-from thirdparty.xcode.deps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, \
-    _add_includes_to_file_or_create, _xcconfig_settings_filename, _xcconfig_conditional
+from thirdparty.xcode.deps import GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, _add_includes_to_file_or_create, _xcconfig_settings_filename, _xcconfig_conditional
 
 if TYPE_CHECKING:
     from thirdparty._internal.model.recipe_base import RecipeBase
@@ -73,46 +72,35 @@ class XcodeToolchain:
     def _apple_deployment_target(self):
         deployment_target_key = xcodebuild_deployment_target_key(self._recipe.settings.get_safe("os"))
         return '{}{}={}'.format(
-            deployment_target_key,
-            _xcconfig_conditional(self._recipe.settings, self.configuration),
-            self.os_version) if deployment_target_key and self.os_version else ""
+            deployment_target_key, _xcconfig_conditional(self._recipe.settings, self.configuration), self.os_version) if deployment_target_key and self.os_version else ""
 
     @property
     def _clang_cxx_library(self):
         return 'CLANG_CXX_LIBRARY{}={}'.format(
             _xcconfig_conditional(
-                self._recipe.settings,
-                self.configuration),
-            self.libcxx) if self.libcxx else ""
+                self._recipe.settings, self.configuration), self.libcxx) if self.libcxx else ""
 
     @property
     def _clang_cxx_language_standard(self):
         return 'CLANG_CXX_LANGUAGE_STANDARD{}={}'.format(
-            _xcconfig_conditional(self._recipe.settings, self.configuration),
-            self._cppstd) if self._cppstd else ""
+            _xcconfig_conditional(self._recipe.settings, self.configuration), self._cppstd) if self._cppstd else ""
 
     @property
     def _vars_xconfig_filename(self):
         return "recipe_toolchain{}{}".format(
             _xcconfig_settings_filename(
-                self._recipe.settings,
-                self.configuration),
-            self.extension)
+                self._recipe.settings, self.configuration), self.extension)
 
     @property
     def _vars_xconfig_content(self):
         ret = self._vars_xconfig.format(
-            apple_deployment_target=self._apple_deployment_target,
-            clang_cxx_library=self._clang_cxx_library,
-            clang_cxx_language_standard=self._clang_cxx_language_standard)
+            apple_deployment_target=self._apple_deployment_target, clang_cxx_library=self._clang_cxx_library, clang_cxx_language_standard=self._clang_cxx_language_standard)
         return ret
 
     @property
     def _agreggated_xconfig_content(self):
         return _add_includes_to_file_or_create(
-            self._agreggated_xconfig_filename,
-            self._agreggated_xconfig,
-            [self._vars_xconfig_filename])
+            self._agreggated_xconfig_filename, self._agreggated_xconfig, [self._vars_xconfig_filename])
 
     @property
     def _global_xconfig_content(self):
@@ -120,8 +108,7 @@ class XcodeToolchain:
         if self._check_if_extra_flags:
             files_to_include.append(self._flags_xcconfig_filename)
         content = _add_includes_to_file_or_create(
-            GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE,
-            files_to_include)
+            GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, files_to_include)
         return content
 
     @property

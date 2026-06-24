@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import textwrap
 
@@ -10,26 +12,30 @@ from thirdparty._internal.util.generators import relativize_path
 from thirdparty.cmake.utils import cmake_escape_value
 from thirdparty.errors import RecipeException
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class TargetConfigurationTemplate2:
     """
     FooTarget-release.cmake
     """
 
-    def __init__(self, cmakedeps, recipe, require, full_cpp_info):
+    def __init__(self, cmakedeps: Any, recipe: RecipeBase, require: Any, full_cpp_info: Any):
         self._cmakedeps = cmakedeps
         self._recipe = recipe  # The dependency recipe, not the consumer one
         self._require = require
         self._full_cpp_info = full_cpp_info
 
-    def content(self):
+    def content(self) -> str:
         t = Template(
-            self._template, trim_blocks=True, lstrip_blocks=True,
-            undefined=jinja2.StrictUndefined)
+            self._template, trim_blocks=True, lstrip_blocks=True, undefined=jinja2.StrictUndefined)
         return t.render(self._context)
 
     @property
-    def filename(self):
+    def filename(self) -> str:
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         # Fallback to consumer configuration if it doesn't have build_type
         config = self._recipe.settings.get_safe("build_type", self._cmakedeps.configuration)
@@ -37,7 +43,7 @@ class TargetConfigurationTemplate2:
         build = "Build" if self._recipe.context == CONTEXT_BUILD else ""
         return f"{f}-Targets{build}-{config}.cmake"
 
-    def _requires(self, info, components):
+    def _requires(self, info: Any, components: Any) -> dict[str, Any]:
         result = {}
         requires = info.parsed_requires()
         pkg_name = self._recipe.ref.name
@@ -55,8 +61,7 @@ class TargetConfigurationTemplate2:
                 link_feature = self._cmakedeps.get_property("cmake_link_feature", d)
                 link = req.libs
                 result[dep_target] = {
-                    "link": link,
-                    "link_feature": link_feature,
+                    "link": link, "link_feature": link_feature,
                 }
             return result
 
@@ -65,12 +70,10 @@ class TargetConfigurationTemplate2:
                 dep_comp = components.get(required_comp)
                 assert dep_comp, f"Component {required_comp} not found in {self._recipe}"
                 dep_target = self._cmakedeps.get_property(
-                    "cmake_target_name", self._recipe,
-                    required_comp)
+                    "cmake_target_name", self._recipe, required_comp)
                 dep_target = dep_target or f"{pkg_name}::{required_comp}"
                 link_feature = self._cmakedeps.get_property(
-                    "cmake_link_feature", self._recipe,
-                    required_comp)
+                    "cmake_link_feature", self._recipe, required_comp)
                 result[dep_target] = {
                     "link": True,  # Components of same package have PUBLIC dependency
                     "link_feature": link_feature,
@@ -104,21 +107,19 @@ class TargetConfigurationTemplate2:
                         # if it contains a requirement of a specific component of the other package
                         # and the other package can be an APP, but containing a LIB component
                         # the req.libs will not be defined. This is the libtool->automake(app) case
-                        link = not (pkg_type is PackageType.SHARED and
-                                    dep_comp.type is PackageType.SHARED)
+                        link = not (pkg_type is PackageType.SHARED and dep_comp.type is PackageType.SHARED)
                     link = req.libs or link
                     dep_target = self._cmakedeps.get_property("cmake_target_name", dep, comp)
                     dep_target = dep_target or default_target
                     link_feature = self._cmakedeps.get_property("cmake_link_feature", dep, comp)
 
                     result[dep_target] = {
-                        "link": link,
-                        "link_feature": link_feature,
+                        "link": link, "link_feature": link_feature,
                     }
         return result
 
     @property
-    def _context(self):
+    def _context(self) -> dict[str, Any]:
         cpp_info = self._full_cpp_info
         assert isinstance(cpp_info.type, PackageType)
         pkg_name = self._recipe.ref.name
@@ -157,30 +158,21 @@ class TargetConfigurationTemplate2:
                         f"{self._recipe}. ")
 
         pkg_folder = relativize_path(
-            pkg_folder, self._cmakedeps._recipe,
-            "${CMAKE_CURRENT_LIST_DIR}")
+            pkg_folder, self._cmakedeps._recipe, "${CMAKE_CURRENT_LIST_DIR}")
         dependencies = self._get_dependencies()
         return {
-            "dependencies": dependencies,
-            "pkg_folder": pkg_folder,
-            "pkg_folder_var": pkg_folder_var,
-            "config": config,
-            "exes": exes,
-            "libs": libs,
-            "context": self._recipe.context,
+            "dependencies": dependencies, "pkg_folder": pkg_folder, "pkg_folder_var": pkg_folder_var, "config": config, "exes": exes, "libs": libs, "context": self._recipe.context,
         }
 
-    def _get_libs(self, cpp_info, pkg_name, pkg_folder, pkg_folder_var) -> dict:
+    def _get_libs(self, cpp_info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
         libs = {}
         if cpp_info.has_components:
             for name, component in cpp_info.components.items():
                 target_name = self._cmakedeps.get_property(
-                    "cmake_target_name", self._recipe,
-                    name)
+                    "cmake_target_name", self._recipe, name)
                 target_name = target_name or f"{pkg_name}::{name}"
                 target = self._get_cmake_lib(
-                    component, cpp_info.components, pkg_folder,
-                    pkg_folder_var, comp_name=name)
+                    component, cpp_info.components, pkg_folder, pkg_folder_var, comp_name=name)
                 if target is not None:
                     cmake_target_aliases = self._get_aliases(name)
                     target["cmake_target_aliases"] = cmake_target_aliases
@@ -195,14 +187,12 @@ class TargetConfigurationTemplate2:
                 libs[target_name] = target
         return libs
 
-    def _get_cmake_lib(self, info, components, pkg_folder, pkg_folder_var, comp_name=None):
-        if info.exe or not (info.package_framework or info.frameworks or info.includedirs or info.libs
-                            or info.system_libs or info.defines or info.requires):
+    def _get_cmake_lib(self, info: Any, components: Any, pkg_folder: str, pkg_folder_var: str, comp_name: str | None = None) -> dict[str, Any] | None:
+        if info.exe or not (info.package_framework or info.frameworks or info.includedirs or info.libs or info.system_libs or info.defines or info.requires):
             return
 
         includedirs = ";".join(
-            self._path(i, pkg_folder, pkg_folder_var)
-            for i in info.includedirs) if info.includedirs else ""
+            self._path(i, pkg_folder, pkg_folder_var) for i in info.includedirs) if info.includedirs else ""
         requires = self._requires(info, components)
         assert isinstance(requires, dict)
         defines = ";".join(cmake_escape_value(f) for f in info.defines)
@@ -210,8 +200,7 @@ class TargetConfigurationTemplate2:
         if not self._require.headers:  # If not depending on headers, paths and
             includedirs = defines = None
         extra_libs = self._cmakedeps.get_property(
-            "cmake_extra_interface_libs", self._recipe,
-            comp_name=comp_name, check_type=list) or []
+            "cmake_extra_interface_libs", self._recipe, comp_name=comp_name, check_type=list) or []
         sources = [self._path(source, pkg_folder, pkg_folder_var) for source in info.sources]
         target = {
             "type": "INTERFACE",
@@ -233,19 +222,16 @@ class TargetConfigurationTemplate2:
         #        Revisit when cpp.exe value is used too.
         if info.package_framework:
             target["package_framework"] = {}
-            lib_type = "SHARED" if info.type is PackageType.SHARED else \
-                "STATIC" if info.type is PackageType.STATIC else "STATIC"
+            lib_type = "SHARED" if info.type is PackageType.SHARED else "STATIC" if info.type is PackageType.STATIC else "STATIC"
             assert lib_type, f"Unknown package type {info.type}"
             assert info.location, f"cpp_info.location missing for framework {info.package_framework}"
             target["type"] = lib_type
             target["package_framework"]["location"] = self._path(
-                info.location, pkg_folder,
-                pkg_folder_var)
+                info.location, pkg_folder, pkg_folder_var)
             target["includedirs"] = []  # empty as frameworks have their own way to inject headers
             # FIXME: This is not needed for CMake < 3.24. Remove it when Recipe requires CMake >= 3.24
             target["package_framework"]["frameworkdir"] = self._path(
-                pkg_folder, pkg_folder,
-                pkg_folder_var)
+                pkg_folder, pkg_folder, pkg_folder_var)
         if info.libs:
             if len(info.libs) != 1:
                 raise RecipeException(
@@ -253,10 +239,8 @@ class TargetConfigurationTemplate2:
                     f"{self._recipe}: {info.libs}")
             assert info.location, "info.location missing for .libs, it should have been deduced"
             location = self._path(info.location, pkg_folder, pkg_folder_var)
-            link_location = self._path(info.link_location, pkg_folder, pkg_folder_var) \
-                if info.link_location else None
-            lib_type = "SHARED" if info.type is PackageType.SHARED else \
-                "STATIC" if info.type is PackageType.STATIC else None
+            link_location = self._path(info.link_location, pkg_folder, pkg_folder_var) if info.link_location else None
+            lib_type = "SHARED" if info.type is PackageType.SHARED else "STATIC" if info.type is PackageType.STATIC else None
             assert lib_type, f"Unknown package type {info.type}"
             target["type"] = lib_type
             target["location"] = location
@@ -266,11 +250,11 @@ class TargetConfigurationTemplate2:
             target["link_languages"] = link_languages
         return target
 
-    def _get_aliases(self, comp_name=None):
+    def _get_aliases(self, comp_name: str | None = None) -> list[Any]:
         aliases = self._cmakedeps.get_property("cmake_target_aliases", self._recipe, comp_name, check_type=list) or []
         return aliases
 
-    def _add_root_lib_target(self, libs, pkg_name, cpp_info):
+    def _add_root_lib_target(self, libs: dict[str, Any], pkg_name: str, cpp_info: Any):
         """
         Add a new pkgname::pkgname INTERFACE target that depends on default_components or
         on all other library targets (not exes)
@@ -285,41 +269,33 @@ class TargetConfigurationTemplate2:
                 all_requires = {}
                 for defaultc in cpp_info.default_components:
                     target_name = self._cmakedeps.get_property(
-                        "cmake_target_name", self._recipe,
-                        defaultc)
+                        "cmake_target_name", self._recipe, defaultc)
                     comp_name = target_name or f"{pkg_name}::{defaultc}"
                     link_feature = self._cmakedeps.get_property(
-                        "cmake_link_feature", self._recipe,
-                        defaultc)
+                        "cmake_link_feature", self._recipe, defaultc)
                     all_requires[comp_name] = {
                         "link": True,  # It is an interface, full link
                         "link_feature": link_feature,
                     }
             else:
                 all_requires = {k: {
-                    "link": True,
-                    "link_feature": self._cmakedeps.get_property(
-                        "cmake_link_feature", self._recipe,
-                        v.get("comp_name")),
-                }
-                    for k, v in libs.items()}
+                    "link": True, "link_feature": self._cmakedeps.get_property(
+                        "cmake_link_feature", self._recipe, v.get("comp_name")),
+                } for k, v in libs.items()}
             # This target might have an alias, so we need to check it
             cmake_target_aliases = self._get_aliases()
             libs[root_target_name] = {
-                "type": "INTERFACE",
-                "requires": all_requires,
-                "cmake_target_aliases": cmake_target_aliases,
+                "type": "INTERFACE", "requires": all_requires, "cmake_target_aliases": cmake_target_aliases,
             }
 
-    def _get_exes(self, cpp_info, pkg_name, pkg_folder, pkg_folder_var):
+    def _get_exes(self, cpp_info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
         exes = {}
 
         if cpp_info.has_components:
             for name, comp in cpp_info.components.items():
                 if comp.exe or comp.type is PackageType.APP:
                     target_name = self._cmakedeps.get_property(
-                        "cmake_target_name", self._recipe,
-                        name)
+                        "cmake_target_name", self._recipe, name)
                     target = target_name or f"{pkg_name}::{name}"
                     exe_location = self._path(comp.location, pkg_folder, pkg_folder_var)
                     exes[target] = exe_location
@@ -332,7 +308,7 @@ class TargetConfigurationTemplate2:
 
         return exes
 
-    def _get_dependencies(self):
+    def _get_dependencies(self) -> dict[str, Any]:
         """ transitive dependencies Filenames for find_dependency()
         """
         # Build requires are already filtered by the get_transitive_requires
@@ -340,13 +316,12 @@ class TargetConfigurationTemplate2:
         # FIXME: Hardcoded CONFIG
         ret = {self._cmakedeps.get_cmake_filename(r): "CONFIG" for r in transitive_reqs.values()}
         extra_mods = self._cmakedeps.get_property(
-            "cmake_extra_dependencies", self._recipe,
-            check_type=list) or []
+            "cmake_extra_dependencies", self._recipe, check_type=list) or []
         ret.update({extra_mod: "" for extra_mod in extra_mods})
         return ret
 
     @staticmethod
-    def _path(p, pkg_folder, pkg_folder_var):
+    def _path(p: str, pkg_folder: str, pkg_folder_var: str) -> str:
         def escape(p_):
             return p_.replace("$", "\\$").replace('"', '\\"')
 
@@ -359,7 +334,7 @@ class TargetConfigurationTemplate2:
         return f"${{{pkg_folder_var}}}/{escape(p)}"
 
     @property
-    def _template(self):
+    def _template(self) -> str:
         # TODO: CMake 3.24: Apple Frameworks: https://cmake.org/cmake/help/latest/manual/cmake-generator-expressions.7.html#genex:LINK_LIBRARY
         # TODO: Check why not set_property instead of target_link_libraries
         return textwrap.dedent(

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class PkgConfig:
-
     _recipe: RecipeBase
     _library: str
     _info: dict[str, str]
@@ -45,8 +44,7 @@ class PkgConfig:
             # This way we get the environment from RecipeBase, from profile (default buildenv)
             output, err = StringIO(), StringIO()
             ret = self._recipe.run(
-                command, stdout=output, stderr=err, quiet=True,
-                ignore_errors=True)
+                command, stdout=output, stderr=err, quiet=True, ignore_errors=True)
             if ret != 0:
                 raise RecipeException(
                     f"PkgConfig failed. Command: {command}\n"
@@ -66,13 +64,11 @@ class PkgConfig:
 
     @property
     def cflags(self) -> list[str]:
-        return [flag for flag in self._get_option('cflags-only-other').split()
-                if not flag.startswith("-D")]
+        return [flag for flag in self._get_option('cflags-only-other').split() if not flag.startswith("-D")]
 
     @property
     def defines(self) -> list[str]:
-        return [flag[2:] for flag in self._get_option('cflags-only-other').split()
-                if flag.startswith("-D")]
+        return [flag[2:] for flag in self._get_option('cflags-only-other').split() if flag.startswith("-D")]
 
     @property
     def libdirs(self) -> list[str]:
@@ -103,8 +99,8 @@ class PkgConfig:
                 self._variables[name] = self._parse_output('variable=%s' % name)
         return self._variables
 
-    def fill_cpp_info(self, cpp_info: Any, is_system: bool = True,
-                      system_libs: list[str] | None = None):
+    def fill_cpp_info(
+        self, cpp_info: Any, is_system: bool = True, system_libs: list[str] | None = None):
         """
         Method to fill a cpp_info object from the PkgConfig configuration
 

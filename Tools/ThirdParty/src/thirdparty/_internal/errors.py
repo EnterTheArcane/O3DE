@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import traceback
 from contextlib import contextmanager
 
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 @contextmanager
-def recipe_remove_attr(recipe, names, method):
+def recipe_remove_attr(recipe: RecipeBase, names, method):
     """ remove some self.xxxx attribute from the class, so it raises an exception if used
     within a given recipe method
     """
@@ -28,7 +35,7 @@ def recipe_remove_attr(recipe, names, method):
 
 
 @contextmanager
-def recipe_exception_formatter(recipe, funcname):
+def recipe_exception_formatter(recipe: RecipeBase, funcname):
     """
     Decorator to throw an exception formatted with the line of the recipe where the error ocurrs.
     """
@@ -70,8 +77,7 @@ def scoped_traceback(header_msg, exception, scope):
                 if not scope_reached:  # First line
                     msg = f"{header_msg}, line {line}\n\t{contents}"
                 else:
-                    msg = (f"while calling '{name}', line {line}\n\t{contents}"
-                           if line else "\n\t%s" % contents)
+                    msg = (f"while calling '{name}', line {line}\n\t{contents}" if line else "\n\t%s" % contents)
                 content_lines.append(msg)
                 scope_reached = True
             index += 1
@@ -134,11 +140,5 @@ class PackageNotFoundException(NotFoundException):
 
 
 EXCEPTION_CODE_MAPPING = {
-    InternalErrorException: 500,
-    RequestErrorException: 400,
-    AuthenticationException: 401,
-    ForbiddenException: 403,
-    NotFoundException: 404,
-    RecipeNotFoundException: 404,
-    PackageNotFoundException: 404,
+    InternalErrorException: 500, RequestErrorException: 400, AuthenticationException: 401, ForbiddenException: 403, NotFoundException: 404, RecipeNotFoundException: 404, PackageNotFoundException: 404,
 }

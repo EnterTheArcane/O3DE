@@ -37,8 +37,8 @@ CYGWIN = 'cygwin'
 WSL = 'wsl'  # Windows Subsystem for Linux
 
 
-def command_env_wrapper(recipe: RecipeBase, command: str, envfiles: list[str],
-                        envfiles_folder: str, scope: str = "build") -> str:
+def command_env_wrapper(
+    recipe: RecipeBase, command: str, envfiles: list[str], envfiles_folder: str, scope: str = "build") -> str:
     from thirdparty.env.environment import environment_wrap_command
     if getattr(recipe, "conf", None) is None:
         # TODO: No conf, no profile defined!! This happens at ``export()`` time
@@ -48,9 +48,7 @@ def command_env_wrapper(recipe: RecipeBase, command: str, envfiles: list[str],
 
     active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
     subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
-    if platform.system() == "Windows" and (
-        (recipe.win_bash and scope == "build") or
-        (recipe.win_bash_run and scope == "run")):
+    if platform.system() == "Windows" and ((recipe.win_bash and scope == "build") or (recipe.win_bash_run and scope == "run")):
         if subsystem is None:
             raise RecipeException(
                 "win_bash/win_bash_run defined but no "
@@ -64,8 +62,8 @@ def command_env_wrapper(recipe: RecipeBase, command: str, envfiles: list[str],
     return wrapped_cmd
 
 
-def _windows_bash_wrapper(recipe: RecipeBase, command: str, env: list[str],
-                          envfiles_folder: str) -> str:
+def _windows_bash_wrapper(
+    recipe: RecipeBase, command: str, env: list[str], envfiles_folder: str) -> str:
     from thirdparty.env import Environment
     from thirdparty.env.environment import environment_wrap_command
     """ Will wrap a unix command inside a bash terminal It requires to have MSYS2, CYGWIN, or WSL"""
@@ -102,14 +100,12 @@ def _windows_bash_wrapper(recipe: RecipeBase, command: str, env: list[str],
 
     wrapped_shell = '"%s"' % shell_path if " " in shell_path else shell_path
     wrapped_shell = environment_wrap_command(
-        recipe, env, envfiles_folder, wrapped_shell,
-        accepted_extensions=("bat", "ps1"))
+        recipe, env, envfiles_folder, wrapped_shell, accepted_extensions=("bat", "ps1"))
 
     # Wrapping the inside_command enable to prioritize our environment, otherwise /usr/bin go
     # first and there could be commands that we want to skip
     wrapped_user_cmd = environment_wrap_command(
-        recipe, env, envfiles_folder, command,
-        accepted_extensions=("sh",))
+        recipe, env, envfiles_folder, command, accepted_extensions=("sh",))
     wrapped_user_cmd = _escape_windows_cmd(wrapped_user_cmd)
     # according to https://www.msys2.org/wiki/Launchers/, it is necessary to use --login shell
     # running without it is discouraged

@@ -1,5 +1,12 @@
+from __future__ import annotations
+
 from thirdparty.env import Environment
 from thirdparty.env.virtualrunenv import runenv_from_cpp_info
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class VirtualBuildEnv:
@@ -7,7 +14,7 @@ class VirtualBuildEnv:
         .bat or .sh script
     """
 
-    def __init__(self, recipe, auto_generate=False):
+    def __init__(self, recipe: RecipeBase, auto_generate: bool = False):
         self._buildenv = None
         self._recipe = recipe
         if not auto_generate:

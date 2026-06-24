@@ -1,10 +1,17 @@
+from __future__ import annotations
+
 import os
 
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
 
+from typing import TYPE_CHECKING
 
-def vs_layout(recipe):
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def vs_layout(recipe: RecipeBase):
     """
     Initialize a layout for a typical Visual Studio project.
 

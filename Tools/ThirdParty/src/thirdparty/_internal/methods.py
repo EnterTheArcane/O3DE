@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 from thirdparty._internal.errors import recipe_exception_formatter
 from thirdparty._internal.model.requires import ToolRequirements
 
-
 if TYPE_CHECKING:
     from thirdparty._internal.model.recipe_base import RecipeBase
 
@@ -36,8 +35,7 @@ def run_configure_method(recipe: RecipeBase):
     if initial_requires_count != len(recipe.requires):
         recipe.output.warning(
             "Requirements should only be added in the requirements() method, "
-            "not configure()/config_options().",
-            warn_tag="deprecated")
+            "not configure()/config_options().", warn_tag="deprecated")
 
     recipe.tool_requires = ToolRequirements(recipe.requires)
 

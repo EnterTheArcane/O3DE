@@ -18,11 +18,7 @@ if TYPE_CHECKING:
 
 # Source: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 PREMAKE_VS_VERSION = {
-    '190': '2015',
-    '191': '2017',
-    '192': '2019',
-    '193': '2022',
-    '194': '2022',  # still 2022
+    '190': '2015', '191': '2017', '192': '2019', '193': '2022', '194': '2022',  # still 2022
     '195': '2026',
 }
 
@@ -78,8 +74,7 @@ class Premake:
         """
         if self._premake_recipe_toolchain.exists():
             content = Template(self._premake_file_template).render(
-                premake_recipe_toolchain=self._premake_recipe_toolchain.as_posix(), luafile=self.luafile
-            )
+                premake_recipe_toolchain=self._premake_recipe_toolchain.as_posix(), luafile=self.luafile)
             recipe_luafile = Path(self._recipe.folders.build) / self.filename
             save(self._recipe, recipe_luafile, content)
             arch = str(self._recipe.settings.arch)
@@ -93,10 +88,8 @@ class Premake:
         premake_options = dict()
         premake_options["file"] = f'"{recipe_luafile}"'
 
-        premake_command = (
-            f"premake5 {self._expand_args(premake_options)} {self.action} "
-            f"{self._expand_args(self.arguments)}{self._premake_verbosity}"
-        )
+        premake_command = (f"premake5 {self._expand_args(premake_options)} {self.action} "
+                           f"{self._expand_args(self.arguments)}{self._premake_verbosity}")
         self._recipe.run(premake_command)
 
     @property

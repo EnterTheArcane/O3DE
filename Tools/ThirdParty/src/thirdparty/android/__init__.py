@@ -27,6 +27,5 @@ def android_abi(recipe: RecipeBase, context: str = "host"):
     arch = settings.get_safe("arch")
     # https://cmake.org/cmake/help/latest/variable/CMAKE_ANDROID_ARCH_ABI.html
     return {
-        "ARM": "arm64-v8a",
-        "X64": "x86_64",
+        "ARM": "arm64-v8a", "X64": "x86_64",
     }.get(arch, arch)

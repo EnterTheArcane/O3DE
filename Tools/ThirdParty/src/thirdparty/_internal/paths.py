@@ -20,8 +20,7 @@ if platform.system() == "Windows":
             # - HOME = %USERPROFILE% verbatim, as messed by some other tools
             # - MSYS console, that defines a different user home in /c/mingw/msys/users/xxx
             # In these cases, it is safe to remove it and rely on USERPROFILE directly
-            if home and (not os.path.exists(home) or
-                         (os.getenv("MSYSTEM") and os.getenv("USERPROFILE"))):
+            if home and (not os.path.exists(home) or (os.getenv("MSYSTEM") and os.getenv("USERPROFILE"))):
                 del os.environ["HOME"]
             result = os.path.expanduser(path)
         finally:
@@ -55,9 +54,7 @@ def get_recipe_user_home():
             rc_path = find_file_walk_up(os.getcwd(), ".thirdpartyrc")
 
             with open(rc_path) as rc_file:
-                values = {k: str(v) for k, v in
-                          (line.split('=') for line in rc_file.read().splitlines() if
-                           not line.startswith("#"))}
+                values = {k: str(v) for k, v in (line.split('=') for line in rc_file.read().splitlines() if not line.startswith("#"))}
 
             recipe_home = values["recipe_home"]
             # check if it's a local folder

@@ -12,8 +12,7 @@ if getattr(sys, 'frozen', False) and 'LD_LIBRARY_PATH' in os.environ:
 
     # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html#ld-library-path-libpath-considerations
     pyinstaller_bundle_dir = os.environ['LD_LIBRARY_PATH'].replace(
-        os.environ.get('LD_LIBRARY_PATH_ORIG', ''), ''
-    ).strip(';:')
+        os.environ.get('LD_LIBRARY_PATH_ORIG', ''), '').strip(';:')
 
 
     @contextmanager
@@ -22,8 +21,7 @@ if getattr(sys, 'frozen', False) and 'LD_LIBRARY_PATH' in os.environ:
         """
         ld_library_path = os.environ['LD_LIBRARY_PATH']
         os.environ['LD_LIBRARY_PATH'] = ld_library_path.replace(
-            pyinstaller_bundle_dir,
-            '').strip(';:')
+            pyinstaller_bundle_dir, '').strip(';:')
         yield
         os.environ['LD_LIBRARY_PATH'] = ld_library_path
 
@@ -33,7 +31,7 @@ else:
         yield
 
 
-def run_command(command, stdout=None, stderr=None, cwd=None, shell=True):
+def run_command(command, stdout=None, stderr=None, cwd=None, shell: bool = True):
     """
     @param shell:
     @param stderr:
@@ -66,8 +64,7 @@ def run_command(command, stdout=None, stderr=None, cwd=None, shell=True):
 def detect_runner(command):
     # Running detect.py automatic detection of profile
     proc = subprocess.Popen(
-        command, shell=True, bufsize=1, universal_newlines=True,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        command, shell=True, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     output_buffer = []
     while True:
@@ -81,7 +78,7 @@ def detect_runner(command):
     return proc.returncode, "".join(output_buffer)
 
 
-def check_output_runner(cmd, stderr=None, ignore_error=False):
+def check_output_runner(cmd, stderr=None, ignore_error: bool = False):
     # Used to run several utilities, like Pacman detect, AIX version, uname, SCM
     assert isinstance(cmd, str)
     d = tempfile.mkdtemp()

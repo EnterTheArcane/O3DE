@@ -3,7 +3,7 @@ from __future__ import annotations
 import glob
 import itertools
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from thirdparty._internal.util.files import save
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
@@ -101,7 +101,7 @@ end
 
 # Helper class that expands cpp_info meta information in lua readable string sequences
 class _PremakeTemplate:
-    def __init__(self, req, dep_cpp_info):
+    def __init__(self, req: Any, dep_cpp_info: Any):
         def _format_paths(paths):
             if not paths:
                 return ""
@@ -132,10 +132,8 @@ class _PremakeTemplate:
 
         self.system_libs = _format_flags(dep_cpp_info.system_libs)
         self.frameworks = ", ".join(
-            '"%s.framework"' % p.replace('"', '\\"') for p in
-            dep_cpp_info.frameworks) if dep_cpp_info.frameworks else ""
-        self.sysroot = f"{dep_cpp_info.sysroot}".replace("\\", "/") \
-            if dep_cpp_info.sysroot else ""
+            '"%s.framework"' % p.replace('"', '\\"') for p in dep_cpp_info.frameworks) if dep_cpp_info.frameworks else ""
+        self.sysroot = f"{dep_cpp_info.sysroot}".replace("\\", "/") if dep_cpp_info.sysroot else ""
 
 
 class PremakeDeps:
@@ -155,7 +153,7 @@ class PremakeDeps:
         self.tab = "    "
 
         # Return value buffer
-        self.output_files = {}
+        self.output_files: dict[str, str] = {}
         # Extract configuration and architecture form recipe
         self.configuration = recipe.settings.build_type
         self.architecture = recipe.settings.arch
@@ -171,19 +169,17 @@ class PremakeDeps:
         for generator_file, content in generator_files.items():
             save(generator_file, content)
 
-    def _config_suffix(self):
+    def _config_suffix(self) -> str:
         return f"{self.configuration}_{RECIPE_TO_PREMAKE_ARCH[str(self.architecture)]}".lower()
 
-    def _output_lua_file(self, filename, content):
+    def _output_lua_file(self, filename: str, content: Any):
         self.output_files[filename] = "\n".join(["#!lua", *content])
 
-    def _indent_string(self, string, indent=1):
+    def _indent_string(self, string: str, indent: int = 1) -> str:
         return "\n".join(
-            [
-                f"{self.tab * indent}{line}" for line in list(filter(None, string.splitlines()))
-            ])
+            [f"{self.tab * indent}{line}" for line in list(filter(None, string.splitlines()))])
 
-    def _premake_filtered(self, content, configuration, architecture, indent=0):
+    def _premake_filtered(self, content: Any, configuration: Any, architecture: Any, indent: int = 0) -> list[str]:
         """
         - Surrounds the lua line(s) contained within ``content`` with a premake "filter" and returns the result.
         - A "filter" will affect all premake function calls after it's set. It's used to limit following project
@@ -193,15 +189,13 @@ class PremakeDeps:
         lines = list(itertools.chain.from_iterable([cnt.splitlines() for cnt in content]))
         return [
             # Set new filter
-            f'{self.tab * indent}filter {{ "configurations:{configuration}", "architecture:{architecture}" }}',
-            # Emit content
-            *[f"{self.tab * indent}{self.tab}{line.strip()}" for line in list(filter(None, lines))],
-            # Clear active filter
+            f'{self.tab * indent}filter {{ "configurations:{configuration}", "architecture:{architecture}" }}', # Emit content
+            *[f"{self.tab * indent}{self.tab}{line.strip()}" for line in list(filter(None, lines))], # Clear active filter
             f"{self.tab * indent}filter {{}}",
         ]
 
     @property
-    def content(self):
+    def content(self) -> dict[str, str]:
 
         self.output_files = {}
         conf_name = self._config_suffix()
@@ -235,8 +229,7 @@ class PremakeDeps:
             self._output_lua_file(
                 var_filename, [
                     PREMAKE_TEMPLATE_VAR.format(
-                        pkgname=dep_name, config=conf_name,
-                        deps=_PremakeTemplate(require, dep_aggregate)),
+                        pkgname=dep_name, config=conf_name, deps=_PremakeTemplate(require, dep_aggregate)),
                 ])
 
             # Create list of all available profiles by searching on disk
@@ -246,11 +239,7 @@ class PremakeDeps:
             # Add filename of current generations var file if not already present
             if var_filename not in available_config_files:
                 available_config_files.append(var_filename)
-            profiles = [
-                (regex_res[0], regex_res.group(1), regex_res.group(2), regex_res.group(3)) for regex_res in [
-                    re.search(file_regex, file_name) for file_name in available_config_files
-                ]
-            ]
+            profiles = [(regex_res[0], regex_res.group(1), regex_res.group(2), regex_res.group(3)) for regex_res in [re.search(file_regex, file_name) for file_name in available_config_files]]
             config_sets = [profile[1] for profile in profiles]
 
             # Emit package premake file
@@ -266,39 +255,24 @@ class PremakeDeps:
         self._output_lua_file(
             PREMAKE_ROOT_FILE, [
                 # Includes
-                *[f'include "{pkg_file}"' for pkg_file in pkg_files],
-                # Global order for each configuration
-                'include "recipe_config.premake5.lua"',
-                # Functions
+                *[f'include "{pkg_file}"' for pkg_file in pkg_files], # Global order for each configuration
+                'include "recipe_config.premake5.lua"', # Functions
                 PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
-                    function_name="recipe_setup_build",
-                    lua_content=PREMAKE_TEMPLATE_ROOT_BUILD,
-                    filter_call="\n".join(
+                    function_name="recipe_setup_build", lua_content=PREMAKE_TEMPLATE_ROOT_BUILD, filter_call="\n".join(
                         ["\n".join(
                             self._premake_filtered(
-                                [f'recipe_setup_build("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
-                        ) for config in config_sets]
-                    )
-                ),
-                PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
-                    function_name="recipe_setup_link",
-                    lua_content=PREMAKE_TEMPLATE_ROOT_LINK,
-                    filter_call="\n".join(
+                                [f'recipe_setup_build("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)) for config in config_sets])), PREMAKE_TEMPLATE_ROOT_FUNCTION.format(
+                    function_name="recipe_setup_link", lua_content=PREMAKE_TEMPLATE_ROOT_LINK, filter_call="\n".join(
                         ["\n".join(
                             self._premake_filtered(
-                                [f'recipe_setup_link("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)
-                        ) for config in config_sets]
-                    )
-                ),
-                PREMAKE_TEMPLATE_ROOT_GLOBAL,
+                                [f'recipe_setup_link("{config}")'], config.split("_", 1)[0], config.split("_", 1)[1], 2)) for config in config_sets])), PREMAKE_TEMPLATE_ROOT_GLOBAL,
             ])
 
         # Output configuration file for the current build configuration
         self._output_lua_file(
             PREMAKE_CONFIG_FILE.format(config=conf_name), [
                 PREMAKE_TEMPLATE_CONFIG.format(
-                    config=conf_name, order=", ".join(f'"{name}"' for name in reversed(dep_names))
-                ),
+                    config=conf_name, order=", ".join(f'"{name}"' for name in reversed(dep_names))),
             ])
 
         # Output root configuration file

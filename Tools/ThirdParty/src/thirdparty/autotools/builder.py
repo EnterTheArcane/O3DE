@@ -20,7 +20,6 @@ def join_arguments(args: Iterable[str | None]) -> str:
 
 
 class Autotools:
-
     _recipe: RecipeBase
     _configure_args: str | None
     _make_args: str | None
@@ -40,8 +39,7 @@ class Autotools:
         self._recipe = recipe
 
         toolchain_file_content = load_toolchain_args(
-            self._recipe.folders.generators,
-            namespace=namespace)
+            self._recipe.folders.generators, namespace=namespace)
 
         self._configure_args = toolchain_file_content.get("configure_args")
         self._make_args = toolchain_file_content.get("make_args")
@@ -57,8 +55,7 @@ class Autotools:
         """
         # http://jingfenghanmax.blogspot.com.es/2010/09/configure-with-host-target-and-build.html
         # https://gcc.gnu.org/onlinedocs/gccint/Configure-Terms.html
-        script_folder = os.path.join(self._recipe.folders.source, build_script_folder) \
-            if build_script_folder else self._recipe.folders.source
+        script_folder = os.path.join(self._recipe.folders.source, build_script_folder) if build_script_folder else self._recipe.folders.source
 
         configure_args = []
         configure_args.extend(args or [])
@@ -71,8 +68,8 @@ class Autotools:
         cmd = f'"{configure_cmd}" {self._configure_args}'
         self._recipe.run(cmd)
 
-    def make(self, target: str | None = None, args: list[str] | None = None,
-             makefile: str | None = None):
+    def make(
+        self, target: str | None = None, args: list[str] | None = None, makefile: str | None = None):
         """
         Call the make program.
 
@@ -84,9 +81,7 @@ class Autotools:
         :param makefile: (Optional, Defaulted to ``None``): Allow specifying a custom makefile to use instead of default "Makefile"
         """
         make_program = self._recipe.conf.get(
-            "tools.gnu:make_program",
-            default="mingw32-make" if self._use_win_mingw()
-            else "make")
+            "tools.gnu:make_program", default="mingw32-make" if self._use_win_mingw() else "make")
         subsystem = deduce_subsystem(self._recipe, scope="build")
         make_program = subsystem_path(subsystem, make_program)
         str_args = self._make_args
@@ -102,8 +97,8 @@ class Autotools:
         command = join_arguments([make_program, str_makefile, target, str_args, str_extra_args, jobs])
         self._recipe.run(command)
 
-    def install(self, args: list[str] | None = None, target: str | None = None,
-                makefile: str | None = None):
+    def install(
+        self, args: list[str] | None = None, target: str | None = None, makefile: str | None = None):
         """
         This is just an "alias" of ``self.make(target="install")`` or ``self.make(target="install-strip")``
 
@@ -137,8 +132,7 @@ class Autotools:
         :param build_script_folder: Subfolder where the `configure` script is located. If not specified
                                     recipe.folders.source is used.
         """
-        script_folder = os.path.join(self._recipe.folders.source, build_script_folder) \
-            if build_script_folder else self._recipe.folders.source
+        script_folder = os.path.join(self._recipe.folders.source, build_script_folder) if build_script_folder else self._recipe.folders.source
         args = args or []
         command = join_arguments(["autoreconf", self._autoreconf_args, cmd_args_to_string(args)])
         with chdir(self, script_folder):

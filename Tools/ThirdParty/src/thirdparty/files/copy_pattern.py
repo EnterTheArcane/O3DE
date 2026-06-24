@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import filecmp
 import fnmatch
 import os
@@ -6,10 +8,14 @@ import shutil
 from thirdparty._internal.util.files import mkdir
 from thirdparty.errors import RecipeException
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 def copy(
-    recipe, pattern, src, dst, keep_path=True, excludes=None,
-    ignore_case=True, overwrite_equal=False):
+    recipe: RecipeBase, pattern: str, src: str, dst: str, keep_path: bool = True, excludes: Any = None, ignore_case: bool = True, overwrite_equal: bool = False) -> list[str]:
     """
     Copy the files matching the pattern (fnmatch) at the src folder to a dst folder.
 
@@ -43,8 +49,7 @@ def copy(
     src = os.path.join(src, "")
     excluded_folder = dst
     files_to_copy, files_symlinked_to_folders = _filter_files(
-        src, pattern, excludes, ignore_case,
-        excluded_folder)
+        src, pattern, excludes, ignore_case, excluded_folder)
 
     copied_files = _copy_files(files_to_copy, src, dst, keep_path, overwrite_equal)
     copied_files.extend(_copy_files_symlinked_to_folders(files_symlinked_to_folders, src, dst))
@@ -58,7 +63,7 @@ def copy(
     return copied_files
 
 
-def _filter_files(src, pattern, excludes, ignore_case, excluded_folder):
+def _filter_files(src: str, pattern: str, excludes: Any, ignore_case: bool, excluded_folder: str) -> tuple[list[str], list[str]]:
     """ return a list of the files matching the patterns
     The list will be relative path names wrt to the root src folder
     """
@@ -102,27 +107,23 @@ def _filter_files(src, pattern, excludes, ignore_case, excluded_folder):
 
     if ignore_case:
         files_to_copy = [n for n in filenames if fnmatch.fnmatch(
-            os.path.normpath(n.lower()),
-            pattern)]
+            os.path.normpath(n.lower()), pattern)]
     else:
         files_to_copy = [n for n in filenames if fnmatch.fnmatchcase(
-            os.path.normpath(n),
-            pattern)]
+            os.path.normpath(n), pattern)]
 
     for exclude in excludes:
         if ignore_case:
             files_to_copy = [f for f in files_to_copy if not fnmatch.fnmatch(f.lower(), exclude)]
-            files_symlinked_to_folders = \
-                [f for f in files_symlinked_to_folders if not fnmatch.fnmatch(f.lower(), exclude)]
+            files_symlinked_to_folders = [f for f in files_symlinked_to_folders if not fnmatch.fnmatch(f.lower(), exclude)]
         else:
             files_to_copy = [f for f in files_to_copy if not fnmatch.fnmatchcase(f, exclude)]
-            files_symlinked_to_folders = \
-                [f for f in files_symlinked_to_folders if not fnmatch.fnmatchcase(f, exclude)]
+            files_symlinked_to_folders = [f for f in files_symlinked_to_folders if not fnmatch.fnmatchcase(f, exclude)]
 
     return files_to_copy, files_symlinked_to_folders
 
 
-def _copy_files(files, src, dst, keep_path, overwrite_equal):
+def _copy_files(files: Any, src: str, dst: str, keep_path: bool, overwrite_equal: bool) -> list[str]:
     """ executes a multiple file copy from [(src_file, dst_file), (..)]
     managing symlinks if necessary
     """
@@ -144,14 +145,13 @@ def _copy_files(files, src, dst, keep_path, overwrite_equal):
             os.symlink(linkto, abs_dst_name)
         else:
             # Avoid the copy if the file exists and has the exact same signature (size + mod time)
-            if overwrite_equal or not os.path.exists(abs_dst_name) \
-                or not filecmp.cmp(abs_src_name, abs_dst_name):
+            if overwrite_equal or not os.path.exists(abs_dst_name) or not filecmp.cmp(abs_src_name, abs_dst_name):
                 shutil.copy2(abs_src_name, abs_dst_name)
         copied_files.append(abs_dst_name)
     return copied_files
 
 
-def _copy_files_symlinked_to_folders(files_symlinked_to_folders, src, dst):
+def _copy_files_symlinked_to_folders(files_symlinked_to_folders: Any, src: str, dst: str) -> list[str]:
     """Copy the files that are symlinks to folders from src to dst.
        The files are already filtered with the specified pattern"""
     copied_files = []

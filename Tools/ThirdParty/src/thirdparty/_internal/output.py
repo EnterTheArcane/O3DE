@@ -123,23 +123,23 @@ class Output:
             Output._last_scope_header = None
 
     @classmethod
-    def define_silence_warnings(cls, warnings):
+    def define_silence_warnings(cls, warnings: Any):
         cls._silent_warn_tags = warnings
 
     @classmethod
-    def set_warnings_as_errors(cls, value):
+    def set_warnings_as_errors(cls, value: Any):
         cls._warnings_as_errors = value
 
     @classmethod
-    def get_output_level(cls):
+    def get_output_level(cls) -> int:
         return cls._output_level
 
     @classmethod
-    def set_output_level(cls, level):
+    def set_output_level(cls, level: int):
         cls._output_level = level
 
     @classmethod
-    def valid_log_levels(cls):
+    def valid_log_levels(cls) -> dict[str | None, int]:
         return {
             "quiet": LEVEL_QUIET,  # -vquiet 80
             "error": LEVEL_ERROR,  # -verror 70
@@ -155,7 +155,7 @@ class Output:
         }
 
     @classmethod
-    def define_log_level(cls, v):
+    def define_log_level(cls, v: str | None):
         env_level = os.getenv("O3DE_PACKAGE_LOG_LEVEL")
         v = env_level or v
         levels = cls.valid_log_levels()
@@ -169,32 +169,32 @@ class Output:
             cls.set_output_level(level)
 
     @classmethod
-    def level_allowed(cls, level):
+    def level_allowed(cls, level: int) -> bool:
         return cls._output_level <= level
 
     @property
-    def color(self):
+    def color(self) -> bool:
         return self._color
 
     @property
-    def scope(self):
+    def scope(self) -> str:
         return self._scope
 
     @scope.setter
-    def scope(self, out_scope):
+    def scope(self, out_scope: str):
         self._scope = out_scope
         if not out_scope:
             Output._last_scope_header = None
 
     @property
-    def is_terminal(self):
+    def is_terminal(self) -> bool:
         return hasattr(self.stream, "isatty") and self.stream.isatty()
 
     def writeln(self, data: str, fg: str | None = None, bg: str | None = None):
         return self.write(data, fg, bg, newline=True)
 
-    def write(self, data: str, fg: str | None = None, bg: str | None = None,
-              newline: bool = False):
+    def write(
+        self, data: str, fg: str | None = None, bg: str | None = None, newline: bool = False):
         if self._output_level > LEVEL_NOTICE:
             return self
         if self._color and (fg or bg):
@@ -222,14 +222,13 @@ class Output:
         self._write_message(msg, newline=newline)
         return self
 
-    def _write_message(self, msg: str | dict[Any, Any], fg: str | None = None,
-                       bg: str | None = None, newline: bool = True):
+    def _write_message(
+        self, msg: str | dict[Any, Any], fg: str | None = None, bg: str | None = None, newline: bool = True):
         if isinstance(msg, dict):
             # For traces we can receive a dict already, we try to transform then into more natural
             # text
             msg = ", ".join([f"{k}: {v}" for k, v in msg.items()])
-            msg = f"=> {msg}"
-            # msg = json.dumps(msg, sort_keys=True, default=json_encoder)
+            msg = f"=> {msg}"  # msg = json.dumps(msg, sort_keys=True, default=json_encoder)
 
         if Output._scoped_recipe_output and self._scope:
             if self._scope != Output._last_scope_header:
@@ -312,8 +311,7 @@ class Output:
         """ Draws a title around the message, useful for important messages"""
         if self._output_level <= LEVEL_NOTICE:
             self._write_message(
-                f"\n======== {msg} ========",
-                fg=Color.BRIGHT_MAGENTA)
+                f"\n======== {msg} ========", fg=Color.BRIGHT_MAGENTA)
         return self
 
     def subtitle(self, msg: str):
@@ -341,7 +339,7 @@ class Output:
         return self
 
     @staticmethod
-    def _warn_tag_matches(warn_tag, patterns):
+    def _warn_tag_matches(warn_tag: Any, patterns: Any) -> bool:
         lookup_tag = warn_tag or "unknown"
         return any(fnmatch.fnmatch(lookup_tag, pattern) for pattern in patterns)
 
@@ -355,8 +353,7 @@ class Output:
         and is not skipped, this will be upgraded to an error, and raise an exception
         when the output is printed, so that the error does not pass unnoticed."""
         _treat_as_error = self._warn_tag_matches(warn_tag, self._warnings_as_errors)
-        if (self._output_level <= LEVEL_WARNING or
-            (_treat_as_error and self._output_level <= LEVEL_ERROR)):
+        if (self._output_level <= LEVEL_WARNING or (_treat_as_error and self._output_level <= LEVEL_ERROR)):
             if self._warn_tag_matches(warn_tag, self._silent_warn_tags):
                 return self
             warn_tag_msg = "" if warn_tag is None else f"{warn_tag}: "
@@ -387,8 +384,8 @@ class Output:
         self.stream.flush()
 
 
-def cli_out_write(data: str, fg: str | None = None, bg: str | None = None,
-                  endline: str = "\n", indentation: int = 0):
+def cli_out_write(
+    data: str, fg: str | None = None, bg: str | None = None, endline: str = "\n", indentation: int = 0):
     """
     Output to be used by formatters to dump information to stdout
     """
@@ -408,13 +405,13 @@ def cli_out_write(data: str, fg: str | None = None, bg: str | None = None,
 
 
 class TimedOutput:
-    def __init__(self, interval, out=None, msg_format=None):
+    def __init__(self, interval: float, out: Any = None, msg_format: Any = None):
         self._interval = interval
         self._msg_format = msg_format
         self._t = time.time()
         self._out = out or Output()
 
-    def info(self, msg, *args, **kwargs):
+    def info(self, msg: Any, *args: Any, **kwargs: Any):
         t = time.time()
         if t - self._t > self._interval:
             self._t = t

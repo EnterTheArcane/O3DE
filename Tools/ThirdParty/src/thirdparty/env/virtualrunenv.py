@@ -1,6 +1,13 @@
+from __future__ import annotations
+
 import os
 
 from thirdparty.env import Environment
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 def runenv_from_cpp_info(dep, os_name):
@@ -28,7 +35,7 @@ class VirtualRunEnv:
         .bat or .sh script
     """
 
-    def __init__(self, recipe, auto_generate=False):
+    def __init__(self, recipe: RecipeBase, auto_generate: bool = False):
         """
 
         :param recipe:  The current recipe object. Always use ``self``.

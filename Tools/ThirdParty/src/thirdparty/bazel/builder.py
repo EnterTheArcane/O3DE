@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 
 class Bazel:
-
     _recipe: RecipeBase
     _recipe_bazelrc: str
     _use_recipe_config: bool
@@ -47,12 +46,11 @@ class Bazel:
         # See more info in https://bazel.build/run/bazelrc
         bazelrc_paths.extend(
             self._recipe.conf.get(
-                "tools.google.bazel:bazelrc_path", default=[],
-                check_type=list))
+                "tools.google.bazel:bazelrc_path", default=[], check_type=list))
         opts = " ".join(["--bazelrc=" + rc.replace("\\", "/") for rc in bazelrc_paths])
         return f" {opts}" if opts else ""
 
-    def build(self, args=None, target="//...", clean=True):
+    def build(self, args=None, target="//...", clean: bool = True):
         """
         Runs "bazel <rcpaths> build <configs> <args> <targets>" command where:
 
@@ -77,9 +75,7 @@ class Bazel:
         command = "bazel" + self._startup_opts + " build"
         bazelrc_build_configs.extend(
             self._recipe.conf.get(
-                "tools.google.bazel:configs",
-                default=[],
-                check_type=list))
+                "tools.google.bazel:configs", default=[], check_type=list))
         for config in bazelrc_build_configs:
             command += f" --config={config}"
         if args:

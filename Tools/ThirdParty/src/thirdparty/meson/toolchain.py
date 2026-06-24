@@ -2,25 +2,22 @@ from __future__ import annotations
 
 import os
 import textwrap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import Template, StrictUndefined
 
 from thirdparty._internal.internal_tools import raise_on_universal_arch
 from thirdparty._internal.util.files import save
-from thirdparty.apple.utils import is_apple_os, apple_min_version_flag, \
-    resolve_apple_flags, apple_extra_flags
+from thirdparty.apple.utils import is_apple_os, apple_min_version_flag, resolve_apple_flags, apple_extra_flags
 from thirdparty.build.cross_building import cross_building, can_run
 from thirdparty.build.flags import (
-    architecture_link_flag, libcxx_flags, architecture_flag,
-    threads_flags, )
+    architecture_link_flag, libcxx_flags, architecture_flag, threads_flags, )
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeException
 
 if TYPE_CHECKING:
     from thirdparty._internal.model.recipe_base import RecipeBase
-from thirdparty.meson.helpers import get_apple_subsystem, to_cppstd_flag, to_cstd_flag, \
-    to_meson_machine, to_meson_value
+from thirdparty.meson.helpers import get_apple_subsystem, to_cppstd_flag, to_cstd_flag, to_meson_machine, to_meson_value
 from thirdparty.microsoft import VCVars, msvc_runtime_flag
 
 
@@ -150,9 +147,7 @@ class MesonToolchain:
         #: Build type to use.
         self.buildtype = {
             "Debug": "debug",  # Note, it is not "'debug'"
-            "Release": "release",
-            "MinSizeRel": "minsize",
-            "RelWithDebInfo": "debugoptimized",
+            "Release": "release", "MinSizeRel": "minsize", "RelWithDebInfo": "debugoptimized",
         }.get(build_type, build_type)
         #: Disable asserts.
         self.b_ndebug = "true" if self.buildtype != "debug" else "false"
@@ -273,11 +268,9 @@ class MesonToolchain:
 
         # Read configuration for compilers
         compilers_by_conf = self._recipe_conf.get(
-            "tools.build:compiler_executables", default={},
-            check_type=dict)
+            "tools.build:compiler_executables", default={}, check_type=dict)
         # Read the VirtualBuildEnv to update the variables
-        build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (
-            VirtualBuildEnv(self._recipe, auto_generate=True).vars())
+        build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (VirtualBuildEnv(self._recipe, auto_generate=True).vars())
         #: Sets the Meson ``c`` variable, defaulting to the ``CC`` build environment value.
         #: If provided as a blank-separated string, it will be transformed into a list.
         #: Otherwise, it remains a single string.
@@ -309,8 +302,7 @@ class MesonToolchain:
         self.windres = build_env.get("WINDRES")
         #: Defines the Meson ``pkgconfig`` variable. Defaulted to ``PKG_CONFIG``
         #: build environment value
-        self.pkgconfig = (self._recipe_conf.get("tools.gnu:pkg_config", check_type=str) or
-                          build_env.get("PKG_CONFIG"))
+        self.pkgconfig = (self._recipe_conf.get("tools.gnu:pkg_config", check_type=str) or build_env.get("PKG_CONFIG"))
         #: Defines the Meson ``c_args`` variable. Defaulted to ``CFLAGS`` build environment value
         self.c_args = self._get_env_list(build_env.get("CFLAGS", []))
         #: Defines the Meson ``c_link_args`` variable. Defaulted to ``LDFLAGS`` build
@@ -348,7 +340,7 @@ class MesonToolchain:
         if not native:
             self._resolve_android_cross_compilation()
 
-    def _get_default_dirs(self):
+    def _get_default_dirs(self) -> dict[str, Any]:
         """
         Get all the default directories from cpp.package.
 
@@ -369,17 +361,12 @@ class MesonToolchain:
         if bindir:
             ret.update(
                 {
-                    'bindir': bindir,
-                    'sbindir': bindir,
-                    'libexecdir': bindir,
+                    'bindir': bindir, 'sbindir': bindir, 'libexecdir': bindir,
                 })
         if datadir:
             ret.update(
                 {
-                    'datadir': datadir,
-                    'localedir': datadir,
-                    'mandir': datadir,
-                    'infodir': datadir,
+                    'datadir': datadir, 'localedir': datadir, 'mandir': datadir, 'infodir': datadir,
                 })
         if includedir:
             ret["includedir"] = includedir
@@ -387,12 +374,11 @@ class MesonToolchain:
             ret["libdir"] = libdir
         return ret
 
-    def _resolve_apple_flags_and_variables(self, build_env, compilers_by_conf):
+    def _resolve_apple_flags_and_variables(self, build_env: Any, compilers_by_conf: Any):
         if not self._is_apple_system:
             return
         # Calculating the main Apple flags
-        min_flag, arch_flag, isysroot_flag = (
-            resolve_apple_flags(self._recipe, is_cross_building=self.cross_build))
+        min_flag, arch_flag, isysroot_flag = (resolve_apple_flags(self._recipe, is_cross_building=self.cross_build))
         self.apple_arch_flag = arch_flag.split() if arch_flag else []
         self.apple_isysroot_flag = isysroot_flag.split() if isysroot_flag else []
         self.apple_min_version_flag = [apple_min_version_flag(self._recipe)]
@@ -423,12 +409,10 @@ class MesonToolchain:
         arch = self._recipe.settings.get_safe("arch")
         os_build = self.cross_build["build"]["system"]
         ndk_bin = os.path.join(
-            ndk_path, "toolchains",
-            "llvm", "prebuilt", f"{os_build}-x86_64", "bin")
+            ndk_path, "toolchains", "llvm", "prebuilt", f"{os_build}-x86_64", "bin")
         android_api_level = self._recipe.settings.get_safe("os.api_level")
         android_target = {
-            'ARM': 'aarch64-linux-android',
-            'X64': 'x86_64-linux-android',
+            'ARM': 'aarch64-linux-android', 'X64': 'x86_64-linux-android',
         }.get(arch)
         os_build = self._recipe.settings_build.get_safe('os')
         compile_ext = ".cmd" if os_build == "Windows" else ""
@@ -438,7 +422,7 @@ class MesonToolchain:
         self.ar = os.path.join(ndk_bin, "llvm-ar")
 
     @property
-    def _rpath_link_flag(self):
+    def _rpath_link_flag(self) -> list[str]:
         add_rpath_link = self._recipe.conf.get("tools.build:add_rpath_link", check_type=bool)
         if not add_rpath_link:
             return []
@@ -449,47 +433,42 @@ class MesonToolchain:
             runtime_dirs.extend(cppinfo.libdirs)
         return ["-Wl,-rpath-link=" + ":".join(runtime_dirs)] if runtime_dirs else []
 
-    def _get_extra_flags(self):
+    def _get_extra_flags(self) -> dict[str, Any]:
         # Now, it's time to get all the flags defined by the user
         cxxflags = self._recipe_conf.get("tools.build:cxxflags", default=[], check_type=list)
         cflags = self._recipe_conf.get("tools.build:cflags", default=[], check_type=list)
         sharedlinkflags = self._recipe_conf.get(
-            "tools.build:sharedlinkflags", default=[],
-            check_type=list)
+            "tools.build:sharedlinkflags", default=[], check_type=list)
         exelinkflags = self._recipe_conf.get(
-            "tools.build:exelinkflags", default=[],
-            check_type=list)
+            "tools.build:exelinkflags", default=[], check_type=list)
         linker_scripts = self._recipe_conf.get(
-            "tools.build:linker_scripts", default=[],
-            check_type=list)
+            "tools.build:linker_scripts", default=[], check_type=list)
         linker_script_flags = ['-T' + linker_script for linker_script in linker_scripts]
         defines = self._recipe_conf.get("tools.build:defines", default=[], check_type=list)
         sys_root = [f"--sysroot={self._sys_root}"] if self._sys_root else [""]
-        ld = (sharedlinkflags + exelinkflags + linker_script_flags + sys_root + self.extra_ldflags
-              + self.threads_flags)
+        ld = (sharedlinkflags + exelinkflags + linker_script_flags + sys_root + self.extra_ldflags + self.threads_flags)
         # Apple extra flags from confs (visibilty, bitcode, arc)
         cxxflags += self.apple_extra_flags
         cflags += self.apple_extra_flags
         ld += self.apple_extra_flags
         return {
-            "cxxflags": ([self.arch_flag] + cxxflags + sys_root + self.extra_cxxflags
-                         + self.threads_flags),
+            "cxxflags": ([self.arch_flag] + cxxflags + sys_root + self.extra_cxxflags + self.threads_flags),
             "cflags": [self.arch_flag] + cflags + sys_root + self.extra_cflags + self.threads_flags,
             "ldflags": [self.arch_flag] + [self.arch_link_flag] + ld + self._rpath_link_flag,
             "defines": [f"-D{d}" for d in (defines + self.extra_defines)],
         }
 
     @staticmethod
-    def _get_env_list(v):
+    def _get_env_list(v: Any) -> Any:
         # FIXME: Should Environment have the "check_type=None" keyword as Conf?
         return v.strip().split() if not isinstance(v, list) else v
 
     @staticmethod
-    def _filter_list_empty_fields(v):
+    def _filter_list_empty_fields(v: Any) -> list[Any]:
         return list(filter(bool, v))
 
     @staticmethod
-    def _sanitize_env_format(value):
+    def _sanitize_env_format(value: Any) -> Any:
         if value is None or isinstance(value, list):
             return value
         if not isinstance(value, str):
@@ -497,35 +476,24 @@ class MesonToolchain:
         ret = [x.strip() for x in value.split() if x]
         return ret[0] if len(ret) == 1 else ret
 
-    def _get_binaries(self):
+    def _get_binaries(self) -> dict[str, Any]:
         """
         Gets all the binaries elements to fill the [binaries] section
         """
         ret = {
-            "c": self.c,
-            "cpp": self.cpp,
-            "ld": self.ld,
-            "c_ld": self.c_ld,
-            "cpp_ld": self.cpp_ld,
-            "ar": self.ar,
-            "strip": self.strip,
-            "as": self.as_,
-            "windres": self.windres,
-            "pkgconfig": self.pkgconfig,
-            "pkg-config": self.pkgconfig,
+            "c": self.c, "cpp": self.cpp, "ld": self.ld, "c_ld": self.c_ld, "cpp_ld": self.cpp_ld, "ar": self.ar, "strip": self.strip, "as": self.as_, "windres": self.windres, "pkgconfig": self.pkgconfig, "pkg-config": self.pkgconfig,
         }
         if self._is_apple_system:
             ret.update(
                 {
-                    "objc": self.objc,
-                    "objcpp": self.objcpp,
+                    "objc": self.objc, "objcpp": self.objcpp,
                 })
         # Let's give more prio to any value entered by the new binaries attribute
         ret.update(self.binaries)
         return ret
 
     @property
-    def _context(self):
+    def _context(self) -> dict[str, Any]:
         apple_flags = self.apple_isysroot_flag + self.apple_arch_flag + self.apple_min_version_flag
         extra_flags = self._get_extra_flags()
 
@@ -542,8 +510,7 @@ class MesonToolchain:
 
         if self.preprocessor_definitions:
             self._recipe.output.warning(
-                "Use 'extra_defines' attribute for compiler preprocessor definitions instead " +
-                "of 'preprocessor_definitions'", warn_tag="deprecated")
+                "Use 'extra_defines' attribute for compiler preprocessor definitions instead " + "of 'preprocessor_definitions'", warn_tag="deprecated")
 
         if self.libcxx:
             self.cpp_args.append(self.libcxx)
@@ -556,26 +523,19 @@ class MesonToolchain:
             if listkeypair:
                 if not isinstance(listkeypair, list):
                     raise RecipeException("MesonToolchain.subproject_options must be a list of dicts")
-                subproject_options[subproject] = [{k: to_meson_value(v) for k, v in keypair.items()}
-                                                  for keypair in listkeypair]
+                subproject_options[subproject] = [{k: to_meson_value(v) for k, v in keypair.items()} for keypair in listkeypair]
         return {
             # https://mesonbuild.com/Machine-files.html#properties
-            "properties": {k: to_meson_value(v) for k, v in self.properties.items()},
-            # https://mesonbuild.com/Machine-files.html#project-specific-options
-            "project_options": {k: to_meson_value(v) for k, v in self.project_options.items()},
-            # https://mesonbuild.com/Subprojects.html#build-options-in-subproject
-            "subproject_options": subproject_options.items(),
-            # https://mesonbuild.com/Builtin-options.html#directories
+            "properties": {k: to_meson_value(v) for k, v in self.properties.items()}, # https://mesonbuild.com/Machine-files.html#project-specific-options
+            "project_options": {k: to_meson_value(v) for k, v in self.project_options.items()}, # https://mesonbuild.com/Subprojects.html#build-options-in-subproject
+            "subproject_options": subproject_options.items(), # https://mesonbuild.com/Builtin-options.html#directories
             # https://mesonbuild.com/Machine-files.html#binaries
             # https://mesonbuild.com/Reference-tables.html#compiler-and-linker-selection-variables
-            "binaries": {k: to_meson_value(v) for k, v in self._get_binaries().items() if v is not None},
-            # https://mesonbuild.com/Builtin-options.html#core-options
+            "binaries": {k: to_meson_value(v) for k, v in self._get_binaries().items() if v is not None}, # https://mesonbuild.com/Builtin-options.html#core-options
             "buildtype": self.buildtype,
             "default_library": self.default_library,
             "backend": self._recipe_conf.get(
-                "tools.meson.mesontoolchain:backend",
-                default=self.backend),
-            # https://mesonbuild.com/Builtin-options.html#base-options
+                "tools.meson.mesontoolchain:backend", default=self.backend), # https://mesonbuild.com/Builtin-options.html#base-options
             "b_vscrt": self.b_vscrt,
             "b_staticpic": to_meson_value(self.b_staticpic),  # boolean
             "b_ndebug": to_meson_value(self.b_ndebug),  # boolean as string
@@ -591,15 +551,14 @@ class MesonToolchain:
             "objcpp_args": to_meson_value(self._filter_list_empty_fields(self.objcpp_args)),
             "objcpp_link_args": to_meson_value(self._filter_list_empty_fields(self.objcpp_link_args)),
             "pkg_config_path": self.pkg_config_path,
-            "build_pkg_config_path": self.build_pkg_config_path,
-            #: Deprecated: Dict-like object that defines Meson ``preprocessor definitions``. Use the extra_defines attribute instead.
+            "build_pkg_config_path": self.build_pkg_config_path, #: Deprecated: Dict-like object that defines Meson ``preprocessor definitions``. Use the extra_defines attribute instead.
             "preprocessor_definitions": self.preprocessor_definitions,
             "cross_build": self.cross_build,
             "is_apple_system": self._is_apple_system,
         }
 
     @property
-    def _filename(self):
+    def _filename(self) -> str:
         if self.cross_build and self._native:
             return self.native_filename
         elif self.cross_build:
@@ -608,7 +567,7 @@ class MesonToolchain:
             return self.native_filename
 
     @property
-    def _content(self):
+    def _content(self) -> str:
         """
         Gets content of the file to be used by Meson as its context.
 
@@ -616,8 +575,7 @@ class MesonToolchain:
         """
         context = self._context
         content = Template(
-            self._meson_file_template, trim_blocks=True, lstrip_blocks=True,
-            undefined=StrictUndefined).render(context)
+            self._meson_file_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined).render(context)
         return content
 
     def generate(self):

@@ -15,16 +15,32 @@ from thirdparty.cmake.layout import is_consumer
 from thirdparty.cmake.presets import write_cmake_presets
 from thirdparty.cmake.toolchain import RECIPE_TOOLCHAIN_FILENAME
 from thirdparty.cmake.toolchain.blocks import (
-    ExtraVariablesBlock, ToolchainBlocks,
-    UserToolchain, GenericSystemBlock,
-    AndroidSystemBlock, AppleSystemBlock, FPicBlock,
-    ArchitectureBlock, GLibCXXBlock, VSRuntimeBlock,
-    CppStdBlock, ParallelBlock, CMakeFlagsInitBlock,
-    TryCompileBlock, FindFiles, PkgConfigBlock,
-    SkipRPath, SharedLibBock, OutputDirsBlock,
-    ExtraFlagsBlock, CompilersBlock, LinkerScriptsBlock,
-    VSDebuggerEnvironment, VariablesBlock,
-    PreprocessorBlock, RpathLinkFlagsBlock, )
+    ExtraVariablesBlock,
+    ToolchainBlocks,
+    UserToolchain,
+    GenericSystemBlock,
+    AndroidSystemBlock,
+    AppleSystemBlock,
+    FPicBlock,
+    ArchitectureBlock,
+    GLibCXXBlock,
+    VSRuntimeBlock,
+    CppStdBlock,
+    ParallelBlock,
+    CMakeFlagsInitBlock,
+    TryCompileBlock,
+    FindFiles,
+    PkgConfigBlock,
+    SkipRPath,
+    SharedLibBock,
+    OutputDirsBlock,
+    ExtraFlagsBlock,
+    CompilersBlock,
+    LinkerScriptsBlock,
+    VSDebuggerEnvironment,
+    VariablesBlock,
+    PreprocessorBlock,
+    RpathLinkFlagsBlock, )
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.errors import RecipeException
@@ -125,8 +141,7 @@ class CMakeToolchain:
         self.add_rpath_link = False
 
         self.blocks = ToolchainBlocks(
-            self._recipe, self,
-            [
+            self._recipe, self, [
                 ("user_toolchain", UserToolchain),
                 ("generic_system", GenericSystemBlock),
                 ("compilers", CompilersBlock),
@@ -179,8 +194,7 @@ class CMakeToolchain:
     def content(self):
         context = self._context()
         content = Template(
-            self._template, trim_blocks=True, lstrip_blocks=True,
-            keep_trailing_newline=True).render(**context)
+            self._template, trim_blocks=True, lstrip_blocks=True, keep_trailing_newline=True).render(**context)
         return content
 
     @property
@@ -229,19 +243,12 @@ class CMakeToolchain:
         buildenv, runenv, cmake_executable = None, None, None
 
         if self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:presets_environment", default="",
-            check_type=str, choices=("disabled", "")) != "disabled":
-            build_env = self.presets_build_environment.vars(self._recipe) \
-                if self.presets_build_environment \
-                else VirtualBuildEnv(self._recipe, auto_generate=True).vars()
-            run_env = self.presets_run_environment.vars(self._recipe) \
-                if self.presets_run_environment \
-                else VirtualRunEnv(self._recipe, auto_generate=True).vars()
+            "tools.cmake.cmaketoolchain:presets_environment", default="", check_type=str, choices=("disabled", "")) != "disabled":
+            build_env = self.presets_build_environment.vars(self._recipe) if self.presets_build_environment else VirtualBuildEnv(self._recipe, auto_generate=True).vars()
+            run_env = self.presets_run_environment.vars(self._recipe) if self.presets_run_environment else VirtualRunEnv(self._recipe, auto_generate=True).vars()
 
-            buildenv = {name: value for name, value in
-                        build_env.items(variable_reference="$penv{{{name}}}")}
-            runenv = {name: value for name, value in
-                      run_env.items(variable_reference="$penv{{{name}}}")}
+            buildenv = {name: value for name, value in build_env.items(variable_reference="$penv{{{name}}}")}
+            runenv = {name: value for name, value in run_env.items(variable_reference="$penv{{{name}}}")}
 
             cmake_executable = self._recipe.conf.get("tools.cmake:cmake_program", None)
             cmake_executable = cmake_executable or self._find_cmake_exe()
@@ -249,13 +256,10 @@ class CMakeToolchain:
         user_presets = self.user_presets_path
         if is_consumer(self._recipe):
             user_presets = self._recipe.conf.get(
-                "tools.cmake.cmaketoolchain:user_presets",
-                default=self.user_presets_path)
+                "tools.cmake.cmaketoolchain:user_presets", default=self.user_presets_path)
 
         write_cmake_presets(
-            self._recipe, toolchain_file, self.generator, cache_variables,
-            user_presets, self.presets_prefix, buildenv, runenv,
-            cmake_executable, self.absolute_paths)
+            self._recipe, toolchain_file, self.generator, cache_variables, user_presets, self.presets_prefix, buildenv, runenv, cmake_executable, self.absolute_paths)
 
     def _get_generator(self, recipe_generator):
         # Returns the name of the generator to be used by CMake
@@ -275,16 +279,7 @@ class CMakeToolchain:
         compiler_version = recipe.settings.get_safe("compiler.version")
 
         cmake_years = {
-            '8': '8 2005',
-            '9': '9 2008',
-            '10': '10 2010',
-            '11': '11 2012',
-            '12': '12 2013',
-            '14': '14 2015',
-            '15': '15 2017',
-            '16': '16 2019',
-            '17': '17 2022',
-            '18': '18 2026',
+            '8': '8 2005', '9': '9 2008', '10': '10 2010', '11': '11 2012', '12': '12 2013', '14': '14 2015', '15': '15 2017', '16': '16 2019', '17': '17 2022', '18': '18 2026',
         }
 
         if compiler == "msvc":

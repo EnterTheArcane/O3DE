@@ -4,8 +4,7 @@ from thirdparty.errors import RecipeException
 def _get_gnu_arch(os_, arch):
     # Calculate the arch
     machine = {
-        "X64": "x86_64",
-        "ARM": "aarch64",
+        "X64": "x86_64", "ARM": "aarch64",
     }.get(arch, None)
 
     if not machine:
@@ -63,19 +62,10 @@ def _get_gnu_os(os_, arch, compiler=None):
         windows_op = "unknown-windows"
 
     op_system = {
-        "Windows": windows_op,
-        "Linux": "linux-gnu",
-        "Darwin": "apple-darwin",
-        "Android": "linux-android",
-        "Mac": "apple-darwin",
-        "iOS": "apple-ios",
-        "tvOS": "apple-tvos",
-        "visionOS": "apple-xros",
+        "Windows": windows_op, "Linux": "linux-gnu", "Darwin": "apple-darwin", "Android": "linux-android", "Mac": "apple-darwin", "iOS": "apple-ios", "tvOS": "apple-tvos", "visionOS": "apple-xros",
         # NOTE: it technically must be "asmjs-unknown-emscripten" or
         # "wasm32-unknown-emscripten", but it's not recognized by old config.sub versions
-        "Emscripten": "local-emscripten",
-        "AIX": "ibm-aix",
-        "Neutrino": "nto-qnx",
+        "Emscripten": "local-emscripten", "AIX": "ibm-aix", "Neutrino": "nto-qnx",
     }.get(os_, os_.lower())
 
     return op_system
@@ -96,7 +86,5 @@ def _get_gnu_triplet(os_, arch, compiler=None):
     machine = _get_gnu_arch(os_, arch)
     op_system = _get_gnu_os(os_, arch, compiler=compiler)
     return {
-        'machine': machine,
-        'system': op_system,
-        'triplet': f"{machine}-{op_system}",
+        'machine': machine, 'system': op_system, 'triplet': f"{machine}-{op_system}",
     }

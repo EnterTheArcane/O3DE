@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from thirdparty._internal.model.recipe_base import RecipeBase
 
 
-def _generate_flags(self, recipe):
+def _generate_flags(self, recipe: RecipeBase):
     template = textwrap.dedent(
         """
         {% if extra_cflags %}
@@ -61,44 +61,17 @@ def _generate_flags(self, recipe):
     thread_flags_list = threads_flags(self._recipe)
 
     extra_defines = format_list(
-        recipe.conf.get("tools.build:defines", default=[], check_type=list)
-        + self.extra_defines
-        + to_list(libcxx_compile_definitions)
-    )
+        recipe.conf.get("tools.build:defines", default=[], check_type=list) + self.extra_defines + to_list(libcxx_compile_definitions))
     extra_c_flags = format_list(
-        recipe.conf.get("tools.build:cflags", default=[], check_type=list)
-        + self.extra_cflags
-        + arch_flags
-        + thread_flags_list
-    )
+        recipe.conf.get("tools.build:cflags", default=[], check_type=list) + self.extra_cflags + arch_flags + thread_flags_list)
     extra_cxx_flags = format_list(
-        recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
-        + to_list(cxx_flags)
-        + self.extra_cxxflags
-        + arch_flags
-        + thread_flags_list
-    )
+        recipe.conf.get("tools.build:cxxflags", default=[], check_type=list) + to_list(cxx_flags) + self.extra_cxxflags + arch_flags + thread_flags_list)
     extra_ld_flags = format_list(
-        recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list)
-        + recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list)
-        + self.extra_ldflags
-        + arch_flags
-        + arch_link_flags
-        + thread_flags_list
-    )
+        recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list) + recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list) + self.extra_ldflags + arch_flags + arch_link_flags + thread_flags_list)
     extra_rc_flags = format_list(recipe.conf.get("tools.build:rcflags", default=[], check_type=list))
 
-    return (
-        Template(template, trim_blocks=True, lstrip_blocks=True)
-        .render(
-            extra_defines=extra_defines,
-            extra_cflags=extra_c_flags,
-            extra_cxxflags=extra_cxx_flags,
-            extra_ldflags=extra_ld_flags,
-            extra_rcflags=extra_rc_flags,
-        )
-        .strip()
-    )
+    return (Template(template, trim_blocks=True, lstrip_blocks=True).render(
+        extra_defines=extra_defines, extra_cflags=extra_c_flags, extra_cxxflags=extra_cxx_flags, extra_ldflags=extra_ld_flags, extra_rcflags=extra_rc_flags, ).strip())
 
 
 class _PremakeProject:
@@ -113,7 +86,7 @@ class _PremakeProject:
             {% endif %}
         """)
 
-    def __init__(self, name, recipe) -> None:
+    def __init__(self, name, recipe: RecipeBase) -> None:
         self.name = name
         self.kind = None
         self.extra_cxxflags = []
@@ -127,11 +100,7 @@ class _PremakeProject:
         """Generates project block"""
         flags_content = _generate_flags(self, self._recipe)  # Generate flags specific to this project
         return Template(self._premake_project_template, trim_blocks=True, lstrip_blocks=True).render(
-            name=self.name,
-            kind="None" if self.disable else self.kind,
-            flags=flags_content,
-            indent_level=4,
-        )
+            name=self.name, kind="None" if self.disable else self.kind, flags=flags_content, indent_level=4, )
 
 
 class PremakeToolchain:
@@ -260,8 +229,7 @@ class PremakeToolchain:
                 cppstd = f"c++{cppstd}"
 
         compilers_build_mapping = self._recipe.conf.get(
-            "tools.build:compiler_executables", default={}, check_type=dict
-        )
+            "tools.build:compiler_executables", default={}, check_type=dict)
         if compilers_build_mapping:
             build_env = VirtualBuildEnv(self._recipe, auto_generate=False)
             env = build_env.environment()
@@ -271,11 +239,7 @@ class PremakeToolchain:
                 env.define("CXX", compilers_build_mapping["cpp"])
             build_env.generate()
 
-        macho_to_amd64 = (
-            self._recipe.settings.arch
-            if cross_building(self._recipe) and self._recipe.settings.os == "Mac"
-            else None
-        )
+        macho_to_amd64 = (self._recipe.settings.arch if cross_building(self._recipe) and self._recipe.settings.os == "Mac" else None)
 
         content = Template(self._premake_file_template, trim_blocks=True, lstrip_blocks=True).render(
             # Pass posix path for better cross-platform compatibility in Lua
@@ -289,13 +253,9 @@ class PremakeToolchain:
             macho_to_amd64=macho_to_amd64,
             projects=self._projects,
             flags=_generate_flags(self, self._recipe),
-            indent_level=8,
-        )
+            indent_level=8, )
         save(
-            self,
-            os.path.join(self._recipe.folders.generators, self.filename),
-            content,
-        )
+            self, os.path.join(self._recipe.folders.generators, self.filename), content, )
         # Generate VCVars if using MSVC
         if "msvc" in self._recipe.settings.compiler:
             VCVars(self._recipe).generate()

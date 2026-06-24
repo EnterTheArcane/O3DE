@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 import logging
 import os
 
 import patch_ng
 
 from thirdparty.errors import RecipeException
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class PatchLogHandler(logging.Handler):
@@ -20,7 +27,7 @@ class PatchLogHandler(logging.Handler):
             self._scoped_output.info("%s: %s" % (self.patchname, logstr))
 
 
-def patch(recipe, base_path=None, patch_file=None, patch_string=None, strip=0, fuzz=False, **kwargs):
+def patch(recipe: RecipeBase, base_path=None, patch_file=None, patch_string=None, strip: int = 0, fuzz: bool = False, **kwargs):
     """
     Applies a diff from file (patch_file) or string (patch_string) in the recipe.folders.source
     directory. The folder containing the sources can be customized with the self.folders attribute
@@ -66,7 +73,7 @@ def patch(recipe, base_path=None, patch_file=None, patch_string=None, strip=0, f
         raise RecipeException("Failed to apply patch: %s" % patch_file)
 
 
-def apply_patches(recipe):
+def apply_patches(recipe: RecipeBase):
     """Apply all recipe-local ``patches/*.patch`` files in alphabetical order."""
     patches_dir = os.path.join(recipe.recipe_folder, "patches")
     if not os.path.isdir(patches_dir):

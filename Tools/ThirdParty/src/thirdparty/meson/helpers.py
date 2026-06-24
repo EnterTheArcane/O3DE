@@ -1,37 +1,28 @@
+from __future__ import annotations
+
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.output import Output
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 # https://mesonbuild.com/Reference-tables.html#operating-system-names
 _meson_system_map = {
-    'Android': 'android',
-    'Mac': 'darwin',
-    'iOS': 'darwin',
-    'tvOS': 'darwin',
-    'visionOS': 'darwin',
-    'Emscripten': 'emscripten',
-    'Linux': 'linux',
-    'SunOS': 'sunos',
-    'Windows': 'windows',
-    'WindowsCE': 'windows',
-    'WindowsStore': 'windows',
+    'Android': 'android', 'Mac': 'darwin', 'iOS': 'darwin', 'tvOS': 'darwin', 'visionOS': 'darwin', 'Emscripten': 'emscripten', 'Linux': 'linux', 'SunOS': 'sunos', 'Windows': 'windows', 'WindowsCE': 'windows', 'WindowsStore': 'windows',
 }
 
 # https://mesonbuild.com/Reference-tables.html#cpu-families
 _meson_cpu_family_map = {
-    'X64': ('x86_64', 'x86_64', 'little'),
-    'ARM': ('aarch64', 'aarch64', 'little'),
+    'X64': ('x86_64', 'x86_64', 'little'), 'ARM': ('aarch64', 'aarch64', 'little'),
 }
 
 
 def get_apple_subsystem(apple_sdk):
     return {
-        "iphoneos": "ios",
-        "iphonesimulator": "ios-simulator",
-        "appletvos": "tvos",
-        "appletvsimulator": "tvos-simulator",
-        "watchos": "watchos",
-        "watchsimulator": "watchos-simulator",
+        "iphoneos": "ios", "iphonesimulator": "ios-simulator", "appletvos": "tvos", "appletvsimulator": "tvos-simulator", "watchos": "watchos", "watchsimulator": "watchos-simulator",
     }.get(apple_sdk, "macos")
 
 
@@ -47,10 +38,7 @@ def to_meson_machine(machine_os, machine_arch):
     cpu_tuple = _meson_cpu_family_map.get(machine_arch, default_cpu_tuple)
     cpu_family, cpu, endian = cpu_tuple[0], cpu_tuple[1], cpu_tuple[2]
     context = {
-        'system': system,
-        'cpu_family': cpu_family,
-        'cpu': cpu,
-        'endian': endian,
+        'system': system, 'cpu_family': cpu_family, 'cpu': cpu, 'endian': endian,
     }
     return context
 
@@ -77,7 +65,7 @@ def to_meson_value(value):
     return value
 
 
-def to_cppstd_flag(recipe, compiler, compiler_version, cppstd):
+def to_cppstd_flag(recipe: RecipeBase, compiler, compiler_version, cppstd):
     """Gets a valid cppstd flag.
     :param recipe: ``RecipeBase`` instance.
     :param compiler: ``str`` compiler name.
@@ -99,7 +87,7 @@ def to_cppstd_flag(recipe, compiler, compiler_version, cppstd):
         return f"gnu++{cppstd[3:]}" if cppstd.startswith("gnu") else f"c++{cppstd}"
 
 
-def to_cstd_flag(recipe, cstd):
+def to_cstd_flag(recipe: RecipeBase, cstd):
     """Gets a valid cstd flag.
     """
     if cstd is None:

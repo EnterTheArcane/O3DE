@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 from pathlib import Path
@@ -12,6 +14,11 @@ from thirdparty._internal.util.files import mkdir, set_dirty_context_manager, re
 from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty.errors import RecipeException
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 def _o3de_download_cache_folder() -> str:
     """Default source cache folder used when no Recipe cache is configured."""
@@ -24,19 +31,17 @@ class SourcesCachingDownloader:
     if the config is active, it can use caching/backup-sources
     """
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         helpers = getattr(recipe, "_recipe_runtime")
         self._global_conf = helpers.global_conf
         self._file_downloader = FileDownloader(
-            helpers.requester, scope=recipe.display_name,
-            source_credentials=True)
+            helpers.requester, scope=recipe.display_name, source_credentials=True)
         self._home_folder = helpers.home_folder
         self._output = recipe.output
         self._recipe = recipe
 
     def download(
-        self, urls, file_path,
-        retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256):
+        self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, md5: str | None, sha1: str | None, sha256: str | None):
         download_cache_folder = self._global_conf.get("core.sources:download_cache")
         source_origins = self._global_conf.get("core.sources:download_urls", check_type=list)
         if source_origins and not download_cache_folder:
@@ -78,8 +83,7 @@ class SourcesCachingDownloader:
                         self._output.warning(
                             "The requested URL(s) are not listed in backup-sources metadata for this "
                             "SHA256 cache entry. This may be a mistake, or the same checksum "
-                            "reused for a different upstream version. Re-downloading to verify."
-                        )
+                            "reused for a different upstream version. Re-downloading to verify.")
                         need_download = True
                     else:
                         self._output.info(f"Source {urls} retrieved from local download cache")
@@ -87,8 +91,7 @@ class SourcesCachingDownloader:
                 if need_download:
                     with set_dirty_context_manager(download_path):
                         self._do_download(
-                            source_origins, urls, download_path, retry, retry_wait,
-                            verify_ssl, auth, headers, md5, sha1, sha256)
+                            source_origins, urls, download_path, retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256)
 
                 # copy it to the package "source" folder
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -98,19 +101,16 @@ class SourcesCachingDownloader:
             # Not in local cache, check origins from core.sources:download_urls
             # This doesn't need to be dirty-protected, as the full "source" folder is protected
             self._do_download(
-                source_origins, urls, file_path, retry, retry_wait, verify_ssl, auth,
-                headers, md5, sha1, sha256)
+                source_origins, urls, file_path, retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256)
 
     def _do_download(
-        self, source_origins, urls, download_path, retry, retry_wait, verify_ssl,
-        auth, headers, md5, sha1, sha256):
+        self, source_origins: Any, urls: Any, download_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, md5: str | None, sha1: str | None, sha256: str | None):
         # iterates the origins until one works
         for backup_url in source_origins:
             if backup_url == "origin":  # download from the internet
                 try:
                     self._download_from_urls(
-                        urls, download_path, retry, retry_wait, verify_ssl,
-                        auth, headers, md5, sha1, sha256)
+                        urls, download_path, retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256)
                     return
                 except Exception as e:
                     if backup_url is source_origins[-1]:
@@ -122,11 +122,9 @@ class SourcesCachingDownloader:
                     backup_url = backup_url if backup_url.endswith("/") else backup_url + "/"
                     # The download happens to the user download folder, not to the download cache
                     self._file_downloader.download(
-                        backup_url + sha256, download_path,
-                        sha256=sha256, overwrite=True)
+                        backup_url + sha256, download_path, sha256=sha256, overwrite=True)
                     self._file_downloader.download(
-                        backup_url + sha256 + ".json",
-                        download_path + ".json", overwrite=True)
+                        backup_url + sha256 + ".json", download_path + ".json", overwrite=True)
                     self._output.info(f"Sources for {urls} found in remote backup {backup_url}")
                     return
                 except NotFoundException:
@@ -142,8 +140,7 @@ class SourcesCachingDownloader:
                         f"Please check your 'source_credentials.json'")
 
     def _download_from_urls(
-        self, urls, file_path, retry, retry_wait, verify_ssl, auth, headers,
-        md5, sha1, sha256):
+        self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, md5: str | None, sha1: str | None, sha256: str | None):
         """ iterate the recipe provided list of urls (mirrors, all with same checksum) until
         one succeed
         """
@@ -158,8 +155,7 @@ class SourcesCachingDownloader:
                     self._file_downloader.check_checksum(file_path, md5, sha1, sha256)
                 else:
                     self._file_downloader.download(
-                        url, file_path, retry, retry_wait, verify_ssl,
-                        auth, True, headers, md5, sha1, sha256)
+                        url, file_path, retry, retry_wait, verify_ssl, auth, True, headers, md5, sha1, sha256)
                 self._output.info(f"Sources correctly downloaded from {url}")
                 return  # Success! Return to caller
             except Exception as error:
@@ -175,18 +171,17 @@ class PackageCacheDownloader:
     """ This is used for the download of Recipe packages from server, not for sources/backup sources
     """
 
-    def __init__(self, requester, config, scope=None):
+    def __init__(self, requester: Any, config: Any, scope: Any = None):
         self._download_cache = config.get("core.download:download_cache")
         if self._download_cache and not os.path.isabs(self._download_cache):
             raise RecipeException("core.download:download_cache must be an absolute path")
         self._file_downloader = FileDownloader(requester, scope=scope)
         self._scope = scope
 
-    def download(self, url, file_path, auth, verify_ssl, retry, retry_wait, metadata=False):
+    def download(self, url: str, file_path: str, auth: Any, verify_ssl: bool, retry: int, retry_wait: int, metadata: bool = False):
         if not self._download_cache or metadata:  # Metadata not cached and can be overwritten
             self._file_downloader.download(
-                url, file_path, retry=retry, retry_wait=retry_wait,
-                verify_ssl=verify_ssl, auth=auth, overwrite=metadata)
+                url, file_path, retry=retry, retry_wait=retry_wait, verify_ssl=verify_ssl, auth=auth, overwrite=metadata)
             return
 
         download_cache = DownloadCache(self._download_cache)
@@ -197,9 +192,7 @@ class PackageCacheDownloader:
             if not os.path.exists(cached_path):
                 with set_dirty_context_manager(cached_path):
                     self._file_downloader.download(
-                        url, cached_path, retry=retry,
-                        retry_wait=retry_wait, verify_ssl=verify_ssl,
-                        auth=auth, overwrite=False)
+                        url, cached_path, retry=retry, retry_wait=retry_wait, verify_ssl=verify_ssl, auth=auth, overwrite=False)
             else:  # Found in cache!
                 total_length = os.path.getsize(cached_path)
                 is_large_file = total_length > 10000000  # 10 MB

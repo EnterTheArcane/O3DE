@@ -8,6 +8,7 @@ import requests
 import urllib3
 from jinja2 import Template
 from requests.adapters import HTTPAdapter
+from typing import Any
 
 from thirdparty._internal.errors import scoped_traceback
 from thirdparty._internal.loader import load_python_file
@@ -30,7 +31,7 @@ class _SourceURLCredentials:
     Only for sources download (get(), download(), recipe config install
     """
 
-    def __init__(self, cache_folder):
+    def __init__(self, cache_folder: Any):
         self._urls = {}
         self._auth_source_plugin = None
         if not cache_folder:
@@ -42,8 +43,7 @@ class _SourceURLCredentials:
             return
 
         def _get_auth(credentials):
-            if ("headers" in credentials or "token" in credentials or
-                ("user" in credentials and "password" in credentials)):
+            if ("headers" in credentials or "token" in credentials or ("user" in credentials and "password" in credentials)):
                 return credentials
             raise RecipeException(f"Unknown credentials method for '{credentials['url']}'")
 
@@ -51,12 +51,11 @@ class _SourceURLCredentials:
             template = Template(load(creds_path))
             content = template.render({"platform": platform, "os": os})
             content = json.loads(content)
-            self._urls = {credentials["url"]: _get_auth(credentials)
-                          for credentials in content["credentials"]}
+            self._urls = {credentials["url"]: _get_auth(credentials) for credentials in content["credentials"]}
         except Exception as e:
             raise RecipeException(f"Error loading 'source_credentials.json' {creds_path}: {repr(e)}")
 
-    def add_auth(self, url, kwargs):
+    def add_auth(self, url: str, kwargs: Any):
         # First, try to use "auth_source_plugin"
         if self._auth_source_plugin:
             try:
@@ -92,7 +91,7 @@ class _SourceURLCredentials:
 
 class HttpRequester:
 
-    def __init__(self, config, cache_folder=None):
+    def __init__(self, config: Any, cache_folder: Any = None):
         self._url_creds = _SourceURLCredentials(cache_folder)
         _max_retries = config.get("core.net.http:max_retries", default=2, check_type=int)
         self._http_requester = requests.Session()
@@ -105,13 +104,10 @@ class HttpRequester:
         self._cacert_path = config.get("core.net.http:cacert_path", check_type=str)
         self._client_certificates = config.get("core.net.http:client_cert")
         self._clean_system_proxy = config.get(
-            "core.net.http:clean_system_proxy", default=False,
-            check_type=bool)
+            "core.net.http:clean_system_proxy", default=False, check_type=bool)
         platform_info = "; ".join(
             [
-                " ".join([platform.system(), platform.release()]),
-                "Python " + platform.python_version(),
-                platform.machine(),
+                " ".join([platform.system(), platform.release()]), "Python " + platform.python_version(), platform.machine(),
             ])
         self._user_agent = "O3DE-ThirdParty/1.0 (%s)" % (platform_info)
 
@@ -130,19 +126,16 @@ class HttpRequester:
             requests.codes.bandwidth_limit_exceeded,
         }
         return urllib3.Retry(
-            total=retry,
-            backoff_factor=0.05,
-            status_forcelist=retry_status_code_set
-        )
+            total=retry, backoff_factor=0.05, status_forcelist=retry_status_code_set)
 
-    def _should_skip_proxy(self, url):
+    def _should_skip_proxy(self, url: str):
         if self._no_proxy_match:
             for entry in self._no_proxy_match:
                 if fnmatch.fnmatch(url, entry):
                     return True
         return False
 
-    def _add_kwargs(self, url, kwargs):
+    def _add_kwargs(self, url: str, kwargs: Any):
         # verify is the caller-provided SSL setting for source downloads.
         source_credentials = kwargs.pop("source_credentials", None)
         if kwargs.get("verify", None) is not False:  # False means de-activate
@@ -166,22 +159,22 @@ class HttpRequester:
 
         return kwargs
 
-    def get(self, url, **kwargs):
+    def get(self, url: str, **kwargs: Any):
         return self._call_method("get", url, **kwargs)
 
-    def head(self, url, **kwargs):
+    def head(self, url: str, **kwargs: Any):
         return self._call_method("head", url, **kwargs)
 
-    def put(self, url, **kwargs):
+    def put(self, url: str, **kwargs: Any):
         return self._call_method("put", url, **kwargs)
 
-    def delete(self, url, **kwargs):
+    def delete(self, url: str, **kwargs: Any):
         return self._call_method("delete", url, **kwargs)
 
-    def post(self, url, **kwargs):
+    def post(self, url: str, **kwargs: Any):
         return self._call_method("post", url, **kwargs)
 
-    def _call_method(self, method, url, **kwargs):
+    def _call_method(self, method: str, url: str, **kwargs: Any):
         popped = False
         if self._clean_system_proxy:
             old_env = dict(os.environ)

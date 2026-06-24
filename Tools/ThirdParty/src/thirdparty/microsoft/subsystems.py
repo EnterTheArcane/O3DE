@@ -13,8 +13,8 @@ def unix_path(recipe: RecipeBase, path: str, scope: str = "build") -> str | None
     return subsystem_path(subsystem, path)
 
 
-def unix_path_package_info_legacy(recipe: RecipeBase, path: str,
-                                  path_flavor: str | None = None) -> str:
+def unix_path_package_info_legacy(
+    recipe: RecipeBase, path: str, path_flavor: str | None = None) -> str:
     message = "The use of 'unix_path_legacy_compat' is deprecated in Recipe 2.0 and does not " \
               "perform path conversions. This is retained for compatibility with Recipe 1.x " \
               "and will be removed in a future version."

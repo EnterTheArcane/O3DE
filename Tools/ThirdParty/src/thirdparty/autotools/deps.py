@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 
 class AutotoolsDeps:
-
     _recipe: RecipeBase
     _environment: Environment | None
     _ordered_deps: list[Any] | None
@@ -42,8 +41,7 @@ class AutotoolsDeps:
         for dep in self.ordered_deps:
             if dep.options.get_safe("shared"):
                 flags.extend(
-                    [f"-Wl,-rpath -Wl,{libdir}" for libdir in
-                     dep.cpp_info.aggregated_components().libdirs])
+                    [f"-Wl,-rpath -Wl,{libdir}" for libdir in dep.cpp_info.aggregated_components().libdirs])
         return flags
 
     @property

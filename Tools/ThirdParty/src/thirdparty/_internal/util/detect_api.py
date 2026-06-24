@@ -4,6 +4,7 @@ import re
 import subprocess
 import tempfile
 import textwrap
+from typing import Any
 
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.output import Output
@@ -12,14 +13,14 @@ from thirdparty._internal.util.runners import check_output_runner, detect_runner
 from thirdparty.errors import RecipeException
 
 
-def detect_os():
+def detect_os() -> str:
     the_os = platform.system()
     if the_os == "Darwin":
         the_os = "Mac"
     return the_os
 
 
-def detect_arch():
+def detect_arch() -> str:
     machine = platform.machine().lower()
     if "arm64" in machine or "aarch64" in machine:
         return "ARM"
@@ -28,14 +29,14 @@ def detect_arch():
     return None
 
 
-def _parse_gnu_libc(ldd_output):
+def _parse_gnu_libc(ldd_output: str):
     first_line = ldd_output.partition("\n")[0]
     if any(glibc_indicator in first_line for glibc_indicator in ["GNU libc", "GLIBC"]):
         return first_line.split()[-1].strip()
     return None
 
 
-def _detect_gnu_libc(ldd="/usr/bin/ldd"):
+def _detect_gnu_libc(ldd: str = "/usr/bin/ldd"):
     if platform.system() != "Linux":
         Output(scope="detect_api").warning("detect_gnu_libc() only works on Linux")
         return None
@@ -45,29 +46,26 @@ def _detect_gnu_libc(ldd="/usr/bin/ldd"):
         if version is None:
             first_line = ldd_output.partition("\n")[0]
             Output(scope="detect_api").warning(
-                f"detect_gnu_libc() did not detect glibc in the first line of output from '{ldd} --version': '{first_line}'"
-            )
+                f"detect_gnu_libc() did not detect glibc in the first line of output from '{ldd} --version': '{first_line}'")
             return None
         return version
     except Exception as e:
         Output(scope="detect_api").debug(
-            f"Couldn't determine the glibc version from the output of the '{ldd} --version' command {e}"
-        )
+            f"Couldn't determine the glibc version from the output of the '{ldd} --version' command {e}")
     return None
 
 
-def _parse_musl_libc(ldd_output):
+def _parse_musl_libc(ldd_output: str):
     lines = ldd_output.splitlines()
     if "musl libc" not in lines[0]:
         return None
     return lines[1].split()[-1].strip()
 
 
-def _detect_musl_libc(ldd="/usr/bin/ldd"):
+def _detect_musl_libc(ldd: str = "/usr/bin/ldd"):
     if platform.system() != "Linux":
         Output(scope="detect_api").warning(
-            "detect_musl_libc() only works on Linux"
-        )
+            "detect_musl_libc() only works on Linux")
         return None
 
     d = tempfile.mkdtemp()
@@ -80,14 +78,12 @@ def _detect_musl_libc(ldd="/usr/bin/ldd"):
         if version is None:
             first_line = ldd_output.partition("\n")[0]
             Output(scope="detect_api").warning(
-                f"detect_musl_libc() did not detect musl libc in the first line of output from '{ldd}': '{first_line}'"
-            )
+                f"detect_musl_libc() did not detect musl libc in the first line of output from '{ldd}': '{first_line}'")
             return None
         return version
     except Exception as e:
         Output(scope="detect_api").debug(
-            f"Couldn't determine the musl libc version from the output of the '{ldd}' command {e}"
-        )
+            f"Couldn't determine the musl libc version from the output of the '{ldd}' command {e}")
     finally:
         try:
             os.unlink(tmp_file)
@@ -96,11 +92,10 @@ def _detect_musl_libc(ldd="/usr/bin/ldd"):
     return None
 
 
-def detect_libc(ldd="/usr/bin/ldd"):
+def detect_libc(ldd: str = "/usr/bin/ldd"):
     if platform.system() != "Linux":
         Output(scope="detect_api").warning(
-            f"detect_libc() is only supported on Linux currently"
-        )
+            f"detect_libc() is only supported on Linux currently")
         return None, None
     version = _detect_gnu_libc(ldd)
     if version is not None:
@@ -109,12 +104,11 @@ def detect_libc(ldd="/usr/bin/ldd"):
     if version is not None:
         return "musl", version
     Output(scope="detect_api").warning(
-        f"Couldn't detect the libc provider and version"
-    )
+        f"Couldn't detect the libc provider and version")
     return None, None
 
 
-def detect_libcxx(compiler, version, compiler_exe=None):
+def detect_libcxx(compiler: str, version: Any, compiler_exe: str | None = None):
     assert isinstance(version, Version)
 
     def _detect_gcc_libcxx(version_, executable):
@@ -135,9 +129,7 @@ def detect_libcxx(compiler, version, compiler_exe=None):
         # -fsyntax-only to omit the output and stop early (but enough for our static_assert).
         # -xc++ and - to tell the compiler to compile code from stdin and treat it as C++.
         completed_process = subprocess.run(
-            [executable, "-std=c++11", "-fsyntax-only", "-xc++", "-"],
-            input=main, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, text=True)
+            [executable, "-std=c++11", "-fsyntax-only", "-xc++", "-"], input=main, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         error, out_str = completed_process.returncode, completed_process.stdout
         if error:
             if "using libstdc++" in out_str:
@@ -150,8 +142,7 @@ def detect_libcxx(compiler, version, compiler_exe=None):
             output.info("gcc C++ standard library: libstdc++11")
         return "libstdc++11"
 
-        # This is not really a detection in most cases
-        # Get compiler C++ stdlib
+        # This is not really a detection in most cases  # Get compiler C++ stdlib
 
     if compiler == "apple-clang":
         return "libc++"
@@ -177,7 +168,7 @@ def detect_libcxx(compiler, version, compiler_exe=None):
         return "libstdc++"
 
 
-def default_msvc_runtime(compiler):
+def default_msvc_runtime(compiler: str):
     if platform.system() != "Windows":
         return None, None
     if compiler == "clang":
@@ -193,12 +184,12 @@ def default_msvc_runtime(compiler):
     return None, None
 
 
-def detect_msvc_update(version):
+def detect_msvc_update(version: Any):
     from thirdparty._internal.util.detect_vs import vs_detect_update
     return vs_detect_update(version)
 
 
-def default_cppstd(compiler, compiler_version):
+def default_cppstd(compiler: str, compiler_version: Any):
     """ returns the default cppstd for the compiler-version. This is not detected, just the default
     """
 
@@ -236,7 +227,7 @@ def default_cppstd(compiler, compiler_version):
     return default
 
 
-def detect_cppstd(compiler, compiler_version):
+def detect_cppstd(compiler: str, compiler_version: Any):
     cppstd = default_cppstd(compiler, compiler_version)
     if compiler == "apple-clang" and compiler_version >= "11":
         # Recipe does not detect the default cppstd for apple-clang,
@@ -246,7 +237,7 @@ def detect_cppstd(compiler, compiler_version):
     return cppstd
 
 
-def default_cstd(compiler, compiler_version):
+def default_cstd(compiler: str, compiler_version: Any):
     """returns the default cstd for the compiler-version. This is not detected, just the default"""
 
     def _clang_cstd_default(version):
@@ -321,8 +312,7 @@ def detect_default_compiler():
             return gcc, gcc_version, compiler_exe
         if platform.system() == "SunOS" and command.lower() == "cc":
             return detect_suncc_compiler(command)
-        if (platform.system() == "Windows" and command.rstrip('"').endswith(("cl", "cl.exe"))
-            and "clang" not in command):
+        if (platform.system() == "Windows" and command.rstrip('"').endswith(("cl", "cl.exe")) and "clang" not in command):
             return detect_cl_compiler(command)
 
         # I am not able to find its version
@@ -354,7 +344,7 @@ def detect_default_compiler():
         return detect_clang_compiler()
 
 
-def default_msvc_ide_version(version):
+def default_msvc_ide_version(version: Any):
     version = {"195": "18", "194": "17", "193": "17", "192": "16", "191": "15"}.get(str(version))
     if version:
         return Version(version)
@@ -372,7 +362,7 @@ def _detect_vs_ide_version():
     return None
 
 
-def _cc_compiler(compiler_exe="cc"):
+def _cc_compiler(compiler_exe: str = "cc"):
     # Try to detect the "cc" linux system "alternative". It could point to gcc or clang
     try:
         ret, out = detect_runner(f'"{compiler_exe}" --version')
@@ -394,7 +384,7 @@ def _cc_compiler(compiler_exe="cc"):
         return None, None, None
 
 
-def detect_gcc_compiler(compiler_exe="gcc"):
+def detect_gcc_compiler(compiler_exe: str = "gcc"):
     try:
         if platform.system() == "Darwin":
             # In Mac OS X check if gcc is a fronted using apple-clang
@@ -415,7 +405,7 @@ def detect_gcc_compiler(compiler_exe="gcc"):
         return None, None, None
 
 
-def detect_suncc_compiler(compiler_exe="cc"):
+def detect_suncc_compiler(compiler_exe: str = "cc"):
     try:
         _, out = detect_runner(f'"{compiler_exe}" -V')
         compiler = "sun-cc"
@@ -431,7 +421,7 @@ def detect_suncc_compiler(compiler_exe="cc"):
         return None, None, None
 
 
-def detect_clang_compiler(compiler_exe="clang"):
+def detect_clang_compiler(compiler_exe: str = "clang"):
     try:
         ret, out = detect_runner(f'"{compiler_exe}" --version')
         if ret != 0:
@@ -463,7 +453,7 @@ def detect_msvc_compiler():
     return None, None, None
 
 
-def detect_cl_compiler(compiler_exe="cl"):
+def detect_cl_compiler(compiler_exe: str = "cl"):
     """ only if CC/CXX env-vars are defined pointing to cl.exe, and the VS environment must
     be active to have them in the path
     """
@@ -477,8 +467,7 @@ def detect_cl_compiler(compiler_exe="cl"):
             return None, None, None
         compiler = "msvc"
         version_regex = re.search(
-            r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.([0-9]+)\.?([0-9]+)?",
-            first_line)
+            r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.([0-9]+)\.?([0-9]+)?", first_line)
         if not version_regex:
             return None, None, None
         # 19.36.32535 -> 193
@@ -488,7 +477,7 @@ def detect_cl_compiler(compiler_exe="cl"):
         return None, None, None
 
 
-def detect_emcc_compiler(compiler_exe="emcc"):
+def detect_emcc_compiler(compiler_exe: str = "emcc"):
     ret, out = detect_runner(f'"{compiler_exe}" --version')
     if ret != 0:
         return None, None, None
@@ -503,7 +492,7 @@ def detect_emcc_compiler(compiler_exe="emcc"):
     return compiler, Version(version), compiler_exe
 
 
-def default_compiler_version(compiler, version):
+def default_compiler_version(compiler: str, version: Any):
     """ returns the default version that Recipe uses in profiles, typically dropping some
     of the minor or patch digits, that do not affect binary compatibility
     """
@@ -534,7 +523,7 @@ def default_compiler_version(compiler, version):
     return version
 
 
-def detect_sdk_version(sdk):
+def detect_sdk_version(sdk: Any):
     if platform.system() != "Darwin":
         return
     cmd = f'xcrun -sdk {sdk} --show-sdk-version'

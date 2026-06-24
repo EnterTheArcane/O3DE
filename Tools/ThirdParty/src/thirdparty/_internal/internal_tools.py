@@ -1,4 +1,11 @@
+from __future__ import annotations
+
 from thirdparty.errors import RecipeException
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 universal_arch_separator = '|'
 
@@ -17,8 +24,7 @@ def is_universal_arch(settings_value, valid_definitions):
     return all(part in valid_macos_values for part in parts)
 
 
-def raise_on_universal_arch(recipe):
+def raise_on_universal_arch(recipe: RecipeBase):
     if is_universal_arch(
-        recipe.settings.get_safe("arch"),
-        recipe.settings.possible_values().get("arch")):
+        recipe.settings.get_safe("arch"), recipe.settings.possible_values().get("arch")):
         raise RecipeException("Universal binaries not supported by toolchain.")

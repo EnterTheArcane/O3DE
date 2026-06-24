@@ -12,8 +12,7 @@ RECIPE_VCVARS = "vcvars_env"
 
 def msvc_platform_from_arch(arch: str) -> str:
     return {
-        "X64": "x64",
-        "ARM": "ARM64",
+        "X64": "x64", "ARM": "ARM64",
     }.get(arch)
 
 
@@ -32,12 +31,7 @@ def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True):
     if compiler == "Visual Studio":
         compiler_version = recipe.settings.get_safe("compiler.version")
         compiler_version = {
-            "17": "193",
-            "16": "192",
-            "15": "191",
-            "14": "190",
-            "12": "180",
-            "11": "170",
+            "17": "193", "16": "192", "15": "191", "14": "190", "12": "180", "11": "170",
         }.get(compiler_version)
     elif compiler == "msvc":
         compiler_version = recipe.settings.get_safe("compiler.version")
@@ -64,13 +58,7 @@ def msvc_version_to_vs_ide_version(version: str) -> str:
     :return: VS IDE version
     """
     _visuals = {
-        '170': '11',
-        '180': '12',
-        '190': '14',
-        '191': '15',
-        '192': '16',
-        '193': '17',
-        '194': '17',  # Note both 193 and 194 belong to VS 17 2022
+        '170': '11', '180': '12', '190': '14', '191': '15', '192': '16', '193': '17', '194': '17',  # Note both 193 and 194 belong to VS 17 2022
         '195': '18',
     }
     return _visuals[str(version)]
@@ -84,14 +72,7 @@ def msvc_version_to_toolset_version(version: str) -> str:
     :return: VS IDE toolset version
     """
     toolsets = {
-        '170': 'v110',
-        '180': 'v120',
-        '190': 'v140',
-        '191': 'v141',
-        '192': 'v142',
-        "193": 'v143',
-        "194": 'v143',
-        "195": 'v145',
+        '170': 'v110', '180': 'v120', '190': 'v140', '191': 'v141', '192': 'v142', "193": 'v143', "194": 'v143', "195": 'v145',
     }
     return toolsets.get(str(version))
 
@@ -153,9 +134,7 @@ class VCVars:
         # C:\Program Files (x86)\Microsoft Visual Studio\2017\Community
         # C:\Program Files (x86)\Microsoft Visual Studio 14.0
         vcvars = vcvars_command(
-            vs_version, architecture=vcvarsarch, platform_type=None,
-            winsdk_version=winsdk_version, vcvars_ver=vcvars_ver,
-            vs_install_path=vs_install_path)
+            vs_version, architecture=vcvarsarch, platform_type=None, winsdk_version=winsdk_version, vcvars_ver=vcvars_ver, vs_install_path=vs_install_path)
 
         content = textwrap.dedent(
             f"""
@@ -249,8 +228,7 @@ def msvc_runtime_flag(recipe: RecipeBase) -> str:
 
 
 def vcvars_command(
-    version, architecture=None, platform_type=None, winsdk_version=None,
-    vcvars_ver=None, start_dir_cd=True, vs_install_path=None):
+    version, architecture=None, platform_type=None, winsdk_version=None, vcvars_ver=None, start_dir_cd: bool = True, vs_install_path=None):
     """
     Recipe-agnostic construction of vcvars command
     https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line
@@ -309,12 +287,7 @@ def _vcvars_versions(recipe: RecipeBase) -> list[str]:
             return None, None
         toolset_version = recipe.settings.get_safe("compiler.runtime_version")
         vs_version = {
-            "v140": "14",
-            "v141": "15",
-            "v142": "16",
-            "v143": "17",
-            "v144": "17",
-            "v145": "18",
+            "v140": "14", "v141": "15", "v142": "16", "v143": "17", "v144": "17", "v145": "18",
         }.get(toolset_version)
         if vs_version is None:
             raise RecipeException(
@@ -322,12 +295,7 @@ def _vcvars_versions(recipe: RecipeBase) -> list[str]:
                 "add the compiler.runtime_version=[v140-v145] setting to your "
                 "profile.")
         vcvars_ver = {
-            "v140": "14.0",
-            "v141": "14.1",
-            "v142": "14.2",
-            "v143": "14.3",
-            "v144": "14.4",
-            "v145": "14.5",
+            "v140": "14.0", "v141": "14.1", "v142": "14.2", "v143": "14.3", "v144": "14.4", "v145": "14.5",
         }.get(toolset_version)
         if vcvars_ver and msvc_update is not None:
             vcvars_ver += f"{msvc_update}"
@@ -357,13 +325,11 @@ def _vcvars_arch(recipe: RecipeBase) -> str:
     arch = None
     if arch_build == 'X64':
         arch = {
-            'X64': 'amd64',
-            'ARM': 'amd64_arm64',
+            'X64': 'amd64', 'ARM': 'amd64_arm64',
         }.get(arch_host)
     elif arch_build == 'ARM':
         arch = {
-            'X64': 'arm64_x64',
-            'ARM': 'arm64',
+            'X64': 'arm64_x64', 'ARM': 'arm64',
         }.get(arch_host)
 
     if not arch:
@@ -372,7 +338,7 @@ def _vcvars_arch(recipe: RecipeBase) -> str:
     return arch
 
 
-def is_msvc(recipe: RecipeBase, build_context=False) -> bool:
+def is_msvc(recipe: RecipeBase, build_context: bool = False) -> bool:
     """
     Validates if the current compiler is ``msvc``.
 

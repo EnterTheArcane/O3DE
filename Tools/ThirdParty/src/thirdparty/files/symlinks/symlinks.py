@@ -1,4 +1,11 @@
+from __future__ import annotations
+
 import os
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 def get_symlinks(base_folder):
@@ -16,7 +23,7 @@ def _path_inside(base, folder):
     return os.path.commonprefix([base, folder]) == base
 
 
-def absolute_to_relative_symlinks(recipe, base_folder):
+def absolute_to_relative_symlinks(recipe: RecipeBase, base_folder):
     """
     Convert the symlinks with absolute paths into relative ones if they are pointing to a file or
     directory inside the ``base_folder``. Any absolute symlink pointing outside the ``base_folder``    will be ignored.
@@ -35,7 +42,7 @@ def absolute_to_relative_symlinks(recipe, base_folder):
             os.symlink(new_link, fullpath)
 
 
-def remove_external_symlinks(recipe, base_folder):
+def remove_external_symlinks(recipe: RecipeBase, base_folder):
     """
     Remove the symlinks to files that point outside the ``base_folder``, no matter if relative or absolute.
 
@@ -50,7 +57,7 @@ def remove_external_symlinks(recipe, base_folder):
             os.unlink(fullpath)
 
 
-def remove_broken_symlinks(recipe, base_folder=None):
+def remove_broken_symlinks(recipe: RecipeBase, base_folder=None):
     """
     Remove the broken symlinks, no matter if relative or absolute.
 

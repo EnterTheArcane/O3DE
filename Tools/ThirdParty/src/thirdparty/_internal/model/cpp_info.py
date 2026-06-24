@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import glob
 import json
@@ -10,6 +12,11 @@ from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import load, save
 from thirdparty.errors import RecipeException
 
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
 
 class PackageType(Enum):
     """The kind of a built library, *deduced* from the produced artifacts (see
@@ -21,10 +28,10 @@ class PackageType(Enum):
     HEADER = "header-library"
     APP = "application"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         # Allows comparing with the string value, e.g. ``cpp_info.type == "shared-library"``
         return super().__eq__(PackageType(other))
 
@@ -43,7 +50,7 @@ class MockInfoProperty:
     counter = {}
     package = None
 
-    def __init__(self, name):
+    def __init__(self, name: str):
         self._name = name
 
     @staticmethod
@@ -76,38 +83,38 @@ class MockInfoProperty:
 
 class _Component:
 
-    def __init__(self, set_defaults=False):
+    def __init__(self, set_defaults: bool = False):
         # ###### PROPERTIES
-        self._properties = None
+        self._properties: dict[str, Any] | None = None
 
         # ###### DIRECTORIES
-        self._includedirs = None  # Ordered list of include paths
-        self._srcdirs = None  # Ordered list of source paths
-        self._libdirs = None  # Directories to find libraries
-        self._resdirs = None  # Directories to find resources, data, etc
-        self._bindirs = None  # Directories to find executables and shared libs
-        self._builddirs = None
-        self._frameworkdirs = None
+        self._includedirs: list[str] | None = None  # Ordered list of include paths
+        self._srcdirs: list[str] | None = None  # Ordered list of source paths
+        self._libdirs: list[str] | None = None  # Directories to find libraries
+        self._resdirs: list[str] | None = None  # Directories to find resources, data, etc
+        self._bindirs: list[str] | None = None  # Directories to find executables and shared libs
+        self._builddirs: list[str] | None = None
+        self._frameworkdirs: list[str] | None = None
 
         # ##### FIELDS
-        self._system_libs = None  # Ordered list of system libraries
-        self._frameworks = None  # system Apple OS frameworks
-        self._package_framework = None  # any other frameworks
-        self._libs = None  # The libs to link against
-        self._defines = None  # preprocessor definitions
-        self._cflags = None  # pure C flags
-        self._cxxflags = None  # C++ compilation flags
-        self._sharedlinkflags = None  # linker flags
-        self._exelinkflags = None  # linker flags
-        self._objects = None  # linker flags
-        self._sources = None  # source files
-        self._exe = None  # application executable, only 1 allowed
-        self._languages = None
+        self._system_libs: list[str] | None = None  # Ordered list of system libraries
+        self._frameworks: list[str] | None = None  # system Apple OS frameworks
+        self._package_framework: str | None = None  # any other frameworks
+        self._libs: list[str] | None = None  # The libs to link against
+        self._defines: list[str] | None = None  # preprocessor definitions
+        self._cflags: list[str] | None = None  # pure C flags
+        self._cxxflags: list[str] | None = None  # C++ compilation flags
+        self._sharedlinkflags: list[str] | None = None  # linker flags
+        self._exelinkflags: list[str] | None = None  # linker flags
+        self._objects: list[str] | None = None  # linker flags
+        self._sources: list[str] | None = None  # source files
+        self._exe: str | None = None  # application executable, only 1 allowed
+        self._languages: list[str] | None = None
 
-        self._sysroot = None
-        self._requires = None
+        self._sysroot: str | None = None
+        self._requires: list[str] | None = None
 
-        self._consumer_recipe = None
+        self._consumer_recipe: RecipeBase | None = None
 
         # LEGACY 1.X fields, can be removed in 2.X
         self.names = MockInfoProperty("cpp_info.names")
@@ -119,14 +126,14 @@ class _Component:
             self.libdirs = ["lib"]
             self.bindirs = ["bin"]
 
-        self._type = None
-        self._location = None
-        self._link_location = None
+        self._type: PackageType | None = None
+        self._location: str | None = None
+        self._link_location: str | None = None
 
-    def set_consumer(self, recipe):
+    def set_consumer(self, recipe: RecipeBase):
         self._consumer_recipe = recipe
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         return {
             "includedirs": self._includedirs,
             "srcdirs": self._srcdirs,
@@ -156,7 +163,7 @@ class _Component:
         }
 
     @staticmethod
-    def _evaluate_cond(item, flags, recipe):
+    def _evaluate_cond(item: str, flags: list[str], recipe: RecipeBase | None) -> list[str]:
         if recipe is None:
             return flags
         flags_map = recipe._recipe_runtime.flags_map  # noqa
@@ -165,7 +172,7 @@ class _Component:
         return flags_map(recipe=recipe, item=item, flags=flags)
 
     @staticmethod
-    def deserialize(contents):
+    def deserialize(contents: dict[str, Any]) -> _Component:
         result = _Component()
         for field, value in contents.items():
             if hasattr(result, field):
@@ -176,7 +183,7 @@ class _Component:
                 setattr(result, f"_{field}", value)
         return result
 
-    def clone(self):
+    def clone(self) -> _Component:
         # Necessary below for exploding a cpp_info.libs = [lib1, lib2] into components
         result = _Component()
         for k, v in vars(self).items():
@@ -185,67 +192,67 @@ class _Component:
         return result
 
     @property
-    def includedirs(self):
+    def includedirs(self) -> list[str]:
         if self._includedirs is None:
             self._includedirs = []
         return self._includedirs
 
     @includedirs.setter
-    def includedirs(self, value):
+    def includedirs(self, value: list[str]):
         self._includedirs = value
 
     @property
-    def srcdirs(self):
+    def srcdirs(self) -> list[str]:
         if self._srcdirs is None:
             self._srcdirs = []
         return self._srcdirs
 
     @srcdirs.setter
-    def srcdirs(self, value):
+    def srcdirs(self, value: list[str]):
         self._srcdirs = value
 
     @property
-    def libdirs(self):
+    def libdirs(self) -> list[str]:
         if self._libdirs is None:
             self._libdirs = []
         return self._libdirs
 
     @libdirs.setter
-    def libdirs(self, value):
+    def libdirs(self, value: list[str]):
         self._libdirs = value
 
     @property
-    def resdirs(self):
+    def resdirs(self) -> list[str]:
         if self._resdirs is None:
             self._resdirs = []
         return self._resdirs
 
     @resdirs.setter
-    def resdirs(self, value):
+    def resdirs(self, value: list[str]):
         self._resdirs = value
 
     @property
-    def bindirs(self):
+    def bindirs(self) -> list[str]:
         if self._bindirs is None:
             self._bindirs = []
         return self._bindirs
 
     @bindirs.setter
-    def bindirs(self, value):
+    def bindirs(self, value: list[str]):
         self._bindirs = value
 
     @property
-    def builddirs(self):
+    def builddirs(self) -> list[str]:
         if self._builddirs is None:
             self._builddirs = []
         return self._builddirs
 
     @builddirs.setter
-    def builddirs(self, value):
+    def builddirs(self, value: list[str]):
         self._builddirs = value
 
     @property
-    def bindir(self):
+    def bindir(self) -> str:
         bindirs = self.bindirs
         if not bindirs or len(bindirs) != 1:
             raise RecipeException(
@@ -255,7 +262,7 @@ class _Component:
         return bindirs[0]
 
     @property
-    def libdir(self):
+    def libdir(self) -> str:
         libdirs = self.libdirs
         if not libdirs or len(libdirs) != 1:
             raise RecipeException(
@@ -265,7 +272,7 @@ class _Component:
         return libdirs[0]
 
     @property
-    def includedir(self):
+    def includedir(self) -> str:
         includedirs = self.includedirs
         if not includedirs or len(includedirs) != 1:
             raise RecipeException(
@@ -275,198 +282,197 @@ class _Component:
         return includedirs[0]
 
     @property
-    def system_libs(self):
+    def system_libs(self) -> list[str]:
         if self._system_libs is None:
             self._system_libs = []
         return self._system_libs
 
     @system_libs.setter
-    def system_libs(self, value):
+    def system_libs(self, value: list[str]):
         self._system_libs = value
 
     @property
-    def package_framework(self):
+    def package_framework(self) -> str | None:
         return self._package_framework
 
     @package_framework.setter
-    def package_framework(self, value):
+    def package_framework(self, value: str | None):
         self._package_framework = value
 
     @property
-    def frameworks(self):
+    def frameworks(self) -> list[str]:
         if self._frameworks is None:
             self._frameworks = []
         return self._frameworks
 
     @frameworks.setter
-    def frameworks(self, value):
+    def frameworks(self, value: list[str]):
         self._frameworks = value
 
     @property
-    def frameworkdirs(self):
+    def frameworkdirs(self) -> list[str]:
         if self._frameworkdirs is None:
             self._frameworkdirs = []
         return self._frameworkdirs
 
     @frameworkdirs.setter
-    def frameworkdirs(self, value):
+    def frameworkdirs(self, value: list[str]):
         self._frameworkdirs = value
 
     @property
-    def libs(self):
+    def libs(self) -> list[str]:
         if self._libs is None:
             self._libs = []
         return self._libs
 
     @libs.setter
-    def libs(self, value):
+    def libs(self, value: list[str]):
         self._libs = value
 
     @property
-    def exe(self):
+    def exe(self) -> str | None:
         return self._exe
 
     @exe.setter
-    def exe(self, value):
+    def exe(self, value: str | None):
         self._exe = value
 
     @property
-    def type(self):
+    def type(self) -> PackageType | None:
         return self._type
 
     @type.setter
-    def type(self, value):
+    def type(self, value: Any):
         self._type = PackageType(value) if value is not None else None
 
     @property
-    def location(self):
+    def location(self) -> str | None:
         return self._location
 
     @location.setter
-    def location(self, value):
+    def location(self, value: str | None):
         self._location = value
 
     @property
-    def link_location(self):
+    def link_location(self) -> str | None:
         return self._link_location
 
     @link_location.setter
-    def link_location(self, value):
+    def link_location(self, value: str | None):
         self._link_location = value
 
     @property
-    def languages(self):
+    def languages(self) -> list[str] | None:
         return self._languages
 
     @languages.setter
-    def languages(self, value):
+    def languages(self, value: list[str] | None):
         self._languages = value
 
     @property
-    def defines(self):
+    def defines(self) -> list[str]:
         if self._defines is None:
             self._defines = []
         return self._defines
 
     @defines.setter
-    def defines(self, value):
+    def defines(self, value: list[str]):
         self._defines = value
 
     @property
-    def cflags(self):
+    def cflags(self) -> list[str]:
         if self._cflags is None:
             self._cflags = []
         return self._evaluate_cond("cflags", self._cflags, self._consumer_recipe)
 
     @cflags.setter
-    def cflags(self, value):
+    def cflags(self, value: list[str]):
         self._cflags = value
 
     @property
-    def cxxflags(self):
+    def cxxflags(self) -> list[str]:
         if self._cxxflags is None:
             self._cxxflags = []
         return self._evaluate_cond("cxxflags", self._cxxflags, self._consumer_recipe)
 
     @cxxflags.setter
-    def cxxflags(self, value):
+    def cxxflags(self, value: list[str]):
         self._cxxflags = value
 
     @property
-    def sharedlinkflags(self):
+    def sharedlinkflags(self) -> list[str]:
         if self._sharedlinkflags is None:
             self._sharedlinkflags = []
         return self._evaluate_cond(
-            "sharedlinkflags", self._sharedlinkflags,
-            self._consumer_recipe)
+            "sharedlinkflags", self._sharedlinkflags, self._consumer_recipe)
 
     @sharedlinkflags.setter
-    def sharedlinkflags(self, value):
+    def sharedlinkflags(self, value: list[str]):
         self._sharedlinkflags = value
 
     @property
-    def exelinkflags(self):
+    def exelinkflags(self) -> list[str]:
         if self._exelinkflags is None:
             self._exelinkflags = []
         return self._evaluate_cond("exelinkflags", self._exelinkflags, self._consumer_recipe)
 
     @exelinkflags.setter
-    def exelinkflags(self, value):
+    def exelinkflags(self, value: list[str]):
         self._exelinkflags = value
 
     @property
-    def objects(self):
+    def objects(self) -> list[str]:
         if self._objects is None:
             self._objects = []
         return self._objects
 
     @objects.setter
-    def objects(self, value):
+    def objects(self, value: list[str]):
         self._objects = value
 
     @property
-    def sources(self):
+    def sources(self) -> list[str]:
         if self._sources is None:
             self._sources = []
         return self._sources
 
     @sources.setter
-    def sources(self, value):
+    def sources(self, value: list[str]):
         self._sources = value
 
     @property
-    def sysroot(self):
+    def sysroot(self) -> str:
         if self._sysroot is None:
             self._sysroot = ""
         return self._sysroot
 
     @sysroot.setter
-    def sysroot(self, value):
+    def sysroot(self, value: str):
         self._sysroot = value
 
     @property
-    def requires(self):
+    def requires(self) -> list[str]:
         if self._requires is None:
             self._requires = []
         return self._requires
 
     @requires.setter
-    def requires(self, value):
+    def requires(self, value: list[str]):
         self._requires = value
 
     @property
-    def required_component_names(self):
+    def required_component_names(self) -> list[str]:
         """ Names of the required INTERNAL components of the same package (not scoped with ::)"""
         if self.requires is None:
             return []
         return [r for r in self.requires if "::" not in r]
 
-    def set_property(self, property_name, value):
+    def set_property(self, property_name: str, value: Any):
         if self._properties is None:
             self._properties = {}
         self._properties[property_name] = value
 
-    def get_property(self, property_name, check_type=None):
+    def get_property(self, property_name: str, check_type: Any = None) -> Any:
         if self._properties is None:
             return None
         try:
@@ -478,7 +484,7 @@ class _Component:
         except KeyError:
             pass
 
-    def get_init(self, attribute, default):
+    def get_init(self, attribute: str, default: Any) -> Any:
         # Similar to dict.setdefault
         item = getattr(self, attribute)
         if item is not None:
@@ -486,7 +492,7 @@ class _Component:
         setattr(self, attribute, default)
         return default
 
-    def merge(self, other, overwrite=False):
+    def merge(self, other: _Component, overwrite: bool = False):
         """
         :param overwrite:
         :type other: _Component
@@ -523,7 +529,7 @@ class _Component:
                 else:
                     current_values[k] = copy.copy(v)
 
-    def set_relative_base_folder(self, folder):
+    def set_relative_base_folder(self, folder: str):
         for varname in _DIRS_VAR_NAMES:
             origin = getattr(self, varname)
             if origin is not None:
@@ -535,7 +541,7 @@ class _Component:
                 assert isinstance(modules, list), "cmake_build_modules must be a list"
                 properties["cmake_build_modules"] = [os.path.join(folder, v) for v in modules]
 
-    def deploy_base_folder(self, package_folder, deploy_folder):
+    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
         def relocate(el):
             rel_path = os.path.relpath(el, package_folder)
             if rel_path.startswith(".."):
@@ -554,10 +560,10 @@ class _Component:
                 assert isinstance(modules, list), "cmake_build_modules must be a list"
                 properties["cmake_build_modules"] = [relocate(f) for f in modules]
 
-    def parsed_requires(self):
+    def parsed_requires(self) -> list[Any]:
         return [r.split("::", 1) if "::" in r else (None, r) for r in self.requires]
 
-    def _auto_deduce_locations(self, recipe, library_name):
+    def _auto_deduce_locations(self, recipe: RecipeBase, library_name: str):
 
         def _lib_match_by_glob(dir_, filename):
             # Run a glob.glob function to find the file given by the filename
@@ -666,9 +672,8 @@ class _Component:
                 f" '{libname}' that declared .type='{self._type}'")
         self._type = deduced_type
 
-    def deduce_locations(self, recipe, component_name=""):
-        name = f'{recipe} cpp_info.components["{component_name}"]' if component_name \
-            else f'{recipe} cpp_info'
+    def deduce_locations(self, recipe: RecipeBase, component_name: str = ""):
+        name = f'{recipe} cpp_info.components["{component_name}"]' if component_name else f'{recipe} cpp_info'
         # executable
         if self._exe:  # exe is a new field, it should have the correct location
             if self._type is None:
@@ -710,27 +715,27 @@ class _Component:
 
 
 class CppInfo:
-    def __init__(self, set_defaults=False):
+    def __init__(self, set_defaults: bool = False):
         self.components = defaultdict(lambda: _Component(set_defaults))
-        self.default_components = None
+        self.default_components: list[str] | None = None
         self._package = _Component(set_defaults)
 
-    def set_consumer(self, recipe):
+    def set_consumer(self, recipe: RecipeBase):
         self._package.set_consumer(recipe)
         for comp in self.components.values():
             comp.set_consumer(recipe)
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         # all cpp_info.xxx of not defined things will go to the global package
         return getattr(self._package, attr)
 
-    def __setattr__(self, attr, value):
+    def __setattr__(self, attr: str, value: Any):
         if attr in ("components", "default_components", "_package", "_aggregated", "required_components"):
             super(CppInfo, self).__setattr__(attr, value)
         else:
             setattr(self._package, attr, value)
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         ret = {"root": self._package.serialize()}
         if self.default_components:
             ret["default_components"] = self.default_components
@@ -738,25 +743,25 @@ class CppInfo:
             ret[component_name] = info.serialize()
         return ret
 
-    def deserialize(self, content):
+    def deserialize(self, content: dict[str, Any]) -> CppInfo:
         self._package = _Component.deserialize(content.pop("root"))
         self.default_components = content.get("default_components")
         for component_name, info in content.items():
             self.components[component_name] = _Component.deserialize(info)
         return self
 
-    def save(self, path):
+    def save(self, path: str):
         save(path, json.dumps(self.serialize()))
 
-    def load(self, path):
+    def load(self, path: str) -> CppInfo:
         content = json.loads(load(path))
         return self.deserialize(content)
 
     @property
-    def has_components(self):
+    def has_components(self) -> bool:
         return len(self.components) > 0
 
-    def merge(self, other, overwrite=False):
+    def merge(self, other: CppInfo, overwrite: bool = False):
         """Merge 'other' into self. 'other' can be an old cpp_info object
         Used to merge Layout source + build cpp objects info (editables)
         @type other: CppInfo
@@ -772,19 +777,19 @@ class CppInfo:
             # Make sure each component created on the fly does not bring new defaults
             self.components.setdefault(cname, _Component(set_defaults=False)).merge(c, overwrite)
 
-    def set_relative_base_folder(self, folder):
+    def set_relative_base_folder(self, folder: str):
         """Prepend the folder to all the directories definitions, that are relative"""
         self._package.set_relative_base_folder(folder)
         for component in self.components.values():
             component.set_relative_base_folder(folder)
 
-    def deploy_base_folder(self, package_folder, deploy_folder):
+    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
         """Prepend the folder to all the directories"""
         self._package.deploy_base_folder(package_folder, deploy_folder)
         for component in self.components.values():
             component.deploy_base_folder(package_folder, deploy_folder)
 
-    def get_sorted_components(self):
+    def get_sorted_components(self) -> OrderedDict[str, _Component]:
         """
         Order the components taking into account if they depend on another component in the
         same package (not scoped with ::). First less dependant.
@@ -809,7 +814,7 @@ class CppInfo:
             opened = new_open
         return result
 
-    def aggregated_components(self):
+    def aggregated_components(self) -> CppInfo:
         """Aggregates all the components as global values, returning a new CppInfo
         Used by many generators to obtain a unified, aggregated view of all components
         """
@@ -832,7 +837,7 @@ class CppInfo:
         aggregated._package = result
         return aggregated
 
-    def check_component_requires(self, recipe):
+    def check_component_requires(self, recipe: RecipeBase):
         """ quality check for component requires, called after package_info()
         - Check that all recipe ``requires`` are used if consumer recipe explicit opt-in to use
             component requires
@@ -855,8 +860,7 @@ class CppInfo:
         # Only direct host (not test) dependencies can define required components
         # We use recipe.dependencies to use the already replaced ones by "replace_requires"
         # So consumers can keep their ``self.cpp_info.requires = ["pkg_name::comp"]``
-        direct_dependencies = [r.ref.name for r, d in recipe.dependencies.items() if r.direct
-                               and not r.build and not r.is_test and r.visible and not r.override]
+        direct_dependencies = [r.ref.name for r, d in recipe.dependencies.items() if r.direct and not r.build and not r.is_test and r.visible and not r.override]
 
         for e in external:
             if e not in direct_dependencies:
@@ -872,7 +876,7 @@ class CppInfo:
                 raise RecipeException(msg)
 
     @property
-    def required_components(self):
+    def required_components(self) -> list[Any]:
         """Returns a list of tuples with (require, component_name) required by the package
         If the require is internal (to another component), the require will be None"""
         # FIXME: Cache the value
@@ -886,7 +890,7 @@ class CppInfo:
         ret = [r.split("::", 1) if "::" in r else (None, r) for r in ret]
         return ret
 
-    def deduce_full_cpp_info(self, recipe):
+    def deduce_full_cpp_info(self, recipe: RecipeBase) -> CppInfo:
         if recipe.cpp_info.has_components and (recipe.cpp_info.exe or recipe.cpp_info.libs):
             raise RecipeException(f"{recipe}: 'cpp_info' contains components and .exe or .libs")
 
@@ -900,8 +904,7 @@ class CppInfo:
             common.libs = []
             common.type = str(PackageType.HEADER)  # the type of components is a string!
             if not common.requires:
-                common.requires = [f"{c.ref.name}::{c.ref.name}"
-                                   for c in recipe.dependencies.direct_host.values()]
+                common.requires = [f"{c.ref.name}::{c.ref.name}" for c in recipe.dependencies.direct_host.values()]
             result.components["_common"] = common
 
             for lib in self.libs:

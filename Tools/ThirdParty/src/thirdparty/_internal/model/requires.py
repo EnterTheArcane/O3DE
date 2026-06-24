@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty.errors import RecipeException
 
@@ -7,10 +11,23 @@ class Requirement:
     """
 
     def __init__(
-        self, ref, *, headers=None, libs=None, build=False, run=None, visible=None,
-        transitive_headers=None, transitive_libs=None, package_id_mode=None,
-        force=None, override=None, direct=None, options=None, no_skip=False,
-        consistent=None):
+        self,
+        ref: RecipeReference,
+        *,
+        headers: bool | None = None,
+        libs: bool | None = None,
+        build: bool = False,
+        run: bool | None = None,
+        visible: bool | None = None,
+        transitive_headers: bool | None = None,
+        transitive_libs: bool | None = None,
+        package_id_mode: str | None = None,
+        force: bool | None = None,
+        override: bool | None = None,
+        direct: bool | None = None,
+        options: dict[str, Any] | None = None,
+        no_skip: bool = False,
+        consistent: bool | None = None):
         # * prevents the usage of more positional parameters, always ref + **kwargs
         # By default this is a generic library requirement
         self.ref = ref
@@ -45,63 +62,63 @@ class Requirement:
                 f" supported. Please open a Github ticket to report it")
 
     @property
-    def files(self):  # require needs some files in dependency package
+    def files(self) -> bool:  # require needs some files in dependency package
         return self.headers or self.libs or self.run or self.build
 
     @staticmethod
-    def _default_if_none(field, default_value):
+    def _default_if_none(field: Any, default_value: Any) -> Any:
         return field if field is not None else default_value
 
     @property
-    def headers(self):
+    def headers(self) -> bool:
         return self._default_if_none(self._headers, True)
 
     @headers.setter
-    def headers(self, value):
+    def headers(self, value: bool | None):
         self._headers = value
 
     @property
-    def libs(self):
+    def libs(self) -> bool:
         return self._default_if_none(self._libs, True)
 
     @libs.setter
-    def libs(self, value):
+    def libs(self, value: bool | None):
         self._libs = value
 
     @property
-    def visible(self):
+    def visible(self) -> bool:
         return self._default_if_none(self._visible, True)
 
     @visible.setter
-    def visible(self, value):
+    def visible(self, value: bool | None):
         self._visible = value
 
     @property
-    def force(self):
+    def force(self) -> bool:
         return self._default_if_none(self._force, False)
 
     @force.setter
-    def force(self, value):
+    def force(self, value: bool | None):
         self._force = value
 
     @property
-    def override(self):
+    def override(self) -> bool:
         return self._default_if_none(self._override, False)
 
     @override.setter
-    def override(self, value):
+    def override(self, value: bool | None):
         self._override = value
 
     @property
-    def direct(self):
+    def direct(self) -> bool:
         return self._default_if_none(self._direct, True)
 
     @direct.setter
-    def direct(self, value):
+    def direct(self, value: bool | None):
         self._direct = value
 
     @property
-    def consistent(self):
+    def consistent(self) -> bool:
         # Host by default has to be consistent too
         if self.consistent_policy_new:
             default_consistent = self.visible or not self.build
@@ -110,101 +127,90 @@ class Requirement:
         return self._default_if_none(self._consistent, default_consistent)
 
     @consistent.setter
-    def consistent(self, value):
+    def consistent(self, value: bool | None):
         self._consistent = value
 
     @property
-    def build(self):
+    def build(self) -> bool:
         return self._build
 
     @build.setter
-    def build(self, value):
+    def build(self, value: bool):
         self._build = value
 
     @property
-    def run(self):
+    def run(self) -> bool:
         return self._default_if_none(self._run, False)
 
     @run.setter
-    def run(self, value):
+    def run(self, value: bool | None):
         self._run = value
 
     @property
-    def transitive_headers(self):
+    def transitive_headers(self) -> bool | None:
         return self._transitive_headers
 
     @transitive_headers.setter
-    def transitive_headers(self, value):
+    def transitive_headers(self, value: bool | None):
         self._transitive_headers = value
 
     @property
-    def transitive_libs(self):
+    def transitive_libs(self) -> bool | None:
         return self._transitive_libs
 
     @transitive_libs.setter
-    def transitive_libs(self, value):
+    def transitive_libs(self, value: bool | None):
         self._transitive_libs = value
 
     @property
-    def package_id_mode(self):
+    def package_id_mode(self) -> str | None:
         return self._package_id_mode
 
     @package_id_mode.setter
-    def package_id_mode(self, value):
+    def package_id_mode(self, value: str | None):
         self._package_id_mode = value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(self.__dict__)
 
-    def __str__(self):
+    def __str__(self) -> str:
         traits = (f'build={self.build}, headers={self.headers}, libs={self.libs}, '
                   f'run={self.run}, visible={self.visible}')
         return f"{self.ref}, Traits: {traits}"
 
-    def serialize(self):
+    def serialize(self) -> dict[str, Any]:
         result = {
-            "ref": str(self.ref),
-            "require": str(self._required_ref),
+            "ref": str(self.ref), "require": str(self._required_ref),
         }
         serializable = (
-            "run", "libs", "skip", "force", "direct", "build",
-            "transitive_headers", "transitive_libs", "headers",
-            "package_id_mode", "visible",
+            "run", "libs", "skip", "force", "direct", "build", "transitive_headers", "transitive_libs", "headers", "package_id_mode", "visible",
         )
         for attribute in serializable:
             result[attribute] = getattr(self, attribute)
         return result
 
-    def copy_requirement(self):
+    def copy_requirement(self) -> Requirement:
         return Requirement(
-            self.ref, headers=self.headers, libs=self.libs, build=self.build,
-            run=self.run, visible=self.visible,
-            transitive_headers=self.transitive_headers,
-            transitive_libs=self.transitive_libs,
-            consistent=self.consistent)
+            self.ref, headers=self.headers, libs=self.libs, build=self.build, run=self.run, visible=self.visible, transitive_headers=self.transitive_headers, transitive_libs=self.transitive_libs, consistent=self.consistent)
 
     @property
-    def alias(self):
+    def alias(self) -> RecipeReference | None:
         version = repr(self.ref.version)
         if version.startswith("(") and version.endswith(")"):
             return RecipeReference(self.ref.name, version[1:-1])
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.ref.name, self.build))
 
     def __eq__(self, other):
         """If the name is the same and they are in the same context, and if both of them are
         propagating includes or libs or run info or both are visible or the reference is the same,
         we consider the requires equal, so they can conflict"""
-        return (self.ref.name == other.ref.name and self.build == other.build and
-                (self.override or  # an override with same name and context, always match
-                 (self.headers and other.headers) or
-                 (self.libs and other.libs) or
-                 (self.run and other.run) or
-                 (self.consistent and other.consistent) or
-                 (self.ref == other.ref and self.options == other.options)))
+        return (self.ref.name == other.ref.name and self.build == other.build and (self.override or  # an override with same name and context, always match
+                                                                                   (self.headers and other.headers) or (self.libs and other.libs) or (self.run and other.run) or (self.consistent and other.consistent) or (
+                                                                                           self.ref == other.ref and self.options == other.options)))
 
-    def aggregate(self, other):
+    def aggregate(self, other: Requirement):
         """ when closing loop and finding the same dependency on a node, the information needs
         to be aggregated
         :param other: is the existing Require that the current node has, which information has to be
@@ -235,16 +241,14 @@ class Requirement:
 
 
 class ToolRequirements:
-    def __init__(self, requires):
+    def __init__(self, requires: Requirements):
         self._requires = requires
 
     def __call__(
-        self, ref, package_id_mode=None, visible=False, run=True, options=None,
-        override=None):
+        self, ref, package_id_mode=None, visible: bool = False, run: bool = True, options=None, override=None):
         # TODO: Check which arguments could be user-defined
         self._requires.tool_require(
-            ref, package_id_mode=package_id_mode, visible=visible, run=run,
-            options=options, override=override)
+            ref, package_id_mode=package_id_mode, visible=visible, run=run, options=options, override=override)
 
 
 class Requirements:
@@ -280,7 +284,7 @@ class Requirements:
                         "Wrong 'tool_requires' definition, "
                         "did you mean 'requirements()'?")
 
-    def reindex(self, require, new_name):
+    def reindex(self, require: Requirement, new_name: str):
         """ This operation is necessary when the reference name of a package is changed
         as a result of an "alternative" replacement of the package name, otherwise the dictionary
         gets broken by modified key
@@ -306,8 +310,7 @@ class Requirements:
         self._requires[req] = req
 
     def tool_require(
-        self, ref, raise_if_duplicated=True, package_id_mode=None, visible=False,
-        run=True, options=None, override=None):
+        self, ref, raise_if_duplicated: bool = True, package_id_mode=None, visible: bool = False, run: bool = True, options=None, override=None):
         """
          Represent a build tool like "cmake".
 
@@ -321,8 +324,7 @@ class Requirements:
         # FIXME: This raise_if_duplicated is ugly, possibly remove
         ref = RecipeReference.loads(ref)
         req = Requirement(
-            ref, headers=False, libs=False, build=True, run=run, visible=visible,
-            package_id_mode=package_id_mode, options=options, override=override)
+            ref, headers=False, libs=False, build=True, run=run, visible=visible, package_id_mode=package_id_mode, options=options, override=override)
         if raise_if_duplicated and self._requires.get(req):
             raise RecipeException(f"Duplicated requirement: {ref}")
         self._requires[req] = req

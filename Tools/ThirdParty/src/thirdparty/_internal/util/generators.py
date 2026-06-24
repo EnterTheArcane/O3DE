@@ -1,7 +1,14 @@
+from __future__ import annotations
+
 import os
 
+from typing import TYPE_CHECKING
 
-def relativize_path(path, recipe, placeholder, normalize=True):
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def relativize_path(path, recipe: RecipeBase, placeholder, normalize: bool = True):
     """
     relative path from the "generators_folder" to "path", asuming the root file, like
     recipe_toolchain.cmake will be directly in the "generators_folder"

@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 import textwrap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from jinja2 import Template, StrictUndefined
 
@@ -157,14 +157,14 @@ class _BazelDepBuildGenerator:
         {{ filegroup_bindirs_macro(root) }}
         """)
 
-    def __init__(self, recipe, dep, require):
+    def __init__(self, recipe: RecipeBase, dep: Any, require: Any):
         self._recipe = recipe
         self._dep = dep
         self._is_tool_require = require.build
         self._transitive_reqs = get_transitive_requires(self._recipe, dep)
 
     @property
-    def _build_file_path(self):
+    def _build_file_path(self) -> str:
         """
         Returns the absolute path to the BUILD file created by Recipe
         """
@@ -172,7 +172,7 @@ class _BazelDepBuildGenerator:
         return folder.replace("\\", "/")
 
     @property
-    def _absolute_build_file_path(self):
+    def _absolute_build_file_path(self) -> str:
         """
         Returns the absolute path to the BUILD file created by Recipe
         """
@@ -180,25 +180,24 @@ class _BazelDepBuildGenerator:
         return folder.replace("\\", "/")
 
     @property
-    def _package_folder(self):
+    def _package_folder(self) -> str:
         """
         Returns the package folder path
         """
         # If editable, package_folder can be None
-        root_folder = self._dep.recipe_folder if self._dep.folders.package is None \
-            else self._dep.folders.package
+        root_folder = self._dep.recipe_folder if self._dep.folders.package is None else self._dep.folders.package
         return root_folder.replace("\\", "/")
 
-    def _get_repository_name(self, dep):
+    def _get_repository_name(self, dep: Any) -> str:
         pkg_name = dep.cpp_info.get_property("bazel_repository_name") or dep.ref.name
         return f"build-{pkg_name}" if self._is_tool_require else pkg_name
 
     @staticmethod
-    def _get_target_name(dep):
+    def _get_target_name(dep: Any) -> str:
         pkg_name = dep.cpp_info.get_property("bazel_target_name") or dep.ref.name
         return pkg_name
 
-    def _get_component_name(self, dep, comp_ref_name):
+    def _get_component_name(self, dep: Any, comp_ref_name: str) -> str:
         pkg_name = self._get_target_name(dep)
         if comp_ref_name not in dep.cpp_info.components:
             # foo::foo might be referencing the root cppinfo
@@ -210,23 +209,20 @@ class _BazelDepBuildGenerator:
         # with a namespace, e.g., dep-comp1
         return comp_name or f"{pkg_name}-{comp_ref_name}"
 
-    def _get_headers(self, cpp_info):
-        return [f'"{_relativize_path(path, self._package_folder)}/**"'
-                for path in cpp_info.includedirs]
+    def _get_headers(self, cpp_info: Any) -> list[str]:
+        return [f'"{_relativize_path(path, self._package_folder)}/**"' for path in cpp_info.includedirs]
 
-    def _get_bindirs(self, cpp_info):
+    def _get_bindirs(self, cpp_info: Any) -> list[str]:
         return [_relativize_path(bindir, self._package_folder) for bindir in cpp_info.bindirs]
 
-    def _get_includes(self, cpp_info):
-        return [f'"{_relativize_path(path, self._package_folder)}"'
-                for path in cpp_info.includedirs]
+    def _get_includes(self, cpp_info: Any) -> list[str]:
+        return [f'"{_relativize_path(path, self._package_folder)}"' for path in cpp_info.includedirs]
 
     @staticmethod
-    def _get_defines(cpp_info):
-        return ['"{}"'.format(define.replace('"', '\\' * 3 + '"'))
-                for define in cpp_info.defines]
+    def _get_defines(cpp_info: Any) -> list[str]:
+        return ['"{}"'.format(define.replace('"', '\\' * 3 + '"')) for define in cpp_info.defines]
 
-    def _get_linkopts(self, cpp_info):
+    def _get_linkopts(self, cpp_info: Any) -> list[str]:
         os_build = self._dep.settings_build.get_safe("os")
         link_opt = '/DEFAULTLIB:{}' if os_build == "Windows" else '-l{}'
         system_libs = [link_opt.format(lib) for lib in cpp_info.system_libs]
@@ -240,7 +236,7 @@ class _BazelDepBuildGenerator:
         return [f'"{flag}"' for flag in (system_libs + shared_flags + framework_flags + frameworkdirs_flags)]
 
     @staticmethod
-    def _get_copts(cpp_info):
+    def _get_copts(cpp_info: Any) -> list[str]:
         # FIXME: long discussions between copts (-Iflag) vs includes in Bazel. Not sure yet
         # includedirsflags = ['"-I{}"'.format(_relativize_path(d, package_folder_path))
         #                     for d in cpp_info.includedirs]
@@ -248,7 +244,7 @@ class _BazelDepBuildGenerator:
         cflags = [var.replace('"', '\\"') for var in cpp_info.cflags]
         return [f'"{flag}"' for flag in (cxxflags + cflags)]
 
-    def _get_component_requirement_names(self, cpp_info):
+    def _get_component_requirement_names(self, cpp_info: Any) -> list[str]:
         """
         Get all the valid names from the requirements ones given a CppInfo object.
 
@@ -289,7 +285,7 @@ class _BazelDepBuildGenerator:
                 ret.append(dep_name)
         return ret
 
-    def _get_lib_info(self, cpp_info, deduced_cpp_info, component_name=None):
+    def _get_lib_info(self, cpp_info: Any, deduced_cpp_info: Any, component_name: str | None = None) -> list[Any]:
 
         def _lib_info(lib_name, virtual_cpp_info):
             info = {
@@ -321,7 +317,7 @@ class _BazelDepBuildGenerator:
                 libs_info.append(_lib_info(lib_name, virtual_cpp_info))
         return libs_info
 
-    def _get_build_file_context(self):
+    def _get_build_file_context(self) -> dict[str, Any]:
         """
         Get the whole package information
 
@@ -358,10 +354,7 @@ class _BazelDepBuildGenerator:
         if not requires:
             # If no requires were found, let's try to get all the direct dependencies,
             # e.g., requires = "other_pkg/1.0"
-            requires = [
-                f"@{self._get_repository_name(req)}//:{self._get_target_name(req)}"
-                for req in self._transitive_reqs.values()
-            ]
+            requires = [f"@{self._get_repository_name(req)}//:{self._get_target_name(req)}" for req in self._transitive_reqs.values()]
         cpp_info = self._dep.cpp_info
         build_content["root"] = {
             "name": pkg_name,
@@ -378,20 +371,17 @@ class _BazelDepBuildGenerator:
         return build_content
 
     @property
-    def dep_context(self):
+    def dep_context(self) -> dict[str, Any]:
         """
         Return the dependency context to fill later the recipe_deps_module_extension.bzl and so on.
         """
         return {
-            'repository_name': self._get_repository_name(self._dep),
-            'package_folder': self._package_folder,
-            'package_build_file_path': self._absolute_build_file_path,
+            'repository_name': self._get_repository_name(self._dep), 'package_folder': self._package_folder, 'package_build_file_path': self._absolute_build_file_path,
         }
 
     def items(self):
         template = Template(
-            self.dep_build_template, trim_blocks=True, lstrip_blocks=True,
-            undefined=StrictUndefined)
+            self.dep_build_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         content = template.render(self._get_build_file_context())
         return {self._build_file_path: content}.items()
 
@@ -498,25 +488,20 @@ class _BazelPathsGenerator:
         """)
 
     @classmethod
-    def items(cls, dependencies_context):
+    def items(cls, dependencies_context: Any):
         if not dependencies_context:
             return {}
         # Bazel 6.x, but it'll likely be dropped soon
         repository_template = Template(
-            cls.repository_template, trim_blocks=True,
-            lstrip_blocks=True,
-            undefined=StrictUndefined)
+            cls.repository_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         content_6x = repository_template.render(dependencies=dependencies_context)
         # Bazel 7.x files
         module_template = Template(
-            cls.module_template, trim_blocks=True, lstrip_blocks=True,
-            undefined=StrictUndefined)
+            cls.module_template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
         content = module_template.render(dependencies=dependencies_context)
         return {
             cls.repository_filename: content_6x,  # bazel 6.x compatible
-            cls.modules_filename: content,
-            cls.repository_rules_filename: cls.repository_rules_content,
-            "BUILD.bazel": "# This is an empty BUILD file.",  # Bazel needs this file in each subfolder
+            cls.modules_filename: content, cls.repository_rules_filename: cls.repository_rules_content, "BUILD.bazel": "# This is an empty BUILD file.",  # Bazel needs this file in each subfolder
         }.items()
 
 
@@ -528,9 +513,9 @@ class BazelDeps:
         """
         self._recipe = recipe
         #: Activates the build context for the specified Recipe package names.
-        self.build_context_activated = []
+        self.build_context_activated: list[Any] = []
 
-    def _get_requirements(self, build_context_activated):
+    def _get_requirements(self, build_context_activated: Any):
         """
         Simply save the activated requirements (host + build), and the deactivated ones
         """

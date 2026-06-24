@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -9,6 +11,11 @@ import fasteners
 from thirdparty._internal.util.dates import timestamp_now
 from thirdparty._internal.util.files import load, save, remove_if_dirty
 from thirdparty.errors import RecipeException
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
 
 
 class DownloadCache:
@@ -24,10 +31,10 @@ class DownloadCache:
     def __init__(self, path: str):
         self._path: str = path
 
-    def source_path(self, sha256):
+    def source_path(self, sha256: Any):
         return os.path.join(self._path, self._SOURCE_BACKUP, sha256)
 
-    def cached_path(self, url):
+    def cached_path(self, url: str):
         md = hashlib.sha256()
         md.update(url.encode())
         h = md.hexdigest()
@@ -36,7 +43,7 @@ class DownloadCache:
     _thread_locks = {}  # Needs to be shared among all instances
 
     @contextmanager
-    def lock(self, lock_id):
+    def lock(self, lock_id: Any):
         lock = os.path.join(self._path, self._LOCKS, lock_id)
         with fasteners.InterProcessLock(lock):  # TODO: Abstract away when necessary for concurrency
             # Once the process has access, make sure multithread is locked too
@@ -48,7 +55,7 @@ class DownloadCache:
             finally:
                 thread_lock.release()
 
-    def get_backup_sources_files(self, excluded_urls, package_list=None, only_upload=True):
+    def get_backup_sources_files(self, excluded_urls: Any, package_list: Any = None, only_upload: bool = True):
         """Get list of backup source files currently present in the cache,
         either all of them if no package_list is give, or filtered by those belonging to the references in the package_list
 
@@ -68,16 +75,13 @@ class DownloadCache:
         def has_excluded_urls(backup_urls):
             return all(
                 any(
-                    url.startswith(excluded_url)
-                    for excluded_url in excluded_urls)
-                for url in backup_urls)
+                    url.startswith(excluded_url) for excluded_url in excluded_urls) for url in backup_urls)
 
         all_refs = set()
         if package_list is not None:
             for ref, packages in package_list.items():
                 ref_info = package_list.recipe_dict(ref)
-                if (not only_upload or ref_info.get("upload")
-                    or any(package_list.package_dict(p).get("upload") for p in packages)):
+                if (not only_upload or ref_info.get("upload") or any(package_list.package_dict(p).get("upload") for p in packages)):
                     all_refs.add(str(ref))
 
         path_backups_contents = []
@@ -104,16 +108,14 @@ class DownloadCache:
             metadata = json.loads(load(metadata_path))
             refs = metadata["references"]
             for ref, urls in refs.items():
-                if not has_excluded_urls(urls) and (not only_upload
-                                                    or package_list is None
-                                                    or ref in all_refs):
+                if not has_excluded_urls(urls) and (not only_upload or package_list is None or ref in all_refs):
                     files_to_upload.append(metadata_path)
                     files_to_upload.append(blob_path)
                     break
         return files_to_upload
 
     @staticmethod
-    def get_urls_from_backup_sources(cached_path):
+    def get_urls_from_backup_sources(cached_path: str):
         """All download URLs stored in the backup-sources summary file ``<cached_path>.json``.
         """
         summary_path = cached_path + ".json"
@@ -123,7 +125,7 @@ class DownloadCache:
         return {url for urls in refs.values() for url in urls}
 
     @staticmethod
-    def update_backup_sources_json(cached_path, recipe, urls):
+    def update_backup_sources_json(cached_path: str, recipe: RecipeBase, urls: Any):
         """ create or update the sha256.json file with the references and new urls used
         """
         summary_path = cached_path + ".json"

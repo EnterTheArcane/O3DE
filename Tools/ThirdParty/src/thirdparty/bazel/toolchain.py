@@ -21,6 +21,8 @@ Others:
     * CLI options: https://bazel.build/reference/command-line-reference
     * User manual: https://bazel.build/docs/user-manual
 """
+from __future__ import annotations
+
 import textwrap
 
 from jinja2 import Template
@@ -31,8 +33,13 @@ from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import cppstd_flag
 from thirdparty.files import save
 
+from typing import TYPE_CHECKING
 
-def _get_cpu_name(recipe):
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def _get_cpu_name(recipe: RecipeBase):
     host_os = recipe.settings.get_safe('os').lower()
     host_arch = recipe.settings.get_safe('arch')
     if is_apple_os(recipe):
@@ -61,7 +68,7 @@ class BazelToolchain:
         {% if crosstool_top %}build:recipe-config --crosstool_top={{crosstool_top}}{% endif %}
         """)
 
-    def __init__(self, recipe):
+    def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         """
@@ -91,8 +98,7 @@ class BazelToolchain:
         self.linkopt = []
         #: String used to add --compilation_mode=["opt"|"dbg"]. Depends on self.settings.build_type
         self.compilation_mode = {'Release': 'opt', 'Debug': 'dbg'}.get(
-            self._recipe.settings.get_safe("build_type")
-        )
+            self._recipe.settings.get_safe("build_type"))
         # Be aware that this parameter does not admit a compiler absolute path
         # If you want to add it, you will have to use a specific Bazel toolchain
         #: String used to add --compiler=xxxx.
@@ -108,9 +114,7 @@ class BazelToolchain:
             self.cpu = _get_cpu_name(recipe)
         # This is itself a toolchain but just in case
         #: String used to add --crosstool_top.
-        self.crosstool_top = None
-        # TODO: Have a look at https://bazel.build/reference/be/make-variables
-        # FIXME: Missing host_xxxx options. When are they needed? Cross-compilation?
+        self.crosstool_top = None  # TODO: Have a look at https://bazel.build/reference/be/make-variables  # FIXME: Missing host_xxxx options. When are they needed? Cross-compilation?
 
     @staticmethod
     def _filter_list_empty_fields(v):
@@ -132,12 +136,10 @@ class BazelToolchain:
     @property
     def ldflags(self):
         conf_flags = self._recipe.conf.get(
-            "tools.build:sharedlinkflags", default=[],
-            check_type=list)
+            "tools.build:sharedlinkflags", default=[], check_type=list)
         conf_flags.extend(
             self._recipe.conf.get(
-                "tools.build:exelinkflags", default=[],
-                check_type=list))
+                "tools.build:exelinkflags", default=[], check_type=list))
         linker_scripts = self._recipe.conf.get("tools.build:linker_scripts", default=[], check_type=list)
         conf_flags.extend(["-T'" + linker_script + "'" for linker_script in linker_scripts])
         ret = self.linkopt + conf_flags

@@ -1,8 +1,15 @@
+from __future__ import annotations
+
 from thirdparty._internal.model.version import Version
 from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 
+from typing import TYPE_CHECKING
 
-def check_min_compiler_version(recipe, compiler_restrictions):
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def check_min_compiler_version(recipe: RecipeBase, compiler_restrictions):
     """(Experimental) Checks if the current compiler and its version meet the minimum requirements.
 
     :param recipe: The current recipe object. Always use ``self``.
