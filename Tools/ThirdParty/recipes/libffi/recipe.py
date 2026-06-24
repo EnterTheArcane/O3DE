@@ -146,8 +146,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.libs = ["{}ffi".format("lib" if is_msvc(self) else "")]
-        self.cpp_info.set_property("pkg_config_name", "libffi")
+        self.info.libs = ["{}ffi".format("lib" if is_msvc(self) else "")]
+        self.info.set_property("pkg_config_name", "libffi")
         if not self.options.shared:
             static_define = "FFI_STATIC_BUILD"
-            self.cpp_info.defines = [static_define]
+            self.info.defines = [static_define]

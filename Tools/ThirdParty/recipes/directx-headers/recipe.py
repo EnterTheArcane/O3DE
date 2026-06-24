@@ -45,12 +45,12 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.settings.os == "Linux" or self.settings.get_safe("os.subsystem") == "wsl":
-            self.cpp_info.includedirs.append(os.path.join("include", "wsl", "stubs"))
-        self.cpp_info.libs = ["d3dx12-format-properties", "DirectX-Guids"]
-        self.cpp_info.set_property("cmake_file_name", "DirectX-Headers")
-        self.cpp_info.set_property("cmake_target_name", "Microsoft::DirectX-Headers")
-        self.cpp_info.set_property("pkg_config_name", "DirectX-Headers")
+            self.info.includedirs.append(os.path.join("include", "wsl", "stubs"))
+        self.info.libs = ["d3dx12-format-properties", "DirectX-Guids"]
+        self.info.set_property("cmake_file_name", "DirectX-Headers")
+        self.info.set_property("cmake_target_name", "Microsoft::DirectX-Headers")
+        self.info.set_property("pkg_config_name", "DirectX-Headers")
         if self.settings.os == "Windows":
-            self.cpp_info.system_libs.append("d3d12")
+            self.info.system_libs.append("d3d12")
         if self.settings.compiler == "msvc":
-            self.cpp_info.system_libs.append("dxcore")
+            self.info.system_libs.append("dxcore")

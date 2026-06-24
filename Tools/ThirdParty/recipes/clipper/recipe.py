@@ -47,8 +47,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "polyclipping")
-        self.cpp_info.libs = ["polyclipping"]
+        self.info.set_property("pkg_config_name", "polyclipping")
+        self.info.libs = ["polyclipping"]
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

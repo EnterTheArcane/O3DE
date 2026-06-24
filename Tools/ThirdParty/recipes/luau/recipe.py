@@ -46,43 +46,43 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Luau")
-        self.cpp_info.set_property("cmake_target_name", "Luau::Luau")
+        self.info.set_property("cmake_file_name", "Luau")
+        self.info.set_property("cmake_target_name", "Luau::Luau")
         # Common
-        self.cpp_info.components["Common"].libs = ["Luau.Common"]
-        self.cpp_info.components["Common"].set_property("cmake_target_name", "Luau::Common")
+        self.info.components["Common"].libs = ["Luau.Common"]
+        self.info.components["Common"].set_property("cmake_target_name", "Luau::Common")
         # Ast
-        self.cpp_info.components["Ast"].libs = ["Luau.Ast"]
-        self.cpp_info.components["Ast"].set_property("cmake_target_name", "Luau::Ast")
-        self.cpp_info.components["Ast"].requires = ["Common"]
+        self.info.components["Ast"].libs = ["Luau.Ast"]
+        self.info.components["Ast"].set_property("cmake_target_name", "Luau::Ast")
+        self.info.components["Ast"].requires = ["Common"]
         # VM
-        self.cpp_info.components["VM"].libs = ["Luau.VM"]
-        self.cpp_info.components["VM"].set_property("cmake_target_name", "Luau::VM")
-        self.cpp_info.components["VM"].requires = ["Common"]
+        self.info.components["VM"].libs = ["Luau.VM"]
+        self.info.components["VM"].set_property("cmake_target_name", "Luau::VM")
+        self.info.components["VM"].requires = ["Common"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["VM"].system_libs = ["m"]
+            self.info.components["VM"].system_libs = ["m"]
         # Analysis
-        self.cpp_info.components["Analysis"].libs = ["Luau.Analysis"]
-        self.cpp_info.components["Analysis"].set_property("cmake_target_name", "Luau::Analysis")
-        self.cpp_info.components["Analysis"].requires = ["Ast", "Config", "Compiler", "VM"]
+        self.info.components["Analysis"].libs = ["Luau.Analysis"]
+        self.info.components["Analysis"].set_property("cmake_target_name", "Luau::Analysis")
+        self.info.components["Analysis"].requires = ["Ast", "Config", "Compiler", "VM"]
         # Config
-        self.cpp_info.components["Config"].libs = ["Luau.Config"]
-        self.cpp_info.components["Config"].set_property("cmake_target_name", "Luau::Config")
-        self.cpp_info.components["Config"].requires = ["Ast", "Compiler", "VM"]
+        self.info.components["Config"].libs = ["Luau.Config"]
+        self.info.components["Config"].set_property("cmake_target_name", "Luau::Config")
+        self.info.components["Config"].requires = ["Ast", "Compiler", "VM"]
         # Compiler
-        self.cpp_info.components["Compiler"].libs = ["Luau.Compiler"]
-        self.cpp_info.components["Compiler"].set_property("cmake_target_name", "Luau::Compiler")
-        self.cpp_info.components["Compiler"].requires = ["Ast"]
+        self.info.components["Compiler"].libs = ["Luau.Compiler"]
+        self.info.components["Compiler"].set_property("cmake_target_name", "Luau::Compiler")
+        self.info.components["Compiler"].requires = ["Ast"]
         # CodeGen
-        self.cpp_info.components["CodeGen"].libs = ["Luau.CodeGen"]
-        self.cpp_info.components["CodeGen"].set_property("cmake_target_name", "Luau::CodeGen")
-        self.cpp_info.components["CodeGen"].requires = ["VM", "Common"]
+        self.info.components["CodeGen"].libs = ["Luau.CodeGen"]
+        self.info.components["CodeGen"].set_property("cmake_target_name", "Luau::CodeGen")
+        self.info.components["CodeGen"].requires = ["VM", "Common"]
         # Require
-        self.cpp_info.components["Require"].libs = ["Luau.Require"]
-        self.cpp_info.components["Require"].set_property("cmake_target_name", "Luau::Require")
-        self.cpp_info.components["Require"].requires = ["Config", "VM"]
+        self.info.components["Require"].libs = ["Luau.Require"]
+        self.info.components["Require"].set_property("cmake_target_name", "Luau::Require")
+        self.info.components["Require"].requires = ["Config", "VM"]
         # Web
         if self.options.with_web:
-            self.cpp_info.components["Web"].libs = ["Luau.Web"]
-            self.cpp_info.components["Web"].set_property("cmake_target_name", "Luau::Web")
-            self.cpp_info.components["Web"].requires = ["Compiler", "VM", "Analysis"]
+            self.info.components["Web"].libs = ["Luau.Web"]
+            self.info.components["Web"].set_property("cmake_target_name", "Luau::Web")
+            self.info.components["Web"].requires = ["Compiler", "VM", "Analysis"]

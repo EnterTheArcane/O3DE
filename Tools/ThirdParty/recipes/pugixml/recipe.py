@@ -79,23 +79,23 @@ class Recipe(RecipeBase):
             rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "pugixml")
-        self.cpp_info.set_property("cmake_target_name", "pugixml::pugixml")
-        self.cpp_info.set_property("pkg_config_name", "pugixml")
+        self.info.set_property("cmake_file_name", "pugixml")
+        self.info.set_property("cmake_target_name", "pugixml::pugixml")
+        self.info.set_property("pkg_config_name", "pugixml")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")
         if self.options.header_only:
             # For the "header_only" mode, options applied via global definitions
-            self.cpp_info.defines.append("PUGIXML_HEADER_ONLY")
+            self.info.defines.append("PUGIXML_HEADER_ONLY")
             if self.options.wchar_mode:
-                self.cpp_info.defines.append("PUGIXML_WCHAR_MODE")
+                self.info.defines.append("PUGIXML_WCHAR_MODE")
             if self.options.no_exceptions:
-                self.cpp_info.defines.append("PUGIXML_NO_EXCEPTIONS")
-            self.cpp_info.bindirs = []
-            self.cpp_info.libdirs = []
+                self.info.defines.append("PUGIXML_NO_EXCEPTIONS")
+            self.info.bindirs = []
+            self.info.libdirs = []
         else:
-            self.cpp_info.set_property(
+            self.info.set_property(
                 "cmake_target_aliases",
                 ["pugixml::shared"] if self.options.shared else ["pugixml::static"],
             )
-            self.cpp_info.libs = collect_libs(self)
+            self.info.libs = collect_libs(self)

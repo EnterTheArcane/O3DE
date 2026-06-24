@@ -83,14 +83,14 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "aom")
-        self.cpp_info.set_property("cmake_file_name", "AOM")
-        self.cpp_info.set_property("cmake_target_name", "AOM::aom")
+        self.info.set_property("pkg_config_name", "aom")
+        self.info.set_property("cmake_file_name", "AOM")
+        self.info.set_property("cmake_target_name", "AOM::aom")
         if not self.options.shared:
-            self.cpp_info.set_property("cmake_target_aliases", ["AOM::aom_static"])
+            self.info.set_property("cmake_target_aliases", ["AOM::aom_static"])
         lib = "aom"
         if self.settings.os == "Windows" and self.options.shared:
             lib = "aom_dll"
-        self.cpp_info.libs = [lib]
+        self.info.libs = [lib]
         if self.settings.os in ("FreeBSD", "Linux"):
-            self.cpp_info.system_libs = ["pthread", "m"]
+            self.info.system_libs = ["pthread", "m"]

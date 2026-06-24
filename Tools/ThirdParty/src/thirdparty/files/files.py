@@ -603,7 +603,7 @@ def replace_in_file(recipe: RecipeBase, file_path: str, search: str, replace: st
 def collect_libs(recipe: RecipeBase, folder: str | None = None):
     """
     Returns a sorted list of library names from the libraries (files with extensions *.so*, *.lib*,
-    *.a* and *.dylib*) located inside the ``recipe.cpp_info.libdirs`` (by default) or the
+    *.a* and *.dylib*) located inside the ``recipe.info.libdirs`` (by default) or the
     **folder** directory relative to the package folder. Useful to collect not inter-dependent
     libraries or with complex names like ``libmylib-x86-debug-en.lib``.
 
@@ -620,7 +620,7 @@ def collect_libs(recipe: RecipeBase, folder: str | None = None):
     if folder:
         lib_folders = [os.path.join(recipe.folders.package, folder)]
     else:
-        lib_folders = [os.path.join(recipe.folders.package, folder) for folder in recipe.cpp_info.libdirs]
+        lib_folders = [os.path.join(recipe.folders.package, folder) for folder in recipe.info.libdirs]
 
     ref_libs = {}
     for lib_folder in lib_folders:

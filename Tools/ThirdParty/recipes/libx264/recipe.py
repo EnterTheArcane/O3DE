@@ -139,11 +139,11 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "x264")
-        self.cpp_info.libs = ["x264"]
+        self.info.set_property("pkg_config_name", "x264")
+        self.info.libs = ["x264"]
         if is_msvc(self) and self.options.shared:
-            self.cpp_info.defines.append("X264_API_IMPORTS")
+            self.info.defines.append("X264_API_IMPORTS")
         if self.settings.os in ["FreeBSD", "Linux"]:
-            self.cpp_info.system_libs.extend(["dl", "pthread", "m"])
+            self.info.system_libs.extend(["dl", "pthread", "m"])
         elif self.settings.os == "Android":
-            self.cpp_info.system_libs.extend(["dl", "m"])
+            self.info.system_libs.extend(["dl", "m"])

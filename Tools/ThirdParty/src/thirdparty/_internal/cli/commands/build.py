@@ -162,7 +162,6 @@ def _instantiate(
     recipe.folders.set_base_build(build_dir)
     recipe.folders.set_base_package(pkg_dir)
     recipe.folders.set_base_generators(gen_dir)
-    recipe.folders.set_base_recipe_metadata(str(pkg_root / ".metadata"))
     # export_sources_folder = parent of source_dir; recipes place auxiliary files here
     # (CMakeLists.txt, patches, etc.) via export_sources() in real Recipe
     recipe.folders.set_base_export_sources(str(pkg_root))
@@ -320,8 +319,8 @@ def _build_dep_graph(
             except Exception as exc:
                 print(f"[thirdparty] warn: package_info() failed for {dep_name}: {exc}")
 
-        # Make all relative cpp_info paths absolute so generators don't assert.
-        dep.cpp_info.set_relative_base_folder(pkg_dir)
+        # Make all relative info paths absolute so generators don't assert.
+        dep.info.set_relative_base_folder(pkg_dir)
 
     for dep_name in dep_names:
         _add_dep(dep_name, is_build=False, direct=True)

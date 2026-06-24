@@ -35,9 +35,9 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         # Folders not used for header-only
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.bindirs = []
+        self.info.libdirs = []
 
         # https://github.com/microsoft/wil/blob/56e3e5aa79234f8de3ceeeaf05b715b823bc2cca/CMakeLists.txt#L53
-        self.cpp_info.set_property("cmake_file_name", "wil")
-        self.cpp_info.set_property("cmake_target_name", "WIL::WIL")
+        self.info.set_property("cmake_file_name", "wil")
+        self.info.set_property("cmake_target_name", "WIL::WIL")

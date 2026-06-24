@@ -62,17 +62,17 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "VulkanUtilityLibraries")
+        self.info.set_property("cmake_file_name", "VulkanUtilityLibraries")
 
-        self.cpp_info.components["UtilityHeaders"].libs = []
-        self.cpp_info.components["UtilityHeaders"].includedirs = ["include"]
-        self.cpp_info.components["UtilityHeaders"].set_property("cmake_target_name", "Vulkan::UtilityHeaders")
-        self.cpp_info.components["UtilityHeaders"].requires = ["vulkan-headers::vulkan-headers"]
+        self.info.components["UtilityHeaders"].libs = []
+        self.info.components["UtilityHeaders"].includedirs = ["include"]
+        self.info.components["UtilityHeaders"].set_property("cmake_target_name", "Vulkan::UtilityHeaders")
+        self.info.components["UtilityHeaders"].requires = ["vulkan-headers::vulkan-headers"]
 
-        self.cpp_info.components["SafeStruct"].libs = ["VulkanSafeStruct"]
-        self.cpp_info.components["SafeStruct"].set_property("cmake_target_name", "Vulkan::SafeStruct")
-        self.cpp_info.components["SafeStruct"].requires = ["UtilityHeaders", "vulkan-headers::vulkan-headers"]
+        self.info.components["SafeStruct"].libs = ["VulkanSafeStruct"]
+        self.info.components["SafeStruct"].set_property("cmake_target_name", "Vulkan::SafeStruct")
+        self.info.components["SafeStruct"].requires = ["UtilityHeaders", "vulkan-headers::vulkan-headers"]
 
-        self.cpp_info.components["LayerSettings"].libs = ["VulkanLayerSettings"]
-        self.cpp_info.components["LayerSettings"].set_property("cmake_target_name", "Vulkan::LayerSettings")
-        self.cpp_info.components["LayerSettings"].requires = ["UtilityHeaders", "vulkan-headers::vulkan-headers"]
+        self.info.components["LayerSettings"].libs = ["VulkanLayerSettings"]
+        self.info.components["LayerSettings"].set_property("cmake_target_name", "Vulkan::LayerSettings")
+        self.info.components["LayerSettings"].requires = ["UtilityHeaders", "vulkan-headers::vulkan-headers"]

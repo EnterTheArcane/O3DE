@@ -89,20 +89,20 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         # brotlicommon
-        self.cpp_info.components["brotlicommon"].set_property("pkg_config_name", "libbrotlicommon")
-        self.cpp_info.components["brotlicommon"].libs = [self._get_decorated_lib("brotlicommon")]
+        self.info.components["brotlicommon"].set_property("pkg_config_name", "libbrotlicommon")
+        self.info.components["brotlicommon"].libs = [self._get_decorated_lib("brotlicommon")]
         if self.settings.os == "Windows" and self.options.shared:
-            self.cpp_info.components["brotlicommon"].defines.append("BROTLI_SHARED_COMPILATION")
+            self.info.components["brotlicommon"].defines.append("BROTLI_SHARED_COMPILATION")
         # brotlidec
-        self.cpp_info.components["brotlidec"].set_property("pkg_config_name", "libbrotlidec")
-        self.cpp_info.components["brotlidec"].libs = [self._get_decorated_lib("brotlidec")]
-        self.cpp_info.components["brotlidec"].requires = ["brotlicommon"]
+        self.info.components["brotlidec"].set_property("pkg_config_name", "libbrotlidec")
+        self.info.components["brotlidec"].libs = [self._get_decorated_lib("brotlidec")]
+        self.info.components["brotlidec"].requires = ["brotlicommon"]
         # brotlienc
-        self.cpp_info.components["brotlienc"].set_property("pkg_config_name", "libbrotlienc")
-        self.cpp_info.components["brotlienc"].libs = [self._get_decorated_lib("brotlienc")]
-        self.cpp_info.components["brotlienc"].requires = ["brotlicommon"]
+        self.info.components["brotlienc"].set_property("pkg_config_name", "libbrotlienc")
+        self.info.components["brotlienc"].libs = [self._get_decorated_lib("brotlienc")]
+        self.info.components["brotlienc"].requires = ["brotlicommon"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["brotlienc"].system_libs = ["m"]
+            self.info.components["brotlienc"].system_libs = ["m"]
 
     def _get_decorated_lib(self, name):
         return name

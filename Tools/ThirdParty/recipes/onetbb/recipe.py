@@ -51,14 +51,14 @@ class Recipe(RecipeBase):
         rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "TBB")
+        self.info.set_property("cmake_file_name", "TBB")
 
         def lib_name(name):
             if self.settings.build_type == "Debug":
                 return name + "_debug"
             return name
 
-        tbb = self.cpp_info.components["libtbb"]
+        tbb = self.info.components["libtbb"]
         tbb.set_property("cmake_target_name", "TBB::tbb")
         tbb.libs = [lib_name("tbb")]
         if self.settings.os == "Windows":
@@ -75,13 +75,13 @@ class Recipe(RecipeBase):
         if self.settings.os in ["Linux", "FreeBSD"]:
             tbb.system_libs = ["m", "dl", "rt", "pthread"]
 
-        tbbmalloc = self.cpp_info.components["tbbmalloc"]
+        tbbmalloc = self.info.components["tbbmalloc"]
         tbbmalloc.set_property("cmake_target_name", "TBB::tbbmalloc")
         tbbmalloc.libs = [lib_name("tbbmalloc")]
         if self.settings.os in ["Linux", "FreeBSD"]:
             tbbmalloc.system_libs = ["dl", "pthread"]
 
-        tbbproxy = self.cpp_info.components["tbbmalloc_proxy"]
+        tbbproxy = self.info.components["tbbmalloc_proxy"]
         tbbproxy.set_property("cmake_target_name", "TBB::tbbmalloc_proxy")
         tbbproxy.libs = [lib_name("tbbmalloc_proxy")]
         tbbproxy.requires = ["tbbmalloc"]

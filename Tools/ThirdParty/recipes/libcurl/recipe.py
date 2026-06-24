@@ -347,71 +347,71 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "CURL")
-        self.cpp_info.set_property("cmake_target_name", "CURL::libcurl")
-        self.cpp_info.set_property("pkg_config_name", "libcurl")
+        self.info.set_property("cmake_file_name", "CURL")
+        self.info.set_property("cmake_target_name", "CURL::libcurl")
+        self.info.set_property("pkg_config_name", "libcurl")
 
-        self.cpp_info.components["curl"].resdirs = ["res"]
+        self.info.components["curl"].resdirs = ["res"]
         if is_msvc(self):
-            self.cpp_info.components["curl"].libs = ["libcurl_imp"] if self.options.shared else ["libcurl"]
+            self.info.components["curl"].libs = ["libcurl_imp"] if self.options.shared else ["libcurl"]
         else:
-            self.cpp_info.components["curl"].libs = ["curl"]
+            self.info.components["curl"].libs = ["curl"]
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["curl"].system_libs = ["rt", "pthread"]
+            self.info.components["curl"].system_libs = ["rt", "pthread"]
         elif self.settings.os == "Windows":
             # used on Windows for VS build, native and cross mingw build
-            self.cpp_info.components["curl"].system_libs = ["ws2_32", "bcrypt", "iphlpapi"]
+            self.info.components["curl"].system_libs = ["ws2_32", "bcrypt", "iphlpapi"]
             if self.options.with_ldap:
-                self.cpp_info.components["curl"].system_libs.append("wldap32")
+                self.info.components["curl"].system_libs.append("wldap32")
             if self.options.with_ssl == "libressl":
-                self.cpp_info.components["curl"].system_libs.append("crypt32")
+                self.info.components["curl"].system_libs.append("crypt32")
             if self.options.with_ssl == "schannel":
-                self.cpp_info.components["curl"].system_libs.extend(["crypt32", "secur32"])
+                self.info.components["curl"].system_libs.extend(["crypt32", "secur32"])
         elif is_apple_os(self):
-            self.cpp_info.components["curl"].frameworks.append("CoreFoundation")
-            self.cpp_info.components["curl"].frameworks.append("CoreServices")
-            self.cpp_info.components["curl"].frameworks.append("SystemConfiguration")
+            self.info.components["curl"].frameworks.append("CoreFoundation")
+            self.info.components["curl"].frameworks.append("CoreServices")
+            self.info.components["curl"].frameworks.append("SystemConfiguration")
             if self.options.get_safe("with_apple_sectrust"):
-                self.cpp_info.components["curl"].frameworks.append("Security")
+                self.info.components["curl"].frameworks.append("Security")
             if self.options.with_ldap:
-                self.cpp_info.components["curl"].system_libs.append("ldap")
+                self.info.components["curl"].system_libs.append("ldap")
 
         if self._is_mingw:
             # provide pthread for dependent packages
-            self.cpp_info.components["curl"].cflags.append("-pthread")
-            self.cpp_info.components["curl"].exelinkflags.append("-pthread")
-            self.cpp_info.components["curl"].sharedlinkflags.append("-pthread")
+            self.info.components["curl"].cflags.append("-pthread")
+            self.info.components["curl"].exelinkflags.append("-pthread")
+            self.info.components["curl"].sharedlinkflags.append("-pthread")
 
         if not self.options.shared:
-            self.cpp_info.components["curl"].defines.append("CURL_STATICLIB=1")
+            self.info.components["curl"].defines.append("CURL_STATICLIB=1")
 
         if self.options.with_ssl == "openssl":
-            self.cpp_info.components["curl"].requires.append("openssl::openssl")
+            self.info.components["curl"].requires.append("openssl::openssl")
         if self.options.with_ssl == "libressl":
-            self.cpp_info.components["curl"].requires.append("libressl::libressl")
+            self.info.components["curl"].requires.append("libressl::libressl")
         if self.options.with_ssl == "wolfssl":
-            self.cpp_info.components["curl"].requires.append("wolfssl::wolfssl")
+            self.info.components["curl"].requires.append("wolfssl::wolfssl")
         if self.options.with_ssl == "mbedtls":
-            self.cpp_info.components["curl"].requires.append("mbedtls::mbedtls")
+            self.info.components["curl"].requires.append("mbedtls::mbedtls")
         if self.settings.os == "Linux" and self.options.with_ldap:
-            self.cpp_info.components["curl"].requires.append("openldap::openldap")
+            self.info.components["curl"].requires.append("openldap::openldap")
         if self.options.with_nghttp2:
-            self.cpp_info.components["curl"].requires.append("libnghttp2::libnghttp2")
+            self.info.components["curl"].requires.append("libnghttp2::libnghttp2")
         if self.options.with_libssh2:
-            self.cpp_info.components["curl"].requires.append("libssh2::libssh2")
+            self.info.components["curl"].requires.append("libssh2::libssh2")
         if self.options.with_zlib:
-            self.cpp_info.components["curl"].requires.append("zlib::zlib")
+            self.info.components["curl"].requires.append("zlib::zlib")
         if self.options.with_brotli:
-            self.cpp_info.components["curl"].requires.append("brotli::brotli")
+            self.info.components["curl"].requires.append("brotli::brotli")
         if self.options.with_zstd:
-            self.cpp_info.components["curl"].requires.append("zstd::zstd")
+            self.info.components["curl"].requires.append("zstd::zstd")
         if self.options.with_c_ares:
-            self.cpp_info.components["curl"].requires.append("c-ares::c-ares")
+            self.info.components["curl"].requires.append("c-ares::c-ares")
         if self.options.get_safe("with_libpsl"):
-            self.cpp_info.components["curl"].requires.append("libpsl::libpsl")
+            self.info.components["curl"].requires.append("libpsl::libpsl")
         if self.options.with_libidn:
-            self.cpp_info.components["curl"].requires.append("libidn2::libidn2")
+            self.info.components["curl"].requires.append("libidn2::libidn2")
 
-        self.cpp_info.components["curl"].set_property("cmake_target_name", "CURL::libcurl")
-        self.cpp_info.components["curl"].set_property("pkg_config_name", "libcurl")
+        self.info.components["curl"].set_property("cmake_target_name", "CURL::libcurl")
+        self.info.components["curl"].set_property("pkg_config_name", "libcurl")

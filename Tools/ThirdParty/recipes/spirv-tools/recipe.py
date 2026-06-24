@@ -109,54 +109,54 @@ class Recipe(RecipeBase):
             rm(self, "*SPIRV-Tools-shared*", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "SPIRV-Tools")
-        self.cpp_info.set_property("pkg_config_name", "SPIRV-Tools-shared" if self.options.shared else "SPIRV-Tools")
+        self.info.set_property("cmake_file_name", "SPIRV-Tools")
+        self.info.set_property("pkg_config_name", "SPIRV-Tools-shared" if self.options.shared else "SPIRV-Tools")
 
         # SPIRV-Tools
-        self.cpp_info.components["spirv-tools-core"].set_property(
+        self.info.components["spirv-tools-core"].set_property(
             "cmake_target_name",
             "SPIRV-Tools-shared" if self.options.shared else "SPIRV-Tools-static",
         )
-        self.cpp_info.components["spirv-tools-core"].set_property("cmake_target_aliases", ["SPIRV-Tools"])  # before 2020.5, kept for conveniency
-        self.cpp_info.components["spirv-tools-core"].libs = ["SPIRV-Tools-shared" if self.options.shared else "SPIRV-Tools"]
-        self.cpp_info.components["spirv-tools-core"].requires = ["spirv-headers::spirv-headers"]
+        self.info.components["spirv-tools-core"].set_property("cmake_target_aliases", ["SPIRV-Tools"])  # before 2020.5, kept for conveniency
+        self.info.components["spirv-tools-core"].libs = ["SPIRV-Tools-shared" if self.options.shared else "SPIRV-Tools"]
+        self.info.components["spirv-tools-core"].requires = ["spirv-headers::spirv-headers"]
         if self.options.shared:
-            self.cpp_info.components["spirv-tools-core"].defines = ["SPIRV_TOOLS_SHAREDLIB"]
+            self.info.components["spirv-tools-core"].defines = ["SPIRV_TOOLS_SHAREDLIB"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["spirv-tools-core"].system_libs.extend(["m", "rt"])
+            self.info.components["spirv-tools-core"].system_libs.extend(["m", "rt"])
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.components["spirv-tools-core"].system_libs.append(libcxx)
+                self.info.components["spirv-tools-core"].system_libs.append(libcxx)
 
         # FIXME: others components should have their own CMake config file
         if not self.options.shared:
             # SPIRV-Tools-opt
-            self.cpp_info.components["spirv-tools-opt"].set_property("cmake_target_name", "SPIRV-Tools-opt")
-            self.cpp_info.components["spirv-tools-opt"].libs = ["SPIRV-Tools-opt"]
-            self.cpp_info.components["spirv-tools-opt"].requires = ["spirv-tools-core", "spirv-headers::spirv-headers"]
+            self.info.components["spirv-tools-opt"].set_property("cmake_target_name", "SPIRV-Tools-opt")
+            self.info.components["spirv-tools-opt"].libs = ["SPIRV-Tools-opt"]
+            self.info.components["spirv-tools-opt"].requires = ["spirv-tools-core", "spirv-headers::spirv-headers"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["spirv-tools-opt"].system_libs.append("m")
+                self.info.components["spirv-tools-opt"].system_libs.append("m")
 
             # SPIRV-Tools-link
-            self.cpp_info.components["spirv-tools-link"].set_property("cmake_target_name", "SPIRV-Tools-link")
-            self.cpp_info.components["spirv-tools-link"].libs = ["SPIRV-Tools-link"]
-            self.cpp_info.components["spirv-tools-link"].requires = ["spirv-tools-core", "spirv-tools-opt"]
+            self.info.components["spirv-tools-link"].set_property("cmake_target_name", "SPIRV-Tools-link")
+            self.info.components["spirv-tools-link"].libs = ["SPIRV-Tools-link"]
+            self.info.components["spirv-tools-link"].requires = ["spirv-tools-core", "spirv-tools-opt"]
 
             # SPIRV-Tools-reduce
-            self.cpp_info.components["spirv-tools-reduce"].set_property("cmake_target_name", "SPIRV-Tools-reduce")
-            self.cpp_info.components["spirv-tools-reduce"].libs = ["SPIRV-Tools-reduce"]
-            self.cpp_info.components["spirv-tools-reduce"].requires = ["spirv-tools-core", "spirv-tools-opt"]
+            self.info.components["spirv-tools-reduce"].set_property("cmake_target_name", "SPIRV-Tools-reduce")
+            self.info.components["spirv-tools-reduce"].libs = ["SPIRV-Tools-reduce"]
+            self.info.components["spirv-tools-reduce"].requires = ["spirv-tools-core", "spirv-tools-opt"]
 
             # SPIRV-Tools-lint
-            self.cpp_info.components["spirv-tools-lint"].set_property("cmake_target_name", "SPIRV-Tools-lint")
-            self.cpp_info.components["spirv-tools-lint"].libs = ["SPIRV-Tools-lint"]
-            self.cpp_info.components["spirv-tools-lint"].requires = ["spirv-tools-core", "spirv-tools-opt"]
+            self.info.components["spirv-tools-lint"].set_property("cmake_target_name", "SPIRV-Tools-lint")
+            self.info.components["spirv-tools-lint"].libs = ["SPIRV-Tools-lint"]
+            self.info.components["spirv-tools-lint"].requires = ["spirv-tools-core", "spirv-tools-opt"]
 
             # SPIRV-Tools-diff
-            self.cpp_info.components["spirv-tools-diff"].set_property("cmake_target_name", "SPIRV-Tools-diff")
-            self.cpp_info.components["spirv-tools-diff"].libs = ["SPIRV-Tools-diff"]
-            self.cpp_info.components["spirv-tools-diff"].requires = ["spirv-tools-core", "spirv-tools-opt"]
+            self.info.components["spirv-tools-diff"].set_property("cmake_target_name", "SPIRV-Tools-diff")
+            self.info.components["spirv-tools-diff"].libs = ["SPIRV-Tools-diff"]
+            self.info.components["spirv-tools-diff"].requires = ["spirv-tools-core", "spirv-tools-opt"]
 
         if Version(self.version) < "1.3" and not self.options.shared:
-            del self.cpp_info.components["spirv-tools-diff"]
+            del self.info.components["spirv-tools-diff"]

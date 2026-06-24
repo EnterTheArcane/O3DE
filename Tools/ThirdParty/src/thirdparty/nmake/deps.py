@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from thirdparty import CppInfo
+from thirdparty import Info
 from thirdparty.env import Environment
 
 if TYPE_CHECKING:
@@ -44,11 +44,11 @@ class NMakeDeps:
 
     # TODO: This is similar from AutotoolsDeps: Refactor and make common
     def _get_cpp_info(self):
-        ret = CppInfo(self._recipe)
+        ret = Info(self._recipe)
         deps = self._recipe.dependencies.host.topological_sort
         deps = [dep for dep in reversed(deps.values())]
         for dep in deps:
-            dep_cppinfo = dep.cpp_info.aggregated_components()
+            dep_cppinfo = dep.info.aggregated_components()
             # In case we have components, aggregate them, we do not support isolated
             # "targets" with autotools
             ret.merge(dep_cppinfo)
@@ -58,25 +58,25 @@ class NMakeDeps:
     def environment(self):
         # TODO: Seems we want to make this uniform, equal to other generators
         if self._environment is None:
-            cpp_info = self._get_cpp_info()
+            info = self._get_cpp_info()
 
-            lib_paths = ";".join(cpp_info.libdirs or [])
+            lib_paths = ";".join(info.libdirs or [])
 
             def format_lib(lib):
                 ext = os.path.splitext(lib)[1]
                 return lib if ext in (".so", ".lib", ".a", ".dylib", ".bc") else '%s.lib' % lib
 
             ret = []
-            ret.extend(cpp_info.exelinkflags or [])
-            ret.extend(cpp_info.sharedlinkflags or [])
-            ret.extend([format_lib(lib) for lib in cpp_info.libs or []])
-            ret.extend([format_lib(lib) for lib in cpp_info.system_libs or []])
+            ret.extend(info.exelinkflags or [])
+            ret.extend(info.sharedlinkflags or [])
+            ret.extend([format_lib(lib) for lib in info.libs or []])
+            ret.extend([format_lib(lib) for lib in info.system_libs or []])
             link_args = " ".join(ret)
 
-            cl_flags = [f'-I"{p}"' for p in cpp_info.includedirs or []]
-            cl_flags.extend(cpp_info.cflags or [])
-            cl_flags.extend(cpp_info.cxxflags or [])
-            cl_flags.extend(format_defines(cpp_info.defines or []))
+            cl_flags = [f'-I"{p}"' for p in info.includedirs or []]
+            cl_flags.extend(info.cflags or [])
+            cl_flags.extend(info.cxxflags or [])
+            cl_flags.extend(format_defines(info.defines or []))
 
             env = Environment()
             env.append("CL", " ".join(cl_flags))

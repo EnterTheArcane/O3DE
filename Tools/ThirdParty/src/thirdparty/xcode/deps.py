@@ -136,7 +136,7 @@ class XcodeDeps:
         """
 
         def _merged_vars(name):
-            merged = [var for cpp_info in transitive_cpp_infos for var in getattr(cpp_info, name)]
+            merged = [var for info in transitive_cpp_infos for var in getattr(info, name)]
             return list(dict.fromkeys(merged).keys())
 
         # TODO: Investigate if paths can be made relative to "root" folder
@@ -245,34 +245,34 @@ class XcodeDeps:
         return result
 
     @staticmethod
-    def _collect_all_transitive(cpp_info: Any, pkg_dep: Any, all_deps: Any, collected: Any, visited: Any = None):
-        """Recursively collect all transitive CppInfo objects (internal and external)
+    def _collect_all_transitive(info: Any, pkg_dep: Any, all_deps: Any, collected: Any, visited: Any = None):
+        """Recursively collect all transitive Info objects (internal and external)
         into a flat list.
 
-        :param cpp_info: current CppInfo being processed (root or component)
-        :param pkg_dep: dependency object owning the cpp_info
+        :param info: current Info being processed (root or component)
+        :param pkg_dep: dependency object owning the info
         :param all_deps: dict {ref.name: dep} of all available host deps
-        :param collected: output list accumulating the CppInfo objects
-        :param visited: set of id(cpp_info) already processed (created automatically)
+        :param collected: output list accumulating the Info objects
+        :param visited: set of id(info) already processed (created automatically)
         """
         if visited is None:
             visited = set()
 
-        key = id(cpp_info)
+        key = id(info)
         if key in visited:
             return
         visited.add(key)
-        collected.append(cpp_info)
+        collected.append(info)
 
-        if cpp_info.requires:
-            for req in cpp_info.requires:
+        if info.requires:
+            for req in info.requires:
                 if "::" not in req:
                     # Internal component from the same package
                     XcodeDeps._collect_all_transitive(
-                        pkg_dep.cpp_info.components.get(req), pkg_dep, all_deps, collected, visited)
+                        pkg_dep.info.components.get(req), pkg_dep, all_deps, collected, visited)
                 else:
                     XcodeDeps._resolve_external(req, all_deps, collected, visited)
-        elif not pkg_dep.cpp_info.has_components:
+        elif not pkg_dep.info.has_components:
             for _, d in pkg_dep.dependencies.direct_host.items():
                 XcodeDeps._resolve_external(
                     f"{d.ref.name}::{d.ref.name}", all_deps, collected, visited)
@@ -286,19 +286,19 @@ class XcodeDeps:
         if ext_dep is None:  # skipped or not visible dependency
             return
 
-        if not ext_dep.cpp_info.has_components:
-            # Package without components: use root cpp_info directly
+        if not ext_dep.info.has_components:
+            # Package without components: use root info directly
             XcodeDeps._collect_all_transitive(
-                ext_dep.cpp_info, ext_dep, all_deps, collected, visited)
+                ext_dep.info, ext_dep, all_deps, collected, visited)
         elif ext_pkg == ext_comp:
             # Dependency on the whole package (pkg::pkg): collect all its components
-            for comp in ext_dep.cpp_info.get_sorted_components().values():
+            for comp in ext_dep.info.get_sorted_components().values():
                 XcodeDeps._collect_all_transitive(
                     comp, ext_dep, all_deps, collected, visited)
         else:
             # Dependency on a specific component (pkg::comp)
             XcodeDeps._collect_all_transitive(
-                ext_dep.cpp_info.components.get(ext_comp), ext_dep, all_deps, collected, visited)
+                ext_dep.info.components.get(ext_comp), ext_dep, all_deps, collected, visited)
 
     def _content(self) -> dict[str, str]:
         result = {}
@@ -318,9 +318,9 @@ class XcodeDeps:
             dep_name = _format_name(dep.ref.name)
 
             include_components_names = []
-            if dep.cpp_info.has_components:
+            if dep.info.has_components:
 
-                sorted_components = dep.cpp_info.get_sorted_components().items()
+                sorted_components = dep.info.get_sorted_components().items()
                 for comp_name, comp_cpp_info in sorted_components:
                     comp_name = _format_name(comp_name)
 
@@ -337,7 +337,7 @@ class XcodeDeps:
             else:
                 transitive_cpp_infos = []
                 self._collect_all_transitive(
-                    dep.cpp_info, dep, all_deps, transitive_cpp_infos)
+                    dep.info, dep, all_deps, transitive_cpp_infos)
                 # In case dep is editable and package_folder=None
                 pkg_folder = dep.folders.package or dep.recipe_folder
                 root_content = self._get_content_for_component(

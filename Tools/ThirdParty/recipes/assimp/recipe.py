@@ -313,20 +313,20 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "assimp")
-        self.cpp_info.set_property("cmake_target_name", "assimp::assimp")
-        self.cpp_info.set_property("pkg_config_name", "assimp")
+        self.info.set_property("cmake_file_name", "assimp")
+        self.info.set_property("cmake_target_name", "assimp::assimp")
+        self.info.set_property("pkg_config_name", "assimp")
         # Always ever just 1 library, but with some suffix variations
         # that make it hard to map manually
-        self.cpp_info.libs = collect_libs(self)
+        self.info.libs = collect_libs(self)
         if is_msvc(self) and self.options.shared:
-            self.cpp_info.defines.append("ASSIMP_DLL")
+            self.info.defines.append("ASSIMP_DLL")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["rt", "m", "pthread"]
+            self.info.system_libs = ["rt", "m", "pthread"]
         elif self.settings.os == "WindowsStore":
-            self.cpp_info.system_libs.append("advapi32")
-            self.cpp_info.defines.append("WindowsStore")
+            self.info.system_libs.append("advapi32")
+            self.info.defines.append("WindowsStore")
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.system_libs.append(libcxx)
+                self.info.system_libs.append(libcxx)

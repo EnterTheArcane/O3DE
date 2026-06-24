@@ -60,10 +60,10 @@ class _PCFilesDeps:
         # TODO: LET'S DEPRECATE ALL THE ALIASES MECHANISM!!
         if pkg_name is None and comp_ref_name is None:
             return _get_dep_aliases()
-        if comp_ref_name not in dep.cpp_info.components:
-            # Either foo::foo might be referencing the root cpp_info
-            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
-                # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
+        if comp_ref_name not in dep.info.components:
+            # Either foo::foo might be referencing the root info
+            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and info.requires is the root one, e.g.,
+                # zlib/*: zlib-ng/*, and self.info.requires = ["zlib::zlib"]
                 (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_aliases()
             raise RecipeException(
@@ -80,10 +80,10 @@ class _PCFilesDeps:
 
         if pkg_name is None and comp_ref_name is None:
             return _get_dep_name()
-        if comp_ref_name not in dep.cpp_info.components:
-            # Either foo::foo might be referencing the root cpp_info
-            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and cpp_info.requires is the root one, e.g.,
-                # zlib/*: zlib-ng/*, and self.cpp_info.requires = ["zlib::zlib"]
+        if comp_ref_name not in dep.info.components:
+            # Either foo::foo might be referencing the root info
+            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and info.requires is the root one, e.g.,
+                # zlib/*: zlib-ng/*, and self.info.requires = ["zlib::zlib"]
                 (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_name()
             raise RecipeException(
@@ -108,9 +108,9 @@ class _PCFilesDeps:
                     f'The expected type for {prop} is "{check_type.__name__}", but "{type(value).__name__}" was found')
             return value
         except KeyError:
-            return dep.cpp_info.get_property(prop, check_type=check_type) if not comp_name else dep.cpp_info.components[comp_name].get_property(prop, check_type=check_type)
+            return dep.info.get_property(prop, check_type=check_type) if not comp_name else dep.info.components[comp_name].get_property(prop, check_type=check_type)
 
-    def _get_pc_variables(self, dep: Any, cpp_info: Any, custom_content: Any = None) -> dict[str, Any]:
+    def _get_pc_variables(self, dep: Any, info: Any, custom_content: Any = None) -> dict[str, Any]:
         """
         Get all the freeform variables defined by Recipe and
         users (through ``pkg_config_custom_content``). This last ones will override the
@@ -132,9 +132,9 @@ class _PCFilesDeps:
         prefix_path = Path(dep.recipe_folder).as_posix() if dep.folders.package is None else dep.folders.package.as_posix()
         pc_variables = {"prefix": prefix_path}
         # Already formatted directories
-        pc_variables.update(self._get_formatted_dirs("libdir", cpp_info.libdirs, prefix_path))
-        pc_variables.update(self._get_formatted_dirs("includedir", cpp_info.includedirs, prefix_path))
-        pc_variables.update(self._get_formatted_dirs("bindir", cpp_info.bindirs, prefix_path))
+        pc_variables.update(self._get_formatted_dirs("libdir", info.libdirs, prefix_path))
+        pc_variables.update(self._get_formatted_dirs("includedir", info.includedirs, prefix_path))
+        pc_variables.update(self._get_formatted_dirs("bindir", info.bindirs, prefix_path))
         # Get the custom content introduced by user and sanitize it
         apply_custom_content()
         return pc_variables
@@ -154,31 +154,31 @@ class _PCFilesDeps:
             ret[var_name] = f"{prefix}{directory}"
         return ret
 
-    def _get_framework_flags(self, cpp_info: Any) -> list[str]:
+    def _get_framework_flags(self, info: Any) -> list[str]:
         # FIXME: GnuDepsFlags used only here. Let's adapt the code and remove this dependency.
         #        self._recipe is also used only here.
         from thirdparty.build.gnudeps_flags import GnuDepsFlags
-        gnudeps_flags = GnuDepsFlags(self._recipe, cpp_info)
+        gnudeps_flags = GnuDepsFlags(self._recipe, info)
         return gnudeps_flags.frameworks + gnudeps_flags.framework_paths
 
-    def _get_lib_flags(self, libdirvars: Any, cpp_info: Any) -> str:
-        framework_flags = self._get_framework_flags(cpp_info)
+    def _get_lib_flags(self, libdirvars: Any, info: Any) -> str:
+        framework_flags = self._get_framework_flags(info)
         libdirsflags = ['-L"${%s}"' % d for d in libdirvars]
-        system_libs = ["-l%s" % li for li in (cpp_info.libs + cpp_info.system_libs)]
-        shared_flags = cpp_info.sharedlinkflags + cpp_info.exelinkflags
+        system_libs = ["-l%s" % li for li in (info.libs + info.system_libs)]
+        shared_flags = info.sharedlinkflags + info.exelinkflags
         return " ".join(libdirsflags + system_libs + shared_flags + framework_flags)
 
     @staticmethod
-    def _get_cflags(includedirvars: Any, cpp_info: Any) -> str:
+    def _get_cflags(includedirvars: Any, info: Any) -> str:
         includedirsflags = ['-I"${%s}"' % d for d in includedirvars]
-        cxxflags = [var.replace('"', '\\"') for var in cpp_info.cxxflags]
-        cflags = [var.replace('"', '\\"') for var in cpp_info.cflags]
-        defines = ["-D%s" % var.replace('"', '\\"') for var in cpp_info.defines]
+        cxxflags = [var.replace('"', '\\"') for var in info.cxxflags]
+        cflags = [var.replace('"', '\\"') for var in info.cflags]
+        defines = ["-D%s" % var.replace('"', '\\"') for var in info.defines]
         return " ".join(includedirsflags + cxxflags + cflags + defines)
 
-    def _get_component_requirement_names(self, cpp_info: Any) -> list[str]:
+    def _get_component_requirement_names(self, info: Any) -> list[str]:
         """
-        Get all the pkg-config valid names from the requirements ones given a CppInfo object.
+        Get all the pkg-config valid names from the requirements ones given a Info object.
 
         For instance, those requirements could be coming from:
 
@@ -188,17 +188,17 @@ class _PCFilesDeps:
             requires = "other/1.0"
 
             def package_info(self):
-                self.cpp_info.requires = ["other::cmp1"]
+                self.info.requires = ["other::cmp1"]
 
             # Or:
 
             def package_info(self):
-                self.cpp_info.components["cmp"].requires = ["other::cmp1"]
+                self.info.components["cmp"].requires = ["other::cmp1"]
         ```
         """
         dep_ref_name = self._dep.ref.name
         ret = []
-        for req in cpp_info.requires:
+        for req in info.requires:
             pkg_ref_name, comp_ref_name = req.split("::") if "::" in req else (dep_ref_name, req)
             # For instance, dep == "hello/1.0" and req == "other::cmp1" -> hello != other
             if dep_ref_name != pkg_ref_name:
@@ -235,7 +235,7 @@ class _PCFilesDeps:
         pkg_name = self._get_name(self._dep)
         # First, let's load all the components PC files
         # Loop through all the package's components
-        for comp_ref_name, comp_cpp_info in self._dep.cpp_info.get_sorted_components().items():
+        for comp_ref_name, comp_cpp_info in self._dep.info.get_sorted_components().items():
             # At first, let's check if we have defined some components requires, e.g., "dep::cmp1"
             comp_requires = self._get_component_requirement_names(comp_cpp_info)
             comp_name = self._get_name(self._dep, pkg_name, comp_ref_name)
@@ -259,10 +259,10 @@ class _PCFilesDeps:
         # Issue related: upstream issue 10341
         should_skip_main = self._get_property("pkg_config_name", self._dep) == "none"
         if pkg_name not in pc_files and not should_skip_main:
-            cpp_info = self._dep.cpp_info
+            info = self._dep.info
             # At first, let's check if we have defined some global requires, e.g., "other::cmp1"
             # Note: If DEP has components, they'll be the requirements == pc_files.keys()
-            requires = list(pc_files.keys()) or self._get_component_requirement_names(cpp_info)
+            requires = list(pc_files.keys()) or self._get_component_requirement_names(info)
             # If we have found some component requirements it would be enough
             if not requires:
                 # If no requires were found, let's try to get all the direct visible dependencies,
@@ -270,11 +270,11 @@ class _PCFilesDeps:
                 requires = [self._get_name(req) for req in self._transitive_reqs.values()]
             version = (self._get_property("system_package_version", self._dep) or self._dep.ref.version)
             custom_content = self._get_property("pkg_config_custom_content", self._dep)
-            pc_variables = self._get_pc_variables(self._dep, cpp_info, custom_content)
+            pc_variables = self._get_pc_variables(self._dep, info, custom_content)
             pc_context = {
                 "name": pkg_name, "description": f"Recipe package: {pkg_name}", "version": version, "requires": requires, "pc_variables": pc_variables, "cflags": self._get_cflags(
-                    [d for d in pc_variables if d.startswith("includedir")], cpp_info), "libflags": self._get_lib_flags(
-                    [d for d in pc_variables if d.startswith("libdir")], cpp_info),
+                    [d for d in pc_variables if d.startswith("includedir")], info), "libflags": self._get_lib_flags(
+                    [d for d in pc_variables if d.startswith("libdir")], info),
             }
             pc_files[pkg_name] = self._get_pc_content(pc_context)
             # Aliases

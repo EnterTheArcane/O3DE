@@ -73,10 +73,10 @@ class Recipe(RecipeBase):
         return f"LZ4::{'lz4_shared' if self.options.shared else 'lz4_static'}"
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "lz4")
-        self.cpp_info.set_property("cmake_target_name", self._lz4_target)
-        self.cpp_info.set_property("cmake_target_aliases", ["lz4::lz4"])  # old unofficial target in CCI for lz4, kept for the moment to not break consumers
-        self.cpp_info.set_property("pkg_config_name", "liblz4")
-        self.cpp_info.libs = ["lz4"]
+        self.info.set_property("cmake_file_name", "lz4")
+        self.info.set_property("cmake_target_name", self._lz4_target)
+        self.info.set_property("cmake_target_aliases", ["lz4::lz4"])  # old unofficial target in CCI for lz4, kept for the moment to not break consumers
+        self.info.set_property("pkg_config_name", "liblz4")
+        self.info.libs = ["lz4"]
         if is_msvc(self) and self.options.shared:
-            self.cpp_info.defines.append("LZ4_DLL_IMPORT=1")
+            self.info.defines.append("LZ4_DLL_IMPORT=1")

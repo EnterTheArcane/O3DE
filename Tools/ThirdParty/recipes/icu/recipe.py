@@ -235,60 +235,60 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "ICU")
+        self.info.set_property("cmake_file_name", "ICU")
 
         prefix = "s" if self.settings.os == "Windows" and not self.options.shared else ""
         suffix = "d" if self.settings.os == "Windows" and self.settings.build_type == "Debug" else ""
 
         # icudata
-        self.cpp_info.components["icu-data"].set_property("cmake_target_name", "ICU::data")
+        self.info.components["icu-data"].set_property("cmake_target_name", "ICU::data")
         icudata_libname = "icudt" if self.settings.os == "Windows" else "icudata"
-        self.cpp_info.components["icu-data"].libs = [f"{prefix}{icudata_libname}{suffix}"]
+        self.info.components["icu-data"].libs = [f"{prefix}{icudata_libname}{suffix}"]
         if not self.options.shared:
-            self.cpp_info.components["icu-data"].defines.append("U_STATIC_IMPLEMENTATION")
+            self.info.components["icu-data"].defines.append("U_STATIC_IMPLEMENTATION")
             # icu uses c++, so add the c++ runtime
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.components["icu-data"].system_libs.append(libcxx)
+                self.info.components["icu-data"].system_libs.append(libcxx)
 
         # Alias of data CMake component
-        self.cpp_info.components["icu-data-alias"].set_property("cmake_target_name", "ICU::dt")
-        self.cpp_info.components["icu-data-alias"].requires = ["icu-data"]
+        self.info.components["icu-data-alias"].set_property("cmake_target_name", "ICU::dt")
+        self.info.components["icu-data-alias"].requires = ["icu-data"]
 
         # icuuc
-        self.cpp_info.components["icu-uc"].set_property("cmake_target_name", "ICU::uc")
-        self.cpp_info.components["icu-uc"].set_property("pkg_config_name", "icu-uc")
-        self.cpp_info.components["icu-uc"].libs = [f"{prefix}icuuc{suffix}"]
-        self.cpp_info.components["icu-uc"].requires = ["icu-data"]
+        self.info.components["icu-uc"].set_property("cmake_target_name", "ICU::uc")
+        self.info.components["icu-uc"].set_property("pkg_config_name", "icu-uc")
+        self.info.components["icu-uc"].libs = [f"{prefix}icuuc{suffix}"]
+        self.info.components["icu-uc"].requires = ["icu-data"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["icu-uc"].system_libs = ["m", "pthread"]
+            self.info.components["icu-uc"].system_libs = ["m", "pthread"]
             if self.options.with_dyload:
-                self.cpp_info.components["icu-uc"].system_libs.append("dl")
+                self.info.components["icu-uc"].system_libs.append("dl")
         elif self.settings.os == "Windows":
-            self.cpp_info.components["icu-uc"].system_libs = ["advapi32"]
+            self.info.components["icu-uc"].system_libs = ["advapi32"]
 
         # icui18n
-        self.cpp_info.components["icu-i18n"].set_property("cmake_target_name", "ICU::i18n")
-        self.cpp_info.components["icu-i18n"].set_property("pkg_config_name", "icu-i18n")
+        self.info.components["icu-i18n"].set_property("cmake_target_name", "ICU::i18n")
+        self.info.components["icu-i18n"].set_property("pkg_config_name", "icu-i18n")
         icui18n_libname = "icuin" if self.settings.os == "Windows" else "icui18n"
-        self.cpp_info.components["icu-i18n"].libs = [f"{prefix}{icui18n_libname}{suffix}"]
-        self.cpp_info.components["icu-i18n"].requires = ["icu-uc"]
+        self.info.components["icu-i18n"].libs = [f"{prefix}{icui18n_libname}{suffix}"]
+        self.info.components["icu-i18n"].requires = ["icu-uc"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["icu-i18n"].system_libs = ["m"]
+            self.info.components["icu-i18n"].system_libs = ["m"]
 
         # Alias of i18n CMake component
-        self.cpp_info.components["icu-i18n-alias"].set_property("cmake_target_name", "ICU::in")
-        self.cpp_info.components["icu-i18n-alias"].requires = ["icu-i18n"]
+        self.info.components["icu-i18n-alias"].set_property("cmake_target_name", "ICU::in")
+        self.info.components["icu-i18n-alias"].requires = ["icu-i18n"]
 
         # icuio
         if self.options.with_icuio:
-            self.cpp_info.components["icu-io"].set_property("cmake_target_name", "ICU::io")
-            self.cpp_info.components["icu-io"].set_property("pkg_config_name", "icu-io")
-            self.cpp_info.components["icu-io"].libs = [f"{prefix}icuio{suffix}"]
-            self.cpp_info.components["icu-io"].requires = ["icu-i18n", "icu-uc"]
+            self.info.components["icu-io"].set_property("cmake_target_name", "ICU::io")
+            self.info.components["icu-io"].set_property("pkg_config_name", "icu-io")
+            self.info.components["icu-io"].libs = [f"{prefix}icuio{suffix}"]
+            self.info.components["icu-io"].requires = ["icu-i18n", "icu-uc"]
 
         if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
-            self.cpp_info.components["icu-data"].resdirs = ["res"]
+            self.info.components["icu-data"].resdirs = ["res"]
             data_path = os.path.join(self.folders.package, "res", self._data_filename).replace("\\", "/")
             self.runenv_info.prepend_path("ICU_DATA", data_path)
             if self._enable_icu_tools or self.options.with_extras:
@@ -296,13 +296,13 @@ class Recipe(RecipeBase):
 
         if self._enable_icu_tools:
             # icutu
-            self.cpp_info.components["icu-tu"].set_property("cmake_target_name", "ICU::tu")
-            self.cpp_info.components["icu-tu"].libs = [f"{prefix}icutu{suffix}"]
-            self.cpp_info.components["icu-tu"].requires = ["icu-i18n", "icu-uc"]
+            self.info.components["icu-tu"].set_property("cmake_target_name", "ICU::tu")
+            self.info.components["icu-tu"].libs = [f"{prefix}icutu{suffix}"]
+            self.info.components["icu-tu"].requires = ["icu-i18n", "icu-uc"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["icu-tu"].system_libs = ["pthread"]
+                self.info.components["icu-tu"].system_libs = ["pthread"]
 
             # icutest
-            self.cpp_info.components["icu-test"].set_property("cmake_target_name", "ICU::test")
-            self.cpp_info.components["icu-test"].libs = [f"{prefix}icutest{suffix}"]
-            self.cpp_info.components["icu-test"].requires = ["icu-tu", "icu-uc"]
+            self.info.components["icu-test"].set_property("cmake_target_name", "ICU::test")
+            self.info.components["icu-test"].libs = [f"{prefix}icutest{suffix}"]
+            self.info.components["icu-test"].requires = ["icu-tu", "icu-uc"]

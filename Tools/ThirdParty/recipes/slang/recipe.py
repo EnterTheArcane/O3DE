@@ -96,6 +96,6 @@ class Recipe(RecipeBase):
         rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "slang")
-        self.cpp_info.set_property("cmake_target_name", "slang::slang")
-        self.cpp_info.libs = ["slang-compiler"]
+        self.info.set_property("cmake_file_name", "slang")
+        self.info.set_property("cmake_target_name", "slang::slang")
+        self.info.libs = ["slang-compiler"]

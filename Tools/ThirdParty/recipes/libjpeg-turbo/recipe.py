@@ -133,16 +133,16 @@ class Recipe(RecipeBase):
             rm(self, pattern_to_remove, os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "libjpeg-turbo")
+        self.info.set_property("cmake_file_name", "libjpeg-turbo")
 
         cmake_target_suffix = "-static" if not self.options.shared else ""
         lib_suffix = "-static" if is_msvc(self) and not self.options.shared else ""
 
-        self.cpp_info.components["jpeg"].set_property("cmake_target_name", f"libjpeg-turbo::jpeg{cmake_target_suffix}")
-        self.cpp_info.components["jpeg"].set_property("pkg_config_name", "libjpeg")
-        self.cpp_info.components["jpeg"].libs = [f"jpeg{lib_suffix}"]
+        self.info.components["jpeg"].set_property("cmake_target_name", f"libjpeg-turbo::jpeg{cmake_target_suffix}")
+        self.info.components["jpeg"].set_property("pkg_config_name", "libjpeg")
+        self.info.components["jpeg"].libs = [f"jpeg{lib_suffix}"]
 
         if self.options.get_safe("turbojpeg"):
-            self.cpp_info.components["turbojpeg"].set_property("cmake_target_name", f"libjpeg-turbo::turbojpeg{cmake_target_suffix}")
-            self.cpp_info.components["turbojpeg"].set_property("pkg_config_name", "libturbojpeg")
-            self.cpp_info.components["turbojpeg"].libs = [f"turbojpeg{lib_suffix}"]
+            self.info.components["turbojpeg"].set_property("cmake_target_name", f"libjpeg-turbo::turbojpeg{cmake_target_suffix}")
+            self.info.components["turbojpeg"].set_property("pkg_config_name", "libturbojpeg")
+            self.info.components["turbojpeg"].libs = [f"turbojpeg{lib_suffix}"]

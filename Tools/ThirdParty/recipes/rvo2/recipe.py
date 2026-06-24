@@ -64,4 +64,4 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.libs = ["RVO"]
+        self.info.libs = ["RVO"]

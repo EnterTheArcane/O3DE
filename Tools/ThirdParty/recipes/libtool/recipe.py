@@ -193,14 +193,14 @@ class Recipe(RecipeBase):
             method_pass_all)
 
     def package_info(self):
-        self.cpp_info.libs = ["ltdl"]
+        self.info.libs = ["ltdl"]
 
         if self.options.shared:
             if self.settings.os == "Windows":
-                self.cpp_info.defines = ["LIBLTDL_DLL_IMPORT"]
+                self.info.defines = ["LIBLTDL_DLL_IMPORT"]
         else:
             if self.settings.os == "Linux":
-                self.cpp_info.system_libs = ["dl"]
+                self.info.system_libs = ["dl"]
 
         # Define environment variables such that libtool m4 files are seen by Automake
         libtool_aclocal_dir = os.path.join(self._datarootdir, "aclocal")

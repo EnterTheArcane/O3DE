@@ -63,8 +63,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "miniz")
-        self.cpp_info.set_property("cmake_target_name", "miniz::miniz")
-        self.cpp_info.set_property("pkg_config_name", "miniz")
-        self.cpp_info.libs = ["miniz"]
-        self.cpp_info.includedirs.append(os.path.join("include", "miniz"))
+        self.info.set_property("cmake_file_name", "miniz")
+        self.info.set_property("cmake_target_name", "miniz::miniz")
+        self.info.set_property("pkg_config_name", "miniz")
+        self.info.libs = ["miniz"]
+        self.info.includedirs.append(os.path.join("include", "miniz"))

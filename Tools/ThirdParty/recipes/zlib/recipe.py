@@ -60,9 +60,9 @@ class Recipe(RecipeBase):
         rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "ZLIB")
-        self.cpp_info.set_property("cmake_target_name", "ZLIB::ZLIB")
-        self.cpp_info.set_property("pkg_config_name", "zlib")
+        self.info.set_property("cmake_file_name", "ZLIB")
+        self.info.set_property("cmake_target_name", "ZLIB::ZLIB")
+        self.info.set_property("pkg_config_name", "zlib")
 
         if self.settings.os == "Windows" and self.settings.get_safe("compiler.runtime"):
             # The recipe patches the CMakeLists.txt to generate different filenames when CMake
@@ -70,4 +70,4 @@ class Recipe(RecipeBase):
             libname = "zdll" if self.options.shared else "zlib"
         else:
             libname = "z"
-        self.cpp_info.libs = [libname]
+        self.info.libs = [libname]

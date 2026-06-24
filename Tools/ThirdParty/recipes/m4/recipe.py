@@ -109,8 +109,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
 
         # M4 environment variable is used by a lot of scripts as a way to override a hard-coded embedded m4 path
         bin_ext = ".exe" if self.settings.os == "Windows" else ""

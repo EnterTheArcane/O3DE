@@ -42,8 +42,8 @@ class Recipe(RecipeBase):
         copy(self, "config.sub", src=self.folders.source, dst=os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
-        self.cpp_info.includedirs = []
-        self.cpp_info.libdirs = []
+        self.info.includedirs = []
+        self.info.libdirs = []
 
         bin_path = os.path.join(self.folders.package, "bin")
         self.conf_info.define("user.gnu-config:config_guess", os.path.join(bin_path, "config.guess"))

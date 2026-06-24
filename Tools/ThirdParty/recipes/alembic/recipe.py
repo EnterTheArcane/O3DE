@@ -69,8 +69,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Alembic")
-        self.cpp_info.set_property("cmake_target_name", "Alembic::Alembic")
-        self.cpp_info.libs = ["Alembic"]
+        self.info.set_property("cmake_file_name", "Alembic")
+        self.info.set_property("cmake_target_name", "Alembic::Alembic")
+        self.info.libs = ["Alembic"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.extend(["m", "pthread"])

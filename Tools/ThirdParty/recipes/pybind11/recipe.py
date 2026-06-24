@@ -54,18 +54,18 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         cmake_base_path = os.path.join("lib", "cmake", "pybind11")
-        self.cpp_info.set_property("cmake_target_name", "pybind11_all_do_not_use")
-        self.cpp_info.components["headers"].includedirs = ["include"]
-        self.cpp_info.components["pybind11_"].set_property("cmake_target_name", "pybind11::pybind11")
-        self.cpp_info.components["pybind11_"].builddirs = [cmake_base_path]
-        self.cpp_info.components["pybind11_"].requires = ["headers"]
+        self.info.set_property("cmake_target_name", "pybind11_all_do_not_use")
+        self.info.components["headers"].includedirs = ["include"]
+        self.info.components["pybind11_"].set_property("cmake_target_name", "pybind11::pybind11")
+        self.info.components["pybind11_"].builddirs = [cmake_base_path]
+        self.info.components["pybind11_"].requires = ["headers"]
         cmake_file = os.path.join(cmake_base_path, "pybind11Common.cmake")
-        self.cpp_info.set_property("cmake_build_modules", [cmake_file])
-        self.cpp_info.components["embed"].requires = ["pybind11_"]
-        self.cpp_info.components["module"].requires = ["pybind11_"]
-        self.cpp_info.components["python_link_helper"].requires = ["pybind11_"]
-        self.cpp_info.components["windows_extras"].requires = ["pybind11_"]
-        self.cpp_info.components["lto"].requires = ["pybind11_"]
-        self.cpp_info.components["thin_lto"].requires = ["pybind11_"]
-        self.cpp_info.components["opt_size"].requires = ["pybind11_"]
-        self.cpp_info.components["python2_no_register"].requires = ["pybind11_"]
+        self.info.set_property("cmake_build_modules", [cmake_file])
+        self.info.components["embed"].requires = ["pybind11_"]
+        self.info.components["module"].requires = ["pybind11_"]
+        self.info.components["python_link_helper"].requires = ["pybind11_"]
+        self.info.components["windows_extras"].requires = ["pybind11_"]
+        self.info.components["lto"].requires = ["pybind11_"]
+        self.info.components["thin_lto"].requires = ["pybind11_"]
+        self.info.components["opt_size"].requires = ["pybind11_"]
+        self.info.components["python2_no_register"].requires = ["pybind11_"]

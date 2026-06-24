@@ -195,8 +195,8 @@ class Recipe(RecipeBase):
         rm(self, "Find*.cmake", os.path.join(self.folders.package, "bin"), recursive=True)
 
     def package_info(self):
-        self.cpp_info.includedirs = []
-        self.cpp_info.libdirs = []
+        self.info.includedirs = []
+        self.info.libdirs = []
 
         self.buildenv_info.define_path("ANDROID_NDK_ROOT", os.path.join(self.folders.package, "bin"))
         self.buildenv_info.define_path("ANDROID_NDK_HOME", os.path.join(self.folders.package, "bin"))
@@ -206,7 +206,7 @@ class Recipe(RecipeBase):
         if self.settings_target.os != "Android":
             return
 
-        self.cpp_info.bindirs.append(os.path.join(self._ndk_root_rel_path, "bin"))
+        self.info.bindirs.append(os.path.join(self._ndk_root_rel_path, "bin"))
         self.buildenv_info.define_path("NDK_ROOT", self._ndk_root)
         self.buildenv_info.define("CHOST", self._llvm_triplet)
 

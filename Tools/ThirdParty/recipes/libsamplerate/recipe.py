@@ -68,10 +68,10 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "SampleRate")
-        self.cpp_info.set_property("cmake_target_name", "SampleRate::samplerate")
-        self.cpp_info.set_property("pkg_config_name", "samplerate")
-        self.cpp_info.components["samplerate"].libs = ["samplerate"]
+        self.info.set_property("cmake_file_name", "SampleRate")
+        self.info.set_property("cmake_target_name", "SampleRate::samplerate")
+        self.info.set_property("pkg_config_name", "samplerate")
+        self.info.components["samplerate"].libs = ["samplerate"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["samplerate"].system_libs.append("m")
-        self.cpp_info.components["samplerate"].set_property("cmake_target_name", "SampleRate::samplerate")
+            self.info.components["samplerate"].system_libs.append("m")
+        self.info.components["samplerate"].set_property("cmake_target_name", "SampleRate::samplerate")

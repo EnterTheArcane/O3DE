@@ -112,8 +112,8 @@ class Recipe(RecipeBase):
         # - Linux and Macos only need to have the folder libdirs=[lib] defined (LD_LIBRARY_PATH, DYLD_LIBRARY_PATH)
         # - Windows will set the bindirs=[bin] on the PATH env variable
         # More info: https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/layers/CMakeLists.txt#L632-L636
-        self.cpp_info.libs = []
-        self.cpp_info.includedirs = []
+        self.info.libs = []
+        self.info.includedirs = []
 
         # We need to expose this VK_LAYER_PATH explicitly on the runtime environment
         manifest_subfolder = "bin" if self.settings.os == "Windows" else os.path.join("res", "vulkan", "explicit_layer.d")
@@ -121,4 +121,4 @@ class Recipe(RecipeBase):
         self.runenv_info.prepend_path("VK_LAYER_PATH", vk_layer_path)
 
         if self.settings.os == "Android":
-            self.cpp_info.system_libs.extend(["android", "log"])
+            self.info.system_libs.extend(["android", "log"])

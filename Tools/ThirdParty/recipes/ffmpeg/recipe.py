@@ -708,7 +708,7 @@ class Recipe(RecipeBase):
             cxxflags = []
             cflags = []
             for dependency in self.dependencies.values():
-                deps_cpp_info = dependency.cpp_info.aggregated_components()
+                deps_cpp_info = dependency.info.aggregated_components()
                 includedirs.extend(deps_cpp_info.includedirs)
                 defines.extend(deps_cpp_info.defines)
                 libs.extend(deps_cpp_info.libs + deps_cpp_info.system_libs)
@@ -738,7 +738,7 @@ class Recipe(RecipeBase):
         env_pkg.vars(self, scope="build").save_script("pkgconfigpath")
 
         if self.options.with_ssl == "openssl":
-            openssl_cpp = self.dependencies["openssl"].cpp_info.aggregated_components()
+            openssl_cpp = self.dependencies["openssl"].info.aggregated_components()
             # Include system_libs (crypt32, ws2_32, ... on Windows) so configure's check_lib
             # link test for DTLS_get_data_mtu can actually resolve openssl's symbols.
             openssl_libs = " ".join([f"-l{lib}" for lib in openssl_cpp.libs] + [f"-l{lib}" for lib in openssl_cpp.system_libs])
@@ -809,19 +809,19 @@ class Recipe(RecipeBase):
     def _set_component_version(self, component_name):
         version = self._read_component_version(component_name)
         if version is not None:
-            self.cpp_info.components[component_name].set_property("component_version", version)
+            self.info.components[component_name].set_property("component_version", version)
             # TODO: to remove once support of recipe v1 dropped
-            self.cpp_info.components[component_name].version = version
+            self.info.components[component_name].version = version
         else:
             self.output.warning(f"cannot determine version of lib{component_name} packaged with ffmpeg!")
 
     def package_info(self):
         if self.options.with_programs:
             if self.options.with_sdl:
-                self.cpp_info.components["programs"].requires = ["sdl::libsdl2"]
+                self.info.components["programs"].requires = ["sdl::libsdl2"]
 
         def _add_component(name, dependencies):
-            component = self.cpp_info.components[name]
+            component = self.info.components[name]
             component.set_property("pkg_config_name", f"lib{name}")
             self._set_component_version(name)
             component.libs = [name]

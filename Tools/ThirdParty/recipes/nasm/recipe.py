@@ -98,8 +98,8 @@ class Recipe(RecipeBase):
         self._chmod_plus_x(self._ndisasm)
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
 
         compiler_executables = {"asm": self._nasm}
         self.conf_info.update("tools.build:compiler_executables", compiler_executables)

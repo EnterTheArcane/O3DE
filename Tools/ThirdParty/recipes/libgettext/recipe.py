@@ -171,7 +171,7 @@ class Recipe(RecipeBase):
             cxxflags = []
             cflags = []
             for dependency in self.dependencies.values():
-                deps_cpp_info = dependency.cpp_info.aggregated_components()
+                deps_cpp_info = dependency.info.aggregated_components()
                 includedirs.extend(deps_cpp_info.includedirs)
                 defines.extend(deps_cpp_info.defines)
                 libs.extend(deps_cpp_info.libs + deps_cpp_info.system_libs)
@@ -212,11 +212,11 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Intl")
-        self.cpp_info.set_property("cmake_target_name", "Intl::Intl")
-        self.cpp_info.libs = ["gnuintl"]
+        self.info.set_property("cmake_file_name", "Intl")
+        self.info.set_property("cmake_target_name", "Intl::Intl")
+        self.info.libs = ["gnuintl"]
         if is_apple_os(self):
-            self.cpp_info.frameworks.append("CoreFoundation")
+            self.info.frameworks.append("CoreFoundation")
 
 
 def fix_msvc_libname(recipe, remove_lib_prefix=True):

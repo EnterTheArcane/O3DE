@@ -67,17 +67,17 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "libde265")
-        self.cpp_info.set_property("cmake_target_name", "de265")
-        self.cpp_info.set_property("cmake_target_aliases", ["libde265"])  # official imported target before 1.0.10
-        self.cpp_info.set_property("pkg_config_name", "libde265")
+        self.info.set_property("cmake_file_name", "libde265")
+        self.info.set_property("cmake_target_name", "de265")
+        self.info.set_property("cmake_target_aliases", ["libde265"])  # official imported target before 1.0.10
+        self.info.set_property("pkg_config_name", "libde265")
         prefix = "lib" if self.settings.os == "Windows" and not self.options.shared else ""
-        self.cpp_info.libs = [f"{prefix}de265"]
+        self.info.libs = [f"{prefix}de265"]
         if not self.options.shared:
-            self.cpp_info.defines = ["LIBDE265_STATIC_BUILD"]
+            self.info.defines = ["LIBDE265_STATIC_BUILD"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["m", "pthread"]
+            self.info.system_libs = ["m", "pthread"]
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.system_libs.append(libcxx)
+                self.info.system_libs.append(libcxx)

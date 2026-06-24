@@ -42,7 +42,7 @@ class Recipe(RecipeBase):
         self.buildenv_info.prepend_path("PATH", bin_dir)
 
         if self.settings.os == "Windows":
-            self.cpp_info.libs = ["dxcompiler"]
+            self.info.libs = ["dxcompiler"]
         else:
-            self.cpp_info.libs = ["dxcompiler"]
-            self.cpp_info.system_libs = ["dl", "pthread"]
+            self.info.libs = ["dxcompiler"]
+            self.info.system_libs = ["dl", "pthread"]

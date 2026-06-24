@@ -42,6 +42,6 @@ class Recipe(RecipeBase):
             dst=os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
         self.buildenv_info.prepend_path("PATH", os.path.join(self.folders.package, "bin"))

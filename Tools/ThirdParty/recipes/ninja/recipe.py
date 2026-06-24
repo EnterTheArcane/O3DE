@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
             os.chmod(ninja_path, os.stat(ninja_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
         bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)

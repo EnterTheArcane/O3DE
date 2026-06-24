@@ -65,6 +65,6 @@ class Recipe(RecipeBase):
     def package_info(self):
         isa = str(self.options.isa)
         suffix = "-static" if not self.options.shared else ""
-        self.cpp_info.libs = [f"astcenc-{isa}{suffix}"]
+        self.info.libs = [f"astcenc-{isa}{suffix}"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.extend(["m", "pthread"])

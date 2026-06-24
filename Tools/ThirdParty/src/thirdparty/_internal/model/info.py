@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 class PackageType(Enum):
     """The kind of a built library, *deduced* from the produced artifacts (see
-    ``deduce_full_cpp_info``).  Recipes no longer declare a package-level type; this is the
+    ``deduce_full_info``).  Recipes no longer declare a package-level type; this is the
     vocabulary the deduction produces and that the CMake/Bazel generators consume to emit the
     correct target type."""
     STATIC = "static-library"
@@ -32,7 +32,7 @@ class PackageType(Enum):
         return self.value
 
     def __eq__(self, other: object) -> bool:
-        # Allows comparing with the string value, e.g. ``cpp_info.type == "shared-library"``
+        # Allows comparing with the string value, e.g. ``info.type == "shared-library"``
         return super().__eq__(PackageType(other))
 
 
@@ -140,7 +140,7 @@ class _Component:
         return result
 
     def clone(self) -> _Component:
-        # Necessary below for exploding a cpp_info.libs = [lib1, lib2] into components
+        # Necessary below for exploding a info.libs = [lib1, lib2] into components
         result = _Component()
         for k, v in vars(self).items():
             if k.startswith("_"):
@@ -319,6 +319,11 @@ class _Component:
 
     @property
     def languages(self) -> list[str] | None:
+        """Open list of source-language tokens for this package (e.g. ``"C"``, ``"C++"``,
+        ``"Rust"``, ``"Zig"``, ``"Swift"``, ``"Fortran"``). Not restricted to the C family:
+        each generator interprets the tokens it understands -- the CMake generator maps known
+        CMake languages to ``IMPORTED_LINK_INTERFACE_LANGUAGES`` and ignores the rest (which
+        then link via CMake's default rules)."""
         return self._languages
 
     @languages.setter
@@ -619,7 +624,7 @@ class _Component:
         if not self._location:
             raise RecipeException(
                 f"{recipe}: Cannot obtain 'location' for library '{libname}' "
-                f"in {libdirs}. You can specify 'cpp_info.location' directly "
+                f"in {libdirs}. You can specify 'info.location' directly "
                 f"or report this to the ThirdParty maintainers if you think it "
                 f"should have been deduced correctly.")
         if self._type is not None and self._type != deduced_type:
@@ -629,7 +634,7 @@ class _Component:
         self._type = deduced_type
 
     def deduce_locations(self, recipe: RecipeBase, component_name: str = ""):
-        name = f'{recipe} cpp_info.components["{component_name}"]' if component_name else f'{recipe} cpp_info'
+        name = f'{recipe} info.components["{component_name}"]' if component_name else f'{recipe} info'
         # executable
         if self._exe:  # exe is a new field, it should have the correct location
             if self._type is None:
@@ -670,7 +675,26 @@ class _Component:
         self._auto_deduce_locations(recipe, library_name=component_name or recipe.ref.name)
 
 
-class CppInfo:
+class Info:
+    """Language-agnostic description of a built package's *consumption contract*: how a
+    dependent locates, compiles against, and links to it.
+
+    Populated by a recipe's ``package_info()`` and consumed by every generator (CMakeDeps,
+    PkgConfigDeps, BazelDeps, ...). Despite the historical "Cpp" heritage of these fields,
+    nearly all of them are neutral and apply to any compiled language (C/C++, Rust, Zig, ...):
+    ``includedirs``/``libdirs``/``bindirs``/``libs``/``system_libs``/``defines``/``objects``,
+    the linker flags, ``requires``, and the artifact-deduced :class:`PackageType` / ``location``.
+    The only genuinely C-family-specific surface is ``cflags``/``cxxflags``; ``languages`` is an
+    open list of source-language tokens (C/C++/Rust/Zig/Swift/...) and the Apple ``frameworks``
+    family is platform-specific. Other ecosystems simply leave the inapplicable ones empty.
+    Arbitrary additional metadata rides on the open ``properties`` map
+    (``set_property``/``get_property``), e.g. ``cmake_target_name`` or ``pkg_config_name``.
+
+    An :class:`Info` exposes a default (``_package``) component plus a ``components`` dict;
+    plain attribute access (``info.libs``) delegates to the default component. ``recipe.info``
+    is the package-phase instance; ``recipe.infos`` holds the source/build/package phases.
+    """
+
     def __init__(self, set_defaults: bool = False):
         self.components = defaultdict(lambda: _Component(set_defaults))
         self.default_components: list[str] | None = None
@@ -682,12 +706,12 @@ class CppInfo:
             comp.set_consumer(recipe)
 
     def __getattr__(self, attr: str) -> Any:
-        # all cpp_info.xxx of not defined things will go to the global package
+        # all info.xxx of not defined things will go to the global package
         return getattr(self._package, attr)
 
     def __setattr__(self, attr: str, value: Any):
         if attr in ("components", "default_components", "_package", "_aggregated", "required_components"):
-            super(CppInfo, self).__setattr__(attr, value)
+            super(Info, self).__setattr__(attr, value)
         else:
             setattr(self._package, attr, value)
 
@@ -699,7 +723,7 @@ class CppInfo:
             ret[component_name] = info.serialize()
         return ret
 
-    def deserialize(self, content: dict[str, Any]) -> CppInfo:
+    def deserialize(self, content: dict[str, Any]) -> Info:
         self._package = _Component.deserialize(content.pop("root"))
         self.default_components = content.get("default_components")
         for component_name, info in content.items():
@@ -709,7 +733,7 @@ class CppInfo:
     def save(self, path: str):
         save(path, json.dumps(self.serialize()))
 
-    def load(self, path: str) -> CppInfo:
+    def load(self, path: str) -> Info:
         content = json.loads(load(path))
         return self.deserialize(content)
 
@@ -717,11 +741,11 @@ class CppInfo:
     def has_components(self) -> bool:
         return len(self.components) > 0
 
-    def merge(self, other: CppInfo, overwrite: bool = False):
-        """Merge 'other' into self. 'other' can be an old cpp_info object
+    def merge(self, other: Info, overwrite: bool = False):
+        """Merge 'other' into self. 'other' can be an old info object
         Used to merge Layout source + build cpp objects info (editables)
-        @type other: CppInfo
-        @param other: The other CppInfo to merge
+        @type other: Info
+        @param other: The other Info to merge
         @param overwrite: New values from other overwrite the existing ones
         """
         # Global merge
@@ -762,7 +786,7 @@ class CppInfo:
                 else:
                     new_open[name] = c
             if len(opened) == len(new_open):
-                msg = ["There is a dependency loop in 'self.cpp_info.components' requires:"]
+                msg = ["There is a dependency loop in 'self.info.components' requires:"]
                 for name, c in opened.items():
                     loop_reqs = ", ".join(n for n in c.required_component_names if n in opened)
                     msg.append(f"   {name} requires {loop_reqs}")
@@ -770,8 +794,8 @@ class CppInfo:
             opened = new_open
         return result
 
-    def aggregated_components(self) -> CppInfo:
-        """Aggregates all the components as global values, returning a new CppInfo
+    def aggregated_components(self) -> Info:
+        """Aggregates all the components as global values, returning a new Info
         Used by many generators to obtain a unified, aggregated view of all components
         """
         # This method had caching before, but after a ``--deployer``, the package changes
@@ -789,7 +813,7 @@ class CppInfo:
             result._properties = copy.copy(self._package._properties)
         else:
             result = copy.copy(self._package)
-        aggregated = CppInfo()
+        aggregated = Info()
         aggregated._package = result
         return aggregated
 
@@ -807,7 +831,7 @@ class CppInfo:
         comps = self.required_components
         missing_internal = [c[1] for c in comps if c[0] is None and c[1] not in self.components]
         if missing_internal:
-            msg = f"{recipe}: package_info(): There are '(cpp_info/components).requires' to " \
+            msg = f"{recipe}: package_info(): There are '(info/components).requires' to " \
                   f"other internal components that are not defined: {missing_internal}"
             raise RecipeException(msg)
         external = [c[0] for c in comps if c[0] is not None]
@@ -815,12 +839,12 @@ class CppInfo:
             return
         # Only direct host (not test) dependencies can define required components
         # We use recipe.dependencies to use the already replaced ones by "replace_requires"
-        # So consumers can keep their ``self.cpp_info.requires = ["pkg_name::comp"]``
+        # So consumers can keep their ``self.info.requires = ["pkg_name::comp"]``
         direct_dependencies = [r.ref.name for r, d in recipe.dependencies.items() if r.direct and not r.build and not r.is_test and r.visible and not r.override]
 
         for e in external:
             if e not in direct_dependencies:
-                msg = f"{recipe}: package_info(): There are '(cpp_info/components).requires' " \
+                msg = f"{recipe}: package_info(): There are '(info/components).requires' " \
                       f"that includes package '{e}::', but such package is not a a direct " \
                       f"requirement of the recipe"
                 raise RecipeException(msg)
@@ -828,7 +852,7 @@ class CppInfo:
         for e in direct_dependencies:
             if e not in external:
                 msg = f"{recipe}: package_info(): The direct dependency '{e}' is not used by " \
-                      f"any '(cpp_info/components).requires'."
+                      f"any '(info/components).requires'."
                 raise RecipeException(msg)
 
     @property
@@ -846,16 +870,16 @@ class CppInfo:
         ret = [r.split("::", 1) if "::" in r else (None, r) for r in ret]
         return ret
 
-    def deduce_full_cpp_info(self, recipe: RecipeBase) -> CppInfo:
-        if recipe.cpp_info.has_components and (recipe.cpp_info.exe or recipe.cpp_info.libs):
-            raise RecipeException(f"{recipe}: 'cpp_info' contains components and .exe or .libs")
+    def deduce_full_info(self, recipe: RecipeBase) -> Info:
+        if recipe.info.has_components and (recipe.info.exe or recipe.info.libs):
+            raise RecipeException(f"{recipe}: 'info' contains components and .exe or .libs")
 
-        result = CppInfo()  # clone it
+        result = Info()  # clone it
         if self.libs and len(self.libs) > 1:  # expand in multiple components
             Output(scope=str(recipe)).warning(
-                "The 'cpp_info.libs' contain more than 1 library. "
-                "Define 'cpp_info.components' instead.", warn_tag="deprecated")
-            assert not self.components, f"{recipe} cpp_info shouldn't have .libs and .components"
+                "The 'info.libs' contain more than 1 library. "
+                "Define 'info.components' instead.", warn_tag="deprecated")
+            assert not self.components, f"{recipe} info shouldn't have .libs and .components"
             common = self._package.clone()
             common.libs = []
             common.type = str(PackageType.HEADER)  # the type of components is a string!
@@ -879,7 +903,7 @@ class CppInfo:
             for k, v in self.components.items():
                 if v.libs and len(v.libs) > 1:
                     Output(scope=str(recipe)).warning(
-                        f"The 'cpp_info.components[{k}] contains more than 1 library. "
+                        f"The 'info.components[{k}] contains more than 1 library. "
                         "Define 1 component for each library instead.", warn_tag="deprecated")
                     # Now the root, empty one
                     common = v.clone()

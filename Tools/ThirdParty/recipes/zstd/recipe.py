@@ -75,10 +75,10 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         zstd_cmake = "libzstd_shared" if self.options.shared else "libzstd_static"
-        self.cpp_info.set_property("cmake_file_name", "zstd")
-        self.cpp_info.set_property("cmake_target_name", f"zstd::{zstd_cmake}")
-        self.cpp_info.set_property("pkg_config_name", "libzstd")
-        self.cpp_info.set_property("cmake_target_aliases", ["zstd::libzstd"])
-        self.cpp_info.components["zstdlib"].libs = collect_libs(self)
+        self.info.set_property("cmake_file_name", "zstd")
+        self.info.set_property("cmake_target_name", f"zstd::{zstd_cmake}")
+        self.info.set_property("pkg_config_name", "libzstd")
+        self.info.set_property("cmake_target_aliases", ["zstd::libzstd"])
+        self.info.components["zstdlib"].libs = collect_libs(self)
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["zstdlib"].system_libs.append("pthread")
+            self.info.components["zstdlib"].system_libs.append("pthread")

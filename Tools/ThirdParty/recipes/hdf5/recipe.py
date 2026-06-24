@@ -102,8 +102,8 @@ class Recipe(RecipeBase):
                         os.remove(os.path.join(root, f))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "HDF5")
-        self.cpp_info.set_property("cmake_target_name", "HDF5::HDF5")
+        self.info.set_property("cmake_file_name", "HDF5")
+        self.info.set_property("cmake_target_name", "HDF5::HDF5")
 
         def _lib_name(lib):
             if self.settings.os == "Windows" and self.settings.compiler != "gcc" and not self.options.shared:
@@ -113,30 +113,30 @@ class Recipe(RecipeBase):
                 return lib + debug_postfix
             return lib
 
-        self.cpp_info.components["hdf5_c"].set_property("cmake_target_name", "HDF5::C")
-        self.cpp_info.components["hdf5_c"].libs = [_lib_name("hdf5")]
-        self.cpp_info.components["hdf5_c"].requires = ["zlib::zlib"]
-        self.cpp_info.components["hdf5_c"].includedirs = ["include", os.path.join("include", "hdf5")]
+        self.info.components["hdf5_c"].set_property("cmake_target_name", "HDF5::C")
+        self.info.components["hdf5_c"].libs = [_lib_name("hdf5")]
+        self.info.components["hdf5_c"].requires = ["zlib::zlib"]
+        self.info.components["hdf5_c"].includedirs = ["include", os.path.join("include", "hdf5")]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["hdf5_c"].system_libs.extend(["dl", "m"])
+            self.info.components["hdf5_c"].system_libs.extend(["dl", "m"])
         elif self.settings.os == "Windows":
-            self.cpp_info.components["hdf5_c"].system_libs.append("Shlwapi")
+            self.info.components["hdf5_c"].system_libs.append("Shlwapi")
         if self.options.shared:
-            self.cpp_info.components["hdf5_c"].defines.append("H5_BUILT_AS_DYNAMIC_LIB")
+            self.info.components["hdf5_c"].defines.append("H5_BUILT_AS_DYNAMIC_LIB")
 
         if self.options.enable_cxx:
-            self.cpp_info.components["hdf5_cpp"].set_property("cmake_target_name", "HDF5::CXX")
-            self.cpp_info.components["hdf5_cpp"].libs = [_lib_name("hdf5_cpp")]
-            self.cpp_info.components["hdf5_cpp"].requires = ["hdf5_c"]
-            self.cpp_info.components["hdf5_cpp"].includedirs = ["include", os.path.join("include", "hdf5")]
+            self.info.components["hdf5_cpp"].set_property("cmake_target_name", "HDF5::CXX")
+            self.info.components["hdf5_cpp"].libs = [_lib_name("hdf5_cpp")]
+            self.info.components["hdf5_cpp"].requires = ["hdf5_c"]
+            self.info.components["hdf5_cpp"].includedirs = ["include", os.path.join("include", "hdf5")]
 
         if self.options.hl:
-            self.cpp_info.components["hdf5_hl"].set_property("cmake_target_name", "HDF5::HL")
-            self.cpp_info.components["hdf5_hl"].libs = [_lib_name("hdf5_hl")]
-            self.cpp_info.components["hdf5_hl"].requires = ["hdf5_c"]
-            self.cpp_info.components["hdf5_hl"].includedirs = ["include", os.path.join("include", "hdf5")]
+            self.info.components["hdf5_hl"].set_property("cmake_target_name", "HDF5::HL")
+            self.info.components["hdf5_hl"].libs = [_lib_name("hdf5_hl")]
+            self.info.components["hdf5_hl"].requires = ["hdf5_c"]
+            self.info.components["hdf5_hl"].includedirs = ["include", os.path.join("include", "hdf5")]
             if self.options.enable_cxx:
-                self.cpp_info.components["hdf5_hl_cpp"].set_property("cmake_target_name", "HDF5::HL_CXX")
-                self.cpp_info.components["hdf5_hl_cpp"].libs = [_lib_name("hdf5_hl_cpp")]
-                self.cpp_info.components["hdf5_hl_cpp"].requires = ["hdf5_c", "hdf5_cpp", "hdf5_hl"]
-                self.cpp_info.components["hdf5_hl_cpp"].includedirs = ["include", os.path.join("include", "hdf5")]
+                self.info.components["hdf5_hl_cpp"].set_property("cmake_target_name", "HDF5::HL_CXX")
+                self.info.components["hdf5_hl_cpp"].libs = [_lib_name("hdf5_hl_cpp")]
+                self.info.components["hdf5_hl_cpp"].requires = ["hdf5_c", "hdf5_cpp", "hdf5_hl"]
+                self.info.components["hdf5_hl_cpp"].includedirs = ["include", os.path.join("include", "hdf5")]

@@ -167,30 +167,30 @@ class Recipe(RecipeBase):
         return name
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "mimalloc")
-        self.cpp_info.set_property("cmake_target_name", "mimalloc" if self.options.shared else "mimalloc-static")
+        self.info.set_property("cmake_file_name", "mimalloc")
+        self.info.set_property("cmake_target_name", "mimalloc" if self.options.shared else "mimalloc-static")
 
         if self.options.get_safe("inject"):
-            self.cpp_info.includedirs = []
-            self.cpp_info.libdirs = []
-            self.cpp_info.resdirs = []
+            self.info.includedirs = []
+            self.info.libdirs = []
+            self.info.resdirs = []
             return
 
         if self.options.get_safe("single_object"):
             obj_ext = "o"
             obj_file = f"{self._obj_name}.{obj_ext}"
             obj_path = os.path.join(self.folders.package, "lib", obj_file)
-            self.cpp_info.exelinkflags = [obj_path]
-            self.cpp_info.sharedlinkflags = [obj_path]
-            self.cpp_info.libdirs = []
-            self.cpp_info.bindirs = []
+            self.info.exelinkflags = [obj_path]
+            self.info.sharedlinkflags = [obj_path]
+            self.info.libdirs = []
+            self.info.bindirs = []
         else:
-            self.cpp_info.libs = collect_libs(self)
+            self.info.libs = collect_libs(self)
 
         if self.settings.os == "Linux":
-            self.cpp_info.system_libs.append("pthread")
+            self.info.system_libs.append("pthread")
         if not self.options.shared:
             if self.settings.os == "Windows":
-                self.cpp_info.system_libs.extend(["psapi", "shell32", "user32", "bcrypt"])
+                self.info.system_libs.extend(["psapi", "shell32", "user32", "bcrypt"])
             elif self.settings.os == "Linux":
-                self.cpp_info.system_libs.append("rt")
+                self.info.system_libs.append("rt")

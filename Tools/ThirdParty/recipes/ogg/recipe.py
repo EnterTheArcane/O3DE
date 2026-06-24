@@ -61,9 +61,9 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Ogg")
-        self.cpp_info.set_property("cmake_target_name", "Ogg::ogg")
-        self.cpp_info.set_property("pkg_config_name", "ogg")
-        self.cpp_info.components["ogglib"].libs = ["ogg"]
-        self.cpp_info.components["ogglib"].set_property("cmake_target_name", "Ogg::ogg")
-        self.cpp_info.components["ogglib"].set_property("pkg_config_name", "ogg")
+        self.info.set_property("cmake_file_name", "Ogg")
+        self.info.set_property("cmake_target_name", "Ogg::ogg")
+        self.info.set_property("pkg_config_name", "ogg")
+        self.info.components["ogglib"].libs = ["ogg"]
+        self.info.components["ogglib"].set_property("cmake_target_name", "Ogg::ogg")
+        self.info.components["ogglib"].set_property("pkg_config_name", "ogg")

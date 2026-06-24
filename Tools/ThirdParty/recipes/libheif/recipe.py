@@ -125,36 +125,36 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "libheif")
-        self.cpp_info.set_property("cmake_target_name", "libheif::heif")
-        self.cpp_info.set_property("pkg_config_name", "libheif")
-        self.cpp_info.libs = ["heif"]
+        self.info.set_property("cmake_file_name", "libheif")
+        self.info.set_property("cmake_target_name", "libheif::heif")
+        self.info.set_property("pkg_config_name", "libheif")
+        self.info.libs = ["heif"]
 
         if not self.options.shared:
-            self.cpp_info.defines = ["LIBHEIF_STATIC_BUILD"]
+            self.info.defines = ["LIBHEIF_STATIC_BUILD"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["m", "pthread"])
-            self.cpp_info.system_libs.append("dl")
+            self.info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.append("dl")
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.system_libs.append(libcxx)
+                self.info.system_libs.append(libcxx)
 
         if self.options.with_libde265:
-            self.cpp_info.requires.append("libde265::libde265")
+            self.info.requires.append("libde265::libde265")
         if self.options.with_x265:
-            self.cpp_info.requires.append("libx265::libx265")
+            self.info.requires.append("libx265::libx265")
         if self.options.with_libaomav1:
-            self.cpp_info.requires.append("libaom-av1::libaom-av1")
+            self.info.requires.append("libaom-av1::libaom-av1")
         if self.options.with_dav1d:
-            self.cpp_info.requires.append("dav1d::dav1d")
+            self.info.requires.append("dav1d::dav1d")
         if self.options.get_safe("with_jpeg"):
-            self.cpp_info.requires.append("libjpeg::libjpeg")
+            self.info.requires.append("libjpeg::libjpeg")
         if self.options.get_safe("with_openjpeg"):
-            self.cpp_info.requires.append("openjpeg::openjpeg")
+            self.info.requires.append("openjpeg::openjpeg")
         if self.options.get_safe("with_openjph"):
-            self.cpp_info.requires.append("openjph::openjph")
+            self.info.requires.append("openjph::openjph")
         if self.options.get_safe("with_openh264"):
-            self.cpp_info.requires.append("openh264::openh264")
+            self.info.requires.append("openh264::openh264")
         if self.options.get_safe("with_x264"):
-            self.cpp_info.requires.append("libx264::libx264")
+            self.info.requires.append("libx264::libx264")

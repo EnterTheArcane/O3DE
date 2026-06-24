@@ -57,6 +57,6 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["mikktspace"]
+        self.info.libs = ["mikktspace"]
         if not self.options.shared and self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["m"]
+            self.info.system_libs = ["m"]

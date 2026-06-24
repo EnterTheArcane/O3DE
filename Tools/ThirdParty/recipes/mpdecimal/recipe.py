@@ -202,20 +202,20 @@ class Recipe(RecipeBase):
             if self.options.shared:
                 lib_pre_suf = ("", ".dll")
 
-        self.cpp_info.components["libmpdecimal"].libs = ["{}mpdec{}".format(*lib_pre_suf)]
+        self.info.components["libmpdecimal"].libs = ["{}mpdec{}".format(*lib_pre_suf)]
         if self.options.shared and is_msvc(self):
             if Version(self.version) >= "2.5.1":
-                self.cpp_info.components["libmpdecimal"].defines = ["MPDECIMAL_DLL"]
+                self.info.components["libmpdecimal"].defines = ["MPDECIMAL_DLL"]
             else:
-                self.cpp_info.components["libmpdecimal"].defines = ["USE_DLL"]
+                self.info.components["libmpdecimal"].defines = ["USE_DLL"]
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["libmpdecimal"].system_libs = ["m"]
+            self.info.components["libmpdecimal"].system_libs = ["m"]
 
         if self.options.cxx:
-            self.cpp_info.components["libmpdecimal++"].libs = ["{}mpdec++{}".format(*lib_pre_suf)]
-            self.cpp_info.components["libmpdecimal++"].requires = ["libmpdecimal"]
+            self.info.components["libmpdecimal++"].libs = ["{}mpdec++{}".format(*lib_pre_suf)]
+            self.info.components["libmpdecimal++"].requires = ["libmpdecimal"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["libmpdecimal++"].system_libs = ["pthread"]
+                self.info.components["libmpdecimal++"].system_libs = ["pthread"]
             if self.options.shared and Version(self.version) >= "2.5.1":
-                self.cpp_info.components["libmpdecimal++"].defines = ["MPDECIMALXX_DLL"]
+                self.info.components["libmpdecimal++"].defines = ["MPDECIMALXX_DLL"]

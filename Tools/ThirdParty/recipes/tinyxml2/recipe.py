@@ -52,10 +52,10 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "tinyxml2")
-        self.cpp_info.set_property("cmake_target_name", "tinyxml2::tinyxml2")
-        self.cpp_info.set_property("pkg_config_name", "tinyxml2")
+        self.info.set_property("cmake_file_name", "tinyxml2")
+        self.info.set_property("cmake_target_name", "tinyxml2::tinyxml2")
+        self.info.set_property("pkg_config_name", "tinyxml2")
         postfix = ""
-        self.cpp_info.libs = [f"tinyxml2{postfix}"]
+        self.info.libs = [f"tinyxml2{postfix}"]
         if self.settings.os == "Windows" and self.options.shared:
-            self.cpp_info.defines.append("TINYXML2_IMPORT")
+            self.info.defines.append("TINYXML2_IMPORT")

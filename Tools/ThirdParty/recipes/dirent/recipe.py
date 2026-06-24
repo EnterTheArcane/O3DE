@@ -33,5 +33,5 @@ class Recipe(RecipeBase):
         )
 
     def package_info(self):
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.bindirs = []
+        self.info.libdirs = []

@@ -50,11 +50,11 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.libs = ["Lerc"]
+        self.info.libs = ["Lerc"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")
         if not self.options.shared:
-            self.cpp_info.defines = ["LERC_STATIC"]
+            self.info.defines = ["LERC_STATIC"]
             lib = stdcpp_library(self)
             if lib:
-                self.cpp_info.system_libs.append(lib)
+                self.info.system_libs.append(lib)

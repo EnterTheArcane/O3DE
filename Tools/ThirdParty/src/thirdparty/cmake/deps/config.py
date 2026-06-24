@@ -53,7 +53,7 @@ class ConfigTemplate2:
         if components is None:  # Lets compute the default components names
             components = []
             # This assumes that cmake_components is only defined with not multi .libs=[lib1, lib2]
-            for name in self._recipe.cpp_info.components:
+            for name in self._recipe.info.components:
                 if name.startswith("_"):  # Skip private components
                     continue
                 comp_components = self._cmakedeps.get_property(

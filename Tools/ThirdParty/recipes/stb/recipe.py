@@ -31,8 +31,8 @@ class Recipe(RecipeBase):
         copy(self, "stb_image.c", src=os.path.join(self.folders.source, "deprecated"), dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
-        self.cpp_info.defines.append("STB_TEXTEDIT_KEYTYPE=unsigned")
+        self.info.bindirs = []
+        self.info.libdirs = []
+        self.info.defines.append("STB_TEXTEDIT_KEYTYPE=unsigned")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

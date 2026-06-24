@@ -76,20 +76,20 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "md4c")
+        self.info.set_property("cmake_file_name", "md4c")
 
-        self.cpp_info.components["_md4c"].set_property("cmake_target_name", "md4c::md4c")
-        self.cpp_info.components["_md4c"].set_property("pkg_config_name", "md4c")
-        self.cpp_info.components["_md4c"].libs = ["md4c"]
+        self.info.components["_md4c"].set_property("cmake_target_name", "md4c::md4c")
+        self.info.components["_md4c"].set_property("pkg_config_name", "md4c")
+        self.info.components["_md4c"].libs = ["md4c"]
         if self.settings.os == "Windows" and self.options.encoding == "utf-16":
-            self.cpp_info.components["_md4c"].defines.append("MD4C_USE_UTF16")
+            self.info.components["_md4c"].defines.append("MD4C_USE_UTF16")
 
-        self.cpp_info.components["md4c_html"].set_property("cmake_target_name", "md4c::md4c-html")
-        self.cpp_info.components["md4c_html"].set_property("pkg_config_name", "md4c-html")
-        self.cpp_info.components["md4c_html"].libs = ["md4c-html"]
-        self.cpp_info.components["md4c_html"].requires = ["_md4c"]
+        self.info.components["md4c_html"].set_property("cmake_target_name", "md4c::md4c-html")
+        self.info.components["md4c_html"].set_property("pkg_config_name", "md4c-html")
+        self.info.components["md4c_html"].libs = ["md4c-html"]
+        self.info.components["md4c_html"].requires = ["_md4c"]
 
         # workaround so that global target & pkgconfig file have all components while avoiding
         # to create unofficial target or pkgconfig file
-        self.cpp_info.set_property("cmake_target_name", "md4c::md4c-html")
-        self.cpp_info.set_property("pkg_config_name", "md4c-html")
+        self.info.set_property("cmake_target_name", "md4c::md4c-html")
+        self.info.set_property("pkg_config_name", "md4c-html")

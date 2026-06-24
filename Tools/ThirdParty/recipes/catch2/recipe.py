@@ -78,27 +78,27 @@ class Recipe(RecipeBase):
                 )
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Catch2")
-        self.cpp_info.set_property("cmake_target_name", "Catch2::Catch2WithMain")
-        self.cpp_info.set_property("pkg_config_name", "catch2-with-main")
+        self.info.set_property("cmake_file_name", "Catch2")
+        self.info.set_property("cmake_target_name", "Catch2::Catch2WithMain")
+        self.info.set_property("pkg_config_name", "catch2-with-main")
 
         lib_suffix = "d" if self.settings.build_type == "Debug" else ""
-        self.cpp_info.components["_catch2"].set_property("cmake_target_name", "Catch2::Catch2")
-        self.cpp_info.components["_catch2"].set_property("pkg_config_name", "catch2")
-        self.cpp_info.components["_catch2"].libs = ["Catch2" + lib_suffix]
+        self.info.components["_catch2"].set_property("cmake_target_name", "Catch2::Catch2")
+        self.info.components["_catch2"].set_property("pkg_config_name", "catch2")
+        self.info.components["_catch2"].libs = ["Catch2" + lib_suffix]
 
-        self.cpp_info.components["catch2_with_main"].builddirs.append(os.path.join("lib", "cmake", "Catch2"))
-        self.cpp_info.components["catch2_with_main"].libs = ["Catch2Main" + lib_suffix]
-        self.cpp_info.components["catch2_with_main"].requires = ["_catch2"]
-        self.cpp_info.components["catch2_with_main"].system_libs = ["log"] if self.settings.os == "Android" else []
-        self.cpp_info.components["catch2_with_main"].set_property("cmake_target_name", "Catch2::Catch2WithMain")
-        self.cpp_info.components["catch2_with_main"].set_property("pkg_config_name", "catch2-with-main")
+        self.info.components["catch2_with_main"].builddirs.append(os.path.join("lib", "cmake", "Catch2"))
+        self.info.components["catch2_with_main"].libs = ["Catch2Main" + lib_suffix]
+        self.info.components["catch2_with_main"].requires = ["_catch2"]
+        self.info.components["catch2_with_main"].system_libs = ["log"] if self.settings.os == "Android" else []
+        self.info.components["catch2_with_main"].set_property("cmake_target_name", "Catch2::Catch2WithMain")
+        self.info.components["catch2_with_main"].set_property("pkg_config_name", "catch2-with-main")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["catch2_with_main"].system_libs.append("m")
+            self.info.components["catch2_with_main"].system_libs.append("m")
 
         defines = []
         if self.options.with_prefix:
             defines.append("CATCH_CONFIG_PREFIX_ALL")
         if self.options.default_reporter:
             defines.append(f"CATCH_CONFIG_DEFAULT_REPORTER={self._default_reporter_str}")
-        self.cpp_info.components["catch2_with_main"].defines = defines
+        self.info.components["catch2_with_main"].defines = defines

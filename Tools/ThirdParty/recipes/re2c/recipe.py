@@ -61,10 +61,10 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.frameworkdirs = []
-        self.cpp_info.libdirs = []
-        self.cpp_info.resdirs = []
-        self.cpp_info.includedirs = []
+        self.info.frameworkdirs = []
+        self.info.libdirs = []
+        self.info.resdirs = []
+        self.info.includedirs = []
 
         include_dir = os.path.join(self.folders.package, "include")
         self.buildenv_info.define("RE2C_STDLIB_DIR", include_dir)

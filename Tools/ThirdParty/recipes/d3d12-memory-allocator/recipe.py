@@ -54,7 +54,7 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "D3D12MemoryAllocator")
-        self.cpp_info.set_property("cmake_target_name", "GPUOpen::D3D12MemoryAllocator")
+        self.info.set_property("cmake_file_name", "D3D12MemoryAllocator")
+        self.info.set_property("cmake_target_name", "GPUOpen::D3D12MemoryAllocator")
         postfix = {"Release": "", "Debug": "d", "RelWithDebInfo": "rd", "MinSizeRel": "s"}[str(self.settings.build_type)]
-        self.cpp_info.libs = [f"D3D12MA{postfix}"]
+        self.info.libs = [f"D3D12MA{postfix}"]

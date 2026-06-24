@@ -340,7 +340,7 @@ class Recipe(RecipeBase):
             args.append("no-asm -lsocket -latomic")
 
         if not self.options.no_zlib:
-            zlib_cpp_info = self.dependencies["zlib"].cpp_info.aggregated_components()
+            zlib_cpp_info = self.dependencies["zlib"].info.aggregated_components()
             include_path = self._adjust_path(zlib_cpp_info.includedirs[0])
             is_shared_zlib = self.dependencies["zlib"].options.shared
 
@@ -595,44 +595,44 @@ class Recipe(RecipeBase):
             f"recipe-official-{self.name}-variables.cmake")
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenSSL")
-        self.cpp_info.set_property("pkg_config_name", "openssl")
-        self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.cpp_info.components["ssl"].builddirs.append(self._module_subfolder)
-        self.cpp_info.components["ssl"].set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.cpp_info.components["crypto"].builddirs.append(self._module_subfolder)
-        self.cpp_info.components["crypto"].set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.set_property("cmake_file_name", "OpenSSL")
+        self.info.set_property("pkg_config_name", "openssl")
+        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.components["ssl"].builddirs.append(self._module_subfolder)
+        self.info.components["ssl"].set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.components["crypto"].builddirs.append(self._module_subfolder)
+        self.info.components["crypto"].set_property("cmake_build_modules", [self._module_file_rel_path])
 
         if self._use_nmake:
-            self.cpp_info.components["ssl"].libs = ["libssl"]
-            self.cpp_info.components["crypto"].libs = ["libcrypto"]
+            self.info.components["ssl"].libs = ["libssl"]
+            self.info.components["crypto"].libs = ["libcrypto"]
         else:
-            self.cpp_info.components["ssl"].libs = ["ssl"]
-            self.cpp_info.components["crypto"].libs = ["crypto"]
+            self.info.components["ssl"].libs = ["ssl"]
+            self.info.components["crypto"].libs = ["crypto"]
 
-        self.cpp_info.components["ssl"].requires = ["crypto"]
+        self.info.components["ssl"].requires = ["crypto"]
 
         if not self.options.no_zlib:
-            self.cpp_info.components["crypto"].requires.append("zlib::zlib")
+            self.info.components["crypto"].requires.append("zlib::zlib")
 
         if self.settings.os == "Windows":
-            self.cpp_info.components["crypto"].system_libs.extend(["crypt32", "ws2_32", "advapi32", "user32", "bcrypt"])
+            self.info.components["crypto"].system_libs.extend(["crypt32", "ws2_32", "advapi32", "user32", "bcrypt"])
         elif self.settings.os == "Linux":
-            self.cpp_info.components["crypto"].system_libs.extend(["dl", "rt"])
-            self.cpp_info.components["ssl"].system_libs.append("dl")
+            self.info.components["crypto"].system_libs.extend(["dl", "rt"])
+            self.info.components["ssl"].system_libs.append("dl")
             if not self.options.no_threads:
-                self.cpp_info.components["crypto"].system_libs.append("pthread")
-                self.cpp_info.components["ssl"].system_libs.append("pthread")
+                self.info.components["crypto"].system_libs.append("pthread")
+                self.info.components["ssl"].system_libs.append("pthread")
         elif self.settings.os == "Neutrino":
-            self.cpp_info.components["crypto"].system_libs.append("atomic")
-            self.cpp_info.components["ssl"].system_libs.append("atomic")
-            self.cpp_info.components["crypto"].system_libs.append("socket")
-            self.cpp_info.components["ssl"].system_libs.append("socket")
+            self.info.components["crypto"].system_libs.append("atomic")
+            self.info.components["ssl"].system_libs.append("atomic")
+            self.info.components["crypto"].system_libs.append("socket")
+            self.info.components["ssl"].system_libs.append("socket")
 
-        self.cpp_info.components["crypto"].set_property("cmake_target_name", "OpenSSL::Crypto")
-        self.cpp_info.components["crypto"].set_property("pkg_config_name", "libcrypto")
-        self.cpp_info.components["ssl"].set_property("cmake_target_name", "OpenSSL::SSL")
-        self.cpp_info.components["ssl"].set_property("pkg_config_name", "libssl")
+        self.info.components["crypto"].set_property("cmake_target_name", "OpenSSL::Crypto")
+        self.info.components["crypto"].set_property("pkg_config_name", "libcrypto")
+        self.info.components["ssl"].set_property("cmake_target_name", "OpenSSL::SSL")
+        self.info.components["ssl"].set_property("pkg_config_name", "libssl")
 
         openssl_modules_dir = os.path.join(self.folders.package, "lib", "ossl-modules")
         self.runenv_info.define_path("OPENSSL_MODULES", openssl_modules_dir)

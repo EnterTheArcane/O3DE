@@ -119,16 +119,16 @@ class Recipe(RecipeBase):
         return f"openjpeg-{openjpeg_version.major}.{openjpeg_version.minor}"
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenJPEG")
-        self.cpp_info.set_property("cmake_target_name", "openjp2")
-        self.cpp_info.set_property("cmake_build_modules", [self._module_vars_rel_path])
-        self.cpp_info.set_property("pkg_config_name", "libopenjp2")
-        self.cpp_info.includedirs.append(os.path.join("include", self._openjpeg_subdir))
-        self.cpp_info.builddirs.append(os.path.join("lib", "cmake"))
-        self.cpp_info.libs = ["openjp2"]
+        self.info.set_property("cmake_file_name", "OpenJPEG")
+        self.info.set_property("cmake_target_name", "openjp2")
+        self.info.set_property("cmake_build_modules", [self._module_vars_rel_path])
+        self.info.set_property("pkg_config_name", "libopenjp2")
+        self.info.includedirs.append(os.path.join("include", self._openjpeg_subdir))
+        self.info.builddirs.append(os.path.join("lib", "cmake"))
+        self.info.libs = ["openjp2"]
         if self.settings.os == "Windows" and not self.options.shared:
-            self.cpp_info.defines.append("OPJ_STATIC")
+            self.info.defines.append("OPJ_STATIC")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["pthread", "m"]
+            self.info.system_libs = ["pthread", "m"]
         elif self.settings.os == "Android":
-            self.cpp_info.system_libs = ["m"]
+            self.info.system_libs = ["m"]

@@ -57,8 +57,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "blake3")
-        self.cpp_info.set_property("cmake_target_name", "BLAKE3::blake3")
-        self.cpp_info.libs = ["blake3"]
+        self.info.set_property("cmake_file_name", "blake3")
+        self.info.set_property("cmake_target_name", "BLAKE3::blake3")
+        self.info.libs = ["blake3"]
         if self.options.shared:
-            self.cpp_info.defines = ["BLAKE3_DLL"]
+            self.info.defines = ["BLAKE3_DLL"]

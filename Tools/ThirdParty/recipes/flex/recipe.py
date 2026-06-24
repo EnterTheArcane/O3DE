@@ -83,9 +83,9 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.libs = ["fl"]
-        self.cpp_info.system_libs = ["m"]
+        self.info.libs = ["fl"]
+        self.info.system_libs = ["m"]
         # Avoid CMakeDeps messing with Conan targets
-        self.cpp_info.set_property("cmake_find_mode", "none")
+        self.info.set_property("cmake_find_mode", "none")
         lex_path = os.path.join(self.folders.package, "bin", "flex").replace("\\", "/")
         self.buildenv_info.define("LEX", lex_path)

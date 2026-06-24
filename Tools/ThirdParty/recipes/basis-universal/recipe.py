@@ -68,8 +68,8 @@ class Recipe(RecipeBase):
         copy(self, "*.lib", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
 
     def package_info(self):
-        self.cpp_info.libs = ["basisu_encoder"]
+        self.info.libs = ["basisu_encoder"]
         if self.settings.os == "Windows":
-            self.cpp_info.defines = ["BASISU_NO_ITERATOR_DEBUG_LEVEL"]
+            self.info.defines = ["BASISU_NO_ITERATOR_DEBUG_LEVEL"]
         elif self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["m", "pthread"]
+            self.info.system_libs = ["m", "pthread"]

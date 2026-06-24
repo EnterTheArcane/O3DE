@@ -162,34 +162,34 @@ class Recipe(RecipeBase):
         libcxx = stdcpp_library(self)
 
         # jxl
-        self.cpp_info.components["jxl"].set_property("pkg_config_name", "libjxl")
-        self.cpp_info.components["jxl"].libs = ["jxl"]
-        self.cpp_info.components["jxl"].requires = ["brotli::brotli", "highway::highway", "lcms::lcms"]
+        self.info.components["jxl"].set_property("pkg_config_name", "libjxl")
+        self.info.components["jxl"].libs = ["jxl"]
+        self.info.components["jxl"].requires = ["brotli::brotli", "highway::highway", "lcms::lcms"]
         if self.options.with_tcmalloc:
-            self.cpp_info.components["jxl"].requires.append("gperftools::tcmalloc_minimal")
+            self.info.components["jxl"].requires.append("gperftools::tcmalloc_minimal")
         if self._atomic_required:
-            self.cpp_info.components["jxl"].system_libs.append("atomic")
+            self.info.components["jxl"].system_libs.append("atomic")
         if not self.options.shared:
-            self.cpp_info.components["jxl"].defines.append("JXL_STATIC_DEFINE")
+            self.info.components["jxl"].defines.append("JXL_STATIC_DEFINE")
             if libcxx:
-                self.cpp_info.components["jxl"].system_libs.append(libcxx)
+                self.info.components["jxl"].system_libs.append(libcxx)
 
         # jxl_cms
-        self.cpp_info.components["jxl_cms"].set_property("pkg_config_name", "libjxl_cms")
-        self.cpp_info.components["jxl_cms"].libs = ["jxl_cms"]
-        self.cpp_info.components["jxl_cms"].requires = ["lcms::lcms", "highway::highway"]
+        self.info.components["jxl_cms"].set_property("pkg_config_name", "libjxl_cms")
+        self.info.components["jxl_cms"].libs = ["jxl_cms"]
+        self.info.components["jxl_cms"].requires = ["lcms::lcms", "highway::highway"]
         if not self.options.shared:
-            self.cpp_info.components["jxl"].defines.append("JXL_CMS_STATIC_DEFINE")
+            self.info.components["jxl"].defines.append("JXL_CMS_STATIC_DEFINE")
             if libcxx:
-                self.cpp_info.components["jxl_cms"].system_libs.append(libcxx)
-        self.cpp_info.components["jxl"].requires.append("jxl_cms")
+                self.info.components["jxl_cms"].system_libs.append(libcxx)
+        self.info.components["jxl"].requires.append("jxl_cms")
 
         # jxl_threads
-        self.cpp_info.components["jxl_threads"].set_property("pkg_config_name", "libjxl_threads")
-        self.cpp_info.components["jxl_threads"].libs = ["jxl_threads"]
+        self.info.components["jxl_threads"].set_property("pkg_config_name", "libjxl_threads")
+        self.info.components["jxl_threads"].libs = ["jxl_threads"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["jxl_threads"].system_libs = ["pthread"]
+            self.info.components["jxl_threads"].system_libs = ["pthread"]
         if not self.options.shared:
-            self.cpp_info.components["jxl_threads"].defines.append("JXL_THREADS_STATIC_DEFINE")
+            self.info.components["jxl_threads"].defines.append("JXL_THREADS_STATIC_DEFINE")
             if libcxx:
-                self.cpp_info.components["jxl_threads"].system_libs.append(libcxx)
+                self.info.components["jxl_threads"].system_libs.append(libcxx)

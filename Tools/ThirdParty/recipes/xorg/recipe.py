@@ -64,24 +64,24 @@ class Recipe(RecipeBase):
     license = "MIT"
 
     def package_info(self):
-        self.cpp_info.bindirs = []
-        self.cpp_info.includedirs = []
-        self.cpp_info.libdirs = []
+        self.info.bindirs = []
+        self.info.includedirs = []
+        self.info.libdirs = []
 
         components = _COMPONENTS + ([] if self.settings.os == "FreeBSD" else ["uuid"])
 
         for name in components:
             pkg_config = PkgConfig(self, name)
-            pkg_config.fill_cpp_info(self.cpp_info.components[name], is_system=self.settings.os != "FreeBSD")
-            self.cpp_info.components[name].version = pkg_config.version
-            self.cpp_info.components[name].set_property("pkg_config_name", name)
-            self.cpp_info.components[name].set_property("component_version", pkg_config.version)
-            self.cpp_info.components[name].bindirs = []
-            self.cpp_info.components[name].includedirs = []
-            self.cpp_info.components[name].libdirs = []
-            self.cpp_info.components[name].set_property(
+            pkg_config.fill_cpp_info(self.info.components[name], is_system=self.settings.os != "FreeBSD")
+            self.info.components[name].version = pkg_config.version
+            self.info.components[name].set_property("pkg_config_name", name)
+            self.info.components[name].set_property("component_version", pkg_config.version)
+            self.info.components[name].bindirs = []
+            self.info.components[name].includedirs = []
+            self.info.components[name].libdirs = []
+            self.info.components[name].set_property(
                 "pkg_config_custom_content",
                 "\n".join(f"{key}={value}" for key, value in pkg_config.variables.items() if key not in ["pcfiledir", "prefix", "includedir"]))
 
         if self.settings.os == "Linux":
-            self.cpp_info.components["sm"].requires.append("uuid")
+            self.info.components["sm"].requires.append("uuid")

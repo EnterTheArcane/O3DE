@@ -72,16 +72,16 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.components["hwy"].set_property("pkg_config_name", "libhwy")
-        self.cpp_info.components["hwy"].libs = ["hwy"]
-        self.cpp_info.components["hwy"].defines.append(
+        self.info.components["hwy"].set_property("pkg_config_name", "libhwy")
+        self.info.components["hwy"].libs = ["hwy"]
+        self.info.components["hwy"].defines.append(
             "HWY_SHARED_DEFINE" if self.options.shared else "HWY_STATIC_DEFINE"
         )
-        self.cpp_info.components["hwy_contrib"].set_property("pkg_config_name", "libhwy-contrib")
-        self.cpp_info.components["hwy_contrib"].libs = ["hwy_contrib"]
-        self.cpp_info.components["hwy_contrib"].requires = ["hwy"]
+        self.info.components["hwy_contrib"].set_property("pkg_config_name", "libhwy-contrib")
+        self.info.components["hwy_contrib"].libs = ["hwy_contrib"]
+        self.info.components["hwy_contrib"].requires = ["hwy"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["hwy_contrib"].system_libs.append("pthread")
+            self.info.components["hwy_contrib"].system_libs.append("pthread")
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

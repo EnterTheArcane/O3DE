@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
         copy(self, "NEON_2_SSE.h", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "NEON_2_SSE")
-        self.cpp_info.set_property("cmake_target_name", "NEON_2_SSE::NEON_2_SSE")
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.set_property("cmake_file_name", "NEON_2_SSE")
+        self.info.set_property("cmake_target_name", "NEON_2_SSE::NEON_2_SSE")
+        self.info.bindirs = []
+        self.info.libdirs = []

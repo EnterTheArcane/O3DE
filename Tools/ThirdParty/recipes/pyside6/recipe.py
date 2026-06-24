@@ -114,7 +114,7 @@ class Recipe(RecipeBase):
             # Qt6::Gui statically links the vendored harfbuzz, whose Uniscribe backend
             # (hb-uniscribe.cc) references Windows system symbols (ScriptItemize/ScriptShape/
             # ScriptPlace/ScriptFreeCache from usp10, UuidCreate from rpcrt4, plus gdi32/user32).
-            # harfbuzz declares these in its cpp_info system_libs, but Qt6's own cmake config
+            # harfbuzz declares these in its info system_libs, but Qt6's own cmake config
             # (used here via cmake_find_mode=none) does not propagate them, so PySide6's
             # bindings fail to link with LNK2019.  Add them explicitly.  PySide6's .pyd modules
             # are CMake MODULE libraries, so CMAKE_MODULE_LINKER_FLAGS is the one that matters;
@@ -398,14 +398,14 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "none")
-        self.cpp_info.builddirs = [
+        self.info.set_property("cmake_find_mode", "none")
+        self.info.builddirs = [
             os.path.join("lib", "cmake", "Shiboken6"),
             os.path.join("lib", "cmake", "PySide6"),
         ]
 
         # Shiboken6 runtime library
-        shiboken = self.cpp_info.components["shiboken6"]
+        shiboken = self.info.components["shiboken6"]
         shiboken.set_property("cmake_file_name", "Shiboken6")
         shiboken.set_property("cmake_target_name", "Shiboken6::libshiboken")
         shiboken.libs = ["shiboken6"]

@@ -84,7 +84,7 @@ class Recipe(RecipeBase):
 
         if self.settings.os == "Linux":
             # Workaround for: upstream issue 13560
-            libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.cpp_info.aggregated_components().libdirs]
+            libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.info.aggregated_components().libdirs]
             tc.variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
 
         tc.generate()
@@ -118,14 +118,14 @@ class Recipe(RecipeBase):
         copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenColorIO")
-        self.cpp_info.set_property("cmake_target_name", "OpenColorIO::OpenColorIO")
-        self.cpp_info.set_property("pkg_config_name", "OpenColorIO")
+        self.info.set_property("cmake_file_name", "OpenColorIO")
+        self.info.set_property("cmake_target_name", "OpenColorIO::OpenColorIO")
+        self.info.set_property("pkg_config_name", "OpenColorIO")
 
-        self.cpp_info.libs = ["OpenColorIO"]
+        self.info.libs = ["OpenColorIO"]
 
         if is_apple_os(self):
-            self.cpp_info.frameworks.extend(["Foundation", "IOKit", "ColorSync", "CoreGraphics"])
+            self.info.frameworks.extend(["Foundation", "IOKit", "ColorSync", "CoreGraphics"])
 
         if is_msvc(self) and not self.options.shared:
-            self.cpp_info.defines.append("OpenColorIO_SKIP_IMPORTS")
+            self.info.defines.append("OpenColorIO_SKIP_IMPORTS")

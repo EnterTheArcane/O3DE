@@ -69,11 +69,11 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "loader"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "VulkanLoader")
-        self.cpp_info.set_property("cmake_target_name", "Vulkan::Loader")
-        self.cpp_info.set_property("cmake_target_aliases", ["Vulkan::Vulkan"])
-        self.cpp_info.includedirs = []
+        self.info.set_property("cmake_file_name", "VulkanLoader")
+        self.info.set_property("cmake_target_name", "Vulkan::Loader")
+        self.info.set_property("cmake_target_aliases", ["Vulkan::Vulkan"])
+        self.info.includedirs = []
         if self.settings.os == "Windows":
-            self.cpp_info.libs = ["vulkan-1"]
+            self.info.libs = ["vulkan-1"]
         else:
-            self.cpp_info.libs = ["vulkan"]
+            self.info.libs = ["vulkan"]

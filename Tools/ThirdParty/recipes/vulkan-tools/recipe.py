@@ -65,6 +65,6 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.includedirs = []
-        self.cpp_info.libdirs = []
-        self.cpp_info.bindirs = ["bin"]
+        self.info.includedirs = []
+        self.info.libdirs = []
+        self.info.bindirs = ["bin"]

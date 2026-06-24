@@ -90,26 +90,26 @@ class Recipe(RecipeBase):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenAL")
-        self.cpp_info.set_property("cmake_target_name", "OpenAL::OpenAL")
-        self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.cpp_info.set_property("pkg_config_name", "openal")
+        self.info.set_property("cmake_file_name", "OpenAL")
+        self.info.set_property("cmake_target_name", "OpenAL::OpenAL")
+        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.set_property("pkg_config_name", "openal")
 
-        self.cpp_info.libs = collect_libs(self)
-        self.cpp_info.includedirs.append(os.path.join("include", "AL"))
+        self.info.libs = collect_libs(self)
+        self.info.includedirs.append(os.path.join("include", "AL"))
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["dl", "m"])
+            self.info.system_libs.extend(["dl", "m"])
         elif is_apple_os(self):
-            self.cpp_info.frameworks.extend(["AudioToolbox", "AudioUnit", "CoreAudio", "CoreFoundation"])
+            self.info.frameworks.extend(["AudioToolbox", "AudioUnit", "CoreAudio", "CoreFoundation"])
             if self.settings.os == "Mac":
-                self.cpp_info.frameworks.append("ApplicationServices")
+                self.info.frameworks.append("ApplicationServices")
         elif self.settings.os == "Windows":
-            self.cpp_info.system_libs.extend(["winmm", "ole32", "shell32", "user32"])
+            self.info.system_libs.extend(["winmm", "ole32", "shell32", "user32"])
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.system_libs.append(libcxx)
+                self.info.system_libs.append(libcxx)
         if not self.options.shared:
-            self.cpp_info.defines.append("AL_LIBTYPE_STATIC")
+            self.info.defines.append("AL_LIBTYPE_STATIC")
         if self.settings.get_safe("compiler.libcxx") in ["libstdc++", "libstdc++11"]:
-            self.cpp_info.system_libs.append("atomic")
+            self.info.system_libs.append("atomic")

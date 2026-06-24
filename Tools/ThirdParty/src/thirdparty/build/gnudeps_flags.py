@@ -15,24 +15,24 @@ if TYPE_CHECKING:
 
 class GnuDepsFlags:
 
-    def __init__(self, recipe: RecipeBase, cpp_info: Any):
+    def __init__(self, recipe: RecipeBase, info: Any):
         self._recipe = recipe
         self._subsystem = deduce_subsystem(recipe, scope="build")
 
         # From cppinfo, calculated flags
-        self.include_paths = self._format_include_paths(cpp_info.includedirs)
-        self.lib_paths = self._format_library_paths(cpp_info.libdirs)
-        self.defines = self._format_defines(cpp_info.defines)
-        self.libs = self._format_libraries(cpp_info.libs)
-        self.frameworks = self._format_frameworks(cpp_info.frameworks)
-        self.framework_paths = self._format_frameworks(cpp_info.frameworkdirs, is_path=True)
+        self.include_paths = self._format_include_paths(info.includedirs)
+        self.lib_paths = self._format_library_paths(info.libdirs)
+        self.defines = self._format_defines(info.defines)
+        self.libs = self._format_libraries(info.libs)
+        self.frameworks = self._format_frameworks(info.frameworks)
+        self.framework_paths = self._format_frameworks(info.frameworkdirs, is_path=True)
 
         # Direct flags
-        self.cxxflags = cpp_info.cxxflags or []
-        self.cflags = cpp_info.cflags or []
-        self.sharedlinkflags = cpp_info.sharedlinkflags or []
-        self.exelinkflags = cpp_info.exelinkflags or []
-        self.system_libs = self._format_libraries(cpp_info.system_libs)
+        self.cxxflags = info.cxxflags or []
+        self.cflags = info.cflags or []
+        self.sharedlinkflags = info.sharedlinkflags or []
+        self.exelinkflags = info.exelinkflags or []
+        self.system_libs = self._format_libraries(info.system_libs)
 
         # Not used?  # self.bin_paths  # self.build_paths  # self.src_paths
 

@@ -137,32 +137,32 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "TIFF")
-        self.cpp_info.set_property("cmake_target_name", "TIFF::TIFF")
-        self.cpp_info.set_property("pkg_config_name", f"libtiff-{Version(self.version).major}")
+        self.info.set_property("cmake_file_name", "TIFF")
+        self.info.set_property("cmake_target_name", "TIFF::TIFF")
+        self.info.set_property("pkg_config_name", f"libtiff-{Version(self.version).major}")
         suffix = "d" if is_msvc(self) and self.settings.build_type == "Debug" else ""
         if self.options.cxx:
-            self.cpp_info.libs.append(f"tiffxx{suffix}")
-        self.cpp_info.libs.append(f"tiff{suffix}")
+            self.info.libs.append(f"tiffxx{suffix}")
+        self.info.libs.append(f"tiff{suffix}")
         if self.settings.os in ["Linux", "Android", "FreeBSD", "SunOS", "AIX"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")
 
-        self.cpp_info.requires = []
+        self.info.requires = []
         if self.options.zlib:
-            self.cpp_info.requires.append("zlib::zlib")
+            self.info.requires.append("zlib::zlib")
         if self.options.libdeflate:
-            self.cpp_info.requires.append("libdeflate::libdeflate")
+            self.info.requires.append("libdeflate::libdeflate")
         if self.options.lzma:
-            self.cpp_info.requires.append("xz_utils::xz_utils")
+            self.info.requires.append("xz_utils::xz_utils")
         if self.options.jpeg == "libjpeg":
-            self.cpp_info.requires.append("libjpeg::libjpeg")
+            self.info.requires.append("libjpeg::libjpeg")
         elif self.options.jpeg == "libjpeg-turbo":
-            self.cpp_info.requires.append("libjpeg-turbo::jpeg")
+            self.info.requires.append("libjpeg-turbo::jpeg")
         elif self.options.jpeg == "mozjpeg":
-            self.cpp_info.requires.append("mozjpeg::libjpeg")
+            self.info.requires.append("mozjpeg::libjpeg")
         if self.options.jbig:
-            self.cpp_info.requires.append("jbig::jbig")
+            self.info.requires.append("jbig::jbig")
         if self.options.zstd:
-            self.cpp_info.requires.append("zstd::zstd")
+            self.info.requires.append("zstd::zstd")
         if self.options.webp:
-            self.cpp_info.requires.append("libwebp::webp")
+            self.info.requires.append("libwebp::webp")

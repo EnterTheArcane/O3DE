@@ -3,14 +3,14 @@ from pathlib import Path
 from typing import Any
 
 from thirdparty._internal.model.conf import Conf
-from thirdparty._internal.model.cpp_info import CppInfo
+from thirdparty._internal.model.info import Info
 
 
 class Infos:
     def __init__(self):
-        self.source = CppInfo()
-        self.build = CppInfo()
-        self.package = CppInfo(set_defaults=True)
+        self.source = Info()
+        self.build = Info()
+        self.package = Info(set_defaults=True)
 
 
 class PartialLayout:
@@ -51,8 +51,6 @@ class Folders:
         self._base_export: str | None = None
         self._base_export_sources: str | None = None
 
-        self._base_recipe_metadata: str | None = None
-        self._base_pkg_metadata: str | None = None
         self._immutable_package_folder: Path | None = None
 
         self._source: str = ""
@@ -86,9 +84,6 @@ class Folders:
         self._base_build = output_folder or base_folder
         self._base_generators = output_folder or base_folder
         self._base_export_sources = output_folder or base_folder
-        self._base_recipe_metadata = os.path.join(base_folder, "metadata")
-        # TODO: It is likely that this base_pkg_metadata is not really used with this value
-        self._base_pkg_metadata = output_folder or base_folder
 
     @property
     def source(self) -> Path | None:
@@ -104,20 +99,6 @@ class Folders:
     @property
     def build(self) -> Path | None:
         return _folder_path(self._base_build, self._build)
-
-    @property
-    def recipe_metadata(self) -> str | None:
-        return self._base_recipe_metadata
-
-    def set_base_recipe_metadata(self, folder: str | None):
-        self._base_recipe_metadata = folder
-
-    @property
-    def package_metadata(self) -> str | None:
-        return self._base_pkg_metadata
-
-    def set_base_pkg_metadata(self, folder: str | None):
-        self._base_pkg_metadata = folder
 
     @property
     def base_build(self) -> str | None:

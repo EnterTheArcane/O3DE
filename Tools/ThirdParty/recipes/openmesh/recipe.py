@@ -56,17 +56,17 @@ class Recipe(RecipeBase):
                 rm(self, "*.dylib", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenMesh")
+        self.info.set_property("cmake_file_name", "OpenMesh")
 
         suffix = "d" if self.settings.build_type == "Debug" else ""
 
-        self.cpp_info.components["openmeshcore"].set_property("cmake_target_name", "OpenMesh::OpenMeshCore")
-        self.cpp_info.components["openmeshcore"].libs = ["OpenMeshCore" + suffix]
+        self.info.components["openmeshcore"].set_property("cmake_target_name", "OpenMesh::OpenMeshCore")
+        self.info.components["openmeshcore"].libs = ["OpenMeshCore" + suffix]
         if not self.options.shared:
-            self.cpp_info.components["openmeshcore"].defines.append("OM_STATIC_BUILD")
+            self.info.components["openmeshcore"].defines.append("OM_STATIC_BUILD")
         if is_msvc(self):
-            self.cpp_info.components["openmeshcore"].defines.append("_USE_MATH_DEFINES")
+            self.info.components["openmeshcore"].defines.append("_USE_MATH_DEFINES")
 
-        self.cpp_info.components["openmeshtools"].set_property("cmake_target_name", "OpenMesh::OpenMeshTools")
-        self.cpp_info.components["openmeshtools"].libs = ["OpenMeshTools" + suffix]
-        self.cpp_info.components["openmeshtools"].requires = ["openmeshcore"]
+        self.info.components["openmeshtools"].set_property("cmake_target_name", "OpenMesh::OpenMeshTools")
+        self.info.components["openmeshtools"].libs = ["OpenMeshTools" + suffix]
+        self.info.components["openmeshtools"].requires = ["openmeshcore"]

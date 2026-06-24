@@ -46,8 +46,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
 
         perl_path = os.path.join(self.folders.package, "bin", "perl.exe").replace("\\", "/")
         self.conf_info.define("user.strawberryperl:perl", perl_path)

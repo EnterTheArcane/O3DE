@@ -58,9 +58,9 @@ class Recipe(RecipeBase):
         rm(self, "*.natvis", os.path.join(self.folders.package, "include"), recursive=True)
 
     def package_info(self):
-        self.cpp_info.libs = ["c4core"]
-        self.cpp_info.set_property("cmake_file_name", "c4core")
-        self.cpp_info.set_property("cmake_target_name", "c4core::c4core")
+        self.info.libs = ["c4core"]
+        self.info.set_property("cmake_file_name", "c4core")
+        self.info.set_property("cmake_target_name", "c4core::c4core")
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

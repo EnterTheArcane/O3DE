@@ -131,6 +131,6 @@ class Recipe(RecipeBase):
             fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.libs = ["mp3lame"]
+        self.info.libs = ["mp3lame"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["m"]
+            self.info.system_libs = ["m"]

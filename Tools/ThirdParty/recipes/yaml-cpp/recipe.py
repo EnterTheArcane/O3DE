@@ -63,14 +63,14 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "yaml-cpp")
-        self.cpp_info.set_property("cmake_target_name", "yaml-cpp::yaml-cpp")
-        self.cpp_info.set_property("cmake_target_aliases", ["yaml-cpp"])  # CMake imported target before 0.8.0
-        self.cpp_info.set_property("pkg_config_name", "yaml-cpp")
-        self.cpp_info.libs = collect_libs(self)
+        self.info.set_property("cmake_file_name", "yaml-cpp")
+        self.info.set_property("cmake_target_name", "yaml-cpp::yaml-cpp")
+        self.info.set_property("cmake_target_aliases", ["yaml-cpp"])  # CMake imported target before 0.8.0
+        self.info.set_property("pkg_config_name", "yaml-cpp")
+        self.info.libs = collect_libs(self)
         if self.settings.os in ("Linux", "FreeBSD"):
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")
         if is_msvc(self):
-            self.cpp_info.defines.append("_NOEXCEPT=noexcept")
+            self.info.defines.append("_NOEXCEPT=noexcept")
         if not self.options.shared:
-            self.cpp_info.defines.append("YAML_CPP_STATIC_DEFINE")
+            self.info.defines.append("YAML_CPP_STATIC_DEFINE")

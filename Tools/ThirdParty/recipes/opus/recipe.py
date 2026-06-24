@@ -57,15 +57,15 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Opus")
-        self.cpp_info.set_property("cmake_target_name", "Opus::opus")
-        self.cpp_info.set_property("pkg_config_name", "opus")
-        self.cpp_info.components["libopus"].libs = ["opus"]
-        self.cpp_info.components["libopus"].includedirs.append(os.path.join("include", "opus"))
+        self.info.set_property("cmake_file_name", "Opus")
+        self.info.set_property("cmake_target_name", "Opus::opus")
+        self.info.set_property("pkg_config_name", "opus")
+        self.info.components["libopus"].libs = ["opus"]
+        self.info.components["libopus"].includedirs.append(os.path.join("include", "opus"))
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
-            self.cpp_info.components["libopus"].system_libs.append("m")
+            self.info.components["libopus"].system_libs.append("m")
         if self.settings.os == "Windows" and self.settings.compiler == "gcc":
-            self.cpp_info.components["libopus"].system_libs.append("ssp")
+            self.info.components["libopus"].system_libs.append("ssp")
 
-        self.cpp_info.components["libopus"].set_property("cmake_target_name", "Opus::opus")
-        self.cpp_info.components["libopus"].set_property("pkg_config_name", "opus")
+        self.info.components["libopus"].set_property("cmake_target_name", "Opus::opus")
+        self.info.components["libopus"].set_property("pkg_config_name", "opus")

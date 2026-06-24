@@ -76,5 +76,5 @@ class Recipe(RecipeBase):
             rmdir(self, os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
-        self.cpp_info.includedirs = []
-        self.cpp_info.libdirs = []
+        self.info.includedirs = []
+        self.info.libdirs = []

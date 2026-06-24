@@ -67,7 +67,7 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "MaterialX")
+        self.info.set_property("cmake_file_name", "MaterialX")
 
         components = [
             ("MaterialXCore", "MaterialX::MaterialXCore"),
@@ -87,10 +87,10 @@ class Recipe(RecipeBase):
             components.append(("MaterialXRenderMsl", "MaterialX::MaterialXRenderMsl"))
 
         for comp_name, target_name in components:
-            self.cpp_info.components[comp_name].set_property("cmake_target_name", target_name)
-            self.cpp_info.components[comp_name].libs = [comp_name]
+            self.info.components[comp_name].set_property("cmake_target_name", target_name)
+            self.info.components[comp_name].libs = [comp_name]
 
         if self.settings.os == "Windows":
-            self.cpp_info.components["MaterialXRenderGlsl"].system_libs = ["opengl32"]
+            self.info.components["MaterialXRenderGlsl"].system_libs = ["opengl32"]
         elif self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["MaterialXRenderGlsl"].system_libs = ["GL"]
+            self.info.components["MaterialXRenderGlsl"].system_libs = ["GL"]

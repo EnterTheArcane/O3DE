@@ -162,7 +162,7 @@ class VSDebuggerEnvironment(Block):
                 config_dict = dict(matches)
 
         host_deps = self._recipe.dependencies.host.values()
-        bin_dirs = [p for dep in host_deps for p in dep.cpp_info.aggregated_components().bindirs]
+        bin_dirs = [p for dep in host_deps for p in dep.info.aggregated_components().bindirs]
         bin_dirs = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in bin_dirs]
         bin_dirs = [p.replace("\\", "/") for p in bin_dirs]
         bin_dirs = ";".join(bin_dirs) if bin_dirs else None
@@ -294,7 +294,7 @@ class RpathLinkFlagsBlock(Block):
             runtime_dirs = []
             host_req = self._recipe.dependencies.filter({"build": False}).values()
             for req in host_req:
-                cppinfo = req.cpp_info.aggregated_components()
+                cppinfo = req.info.aggregated_components()
                 runtime_dirs.extend(cppinfo.libdirs)
 
             # surround each dir with escaped quotes, to avoid problems with spaces in paths
@@ -671,7 +671,7 @@ class FindFiles(Block):
         # Calculate the dirs for the current build_type
         runtime_dirs = []
         for req in host_req:
-            cppinfo = req.cpp_info.aggregated_components()
+            cppinfo = req.info.aggregated_components()
             runtime_dirs.extend(cppinfo.bindirs if is_win else cppinfo.libdirs)
 
         build_type = settings.get_safe("build_type")
@@ -704,7 +704,7 @@ class FindFiles(Block):
         host_framework_paths = []
         host_include_paths = []
         for req in host_req:
-            cppinfo = req.cpp_info.aggregated_components()
+            cppinfo = req.info.aggregated_components()
             build_paths.extend(cppinfo.builddirs)
             host_lib_paths.extend(cppinfo.libdirs)
             if is_apple_:
@@ -715,7 +715,7 @@ class FindFiles(Block):
         build_req = self._recipe.dependencies.build.values()
         build_bin_paths = []
         for req in build_req:
-            cppinfo = req.cpp_info.aggregated_components()
+            cppinfo = req.info.aggregated_components()
             build_paths.extend(cppinfo.builddirs)
             build_bin_paths.extend(cppinfo.bindirs)
 
@@ -1307,7 +1307,7 @@ class OutputDirsBlock(Block):
     def _get_cpp_info_value(self, name):
         # Why not taking cpp.build? because this variables are used by the "cmake install"
         # that correspond to the package folder (even if the root is the build directory)
-        elements = getattr(self._recipe.cpp.package, name)
+        elements = getattr(self._recipe.infos.package, name)
         return elements[0] if elements else None
 
     def context(self) -> dict[str, Any] | None:

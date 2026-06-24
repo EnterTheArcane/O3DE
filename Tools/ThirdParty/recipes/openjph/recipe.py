@@ -62,9 +62,9 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "openjph")
-        self.cpp_info.set_property("cmake_target_name", "openjph::openjph")
-        self.cpp_info.set_property("pkg_config_name", "openjph")
+        self.info.set_property("cmake_file_name", "openjph")
+        self.info.set_property("cmake_target_name", "openjph::openjph")
+        self.info.set_property("pkg_config_name", "openjph")
 
         version_suffix = "_d" if self.settings.build_type == "Debug" else ""
         if is_msvc(self):
@@ -72,4 +72,4 @@ class Recipe(RecipeBase):
             version_suffix = f".{v.major}.{v.minor}"
             if self.settings.build_type == "Debug":
                 version_suffix += "d"
-        self.cpp_info.libs = ["openjph" + version_suffix]
+        self.info.libs = ["openjph" + version_suffix]

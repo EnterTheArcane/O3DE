@@ -84,31 +84,31 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         target = "fmt-header-only" if self.options.header_only else "fmt"
-        self.cpp_info.set_property("cmake_file_name", "fmt")
-        self.cpp_info.set_property("cmake_target_name", f"fmt::{target}")
+        self.info.set_property("cmake_file_name", "fmt")
+        self.info.set_property("cmake_target_name", f"fmt::{target}")
 
         # Mirror upstream find package version policy:
         # https://github.com/fmtlib/fmt/blob/11.1.1/CMakeLists.txt#L403-L407
-        self.cpp_info.set_property("cmake_config_version_compat", "AnyNewerVersion")
-        self.cpp_info.set_property("pkg_config_name", "fmt")
+        self.info.set_property("cmake_config_version_compat", "AnyNewerVersion")
+        self.info.set_property("pkg_config_name", "fmt")
 
         if is_msvc(self):
-            self.cpp_info.components["_fmt"].cxxflags.append("/utf-8")
+            self.info.components["_fmt"].cxxflags.append("/utf-8")
 
         if self.options.with_fmt_alias:
-            self.cpp_info.components["_fmt"].defines.append("FMT_STRING_ALIAS=1")
+            self.info.components["_fmt"].defines.append("FMT_STRING_ALIAS=1")
 
         if self.options.header_only:
-            self.cpp_info.components["_fmt"].defines.append("FMT_HEADER_ONLY=1")
-            self.cpp_info.components["_fmt"].libdirs = []
-            self.cpp_info.components["_fmt"].bindirs = []
+            self.info.components["_fmt"].defines.append("FMT_HEADER_ONLY=1")
+            self.info.components["_fmt"].libdirs = []
+            self.info.components["_fmt"].bindirs = []
         else:
             postfix = "d" if self.settings.build_type == "Debug" else ""
             libname = "fmt" + postfix
-            self.cpp_info.components["_fmt"].libs = [libname]
+            self.info.components["_fmt"].libs = [libname]
             if self.settings.os == "Linux":
-                self.cpp_info.components["_fmt"].system_libs.extend(["m"])
+                self.info.components["_fmt"].system_libs.extend(["m"])
             if self.options.shared:
-                self.cpp_info.components["_fmt"].defines.append("FMT_SHARED")
+                self.info.components["_fmt"].defines.append("FMT_SHARED")
 
-        self.cpp_info.components["_fmt"].set_property("cmake_target_name", f"fmt::{target}")
+        self.info.components["_fmt"].set_property("cmake_target_name", f"fmt::{target}")

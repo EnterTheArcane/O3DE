@@ -213,21 +213,21 @@ class Recipe(RecipeBase):
                 replace_in_file(self, tclConfigShPath, f"-I{to_replace}include", "-I${TCL_ROOT}/include", strict=False)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "TCL")
+        self.info.set_property("cmake_file_name", "TCL")
 
         # There are other libs in subfolders, but they are only used
         # for TCL extensions and should not be linked against.
-        self.cpp_info.libs = collect_libs(self, os.path.join(self.folders.package, "lib"))
+        self.info.libs = collect_libs(self, os.path.join(self.folders.package, "lib"))
 
         if self.settings.os == "Windows":
-            self.cpp_info.system_libs.extend(["ws2_32", "netapi32", "userenv"])
+            self.info.system_libs.extend(["ws2_32", "netapi32", "userenv"])
         elif self.settings.os in ("FreeBSD", "Linux"):
-            self.cpp_info.system_libs.extend(["dl", "m", "pthread"])
+            self.info.system_libs.extend(["dl", "m", "pthread"])
         elif is_apple_os(self):
-            self.cpp_info.frameworks.append("CoreFoundation")
+            self.info.frameworks.append("CoreFoundation")
 
         if is_msvc(self) and not self.options.shared:
-            self.cpp_info.defines.append("STATIC_BUILD")
+            self.info.defines.append("STATIC_BUILD")
 
         tcl_version = Version(self.version)
         tcl_library = os.path.join(self.folders.package, "lib", f"tcl{tcl_version.major}.{tcl_version.minor}")

@@ -159,10 +159,10 @@ class Recipe(RecipeBase):
             tcltk_libs = []
             # FIXME: collect using some recipe util (upstream issue 7656)
             for dep in ("tcl", "tk", "zlib"):
-                cpp_info = self.dependencies[dep].cpp_info.aggregated_components()
-                tcltk_includes += [f"-I{d}" for d in cpp_info.includedirs]
-                tcltk_libs += [f"-L{lib}" for lib in cpp_info.libdirs]
-                tcltk_libs += [f"-l{lib}" for lib in cpp_info.libs]
+                info = self.dependencies[dep].info.aggregated_components()
+                tcltk_includes += [f"-I{d}" for d in info.includedirs]
+                tcltk_libs += [f"-L{lib}" for lib in info.libdirs]
+                tcltk_libs += [f"-l{lib}" for lib in info.libs]
             if self.settings.os in ["Linux", "FreeBSD"] and not self.dependencies["tk"].options.shared:
                 # FIXME: use info from xorg.components (x11, xscrnsaver)
                 tcltk_libs.extend([f"-l{lib}" for lib in ("X11", "Xss")])
@@ -237,8 +237,8 @@ class Recipe(RecipeBase):
             replace_in_file(self, setup_py, ":libmpdec.so.2", "mpdec")
 
         if self.options.get_safe("with_curses", False):
-            libcurses = self.dependencies["ncurses"].cpp_info.components["libcurses"]
-            tinfo = self.dependencies["ncurses"].cpp_info.components["tinfo"]
+            libcurses = self.dependencies["ncurses"].info.components["libcurses"]
+            tinfo = self.dependencies["ncurses"].info.components["tinfo"]
             libs = libcurses.libs + libcurses.system_libs + tinfo.libs + tinfo.system_libs
             replace_in_file(
                 self, setup_py,
@@ -246,8 +246,8 @@ class Recipe(RecipeBase):
                 f"curses_libs = {repr(libs)} #")
 
         if self._supports_modules:
-            openssl = self.dependencies["openssl"].cpp_info.aggregated_components()
-            zlib = self.dependencies["zlib"].cpp_info.aggregated_components()
+            openssl = self.dependencies["openssl"].info.aggregated_components()
+            zlib = self.dependencies["zlib"].info.aggregated_components()
             if Version(self.version) < "3.11":
                 replace_in_file(
                     self, setup_py,
@@ -547,11 +547,11 @@ class Recipe(RecipeBase):
             # Until MSVC builds support cross building, copy dll's of essential (shared) dependencies to python binary location.
             # These dll's are required when running the layout tool using the newly built python executable.
             dest_path = os.path.join(self.folders.build, self._msvc_artifacts_path)
-            for bin_path in self.dependencies["libffi"].cpp_info.bindirs:
+            for bin_path in self.dependencies["libffi"].info.bindirs:
                 copy(self, "*.dll", src=bin_path, dst=dest_path)
-            for bin_path in self.dependencies["expat"].cpp_info.bindirs:
+            for bin_path in self.dependencies["expat"].info.bindirs:
                 copy(self, "*.dll", src=bin_path, dst=dest_path)
-            for bin_path in self.dependencies["zlib"].cpp_info.bindirs:
+            for bin_path in self.dependencies["zlib"].info.bindirs:
                 copy(self, "*.dll", src=bin_path, dst=dest_path)
 
     def _msvc_package_layout(self):
@@ -803,55 +803,55 @@ class Recipe(RecipeBase):
         py_version = Version(self.version)
         # python component: "Build a C extension for Python"
         if is_msvc(self):
-            self.cpp_info.components["python"].includedirs = [os.path.join(self._msvc_install_subprefix, "include")]
+            self.info.components["python"].includedirs = [os.path.join(self._msvc_install_subprefix, "include")]
             libdir = os.path.join(self._msvc_install_subprefix, "libs")
         else:
-            self.cpp_info.components["python"].includedirs.append(
+            self.info.components["python"].includedirs.append(
                 os.path.join("include", f"python{self._version_suffix}{self._abi_suffix}")
             )
             libdir = "lib"
         if self.options.shared:
-            self.cpp_info.components["python"].defines.append("Py_ENABLE_SHARED")
+            self.info.components["python"].defines.append("Py_ENABLE_SHARED")
         else:
-            self.cpp_info.components["python"].defines.append("Py_NO_ENABLE_SHARED")
+            self.info.components["python"].defines.append("Py_NO_ENABLE_SHARED")
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["python"].system_libs.extend(["dl", "m", "pthread", "util"])
+                self.info.components["python"].system_libs.extend(["dl", "m", "pthread", "util"])
             elif self.settings.os == "Windows":
-                self.cpp_info.components["python"].system_libs.extend(
+                self.info.components["python"].system_libs.extend(
                     ["pathcch", "shlwapi", "version", "ws2_32"]
                 )
-        self.cpp_info.components["python"].requires = ["zlib::zlib"]
+        self.info.components["python"].requires = ["zlib::zlib"]
         if self.settings.os != "Windows":
-            self.cpp_info.components["python"].requires.append("libxcrypt::libxcrypt")
-        self.cpp_info.components["python"].set_property(
+            self.info.components["python"].requires.append("libxcrypt::libxcrypt")
+        self.info.components["python"].set_property(
             "pkg_config_name", f"python-{py_version.major}.{py_version.minor}"
         )
-        self.cpp_info.components["python"].set_property(
+        self.info.components["python"].set_property(
             "pkg_config_aliases", [f"python{py_version.major}"]
         )
-        self.cpp_info.components["python"].libdirs = []
+        self.info.components["python"].libdirs = []
 
         # embed component: "Embed Python into an application"
-        self.cpp_info.components["embed"].libs = [self._lib_name]
-        self.cpp_info.components["embed"].libdirs = [libdir]
-        self.cpp_info.components["embed"].includedirs = []
-        self.cpp_info.components["embed"].set_property(
+        self.info.components["embed"].libs = [self._lib_name]
+        self.info.components["embed"].libdirs = [libdir]
+        self.info.components["embed"].includedirs = []
+        self.info.components["embed"].set_property(
             "pkg_config_name", f"python-{py_version.major}.{py_version.minor}-embed"
         )
-        self.cpp_info.components["embed"].set_property(
+        self.info.components["embed"].set_property(
             "pkg_config_aliases", [f"python{py_version.major}-embed"]
         )
-        self.cpp_info.components["embed"].requires = ["python"]
+        self.info.components["embed"].requires = ["python"]
 
         # Transparent integration with CMake's FindPython(3)
-        self.cpp_info.set_property("cmake_file_name", "Python3")
-        self.cpp_info.set_property("cmake_build_modules", [os.path.join(self._cmake_module_path, "use_recipe_python.cmake")])
-        self.cpp_info.builddirs = [self._cmake_module_path]
+        self.info.set_property("cmake_file_name", "Python3")
+        self.info.set_property("cmake_build_modules", [os.path.join(self._cmake_module_path, "use_recipe_python.cmake")])
+        self.info.builddirs = [self._cmake_module_path]
 
         if self._supports_modules:
             # hidden components: the C extensions of python are built as dynamically loaded shared libraries.
             # C extensions or applications with an embedded Python should not need to link to them..
-            self.cpp_info.components["_hidden"].requires = [
+            self.info.components["_hidden"].requires = [
                 "openssl::openssl",
                 "expat::expat",
                 "mpdecimal::mpdecimal",
@@ -859,24 +859,24 @@ class Recipe(RecipeBase):
             ]
             if self.settings.os != "Windows":
                 if not is_apple_os(self):
-                    self.cpp_info.components["_hidden"].requires.append("util-linux-libuuid::util-linux-libuuid")
-                self.cpp_info.components["_hidden"].requires.append("libxcrypt::libxcrypt")
+                    self.info.components["_hidden"].requires.append("util-linux-libuuid::util-linux-libuuid")
+                self.info.components["_hidden"].requires.append("libxcrypt::libxcrypt")
             if self.options.with_bz2:
-                self.cpp_info.components["_hidden"].requires.append("bzip2::bzip2")
+                self.info.components["_hidden"].requires.append("bzip2::bzip2")
             if self.options.get_safe("with_gdbm", False):
-                self.cpp_info.components["_hidden"].requires.append("gdbm::gdbm")
+                self.info.components["_hidden"].requires.append("gdbm::gdbm")
             if self.options.with_sqlite3:
-                self.cpp_info.components["_hidden"].requires.append("sqlite3::sqlite3")
+                self.info.components["_hidden"].requires.append("sqlite3::sqlite3")
             if self.options.get_safe("with_curses", False):
-                self.cpp_info.components["_hidden"].requires.append("ncurses::ncurses")
+                self.info.components["_hidden"].requires.append("ncurses::ncurses")
             if self.options.get_safe("with_lzma"):
-                self.cpp_info.components["_hidden"].requires.append("xz_utils::xz_utils")
+                self.info.components["_hidden"].requires.append("xz_utils::xz_utils")
             if self.options.get_safe("with_tkinter"):
-                self.cpp_info.components["_hidden"].requires.append("tk::tk")
-            self.cpp_info.components["_hidden"].includedirs = []
-            self.cpp_info.components["_hidden"].libdirs = []
+                self.info.components["_hidden"].requires.append("tk::tk")
+            self.info.components["_hidden"].includedirs = []
+            self.info.components["_hidden"].libdirs = []
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["_hidden"].system_libs.append("nsl")
+                self.info.components["_hidden"].system_libs.append("nsl")
 
         if self.options.env_vars:
             bindir = os.path.join(self.folders.package, "bin")

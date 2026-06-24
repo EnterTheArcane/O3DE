@@ -35,11 +35,11 @@ class Recipe(RecipeBase):
         copy(self, "include/*", src=self.folders.source, dst=self.folders.package)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "cereal")
-        self.cpp_info.set_property("cmake_target_name", "cereal::cereal")
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.set_property("cmake_file_name", "cereal")
+        self.info.set_property("cmake_target_name", "cereal::cereal")
+        self.info.bindirs = []
+        self.info.libdirs = []
         if self.options.thread_safe:
-            self.cpp_info.defines = ["CEREAL_THREAD_SAFE=1"]
+            self.info.defines = ["CEREAL_THREAD_SAFE=1"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.system_libs.append("pthread")
+                self.info.system_libs.append("pthread")

@@ -99,7 +99,7 @@ end
 """
 
 
-# Helper class that expands cpp_info meta information in lua readable string sequences
+# Helper class that expands info meta information in lua readable string sequences
 class _PremakeTemplate:
     def __init__(self, req: Any, dep_cpp_info: Any):
         def _format_paths(paths):
@@ -222,7 +222,7 @@ class PremakeDeps:
             dep_names.append(dep_name)
 
             # Convert and aggregate dependency's
-            dep_aggregate = dep.cpp_info.aggregated_components()
+            dep_aggregate = dep.info.aggregated_components()
 
             # Generate config dependent package variable and setup premake file
             var_filename = PREMAKE_VAR_FILE.format(pkgname=dep_name, config=conf_name)

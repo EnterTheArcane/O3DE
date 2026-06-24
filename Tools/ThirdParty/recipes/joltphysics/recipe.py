@@ -65,21 +65,21 @@ class Recipe(RecipeBase):
         rm(self, "*.cmake", os.path.join(self.folders.package, "include", "Jolt"))
 
     def package_info(self):
-        self.cpp_info.libs = ["Jolt"]
-        self.cpp_info.set_property("cmake_file_name", "Jolt")
-        self.cpp_info.set_property("cmake_target_name", "Jolt::Jolt")
-        self.cpp_info.defines = ["JPH_OBJECT_STREAM"]
+        self.info.libs = ["Jolt"]
+        self.info.set_property("cmake_file_name", "Jolt")
+        self.info.set_property("cmake_target_name", "Jolt::Jolt")
+        self.info.defines = ["JPH_OBJECT_STREAM"]
         if self.settings.arch in ["X64"]:
-            self.cpp_info.defines.extend(
+            self.info.defines.extend(
                 [
                     "JPH_USE_AVX2", "JPH_USE_AVX", "JPH_USE_SSE4_1",
                     "JPH_USE_SSE4_2", "JPH_USE_LZCNT", "JPH_USE_TZCNT",
                     "JPH_USE_F16C", "JPH_USE_FMADD",
                 ])
         if is_msvc(self):
-            self.cpp_info.defines.append("JPH_FLOATING_POINT_EXCEPTIONS_ENABLED")
+            self.info.defines.append("JPH_FLOATING_POINT_EXCEPTIONS_ENABLED")
         if self.options.shared:
-            self.cpp_info.defines.append("JPH_SHARED_LIBRARY")
-        self.cpp_info.defines.append("JPH_OBJECT_LAYER_BITS=16")
+            self.info.defines.append("JPH_SHARED_LIBRARY")
+        self.info.defines.append("JPH_OBJECT_LAYER_BITS=16")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("pthread")
+            self.info.system_libs.append("pthread")

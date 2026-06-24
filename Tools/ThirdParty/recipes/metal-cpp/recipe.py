@@ -31,13 +31,13 @@ class Recipe(RecipeBase):
             keep_path=True)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "metal-cpp")
-        self.cpp_info.set_property("cmake_target_name", "metal-cpp::metal-cpp")
-        self.cpp_info.set_property("pkg_config_name", "metal-cpp")
-        self.cpp_info.bindirs = []
-        self.cpp_info.frameworkdirs = []
-        self.cpp_info.libdirs = []
-        self.cpp_info.resdirs = []
+        self.info.set_property("cmake_file_name", "metal-cpp")
+        self.info.set_property("cmake_target_name", "metal-cpp::metal-cpp")
+        self.info.set_property("pkg_config_name", "metal-cpp")
+        self.info.bindirs = []
+        self.info.frameworkdirs = []
+        self.info.libdirs = []
+        self.info.resdirs = []
 
-        self.cpp_info.frameworks = ["Foundation", "Metal", "MetalKit", "QuartzCore"]
-        self.cpp_info.frameworks.append("MetalFX")
+        self.info.frameworks = ["Foundation", "Metal", "MetalKit", "QuartzCore"]
+        self.info.frameworks.append("MetalFX")

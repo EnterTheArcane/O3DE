@@ -151,25 +151,25 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "SQLite3")
-        self.cpp_info.set_property("cmake_target_name", "SQLite::SQLite3")
-        self.cpp_info.set_property("pkg_config_name", "sqlite3")
+        self.info.set_property("cmake_file_name", "SQLite3")
+        self.info.set_property("cmake_target_name", "SQLite::SQLite3")
+        self.info.set_property("pkg_config_name", "sqlite3")
 
-        self.cpp_info.components["sqlite"].libs = ["sqlite3"]
+        self.info.components["sqlite"].libs = ["sqlite3"]
         if self.options.enable_icu:
-            self.cpp_info.components["sqlite"].requires = ["icu::icu"]
+            self.info.components["sqlite"].requires = ["icu::icu"]
         if self.options.omit_load_extension:
-            self.cpp_info.components["sqlite"].defines.append("SQLITE_OMIT_LOAD_EXTENSION")
+            self.info.components["sqlite"].defines.append("SQLITE_OMIT_LOAD_EXTENSION")
         if self.settings.os in ["Linux", "FreeBSD"]:
             if self.options.threadsafe:
-                self.cpp_info.components["sqlite"].system_libs.append("pthread")
+                self.info.components["sqlite"].system_libs.append("pthread")
             if not self.options.omit_load_extension:
-                self.cpp_info.components["sqlite"].system_libs.append("dl")
+                self.info.components["sqlite"].system_libs.append("dl")
             if self.options.enable_fts5 or self.options.get_safe("enable_math_functions"):
-                self.cpp_info.components["sqlite"].system_libs.append("m")
+                self.info.components["sqlite"].system_libs.append("m")
         elif self.settings.os == "Windows":
             if self.options.shared:
-                self.cpp_info.components["sqlite"].defines.append("SQLITE_API=__declspec(dllimport)")
+                self.info.components["sqlite"].defines.append("SQLITE_API=__declspec(dllimport)")
 
-        self.cpp_info.components["sqlite"].set_property("cmake_target_name", "SQLite::SQLite3")
-        self.cpp_info.components["sqlite"].set_property("pkg_config_name", "sqlite3")
+        self.info.components["sqlite"].set_property("cmake_target_name", "SQLite::SQLite3")
+        self.info.components["sqlite"].set_property("pkg_config_name", "sqlite3")

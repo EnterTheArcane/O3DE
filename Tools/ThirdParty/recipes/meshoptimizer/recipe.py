@@ -52,14 +52,14 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "meshoptimizer")
-        self.cpp_info.set_property("cmake_target_name", "meshoptimizer::meshoptimizer")
-        self.cpp_info.libs = ["meshoptimizer"]
+        self.info.set_property("cmake_file_name", "meshoptimizer")
+        self.info.set_property("cmake_target_name", "meshoptimizer::meshoptimizer")
+        self.info.libs = ["meshoptimizer"]
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.system_libs.append(libcxx)
+                self.info.system_libs.append(libcxx)
         if self.options.shared:
-            self.cpp_info.defines = ["MESHOPTIMIZER_ALLOC_EXPORT"]
+            self.info.defines = ["MESHOPTIMIZER_ALLOC_EXPORT"]
             if self.settings.os == "Windows":
-                self.cpp_info.defines.append("MESHOPTIMIZER_API=__declspec(dllimport)")
+                self.info.defines.append("MESHOPTIMIZER_API=__declspec(dllimport)")

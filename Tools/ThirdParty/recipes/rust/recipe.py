@@ -185,8 +185,8 @@ class Recipe(RecipeBase):
             )
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
 
         bin_dir = os.path.join(self.folders.package, "bin")
         cargo = os.path.join(bin_dir, f"cargo{self._exe_suffix}")

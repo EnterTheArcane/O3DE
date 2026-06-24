@@ -60,8 +60,8 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "GIF")
-        self.cpp_info.set_property("cmake_target_name", "GIF::GIF")
-        self.cpp_info.libs = ["gif"]
+        self.info.set_property("cmake_file_name", "GIF")
+        self.info.set_property("cmake_target_name", "GIF::GIF")
+        self.info.libs = ["gif"]
         if is_msvc(self):
-            self.cpp_info.defines.append("USE_GIF_DLL" if self.options.shared else "USE_GIF_LIB")
+            self.info.defines.append("USE_GIF_DLL" if self.options.shared else "USE_GIF_LIB")

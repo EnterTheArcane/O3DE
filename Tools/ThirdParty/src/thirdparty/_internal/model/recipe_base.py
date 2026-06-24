@@ -53,7 +53,7 @@ class RecipeBase:
     _implicit_tool_requires: frozenset[str] = frozenset()
 
     # Package information
-    cpp: "Infos | None" = None
+    infos: "Infos | None" = None
     buildenv_info: Environment  # Environment
     runenv_info: Environment  # Environment
     conf_info: "Conf | None" = None
@@ -68,7 +68,6 @@ class RecipeBase:
         self.runenv_info = Environment()
         # At the moment only for tool requirements, others will be ignored
         self.conf_info = Conf()
-        self.info: Any = None
         self._recipe_buildenv: Any = None  # The profile buildenv, will be assigned initialize()
         self._recipe_runenv: Any = None
         self._recipe_node: Any = None  # access to container Node object, to access info, context, deps...
@@ -91,7 +90,7 @@ class RecipeBase:
 
         # layout() method related variables:
         self.folders = Folders()
-        self.cpp = Infos()
+        self.infos = Infos()
         self.layouts = Layouts()
 
     @property
@@ -136,16 +135,16 @@ class RecipeBase:
         return self._recipe_runenv
 
     @property
-    def cpp_info(self):
+    def info(self):
         """
-        Same as using ``self.cpp.package`` in the ``layout()`` method. Use it if you need to read
+        Same as using ``self.infos.package`` in the ``layout()`` method. Use it if you need to read
         the ``package_folder`` to locate the already located artifacts.
         """
-        return self.cpp.package
+        return self.infos.package
 
-    @cpp_info.setter
-    def cpp_info(self, value):
-        self.cpp.package = value
+    @info.setter
+    def info(self, value):
+        self.infos.package = value
 
     def run(
         self,

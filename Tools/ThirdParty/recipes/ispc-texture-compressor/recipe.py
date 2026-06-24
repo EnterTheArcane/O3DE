@@ -47,9 +47,9 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "ispc-texture-compressor")
-        self.cpp_info.set_property("cmake_target_name", "ispc_texcomp::ispc_texcomp")
-        self.cpp_info.libs = ["ispc_texcomp"]
+        self.info.set_property("cmake_file_name", "ispc-texture-compressor")
+        self.info.set_property("cmake_target_name", "ispc_texcomp::ispc_texcomp")
+        self.info.libs = ["ispc_texcomp"]
         if self.settings.os == "Windows":
             bin_dir = os.path.join(self.folders.package, "bin")
             self.buildenv_info.prepend_path("PATH", bin_dir)

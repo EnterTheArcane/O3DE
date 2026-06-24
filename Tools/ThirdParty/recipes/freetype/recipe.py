@@ -207,21 +207,21 @@ class Recipe(RecipeBase):
         # find_package(Freetype) fall through to CMake's builtin FindFreetype, which links
         # only freetype itself and drops freetype's private static deps (brotli, bzip2) —
         # causing unresolved BrotliDecoderDecompress / BZ2_* symbols downstream.
-        self.cpp_info.set_property("cmake_find_mode", "config")
-        self.cpp_info.set_property("cmake_file_name", "Freetype")
-        self.cpp_info.set_property("cmake_target_name", "Freetype::Freetype")
-        self.cpp_info.set_property("cmake_target_aliases", ["freetype"])  # other possible target name in upstream config file
-        self.cpp_info.set_property("cmake_build_modules", [self._module_vars_rel_path])
-        self.cpp_info.set_property("pkg_config_name", "freetype2")
-        self.cpp_info.libs = collect_libs(self)
+        self.info.set_property("cmake_find_mode", "config")
+        self.info.set_property("cmake_file_name", "Freetype")
+        self.info.set_property("cmake_target_name", "Freetype::Freetype")
+        self.info.set_property("cmake_target_aliases", ["freetype"])  # other possible target name in upstream config file
+        self.info.set_property("cmake_build_modules", [self._module_vars_rel_path])
+        self.info.set_property("pkg_config_name", "freetype2")
+        self.info.libs = collect_libs(self)
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
-        self.cpp_info.includedirs.append(os.path.join("include", "freetype2"))
+            self.info.system_libs.append("m")
+        self.info.includedirs.append(os.path.join("include", "freetype2"))
 
         libtool_version = load(self, self._libtool_version_txt).strip()
         self.conf_info.define("user.freetype:libtool_version", libtool_version)
-        self.cpp_info.set_property("system_package_version", libtool_version)
+        self.info.set_property("system_package_version", libtool_version)
 
-        self.cpp_info.set_property("component_version", libtool_version)
+        self.info.set_property("component_version", libtool_version)
         freetype_config = os.path.join(self.folders.package, "bin", "freetype-config")
         self._chmod_plus_x(freetype_config)

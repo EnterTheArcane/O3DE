@@ -63,38 +63,38 @@ class Recipe(RecipeBase):
         rm(self, "*.pdb", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "GTest")
+        self.info.set_property("cmake_file_name", "GTest")
 
         # gtest
-        self.cpp_info.components["libgtest"].set_property("cmake_target_name", "GTest::gtest")
-        self.cpp_info.components["libgtest"].set_property("cmake_target_aliases", ["GTest::GTest"])
-        self.cpp_info.components["libgtest"].set_property("pkg_config_name", "gtest")
-        self.cpp_info.components["libgtest"].libs = ["gtest"]
+        self.info.components["libgtest"].set_property("cmake_target_name", "GTest::gtest")
+        self.info.components["libgtest"].set_property("cmake_target_aliases", ["GTest::GTest"])
+        self.info.components["libgtest"].set_property("pkg_config_name", "gtest")
+        self.info.components["libgtest"].libs = ["gtest"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["libgtest"].system_libs.append("m")
-            self.cpp_info.components["libgtest"].system_libs.append("pthread")
+            self.info.components["libgtest"].system_libs.append("m")
+            self.info.components["libgtest"].system_libs.append("pthread")
         if self.settings.os == "Neutrino" and self.settings.os.version == "7.1":
-            self.cpp_info.components["libgtest"].system_libs.append("regex")
+            self.info.components["libgtest"].system_libs.append("regex")
         if self.options.shared:
-            self.cpp_info.components["libgtest"].defines.append("GTEST_LINKED_AS_SHARED_LIBRARY=1")
+            self.info.components["libgtest"].defines.append("GTEST_LINKED_AS_SHARED_LIBRARY=1")
 
         # gtest_main
         if not self.options.no_main:
-            self.cpp_info.components["gtest_main"].set_property("cmake_target_name", "GTest::gtest_main")
-            self.cpp_info.components["gtest_main"].set_property("cmake_target_aliases", ["GTest::Main"])
-            self.cpp_info.components["gtest_main"].set_property("pkg_config_name", "gtest_main")
-            self.cpp_info.components["gtest_main"].libs = ["gtest_main"]
-            self.cpp_info.components["gtest_main"].requires = ["libgtest"]
+            self.info.components["gtest_main"].set_property("cmake_target_name", "GTest::gtest_main")
+            self.info.components["gtest_main"].set_property("cmake_target_aliases", ["GTest::Main"])
+            self.info.components["gtest_main"].set_property("pkg_config_name", "gtest_main")
+            self.info.components["gtest_main"].libs = ["gtest_main"]
+            self.info.components["gtest_main"].requires = ["libgtest"]
 
         # gmock
-        self.cpp_info.components["gmock"].set_property("cmake_target_name", "GTest::gmock")
-        self.cpp_info.components["gmock"].set_property("pkg_config_name", "gmock")
-        self.cpp_info.components["gmock"].libs = ["gmock"]
-        self.cpp_info.components["gmock"].requires = ["libgtest"]
+        self.info.components["gmock"].set_property("cmake_target_name", "GTest::gmock")
+        self.info.components["gmock"].set_property("pkg_config_name", "gmock")
+        self.info.components["gmock"].libs = ["gmock"]
+        self.info.components["gmock"].requires = ["libgtest"]
 
         # gmock_main
         if not self.options.no_main:
-            self.cpp_info.components["gmock_main"].set_property("cmake_target_name", "GTest::gmock_main")
-            self.cpp_info.components["gmock_main"].set_property("pkg_config_name", "gmock_main")
-            self.cpp_info.components["gmock_main"].libs = ["gmock_main"]
-            self.cpp_info.components["gmock_main"].requires = ["gmock"]
+            self.info.components["gmock_main"].set_property("cmake_target_name", "GTest::gmock_main")
+            self.info.components["gmock_main"].set_property("pkg_config_name", "gmock_main")
+            self.info.components["gmock_main"].libs = ["gmock_main"]
+            self.info.components["gmock_main"].requires = ["gmock"]

@@ -190,8 +190,8 @@ class MakeInfo:
     def __init__(self, name: str, dirs: list[Any], flags: list[Any]):
         """
         :param name: Dependency or component raw name
-        :param dirs: cpp_info folders supported by the dependency
-        :param flags: cpp_info variables supported by the dependency
+        :param dirs: info folders supported by the dependency
+        :param flags: info variables supported by the dependency
         """
         self._name = name
         self._dirs = dirs
@@ -204,26 +204,26 @@ class MakeInfo:
     @property
     def dirs(self) -> list[Any]:
         """
-        :return: List of cpp_info folders supported by the dependency without duplicates
+        :return: List of info folders supported by the dependency without duplicates
         """
         return list(set(self._dirs))
 
     @property
     def flags(self) -> list[Any]:
         """
-        :return: List of cpp_info variables supported by the dependency without duplicates
+        :return: List of info variables supported by the dependency without duplicates
         """
         return list(set(self._flags))
 
     def dirs_append(self, directory: str):
         """
-        Add a new cpp_info folder to the dependency
+        Add a new info folder to the dependency
         """
         self._dirs.append(directory)
 
     def flags_append(self, flag: str):
         """
-        Add a new cpp_info variable to the dependency
+        Add a new info variable to the dependency
         """
         self._flags.append(flag)
 
@@ -296,7 +296,7 @@ class GlobalGenerator:
 
     def _get_dependency_dirs(self) -> dict[str, Any]:
         """
-        List regular directories from cpp_info and format them to be used in the makefile
+        List regular directories from info and format them to be used in the makefile
         """
         dirs = {}
         for var in _common_cppinfo_dirs():
@@ -306,7 +306,7 @@ class GlobalGenerator:
 
     def _get_dependency_flags(self) -> dict[str, Any]:
         """
-        List common variables from cpp_info and format them to be used in the makefile
+        List common variables from info and format them to be used in the makefile
         """
         flags = {}
         for var in _common_cppinfo_variables():
@@ -366,8 +366,8 @@ class DepComponentContentGenerator:
         """
         :param dependency: The dependency object that owns the component
         :param component_name: component raw name e.g. poco::poco_json
-        :param dirs: The component cpp_info folders
-        :param flags: The component cpp_info variables
+        :param dirs: The component info folders
+        :param flags: The component info variables
         """
         self._dep = dependency
         self._name = component_name
@@ -386,7 +386,7 @@ class DepComponentContentGenerator:
             "name": _makefy(self._name),
             "cpp_info_dirs": self._dirs,
             "cpp_info_flags": self._flags,
-            "properties": _makefy_properties(_filter_properties(self._dep.cpp_info.components[self._name]._properties, self._output)),
+            "properties": _makefy_properties(_filter_properties(self._dep.info.components[self._name]._properties, self._output)),
         }
         template = Template(
             _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
@@ -449,10 +449,10 @@ class DepContentGenerator:
             "name": _makefy(self._dep.ref.name),
             "root": self._root,
             "sysroot": self._sysroot,
-            "components": list(self._dep.cpp_info.get_sorted_components().keys()),
+            "components": list(self._dep.info.get_sorted_components().keys()),
             "cpp_info_dirs": self._dirs,
             "cpp_info_flags": self._flags,
-            "properties": _makefy_properties(_filter_properties(self._dep.cpp_info._properties, self._output)),
+            "properties": _makefy_properties(_filter_properties(self._dep.info._properties, self._output)),
         }
         template = Template(
             _jinja_format_list_values() + self.template, trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
@@ -469,7 +469,7 @@ class DepComponentGenerator:
         :param dependency: The dependency object that owns the component
         :param makeinfo: Makeinfo to store component variables
         :param component_name: The component raw name e.g. poco::poco_json
-        :param component: The component object to obtain cpp_info variables
+        :param component: The component object to obtain info variables
         :param root: The dependency root folder
         """
         self._dep = dependency
@@ -481,7 +481,7 @@ class DepComponentGenerator:
 
     def _get_component_dirs(self) -> dict[str, Any]:
         """
-        List regular directories from cpp_info and format them to be used in the makefile
+        List regular directories from info and format them to be used in the makefile
         :return: A dictionary with regular folder name and its formatted path
         """
         dirs = {}
@@ -511,7 +511,7 @@ class DepComponentGenerator:
 
     def _get_component_flags(self) -> dict[str, Any]:
         """
-        List common variables from cpp_info and format them to be used in the makefile
+        List common variables from info and format them to be used in the makefile
         :return: A dictionary with regular flag/variable name and its formatted value with prefix
         """
         flags = {}
@@ -528,7 +528,7 @@ class DepComponentGenerator:
 
     def generate(self) -> str:
         """
-        Process component cpp_info variables and generate its Makefile content
+        Process component info variables and generate its Makefile content
         :return: Component Makefile content
         """
         dirs = self._get_component_dirs()
@@ -540,7 +540,7 @@ class DepComponentGenerator:
 
 class DepGenerator:
     """
-    Process a dependency cpp_info variables and generate its Makefile content
+    Process a dependency info variables and generate its Makefile content
     """
 
     def __init__(self, dependency: Any, require: Any, output: Any):
@@ -558,16 +558,16 @@ class DepGenerator:
 
     def _get_dependency_dirs(self, root: str, dependency: Any) -> dict[str, Any]:
         """
-        List regular directories from cpp_info and format them to be used in the makefile
+        List regular directories from info and format them to be used in the makefile
         :param root: Package root folder
         :param dependency: Dependency object
         :return: A dictionary with regular folder name and its formatted path
         """
         dirs = {}
         for var, prefix in _common_cppinfo_dirs().items():
-            cppinfo_value = getattr(dependency.cpp_info, var)
+            cppinfo_value = getattr(dependency.info, var)
             if not cppinfo_value:  # The root value is not defined, there might be components
-                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.cpp_info.components.items() if getattr(obj, var.lower())]
+                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
                 prefix = ""
             formatted_dirs = _get_formatted_dirs(cppinfo_value, root, _makefy(dependency.ref.name))
             if formatted_dirs:
@@ -578,15 +578,15 @@ class DepGenerator:
 
     def _get_dependency_flags(self, dependency: Any) -> dict[str, Any]:
         """
-        List common variables from cpp_info and format them to be used in the makefile
+        List common variables from info and format them to be used in the makefile
         :param dependency: Dependency object
         """
         flags = {}
         for var, prefix_var in _common_cppinfo_variables().items():
-            cppinfo_value = getattr(dependency.cpp_info, var)
-            # Use component cpp_info info when does not provide any value
+            cppinfo_value = getattr(dependency.info, var)
+            # Use component info info when does not provide any value
             if not cppinfo_value:
-                cppinfo_value = [f"$(RECIPE_{var.upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.cpp_info.components.items() if getattr(obj, var.lower())]
+                cppinfo_value = [f"$(RECIPE_{var.upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
                 # avoid repeating same prefix twice
                 prefix_var = ""
             if "flags" in var:
@@ -600,7 +600,7 @@ class DepGenerator:
         """
         Get the sysroot of the dependency. Sysroot is a list of directories, or a single directory
         """
-        sysroot = self._dep.cpp_info.sysroot if isinstance(self._dep.cpp_info.sysroot, list) else [self._dep.cpp_info.sysroot]
+        sysroot = self._dep.info.sysroot if isinstance(self._dep.info.sysroot, list) else [self._dep.info.sysroot]
         # sysroot may return ['']
         if not sysroot or not sysroot[0]:
             return []
@@ -625,7 +625,7 @@ class DepGenerator:
         dep_content_gen = DepContentGenerator(self._dep, self._req, root, sysroot, dirs, flags, self._output)
         content = dep_content_gen.content()
 
-        for comp_name, comp in self._dep.cpp_info.get_sorted_components().items():
+        for comp_name, comp in self._dep.info.get_sorted_components().items():
             component_gen = DepComponentGenerator(self._dep, self._info, comp_name, comp, root, self._output)
             content += component_gen.generate()
 

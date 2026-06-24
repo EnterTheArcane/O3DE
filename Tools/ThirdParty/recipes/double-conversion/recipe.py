@@ -51,6 +51,6 @@ class Recipe(RecipeBase):
         rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "double-conversion")
-        self.cpp_info.set_property("cmake_target_name", "double-conversion::double-conversion")
-        self.cpp_info.libs = ["double-conversion"]
+        self.info.set_property("cmake_file_name", "double-conversion")
+        self.info.set_property("cmake_target_name", "double-conversion::double-conversion")
+        self.info.libs = ["double-conversion"]

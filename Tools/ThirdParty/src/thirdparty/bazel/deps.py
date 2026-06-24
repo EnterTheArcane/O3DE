@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from jinja2 import Template, StrictUndefined
 
-from thirdparty._internal.model.cpp_info import PackageType
+from thirdparty._internal.model.info import PackageType
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import save
 
@@ -189,64 +189,64 @@ class _BazelDepBuildGenerator:
         return root_folder.replace("\\", "/")
 
     def _get_repository_name(self, dep: Any) -> str:
-        pkg_name = dep.cpp_info.get_property("bazel_repository_name") or dep.ref.name
+        pkg_name = dep.info.get_property("bazel_repository_name") or dep.ref.name
         return f"build-{pkg_name}" if self._is_tool_require else pkg_name
 
     @staticmethod
     def _get_target_name(dep: Any) -> str:
-        pkg_name = dep.cpp_info.get_property("bazel_target_name") or dep.ref.name
+        pkg_name = dep.info.get_property("bazel_target_name") or dep.ref.name
         return pkg_name
 
     def _get_component_name(self, dep: Any, comp_ref_name: str) -> str:
         pkg_name = self._get_target_name(dep)
-        if comp_ref_name not in dep.cpp_info.components:
+        if comp_ref_name not in dep.info.components:
             # foo::foo might be referencing the root cppinfo
             if dep.ref.name == comp_ref_name:
                 return pkg_name
             return f"{pkg_name}-{comp_ref_name}"
-        comp_name = dep.cpp_info.components[comp_ref_name].get_property("bazel_target_name")
+        comp_name = dep.info.components[comp_ref_name].get_property("bazel_target_name")
         # If user did not set bazel_target_name, let's create a component name
         # with a namespace, e.g., dep-comp1
         return comp_name or f"{pkg_name}-{comp_ref_name}"
 
-    def _get_headers(self, cpp_info: Any) -> list[str]:
-        return [f'"{_relativize_path(path, self._package_folder)}/**"' for path in cpp_info.includedirs]
+    def _get_headers(self, info: Any) -> list[str]:
+        return [f'"{_relativize_path(path, self._package_folder)}/**"' for path in info.includedirs]
 
-    def _get_bindirs(self, cpp_info: Any) -> list[str]:
-        return [_relativize_path(bindir, self._package_folder) for bindir in cpp_info.bindirs]
+    def _get_bindirs(self, info: Any) -> list[str]:
+        return [_relativize_path(bindir, self._package_folder) for bindir in info.bindirs]
 
-    def _get_includes(self, cpp_info: Any) -> list[str]:
-        return [f'"{_relativize_path(path, self._package_folder)}"' for path in cpp_info.includedirs]
+    def _get_includes(self, info: Any) -> list[str]:
+        return [f'"{_relativize_path(path, self._package_folder)}"' for path in info.includedirs]
 
     @staticmethod
-    def _get_defines(cpp_info: Any) -> list[str]:
-        return ['"{}"'.format(define.replace('"', '\\' * 3 + '"')) for define in cpp_info.defines]
+    def _get_defines(info: Any) -> list[str]:
+        return ['"{}"'.format(define.replace('"', '\\' * 3 + '"')) for define in info.defines]
 
-    def _get_linkopts(self, cpp_info: Any) -> list[str]:
+    def _get_linkopts(self, info: Any) -> list[str]:
         os_build = self._dep.settings_build.get_safe("os")
         link_opt = '/DEFAULTLIB:{}' if os_build == "Windows" else '-l{}'
-        system_libs = [link_opt.format(lib) for lib in cpp_info.system_libs]
-        shared_flags = cpp_info.sharedlinkflags + cpp_info.exelinkflags
+        system_libs = [link_opt.format(lib) for lib in info.system_libs]
+        shared_flags = info.sharedlinkflags + info.exelinkflags
         frameworkdirs_flags = []
         framework_flags = []
-        for frw in cpp_info.frameworks:
+        for frw in info.frameworks:
             framework_flags.extend(["-framework", frw])
-        for frw_dir in cpp_info.frameworkdirs:
+        for frw_dir in info.frameworkdirs:
             frameworkdirs_flags.extend(["-F", frw_dir.replace("\\", "/")])
         return [f'"{flag}"' for flag in (system_libs + shared_flags + framework_flags + frameworkdirs_flags)]
 
     @staticmethod
-    def _get_copts(cpp_info: Any) -> list[str]:
+    def _get_copts(info: Any) -> list[str]:
         # FIXME: long discussions between copts (-Iflag) vs includes in Bazel. Not sure yet
         # includedirsflags = ['"-I{}"'.format(_relativize_path(d, package_folder_path))
-        #                     for d in cpp_info.includedirs]
-        cxxflags = [var.replace('"', '\\"') for var in cpp_info.cxxflags]
-        cflags = [var.replace('"', '\\"') for var in cpp_info.cflags]
+        #                     for d in info.includedirs]
+        cxxflags = [var.replace('"', '\\"') for var in info.cxxflags]
+        cflags = [var.replace('"', '\\"') for var in info.cflags]
         return [f'"{flag}"' for flag in (cxxflags + cflags)]
 
-    def _get_component_requirement_names(self, cpp_info: Any) -> list[str]:
+    def _get_component_requirement_names(self, info: Any) -> list[str]:
         """
-        Get all the valid names from the requirements ones given a CppInfo object.
+        Get all the valid names from the requirements ones given a Info object.
 
         For instance, those requirements could be coming from:
 
@@ -256,17 +256,17 @@ class _BazelDepBuildGenerator:
             requires = "other/1.0"
 
             def package_info(self):
-                self.cpp_info.requires = ["other::cmp1"]
+                self.info.requires = ["other::cmp1"]
 
             # Or:
 
             def package_info(self):
-                self.cpp_info.components["cmp"].requires = ["other::cmp1"]
+                self.info.components["cmp"].requires = ["other::cmp1"]
         ```
         """
         dep_ref_name = self._dep.ref.name
         ret = []
-        for req in cpp_info.requires:
+        for req in info.requires:
             pkg_ref_name, comp_ref_name = req.split("::") if "::" in req else (dep_ref_name, req)
             prefix = ":"  # Requirements declared in the same BUILD file
             # For instance, dep == "hello/1.0" and req == "other::cmp1" -> hello != other
@@ -285,7 +285,7 @@ class _BazelDepBuildGenerator:
                 ret.append(dep_name)
         return ret
 
-    def _get_lib_info(self, cpp_info: Any, deduced_cpp_info: Any, component_name: str | None = None) -> list[Any]:
+    def _get_lib_info(self, info: Any, deduced_cpp_info: Any, component_name: str | None = None) -> list[Any]:
 
         def _lib_info(lib_name, virtual_cpp_info):
             info = {
@@ -300,10 +300,10 @@ class _BazelDepBuildGenerator:
                 # Issue: upstream issue 19135
                 # (UNIX) Adding the rpath flag as any application could link through the library
                 # which points out a symlink, but that name does not appear in the library location
-                info["linkopts"] = [f'"-Wl,-rpath,{libdir}"' for libdir in cpp_info.libdirs]
+                info["linkopts"] = [f'"-Wl,-rpath,{libdir}"' for libdir in info.libdirs]
             return info
 
-        libs = cpp_info.libs
+        libs = info.libs
         libs_info = []
         if libs:
             if len(libs) > 1:
@@ -325,11 +325,11 @@ class _BazelDepBuildGenerator:
         """
         build_content = {"components": [], "root": {}}
         component_names = []
-        deduced_cpp_info = self._dep.cpp_info.deduce_full_cpp_info(self._dep)
+        deduced_cpp_info = self._dep.info.deduce_full_info(self._dep)
 
-        if self._dep.cpp_info.has_components:
+        if self._dep.info.has_components:
             # Loop through all the package's components
-            for comp_ref_name, cmp_cpp_info in self._dep.cpp_info.get_sorted_components().items():
+            for comp_ref_name, cmp_cpp_info in self._dep.info.get_sorted_components().items():
                 # At first, let's check if we have defined some components requires, e.g., "dep::cmp1"
                 comp_requires_names = self._get_component_requirement_names(cmp_cpp_info)
                 comp_name = self._get_component_name(self._dep, comp_ref_name)
@@ -349,22 +349,22 @@ class _BazelDepBuildGenerator:
 
         pkg_name = self._get_target_name(self._dep)
         # At first, let's check if we have defined some global requires, e.g., "other::cmp1"
-        requires = self._get_component_requirement_names(self._dep.cpp_info)
+        requires = self._get_component_requirement_names(self._dep.info)
         # If we have found some component requires it would be enough
         if not requires:
             # If no requires were found, let's try to get all the direct dependencies,
             # e.g., requires = "other_pkg/1.0"
             requires = [f"@{self._get_repository_name(req)}//:{self._get_target_name(req)}" for req in self._transitive_reqs.values()]
-        cpp_info = self._dep.cpp_info
+        info = self._dep.info
         build_content["root"] = {
             "name": pkg_name,
-            "libs": self._get_lib_info(cpp_info, deduced_cpp_info),
-            "bindirs": self._get_bindirs(cpp_info),
-            "headers": self._get_headers(cpp_info),
-            "includes": self._get_includes(cpp_info),
-            "defines": self._get_defines(cpp_info),
-            "linkopts": self._get_linkopts(cpp_info),
-            "copts": self._get_copts(cpp_info),
+            "libs": self._get_lib_info(info, deduced_cpp_info),
+            "bindirs": self._get_bindirs(info),
+            "headers": self._get_headers(info),
+            "includes": self._get_includes(info),
+            "defines": self._get_defines(info),
+            "linkopts": self._get_linkopts(info),
+            "copts": self._get_copts(info),
             "dependencies": requires,
             "component_names": component_names,
         }

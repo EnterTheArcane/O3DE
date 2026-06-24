@@ -42,12 +42,12 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         # gz-cmake installs only cmake modules — no compiled libraries
-        self.cpp_info.set_property("cmake_find_mode", "none")
-        self.cpp_info.libdirs = []
-        self.cpp_info.bindirs = []
+        self.info.set_property("cmake_find_mode", "none")
+        self.info.libdirs = []
+        self.info.bindirs = []
         # Point directly to the directory containing the real gz-cmake-config.cmake.
         # Using "" (package root) would cause CMake to find the auto-generated stub
         # at <root>/gz-cmake-config.cmake instead of the real one installed by gz-cmake
         # at share/cmake/gz-cmake/gz-cmake-config.cmake, which actually loads the cmake
         # modules (gz_configure_project, etc.) that downstream packages need.
-        self.cpp_info.builddirs = ["share/cmake/gz-cmake"]
+        self.info.builddirs = ["share/cmake/gz-cmake"]

@@ -87,23 +87,23 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "spdlog", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "spdlog")
-        self.cpp_info.set_property("cmake_target_name", "spdlog::spdlog")
+        self.info.set_property("cmake_file_name", "spdlog")
+        self.info.set_property("cmake_target_name", "spdlog::spdlog")
 
-        self.cpp_info.components["libspdlog"].set_property("cmake_target_name", "spdlog::spdlog")
-        self.cpp_info.components["libspdlog"].requires = ["fmt::fmt"]
-        self.cpp_info.components["libspdlog"].defines.append("SPDLOG_FMT_EXTERNAL")
+        self.info.components["libspdlog"].set_property("cmake_target_name", "spdlog::spdlog")
+        self.info.components["libspdlog"].requires = ["fmt::fmt"]
+        self.info.components["libspdlog"].defines.append("SPDLOG_FMT_EXTERNAL")
 
         suffix = "d" if self.settings.build_type == "Debug" else ""
-        self.cpp_info.components["libspdlog"].libs = [f"spdlog{suffix}"]
-        self.cpp_info.components["libspdlog"].defines.append("SPDLOG_COMPILED_LIB")
+        self.info.components["libspdlog"].libs = [f"spdlog{suffix}"]
+        self.info.components["libspdlog"].defines.append("SPDLOG_COMPILED_LIB")
 
         if self.options.get_safe("wchar_support"):
-            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_WCHAR_TO_UTF8_SUPPORT")
+            self.info.components["libspdlog"].defines.append("SPDLOG_WCHAR_TO_UTF8_SUPPORT")
         if self.options.get_safe("wchar_filenames"):
-            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_WCHAR_FILENAMES")
+            self.info.components["libspdlog"].defines.append("SPDLOG_WCHAR_FILENAMES")
         if self.options.get_safe("wchar_console"):
-            self.cpp_info.components["libspdlog"].defines.append("SPDLOG_UTF8_TO_WCHAR_CONSOLE")
-        self.cpp_info.components["libspdlog"].defines.append("SPDLOG_NO_EXCEPTIONS")
+            self.info.components["libspdlog"].defines.append("SPDLOG_UTF8_TO_WCHAR_CONSOLE")
+        self.info.components["libspdlog"].defines.append("SPDLOG_NO_EXCEPTIONS")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["libspdlog"].system_libs = ["pthread"]
+            self.info.components["libspdlog"].system_libs = ["pthread"]

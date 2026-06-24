@@ -69,10 +69,10 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.libs = collect_libs(self)
+        self.info.libs = collect_libs(self)
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["dl", "m"]
+            self.info.system_libs = ["dl", "m"]
         if self.settings.os in ["Linux", "Mac"]:
-            self.cpp_info.defines.extend(["LUA_USE_DLOPEN", "LUA_USE_POSIX"])
+            self.info.defines.extend(["LUA_USE_DLOPEN", "LUA_USE_POSIX"])
         elif self.settings.os == "Windows" and self.options.shared:
-            self.cpp_info.defines.append("LUA_BUILD_AS_DLL")
+            self.info.defines.append("LUA_BUILD_AS_DLL")

@@ -33,7 +33,7 @@ class Recipe(RecipeBase):
             dst=os.path.join(self.folders.package, "include", "ankerl"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "unordered_dense")
-        self.cpp_info.set_property("cmake_target_name", "unordered_dense::unordered_dense")
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.set_property("cmake_file_name", "unordered_dense")
+        self.info.set_property("cmake_target_name", "unordered_dense::unordered_dense")
+        self.info.bindirs = []
+        self.info.libdirs = []

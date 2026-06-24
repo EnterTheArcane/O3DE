@@ -57,12 +57,12 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Imath")
-        self.cpp_info.set_property("cmake_target_name", "Imath::Imath")
-        self.cpp_info.set_property("pkg_config_name", "Imath")
+        self.info.set_property("cmake_file_name", "Imath")
+        self.info.set_property("cmake_target_name", "Imath::Imath")
+        self.info.set_property("pkg_config_name", "Imath")
 
         # Imath::ImathConfig - header only library
-        imath_config = self.cpp_info.components["imath_config"]
+        imath_config = self.info.components["imath_config"]
         imath_config.set_property("cmake_target_name", "Imath::ImathConfig")
         imath_config.includedirs.append(os.path.join("include", "Imath"))
 
@@ -70,7 +70,7 @@ class Recipe(RecipeBase):
         suffix = f"-{Version(self.version).major}_{Version(self.version).minor}"
         if self.settings.build_type == "Debug":
             suffix += "_d"
-        imath_lib = self.cpp_info.components["imath_lib"]
+        imath_lib = self.info.components["imath_lib"]
         imath_lib.set_property("cmake_target_name", "Imath::Imath")
         imath_lib.set_property("pkg_config_name", "Imath")
         imath_lib.libs = [f"Imath{suffix}"]

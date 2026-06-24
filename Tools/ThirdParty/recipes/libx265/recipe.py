@@ -133,22 +133,22 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "x265")
-        self.cpp_info.libs = ["x265"]
+        self.info.set_property("pkg_config_name", "x265")
+        self.info.libs = ["x265"]
         if self.settings.os == "Windows":
             if self.options.shared:
-                self.cpp_info.defines.append("X265_API_IMPORTS")
+                self.info.defines.append("X265_API_IMPORTS")
             if not self.options.shared:
-                self.cpp_info.system_libs.extend(["advapi32"])
+                self.info.system_libs.extend(["advapi32"])
         elif self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["dl", "pthread", "m", "rt"])
+            self.info.system_libs.extend(["dl", "pthread", "m", "rt"])
             if not self.options.shared:
-                self.cpp_info.sharedlinkflags = ["-Wl,-Bsymbolic,-znoexecstack"]
+                self.info.sharedlinkflags = ["-Wl,-Bsymbolic,-znoexecstack"]
         elif self.settings.os == "Android":
-            self.cpp_info.system_libs.extend(["dl", "m"])
+            self.info.system_libs.extend(["dl", "m"])
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
                 if self.settings.os == "Android" and self.settings.compiler.libcxx == "c++_static":
-                    self.cpp_info.system_libs.append("c++abi")
-                self.cpp_info.system_libs.append(libcxx)
+                    self.info.system_libs.append("c++abi")
+                self.info.system_libs.append(libcxx)

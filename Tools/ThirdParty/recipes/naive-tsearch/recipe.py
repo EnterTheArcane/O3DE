@@ -64,15 +64,15 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.options.header_only:
-            self.cpp_info.components["header_only"].libs = []
-            self.cpp_info.components["header_only"].libdirs = []
-            self.cpp_info.components["header_only"].bindirs = []
-            self.cpp_info.components["header_only"].includedirs.append(os.path.join("include", "naive-tsearch"))
-            self.cpp_info.components["header_only"].defines = ["NAIVE_TSEARCH_HDRONLY"]
-            self.cpp_info.components["header_only"].set_property("cmake_target_name", "naive-tsearch::naive-tsearch-hdronly")
-            self.cpp_info.components["header_only"].set_property("pkg_config_name", "naive-tsearch")
+            self.info.components["header_only"].libs = []
+            self.info.components["header_only"].libdirs = []
+            self.info.components["header_only"].bindirs = []
+            self.info.components["header_only"].includedirs.append(os.path.join("include", "naive-tsearch"))
+            self.info.components["header_only"].defines = ["NAIVE_TSEARCH_HDRONLY"]
+            self.info.components["header_only"].set_property("cmake_target_name", "naive-tsearch::naive-tsearch-hdronly")
+            self.info.components["header_only"].set_property("pkg_config_name", "naive-tsearch")
         else:
-            self.cpp_info.components["naive_tsearch"].libs = ["naive-tsearch"]
-            self.cpp_info.components["naive_tsearch"].includedirs.append(os.path.join("include", "naive-tsearch"))
-            self.cpp_info.components["naive_tsearch"].set_property("cmake_target_name", "naive-tsearch::naive-tsearch")
-            self.cpp_info.components["naive_tsearch"].set_property("pkg_config_name", "naive-tsearch")
+            self.info.components["naive_tsearch"].libs = ["naive-tsearch"]
+            self.info.components["naive_tsearch"].includedirs.append(os.path.join("include", "naive-tsearch"))
+            self.info.components["naive_tsearch"].set_property("cmake_target_name", "naive-tsearch::naive-tsearch")
+            self.info.components["naive_tsearch"].set_property("pkg_config_name", "naive-tsearch")

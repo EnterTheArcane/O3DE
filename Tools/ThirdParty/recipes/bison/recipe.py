@@ -65,9 +65,9 @@ class Recipe(RecipeBase):
         autotools.install()
 
     def package_info(self):
-        self.cpp_info.includedirs = []
-        self.cpp_info.libs = ["y"]
-        self.cpp_info.resdirs = ["res"]
+        self.info.includedirs = []
+        self.info.libs = ["y"]
+        self.info.resdirs = ["res"]
         self.buildenv_info.define_path("CONAN_BISON_ROOT", self.folders.package.as_posix())
         self.buildenv_info.define_path(
             "BISON_PKGDATADIR", os.path.join(self.folders.package, "res", "bison"))

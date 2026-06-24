@@ -131,21 +131,21 @@ class Recipe(RecipeBase):
             rm(self, "*.a", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenSubdiv")
+        self.info.set_property("cmake_file_name", "OpenSubdiv")
         target_suffix = "" if self.options.shared else "_static"
 
-        self.cpp_info.components["osdcpu"].set_property("cmake_target_name", f"OpenSubdiv::osdcpu{target_suffix}")
-        self.cpp_info.components["osdcpu"].libs = ["osdCPU"]
-        self.cpp_info.components["osdcpu"].requires = ["onetbb::onetbb"]
+        self.info.components["osdcpu"].set_property("cmake_target_name", f"OpenSubdiv::osdcpu{target_suffix}")
+        self.info.components["osdcpu"].libs = ["osdCPU"]
+        self.info.components["osdcpu"].requires = ["onetbb::onetbb"]
 
         if self._osd_gpu_enabled:
-            self.cpp_info.components["osdgpu"].set_property("cmake_target_name", f"OpenSubdiv::osdgpu{target_suffix}")
-            self.cpp_info.components["osdgpu"].libs = ["osdGPU"]
-            self.cpp_info.components["osdgpu"].requires = ["osdcpu"]
+            self.info.components["osdgpu"].set_property("cmake_target_name", f"OpenSubdiv::osdgpu{target_suffix}")
+            self.info.components["osdgpu"].libs = ["osdGPU"]
+            self.info.components["osdgpu"].requires = ["osdcpu"]
             if self.options.with_opengl:
-                self.cpp_info.components["osdgpu"].requires.extend(["opengl::opengl", "glfw::glfw"])
+                self.info.components["osdgpu"].requires.extend(["opengl::opengl", "glfw::glfw"])
             if self.options.get_safe("with_metal"):
-                self.cpp_info.components["osdgpu"].requires.append("metal-cpp::metal-cpp")
+                self.info.components["osdgpu"].requires.append("metal-cpp::metal-cpp")
             dl_required = self.options.with_opengl or self.options.with_opencl
             if self.settings.os in ["Linux", "FreeBSD"] and dl_required:
-                self.cpp_info.components["osdgpu"].system_libs = ["dl"]
+                self.info.components["osdgpu"].system_libs = ["dl"]

@@ -72,13 +72,13 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "cpuinfo")
-        self.cpp_info.set_property("pkg_config_name", "libcpuinfo")
+        self.info.set_property("cmake_file_name", "cpuinfo")
+        self.info.set_property("pkg_config_name", "libcpuinfo")
 
-        self.cpp_info.components["cpuinfo"].set_property("cmake_target_name", "cpuinfo::cpuinfo")
-        self.cpp_info.components["cpuinfo"].libs = ["cpuinfo"]
+        self.info.components["cpuinfo"].set_property("cmake_target_name", "cpuinfo::cpuinfo")
+        self.info.components["cpuinfo"].libs = ["cpuinfo"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["cpuinfo"].system_libs.append("pthread")
+            self.info.components["cpuinfo"].system_libs.append("pthread")
 
         if self.settings.os == "Android":
-            self.cpp_info.components["cpuinfo"].system_libs.append("log")
+            self.info.components["cpuinfo"].system_libs.append("log")

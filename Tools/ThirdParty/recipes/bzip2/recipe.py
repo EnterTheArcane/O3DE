@@ -85,7 +85,7 @@ class Recipe(RecipeBase):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "BZip2")
-        self.cpp_info.set_property("cmake_target_name", "BZip2::BZip2")
-        self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.cpp_info.libs = ["bz2"]
+        self.info.set_property("cmake_file_name", "BZip2")
+        self.info.set_property("cmake_target_name", "BZip2::BZip2")
+        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.libs = ["bz2"]

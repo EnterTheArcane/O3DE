@@ -252,11 +252,11 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "vpx")
-        self.cpp_info.libs = [self._lib_name]
+        self.info.set_property("pkg_config_name", "vpx")
+        self.info.libs = [self._lib_name]
         if not self.options.get_safe("shared"):
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.system_libs.append(libcxx)
+                self.info.system_libs.append(libcxx)
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.extend(["m", "pthread"])

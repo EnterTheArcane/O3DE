@@ -353,7 +353,7 @@ class AutotoolsToolchain:
         configure_install_flags = []
 
         def _get_argument(argument_name, cppinfo_name):
-            elements = getattr(self._recipe.cpp.package, cppinfo_name)
+            elements = getattr(self._recipe.infos.package, cppinfo_name)
             return f"--{argument_name}=${{prefix}}/{elements[0]}" if elements else ""
 
         # If someone want arguments but not the defaults can pass them in args manually

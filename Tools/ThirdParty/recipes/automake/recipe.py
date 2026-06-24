@@ -92,9 +92,9 @@ class Recipe(RecipeBase):
                 rename(self, fullpath, fullpath + ".exe")
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
-        self.cpp_info.frameworkdirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
+        self.info.frameworkdirs = []
 
         # For consumers with new integrations (Recipe 1 and 2 compatible):
         ver = Version(self.version)

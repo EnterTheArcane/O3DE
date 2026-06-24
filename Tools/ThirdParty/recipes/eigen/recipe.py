@@ -49,13 +49,13 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Eigen3")
-        self.cpp_info.set_property("cmake_target_name", "Eigen3::Eigen")
-        self.cpp_info.set_property("pkg_config_name", "eigen3")
-        self.cpp_info.components["eigen3"].bindirs = []
-        self.cpp_info.components["eigen3"].libdirs = []
+        self.info.set_property("cmake_file_name", "Eigen3")
+        self.info.set_property("cmake_target_name", "Eigen3::Eigen")
+        self.info.set_property("pkg_config_name", "eigen3")
+        self.info.components["eigen3"].bindirs = []
+        self.info.components["eigen3"].libdirs = []
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["eigen3"].system_libs = ["m"]
+            self.info.components["eigen3"].system_libs = ["m"]
 
-        self.cpp_info.components["eigen3"].set_property("cmake_target_name", "Eigen3::Eigen")
-        self.cpp_info.components["eigen3"].includedirs = [os.path.join("include", "eigen3")]
+        self.info.components["eigen3"].set_property("cmake_target_name", "Eigen3::Eigen")
+        self.info.components["eigen3"].includedirs = [os.path.join("include", "eigen3")]

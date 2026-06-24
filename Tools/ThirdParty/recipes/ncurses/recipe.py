@@ -133,8 +133,8 @@ class Recipe(RecipeBase):
             tc.extra_cxxflags.append("-FS")
             tc.extra_cxxflags.append("-EHsc")
             if self.options.get_safe("with_extended_colors"):
-                tc.extra_cflags.append(" ".join(f"-I{dir}" for dir in self.dependencies["naive-tsearch"].cpp_info.includedirs))
-                tc.extra_ldflags.append(" ".join(f"-l{lib}" for lib in self.dependencies["naive-tsearch"].cpp_info.libs))
+                tc.extra_cflags.append(" ".join(f"-I{dir}" for dir in self.dependencies["naive-tsearch"].info.includedirs))
+                tc.extra_ldflags.append(" ".join(f"-l{lib}" for lib in self.dependencies["naive-tsearch"].info.libs))
         if self._is_mingw:
             # add libssp (gcc support library) for some missing symbols (e.g. __strcpy_chk)
             tc.extra_ldflags.extend(["-lmingwex", "-lssp"])
@@ -175,7 +175,7 @@ class Recipe(RecipeBase):
             cxxflags = []
             cflags = []
             for dependency in self.dependencies.values():
-                deps_cpp_info = dependency.cpp_info.aggregated_components()
+                deps_cpp_info = dependency.info.aggregated_components()
                 includedirs.extend(deps_cpp_info.includedirs)
                 defines.extend(deps_cpp_info.defines)
                 libs.extend(deps_cpp_info.libs + deps_cpp_info.system_libs)
@@ -238,19 +238,19 @@ class Recipe(RecipeBase):
         return f"recipe-official-{self.name}-targets.cmake"
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Curses")
+        self.info.set_property("cmake_file_name", "Curses")
 
         # CMake's standard FindCurses module does not define a target.
         # Adding one nevertheless for consistency with other packages.
         # https://gitlab.kitware.com/cmake/cmake/-/issues/23051
-        self.cpp_info.set_property("cmake_target_name", "Curses::Curses")
+        self.info.set_property("cmake_target_name", "Curses::Curses")
 
         def _add_component(name, lib_name=None, requires=None):
             lib_name = lib_name or name
-            self.cpp_info.components[name].libs = [lib_name + self._lib_suffix]
-            self.cpp_info.components[name].set_property("pkg_config_name", lib_name + self._lib_suffix)
-            self.cpp_info.components[name].includedirs.append(os.path.join("include", "ncurses" + self._suffix))
-            self.cpp_info.components[name].requires = requires if requires else []
+            self.info.components[name].libs = [lib_name + self._lib_suffix]
+            self.info.components[name].set_property("pkg_config_name", lib_name + self._lib_suffix)
+            self.info.components[name].includedirs.append(os.path.join("include", "ncurses" + self._suffix))
+            self.info.components[name].requires = requires if requires else []
 
         _add_component("libcurses", lib_name="ncurses")
         _add_component("panel", requires=["libcurses"])
@@ -259,7 +259,7 @@ class Recipe(RecipeBase):
 
         if self.options.with_tinfo:
             _add_component("tinfo")
-            self.cpp_info.components["libcurses"].requires += ["tinfo"]
+            self.info.components["libcurses"].requires += ["tinfo"]
 
         if self.options.with_ticlib:
             _add_component("ticlib", lib_name="tic", requires=["libcurses"])
@@ -267,31 +267,31 @@ class Recipe(RecipeBase):
         if self.options.with_cxx:
             _add_component("curses++", lib_name="ncurses++", requires=["libcurses"])
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["libcurses++"].system_libs.append("util")
+                self.info.components["libcurses++"].system_libs.append("util")
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.components["libcurses++"].system_libs.append(libcxx)
+                self.info.components["libcurses++"].system_libs.append(libcxx)
 
         if is_msvc(self):
-            self.cpp_info.components["libcurses"].requires += [
+            self.info.components["libcurses"].requires += [
                 "getopt-for-visual-studio::getopt-for-visual-studio",
                 "dirent::dirent",
             ]
             if self.options.get_safe("with_extended_colors"):
-                self.cpp_info.components["libcurses"].requires += [
+                self.info.components["libcurses"].requires += [
                     "naive-tsearch::naive-tsearch",
                 ]
         if self.options.with_pcre2:
-            self.cpp_info.components["form"].requires.append("pcre2::pcre2")
+            self.info.components["form"].requires.append("pcre2::pcre2")
 
         if not self.options.shared:
-            self.cpp_info.components["libcurses"].defines = ["NCURSES_STATIC"]
+            self.info.components["libcurses"].defines = ["NCURSES_STATIC"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["libcurses"].system_libs = ["dl", "m"]
+                self.info.components["libcurses"].system_libs = ["dl", "m"]
 
         module_rel_path = os.path.join(self._module_subfolder, self._module_file)
-        self.cpp_info.components["libcurses"].builddirs.append(self._module_subfolder)
-        self.cpp_info.set_property("cmake_build_modules", [module_rel_path])
+        self.info.components["libcurses"].builddirs.append(self._module_subfolder)
+        self.info.set_property("cmake_build_modules", [module_rel_path])
 
         terminfo = os.path.join(self.folders.package, "res", "terminfo")
         self.buildenv_info.define_path("TERMINFO", terminfo)

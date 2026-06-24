@@ -41,11 +41,11 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "utf8cpp")
-        self.cpp_info.set_property("cmake_target_name", "utf8cpp::utf8cpp")
+        self.info.set_property("cmake_file_name", "utf8cpp")
+        self.info.set_property("cmake_target_name", "utf8cpp::utf8cpp")
         # FIXME: Keep CMake target utf8cpp for backward compatibility as more projects are using it in CCI.
-        self.cpp_info.set_property("cmake_target_aliases", ["utf8::cpp", "utf8cpp"])
-        self.cpp_info.includedirs.append(os.path.join("include", "utf8cpp"))
+        self.info.set_property("cmake_target_aliases", ["utf8::cpp", "utf8cpp"])
+        self.info.includedirs.append(os.path.join("include", "utf8cpp"))
 
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.bindirs = []
+        self.info.libdirs = []

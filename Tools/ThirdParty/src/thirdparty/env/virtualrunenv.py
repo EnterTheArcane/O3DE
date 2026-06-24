@@ -11,22 +11,22 @@ if TYPE_CHECKING:
 
 
 def runenv_from_cpp_info(dep, os_name):
-    """ return an Environment deducing the runtime information from a cpp_info
+    """ return an Environment deducing the runtime information from a info
     """
     dyn_runenv = Environment()
-    cpp_info = dep.cpp_info.aggregated_components()
+    info = dep.info.aggregated_components()
 
     def _prepend_path(envvar, paths):
         existing = [p for p in paths if os.path.exists(p)] if paths else None
         if existing:
             dyn_runenv.prepend_path(envvar, existing)
 
-    _prepend_path("PATH", cpp_info.bindirs)
+    _prepend_path("PATH", info.bindirs)
     # For tool requirements this will be the build OS, otherwise it will be the host OS.
     if os_name and not os_name.startswith("Windows"):
-        _prepend_path("LD_LIBRARY_PATH", cpp_info.libdirs)
-        _prepend_path("DYLD_LIBRARY_PATH", cpp_info.libdirs)
-        _prepend_path("DYLD_FRAMEWORK_PATH", cpp_info.frameworkdirs)
+        _prepend_path("LD_LIBRARY_PATH", info.libdirs)
+        _prepend_path("DYLD_LIBRARY_PATH", info.libdirs)
+        _prepend_path("DYLD_FRAMEWORK_PATH", info.frameworkdirs)
     return dyn_runenv
 
 

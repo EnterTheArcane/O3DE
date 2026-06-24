@@ -72,14 +72,14 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.libs = ['uhdr']
+        self.info.libs = ['uhdr']
 
         if self.options.with_jpeg == "libjpeg":
-            self.cpp_info.requires = ["libjpeg::libjpeg"]
+            self.info.requires = ["libjpeg::libjpeg"]
         elif self.options.with_jpeg == "libjpeg-turbo":
-            self.cpp_info.requires = ["libjpeg-turbo::jpeg"]
+            self.info.requires = ["libjpeg-turbo::jpeg"]
         elif self.options.with_jpeg == "mozjpeg":
-            self.cpp_info.requires = ["mozjpeg::libjpeg"]
+            self.info.requires = ["mozjpeg::libjpeg"]
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["pthread"]
+            self.info.system_libs = ["pthread"]

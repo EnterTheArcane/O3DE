@@ -160,11 +160,11 @@ class Recipe(RecipeBase):
             save(self, path, re.subn(r"(?:EXTERN|GLOBAL)\(([^)]+)\)", r"\1", load(self, path))[0])
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "JPEG")
-        self.cpp_info.set_property("cmake_target_name", "JPEG::JPEG")
-        self.cpp_info.set_property("pkg_config_name", "libjpeg")
+        self.info.set_property("cmake_file_name", "JPEG")
+        self.info.set_property("cmake_target_name", "JPEG::JPEG")
+        self.info.set_property("pkg_config_name", "libjpeg")
         prefix = "lib" if self._is_cl_like else ""
-        self.cpp_info.libs = [f"{prefix}jpeg"]
-        self.cpp_info.resdirs = ["res"]
+        self.info.libs = [f"{prefix}jpeg"]
+        self.info.resdirs = ["res"]
         if not self.options.shared:
-            self.cpp_info.defines.append("LIBJPEG_STATIC")
+            self.info.defines.append("LIBJPEG_STATIC")

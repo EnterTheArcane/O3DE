@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from thirdparty import CppInfo
+from thirdparty import Info
 from thirdparty.env import Environment
 from thirdparty.build.gnudeps_flags import GnuDepsFlags
 
@@ -27,10 +27,10 @@ class AutotoolsDeps:
             self._ordered_deps = [dep for dep in reversed(deps.values())]
         return self._ordered_deps
 
-    def _get_cpp_info(self) -> CppInfo:
-        ret = CppInfo(self._recipe)
+    def _get_cpp_info(self) -> Info:
+        ret = Info(self._recipe)
         for dep in self.ordered_deps:
-            dep_cppinfo = dep.cpp_info.aggregated_components()
+            dep_cppinfo = dep.info.aggregated_components()
             # In case we have components, aggregate them, we do not support isolated
             # "targets" with autotools
             ret.merge(dep_cppinfo)
@@ -41,7 +41,7 @@ class AutotoolsDeps:
         for dep in self.ordered_deps:
             if dep.options.get_safe("shared"):
                 flags.extend(
-                    [f"-Wl,-rpath -Wl,{libdir}" for libdir in dep.cpp_info.aggregated_components().libdirs])
+                    [f"-Wl,-rpath -Wl,{libdir}" for libdir in dep.info.aggregated_components().libdirs])
         return flags
 
     @property

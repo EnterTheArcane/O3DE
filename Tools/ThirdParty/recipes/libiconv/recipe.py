@@ -133,6 +133,6 @@ class Recipe(RecipeBase):
                     os.path.join(self.folders.package, "lib", f"{import_lib}.lib"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Iconv")
-        self.cpp_info.set_property("cmake_target_name", "Iconv::Iconv")
-        self.cpp_info.libs = ["iconv", "charset"]
+        self.info.set_property("cmake_file_name", "Iconv")
+        self.info.set_property("cmake_target_name", "Iconv::Iconv")
+        self.info.libs = ["iconv", "charset"]

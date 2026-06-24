@@ -1000,8 +1000,8 @@ class Recipe(RecipeBase):
     def package_info(self):
         disabled_features = str(self.options.disabled_features).split()
 
-        self.cpp_info.set_property("cmake_file_name", "Qt6")
-        self.cpp_info.set_property("pkg_config_name", "qt6")
+        self.info.set_property("cmake_file_name", "Qt6")
+        self.info.set_property("pkg_config_name", "qt6")
 
         # consumers will need the QT_PLUGIN_PATH defined in runenv
         self.runenv_info.define("QT_PLUGIN_PATH", os.path.join(self.folders.package, "plugins"))
@@ -1030,52 +1030,52 @@ class Recipe(RecipeBase):
                     corrected_req = r
                 else:
                     corrected_req = f"qt{r}"
-                    assert corrected_req in self.cpp_info.components, f"{corrected_req} required but not yet present in self.cpp_info.components"
+                    assert corrected_req in self.info.components, f"{corrected_req} required but not yet present in self.info.components"
                 reqs.append(corrected_req)
             return reqs
 
         def _create_module(module, requires, has_include_dir=True):
             componentname = f"qt{module}"
-            assert componentname not in self.cpp_info.components, f"Module {module} already present in self.cpp_info.components"
-            self.cpp_info.components[componentname].set_property("cmake_target_name", f"Qt6::{module}")
-            self.cpp_info.components[componentname].set_property("cmake_target_aliases", [f"Qt::{module}"])
-            self.cpp_info.components[componentname].set_property("pkg_config_name", f"Qt6{module}")
+            assert componentname not in self.info.components, f"Module {module} already present in self.info.components"
+            self.info.components[componentname].set_property("cmake_target_name", f"Qt6::{module}")
+            self.info.components[componentname].set_property("cmake_target_aliases", [f"Qt::{module}"])
+            self.info.components[componentname].set_property("pkg_config_name", f"Qt6{module}")
             if module.endswith("Private"):
                 libname = module[:-7]
             else:
                 libname = module
-            self.cpp_info.components[componentname].libs = [f"Qt6{libname}{libsuffix}"]
+            self.info.components[componentname].libs = [f"Qt6{libname}{libsuffix}"]
             if has_include_dir:
-                self.cpp_info.components[componentname].includedirs = ["include", os.path.join("include", f"Qt{module}")]
-            self.cpp_info.components[componentname].defines = [f"QT_{module.upper()}_LIB"]
+                self.info.components[componentname].includedirs = ["include", os.path.join("include", f"Qt{module}")]
+            self.info.components[componentname].defines = [f"QT_{module.upper()}_LIB"]
             if module != "Core" and "Core" not in requires:
                 requires.append("Core")
-            self.cpp_info.components[componentname].requires = _get_corrected_reqs(requires)
+            self.info.components[componentname].requires = _get_corrected_reqs(requires)
 
         def _create_plugin(pluginname, libname, plugintype, requires):
             componentname = f"qt{pluginname}"
-            assert componentname not in self.cpp_info.components, f"Plugin {pluginname} already present in self.cpp_info.components"
-            self.cpp_info.components[componentname].set_property("cmake_target_name", f"Qt6::{pluginname}")
-            self.cpp_info.components[componentname].set_property("cmake_target_aliases", [f"Qt::{pluginname}"])
+            assert componentname not in self.info.components, f"Plugin {pluginname} already present in self.info.components"
+            self.info.components[componentname].set_property("cmake_target_name", f"Qt6::{pluginname}")
+            self.info.components[componentname].set_property("cmake_target_aliases", [f"Qt::{pluginname}"])
             if not self.options.shared:
-                self.cpp_info.components[componentname].libs = [libname + libsuffix]
-            self.cpp_info.components[componentname].libdirs = [os.path.join("plugins", plugintype)]
-            self.cpp_info.components[componentname].includedirs = []
+                self.info.components[componentname].libs = [libname + libsuffix]
+            self.info.components[componentname].libdirs = [os.path.join("plugins", plugintype)]
+            self.info.components[componentname].includedirs = []
             if "Core" not in requires:
                 requires.append("Core")
-            self.cpp_info.components[componentname].requires = _get_corrected_reqs(requires)
+            self.info.components[componentname].requires = _get_corrected_reqs(requires)
 
         # https://github.com/qt/qtbase/blob/v6.7.3/cmake/QtPlatformTargetHelpers.cmake
-        self.cpp_info.components["qtPlatform"].set_property("cmake_target_name", "Qt6::Platform")
-        self.cpp_info.components["qtPlatform"].set_property("cmake_target_aliases", ["Qt::Platform"])
-        self.cpp_info.components["qtPlatform"].includedirs = [os.path.join("mkspecs", self._xplatform())]
+        self.info.components["qtPlatform"].set_property("cmake_target_name", "Qt6::Platform")
+        self.info.components["qtPlatform"].set_property("cmake_target_aliases", ["Qt::Platform"])
+        self.info.components["qtPlatform"].includedirs = [os.path.join("mkspecs", self._xplatform())]
         if self.settings.os == "Android":
-            self.cpp_info.components["qtPlatform"].system_libs.append("log")
+            self.info.components["qtPlatform"].system_libs.append("log")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["qtPlatform"].system_libs.append("pthread")
+            self.info.components["qtPlatform"].system_libs.append("pthread")
         if is_msvc(self):
-            self.cpp_info.components["qtPlatform"].cxxflags.append("-permissive-")
-            self.cpp_info.components["qtPlatform"].cxxflags.append("-Zc:__cplusplus")
+            self.info.components["qtPlatform"].cxxflags.append("-permissive-")
+            self.info.components["qtPlatform"].cxxflags.append("-Zc:__cplusplus")
 
         core_reqs = ["Platform", "zlib::zlib"]
         if self.options.with_pcre2:
@@ -1097,23 +1097,23 @@ class Recipe(RecipeBase):
             "libexecdir=${prefix}/libexec",
             "exec_prefix=${prefix}",
         ]
-        self.cpp_info.components["qtCore"].set_property("pkg_config_custom_content", "\n".join(pkg_config_vars))
+        self.info.components["qtCore"].set_property("pkg_config_custom_content", "\n".join(pkg_config_vars))
 
         if self.settings.build_type != "Debug":
-            self.cpp_info.components['qtCore'].defines.append('QT_NO_DEBUG')
+            self.info.components['qtCore'].defines.append('QT_NO_DEBUG')
         if self.settings.os == "Windows":
-            self.cpp_info.components["qtCore"].system_libs.append("authz")
+            self.info.components["qtCore"].system_libs.append("authz")
         if is_msvc(self):
-            self.cpp_info.components["qtCore"].system_libs.append("synchronization")
-            self.cpp_info.components["qtCore"].system_libs.append("runtimeobject")
+            self.info.components["qtCore"].system_libs.append("synchronization")
+            self.info.components["qtCore"].system_libs.append("runtimeobject")
         if self.options.with_dbus:
             _create_module("DBus", ["dbus::dbus"])
             if self.settings.os == "Windows":
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/dbus/CMakeLists.txt#L71-L77
-                self.cpp_info.components["qtDBus"].system_libs.append("advapi32")
-                self.cpp_info.components["qtDBus"].system_libs.append("netapi32")
-                self.cpp_info.components["qtDBus"].system_libs.append("user32")
-                self.cpp_info.components["qtDBus"].system_libs.append("ws2_32")
+                self.info.components["qtDBus"].system_libs.append("advapi32")
+                self.info.components["qtDBus"].system_libs.append("netapi32")
+                self.info.components["qtDBus"].system_libs.append("user32")
+                self.info.components["qtDBus"].system_libs.append("ws2_32")
         if self.options.gui:
             gui_reqs = []
             if self.options.with_dbus:
@@ -1150,23 +1150,23 @@ class Recipe(RecipeBase):
 
             if self.settings.os == "Windows":
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L419-L429
-                self.cpp_info.components["qtGui"].system_libs += [
+                self.info.components["qtGui"].system_libs += [
                     "advapi32", "gdi32", "ole32", "shell32", "user32", "d3d11", "dxgi", "dxguid",
                 ]
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L729
-                self.cpp_info.components["qtGui"].system_libs.append("d2d1")
+                self.info.components["qtGui"].system_libs.append("d2d1")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L732-L742
-                self.cpp_info.components["qtGui"].system_libs.append("dwrite")
+                self.info.components["qtGui"].system_libs.append("dwrite")
                 if self.settings.compiler == "gcc":
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L746
-                    self.cpp_info.components["qtGui"].system_libs.append("uuid")
+                    self.info.components["qtGui"].system_libs.append("uuid")
 
                 # https://github.com/qt/qtbase/blob/v6.6.0/src/gui/CMakeLists.txt#L428
-                self.cpp_info.components["qtGui"].system_libs.append("d3d12")
+                self.info.components["qtGui"].system_libs.append("d3d12")
                 # https://github.com/qt/qtbase/blob/v6.7.0-beta1/src/gui/CMakeLists.txt#L430
-                self.cpp_info.components["qtGui"].system_libs.append("uxtheme")
+                self.info.components["qtGui"].system_libs.append("uxtheme")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/direct2d/CMakeLists.txt#L60-L82
-                self.cpp_info.components["qtGui"].system_libs += [
+                self.info.components["qtGui"].system_libs += [
                     "advapi32", "d2d1", "d3d11", "dwmapi", "dwrite", "dxgi", "dxguid", "gdi32", "imm32", "ole32",
                     "oleaut32", "setupapi", "shell32", "shlwapi", "user32", "version", "winmm", "winspool",
                     "wtsapi32", "shcore", "comdlg32", "d3d9", "runtimeobject",
@@ -1175,44 +1175,44 @@ class Recipe(RecipeBase):
                 # https://github.com/qt/qtbase/commit/65d58e6c41e3c549c89ea4f05a8e467466e79ca3
                 _create_plugin("QModernWindowsStylePlugin", "qmodernwindowsstyle", "styles", ["Core", "Gui"])
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/windows/CMakeLists.txt#L53-L69
-                self.cpp_info.components["qtQWindowsIntegrationPlugin"].system_libs += [
+                self.info.components["qtQWindowsIntegrationPlugin"].system_libs += [
                     "advapi32", "dwmapi", "gdi32", "imm32", "ole32", "oleaut32", "setupapi", "shell32", "shlwapi",
                     "user32", "winmm", "winspool", "wtsapi32", "shcore", "comdlg32", "d3d9", "runtimeobject",
                 ]
                 # https://github.com/qt/qtbase/blob/6.8.3/src/plugins/platforms/windows/CMakeLists.txt#L204
-                self.cpp_info.components["qtQWindowsIntegrationPlugin"].system_libs.append("uiautomationcore")
+                self.info.components["qtQWindowsIntegrationPlugin"].system_libs.append("uiautomationcore")
             elif self.settings.os == "Android":
                 _create_plugin("QAndroidIntegrationPlugin", "qtforandroid", "platforms", ["Core", "Gui"])
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/android/CMakeLists.txt#L68-L70
-                self.cpp_info.components["qtQAndroidIntegrationPlugin"].system_libs = ["android", "jnigraphics"]
+                self.info.components["qtQAndroidIntegrationPlugin"].system_libs = ["android", "jnigraphics"]
             elif is_apple_os(self):
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L388-L394
-                self.cpp_info.components["qtGui"].frameworks = ["CoreFoundation", "CoreGraphics", "CoreText", "Foundation", "ImageIO"]
+                self.info.components["qtGui"].frameworks = ["CoreFoundation", "CoreGraphics", "CoreText", "Foundation", "ImageIO"]
                 # https://github.com/qt/qtbase/blob/6.8.0/src/gui/configure.cmake#L834-L837
                 has_metal = "metal" not in disabled_features and self.settings.os in ["Mac", "iOS", "visionOS"]
                 if has_metal:
                     # https://github.com/qt/qtbase/blob/6.8.0/src/gui/CMakeLists.txt#L432-L437
-                    self.cpp_info.components["qtGui"].frameworks.append("QuartzCore")
+                    self.info.components["qtGui"].frameworks.append("QuartzCore")
                 if self.settings.os == "Mac":
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/gui/CMakeLists.txt#L362-L370
-                    self.cpp_info.components["qtGui"].frameworks += ["AppKit", "Carbon"]
+                    self.info.components["qtGui"].frameworks += ["AppKit", "Carbon"]
                     _create_plugin("QCocoaIntegrationPlugin", "qcocoa", "platforms", ["Core", "Gui"])
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/cocoa/CMakeLists.txt#L51-L58
-                    self.cpp_info.components["QCocoaIntegrationPlugin"].frameworks = [
+                    self.info.components["QCocoaIntegrationPlugin"].frameworks = [
                         "AppKit", "Carbon", "CoreServices", "CoreVideo", "IOKit", "IOSurface", "Metal", "QuartzCore",
                     ]
                 if self.settings.os in ["Mac", "iOS"]:
                     # https://github.com/qt/qtbase/blob/v6.5.3/src/gui/CMakeLists.txt#L963
-                    self.cpp_info.components["qtGui"].frameworks.append("Metal")
+                    self.info.components["qtGui"].frameworks.append("Metal")
                 if self.settings.os in ["iOS", "tvOS"]:
                     _create_plugin("QIOSIntegrationPlugin", "qios", "platforms", [])
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/ios/CMakeLists.txt#L32-L37
-                    self.cpp_info.components["QIOSIntegrationPlugin"].frameworks = [
+                    self.info.components["QIOSIntegrationPlugin"].frameworks = [
                         "AudioToolbox", "Foundation", "Metal", "QuartzCore", "UIKit", "CoreGraphics",
                     ]
                     if self.settings.os != "tvOS":
                         # https://github.com/qt/qtbase/blob/v6.6.1/src/plugins/platforms/ios/CMakeLists.txt#L66-L68
-                        self.cpp_info.components["QIOSIntegrationPlugin"].frameworks += [
+                        self.info.components["QIOSIntegrationPlugin"].frameworks += [
                             "AssetsLibrary", "UniformTypeIdentifiers", "Photos",
                         ]
                 elif self.settings.os == "watchOS":
@@ -1242,9 +1242,9 @@ class Recipe(RecipeBase):
         if self.options.with_odbc:
             _create_plugin("QODBCDriverPlugin", "qsqlodbc", "sqldrivers", [])
             if self.settings.os != "Windows":
-                self.cpp_info.components["qtQODBCDriverPlugin"].requires.append("odbc::odbc")
+                self.info.components["qtQODBCDriverPlugin"].requires.append("odbc::odbc")
             else:
-                self.cpp_info.components["qtQODBCDriverPlugin"].system_libs.append("odbc32")
+                self.info.components["qtQODBCDriverPlugin"].system_libs.append("odbc32")
         networkReqs = []
         if self.options.openssl:
             networkReqs.append("openssl::openssl")
@@ -1260,7 +1260,7 @@ class Recipe(RecipeBase):
             _add_build_module("qtWidgets", self._cmake_qt6_private_file("Widgets"))
             if self.settings.os == "Windows":
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/widgets/CMakeLists.txt#L316-L321
-                self.cpp_info.components["qtWidgets"].system_libs += [
+                self.info.components["qtWidgets"].system_libs += [
                     "dwmapi", "shell32", "uxtheme",
                 ]
         if self.options.gui and self.options.widgets:
@@ -1282,9 +1282,9 @@ class Recipe(RecipeBase):
             _create_module("Qml", ["Network"])
             _add_build_module("qtQml", self._cmake_qt6_private_file("Qml"))
             _create_module("QmlModels", ["Qml"])
-            self.cpp_info.components["qtQmlImportScanner"].set_property("cmake_target_name", "Qt6::QmlImportScanner")
-            self.cpp_info.components["qtQmlImportScanner"].set_property("cmake_target_aliases", ["Qt::QmlImportScanner"])
-            self.cpp_info.components["qtQmlImportScanner"].requires = _get_corrected_reqs(["Qml"])
+            self.info.components["qtQmlImportScanner"].set_property("cmake_target_name", "Qt6::QmlImportScanner")
+            self.info.components["qtQmlImportScanner"].set_property("cmake_target_aliases", ["Qt::QmlImportScanner"])
+            self.info.components["qtQmlImportScanner"].requires = _get_corrected_reqs(["Qml"])
             if qt_quick_enabled:
                 _create_module("Quick", ["Gui", "Qml", "QmlModels"])
                 _add_build_module("qtQuick", self._cmake_qt6_private_file("Quick"))
@@ -1295,11 +1295,11 @@ class Recipe(RecipeBase):
             _create_module("QmlWorkerScript", ["Qml"])
 
         if self.options.qttools and self.options.gui and self.options.widgets:
-            self.cpp_info.components["qtLinguistTools"].set_property("cmake_target_name", "Qt6::LinguistTools")
-            self.cpp_info.components["qtLinguistTools"].set_property("cmake_target_aliases", ["Qt::LinguistTools"])
+            self.info.components["qtLinguistTools"].set_property("cmake_target_name", "Qt6::LinguistTools")
+            self.info.components["qtLinguistTools"].set_property("cmake_target_aliases", ["Qt::LinguistTools"])
             _create_module("UiPlugin", ["Gui", "Widgets"])
-            self.cpp_info.components["qtUiPlugin"].libs = []  # this is a collection of abstract classes, so this is header-only
-            self.cpp_info.components["qtUiPlugin"].libdirs = []
+            self.info.components["qtUiPlugin"].libs = []  # this is a collection of abstract classes, so this is header-only
+            self.info.components["qtUiPlugin"].libdirs = []
             _create_module("UiTools", ["UiPlugin", "Gui", "Widgets"])
             if "designer" not in disabled_features:
                 _create_module("Designer", ["Gui", "UiPlugin", "Widgets", "Xml"])
@@ -1333,8 +1333,8 @@ class Recipe(RecipeBase):
         if self.options.get_safe("qtactiveqt") and self.settings.os == "Windows":
             _create_module("AxBase", ["Gui", "Widgets"])
             _create_module("AxServer", ["AxBase"])
-            self.cpp_info.components["qtAxServer"].system_libs.append("shell32")
-            self.cpp_info.components["qtAxServer"].defines.append("QAXSERVER")
+            self.info.components["qtAxServer"].system_libs.append("shell32")
+            self.info.components["qtAxServer"].defines.append("QAXSERVER")
             _create_module("AxContainer", ["AxBase"])
 
         if self.options.get_safe("qtcharts"):
@@ -1495,110 +1495,110 @@ class Recipe(RecipeBase):
 
         if self.settings.os in ["Windows", "iOS"]:
             if self.settings.os == "Windows":
-                self.cpp_info.components["qtEntryPointImplementation"].set_property("cmake_target_name", "Qt6::EntryPointImplementation")
-                self.cpp_info.components["qtEntryPointImplementation"].set_property("cmake_target_aliases", ["Qt::EntryPointImplementation"])
-                self.cpp_info.components["qtEntryPointImplementation"].libs = [f"Qt6EntryPoint{libsuffix}"]
-                self.cpp_info.components["qtEntryPointImplementation"].system_libs = ["shell32"]
+                self.info.components["qtEntryPointImplementation"].set_property("cmake_target_name", "Qt6::EntryPointImplementation")
+                self.info.components["qtEntryPointImplementation"].set_property("cmake_target_aliases", ["Qt::EntryPointImplementation"])
+                self.info.components["qtEntryPointImplementation"].libs = [f"Qt6EntryPoint{libsuffix}"]
+                self.info.components["qtEntryPointImplementation"].system_libs = ["shell32"]
 
                 if self.settings.compiler == "gcc":
-                    self.cpp_info.components["qtEntryPointMinGW32"].set_property("cmake_target_name", "Qt6::EntryPointMinGW32")
-                    self.cpp_info.components["qtEntryPointMinGW32"].set_property("cmake_target_aliases", ["Qt::EntryPointMinGW32"])
-                    self.cpp_info.components["qtEntryPointMinGW32"].system_libs = ["mingw32"]
-                    self.cpp_info.components["qtEntryPointMinGW32"].requires = ["qtEntryPointImplementation"]
+                    self.info.components["qtEntryPointMinGW32"].set_property("cmake_target_name", "Qt6::EntryPointMinGW32")
+                    self.info.components["qtEntryPointMinGW32"].set_property("cmake_target_aliases", ["Qt::EntryPointMinGW32"])
+                    self.info.components["qtEntryPointMinGW32"].system_libs = ["mingw32"]
+                    self.info.components["qtEntryPointMinGW32"].requires = ["qtEntryPointImplementation"]
 
-            self.cpp_info.components["qtEntryPointPrivate"].set_property("cmake_target_name", "Qt6::EntryPointPrivate")
-            self.cpp_info.components["qtEntryPointPrivate"].set_property("cmake_target_aliases", ["Qt::EntryPointPrivate"])
+            self.info.components["qtEntryPointPrivate"].set_property("cmake_target_name", "Qt6::EntryPointPrivate")
+            self.info.components["qtEntryPointPrivate"].set_property("cmake_target_aliases", ["Qt::EntryPointPrivate"])
             if self.settings.os == "Windows":
                 if self.settings.compiler == "gcc":
-                    self.cpp_info.components["qtEntryPointPrivate"].defines.append("QT_NEEDS_QMAIN")
-                    self.cpp_info.components["qtEntryPointPrivate"].requires.append("qtEntryPointMinGW32")
+                    self.info.components["qtEntryPointPrivate"].defines.append("QT_NEEDS_QMAIN")
+                    self.info.components["qtEntryPointPrivate"].requires.append("qtEntryPointMinGW32")
                 else:
-                    self.cpp_info.components["qtEntryPointPrivate"].requires.append("qtEntryPointImplementation")
+                    self.info.components["qtEntryPointPrivate"].requires.append("qtEntryPointImplementation")
             if self.settings.os == "iOS":
-                self.cpp_info.components["qtEntryPointPrivate"].exelinkflags.append("-Wl,-e,_qt_main_wrapper")
+                self.info.components["qtEntryPointPrivate"].exelinkflags.append("-Wl,-e,_qt_main_wrapper")
 
         if self.settings.os != "Windows":
-            self.cpp_info.components["qtCore"].cxxflags.append("-fPIC")
+            self.info.components["qtCore"].cxxflags.append("-fPIC")
 
         if not self.options.shared:
             if self.settings.os == "Windows":
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L527-L541
-                self.cpp_info.components["qtCore"].system_libs.append("advapi32")
-                self.cpp_info.components["qtCore"].system_libs.append("authz")
-                self.cpp_info.components["qtCore"].system_libs.append("kernel32")
-                self.cpp_info.components["qtCore"].system_libs.append("netapi32")
-                self.cpp_info.components["qtCore"].system_libs.append("ole32")
-                self.cpp_info.components["qtCore"].system_libs.append("shell32")
-                self.cpp_info.components["qtCore"].system_libs.append("user32")
-                self.cpp_info.components["qtCore"].system_libs.append("uuid")
-                self.cpp_info.components["qtCore"].system_libs.append("version")
-                self.cpp_info.components["qtCore"].system_libs.append("winmm")
-                self.cpp_info.components["qtCore"].system_libs.append("ws2_32")
-                self.cpp_info.components["qtCore"].system_libs.append("mpr")
-                self.cpp_info.components["qtCore"].system_libs.append("userenv")
+                self.info.components["qtCore"].system_libs.append("advapi32")
+                self.info.components["qtCore"].system_libs.append("authz")
+                self.info.components["qtCore"].system_libs.append("kernel32")
+                self.info.components["qtCore"].system_libs.append("netapi32")
+                self.info.components["qtCore"].system_libs.append("ole32")
+                self.info.components["qtCore"].system_libs.append("shell32")
+                self.info.components["qtCore"].system_libs.append("user32")
+                self.info.components["qtCore"].system_libs.append("uuid")
+                self.info.components["qtCore"].system_libs.append("version")
+                self.info.components["qtCore"].system_libs.append("winmm")
+                self.info.components["qtCore"].system_libs.append("ws2_32")
+                self.info.components["qtCore"].system_libs.append("mpr")
+                self.info.components["qtCore"].system_libs.append("userenv")
                 # https://github.com/qt/qtbase/blob/90b845d15ffb97693dba527385db83510ebd121a/src/corelib/CMakeLists.txt#L891-L895
-                self.cpp_info.components["qtCore"].system_libs.extend(["icuuc", "icuin"])
+                self.info.components["qtCore"].system_libs.extend(["icuuc", "icuin"])
                 # https://github.com/qt/qtbase/commit/09991b51a48aab7a5f7c5cbf2577ba5450d4cbb4
-                self.cpp_info.components["qtCore"].system_libs.append("ntdll")
+                self.info.components["qtCore"].system_libs.append("ntdll")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L196-L200
-                self.cpp_info.components["qtNetwork"].system_libs.append("advapi32")
-                self.cpp_info.components["qtNetwork"].system_libs.append("dnsapi")
-                self.cpp_info.components["qtNetwork"].system_libs.append("iphlpapi")
-                self.cpp_info.components["qtNetwork"].system_libs.append("secur32")
-                self.cpp_info.components["qtNetwork"].system_libs.append("winhttp")
+                self.info.components["qtNetwork"].system_libs.append("advapi32")
+                self.info.components["qtNetwork"].system_libs.append("dnsapi")
+                self.info.components["qtNetwork"].system_libs.append("iphlpapi")
+                self.info.components["qtNetwork"].system_libs.append("secur32")
+                self.info.components["qtNetwork"].system_libs.append("winhttp")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/printsupport/CMakeLists.txt#L70-L75
-                self.cpp_info.components["qtPrintSupport"].system_libs.append("gdi32")
-                self.cpp_info.components["qtPrintSupport"].system_libs.append("user32")
-                self.cpp_info.components["qtPrintSupport"].system_libs.append("comdlg32")
-                self.cpp_info.components["qtPrintSupport"].system_libs.append("winspool")
+                self.info.components["qtPrintSupport"].system_libs.append("gdi32")
+                self.info.components["qtPrintSupport"].system_libs.append("user32")
+                self.info.components["qtPrintSupport"].system_libs.append("comdlg32")
+                self.info.components["qtPrintSupport"].system_libs.append("winspool")
 
             if is_apple_os(self):
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L580-L584
-                self.cpp_info.components["qtCore"].frameworks.append("CoreFoundation")
-                self.cpp_info.components["qtCore"].frameworks.append("Foundation")
-                self.cpp_info.components["qtCore"].frameworks.append("IOKit")
+                self.info.components["qtCore"].frameworks.append("CoreFoundation")
+                self.info.components["qtCore"].frameworks.append("Foundation")
+                self.info.components["qtCore"].frameworks.append("IOKit")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L205-L214
-                self.cpp_info.components["qtNetwork"].frameworks.append("CFNetwork")
+                self.info.components["qtNetwork"].frameworks.append("CFNetwork")
                 # https://github.com/qt/qtbase/commit/1299aaa231b1ce989c8aedcfed372bde0e1e3a0e
-                self.cpp_info.components["qtNetwork"].frameworks.append("Network")
+                self.info.components["qtNetwork"].frameworks.append("Network")
                 # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L216-L221
                 # qtcore requires "_OBJC_CLASS_$_NSApplication" and more, which are in "Cocoa" framework
-                self.cpp_info.components["qtCore"].frameworks.append("Cocoa")
+                self.info.components["qtCore"].frameworks.append("Cocoa")
                 # https://github.com/qt/qtbase/blob/v6.8.3/src/corelib/CMakeLists.txt#L712-L717
-                self.cpp_info.components["qtCore"].frameworks.append("UniformTypeIdentifiers")
-                self.cpp_info.components["qtNetwork"].system_libs.append("resolv")
+                self.info.components["qtCore"].frameworks.append("UniformTypeIdentifiers")
+                self.info.components["qtNetwork"].system_libs.append("resolv")
                 if self.options.with_gssapi:
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/network/CMakeLists.txt#L250C56-L253
-                    self.cpp_info.components["qtNetwork"].frameworks.append("GSS")
+                    self.info.components["qtNetwork"].frameworks.append("GSS")
                 if self.options.gui and self.options.widgets:
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/printsupport/CMakeLists.txt#L52-L63
-                    self.cpp_info.components["qtPrintSupport"].system_libs.append("cups")
-                    self.cpp_info.components["qtPrintSupport"].frameworks.append("ApplicationServices")
+                    self.info.components["qtPrintSupport"].system_libs.append("cups")
+                    self.info.components["qtPrintSupport"].frameworks.append("ApplicationServices")
                 if self.settings.os == "Mac":
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L598-L606
-                    self.cpp_info.components["qtCore"].frameworks.append("AppKit")
-                    self.cpp_info.components["qtCore"].frameworks.append("ApplicationServices")
-                    self.cpp_info.components["qtCore"].frameworks.append("CoreServices")
-                    self.cpp_info.components["qtCore"].frameworks.append("CoreServices")
-                    self.cpp_info.components["qtCore"].frameworks.append("Security")
-                    self.cpp_info.components["qtCore"].frameworks.append("DiskArbitration")
+                    self.info.components["qtCore"].frameworks.append("AppKit")
+                    self.info.components["qtCore"].frameworks.append("ApplicationServices")
+                    self.info.components["qtCore"].frameworks.append("CoreServices")
+                    self.info.components["qtCore"].frameworks.append("CoreServices")
+                    self.info.components["qtCore"].frameworks.append("Security")
+                    self.info.components["qtCore"].frameworks.append("DiskArbitration")
                 else:
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L969-L972
-                    self.cpp_info.components["qtCore"].frameworks.append("MobileCoreServices")
+                    self.info.components["qtCore"].frameworks.append("MobileCoreServices")
                 if self.settings.os not in ["iOS", "tvOS"]:
-                    self.cpp_info.components["qtNetwork"].frameworks.append("CoreServices")
-                    self.cpp_info.components["qtNetwork"].frameworks.append("SystemConfiguration")
+                    self.info.components["qtNetwork"].frameworks.append("CoreServices")
+                    self.info.components["qtNetwork"].frameworks.append("SystemConfiguration")
                 else:
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L1074-L1077
-                    self.cpp_info.components["qtCore"].frameworks.append("UIKit")
+                    self.info.components["qtCore"].frameworks.append("UIKit")
                 if self.settings.os == "watchOS":
                     # https://github.com/qt/qtbase/blob/v6.6.1/src/corelib/CMakeLists.txt#L1079-L1082
-                    self.cpp_info.components["qtCore"].frameworks.append("WatchKit")
+                    self.info.components["qtCore"].frameworks.append("WatchKit")
 
         if self.settings.os == "Windows" or is_msvc(self):
             _add_build_module("qtPlatform", self._cmake_platform_target_setup_file)
 
-        self.cpp_info.components["qtCore"].builddirs.append(os.path.join("bin"))
+        self.info.components["qtCore"].builddirs.append(os.path.join("bin"))
         _add_build_module("qtCore", self._cmake_executables_file)
         _add_build_module("qtCore", self._cmake_qt6_private_file("Core"))
         if self.settings.os in ["Windows", "iOS"]:
@@ -1610,7 +1610,7 @@ class Recipe(RecipeBase):
             if component_name == "qt":
                 component_name = "qtCore"
 
-            if component_name in self.cpp_info.components:
+            if component_name in self.info.components:
                 module = os.path.join(qt_cmake_dir, m, f"{m}Macros.cmake")
                 if os.path.isfile(module):
                     _add_build_module(component_name, module)
@@ -1623,24 +1623,24 @@ class Recipe(RecipeBase):
                     _add_build_module(component_name, helper_modules)
                 for helper_modules in glob.glob(os.path.join(qt_cmake_dir, m, "Qt6QmlPublic*Helpers.cmake")):
                     _add_build_module(component_name, helper_modules)
-                self.cpp_info.components[component_name].builddirs.append(os.path.join("lib", "cmake", m))
+                self.info.components[component_name].builddirs.append(os.path.join("lib", "cmake", m))
 
-            elif component_name.endswith("Tools") and component_name[:-5] in self.cpp_info.components:
+            elif component_name.endswith("Tools") and component_name[:-5] in self.info.components:
                 module = os.path.join(qt_cmake_dir, m, f"{m[:-5]}Macros.cmake")
                 if os.path.isfile(module):
                     _add_build_module(component_name[:-5], module)
-                self.cpp_info.components[component_name[:-5]].builddirs.append(os.path.join("lib", "cmake", m))
+                self.info.components[component_name[:-5]].builddirs.append(os.path.join("lib", "cmake", m))
 
         objects_dirs = glob.glob(os.path.join(self.folders.package, "lib", "objects-*/"))
         for object_dir in objects_dirs:
             for m in os.listdir(object_dir):
                 component = "qt" + m[:m.find("_")]
-                if component not in self.cpp_info.components:
+                if component not in self.info.components:
                     continue
                 for root, _, files in os.walk(os.path.join(object_dir, m)):
                     obj_files = [os.path.join(root, file) for file in files]
-                    self.cpp_info.components[component].exelinkflags.extend(obj_files)
-                    self.cpp_info.components[component].sharedlinkflags.extend(obj_files)
+                    self.info.components[component].exelinkflags.extend(obj_files)
+                    self.info.components[component].sharedlinkflags.extend(obj_files)
 
         build_modules_list = []
 
@@ -1648,15 +1648,15 @@ class Recipe(RecipeBase):
             build_modules_list.append(os.path.join(self.folders.package, "lib", "cmake", "Qt6Qml", "recipe_qt_qt6_policies.cmake"))
 
         def _add_build_modules_for_component(component):
-            for req in self.cpp_info.components[component].requires:
+            for req in self.info.components[component].requires:
                 if "::" in req:  # not a qt component
                     continue
                 _add_build_modules_for_component(req)
             build_modules_list.extend(build_modules.pop(component, []))
 
-        for c in self.cpp_info.components:
+        for c in self.info.components:
             _add_build_modules_for_component(c)
 
-        self.cpp_info.set_property("cmake_build_modules", build_modules_list)
+        self.info.set_property("cmake_build_modules", build_modules_list)
 
         self.conf_info.define("user.qt:tools_directory", os.path.join(self.folders.package, "bin" if self.settings.os == "Windows" else "libexec"))

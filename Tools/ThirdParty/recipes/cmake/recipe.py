@@ -49,7 +49,7 @@ class Recipe(RecipeBase):
                 copy(self, "*", src=src, dst=os.path.join(self.folders.package, subdir))
 
     def package_info(self):
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
         bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)

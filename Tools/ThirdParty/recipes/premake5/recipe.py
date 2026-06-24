@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
             os.chmod(premake5_path, os.stat(premake5_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     def package_info(self):
-        self.cpp_info.includedirs = []
-        self.cpp_info.libdirs = []
+        self.info.includedirs = []
+        self.info.libdirs = []
         bin_dir = os.path.join(self.folders.package, "bin")
         self.buildenv_info.prepend_path("PATH", bin_dir)

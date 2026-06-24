@@ -73,17 +73,17 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "flac")
+        self.info.set_property("cmake_file_name", "flac")
 
-        self.cpp_info.components["libflac"].set_property("cmake_target_name", "FLAC::FLAC")
-        self.cpp_info.components["libflac"].libs = ["FLAC"]
-        self.cpp_info.components["libflac"].requires = ["ogg::ogg"]
+        self.info.components["libflac"].set_property("cmake_target_name", "FLAC::FLAC")
+        self.info.components["libflac"].libs = ["FLAC"]
+        self.info.components["libflac"].requires = ["ogg::ogg"]
 
-        self.cpp_info.components["libflac++"].set_property("cmake_target_name", "FLAC::FLAC++")
-        self.cpp_info.components["libflac++"].libs = ["FLAC++"]
-        self.cpp_info.components["libflac++"].requires = ["libflac"]
+        self.info.components["libflac++"].set_property("cmake_target_name", "FLAC::FLAC++")
+        self.info.components["libflac++"].libs = ["FLAC++"]
+        self.info.components["libflac++"].requires = ["libflac"]
 
         if not self.options.shared:
-            self.cpp_info.components["libflac"].defines = ["FLAC__NO_DLL"]
+            self.info.components["libflac"].defines = ["FLAC__NO_DLL"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["libflac"].system_libs += ["m"]
+                self.info.components["libflac"].system_libs += ["m"]

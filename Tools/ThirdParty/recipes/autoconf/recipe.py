@@ -84,10 +84,10 @@ class Recipe(RecipeBase):
             replace_in_file(self, autom4te_cfg, "'//res/autoconf'", f"'{actual_data_path}'")
 
     def package_info(self):
-        self.cpp_info.frameworkdirs = []
-        self.cpp_info.libdirs = []
-        self.cpp_info.includedirs = []
-        self.cpp_info.resdirs = ["res"]
+        self.info.frameworkdirs = []
+        self.info.libdirs = []
+        self.info.includedirs = []
+        self.info.resdirs = ["res"]
 
         bin_path = os.path.join(self.folders.package, "bin")
         self.buildenv_info.define_path("AUTOCONF", os.path.join(bin_path, "autoconf"))

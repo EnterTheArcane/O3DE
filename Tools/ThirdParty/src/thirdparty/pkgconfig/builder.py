@@ -100,28 +100,28 @@ class PkgConfig:
         return self._variables
 
     def fill_cpp_info(
-        self, cpp_info: Any, is_system: bool = True, system_libs: list[str] | None = None):
+        self, info: Any, is_system: bool = True, system_libs: list[str] | None = None):
         """
-        Method to fill a cpp_info object from the PkgConfig configuration
+        Method to fill a info object from the PkgConfig configuration
 
-        :param cpp_info: Can be the global one (self.cpp_info) or a component one (self.components["foo"].cpp_info).
-        :param is_system: If ``True``, all detected libraries will be assigned to ``cpp_info.system_libs``, and none to ``cpp_info.libs``.
-        :param system_libs: If ``True``, all detected libraries will be assigned to ``cpp_info.system_libs``, and none to ``cpp_info.libs``.
+        :param info: Can be the global one (self.info) or a component one (self.components["foo"].info).
+        :param is_system: If ``True``, all detected libraries will be assigned to ``info.system_libs``, and none to ``info.libs``.
+        :param system_libs: If ``True``, all detected libraries will be assigned to ``info.system_libs``, and none to ``info.libs``.
 
         """
         if not self.provides:
             raise RecipeException(f"PkgConfig error, '{self._library}' files not available")
-        self._recipe.output.verbose(f"PkgConfig fill cpp_info for {self._library}")
+        self._recipe.output.verbose(f"PkgConfig fill info for {self._library}")
         if is_system:
-            cpp_info.system_libs = self.libs
+            info.system_libs = self.libs
         else:
             system_libs = system_libs or []
-            cpp_info.libs = [lib for lib in self.libs if lib not in system_libs]
-            cpp_info.system_libs = [lib for lib in self.libs if lib in system_libs]
-        cpp_info.libdirs = self.libdirs
-        cpp_info.sharedlinkflags = self.linkflags
-        cpp_info.exelinkflags = self.linkflags
-        cpp_info.defines = self.defines
-        cpp_info.includedirs = self.includedirs
-        cpp_info.cflags = self.cflags
-        cpp_info.cxxflags = self.cflags
+            info.libs = [lib for lib in self.libs if lib not in system_libs]
+            info.system_libs = [lib for lib in self.libs if lib in system_libs]
+        info.libdirs = self.libdirs
+        info.sharedlinkflags = self.linkflags
+        info.exelinkflags = self.linkflags
+        info.defines = self.defines
+        info.includedirs = self.includedirs
+        info.cflags = self.cflags
+        info.cxxflags = self.cflags

@@ -77,17 +77,17 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["libusb"].set_property("pkg_config_name", "hidapi-libusb")
-            self.cpp_info.components["libusb"].libs = ["hidapi-libusb"]
-            self.cpp_info.components["libusb"].requires = ["libusb::libusb"]
-            self.cpp_info.components["libusb"].system_libs = ["pthread", "dl", "rt"]
+            self.info.components["libusb"].set_property("pkg_config_name", "hidapi-libusb")
+            self.info.components["libusb"].libs = ["hidapi-libusb"]
+            self.info.components["libusb"].requires = ["libusb::libusb"]
+            self.info.components["libusb"].system_libs = ["pthread", "dl", "rt"]
 
-            self.cpp_info.components["hidraw"].set_property("pkg_config_name", "hidapi-hidraw")
-            self.cpp_info.components["hidraw"].libs = ["hidapi-hidraw"]
+            self.info.components["hidraw"].set_property("pkg_config_name", "hidapi-hidraw")
+            self.info.components["hidraw"].libs = ["hidapi-hidraw"]
             if self.settings.os == "Linux":
-                self.cpp_info.components["hidraw"].requires = ["libudev::libudev"]
-            self.cpp_info.components["hidraw"].system_libs = ["pthread", "dl"]
+                self.info.components["hidraw"].requires = ["libudev::libudev"]
+            self.info.components["hidraw"].system_libs = ["pthread", "dl"]
         else:
-            self.cpp_info.libs = ["hidapi"]
+            self.info.libs = ["hidapi"]
             if is_apple_os(self):
-                self.cpp_info.frameworks.extend(["IOKit", "CoreFoundation", "AppKit"])
+                self.info.frameworks.extend(["IOKit", "CoreFoundation", "AppKit"])

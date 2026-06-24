@@ -7,7 +7,7 @@ import jinja2
 from jinja2 import Template
 
 from thirdparty._internal.graph.graph import CONTEXT_BUILD
-from thirdparty._internal.model.cpp_info import PackageType
+from thirdparty._internal.model.info import PackageType
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty.cmake.utils import cmake_escape_value
 from thirdparty.errors import RecipeException
@@ -16,6 +16,26 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+# Source-language tokens (from Info.languages) that CMake recognizes as link-interface
+# languages, mapped to CMake's own names. Info.languages is an OPEN list -- any ecosystem may
+# appear -- but only tokens in this map become IMPORTED_LINK_INTERFACE_LANGUAGES. Others (Rust,
+# Zig, Go, ...) link through CMake's default rules (like C), so they neither emit a bogus
+# language nor trigger the "language not enabled in project()" error in the template below.
+_CMAKE_LANGUAGES = {
+    "C": "C",
+    "C++": "CXX", "CXX": "CXX",
+    "CUDA": "CUDA",
+    "Objective-C": "OBJC", "OBJC": "OBJC",
+    "Objective-C++": "OBJCXX", "OBJCXX": "OBJCXX",
+    "Fortran": "Fortran",
+    "Swift": "Swift",
+    "ASM": "ASM",
+    "HIP": "HIP",
+    "ISPC": "ISPC",
+    "RC": "RC",
+}
 
 
 class TargetConfigurationTemplate2:
@@ -51,10 +71,10 @@ class TargetConfigurationTemplate2:
         assert isinstance(pkg_type, PackageType), f"Pkg type {pkg_type} {type(pkg_type)}"
         transitive_reqs = self._cmakedeps.get_transitive_requires(self._recipe)
 
-        if not requires and not components:  # global cpp_info without components definition
+        if not requires and not components:  # global info without components definition
             # require the pkgname::pkgname base (user defined) or INTERFACE base target
             for req, d in transitive_reqs.items():
-                if d.cpp_info.exe:
+                if d.info.exe:
                     continue
                 dep_target = self._cmakedeps.get_property("cmake_target_name", d)
                 dep_target = dep_target or f"{d.ref.name}::{d.ref.name}"
@@ -84,17 +104,17 @@ class TargetConfigurationTemplate2:
                 except KeyError:  # The transitive dep might have been skipped
                     pass
                 else:
-                    # To check if the component exist, it is ok to use the standard cpp_info
-                    # No need to use the cpp_info = deduce_cpp_info(dep)
-                    dep_comp = dep.cpp_info.components.get(required_comp)
+                    # To check if the component exist, it is ok to use the standard info
+                    # No need to use the info = deduce_cpp_info(dep)
+                    dep_comp = dep.info.components.get(required_comp)
                     if dep_comp is None:
                         # It must be the interface pkgname::pkgname target
                         if required_pkg != required_comp:
-                            msg = (f"{self._recipe} recipe cpp_info did .requires to "
+                            msg = (f"{self._recipe} recipe info did .requires to "
                                    f"'{required_pkg}::{required_comp}' but component "
                                    f"'{required_comp}' not found in {required_pkg}")
                             raise RecipeException(msg)
-                        if dep.cpp_info.exe:
+                        if dep.info.exe:
                             continue  # It doesn't make sense to link a package that is an App
                         comp = None
                         default_target = f"{dep.ref.name}::{dep.ref.name}"  # replace_requires
@@ -120,8 +140,8 @@ class TargetConfigurationTemplate2:
 
     @property
     def _context(self) -> dict[str, Any]:
-        cpp_info = self._full_cpp_info
-        assert isinstance(cpp_info.type, PackageType)
+        info = self._full_cpp_info
+        assert isinstance(info.type, PackageType)
         pkg_name = self._recipe.ref.name
         # fallback to consumer configuration if it doesn't have build_type
         config = self._recipe.settings.get_safe("build_type", self._cmakedeps.configuration)
@@ -134,9 +154,9 @@ class TargetConfigurationTemplate2:
         libs = {}
         # The BUILD context does not generate libraries targets atm
         if not self._require.build:
-            libs = self._get_libs(cpp_info, pkg_name, pkg_folder, pkg_folder_var)
-            self._add_root_lib_target(libs, pkg_name, cpp_info)
-        exes = self._get_exes(cpp_info, pkg_name, pkg_folder, pkg_folder_var)
+            libs = self._get_libs(info, pkg_name, pkg_folder, pkg_folder_var)
+            self._add_root_lib_target(libs, pkg_name, info)
+        exes = self._get_exes(info, pkg_name, pkg_folder, pkg_folder_var)
 
         seen_aliases = set()
         root_target_name = self._cmakedeps.get_property("cmake_target_name", self._recipe)
@@ -164,15 +184,15 @@ class TargetConfigurationTemplate2:
             "dependencies": dependencies, "pkg_folder": pkg_folder, "pkg_folder_var": pkg_folder_var, "config": config, "exes": exes, "libs": libs, "context": self._recipe.context,
         }
 
-    def _get_libs(self, cpp_info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
+    def _get_libs(self, info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
         libs = {}
-        if cpp_info.has_components:
-            for name, component in cpp_info.components.items():
+        if info.has_components:
+            for name, component in info.components.items():
                 target_name = self._cmakedeps.get_property(
                     "cmake_target_name", self._recipe, name)
                 target_name = target_name or f"{pkg_name}::{name}"
                 target = self._get_cmake_lib(
-                    component, cpp_info.components, pkg_folder, pkg_folder_var, comp_name=name)
+                    component, info.components, pkg_folder, pkg_folder_var, comp_name=name)
                 if target is not None:
                     cmake_target_aliases = self._get_aliases(name)
                     target["cmake_target_aliases"] = cmake_target_aliases
@@ -180,7 +200,7 @@ class TargetConfigurationTemplate2:
         else:
             target_name = self._cmakedeps.get_property("cmake_target_name", self._recipe)
             target_name = target_name or f"{pkg_name}::{pkg_name}"
-            target = self._get_cmake_lib(cpp_info, None, pkg_folder, pkg_folder_var)
+            target = self._get_cmake_lib(info, None, pkg_folder, pkg_folder_var)
             if target is not None:
                 cmake_target_aliases = self._get_aliases()
                 target["cmake_target_aliases"] = cmake_target_aliases
@@ -224,7 +244,7 @@ class TargetConfigurationTemplate2:
             target["package_framework"] = {}
             lib_type = "SHARED" if info.type is PackageType.SHARED else "STATIC" if info.type is PackageType.STATIC else "STATIC"
             assert lib_type, f"Unknown package type {info.type}"
-            assert info.location, f"cpp_info.location missing for framework {info.package_framework}"
+            assert info.location, f"info.location missing for framework {info.package_framework}"
             target["type"] = lib_type
             target["package_framework"]["location"] = self._path(
                 info.location, pkg_folder, pkg_folder_var)
@@ -245,8 +265,10 @@ class TargetConfigurationTemplate2:
             target["type"] = lib_type
             target["location"] = location
             target["link_location"] = link_location
-            link_languages = info.languages or []
-            link_languages = ["CXX" if c == "C++" else c for c in link_languages]
+            # Keep only languages CMake knows (mapped to its names); Rust/Zig/... are dropped so
+            # they link via CMake's default rules instead of erroring as an unknown link language.
+            link_languages = [
+                _CMAKE_LANGUAGES[c] for c in (info.languages or []) if c in _CMAKE_LANGUAGES]
             target["link_languages"] = link_languages
         return target
 
@@ -254,7 +276,7 @@ class TargetConfigurationTemplate2:
         aliases = self._cmakedeps.get_property("cmake_target_aliases", self._recipe, comp_name, check_type=list) or []
         return aliases
 
-    def _add_root_lib_target(self, libs: dict[str, Any], pkg_name: str, cpp_info: Any):
+    def _add_root_lib_target(self, libs: dict[str, Any], pkg_name: str, info: Any):
         """
         Add a new pkgname::pkgname INTERFACE target that depends on default_components or
         on all other library targets (not exes)
@@ -265,9 +287,9 @@ class TargetConfigurationTemplate2:
         # TODO: What if an exe target is called like the pkg_name::pkg_name
         if libs and root_target_name not in libs:
             # Add a generic interface target for the package depending on the others
-            if cpp_info.default_components is not None:
+            if info.default_components is not None:
                 all_requires = {}
-                for defaultc in cpp_info.default_components:
+                for defaultc in info.default_components:
                     target_name = self._cmakedeps.get_property(
                         "cmake_target_name", self._recipe, defaultc)
                     comp_name = target_name or f"{pkg_name}::{defaultc}"
@@ -288,11 +310,11 @@ class TargetConfigurationTemplate2:
                 "type": "INTERFACE", "requires": all_requires, "cmake_target_aliases": cmake_target_aliases,
             }
 
-    def _get_exes(self, cpp_info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
+    def _get_exes(self, info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
         exes = {}
 
-        if cpp_info.has_components:
-            for name, comp in cpp_info.components.items():
+        if info.has_components:
+            for name, comp in info.components.items():
                 if comp.exe or comp.type is PackageType.APP:
                     target_name = self._cmakedeps.get_property(
                         "cmake_target_name", self._recipe, name)
@@ -300,10 +322,10 @@ class TargetConfigurationTemplate2:
                     exe_location = self._path(comp.location, pkg_folder, pkg_folder_var)
                     exes[target] = exe_location
         else:
-            if cpp_info.exe:
+            if info.exe:
                 target_name = self._cmakedeps.get_property("cmake_target_name", self._recipe)
                 target = target_name or f"{pkg_name}::{pkg_name}"
-                exe_location = self._path(cpp_info.location, pkg_folder, pkg_folder_var)
+                exe_location = self._path(info.location, pkg_folder, pkg_folder_var)
                 exes[target] = exe_location
 
         return exes

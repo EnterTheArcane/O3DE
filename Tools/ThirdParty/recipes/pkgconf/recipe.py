@@ -104,14 +104,14 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.options.enable_lib:
-            self.cpp_info.set_property("pkg_config_name", "libpkgconf")
-            self.cpp_info.includedirs.append(os.path.join("include", "pkgconf"))
-            self.cpp_info.libs = ["pkgconf"]
+            self.info.set_property("pkg_config_name", "libpkgconf")
+            self.info.includedirs.append(os.path.join("include", "pkgconf"))
+            self.info.libs = ["pkgconf"]
             if not self.options.shared:
-                self.cpp_info.defines = ["PKGCONFIG_IS_STATIC"]
+                self.info.defines = ["PKGCONFIG_IS_STATIC"]
         else:
-            self.cpp_info.includedirs = []
-            self.cpp_info.libdirs = []
+            self.info.includedirs = []
+            self.info.libdirs = []
 
         bindir = os.path.join(self.folders.package, "bin")
 

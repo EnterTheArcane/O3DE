@@ -62,8 +62,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "xxHash")
-        self.cpp_info.set_property("cmake_target_name", "xxHash::xxhash")
-        self.cpp_info.set_property("pkg_config_name", "libxxhash")
-        self.cpp_info.components["libxxhash"].libs = ["xxhash"]
-        self.cpp_info.components["libxxhash"].set_property("cmake_target_name", "xxHash::xxhash")
+        self.info.set_property("cmake_file_name", "xxHash")
+        self.info.set_property("cmake_target_name", "xxHash::xxhash")
+        self.info.set_property("pkg_config_name", "libxxhash")
+        self.info.components["libxxhash"].libs = ["xxhash"]
+        self.info.components["libxxhash"].set_property("cmake_target_name", "xxHash::xxhash")

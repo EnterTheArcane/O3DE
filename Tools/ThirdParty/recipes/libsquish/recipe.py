@@ -66,6 +66,6 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["squishd" if self.settings.build_type == "Debug" else "squish"]
+        self.info.libs = ["squishd" if self.settings.build_type == "Debug" else "squish"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

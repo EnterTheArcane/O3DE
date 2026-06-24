@@ -47,10 +47,10 @@ class RecipeInterface:
         return self._recipe.runenv_info
 
     @property
-    def cpp_info(self):
+    def info(self):
         # At the moment, not doing a full copy, not necessary as access is not concurrent
-        self._recipe.cpp_info.set_consumer(self._consumer)
-        return self._recipe.cpp_info
+        self._recipe.info.set_consumer(self._consumer)
+        return self._recipe.info
 
     @property
     def settings(self):
@@ -79,10 +79,6 @@ class RecipeInterface:
     @property
     def is_build_context(self):
         return self._recipe.context == CONTEXT_BUILD
-
-    @property
-    def info(self):
-        return self._recipe.info
 
     @property
     def license(self):

@@ -28,11 +28,11 @@ class Recipe(RecipeBase):
         copy(self, "*", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "FastFloat")
-        self.cpp_info.set_property("cmake_target_name", "FastFloat::fast_float")
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.set_property("cmake_file_name", "FastFloat")
+        self.info.set_property("cmake_target_name", "FastFloat::fast_float")
+        self.info.bindirs = []
+        self.info.libdirs = []
 
-        self.cpp_info.components["fastfloat"].set_property("cmake_target_name", "FastFloat::fast_float")
-        self.cpp_info.components["fastfloat"].bindirs = []
-        self.cpp_info.components["fastfloat"].libdirs = []
+        self.info.components["fastfloat"].set_property("cmake_target_name", "FastFloat::fast_float")
+        self.info.components["fastfloat"].bindirs = []
+        self.info.components["fastfloat"].libdirs = []

@@ -134,16 +134,16 @@ class Recipe(RecipeBase):
     def package_info(self):
         major_min_version = f"{Version(self.version).major}{Version(self.version).minor}"
 
-        self.cpp_info.set_property("cmake_file_name", "PNG")
-        self.cpp_info.set_property("cmake_target_name", "PNG::PNG")
-        self.cpp_info.set_property("pkg_config_name", "libpng")
-        self.cpp_info.set_property("pkg_config_aliases", [f"libpng{major_min_version}"])
+        self.info.set_property("cmake_file_name", "PNG")
+        self.info.set_property("cmake_target_name", "PNG::PNG")
+        self.info.set_property("pkg_config_name", "libpng")
+        self.info.set_property("pkg_config_aliases", [f"libpng{major_min_version}"])
 
         prefix = "lib" if (is_msvc(self) or self._is_clang_cl) else ""
         suffix = major_min_version if self.settings.os == "Windows" else ""
         if is_msvc(self) or self._is_clang_cl:
             suffix += "_static" if not self.options.shared else ""
         suffix += "d" if self.settings.os == "Windows" and self.settings.build_type == "Debug" else ""
-        self.cpp_info.libs = [f"{prefix}png{suffix}"]
+        self.info.libs = [f"{prefix}png{suffix}"]
         if self.settings.os in ["Linux", "Android", "FreeBSD", "SunOS", "AIX"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

@@ -64,14 +64,14 @@ def cmake_layout(recipe: RecipeBase, generator=None, src_folder=".", build_folde
 
     recipe.folders._generators = os.path.join(recipe.folders._build, "generators")
 
-    recipe.cpp.source.includedirs = ["include"]
+    recipe.infos.source.includedirs = ["include"]
 
     if multi:
-        recipe.cpp.build.libdirs = [build_type]
-        recipe.cpp.build.bindirs = [build_type]
+        recipe.infos.build.libdirs = [build_type]
+        recipe.infos.build.bindirs = [build_type]
     else:
-        recipe.cpp.build.libdirs = ["."]
-        recipe.cpp.build.bindirs = ["."]
+        recipe.infos.build.libdirs = ["."]
+        recipe.infos.build.bindirs = ["."]
 
 
 def get_build_folder_custom_vars(recipe: RecipeBase):

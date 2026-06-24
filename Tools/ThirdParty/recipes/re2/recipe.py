@@ -58,9 +58,9 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "re2")
-        self.cpp_info.set_property("cmake_target_name", "re2::re2")
-        self.cpp_info.set_property("pkg_config_name", "re2")
-        self.cpp_info.libs = ["re2"]
+        self.info.set_property("cmake_file_name", "re2")
+        self.info.set_property("cmake_target_name", "re2::re2")
+        self.info.set_property("pkg_config_name", "re2")
+        self.info.libs = ["re2"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["m", "pthread"]
+            self.info.system_libs = ["m", "pthread"]

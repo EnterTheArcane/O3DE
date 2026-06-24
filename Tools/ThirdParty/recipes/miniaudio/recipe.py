@@ -84,12 +84,12 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.options.get_safe("header_only"):
-            self.cpp_info.bindirs = []
-            self.cpp_info.libdirs = []
+            self.info.bindirs = []
+            self.info.libdirs = []
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.extend(["m", "pthread"])
         if self.settings.os == "Linux":
-            self.cpp_info.system_libs.append("dl")
+            self.info.system_libs.append("dl")
         if self.settings.os == "Mac":
-            self.cpp_info.frameworks.extend(["CoreFoundation", "CoreAudio", "AudioUnit"])
-            self.cpp_info.defines.append("MA_NO_RUNTIME_LINKING=1")
+            self.info.frameworks.extend(["CoreFoundation", "CoreAudio", "AudioUnit"])
+            self.info.defines.append("MA_NO_RUNTIME_LINKING=1")

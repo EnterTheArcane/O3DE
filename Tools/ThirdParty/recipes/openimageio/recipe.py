@@ -184,9 +184,9 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Robinmap"] = True
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_pugixml"] = True
         tc.cache_variables["OIIO_INTERNALIZE_FMT"] = False
-        tc.cache_variables["ROBINMAP_INCLUDES"] = self.dependencies["tsl-robin-map"].cpp_info.includedirs[0].replace("\\", "/")
-        tc.cache_variables["IMATH_INCLUDES"] = self.dependencies["imath"].cpp_info.includedirs[0].replace("\\", "/")
-        tc.cache_variables["OPENEXR_INCLUDES"] = self.dependencies["openexr"].cpp_info.includedirs[0].replace("\\", "/")
+        tc.cache_variables["ROBINMAP_INCLUDES"] = self.dependencies["tsl-robin-map"].info.includedirs[0].replace("\\", "/")
+        tc.cache_variables["IMATH_INCLUDES"] = self.dependencies["imath"].info.includedirs[0].replace("\\", "/")
+        tc.cache_variables["OPENEXR_INCLUDES"] = self.dependencies["openexr"].info.includedirs[0].replace("\\", "/")
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_PNG"] = self.options.with_libpng
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Freetype"] = self.options.with_freetype
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_OpenColorIO"] = self.options.get_safe("with_opencolorio", True)
@@ -210,7 +210,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Linux":
             # Workaround for: upstream issue 13560
             # note: should not be needed if CMakeDeps is used
-            libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.cpp_info.aggregated_components().libdirs]
+            libdirs_host = [l for dependency in self.dependencies.host.values() for l in dependency.info.aggregated_components().libdirs]
             tc.cache_variables["CMAKE_BUILD_RPATH"] = ";".join(libdirs_host)
         tc.generate()
         deps = CMakeDeps(self)
@@ -252,13 +252,13 @@ class Recipe(RecipeBase):
         return f"openimageio_{name.lower()}"
 
     def _add_component(self, name):
-        component = self.cpp_info.components[self._recipe_comp(name)]
+        component = self.info.components[self._recipe_comp(name)]
         component.set_property("cmake_target_name", f"OpenImageIO::{name}")
         return component
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenImageIO")
-        self.cpp_info.set_property("pkg_config_name", "OpenImageIO")
+        self.info.set_property("cmake_file_name", "OpenImageIO")
+        self.info.set_property("pkg_config_name", "OpenImageIO")
 
         # OpenImageIO::OpenImageIO_Util
         open_image_io_util = self._add_component("OpenImageIO_Util")

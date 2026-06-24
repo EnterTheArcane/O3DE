@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tinyxml2_pkg = self.dependencies["tinyxml2"].folders.package.as_posix()
-        tinyxml2_lib = self.dependencies["tinyxml2"].cpp_info.libs[0]
+        tinyxml2_lib = self.dependencies["tinyxml2"].info.libs[0]
 
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTING"] = False
@@ -90,20 +90,20 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "none")
+        self.info.set_property("cmake_find_mode", "none")
 
         version_major = self.version.split(".")[0]
 
-        self.cpp_info.components["sdformat"].libs = [f"sdformat{version_major}"]
-        self.cpp_info.components["sdformat"].builddirs = [""]
-        self.cpp_info.components["sdformat"].set_property("cmake_file_name", "sdformat16")
-        self.cpp_info.components["sdformat"].set_property("cmake_target_name", "sdformat16::sdformat16")
-        self.cpp_info.components["sdformat"].includedirs = [os.path.join("include", "sdformat16")]
-        self.cpp_info.components["sdformat"].requires = [
+        self.info.components["sdformat"].libs = [f"sdformat{version_major}"]
+        self.info.components["sdformat"].builddirs = [""]
+        self.info.components["sdformat"].set_property("cmake_file_name", "sdformat16")
+        self.info.components["sdformat"].set_property("cmake_target_name", "sdformat16::sdformat16")
+        self.info.components["sdformat"].includedirs = [os.path.join("include", "sdformat16")]
+        self.info.components["sdformat"].requires = [
             "gz-cmake::gz-cmake",
             "gz-math::core",
             "gz-utils::core",
             "tinyxml2::tinyxml2",
         ]
         if self.settings.os in ("Linux", "FreeBSD"):
-            self.cpp_info.components["sdformat"].system_libs = ["dl"]
+            self.info.components["sdformat"].system_libs = ["dl"]

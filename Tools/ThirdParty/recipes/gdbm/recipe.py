@@ -133,8 +133,8 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.options.libgdbm_compat:
-            self.cpp_info.libs.append("gdbm_compat")
-        self.cpp_info.libs.append("gdbm")
+            self.info.libs.append("gdbm_compat")
+        self.info.libs.append("gdbm")
 
         bin_path = os.path.join(self.folders.package, "bin")
         self.output.info(f"Appending PATH environment variable: {bin_path}")

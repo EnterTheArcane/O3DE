@@ -64,8 +64,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "jansson")
-        self.cpp_info.set_property("cmake_target_name", "jansson::jansson")
-        self.cpp_info.set_property("pkg_config_name", "jansson")
+        self.info.set_property("cmake_file_name", "jansson")
+        self.info.set_property("cmake_target_name", "jansson::jansson")
+        self.info.set_property("pkg_config_name", "jansson")
         suffix = "_d" if self.settings.os == "Windows" and self.settings.build_type == "Debug" else ""
-        self.cpp_info.libs = [f"jansson{suffix}"]
+        self.info.libs = [f"jansson{suffix}"]

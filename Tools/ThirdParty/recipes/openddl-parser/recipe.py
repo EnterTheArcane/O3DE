@@ -53,10 +53,10 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "openddlparser")
-        self.cpp_info.set_property("cmake_target_name", "openddlparser::openddlparser")
-        self.cpp_info.libs = ["openddlparser"]
+        self.info.set_property("cmake_file_name", "openddlparser")
+        self.info.set_property("cmake_target_name", "openddlparser::openddlparser")
+        self.info.libs = ["openddlparser"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")
         if not self.options.shared:
-            self.cpp_info.defines.append("OPENDDL_STATIC_LIBARY")
+            self.info.defines.append("OPENDDL_STATIC_LIBARY")

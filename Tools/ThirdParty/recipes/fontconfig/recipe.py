@@ -83,12 +83,12 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Fontconfig")
-        self.cpp_info.set_property("cmake_target_name", "Fontconfig::Fontconfig")
-        self.cpp_info.set_property("pkg_config_name", "fontconfig")
-        self.cpp_info.libs = ["fontconfig"]
+        self.info.set_property("cmake_file_name", "Fontconfig")
+        self.info.set_property("cmake_target_name", "Fontconfig::Fontconfig")
+        self.info.set_property("pkg_config_name", "fontconfig")
+        self.info.libs = ["fontconfig"]
         if self.settings.os in ("Linux", "FreeBSD"):
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.extend(["m", "pthread"])
 
         fontconfig_path = os.path.join(self.folders.package, "res", "etc", "fonts")
         self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)

@@ -70,19 +70,19 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "expat")
-        self.cpp_info.set_property("cmake_target_name", "expat::expat")
-        self.cpp_info.set_property("pkg_config_name", "expat")
+        self.info.set_property("cmake_file_name", "expat")
+        self.info.set_property("cmake_target_name", "expat::expat")
+        self.info.set_property("pkg_config_name", "expat")
 
-        self.cpp_info.libs = collect_libs(self)
+        self.info.libs = collect_libs(self)
         if not self.options.shared:
-            self.cpp_info.defines = ["XML_STATIC"]
+            self.info.defines = ["XML_STATIC"]
         if self.options.get_safe("char_type") in ("wchar_t", "ushort"):
-            self.cpp_info.defines.append("XML_UNICODE")
+            self.info.defines.append("XML_UNICODE")
         elif self.options.get_safe("char_type") == "wchar_t":
-            self.cpp_info.defines.append("XML_UNICODE_WCHAR_T")
+            self.info.defines.append("XML_UNICODE_WCHAR_T")
         if self.options.large_size:
-            self.cpp_info.defines.append("XML_LARGE_SIZE")
+            self.info.defines.append("XML_LARGE_SIZE")
 
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

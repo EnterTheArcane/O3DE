@@ -61,13 +61,13 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         cmake_target = "Ptex_dynamic" if self.options.shared else "Ptex_static"
-        self.cpp_info.set_property("cmake_file_name", "ptex")
-        self.cpp_info.set_property("cmake_target_name", f"Ptex::{cmake_target}")
-        self.cpp_info.components["_ptex"].libs = ["Ptex"]
+        self.info.set_property("cmake_file_name", "ptex")
+        self.info.set_property("cmake_target_name", f"Ptex::{cmake_target}")
+        self.info.components["_ptex"].libs = ["Ptex"]
         if not self.options.shared:
-            self.cpp_info.components["_ptex"].defines.append("PTEX_STATIC")
+            self.info.components["_ptex"].defines.append("PTEX_STATIC")
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["_ptex"].system_libs.append("pthread")
-        self.cpp_info.components["_ptex"].requires = ["zlib::zlib", "libdeflate::_libdeflate"]
+            self.info.components["_ptex"].system_libs.append("pthread")
+        self.info.components["_ptex"].requires = ["zlib::zlib", "libdeflate::_libdeflate"]
 
-        self.cpp_info.components["_ptex"].set_property("cmake_target_name", f"Ptex::{cmake_target}")
+        self.info.components["_ptex"].set_property("cmake_target_name", f"Ptex::{cmake_target}")

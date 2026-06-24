@@ -76,13 +76,13 @@ class Recipe(RecipeBase):
         return f"openexr_{name.lower()}"
 
     def _add_component(self, name):
-        component = self.cpp_info.components[self._recipe_comp(name)]
+        component = self.info.components[self._recipe_comp(name)]
         component.set_property("cmake_target_name", f"OpenEXR::{name}")
         return component
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "OpenEXR")
-        self.cpp_info.set_property("pkg_config_name", "OpenEXR")
+        self.info.set_property("cmake_file_name", "OpenEXR")
+        self.info.set_property("pkg_config_name", "OpenEXR")
 
         lib_suffix = ""
         if not self.options.shared or self.settings.os == "Windows":

@@ -350,7 +350,7 @@ class MesonToolchain:
         """
 
         def _get_cpp_info_value(name):
-            elements = getattr(self._recipe.cpp.package, name)
+            elements = getattr(self._recipe.infos.package, name)
             return elements[0] if elements else None
 
         ret = {}
@@ -429,7 +429,7 @@ class MesonToolchain:
         runtime_dirs = []
         host_req = self._recipe.dependencies.filter({"build": False}).values()
         for req in host_req:
-            cppinfo = req.cpp_info.aggregated_components()
+            cppinfo = req.info.aggregated_components()
             runtime_dirs.extend(cppinfo.libdirs)
         return ["-Wl,-rpath-link=" + ":".join(runtime_dirs)] if runtime_dirs else []
 

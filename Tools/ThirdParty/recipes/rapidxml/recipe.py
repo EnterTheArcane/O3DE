@@ -26,8 +26,8 @@ class Recipe(RecipeBase):
         copy(self, "*.hpp", src=self.folders.source, dst=os.path.join(self.folders.package, "include", "rapidxml"))
 
     def package_info(self):
-        self.cpp_info.includedirs.append(os.path.join("include", "rapidxml"))
-        self.cpp_info.bindirs = []
-        self.cpp_info.frameworkdirs = []
-        self.cpp_info.libdirs = []
-        self.cpp_info.resdirs = []
+        self.info.includedirs.append(os.path.join("include", "rapidxml"))
+        self.info.bindirs = []
+        self.info.frameworkdirs = []
+        self.info.libdirs = []
+        self.info.resdirs = []

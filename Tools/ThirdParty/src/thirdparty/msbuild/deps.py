@@ -164,7 +164,7 @@ class MSBuildDeps:
     def _get_valid_xml_format(name: str) -> str:
         return re.compile(r"[.+]").sub("_", name)
 
-    def _vars_props_file(self, require: Any, dep: Any, name: str, cpp_info: Any, build: bool) -> str:
+    def _vars_props_file(self, require: Any, dep: Any, name: str, info: Any, build: bool) -> str:
         """
         content for recipe_vars_poco_x86_release.props, containing the variables for 1 config
         This will be for 1 package or for one component of a package
@@ -209,16 +209,16 @@ class MSBuildDeps:
         relative_root_folder = relativize_path(
             root_folder, self._recipe, "$(MSBuildThisFileDirectory)", normalize=False)
 
-        bin_dirs = join_paths(cpp_info.bindirs)
-        res_dirs = join_paths(cpp_info.resdirs)
-        include_dirs = join_paths(cpp_info.includedirs)
-        lib_dirs = join_paths(cpp_info.libdirs)
-        libs = "".join([add_valid_ext(lib, cpp_info.libdirs) for lib in cpp_info.libs])
+        bin_dirs = join_paths(info.bindirs)
+        res_dirs = join_paths(info.resdirs)
+        include_dirs = join_paths(info.includedirs)
+        lib_dirs = join_paths(info.libdirs)
+        libs = "".join([add_valid_ext(lib, info.libdirs) for lib in info.libs])
         # TODO: Missing objects
-        system_libs = "".join([add_valid_ext(sys_dep) for sys_dep in cpp_info.system_libs])
-        definitions = "".join("%s;" % d for d in cpp_info.defines)
-        compiler_flags = " ".join(cpp_info.cxxflags + cpp_info.cflags)
-        linker_flags = " ".join(cpp_info.sharedlinkflags + cpp_info.exelinkflags)
+        system_libs = "".join([add_valid_ext(sys_dep) for sys_dep in info.system_libs])
+        definitions = "".join("%s;" % d for d in info.defines)
+        compiler_flags = " ".join(info.cxxflags + info.cflags)
+        linker_flags = " ".join(info.sharedlinkflags + info.exelinkflags)
 
         # traits logic
         if require and not require.headers:
@@ -381,9 +381,9 @@ class MSBuildDeps:
         dep_name = self._dep_name(dep, build)
         result = {}
         pkg_deps = get_transitive_requires(self._recipe, dep)  # only non-skipped dependencies
-        if dep.cpp_info.has_components:
+        if dep.info.has_components:
             pkg_aggregated_content = None
-            for comp_name, comp_info in dep.cpp_info.components.items():
+            for comp_name, comp_info in dep.info.components.items():
                 full_comp_name = f"{dep_name}_{self._get_valid_xml_format(comp_name)}"
                 vars_filename = "recipe_%s_vars%s.props" % (full_comp_name, conf_name)
                 activate_filename = "recipe_%s%s.props" % (full_comp_name, conf_name)
@@ -415,14 +415,14 @@ class MSBuildDeps:
                     dep_name, pkg_filename, comp_filename, condition=comp_condition, content=pkg_aggregated_content)
                 result[pkg_filename] = pkg_aggregated_content
         else:
-            cpp_info = dep.cpp_info
+            info = dep.info
             vars_filename = "recipe_%s_vars%s.props" % (dep_name, conf_name)
             activate_filename = "recipe_%s%s.props" % (dep_name, conf_name)
             pkg_filename = "recipe_%s.props" % dep_name
             public_deps = [self._dep_name(d, build) for d in pkg_deps.values()]
 
             result[vars_filename] = self._vars_props_file(
-                require, dep, dep_name, cpp_info, build=build)
+                require, dep, dep_name, info, build=build)
             result[activate_filename] = self._activate_props_file(
                 dep_name, vars_filename, public_deps, build=build)
             result[pkg_filename] = self._dep_props_file(

@@ -69,16 +69,16 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.options.usingz != "ONLY":
-            self.cpp_info.components["clipper2"].set_property("cmake_target_name", "Clipper2::clipper2")
-            self.cpp_info.components["clipper2"].set_property("pkg_config_name", "Clipper2")
-            self.cpp_info.components["clipper2"].libs = ["Clipper2"]
+            self.info.components["clipper2"].set_property("cmake_target_name", "Clipper2::clipper2")
+            self.info.components["clipper2"].set_property("pkg_config_name", "Clipper2")
+            self.info.components["clipper2"].libs = ["Clipper2"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["clipper2"].system_libs.append("m")
+                self.info.components["clipper2"].system_libs.append("m")
 
         if self.options.usingz != "OFF":
-            self.cpp_info.components["clipper2z"].set_property("cmake_target_name", "Clipper2::clipper2z")
-            self.cpp_info.components["clipper2z"].set_property("pkg_config_name", "Clipper2Z")
-            self.cpp_info.components["clipper2z"].libs = ["Clipper2Z"]
-            self.cpp_info.components["clipper2z"].defines.append("USINGZ")
+            self.info.components["clipper2z"].set_property("cmake_target_name", "Clipper2::clipper2z")
+            self.info.components["clipper2z"].set_property("pkg_config_name", "Clipper2Z")
+            self.info.components["clipper2z"].libs = ["Clipper2Z"]
+            self.info.components["clipper2z"].defines.append("USINGZ")
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.components["clipper2z"].system_libs.append("m")
+                self.info.components["clipper2z"].system_libs.append("m")

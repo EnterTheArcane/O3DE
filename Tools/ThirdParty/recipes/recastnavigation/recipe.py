@@ -56,27 +56,27 @@ class Recipe(RecipeBase):
         rm(self, "*.pdb", self.folders.package, recursive=True)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "recastnavigation")
-        self.cpp_info.set_property("pkg_config_name", "recastnavigation")
+        self.info.set_property("cmake_file_name", "recastnavigation")
+        self.info.set_property("pkg_config_name", "recastnavigation")
 
         suffix = ""
         if self.settings.build_type == "Debug":
             suffix = "-d"
 
-        self.cpp_info.components["Recast"].set_property("cmake_target_name", "RecastNavigation::Recast")
-        self.cpp_info.components["Recast"].libs = ["Recast" + suffix]
+        self.info.components["Recast"].set_property("cmake_target_name", "RecastNavigation::Recast")
+        self.info.components["Recast"].libs = ["Recast" + suffix]
 
-        self.cpp_info.components["Detour"].set_property("cmake_target_name", "RecastNavigation::Detour")
-        self.cpp_info.components["Detour"].libs = ["Detour" + suffix]
+        self.info.components["Detour"].set_property("cmake_target_name", "RecastNavigation::Detour")
+        self.info.components["Detour"].libs = ["Detour" + suffix]
 
-        self.cpp_info.components["DetourCrowd"].set_property("cmake_target_name", "RecastNavigation::DetourCrowd")
-        self.cpp_info.components["DetourCrowd"].libs = ["DetourCrowd" + suffix]
-        self.cpp_info.components["DetourCrowd"].requires = ["Detour"]
+        self.info.components["DetourCrowd"].set_property("cmake_target_name", "RecastNavigation::DetourCrowd")
+        self.info.components["DetourCrowd"].libs = ["DetourCrowd" + suffix]
+        self.info.components["DetourCrowd"].requires = ["Detour"]
 
-        self.cpp_info.components["DetourTileCache"].set_property("cmake_target_name", "RecastNavigation::DetourTileCache")
-        self.cpp_info.components["DetourTileCache"].libs = ["DetourTileCache" + suffix]
-        self.cpp_info.components["DetourTileCache"].requires = ["Detour"]
+        self.info.components["DetourTileCache"].set_property("cmake_target_name", "RecastNavigation::DetourTileCache")
+        self.info.components["DetourTileCache"].libs = ["DetourTileCache" + suffix]
+        self.info.components["DetourTileCache"].requires = ["Detour"]
 
-        self.cpp_info.components["DebugUtils"].set_property("cmake_target_name", "RecastNavigation::DebugUtils")
-        self.cpp_info.components["DebugUtils"].libs = ["DebugUtils" + suffix]
-        self.cpp_info.components["DebugUtils"].requires = ["Recast", "Detour", "DetourTileCache"]
+        self.info.components["DebugUtils"].set_property("cmake_target_name", "RecastNavigation::DebugUtils")
+        self.info.components["DebugUtils"].libs = ["DebugUtils" + suffix]
+        self.info.components["DebugUtils"].requires = ["Recast", "Detour", "DetourTileCache"]

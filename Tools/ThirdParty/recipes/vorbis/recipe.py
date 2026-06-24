@@ -62,36 +62,36 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Vorbis")
+        self.info.set_property("cmake_file_name", "Vorbis")
         # see https://github.com/recipe-io/recipe-center-index/pull/4173
-        self.cpp_info.set_property("pkg_config_name", "vorbis-all-do-not-use")
+        self.info.set_property("pkg_config_name", "vorbis-all-do-not-use")
 
         # vorbis
-        self.cpp_info.components["vorbismain"].set_property("cmake_target_name", "Vorbis::vorbis")
-        self.cpp_info.components["vorbismain"].set_property("pkg_config_name", "vorbis")
-        self.cpp_info.components["vorbismain"].libs = ["vorbis"]
+        self.info.components["vorbismain"].set_property("cmake_target_name", "Vorbis::vorbis")
+        self.info.components["vorbismain"].set_property("pkg_config_name", "vorbis")
+        self.info.components["vorbismain"].libs = ["vorbis"]
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
-            self.cpp_info.components["vorbismain"].system_libs.append("m")
+            self.info.components["vorbismain"].system_libs.append("m")
         if self.settings.os == "Android":
-            self.cpp_info.components["vorbismain"].system_libs.append("log")
-        self.cpp_info.components["vorbismain"].requires = ["ogg::ogg"]
+            self.info.components["vorbismain"].system_libs.append("log")
+        self.info.components["vorbismain"].requires = ["ogg::ogg"]
 
         # TODO: Upstream VorbisConfig.cmake defines components 'Enc' and 'File',
         # which are related to imported targets Vorbis::vorbisenc and Vorbis::vorbisfile
         # Find a way to emulate this in CMakeDeps. See upstream issue 10258
 
         # vorbisenc
-        self.cpp_info.components["vorbisenc"].set_property("cmake_target_name", "Vorbis::vorbisenc")
-        self.cpp_info.components["vorbisenc"].set_property("pkg_config_name", "vorbisenc")
-        self.cpp_info.components["vorbisenc"].libs = ["vorbisenc"]
-        self.cpp_info.components["vorbisenc"].requires = ["vorbismain"]
+        self.info.components["vorbisenc"].set_property("cmake_target_name", "Vorbis::vorbisenc")
+        self.info.components["vorbisenc"].set_property("pkg_config_name", "vorbisenc")
+        self.info.components["vorbisenc"].libs = ["vorbisenc"]
+        self.info.components["vorbisenc"].requires = ["vorbismain"]
 
         # vorbisfile
-        self.cpp_info.components["vorbisfile"].set_property("cmake_target_name", "Vorbis::vorbisfile")
-        self.cpp_info.components["vorbisfile"].set_property("pkg_config_name", "vorbisfile")
-        self.cpp_info.components["vorbisfile"].libs = ["vorbisfile"]
-        self.cpp_info.components["vorbisfile"].requires = ["vorbismain"]
+        self.info.components["vorbisfile"].set_property("cmake_target_name", "Vorbis::vorbisfile")
+        self.info.components["vorbisfile"].set_property("pkg_config_name", "vorbisfile")
+        self.info.components["vorbisfile"].libs = ["vorbisfile"]
+        self.info.components["vorbisfile"].requires = ["vorbismain"]
 
         # vorbisenc-alias
-        self.cpp_info.components["vorbisenc-alias"].requires.append("vorbisenc")
-        self.cpp_info.components["vorbisfile-alias"].requires.append("vorbisfile")
+        self.info.components["vorbisenc-alias"].requires.append("vorbisenc")
+        self.info.components["vorbisfile-alias"].requires.append("vorbisfile")

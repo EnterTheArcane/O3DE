@@ -66,18 +66,18 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_find_mode", "none")
+        self.info.set_property("cmake_find_mode", "none")
 
         version_major = self.version.split(".")[0]
         lib_suffix = version_major
 
-        self.cpp_info.components["core"].libs = [f"gz-math{lib_suffix}"]
-        self.cpp_info.components["core"].builddirs = [""]
-        self.cpp_info.components["core"].set_property("cmake_target_name", "gz-math::gz-math")
-        self.cpp_info.components["core"].requires = ["gz-utils::core"]
+        self.info.components["core"].libs = [f"gz-math{lib_suffix}"]
+        self.info.components["core"].builddirs = [""]
+        self.info.components["core"].set_property("cmake_target_name", "gz-math::gz-math")
+        self.info.components["core"].requires = ["gz-utils::core"]
         if self.settings.os in ("Linux", "FreeBSD"):
-            self.cpp_info.components["core"].system_libs = ["m"]
+            self.info.components["core"].system_libs = ["m"]
 
-        self.cpp_info.components["eigen3"].libs = []
-        self.cpp_info.components["eigen3"].set_property("cmake_target_name", "gz-math::gz-math-eigen3")
-        self.cpp_info.components["eigen3"].requires = ["core", "eigen::eigen3"]
+        self.info.components["eigen3"].libs = []
+        self.info.components["eigen3"].set_property("cmake_target_name", "gz-math::gz-math-eigen3")
+        self.info.components["eigen3"].requires = ["core", "eigen::eigen3"]

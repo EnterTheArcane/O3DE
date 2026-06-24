@@ -84,11 +84,11 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.libs = [f"openh264"]
+        self.info.libs = [f"openh264"]
         if self.settings.os in ("FreeBSD", "Linux"):
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.extend(["m", "pthread"])
         if self.settings.os == "Android":
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
@@ -96,5 +96,5 @@ class Recipe(RecipeBase):
                     # INFO: When builing for Android, need to link against c++abi too. Otherwise will get linkage errors:
                     # ld.lld: error: undefined symbol: operator new(unsigned long)
                     # >>> referenced by welsEncoderExt.cpp
-                    self.cpp_info.system_libs.append("c++abi")
-                self.cpp_info.system_libs.append(libcxx)
+                    self.info.system_libs.append("c++abi")
+                self.info.system_libs.append(libcxx)

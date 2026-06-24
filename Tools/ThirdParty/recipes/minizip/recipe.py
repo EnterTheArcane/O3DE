@@ -63,6 +63,6 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["minizip"]
-        self.cpp_info.includedirs.append(os.path.join("include", "minizip"))
-        self.cpp_info.defines.append("HAVE_BZIP2")
+        self.info.libs = ["minizip"]
+        self.info.includedirs.append(os.path.join("include", "minizip"))
+        self.info.defines.append("HAVE_BZIP2")

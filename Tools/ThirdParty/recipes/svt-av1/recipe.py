@@ -106,20 +106,20 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         if self.options.build_encoder:
-            self.cpp_info.components["encoder"].libs = ["SvtAv1Enc"]
-            self.cpp_info.components["encoder"].includedirs = ["include/svt-av1"]
-            self.cpp_info.components["encoder"].set_property("pkg_config_name", "SvtAv1Enc")
-            self.cpp_info.components["encoder"].requires = ["cpuinfo::cpuinfo"]
+            self.info.components["encoder"].libs = ["SvtAv1Enc"]
+            self.info.components["encoder"].includedirs = ["include/svt-av1"]
+            self.info.components["encoder"].set_property("pkg_config_name", "SvtAv1Enc")
+            self.info.components["encoder"].requires = ["cpuinfo::cpuinfo"]
             if self.settings.os in ("FreeBSD", "Linux"):
-                self.cpp_info.components["encoder"].system_libs = ["pthread", "dl", "m"]
+                self.info.components["encoder"].system_libs = ["pthread", "dl", "m"]
             if self.settings.os == "Android":
-                self.cpp_info.components["encoder"].system_libs = ["m"]
+                self.info.components["encoder"].system_libs = ["m"]
         if self.options.get_safe("build_decoder"):
-            self.cpp_info.components["decoder"].libs = ["SvtAv1Dec"]
-            self.cpp_info.components["decoder"].includedirs = ["include/svt-av1"]
-            self.cpp_info.components["decoder"].set_property("pkg_config_name", "SvtAv1Dec")
-            self.cpp_info.components["decoder"].requires = ["cpuinfo::cpuinfo"]
+            self.info.components["decoder"].libs = ["SvtAv1Dec"]
+            self.info.components["decoder"].includedirs = ["include/svt-av1"]
+            self.info.components["decoder"].set_property("pkg_config_name", "SvtAv1Dec")
+            self.info.components["decoder"].requires = ["cpuinfo::cpuinfo"]
             if self.settings.os in ("FreeBSD", "Linux"):
-                self.cpp_info.components["decoder"].system_libs = ["pthread", "dl", "m"]
+                self.info.components["decoder"].system_libs = ["pthread", "dl", "m"]
             if self.settings.os == "Android":
-                self.cpp_info.components["decoder"].system_libs = ["m"]
+                self.info.components["decoder"].system_libs = ["m"]

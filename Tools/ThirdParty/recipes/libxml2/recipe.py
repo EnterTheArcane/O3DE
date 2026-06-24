@@ -134,10 +134,10 @@ class Recipe(RecipeBase):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "libxml2")
-        self.cpp_info.set_property("cmake_target_name", "LibXml2::LibXml2")
-        self.cpp_info.set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.cpp_info.set_property("pkg_config_name", "libxml-2.0")
+        self.info.set_property("cmake_file_name", "libxml2")
+        self.info.set_property("cmake_target_name", "LibXml2::LibXml2")
+        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.set_property("pkg_config_name", "libxml-2.0")
 
         prefix = "lib" if self.settings.os == "Windows" else ""
         postfix = ""
@@ -146,14 +146,14 @@ class Recipe(RecipeBase):
                 postfix += "s"
             if self.settings.build_type == "Debug":
                 postfix += "d"
-        self.cpp_info.libs = [f"{prefix}xml2{postfix}"]
-        self.cpp_info.includedirs.append(os.path.join("include", "libxml2"))
+        self.info.libs = [f"{prefix}xml2{postfix}"]
+        self.info.includedirs.append(os.path.join("include", "libxml2"))
         if not self.options.shared:
-            self.cpp_info.defines = ["LIBXML_STATIC"]
+            self.info.defines = ["LIBXML_STATIC"]
 
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
-            self.cpp_info.system_libs += ["m", "dl"]
+            self.info.system_libs += ["m", "dl"]
             if self.settings.os in ["Linux", "FreeBSD"]:
-                self.cpp_info.system_libs.append("pthread")
+                self.info.system_libs.append("pthread")
         elif self.settings.os == "Windows":
-            self.cpp_info.system_libs += ["ws2_32", "bcrypt"]
+            self.info.system_libs += ["ws2_32", "bcrypt"]

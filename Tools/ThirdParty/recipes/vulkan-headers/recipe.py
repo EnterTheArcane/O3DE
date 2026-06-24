@@ -42,13 +42,13 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "VulkanHeaders")
-        self.cpp_info.components["vulkanheaders"].set_property("cmake_target_name", "Vulkan::Headers")
-        self.cpp_info.components["vulkanheaders"].bindirs = []
-        self.cpp_info.components["vulkanheaders"].libdirs = []
+        self.info.set_property("cmake_file_name", "VulkanHeaders")
+        self.info.components["vulkanheaders"].set_property("cmake_target_name", "Vulkan::Headers")
+        self.info.components["vulkanheaders"].bindirs = []
+        self.info.components["vulkanheaders"].libdirs = []
 
-        self.cpp_info.components["vulkanregistry"].set_property("cmake_target_name", "Vulkan::Registry")
-        self.cpp_info.components["vulkanregistry"].includedirs = [os.path.join("res", "vulkan", "registry")]
-        self.cpp_info.components["vulkanregistry"].bindirs = []
-        self.cpp_info.components["vulkanregistry"].libdirs = []
-        self.cpp_info.components["vulkanregistry"].resdirs = ["res"]
+        self.info.components["vulkanregistry"].set_property("cmake_target_name", "Vulkan::Registry")
+        self.info.components["vulkanregistry"].includedirs = [os.path.join("res", "vulkan", "registry")]
+        self.info.components["vulkanregistry"].bindirs = []
+        self.info.components["vulkanregistry"].libdirs = []
+        self.info.components["vulkanregistry"].resdirs = ["res"]

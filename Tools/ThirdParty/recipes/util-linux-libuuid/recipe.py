@@ -98,14 +98,14 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "uuid")
-        self.cpp_info.set_property("cmake_target_name", "libuuid::libuuid")
-        self.cpp_info.set_property("cmake_file_name", "libuuid")
+        self.info.set_property("pkg_config_name", "uuid")
+        self.info.set_property("cmake_target_name", "libuuid::libuuid")
+        self.info.set_property("cmake_file_name", "libuuid")
         # Maintain alias to `LibUUID::LibUUID` for previous version of the recipe
-        self.cpp_info.set_property("cmake_target_aliases", ["LibUUID::LibUUID"])
+        self.info.set_property("cmake_target_aliases", ["LibUUID::LibUUID"])
 
-        self.cpp_info.libs = ["uuid"]
-        self.cpp_info.includedirs.append(os.path.join("include", "uuid"))
+        self.info.libs = ["uuid"]
+        self.info.includedirs.append(os.path.join("include", "uuid"))
 
         if self.settings.os == "Linux" and Version(self.version) >= "2.41.2":
-            self.cpp_info.system_libs.extend(["pthread"])
+            self.info.system_libs.extend(["pthread"])

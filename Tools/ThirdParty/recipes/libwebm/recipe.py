@@ -56,11 +56,11 @@ class Recipe(RecipeBase):
         copy(self, "LICENSE.TXT", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "webm")
-        self.cpp_info.set_property("cmake_target_name", "webm::webm")
-        self.cpp_info.set_property("pkg_config_name", "webm")
-        self.cpp_info.libs = ["webm"]
-        self.cpp_info.includedirs.append("include/webm")
+        self.info.set_property("cmake_file_name", "webm")
+        self.info.set_property("cmake_target_name", "webm::webm")
+        self.info.set_property("pkg_config_name", "webm")
+        self.info.libs = ["webm"]
+        self.info.includedirs.append("include/webm")
 
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

@@ -43,8 +43,8 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "SPIRV-Headers")
-        self.cpp_info.set_property("cmake_target_name", "SPIRV-Headers::SPIRV-Headers")
-        self.cpp_info.set_property("pkg_config_name", "SPIRV-Headers")
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.set_property("cmake_file_name", "SPIRV-Headers")
+        self.info.set_property("cmake_target_name", "SPIRV-Headers::SPIRV-Headers")
+        self.info.set_property("pkg_config_name", "SPIRV-Headers")
+        self.info.bindirs = []
+        self.info.libdirs = []

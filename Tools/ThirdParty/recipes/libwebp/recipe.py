@@ -76,49 +76,49 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "share"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "WebP")
-        self.cpp_info.set_property("pkg_config_name", "libwebp-all-do-not-use")
-        self.cpp_info.set_property("cmake_additional_variables_prefixes", ["WEBP"])
+        self.info.set_property("cmake_file_name", "WebP")
+        self.info.set_property("pkg_config_name", "libwebp-all-do-not-use")
+        self.info.set_property("cmake_additional_variables_prefixes", ["WEBP"])
 
         # webpdecoder
-        self.cpp_info.components["webpdecoder"].set_property("cmake_target_name", "WebP::webpdecoder")
-        self.cpp_info.components["webpdecoder"].set_property("pkg_config_name", "libwebpdecoder")
-        self.cpp_info.components["webpdecoder"].libs = ["webpdecoder"]
+        self.info.components["webpdecoder"].set_property("cmake_target_name", "WebP::webpdecoder")
+        self.info.components["webpdecoder"].set_property("pkg_config_name", "libwebpdecoder")
+        self.info.components["webpdecoder"].libs = ["webpdecoder"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["webpdecoder"].system_libs = ["m", "pthread"]
+            self.info.components["webpdecoder"].system_libs = ["m", "pthread"]
         if self.settings.os == "Android":
-            self.cpp_info.components["webpdecoder"].system_libs = ["m"]
+            self.info.components["webpdecoder"].system_libs = ["m"]
 
         # webp
-        self.cpp_info.components["webp"].set_property("cmake_target_name", "WebP::webp")
-        self.cpp_info.components["webp"].set_property("pkg_config_name", "libwebp")
-        self.cpp_info.components["webp"].libs = ["webp"]
+        self.info.components["webp"].set_property("cmake_target_name", "WebP::webp")
+        self.info.components["webp"].set_property("pkg_config_name", "libwebp")
+        self.info.components["webp"].libs = ["webp"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["webp"].system_libs = ["m", "pthread"]
+            self.info.components["webp"].system_libs = ["m", "pthread"]
         if self.settings.os == "Android":
-            self.cpp_info.components["webp"].system_libs = ["m"]
+            self.info.components["webp"].system_libs = ["m"]
 
-        self.cpp_info.components["webp"].requires = ["sharpyuv"]
+        self.info.components["webp"].requires = ["sharpyuv"]
 
         # sharpyuv
-        self.cpp_info.components["sharpyuv"].set_property("cmake_target_name", "WebP::sharpyuv")
-        self.cpp_info.components["sharpyuv"].set_property("pkg_config_name", "libsharpyuv")
-        self.cpp_info.components["sharpyuv"].libs = ["sharpyuv"]
+        self.info.components["sharpyuv"].set_property("cmake_target_name", "WebP::sharpyuv")
+        self.info.components["sharpyuv"].set_property("pkg_config_name", "libsharpyuv")
+        self.info.components["sharpyuv"].libs = ["sharpyuv"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["sharpyuv"].system_libs = ["m", "pthread"]
+            self.info.components["sharpyuv"].system_libs = ["m", "pthread"]
         if self.settings.os == "Android":
-            self.cpp_info.components["sharpyuv"].system_libs = ["m"]
+            self.info.components["sharpyuv"].system_libs = ["m"]
 
         # webpdemux
-        self.cpp_info.components["webpdemux"].set_property("cmake_target_name", "WebP::webpdemux")
-        self.cpp_info.components["webpdemux"].set_property("pkg_config_name", "libwebpdemux")
-        self.cpp_info.components["webpdemux"].libs = ["webpdemux"]
-        self.cpp_info.components["webpdemux"].requires = ["webp"]
+        self.info.components["webpdemux"].set_property("cmake_target_name", "WebP::webpdemux")
+        self.info.components["webpdemux"].set_property("pkg_config_name", "libwebpdemux")
+        self.info.components["webpdemux"].libs = ["webpdemux"]
+        self.info.components["webpdemux"].requires = ["webp"]
 
         # webpmux
-        self.cpp_info.components["webpmux"].set_property("cmake_target_name", "WebP::libwebpmux")
-        self.cpp_info.components["webpmux"].set_property("pkg_config_name", "libwebpmux")
-        self.cpp_info.components["webpmux"].libs = ["webpmux"]
-        self.cpp_info.components["webpmux"].requires = ["webp"]
+        self.info.components["webpmux"].set_property("cmake_target_name", "WebP::libwebpmux")
+        self.info.components["webpmux"].set_property("pkg_config_name", "libwebpmux")
+        self.info.components["webpmux"].libs = ["webpmux"]
+        self.info.components["webpmux"].requires = ["webp"]
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
-            self.cpp_info.components["webpmux"].system_libs = ["m"]
+            self.info.components["webpmux"].system_libs = ["m"]

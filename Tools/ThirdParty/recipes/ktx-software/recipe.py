@@ -82,22 +82,22 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "Ktx")
-        self.cpp_info.set_property("cmake_target_name", "KTX::ktx")
-        self.cpp_info.components["libktx"].libs = ["ktx"]
-        self.cpp_info.components["libktx"].defines = [
+        self.info.set_property("cmake_file_name", "Ktx")
+        self.info.set_property("cmake_target_name", "KTX::ktx")
+        self.info.components["libktx"].libs = ["ktx"]
+        self.info.components["libktx"].defines = [
             "KTX_FEATURE_KTX1", "KTX_FEATURE_KTX2", "KTX_FEATURE_WRITE",
         ]
         if not self.options.shared:
-            self.cpp_info.components["libktx"].defines.append("KHRONOS_STATIC")
+            self.info.components["libktx"].defines.append("KHRONOS_STATIC")
             libcxx = stdcpp_library(self)
             if libcxx:
-                self.cpp_info.components["libktx"].system_libs.append(libcxx)
+                self.info.components["libktx"].system_libs.append(libcxx)
         if self.settings.os == "Windows":
-            self.cpp_info.components["libktx"].defines.append("BASISU_NO_ITERATOR_DEBUG_LEVEL")
+            self.info.components["libktx"].defines.append("BASISU_NO_ITERATOR_DEBUG_LEVEL")
         elif self.settings.os == "Linux":
-            self.cpp_info.components["libktx"].system_libs.extend(["m", "dl", "pthread"])
-        self.cpp_info.components["libktx"].set_property("cmake_target_name", "KTX::ktx")
-        self.cpp_info.components["libktx"].requires = ["zstd::zstd"]
+            self.info.components["libktx"].system_libs.extend(["m", "dl", "pthread"])
+        self.info.components["libktx"].set_property("cmake_target_name", "KTX::ktx")
+        self.info.components["libktx"].requires = ["zstd::zstd"]
         if self.options.tools:
-            self.cpp_info.components["libktx"].requires.append("fmt::fmt")
+            self.info.components["libktx"].requires.append("fmt::fmt")

@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "spirv-reflect-static")
-        self.cpp_info.set_property("cmake_target_name", "spirv-reflect-static")
-        self.cpp_info.libs = ["spirv-reflect-static"]
-        self.cpp_info.defines.append("SPIRV_REFLECT_USE_SYSTEM_SPIRV_H")
+        self.info.set_property("cmake_file_name", "spirv-reflect-static")
+        self.info.set_property("cmake_target_name", "spirv-reflect-static")
+        self.info.libs = ["spirv-reflect-static"]
+        self.info.defines.append("SPIRV_REFLECT_USE_SYSTEM_SPIRV_H")

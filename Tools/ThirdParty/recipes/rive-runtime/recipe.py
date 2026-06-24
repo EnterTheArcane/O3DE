@@ -118,12 +118,12 @@ class Recipe(RecipeBase):
         copy(self, "*.lib", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "rive")
-        self.cpp_info.set_property("cmake_target_name", "rive::rive")
-        self.cpp_info.libs = ["rive"]
+        self.info.set_property("cmake_file_name", "rive")
+        self.info.set_property("cmake_target_name", "rive::rive")
+        self.info.libs = ["rive"]
         if self.settings.os == "Windows":
-            self.cpp_info.defines = ["_USE_MATH_DEFINES", "NOMINMAX"]
+            self.info.defines = ["_USE_MATH_DEFINES", "NOMINMAX"]
         elif self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs = ["m", "pthread"]
+            self.info.system_libs = ["m", "pthread"]
         elif self.settings.os == "Mac":
-            self.cpp_info.frameworks = ["CoreText", "CoreGraphics", "CoreFoundation"]
+            self.info.frameworks = ["CoreText", "CoreGraphics", "CoreFoundation"]

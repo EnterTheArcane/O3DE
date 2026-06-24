@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
             dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "robin_hood")
-        self.cpp_info.set_property("cmake_target_name", "robin_hood::robin_hood")
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.set_property("cmake_file_name", "robin_hood")
+        self.info.set_property("cmake_target_name", "robin_hood::robin_hood")
+        self.info.bindirs = []
+        self.info.libdirs = []

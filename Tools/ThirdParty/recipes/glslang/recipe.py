@@ -80,31 +80,31 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "glslang")
+        self.info.set_property("cmake_file_name", "glslang")
 
-        self.cpp_info.components["glslang-core"].set_property("cmake_target_name", "glslang::glslang")
-        self.cpp_info.components["glslang-core"].libs = ["glslang"]
-        self.cpp_info.components["glslang-core"].requires = ["osdependent", "machineindependent", "genericcodegen"]
+        self.info.components["glslang-core"].set_property("cmake_target_name", "glslang::glslang")
+        self.info.components["glslang-core"].libs = ["glslang"]
+        self.info.components["glslang-core"].requires = ["osdependent", "machineindependent", "genericcodegen"]
         if self.settings.os == "Windows":
-            self.cpp_info.components["glslang-core"].system_libs = ["psapi"]
+            self.info.components["glslang-core"].system_libs = ["psapi"]
         elif self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.components["glslang-core"].system_libs = ["m", "pthread"]
+            self.info.components["glslang-core"].system_libs = ["m", "pthread"]
 
         if not self.options.shared:
-            self.cpp_info.components["osdependent"].set_property("cmake_target_name", "glslang::OSDependent")
-            self.cpp_info.components["osdependent"].libs = ["OSDependent"]
+            self.info.components["osdependent"].set_property("cmake_target_name", "glslang::OSDependent")
+            self.info.components["osdependent"].libs = ["OSDependent"]
 
-            self.cpp_info.components["machineindependent"].set_property("cmake_target_name", "glslang::MachineIndependent")
-            self.cpp_info.components["machineindependent"].libs = ["MachineIndependent"]
-            self.cpp_info.components["machineindependent"].requires = ["osdependent", "genericcodegen"]
+            self.info.components["machineindependent"].set_property("cmake_target_name", "glslang::MachineIndependent")
+            self.info.components["machineindependent"].libs = ["MachineIndependent"]
+            self.info.components["machineindependent"].requires = ["osdependent", "genericcodegen"]
 
-            self.cpp_info.components["genericcodegen"].set_property("cmake_target_name", "glslang::GenericCodeGen")
-            self.cpp_info.components["genericcodegen"].libs = ["GenericCodeGen"]
+            self.info.components["genericcodegen"].set_property("cmake_target_name", "glslang::GenericCodeGen")
+            self.info.components["genericcodegen"].libs = ["GenericCodeGen"]
 
-        self.cpp_info.components["spirv"].set_property("cmake_target_name", "glslang::SPIRV")
-        self.cpp_info.components["spirv"].libs = ["SPIRV"]
-        self.cpp_info.components["spirv"].requires = ["glslang-core"]
+        self.info.components["spirv"].set_property("cmake_target_name", "glslang::SPIRV")
+        self.info.components["spirv"].libs = ["SPIRV"]
+        self.info.components["spirv"].requires = ["glslang-core"]
 
-        self.cpp_info.components["glslang-default-resource-limits"].set_property(
+        self.info.components["glslang-default-resource-limits"].set_property(
             "cmake_target_name", "glslang::glslang-default-resource-limits")
-        self.cpp_info.components["glslang-default-resource-limits"].libs = ["glslang-default-resource-limits"]
+        self.info.components["glslang-default-resource-limits"].libs = ["glslang-default-resource-limits"]

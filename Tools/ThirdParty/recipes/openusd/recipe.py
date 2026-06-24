@@ -108,16 +108,16 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "pxr")
-        self.cpp_info.set_property("cmake_target_name", "pxr::usd_m")
+        self.info.set_property("cmake_file_name", "pxr")
+        self.info.set_property("cmake_target_name", "pxr::usd_m")
 
-        self.cpp_info.libs = ["usd_m"]
+        self.info.libs = ["usd_m"]
         if not self.options.shared:
-            self.cpp_info.defines = ["PXR_STATIC=1"]
+            self.info.defines = ["PXR_STATIC=1"]
         if self.settings.os == "Windows":
-            self.cpp_info.defines = (self.cpp_info.defines or []) + ["NOMINMAX"]
+            self.info.defines = (self.info.defines or []) + ["NOMINMAX"]
         if self.settings.os in ("Linux", "FreeBSD"):
-            self.cpp_info.system_libs = ["pthread", "dl", "m"]
+            self.info.system_libs = ["pthread", "dl", "m"]
 
-        self.cpp_info.requires = ["onetbb::onetbb"]
-        self.cpp_info.requires.append("cpython::cpython")
+        self.info.requires = ["onetbb::onetbb"]
+        self.info.requires.append("cpython::cpython")

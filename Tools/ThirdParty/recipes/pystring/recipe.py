@@ -49,4 +49,4 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.libs = ["pystring"]
+        self.info.libs = ["pystring"]

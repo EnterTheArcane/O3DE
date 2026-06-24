@@ -90,10 +90,10 @@ class Recipe(RecipeBase):
         fix_msvc_libname(self)
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "dav1d")
-        self.cpp_info.libs = ["dav1d"]
+        self.info.set_property("pkg_config_name", "dav1d")
+        self.info.libs = ["dav1d"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["dl", "pthread"])
+            self.info.system_libs.extend(["dl", "pthread"])
 
 
 def fix_msvc_libname(recipe, remove_lib_prefix=True):

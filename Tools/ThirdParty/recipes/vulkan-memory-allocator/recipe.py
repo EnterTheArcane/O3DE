@@ -33,8 +33,8 @@ class Recipe(RecipeBase):
         copy(self, "vk_mem_alloc.h", src=include_dir, dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
-        self.cpp_info.set_property("cmake_file_name", "VulkanMemoryAllocator")
-        self.cpp_info.set_property("cmake_target_name", "GPUOpen::VulkanMemoryAllocator")
-        self.cpp_info.set_property("cmake_target_aliases", ["VulkanMemoryAllocator", ])
+        self.info.bindirs = []
+        self.info.libdirs = []
+        self.info.set_property("cmake_file_name", "VulkanMemoryAllocator")
+        self.info.set_property("cmake_target_name", "GPUOpen::VulkanMemoryAllocator")
+        self.info.set_property("cmake_target_aliases", ["VulkanMemoryAllocator", ])

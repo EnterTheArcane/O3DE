@@ -51,12 +51,12 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "fdk-aac")
-        self.cpp_info.set_property("cmake_target_name", "FDK-AAC::fdk-aac")
-        self.cpp_info.set_property("pkg_config_name", "fdk-aac")
+        self.info.set_property("cmake_file_name", "fdk-aac")
+        self.info.set_property("cmake_target_name", "FDK-AAC::fdk-aac")
+        self.info.set_property("pkg_config_name", "fdk-aac")
 
-        self.cpp_info.components["fdk-aac"].libs = ["fdk-aac"]
+        self.info.components["fdk-aac"].libs = ["fdk-aac"]
         if self.settings.os in ["Linux", "FreeBSD", "Android"]:
-            self.cpp_info.components["fdk-aac"].system_libs.append("m")
+            self.info.components["fdk-aac"].system_libs.append("m")
 
-        self.cpp_info.components["fdk-aac"].set_property("cmake_target_name", "FDK-AAC::fdk-aac")
+        self.info.components["fdk-aac"].set_property("cmake_target_name", "FDK-AAC::fdk-aac")

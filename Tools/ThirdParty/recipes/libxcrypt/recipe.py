@@ -73,5 +73,5 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "libxcrypt")
-        self.cpp_info.libs = ["crypt"]
+        self.info.set_property("pkg_config_name", "libxcrypt")
+        self.info.libs = ["crypt"]

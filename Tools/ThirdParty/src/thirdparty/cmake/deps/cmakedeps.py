@@ -72,7 +72,7 @@ class CMakeDeps:
 
             if require.direct:
                 direct_deps.append((require, dep))
-            full_cpp_info = dep.cpp_info.deduce_full_cpp_info(dep)
+            full_cpp_info = dep.info.deduce_full_info(dep)
             config = ConfigTemplate2(self, require, dep, full_cpp_info)
             ret[config.filename] = config.content()
             config_version = ConfigVersionTemplate2(self, dep)
@@ -93,7 +93,7 @@ class CMakeDeps:
             for (require, dep) in direct_deps:
                 note = " # Optional. This is a tool-require, can't link its targets" if require.build else ""
                 msg.append(f"    find_package({self.get_cmake_filename(dep)}){note}")
-                if not require.build and not dep.cpp_info.exe:
+                if not require.build and not dep.info.exe:
                     target_name = self.get_property("cmake_target_name", dep)
                     link_targets.append(target_name or f"{dep.ref.name}::{dep.ref.name}")
             if link_targets:
@@ -132,11 +132,11 @@ class CMakeDeps:
                     f'but "{type(value).__name__}" was found')
             return value
         except KeyError:
-            # Here we are not using the cpp_info = deduce_cpp_info(dep) because it is not
+            # Here we are not using the info = deduce_cpp_info(dep) because it is not
             # necessary for the properties
             if not comp_name:
-                return dep.cpp_info.get_property(prop, check_type=check_type)
-            comp = dep.cpp_info.components.get(comp_name)  # it is a default dict
+                return dep.info.get_property(prop, check_type=check_type)
+            comp = dep.info.components.get(comp_name)  # it is a default dict
             if comp is not None:
                 return comp.get_property(prop, check_type=check_type)
 
@@ -182,7 +182,7 @@ class _PathGenerator:
             "bindirs": "CMAKE_PROGRAM_PATH", "libdirs": "CMAKE_LIBRARY_PATH", "includedirs": "CMAKE_INCLUDE_PATH", "frameworkdirs": "CMAKE_FRAMEWORK_PATH", "builddirs": "CMAKE_MODULE_PATH",
         }
         for req, dep in requirements:
-            cppinfo = dep.cpp_info.aggregated_components()
+            cppinfo = dep.info.aggregated_components()
             cppinfo_dirs = getattr(cppinfo, dirs_name, [])
             if not cppinfo_dirs:
                 continue
@@ -236,6 +236,9 @@ class _PathGenerator:
         host_req = self._recipe.dependencies.host
         build_req = self._recipe.dependencies.direct_build
         all_reqs = list(host_req.items()) + list(build_req.items())
+        # Library/include/framework search paths come from the host requirements only (the
+        # packages we link against), never from build/tool requirements.
+        host_test_reqs = list(host_req.items())
         # gen_folder = self._recipe.folders.generators.as_posix()
         # if not, test_cmake_add_subdirectory test fails
         # content.append('set(CMAKE_FIND_PACKAGE_PREFER_CONFIG ON)')
@@ -284,9 +287,9 @@ class _PathGenerator:
             # https://cmake.org/cmake/help/v3.22/guide/using-dependencies/index.html
             if cmake_find_mode == FIND_MODE_NONE:
                 try:
-                    # This is irrespective of the components, it should be in the root cpp_info
+                    # This is irrespective of the components, it should be in the root info
                     # To define the location of the pkg-config.cmake file
-                    build_dir = dep.cpp_info.builddirs[0]
+                    build_dir = dep.info.builddirs[0]
                 except IndexError:
                     build_dir = dep.folders.package
                 pkg_folder = os.fspath(build_dir).replace("\\", "/") if build_dir else None
@@ -358,7 +361,7 @@ class _PathGenerator:
         host_req = self._recipe.dependencies.host
         for req in host_req.values():
             config = req.settings.get_safe("build_type", self._cmakedeps.configuration)
-            aggregated_cppinfo = req.cpp_info.aggregated_components()
+            aggregated_cppinfo = req.info.aggregated_components()
             runtime_dirs = aggregated_cppinfo.bindirs if is_win else aggregated_cppinfo.libdirs
             for d in runtime_dirs:
                 d = d.replace("\\", "/")

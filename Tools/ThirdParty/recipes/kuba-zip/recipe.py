@@ -57,9 +57,9 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "zip")
-        self.cpp_info.set_property("cmake_target_name", "zip::zip")
+        self.info.set_property("cmake_file_name", "zip")
+        self.info.set_property("cmake_target_name", "zip::zip")
 
-        self.cpp_info.libs = ["zip"]
+        self.info.libs = ["zip"]
         if self.options.shared:
-            self.cpp_info.defines.append("ZIP_SHARED")
+            self.info.defines.append("ZIP_SHARED")

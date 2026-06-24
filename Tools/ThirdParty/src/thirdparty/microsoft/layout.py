@@ -21,7 +21,7 @@ def vs_layout(recipe: RecipeBase):
     recipe.folders._source = subproject or "."
     recipe.folders._generators = os.path.join(subproject, "recipe") if subproject else "recipe"
     recipe.folders._build = subproject or "."
-    recipe.cpp.source.includedirs = ["include"]
+    recipe.infos.source.includedirs = ["include"]
 
     try:
         build_type = str(recipe.settings.build_type)
@@ -42,5 +42,5 @@ def vs_layout(recipe: RecipeBase):
     else:
         bindirs = build_type
 
-    recipe.cpp.build.libdirs = [bindirs]
-    recipe.cpp.build.bindirs = [bindirs]
+    recipe.infos.build.libdirs = [bindirs]
+    recipe.infos.build.bindirs = [bindirs]

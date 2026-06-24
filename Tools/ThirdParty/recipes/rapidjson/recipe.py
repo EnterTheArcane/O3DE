@@ -28,7 +28,7 @@ class Recipe(RecipeBase):
         copy(self, pattern="*", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "RapidJSON")
-        self.cpp_info.set_property("cmake_target_name", "rapidjson")
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.set_property("cmake_file_name", "RapidJSON")
+        self.info.set_property("cmake_target_name", "rapidjson")
+        self.info.bindirs = []
+        self.info.libdirs = []

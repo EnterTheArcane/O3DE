@@ -59,9 +59,9 @@ class Recipe(RecipeBase):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.set_property("pkg_config_name", "lcms2")
-        self.cpp_info.libs = ["lcms2"]
+        self.info.set_property("pkg_config_name", "lcms2")
+        self.info.libs = ["lcms2"]
         if self.settings.os == "Windows" and self.options.shared:
-            self.cpp_info.defines.append("CMS_DLL")
+            self.info.defines.append("CMS_DLL")
         if self.settings.os in ("FreeBSD", "Linux"):
-            self.cpp_info.system_libs.extend(["m", "pthread"])
+            self.info.system_libs.extend(["m", "pthread"])

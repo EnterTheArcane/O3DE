@@ -125,45 +125,45 @@ class Recipe(RecipeBase):
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "PCRE2")
-        self.cpp_info.set_property("pkg_config_name", "libpcre2")
+        self.info.set_property("cmake_file_name", "PCRE2")
+        self.info.set_property("pkg_config_name", "libpcre2")
         if self.options.build_pcre2_8:
             # pcre2-8
-            self.cpp_info.components["pcre2-8"].set_property("cmake_target_name", "PCRE2::8BIT")
-            self.cpp_info.components["pcre2-8"].set_property("pkg_config_name", "libpcre2-8")
-            self.cpp_info.components["pcre2-8"].libs = [self._lib_name("pcre2-8")]
+            self.info.components["pcre2-8"].set_property("cmake_target_name", "PCRE2::8BIT")
+            self.info.components["pcre2-8"].set_property("pkg_config_name", "libpcre2-8")
+            self.info.components["pcre2-8"].libs = [self._lib_name("pcre2-8")]
             if not self.options.shared:
-                self.cpp_info.components["pcre2-8"].defines.append("PCRE2_STATIC")
+                self.info.components["pcre2-8"].defines.append("PCRE2_STATIC")
             # pcre2-posix
-            self.cpp_info.components["pcre2-posix"].set_property("cmake_target_name", "PCRE2::POSIX")
-            self.cpp_info.components["pcre2-posix"].set_property("pkg_config_name", "libpcre2-posix")
-            self.cpp_info.components["pcre2-posix"].libs = [self._lib_name("pcre2-posix")]
-            self.cpp_info.components["pcre2-posix"].requires = ["pcre2-8"]
+            self.info.components["pcre2-posix"].set_property("cmake_target_name", "PCRE2::POSIX")
+            self.info.components["pcre2-posix"].set_property("pkg_config_name", "libpcre2-posix")
+            self.info.components["pcre2-posix"].libs = [self._lib_name("pcre2-posix")]
+            self.info.components["pcre2-posix"].requires = ["pcre2-8"]
             if is_msvc(self) and self.options.shared:
-                self.cpp_info.components["pcre2-posix"].defines.append("PCRE2POSIX_SHARED=1")
+                self.info.components["pcre2-posix"].defines.append("PCRE2POSIX_SHARED=1")
 
         # pcre2-16
         if self.options.build_pcre2_16:
-            self.cpp_info.components["pcre2-16"].set_property("cmake_target_name", "PCRE2::16BIT")
-            self.cpp_info.components["pcre2-16"].set_property("pkg_config_name", "libpcre2-16")
-            self.cpp_info.components["pcre2-16"].libs = [self._lib_name("pcre2-16")]
+            self.info.components["pcre2-16"].set_property("cmake_target_name", "PCRE2::16BIT")
+            self.info.components["pcre2-16"].set_property("pkg_config_name", "libpcre2-16")
+            self.info.components["pcre2-16"].libs = [self._lib_name("pcre2-16")]
             if not self.options.shared:
-                self.cpp_info.components["pcre2-16"].defines.append("PCRE2_STATIC")
+                self.info.components["pcre2-16"].defines.append("PCRE2_STATIC")
         # pcre2-32
         if self.options.build_pcre2_32:
-            self.cpp_info.components["pcre2-32"].set_property("cmake_target_name", "PCRE2::32BIT")
-            self.cpp_info.components["pcre2-32"].set_property("pkg_config_name", "libpcre2-32")
-            self.cpp_info.components["pcre2-32"].libs = [self._lib_name("pcre2-32")]
+            self.info.components["pcre2-32"].set_property("cmake_target_name", "PCRE2::32BIT")
+            self.info.components["pcre2-32"].set_property("pkg_config_name", "libpcre2-32")
+            self.info.components["pcre2-32"].libs = [self._lib_name("pcre2-32")]
             if not self.options.shared:
-                self.cpp_info.components["pcre2-32"].defines.append("PCRE2_STATIC")
+                self.info.components["pcre2-32"].defines.append("PCRE2_STATIC")
 
         if self.options.build_pcre2grep:
             # FIXME: This is a workaround to avoid RecipeException. zlib and bzip2
             # are optional requirements of pcre2grep executable, not of any pcre2 lib.
             if self.options.with_zlib:
-                self.cpp_info.components["pcre2-8"].requires.append("zlib::zlib")
+                self.info.components["pcre2-8"].requires.append("zlib::zlib")
             if self.options.with_bzip2:
-                self.cpp_info.components["pcre2-8"].requires.append("bzip2::bzip2")
+                self.info.components["pcre2-8"].requires.append("bzip2::bzip2")
 
     def _lib_name(self, name):
         libname = name

@@ -159,20 +159,20 @@ class Recipe(RecipeBase):
     def package_info(self):
         # FIXME: we should provide one CMake config file per target (waiting for an implementation of upstream issue 9000)
         def _register_component(target_lib, requires):
-            self.cpp_info.components[target_lib].set_property("cmake_target_name", target_lib)
+            self.info.components[target_lib].set_property("cmake_target_name", target_lib)
             if self.options.shared:
-                self.cpp_info.components[target_lib].set_property("pkg_config_name", target_lib)
+                self.info.components[target_lib].set_property("pkg_config_name", target_lib)
             prefix = "d" if self.settings.os == "Windows" and self.settings.build_type == "Debug" else ""
-            self.cpp_info.components[target_lib].libs = [f"{target_lib}{prefix}"]
-            self.cpp_info.components[target_lib].includedirs.append(os.path.join("include", "spirv_cross"))
-            self.cpp_info.components[target_lib].defines.append(f"SPIRV_CROSS_NAMESPACE_OVERRIDE={self.options.namespace}")
-            self.cpp_info.components[target_lib].requires = requires
+            self.info.components[target_lib].libs = [f"{target_lib}{prefix}"]
+            self.info.components[target_lib].includedirs.append(os.path.join("include", "spirv_cross"))
+            self.info.components[target_lib].defines.append(f"SPIRV_CROSS_NAMESPACE_OVERRIDE={self.options.namespace}")
+            self.info.components[target_lib].requires = requires
             if self.settings.os in ["Linux", "FreeBSD"] and self.options.glsl:
-                self.cpp_info.components[target_lib].system_libs.append("m")
+                self.info.components[target_lib].system_libs.append("m")
             if not self.options.shared and self.options.c_api:
                 libcxx = stdcpp_library(self)
                 if libcxx:
-                    self.cpp_info.components[target_lib].system_libs.append(libcxx)
+                    self.info.components[target_lib].system_libs.append(libcxx)
 
         for target_lib, requires in self._spirv_cross_components.items():
             _register_component(target_lib, requires)

@@ -23,5 +23,5 @@ def bazel_layout(recipe: RecipeBase, src_folder=".", build_folder=".", target_fo
     if target_folder:
         bindirs = os.path.join(bindirs, target_folder)
         libdirs = os.path.join(libdirs, target_folder)
-    recipe.cpp.build.bindirs = [bindirs]
-    recipe.cpp.build.libdirs = [libdirs]
+    recipe.infos.build.bindirs = [bindirs]
+    recipe.infos.build.libdirs = [libdirs]

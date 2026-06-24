@@ -28,5 +28,5 @@ class Recipe(RecipeBase):
         copy(self, "*.h", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include"))
 
     def package_info(self):
-        self.cpp_info.bindirs = []
-        self.cpp_info.libdirs = []
+        self.info.bindirs = []
+        self.info.libdirs = []

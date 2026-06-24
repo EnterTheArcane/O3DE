@@ -85,9 +85,9 @@ class Recipe(RecipeBase):
             rm(self, "*draco.a", os.path.join(self.folders.package, "lib"))
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "draco")
-        self.cpp_info.set_property("cmake_target_name", "draco::draco")
-        self.cpp_info.set_property("pkg_config_name", "draco")
-        self.cpp_info.libs = ["draco"]
+        self.info.set_property("cmake_file_name", "draco")
+        self.info.set_property("cmake_target_name", "draco::draco")
+        self.info.set_property("pkg_config_name", "draco")
+        self.info.libs = ["draco"]
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.append("m")
+            self.info.system_libs.append("m")

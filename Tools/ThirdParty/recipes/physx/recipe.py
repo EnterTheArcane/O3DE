@@ -265,63 +265,63 @@ class Recipe(RecipeBase):
                 copy(self, pattern=dll_info.get("pattern"), dst=package_dst_bin_dir, src=dll_dir, keep_path=False)
 
     def package_info(self):
-        self.cpp_info.set_property("cmake_file_name", "PhysX")
+        self.info.set_property("cmake_file_name", "PhysX")
 
         # PhysXFoundation
-        self.cpp_info.components["physxfoundation"].set_property("cmake_target_name", "PhysX::PhysXFoundation")
-        self.cpp_info.components["physxfoundation"].libs = ["PhysXFoundation"]
+        self.info.components["physxfoundation"].set_property("cmake_target_name", "PhysX::PhysXFoundation")
+        self.info.components["physxfoundation"].libs = ["PhysXFoundation"]
         if self.settings.os == "Linux":
-            self.cpp_info.components["physxfoundation"].system_libs = ["m", "pthread", "rt"]
+            self.info.components["physxfoundation"].system_libs = ["m", "pthread", "rt"]
         elif self.settings.os == "Android":
-            self.cpp_info.components["physxfoundation"].system_libs = ["log"]
+            self.info.components["physxfoundation"].system_libs = ["log"]
         elif self.settings.os == "Windows":
-            self.cpp_info.components["physxfoundation"].system_libs = ["ws2_32"]
+            self.info.components["physxfoundation"].system_libs = ["ws2_32"]
 
         # PhysXCommon
-        self.cpp_info.components["physxcommon"].set_property("cmake_target_name", "PhysX::PhysXCommon")
-        self.cpp_info.components["physxcommon"].libs = ["PhysXCommon"]
+        self.info.components["physxcommon"].set_property("cmake_target_name", "PhysX::PhysXCommon")
+        self.info.components["physxcommon"].libs = ["PhysXCommon"]
         if self.settings.os == "Linux":
-            self.cpp_info.components["physxcommon"].system_libs = ["m"]
-        self.cpp_info.components["physxcommon"].requires = ["physxfoundation"]
+            self.info.components["physxcommon"].system_libs = ["m"]
+        self.info.components["physxcommon"].requires = ["physxfoundation"]
 
         # PhysXPvdSDK
-        self.cpp_info.components["physxpvdsdk"].set_property("cmake_target_name", "PhysX::PhysXPvdSDK")
-        self.cpp_info.components["physxpvdsdk"].libs = ["PhysXPvdSDK"]
-        self.cpp_info.components["physxpvdsdk"].requires = ["physxfoundation"]
+        self.info.components["physxpvdsdk"].set_property("cmake_target_name", "PhysX::PhysXPvdSDK")
+        self.info.components["physxpvdsdk"].libs = ["PhysXPvdSDK"]
+        self.info.components["physxpvdsdk"].requires = ["physxfoundation"]
 
         # PhysX
-        self.cpp_info.components["physxmain"].set_property("cmake_target_name", "PhysX::PhysX")
-        self.cpp_info.components["physxmain"].libs = ["PhysX"]
+        self.info.components["physxmain"].set_property("cmake_target_name", "PhysX::PhysX")
+        self.info.components["physxmain"].libs = ["PhysX"]
         if self.settings.os == "Linux":
-            self.cpp_info.components["physxmain"].system_libs = ["m"]
+            self.info.components["physxmain"].system_libs = ["m"]
             if self.settings.arch == "X64":
-                self.cpp_info.components["physxmain"].system_libs.append("dl")
-        self.cpp_info.components["physxmain"].requires = ["physxpvdsdk", "physxcommon", "physxfoundation"]
+                self.info.components["physxmain"].system_libs.append("dl")
+        self.info.components["physxmain"].requires = ["physxpvdsdk", "physxcommon", "physxfoundation"]
 
         # PhysXTask
         if self.settings.os == "Windows" and self.options.shared:
-            self.cpp_info.components["physxtask"].set_property("cmake_target_name", "PhysX::PhysXTask")
-            self.cpp_info.components["physxtask"].libs = ["PhysXTask"]
-            self.cpp_info.components["physxmain"].requires.append("physxtask")
+            self.info.components["physxtask"].set_property("cmake_target_name", "PhysX::PhysXTask")
+            self.info.components["physxtask"].libs = ["PhysXTask"]
+            self.info.components["physxmain"].requires.append("physxtask")
 
         # PhysXCharacterKinematic
-        self.cpp_info.components["physxcharacterkinematic"].set_property("cmake_target_name", "PhysX::PhysXCharacterKinematic")
-        self.cpp_info.components["physxcharacterkinematic"].libs = ["PhysXCharacterKinematic"]
-        self.cpp_info.components["physxcharacterkinematic"].requires = ["physxfoundation", "physxcommon", "physxextensions"]
+        self.info.components["physxcharacterkinematic"].set_property("cmake_target_name", "PhysX::PhysXCharacterKinematic")
+        self.info.components["physxcharacterkinematic"].libs = ["PhysXCharacterKinematic"]
+        self.info.components["physxcharacterkinematic"].requires = ["physxfoundation", "physxcommon", "physxextensions"]
 
         # PhysXCooking
-        self.cpp_info.components["physxcooking"].set_property("cmake_target_name", "PhysX::PhysXCooking")
-        self.cpp_info.components["physxcooking"].libs = ["PhysXCooking"]
+        self.info.components["physxcooking"].set_property("cmake_target_name", "PhysX::PhysXCooking")
+        self.info.components["physxcooking"].libs = ["PhysXCooking"]
         if self.settings.os == "Linux":
-            self.cpp_info.components["physxcooking"].system_libs = ["m"]
-        self.cpp_info.components["physxcooking"].requires = ["physxfoundation", "physxcommon"]
+            self.info.components["physxcooking"].system_libs = ["m"]
+        self.info.components["physxcooking"].requires = ["physxfoundation", "physxcommon"]
 
         # PhysXVehicle
-        self.cpp_info.components["physxvehicle"].set_property("cmake_target_name", "PhysX::PhysXVehicle")
-        self.cpp_info.components["physxvehicle"].libs = ["PhysXVehicle"]
-        self.cpp_info.components["physxvehicle"].requires = ["physxfoundation", "physxpvdsdk", "physxextensions"]
+        self.info.components["physxvehicle"].set_property("cmake_target_name", "PhysX::PhysXVehicle")
+        self.info.components["physxvehicle"].libs = ["PhysXVehicle"]
+        self.info.components["physxvehicle"].requires = ["physxfoundation", "physxpvdsdk", "physxextensions"]
 
         # PhysXExtensions
-        self.cpp_info.components["physxextensions"].set_property("cmake_target_name", "PhysX::PhysXExtensions")
-        self.cpp_info.components["physxextensions"].libs = ["PhysXExtensions"]
-        self.cpp_info.components["physxextensions"].requires = ["physxfoundation", "physxpvdsdk", "physxmain", "physxcommon"]
+        self.info.components["physxextensions"].set_property("cmake_target_name", "PhysX::PhysXExtensions")
+        self.info.components["physxextensions"].libs = ["PhysXExtensions"]
+        self.info.components["physxextensions"].requires = ["physxfoundation", "physxpvdsdk", "physxmain", "physxcommon"]
