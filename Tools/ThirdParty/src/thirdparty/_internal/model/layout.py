@@ -1,15 +1,6 @@
 import os
 from pathlib import Path
 
-from thirdparty._internal.model.info import Info
-
-
-class Infos:
-    def __init__(self):
-        self.source = Info()
-        self.build = Info()
-        self.package = Info(set_defaults=True)
-
 
 def _folder_path(base_folder: str | None, relative_folder: str = "") -> Path | None:
     if base_folder is None:

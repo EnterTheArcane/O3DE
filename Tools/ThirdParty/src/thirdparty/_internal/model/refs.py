@@ -11,9 +11,6 @@ from thirdparty.errors import RecipeException
 @total_ordering
 class RecipeReference:
     """Recipe reference: ``name/version``.
-
-    This system has no user/channel/revision/timestamp coordinates — a recipe is
-    identified solely by its name, and each name maps to exactly one version.
     """
 
     def __init__(self, name: str | None = None, version: Any = None):

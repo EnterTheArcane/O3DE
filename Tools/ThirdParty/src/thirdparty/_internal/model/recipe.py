@@ -5,13 +5,20 @@ from typing import IO, Any
 from thirdparty._internal.graph import CONTEXT_BUILD
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.layout import Folders, Infos
+from thirdparty._internal.model.info import Info
+from thirdparty._internal.model.layout import Folders
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.requires import Requirements
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
 from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
+
+
+class _Infos:
+    source: Info = Info()
+    build: Info = Info()
+    package: Info = Info(set_defaults=True)
 
 
 class RecipeBase:
@@ -54,43 +61,26 @@ class RecipeBase:
     _implicit_tool_requires: frozenset[str] = frozenset()
 
     # Package information
-    infos: "Infos | None" = None
-    buildenv_info: Environment  # Environment
-    runenv_info: Environment  # Environment
-    conf_info: "Conf | None" = None
+    folders = Folders()
+    infos = _Infos()
+    buildenv_info = Environment()
+    runenv_info = Environment()
+    conf_info = Conf()
     conf: Conf
+    
+    _recipe_runtime: Any = None
+    _recipe_buildenv: Any = None  # The profile buildenv, will be assigned initialize()
+    _recipe_runenv: Any = None
+    _recipe_node: Any = None  # access to container Node object, to access info, context, deps...
 
     def __init__(self):
-        # something that can run commands, as os.sytem
-
-        self._recipe_runtime: Any = None
-        self.buildenv_info = Environment()
-        self.runenv_info = Environment()
-        # At the moment only for tool requirements, others will be ignored
-        self.conf_info = Conf()
-        self._recipe_buildenv: Any = None  # The profile buildenv, will be assigned initialize()
-        self._recipe_runenv: Any = None
-        self._recipe_node: Any = None  # access to container Node object, to access info, context, deps...
-
         if isinstance(self.settings, str):
             self.settings = [self.settings]
-        self.requires = Requirements(
-            declared=self.requires, declared_tool=self.tool_requires)
 
+        self.requires = Requirements(declared=self.requires, declared_tool=self.tool_requires)
         self.options = Options(self.options or {}, self.default_options)
-
         self._recipe_dependencies: "RecipeDependencies | None" = None
-
-        if not hasattr(self, "virtualbuildenv"):  # Allow the user to override it with True or False
-            self.virtualbuildenv = True
-        if not hasattr(self, "virtualrunenv"):  # Allow the user to override it with True or False
-            self.virtualrunenv = True
-
         self.env_scripts = {}  # Accumulate the env scripts generated in order
-
-        # layout() method related variables:
-        self.folders = Folders()
-        self.infos = Infos()
 
     @property
     def output(self) -> Output:

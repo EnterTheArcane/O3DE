@@ -35,15 +35,13 @@ class VirtualRunEnv:
         .bat or .sh script
     """
 
-    def __init__(self, recipe: RecipeBase, auto_generate: bool = False):
+    def __init__(self, recipe: RecipeBase):
         """
 
         :param recipe:  The current recipe object. Always use ``self``.
         """
         self._runenv = None
         self._recipe = recipe
-        if not auto_generate:
-            self._recipe.virtualrunenv = False
         self.basename = "runenv"
         self.configuration = recipe.settings.get_safe("build_type")
         if self.configuration:

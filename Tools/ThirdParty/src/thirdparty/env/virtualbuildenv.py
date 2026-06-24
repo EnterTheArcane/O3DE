@@ -14,11 +14,9 @@ class VirtualBuildEnv:
         .bat or .sh script
     """
 
-    def __init__(self, recipe: RecipeBase, auto_generate: bool = False):
+    def __init__(self, recipe: RecipeBase):
         self._buildenv = None
         self._recipe = recipe
-        if not auto_generate:
-            self._recipe.virtualbuildenv = False
         self.basename = "buildenv"
         self.configuration = None
         self.arch = None
