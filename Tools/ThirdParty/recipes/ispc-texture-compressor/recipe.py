@@ -53,4 +53,3 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             bin_dir = os.path.join(self.folders.package, "bin")
             self.buildenv_info.prepend_path("PATH", bin_dir)
-            self.env_info.PATH.append(bin_dir)

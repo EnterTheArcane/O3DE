@@ -94,6 +94,7 @@ class Recipe(RecipeBase):
         self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
 
 
+
 def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     if not recipe.settings.get_safe("compiler.runtime"):

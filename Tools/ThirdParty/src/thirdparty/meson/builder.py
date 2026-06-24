@@ -29,18 +29,12 @@ class Meson:
         """
         self._recipe = recipe
 
-    def configure(self, reconfigure: bool = False):
+    def configure(self):
         """
         Runs ``meson setup [FILE] "BUILD_FOLDER" "SOURCE_FOLDER" [-Dprefix=/]``
         command, where ``FILE`` could be ``--native-file recipe_meson_native.ini``
         (if native builds) or ``--cross-file recipe_meson_cross.ini`` (if cross builds).
-
-        :param reconfigure: ``bool`` value that adds ``--reconfigure`` param to the final command.
         """
-        if reconfigure:
-            self._recipe.output.warning(
-                "reconfigure param has been deprecated."
-                " Removing in Recipe 2.x.", warn_tag="deprecated")
         source_folder = self._recipe.folders.source
         build_folder = self._recipe.folders.build
         generators_folder = self._recipe.folders.generators

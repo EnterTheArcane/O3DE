@@ -35,59 +35,7 @@ class CMakeDeps:
         """
         self._recipe = recipe
         self.configuration = str(self._recipe.settings.build_type)
-
-        # These are just for legacy compatibility, but not use at al
-        self._build_context_activated = []
-        self._build_context_build_modules = []
-        self._build_context_suffix = {}
-        # Enable/Disable checking if a component target exists or not
-        self._check_components_exist = False
-
         self._properties = {}
-
-    @property
-    def build_context_activated(self) -> list[Any]:
-        return self._build_context_activated
-
-    @build_context_activated.setter
-    def build_context_activated(self, value: Any):
-        self._recipe.output.warning(
-            "CMakeDeps.build_context_activated is deprecated, "
-            "not used anymore", warn_tag="deprecated")
-        self._build_context_activated = value
-
-    @property
-    def build_context_build_modules(self) -> list[Any]:
-        return self._build_context_build_modules
-
-    @build_context_build_modules.setter
-    def build_context_build_modules(self, value: Any):
-        self._recipe.output.warning(
-            "CMakeDeps.build_context_build_modules is deprecated, "
-            "not used anymore", warn_tag="deprecated")
-        self._build_context_build_modules = value
-
-    @property
-    def build_context_suffix(self) -> dict[str, Any]:
-        return self._build_context_suffix
-
-    @build_context_suffix.setter
-    def build_context_suffix(self, value: Any):
-        self._recipe.output.warning(
-            "CMakeDeps.build_context_suffix is deprecated, "
-            "not used anymore", warn_tag="deprecated")
-        self._build_context_suffix = value
-
-    @property
-    def check_components_exist(self) -> bool:
-        return self._check_components_exist
-
-    @check_components_exist.setter
-    def check_components_exist(self, value: Any):
-        self._recipe.output.warning(
-            "CMakeDeps.check_components_exist is deprecated, "
-            "not used anymore", warn_tag="deprecated")
-        self._check_components_exist = value
 
     def generate(self):
         """

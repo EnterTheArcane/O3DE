@@ -888,7 +888,6 @@ class Recipe(RecipeBase):
 
         python = self._cpython_interpreter_path
         self.conf_info.define("user.cpython:python", python)
-        self.user_info.python = python
         if self.options.env_vars:
             self.runenv_info.append_path("PYTHON", python)
             self.buildenv_info.append_path("PYTHON", python)
@@ -901,11 +900,9 @@ class Recipe(RecipeBase):
         else:
             pythonhome = self.folders.package
         self.conf_info.define("user.cpython:pythonhome", pythonhome)
-        self.user_info.pythonhome = pythonhome
 
         pythonhome_required = is_msvc(self) or is_apple_os(self)
         self.conf_info.define("user.cpython:module_requires_pythonhome", pythonhome_required)
-        self.user_info.module_requires_pythonhome = pythonhome_required
 
         if is_msvc(self):
             if self.options.env_vars:
@@ -929,4 +926,4 @@ class Recipe(RecipeBase):
             # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Setting PYTHON_ROOT environment variable: {python_root}")
         self.conf_info.define("user.cpython:python_root", python_root)
-        self.user_info.python_root = python_root
+

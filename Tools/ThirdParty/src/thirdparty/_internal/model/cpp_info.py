@@ -42,45 +42,6 @@ _ALL_NAMES = _DIRS_VAR_NAMES + _FIELD_VAR_NAMES
 _SINGLE_VALUE_VARS = "_type", "_exe", "_location", "_link_location", "_languages"
 
 
-class MockInfoProperty:
-    """
-    # TODO: Remove in 2.X
-    to mock user_info and env_info
-    """
-    counter = {}
-    package = None
-
-    def __init__(self, name: str):
-        self._name = name
-
-    @staticmethod
-    def message():
-        if not MockInfoProperty.counter:
-            return
-        Output().warning(
-            "Usage of deprecated Recipe 1.X features that will be removed in "
-            "Recipe 2.X:", warn_tag="deprecated")
-        for k, v in MockInfoProperty.counter.items():
-            Output().warning(f"    '{k}' used in: {', '.join(v)}", warn_tag="deprecated")
-        MockInfoProperty.counter = {}
-
-    def __getitem__(self, key):
-        MockInfoProperty.counter.setdefault(self._name, set()).add(self.package)
-        return []
-
-    def __setitem__(self, key, value):
-        MockInfoProperty.counter.setdefault(self._name, set()).add(self.package)
-
-    def __getattr__(self, attr):
-        MockInfoProperty.counter.setdefault(self._name, set()).add(self.package)
-        return []
-
-    def __setattr__(self, attr, value):
-        if attr != "_name":
-            MockInfoProperty.counter.setdefault(self._name, set()).add(self.package)
-        return super(MockInfoProperty, self).__setattr__(attr, value)
-
-
 class _Component:
 
     def __init__(self, set_defaults: bool = False):
@@ -115,11 +76,6 @@ class _Component:
         self._requires: list[str] | None = None
 
         self._consumer_recipe: RecipeBase | None = None
-
-        # LEGACY 1.X fields, can be removed in 2.X
-        self.names = MockInfoProperty("cpp_info.names")
-        self.filenames = MockInfoProperty("cpp_info.filenames")
-        self.build_modules = MockInfoProperty("cpp_info.build_modules")
 
         if set_defaults:
             self.includedirs = ["include"]

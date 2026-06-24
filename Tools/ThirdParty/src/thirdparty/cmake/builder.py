@@ -274,18 +274,11 @@ class CMake:
             arg_list.extend(["--component", component])
         arg_list.extend(self._compilation_verbosity_arg)
 
-        deprecated_install_strip = self._recipe.conf.get(
-            "tools.cmake:install_strip", check_type=bool)
-        if deprecated_install_strip:
-            self._recipe.output.warning(
-                "The 'tools.cmake:install_strip' configuration is "
-                "deprecated, use 'tools.build:install_strip' instead.", warn_tag="deprecated")
-
         try:
             do_strip = self._recipe.conf.get("tools.build:install_strip", check_type=bool)
         except RecipeException:
             do_strip = "cmake" in self._recipe.conf.get("tools.build:install_strip", check_type=list)
-        if do_strip or deprecated_install_strip:
+        if do_strip:
             arg_list.append("--strip")
 
         if cli_args:

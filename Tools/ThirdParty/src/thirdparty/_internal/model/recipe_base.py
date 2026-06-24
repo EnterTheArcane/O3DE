@@ -3,7 +3,6 @@ import subprocess
 from typing import IO, Any
 
 from thirdparty._internal.model.conf import Conf
-from thirdparty._internal.model.cpp_info import MockInfoProperty
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.layout import Folders, Infos, Layouts
 from thirdparty._internal.model.options import Options
@@ -81,9 +80,6 @@ class RecipeBase:
 
         self.options = Options(self.options or {}, self.default_options)
 
-        # user declared variables
-        self.user_info = MockInfoProperty("user_info")
-        self.env_info = MockInfoProperty("env_info")
         self._recipe_dependencies: "RecipeDependencies | None" = None
 
         if not hasattr(self, "virtualbuildenv"):  # Allow the user to override it with True or False
