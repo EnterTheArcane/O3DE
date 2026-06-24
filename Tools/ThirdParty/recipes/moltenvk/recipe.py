@@ -43,7 +43,7 @@ class Recipe(RecipeBase):
         self.requires("glslang")
         self.requires("spirv-cross")
         self.requires("spirv-tools")
-        self.requires("vulkan-headers", transitive_headers=True)
+        self.requires("vulkan-headers")
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/MoltenVK")

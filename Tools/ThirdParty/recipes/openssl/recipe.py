@@ -119,15 +119,15 @@ class Recipe(RecipeBase):
             self.requires("zlib")
         if self.settings_build.os == "Windows":
             if self.conf.get("user.openssl:windows_use_jom", False):
-                self.tool_requires("jom")
+                self.requires_tool("jom")
             if not self.options.no_asm and self.settings.arch == "X64":
-                self.tool_requires("nasm")
+                self.requires_tool("nasm")
             if self._use_nmake:
-                self.tool_requires("strawberryperl")
+                self.requires_tool("strawberryperl")
             else:
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2")
+                    self.requires_tool("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "openssl/openssl")

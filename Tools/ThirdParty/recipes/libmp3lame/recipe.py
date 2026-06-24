@@ -34,11 +34,11 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if not is_msvc(self) and not self._is_clang_cl:
-            self.tool_requires("gnu-config")
+            self.requires_tool("gnu-config")
             if self.settings.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2")
+                    self.requires_tool("msys2")
 
     def source(self):
         get(

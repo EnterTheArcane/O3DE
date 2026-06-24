@@ -37,7 +37,7 @@ class Recipe(RecipeBase):
             self.options.rm_safe("with_default_callback_uses_exceptions")
 
     def requirements(self):
-        self.requires("c4core", transitive_headers=True)
+        self.requires("c4core")
 
     def latest_version(self):
         repo = GithubRepository(self, "biojppm/rapidyaml")

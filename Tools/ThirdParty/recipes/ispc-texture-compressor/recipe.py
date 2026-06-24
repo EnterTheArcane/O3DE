@@ -20,8 +20,8 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self):
-        self.tool_requires("cmake")
-        self.tool_requires("ispc")
+        self.requires_tool("cmake")
+        self.requires_tool("ispc")
 
     def source(self):
         get(

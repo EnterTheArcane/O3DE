@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
         # Required libraries
         self.requires("zlib")
         self.requires("libtiff")
-        self.requires("imath", transitive_headers=True)
+        self.requires("imath")
         self.requires("openexr")
         if self.options.with_libjpeg == "libjpeg":
             self.requires("libjpeg")
@@ -75,7 +75,7 @@ class Recipe(RecipeBase):
         self.requires("pugixml")
         self.requires("libsquish")
         self.requires("tsl-robin-map")
-        self.requires("fmt", transitive_headers=True)
+        self.requires("fmt")
 
         # Optional libraries
         if self.options.with_libpng:
@@ -113,7 +113,7 @@ class Recipe(RecipeBase):
             self.requires("libultrahdr")
         # TODO: R3DSDK dependency
         # TODO: Nuke dependency
-        self.tool_requires("cmake")
+        self.requires_tool("cmake")
 
     def latest_version(self):
         repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")

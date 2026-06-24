@@ -31,10 +31,10 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("freetype")
         self.requires("expat")
-        self.tool_requires("gperf")
-        self.tool_requires("meson")
+        self.requires_tool("gperf")
+        self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
 
     def latest_version(self):
         repo = GitlabRepository(self, "fontconfig/fontconfig", host="gitlab.freedesktop.org")

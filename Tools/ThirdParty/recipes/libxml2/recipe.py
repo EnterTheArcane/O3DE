@@ -28,7 +28,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("icu")
-        self.requires("libiconv", transitive_headers=True, transitive_libs=True)
+        self.requires("libiconv")
         self.requires("zlib")
 
     def latest_version(self):

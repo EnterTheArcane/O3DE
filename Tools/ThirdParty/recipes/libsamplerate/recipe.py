@@ -30,7 +30,7 @@ class Recipe(RecipeBase):
     def requirements(self):
         if is_apple_os(self) and self.options.shared:
             # see https://github.com/libsndfile/libsamplerate/blob/0.2.2/src/CMakeLists.txt#L110-L119
-            self.tool_requires("cmake")
+            self.requires_tool("cmake")
 
     def latest_version(self):
         repo = GithubRepository(self, "libsndfile/libsamplerate")

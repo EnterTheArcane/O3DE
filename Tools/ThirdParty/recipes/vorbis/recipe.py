@@ -26,7 +26,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        self.requires("ogg", transitive_headers=True, transitive_libs=True)
+        self.requires("ogg")
 
     def latest_version(self):
         repo = GithubRepository(self, "xiph/vorbis")

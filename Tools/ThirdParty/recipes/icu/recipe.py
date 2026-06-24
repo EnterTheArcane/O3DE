@@ -62,10 +62,10 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
         if cross_building(self) and hasattr(self, "settings_build"):
-            self.tool_requires(str(self.ref))
+            self.requires_tool(str(self.ref))
 
     def latest_version(self):
         repo = GithubRepository(self, "unicode-org/icu")

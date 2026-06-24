@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
-        self.requires(f"tcl", transitive_headers=True, transitive_libs=True)
+        self.requires(f"tcl")
         if self.settings.os == "Linux":
             self.requires("fontconfig")
             self.requires("xorg")
@@ -41,7 +41,7 @@ class Recipe(RecipeBase):
                     and not self.conf.get("tools.microsoft.bash:path")
                     and not self.conf.get("tools.microsoft.bash:subsystem")
             ):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "tcltk/tk")

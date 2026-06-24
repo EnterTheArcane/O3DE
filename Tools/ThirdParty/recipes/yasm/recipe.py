@@ -17,11 +17,11 @@ class Recipe(RecipeBase):
         del self.info.settings.compiler
 
     def requirements(self):
-        self.tool_requires("cmake")
+        self.requires_tool("cmake")
         if self.settings.os == "Windows" and not is_msvc(self):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
     def source(self):
         get(

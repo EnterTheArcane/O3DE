@@ -90,7 +90,7 @@ BUILT_IN_CONFS = {
     "tools.files.unzip:filter": "Define tar extraction filter: 'fully_trusted', 'tar', 'data'",
     "tools.graph:vendor": "(Experimental) If 'build', enables the computation of dependencies of vendoring packages to build them",
     "tools.graph:skip_binaries": "Allow the graph to skip binaries not needed in the current configuration (True by default)",
-    "tools.graph:skip_build": "(Experimental) Do not expand build/tool_requires",
+    "tools.graph:skip_build": "(Experimental) Do not expand build/requires_tool",
     "tools.gnu:make_program": "Indicate path to make program",
     "tools.gnu:disable_flags": "Disable the automatic addition of flags to some build systems. List of possible values: ['arch', 'arch_link', 'libcxx', 'build_type', 'build_type_link', 'threads','cppstd', 'cstd']",
     "tools.gnu:define_libcxx11_abi": "Force definition of GLIBCXX_USE_CXX11_ABI=1 for libstdc++11",

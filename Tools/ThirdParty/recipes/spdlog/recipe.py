@@ -36,7 +36,7 @@ class Recipe(RecipeBase):
             del self.options.wchar_console
 
     def requirements(self):
-        self.requires("fmt", transitive_headers=True, transitive_libs=True)
+        self.requires("fmt")
 
     def latest_version(self):
         repo = GithubRepository(self, "gabime/spdlog")

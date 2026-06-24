@@ -29,13 +29,13 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("automake")
-        self.tool_requires("automake")
-        self.tool_requires("m4")  # Needed by configure
-        self.tool_requires("gnu-config")
+        self.requires_tool("automake")
+        self.requires_tool("m4")  # Needed by configure
+        self.requires_tool("gnu-config")
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
     _SOURCE_URL = "https://ftpmirror.gnu.org/libtool/libtool-2.4.7.tar.gz"
     _SOURCE_SHA256 = "04e96c2404ea70c590c546eba4202a4e12722c640016c12b9b2f1ce3d481e9a8"

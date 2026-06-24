@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
         self.license = "DocumentRef-LICENSE.txt:LicenseRef-Tomorrow-Open-Source-Technology"
 
     def requirements(self):
-        self.requires("onetbb", transitive_headers=True)
+        self.requires("onetbb")
         if self.options.with_opengl:
             self.requires("opengl")
             self.requires("glfw")

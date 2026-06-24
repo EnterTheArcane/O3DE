@@ -40,12 +40,12 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        self.tool_requires("meson")
+        self.requires_tool("meson")
         if self.options.assembly and self.settings.arch in ("X64",):
-            self.tool_requires("nasm")
+            self.requires_tool("nasm")
         if is_msvc(self) and self.settings.arch == "ARM":
-            self.tool_requires("gas-preprocessor")
-            self.tool_requires("strawberryperl")
+            self.requires_tool("gas-preprocessor")
+            self.requires_tool("strawberryperl")
 
     def latest_version(self):
         repo = GithubRepository(self, "videolan/dav1d")

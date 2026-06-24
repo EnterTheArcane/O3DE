@@ -20,7 +20,7 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self):
-        self.requires(f"spirv-headers", transitive_headers=True)
+        self.requires(f"spirv-headers")
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/SPIRV-Reflect")

@@ -30,14 +30,14 @@ class Recipe(RecipeBase):
         return self.settings.os == 'Windows' and self.settings.compiler == 'clang'
 
     def requirements(self):
-        self.tool_requires("meson")
+        self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
         if self.settings.arch in ["X64"]:
-            self.tool_requires("nasm")
+            self.requires_tool("nasm")
         if is_msvc(self) and self.settings.arch == "ARM":
-            self.tool_requires("strawberryperl")
-            self.tool_requires("gas-preprocessor")
+            self.requires_tool("strawberryperl")
+            self.requires_tool("gas-preprocessor")
 
     def latest_version(self):
         repo = GithubRepository(self, "cisco/openh264")

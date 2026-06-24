@@ -321,7 +321,7 @@ class PkgConfigDeps:
     def _get_dependencies(self):
         # Get all the dependencies
         host_req = self._recipe.dependencies.host
-        build_req = self._recipe.dependencies.build  # tool_requires
+        build_req = self._recipe.dependencies.build  # requires_tool
         # If self.build_context_suffix is not defined, the tool requirements will be saved
         # in the self.build_context_folder
         # FIXME: Recipe 3.x: Remove build_context_suffix attribute and the validation function

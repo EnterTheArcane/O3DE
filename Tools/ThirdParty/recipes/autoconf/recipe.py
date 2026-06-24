@@ -16,11 +16,11 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("m4")  # Needed at runtime by downstream clients as well
-        self.tool_requires("m4")
+        self.requires_tool("m4")
         if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "autotools-mirror/autoconf")

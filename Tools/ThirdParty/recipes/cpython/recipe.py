@@ -97,12 +97,7 @@ class Recipe(RecipeBase):
         if self.settings.os != "Windows":
             if not is_apple_os(self):
                 self.requires("util-linux-libuuid")
-            # In <3.9 and lower patch versions of 3.9/10/11, crypt.h was exposed in Python.h
-            # This was removed in 3.11 and backported: https://github.com/python/cpython/issues/88914
-            # For the sake of this recipe, we only have later patch versions, so this version check
-            # may be slightly inaccurate if a lower patch version is desired.
-            transitive_crypt = Version(self.version) < "3.9"
-            self.requires("libxcrypt", transitive_headers=transitive_crypt, transitive_libs=transitive_crypt)
+            self.requires("libxcrypt")
         if self.options.get_safe("with_bz2"):
             self.requires("bzip2")
         if self.options.get_safe("with_gdbm", False):
@@ -116,11 +111,11 @@ class Recipe(RecipeBase):
         if self.options.get_safe("with_curses", False):
             # Used in a public header
             # https://github.com/python/cpython/blob/v3.10.13/Include/py_curses.h#L34
-            self.requires("ncurses", transitive_headers=True, transitive_libs=True)
+            self.requires("ncurses")
         if self.options.get_safe("with_lzma", False):
             self.requires("xz_utils")
         if Version(self.version) >= "3.11" and not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
 
     def source(self):
         get(

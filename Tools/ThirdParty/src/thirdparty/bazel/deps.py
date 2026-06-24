@@ -160,7 +160,7 @@ class _BazelDepBuildGenerator:
     def __init__(self, recipe: RecipeBase, dep: Any, require: Any):
         self._recipe = recipe
         self._dep = dep
-        self._is_tool_require = require.build
+        self._is_build_require = require.build
         self._transitive_reqs = get_transitive_requires(self._recipe, dep)
 
     @property
@@ -190,7 +190,7 @@ class _BazelDepBuildGenerator:
 
     def _get_repository_name(self, dep: Any) -> str:
         pkg_name = dep.info.get_property("bazel_repository_name") or dep.ref.name
-        return f"build-{pkg_name}" if self._is_tool_require else pkg_name
+        return f"build-{pkg_name}" if self._is_build_require else pkg_name
 
     @staticmethod
     def _get_target_name(dep: Any) -> str:
@@ -521,7 +521,7 @@ class BazelDeps:
         """
         # All the requirements
         host_req = self._recipe.dependencies.host
-        build_req = self._recipe.dependencies.direct_build  # tool_requires
+        build_req = self._recipe.dependencies.direct_build  # requires_tool
 
         for require, dep in list(host_req.items()) + list(build_req.items()):
             # Require is not used at the moment, but its information could be used,

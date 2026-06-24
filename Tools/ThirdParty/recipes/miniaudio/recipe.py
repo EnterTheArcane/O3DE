@@ -33,7 +33,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if not self.options.header_only:
-            self.tool_requires("cmake")
+            self.requires_tool("cmake")
 
     def latest_version(self):
         repo = GithubRepository(self, "mackron/miniaudio")

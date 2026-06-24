@@ -75,7 +75,7 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
     """Drive the recipe's config phase and return ``(host_dep_names, tool_dep_names)``.
 
     host_dep_names — regular library dependencies (build=False)
-    tool_dep_names — tool_requires (build=True)
+    tool_dep_names — requires_tool (build=True)
 
     The whole config phase (config_options/configure + default auto-fPIC handling +
     requirements) is delegated to ``run_configure_method``.  Errors are
@@ -89,18 +89,12 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
         pass
     host_names: list[str] = []
     tool_names: list[str] = []
-    for req in recipe.requires.values():
+    for req in recipe._requires:
         dep_name = str(req.ref.name)
         if req.build:
             tool_names.append(dep_name)
         else:
             host_names.append(dep_name)
-    # Add tools implied by the recipe's imported build-system helpers (e.g. CMakeToolchain
-    # -> "cmake"), skipping any already declared or the recipe's own name.
-    own_name = getattr(recipe, "name", None)
-    for tool in getattr(type(recipe), "_implicit_tool_requires", ()):
-        if tool != own_name and tool not in tool_names:
-            tool_names.append(tool)
     return host_names, tool_names
 
 

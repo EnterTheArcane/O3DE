@@ -24,8 +24,8 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("cpython")
         self.requires("onetbb")
-        self.tool_requires("cmake")
-        self.tool_requires("cpython")
+        self.requires_tool("cmake")
+        self.requires_tool("cpython")
 
     def latest_version(self):
         repo = GithubRepository(self, "PixarAnimationStudios/OpenUSD")

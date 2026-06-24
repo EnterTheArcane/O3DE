@@ -24,8 +24,8 @@ class Recipe(RecipeBase):
     def requirements(self):
         # flex needs m4 at runtime to generate scanners
         self.requires("m4")
-        self.tool_requires("m4")
-        self.tool_requires("gnu-config")
+        self.requires_tool("m4")
+        self.requires_tool("gnu-config")
 
     def source(self):
         get(

@@ -359,17 +359,17 @@ class Recipe(RecipeBase):
         if self.options.get_safe("with_openapv"):
             self.requires("openapv")
         if self.settings.arch == "X64":
-            self.tool_requires("nasm")
+            self.requires_tool("nasm")
 
         if self.settings.os != "Linux" and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             # See https://github.com/recipe-io/recipe-center-index/pull/26447#discussion_r1926682155
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
         if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
             if self.settings.arch == "ARM" and is_msvc(self):
-                self.tool_requires("gas-preprocessor")
+                self.requires_tool("gas-preprocessor")
 
     def latest_version(self):
         repo = GithubRepository(self, "FFmpeg/FFmpeg")

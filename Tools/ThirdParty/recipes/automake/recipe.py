@@ -19,11 +19,11 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("autoconf")
-        self.tool_requires("autoconf")
+        self.requires_tool("autoconf")
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "autotools-mirror/automake")

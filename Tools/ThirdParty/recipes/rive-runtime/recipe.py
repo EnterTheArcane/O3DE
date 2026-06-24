@@ -14,7 +14,7 @@ class Recipe(RecipeBase):
     license = "MIT"
 
     def requirements(self):
-        self.tool_requires("premake5")
+        self.requires_tool("premake5")
 
     def latest_version(self):
         repo = GithubRepository(self, "rive-app/rive-runtime")

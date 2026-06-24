@@ -96,26 +96,6 @@ class UserRequirementsDict:
 
 class RecipeDependencies(UserRequirementsDict):
 
-    @staticmethod
-    def from_node(node: Any) -> RecipeDependencies:
-        d = OrderedDict(
-            (require, transitive.node.recipe) for require, transitive in node.transitive_deps.items())
-        if node.replaced_requires:
-            cant_be_removed = set()
-            for old_req, new_req in node.replaced_requires.items():
-                # Two different replaced_requires can point to the same real requirement
-                existing = d[new_req]
-                added_req = new_req.copy_requirement()
-                added_req.ref = RecipeReference.loads(old_req)
-                d[added_req] = existing
-                if new_req.ref.name == added_req.ref.name:
-                    cant_be_removed.add(new_req)
-            # Now remove the replaced from dependencies dict
-            for new_req in node.replaced_requires.values():
-                if new_req not in cant_be_removed:
-                    d.pop(new_req, None)
-        return RecipeDependencies(d)
-
     def filter(self, require_filter: Any, remove_system: bool = True) -> RecipeDependencies:
         # FIXME: Copy of hte above, to return RecipeDependencies class object
         def filter_fn(require):

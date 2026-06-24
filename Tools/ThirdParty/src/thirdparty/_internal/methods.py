@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING
 
 from thirdparty._internal.errors import recipe_exception_formatter
-from thirdparty._internal.model.requires import ToolRequirements
 
 if TYPE_CHECKING:
     from thirdparty._internal.model.recipe import RecipeBase
@@ -18,7 +17,7 @@ def run_configure_method(recipe: RecipeBase):
     ``del self.options.fPIC`` boilerplate.  ``validate()`` is intentionally NOT run here —
     callers handle it (and its ``RecipeInvalidConfiguration``) separately.
     """
-    initial_requires_count = len(recipe.requires)
+    initial_requires_count = len(recipe._requires)
 
     if hasattr(recipe, "config_options"):
         with recipe_exception_formatter(recipe, "config_options"):
@@ -32,16 +31,23 @@ def run_configure_method(recipe: RecipeBase):
 
     _auto_fpic_configure(recipe)
 
-    if initial_requires_count != len(recipe.requires):
+    if initial_requires_count != len(recipe._requires):
         recipe.output.warning(
             "Requirements should only be added in the requirements() method, "
             "not configure()/config_options().", warn_tag="deprecated")
 
-    recipe.tool_requires = ToolRequirements(recipe.requires)
-
     if hasattr(recipe, "requirements"):
         with recipe_exception_formatter(recipe, "requirements"):
             recipe.requirements()
+
+    # Register tools implied by the build-system helpers the recipe imports (e.g. CMake ->
+    # "cmake"), after requirements() so explicit declarations win. Skip the recipe's own name
+    # and anything already declared as a tool.
+    own = recipe.name
+    existing = {r.ref.name for r in recipe._requires if r.build}
+    for tool in getattr(type(recipe), "_implicit_requires_tool", ()):
+        if tool != own and tool not in existing:
+            recipe.requires_tool(tool)
 
 
 def _auto_fpic_configure(recipe: RecipeBase):

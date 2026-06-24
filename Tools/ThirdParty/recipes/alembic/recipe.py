@@ -23,7 +23,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("hdf5")
-        self.requires("imath", transitive_headers=True)
+        self.requires("imath")
 
     def latest_version(self):
         repo = GithubRepository(self, "alembic/alembic")

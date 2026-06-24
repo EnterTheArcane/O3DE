@@ -62,7 +62,7 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.get_safe("SIMD") and self.settings.arch in ["X64"]:
-            self.tool_requires("nasm")
+            self.requires_tool("nasm")
 
     def latest_version(self):
         repo = GithubRepository(self, "libjpeg-turbo/libjpeg-turbo")

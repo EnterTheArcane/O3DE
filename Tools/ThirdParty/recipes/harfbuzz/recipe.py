@@ -57,15 +57,15 @@ class Recipe(RecipeBase):
         self.requires("icu")
         if self.options.with_glib:
             self.requires("glib")
-        self.tool_requires("meson")
+        self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
         if self.options.with_glib:
-            self.tool_requires("glib")
+            self.requires_tool("glib")
         if self.settings.os == "Mac":
             # Ensure that the gettext we use at build time is compatible
             # with the libiconv that is transitively exposed by glib
-            self.tool_requires("gettext")
+            self.requires_tool("gettext")
 
     def latest_version(self):
         repo = GithubRepository(self, "harfbuzz/harfbuzz")

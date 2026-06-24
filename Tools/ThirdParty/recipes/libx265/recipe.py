@@ -50,7 +50,7 @@ class Recipe(RecipeBase):
             self.requires("libnuma")
         if self.options.assembly:
             if self.settings.arch in ["X64"]:
-                self.tool_requires("nasm")
+                self.requires_tool("nasm")
 
     def source(self):
         get(

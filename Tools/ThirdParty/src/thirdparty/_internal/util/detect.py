@@ -187,7 +187,7 @@ def platform_tag(settings) -> str:
     *host* settings (the platform the package will run on) — which is what governs
     binary compatibility — NOT the build machine.
 
-    NOTE on HOST vs BUILD context: tools that run during the build (``tool_requires``
+    NOTE on HOST vs BUILD context: tools that run during the build (``requires_tool``
     such as cmake/ninja/nasm) must be built/located for the *build machine* and so
     should use the build-machine tag, while regular library dependencies use the
     host/target tag.  Today host == build == the detected machine, so a single tag

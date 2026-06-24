@@ -405,7 +405,7 @@ class Options:
         which is the state that a package should define in order to reproduce
         """
         assert isinstance(down_options, Options)
-        # We need to store a copy for internal propagation for tool_requires
+        # We need to store a copy for internal propagation for requires_tool
         private_deps_options = Options()
         private_deps_options._deps_package_options = self._deps_package_options.copy()
         # self_options are the minimal necessary for a build-order

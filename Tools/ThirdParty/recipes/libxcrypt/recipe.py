@@ -32,9 +32,9 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
-        self.tool_requires("autoconf")
-        self.tool_requires("automake")
-        self.tool_requires("libtool")
+        self.requires_tool("autoconf")
+        self.requires_tool("automake")
+        self.requires_tool("libtool")
 
     def source(self):
         get(

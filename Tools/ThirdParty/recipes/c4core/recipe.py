@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self):
-        self.requires("fast-float", transitive_headers=True)
+        self.requires("fast-float")
 
     def latest_version(self):
         repo = GithubRepository(self, "biojppm/c4core")

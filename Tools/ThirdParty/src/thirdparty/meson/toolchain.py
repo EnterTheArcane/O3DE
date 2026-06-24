@@ -27,9 +27,9 @@ class MesonToolchain:
     native_filename = "recipe_meson_native.ini"
     cross_filename = "recipe_meson_cross.ini"
 
-    # Importing this class into a recipe implicitly adds tool_requires("meson") and the
+    # Importing this class into a recipe implicitly adds requires_tool("meson") and the
     # Ninja backend that make_conf() configures for Meson.
-    _implicit_tool_requires = ("meson", "ninja")
+    _implicit_requires_tool = ("meson", "ninja")
 
     _meson_file_template = textwrap.dedent(
         """

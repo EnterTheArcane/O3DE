@@ -46,11 +46,11 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.settings.arch in ["X64"]:
-            self.tool_requires("yasm")
+            self.requires_tool("yasm")
         if self.settings.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "webmproject/libvpx")

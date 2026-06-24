@@ -163,19 +163,19 @@ class Recipe(RecipeBase):
         if self.options.with_libidn:
             self.requires("libidn2")
         if self._is_using_cmake_build:
-            self.tool_requires("cmake")
+            self.requires_tool("cmake")
             if self._is_win_x_android:
-                self.tool_requires("ninja")
+                self.requires_tool("ninja")
         else:
-            self.tool_requires("libtool")
+            self.requires_tool("libtool")
             if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-                self.tool_requires("pkgconf")
+                self.requires_tool("pkgconf")
             if self.settings.os in ["tvOS", "watchOS"]:
-                self.tool_requires("gnu-config")
+                self.requires_tool("gnu-config")
             if self.settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2")
+                    self.requires_tool("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "curl/curl")

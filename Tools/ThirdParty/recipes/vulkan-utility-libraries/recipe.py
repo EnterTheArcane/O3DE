@@ -20,7 +20,7 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self):
-        self.requires(f"vulkan-headers", transitive_headers=True)
+        self.requires(f"vulkan-headers")
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-Utility-Libraries")

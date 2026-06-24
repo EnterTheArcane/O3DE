@@ -43,11 +43,11 @@ class Recipe(RecipeBase):
             self.requires("libffi")
         self.requires("libxml2")
         self.requires("expat")
-        self.tool_requires("meson")
+        self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
         if not can_run(self):
-            self.tool_requires(str(self.ref))
+            self.requires_tool(str(self.ref))
 
     def latest_version(self):
         repo = GitlabRepository(self, "wayland/wayland", host="gitlab.freedesktop.org")

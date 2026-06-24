@@ -55,7 +55,7 @@ class Recipe(RecipeBase):
         if self.options.get_safe("with_openjpeg"):
             self.requires("openjpeg")
         if self.options.get_safe("with_openjph"):
-            self.requires("openjph", transitive_headers=False)
+            self.requires("openjph")
         if self.options.get_safe("with_openh264"):
             self.requires("openh264")
         if self.options.get_safe("with_x264"):

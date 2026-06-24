@@ -16,7 +16,7 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--format", "-f", default="tree", choices=["tree", "dot", "mermaid"], dest="fmt", help="Output format (default: tree)", )
     p.add_argument(
-        "--no-tools", action="store_false", dest="tools", help="Exclude tool_requires (build tools) from the graph")
+        "--no-tools", action="store_false", dest="tools", help="Exclude requires_tool (build tools) from the graph")
     p.add_argument(
         "--build-type", default="Release", choices=["Debug", "Release", "RelWithDebInfo"], dest="build_type", metavar="<type>", )
 

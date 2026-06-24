@@ -25,8 +25,8 @@ class Recipe(RecipeBase):
         self.requires("eigen")
         self.requires("gz-cmake")
         self.requires("gz-utils")
-        self.tool_requires("cmake")
-        self.tool_requires("gz-cmake")
+        self.requires_tool("cmake")
+        self.requires_tool("gz-cmake")
 
     def latest_version(self):
         repo = GithubRepository(self, "gazebosim/gz-math")

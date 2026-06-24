@@ -50,9 +50,9 @@ class Recipe(RecipeBase):
             self.requires("libiconv")
         if self.options.with_readline:
             self.requires("readline")
-        self.tool_requires("bison")
-        self.tool_requires("flex")
-        self.tool_requires("gnu-config")
+        self.requires_tool("bison")
+        self.requires_tool("flex")
+        self.requires_tool("gnu-config")
 
     def latest_version(self):
         repo = GnuFtp(self, "gdbm")

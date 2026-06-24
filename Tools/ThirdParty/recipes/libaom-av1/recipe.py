@@ -34,9 +34,9 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         if self.options.get_safe("assembly", False):
-            self.tool_requires("nasm")
+            self.requires_tool("nasm")
         if self.settings.os == "Windows":
-            self.tool_requires("strawberryperl")
+            self.requires_tool("strawberryperl")
 
     def latest_version(self):
         repo = GoogleSourceRepository(self, "https://aomedia.googlesource.com/aom")

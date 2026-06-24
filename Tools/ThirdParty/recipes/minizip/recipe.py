@@ -24,8 +24,8 @@ class Recipe(RecipeBase):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        self.requires("bzip2", transitive_headers=True)
-        self.requires("zlib", transitive_headers=True)
+        self.requires("bzip2")
+        self.requires("zlib")
 
     def source(self):
         get(

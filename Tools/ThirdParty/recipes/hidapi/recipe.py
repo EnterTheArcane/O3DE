@@ -37,13 +37,13 @@ class Recipe(RecipeBase):
         if self.settings.os == "Linux":
             self.requires("libudev")
         if self.settings.os != "Windows":
-            self.tool_requires("libtool")
+            self.requires_tool("libtool")
             if self.settings.os in ["Linux", "FreeBSD"] and not self.conf.get("tools.gnu:pkg_config", check_type=str):
-                self.tool_requires("pkgconf")
+                self.requires_tool("pkgconf")
             if self.settings_build.os == "Windows":
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.tool_requires("msys2")
+                    self.requires_tool("msys2")
 
     def latest_version(self):
         repo = GithubRepository(self, "libusb/hidapi")

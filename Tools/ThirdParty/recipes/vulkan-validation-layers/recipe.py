@@ -44,7 +44,7 @@ class Recipe(RecipeBase):
         self.requires("robin-hood-hashing")
         self.requires("spirv-headers")
         self.requires("spirv-tools")
-        self.requires("vulkan-headers", transitive_headers=True)
+        self.requires("vulkan-headers")
         self.requires("vulkan-utility-libraries")
 
         if self.options.get_safe("with_wsi_xcb") or self.options.get_safe("with_wsi_xlib"):
@@ -52,8 +52,8 @@ class Recipe(RecipeBase):
         if self.options.get_safe("with_wsi_wayland"):
             self.requires("wayland")
         if self._needs_pkg_config and not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf")
-        self.tool_requires("cmake")
+            self.requires_tool("pkgconf")
+        self.requires_tool("cmake")
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-ValidationLayers")

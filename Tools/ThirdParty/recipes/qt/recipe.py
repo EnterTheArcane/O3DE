@@ -313,7 +313,7 @@ class Recipe(RecipeBase):
             #       do not update either without checking both
             #       require exactly the same version of vulkan-headers
             self.requires("vulkan-loader")
-            self.requires("vulkan-headers", transitive_headers=True)
+            self.requires("vulkan-headers")
             if is_apple_os(self):
                 self.requires("moltenvk")
         if self.options.with_glib:
@@ -380,25 +380,25 @@ class Recipe(RecipeBase):
             self.requires("krb5")
         if self.options.get_safe("with_md4c", False):
             self.requires("md4c")  # stable API since 0.3x as per md4c wiki
-        self.tool_requires("cmake")
-        self.tool_requires("ninja")
+        self.requires_tool("cmake")
+        self.requires_tool("ninja")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
 
         if self.options.get_safe("qtwebengine"):
-            self.tool_requires("nodejs")
-            self.tool_requires("gperf")
+            self.requires_tool("nodejs")
+            self.requires_tool("gperf")
             # gperf, bison, flex, python >= 2.7.5 & < 3
             if self.settings_build.os == "Windows":
-                self.tool_requires("winflexbison")
+                self.requires_tool("winflexbison")
             else:
-                self.tool_requires("bison")
-                self.tool_requires("flex")
+                self.requires_tool("bison")
+                self.requires_tool("flex")
 
         if self.options.qtwayland:
-            self.tool_requires("wayland")
+            self.requires_tool("wayland")
         if cross_building(self):
-            self.tool_requires(f"qt")
+            self.requires_tool(f"qt")
 
     def generate(self):
         ms = VirtualBuildEnv(self)

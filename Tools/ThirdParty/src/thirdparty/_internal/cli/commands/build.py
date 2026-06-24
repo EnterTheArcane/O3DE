@@ -182,7 +182,7 @@ def _build_dep_graph(
 
     dep_names  — host (non-build) deps (build=False); inherit the parent's effective
                  target platform (``target_os``/``target_arch``).
-    tool_names — tool_requires (build=True); built for the BUILD MACHINE (target reset).
+    tool_names — requires_tool (build=True); built for the BUILD MACHINE (target reset).
 
     _recipe_cache is a shared dict[(dep_name, os, arch) → (Requirement, RecipeBase)]
     passed through recursive calls so that the *same* RecipeBase object is reused
@@ -199,7 +199,7 @@ def _build_dep_graph(
         _recipe_cache = {}
 
     def _add_dep(dep_name: str, is_build: bool, direct: bool = True) -> None:
-        # Host deps inherit the parent's target; tool_requires (build context) reset to the
+        # Host deps inherit the parent's target; requires_tool (build context) reset to the
         # build machine.  Effective target fully determines the dep's settings + output folder.
         dep_os = None if is_build else target_os
         dep_arch = None if is_build else target_arch
@@ -209,7 +209,7 @@ def _build_dep_graph(
         if cache_key in _recipe_cache:
             cached_req, cached_recipe = _recipe_cache[cache_key]
             # Add to the current level's deps_dict with the appropriate directness flag.
-            # Preserve run= so tool_requires keep run=True; VirtualBuildEnv only adds a
+            # Preserve run= so requires_tool keep run=True; VirtualBuildEnv only adds a
             # build dep's bindir to PATH when its requirement has run=True.
             existing = next((r for r in deps_dict if str(r.ref.name) == dep_name), None)
             if existing is None:
@@ -270,7 +270,7 @@ def _build_dep_graph(
         ref = RecipeReference(dep_name, dep_version)
         if is_build:
             req = Requirement(
-                ref, headers=False, libs=False, build=True, run=True, visible=False, direct=direct)
+                ref, headers=False, libs=False, build=True, run=True, direct=direct)
         else:
             # Set run=True if the package contains shared libraries so that
             # VirtualRunEnv adds its lib dir to DYLD_LIBRARY_PATH / LD_LIBRARY_PATH.
@@ -291,10 +291,10 @@ def _build_dep_graph(
 
         # Populate dep's own transitive dep graph so generators can resolve
         # component dependencies (e.g. spirv-tools-core → spirv-headers).
-        # dep.requires was already populated by run_configure_method above.
+        # dep._requires was already populated by run_configure_method above.
         try:
-            _sub_host = [str(r.ref.name) for r in dep.requires.values() if not r.build]
-            _sub_tools = [str(r.ref.name) for r in dep.requires.values() if r.build]
+            _sub_host = [str(r.ref.name) for r in dep._requires if not r.build]
+            _sub_tools = [str(r.ref.name) for r in dep._requires if r.build]
             dep._recipe_dependencies = _build_dep_graph(
                 recipes_root, build_root, _sub_host, build_type, dep_os, dep_arch, jobs=jobs, tool_names=_sub_tools, _recipe_cache=_recipe_cache, )
         except Exception:
@@ -351,7 +351,7 @@ def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
 
 
 def _build_only_tools(rgraph) -> set[str]:
-    """Recipes that are *only* ever a ``tool_requires`` (never a regular ``requires``).
+    """Recipes that are *only* ever a ``requires_tool`` (never a regular ``requires``).
 
     These are pure build tools (cmake, ninja, nasm, ...) and are built for the BUILD
     MACHINE.  A recipe used as a regular dependency anywhere is host-context (built for the

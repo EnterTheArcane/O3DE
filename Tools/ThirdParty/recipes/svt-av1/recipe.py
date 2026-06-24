@@ -51,9 +51,9 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires("cpuinfo")
-        self.tool_requires("cmake")
+        self.requires_tool("cmake")
         if self.settings.arch in ("X64",):
-            self.tool_requires("nasm")
+            self.requires_tool("nasm")
 
     def latest_version(self):
         repo = GitlabRepository(self, "AOMediaCodec/SVT-AV1")

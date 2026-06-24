@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
     }
 
     def requirements(self):
-        self.requires("abseil", transitive_headers=True)
+        self.requires("abseil")
         self.requires("icu")
 
     def latest_version(self):

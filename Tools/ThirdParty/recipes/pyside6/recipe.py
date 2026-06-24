@@ -25,8 +25,8 @@ class Recipe(RecipeBase):
         self.requires("cpython")
         self.requires("llvm")
         self.requires("qt")
-        self.tool_requires("cmake")
-        self.tool_requires("cpython")
+        self.requires_tool("cmake")
+        self.requires_tool("cpython")
 
     def latest_version(self):
         repo = GithubRepository(self, "qtproject/pyside-pyside-setup")

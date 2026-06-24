@@ -34,7 +34,7 @@ class Recipe(RecipeBase):
         if not is_msvc(self) and self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.tool_requires("msys2")
+                self.requires_tool("msys2")
 
     def source(self):
         get(
@@ -60,7 +60,7 @@ class Recipe(RecipeBase):
                         tc.extra_cxxflags.append("-DLIBMPDECXX_DLL")
             tc.generate()
         else:
-            # inject tool_requires env vars in build scope (not needed if there is no tool_requires)
+            # inject requires_tool env vars in build scope (not needed if there is no requires_tool)
             env = VirtualBuildEnv(self)
             env.generate()
             # inject requires env vars in build scope

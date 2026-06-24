@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("zlib")
         # Note: OpenEXR and Imath are versioned independently.
-        self.requires("imath", transitive_headers=True)
+        self.requires("imath")
         self.requires("libdeflate")
 
         self.requires("openjph")

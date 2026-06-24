@@ -24,8 +24,8 @@ class Recipe(RecipeBase):
     def requirements(self):
         self.requires("gz-cmake")
         self.requires("spdlog")
-        self.tool_requires("cmake")
-        self.tool_requires("gz-cmake")
+        self.requires_tool("cmake")
+        self.requires_tool("gz-cmake")
 
     def latest_version(self):
         repo = GithubRepository(self, "gazebosim/gz-utils")

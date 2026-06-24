@@ -59,13 +59,13 @@ class Recipe(RecipeBase):
             self.requires("libselinux")
         if self.settings.os != "Linux":
             # for Linux, gettext is provided by libc
-            self.requires("libgettext", transitive_headers=True, transitive_libs=True)
+            self.requires("libgettext")
 
         if is_apple_os(self):
             self.requires("libiconv")
-        self.tool_requires("meson")
+        self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
-            self.tool_requires("pkgconf")
+            self.requires_tool("pkgconf")
 
     def latest_version(self):
         repo = GithubRepository(self, "GNOME/glib")
