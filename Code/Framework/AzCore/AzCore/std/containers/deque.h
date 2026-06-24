@@ -8,7 +8,6 @@
 
 #pragma once
 
-
 #include <AzCore/std/allocator.h>
 #include <AzCore/std/allocator_traits.h>
 #include <AzCore/std/algorithm.h>

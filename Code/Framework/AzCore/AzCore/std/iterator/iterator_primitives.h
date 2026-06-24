@@ -30,7 +30,6 @@
 #include <AzCore/std/typetraits/remove_extent.h>
 #include <AzCore/std/typetraits/void_t.h>
 
-
 namespace AZStd
 {
     // Bring in std utility functions into AZStd namespace

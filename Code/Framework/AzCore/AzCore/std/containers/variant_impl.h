@@ -22,7 +22,6 @@
 #include <AzCore/std/typetraits/remove_cvref.h>
 #include <AzCore/std/typetraits/type_identity.h>
 
-
 namespace AZStd
 {
     template <class... Types>

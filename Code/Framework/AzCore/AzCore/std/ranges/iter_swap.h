@@ -24,7 +24,6 @@
 #include <AzCore/std/utility/declval.h>
 #include <iterator>
 
-
 namespace AZStd::ranges::Internal
 {
     template<class I1, class I2>
@@ -97,4 +96,3 @@ namespace AZStd
 {
     using std::indirectly_swappable;
 }
-

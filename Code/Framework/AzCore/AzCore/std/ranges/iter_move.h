@@ -21,7 +21,6 @@
 #include <AzCore/std/utility/move.h>
 #include <AzCore/std/utility/declval.h>
 
-
 namespace AZStd
 {
     // Bring in std utility functions into AZStd namespace

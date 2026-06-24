@@ -270,4 +270,3 @@ namespace AZStd
 }
 
 #include <AzCore/std/parallel/internal/thread_Platform.h>
-
