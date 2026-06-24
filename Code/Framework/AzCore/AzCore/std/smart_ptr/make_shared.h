@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_SMART_PTR_MAKE_SHARED_H
-#define AZSTD_SMART_PTR_MAKE_SHARED_H
+
+#pragma once
 
 //  make_shared.hpp
 //
@@ -165,6 +165,3 @@ namespace AZStd
     }
 
 } // namespace AZStd
-
-#endif // #ifndef AZSTD_SMART_PTR_MAKE_SHARED_H
-#pragma once

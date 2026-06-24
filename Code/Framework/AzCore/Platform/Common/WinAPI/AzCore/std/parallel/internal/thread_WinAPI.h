@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZSTD_THREAD_WINDOWS_H
-#define AZSTD_THREAD_WINDOWS_H
+
+#pragma once
 
 #ifndef YieldProcessor
 #    define YieldProcessor _mm_pause
@@ -97,6 +97,3 @@ namespace AZStd
         }
     }
 }
-
-#endif // AZSTD_THREAD_WINDOWS_H
-#pragma once

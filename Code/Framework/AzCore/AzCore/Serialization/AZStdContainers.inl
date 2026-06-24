@@ -5,8 +5,8 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
-#ifndef AZCORE_SERIALIZE_AZSTD_CONTAINERS_INL
-#define AZCORE_SERIALIZE_AZSTD_CONTAINERS_INL
+
+#pragma once
 
 #include <AzCore/Outcome/Outcome.h>
 #include <AzCore/Memory/OSAllocator.h>
@@ -3927,6 +3927,3 @@ namespace AZ
         }
     };
 }
-
-#endif // AZCORE_SERIALIZE_AZSTD_CONTAINERS_H
-#pragma once
