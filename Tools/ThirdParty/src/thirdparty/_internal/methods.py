@@ -1,8 +1,14 @@
+from typing import TYPE_CHECKING
+
 from thirdparty._internal.errors import recipe_exception_formatter
 from thirdparty._internal.model.requires import ToolRequirements
 
 
-def run_configure_method(recipe):
+if TYPE_CHECKING:
+    from thirdparty._internal.model.recipe_base import RecipeBase
+
+
+def run_configure_method(recipe: RecipeBase):
     """Drive a recipe's configuration and requirement declaration in canonical order.
 
     config_options() -> default language handling -> configure() -> default auto-fPIC/shared
@@ -40,7 +46,7 @@ def run_configure_method(recipe):
             recipe.requirements()
 
 
-def _auto_fpic_configure(recipe):
+def _auto_fpic_configure(recipe: RecipeBase):
     """Default option handling injected by ``run_configure``: drop ``fPIC`` where it does not
     apply (Windows, or shared/header-only builds) and drop ``shared`` for header-only packages.
     This lets recipes omit manual ``del self.options.fPIC`` boilerplate."""
@@ -53,11 +59,11 @@ def _auto_fpic_configure(recipe):
         recipe.options.rm_safe("fPIC")
 
 
-def auto_shared_fpic_configure(recipe):
+def auto_shared_fpic_configure(recipe: RecipeBase):
     _auto_fpic_configure(recipe)
 
 
-def auto_language(recipe):
+def auto_language(recipe: RecipeBase):
     # This system does not use the ``languages`` attribute; default to removing the C-only
     # ``compiler.cstd`` setting (the historical empty-languages behavior).
     recipe.settings.rm_safe("compiler.cstd")

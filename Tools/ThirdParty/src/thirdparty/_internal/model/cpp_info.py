@@ -710,7 +710,6 @@ class _Component:
 
 
 class CppInfo:
-
     def __init__(self, set_defaults=False):
         self.components = defaultdict(lambda: _Component(set_defaults))
         self.default_components = None
