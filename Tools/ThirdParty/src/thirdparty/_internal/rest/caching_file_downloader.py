@@ -35,7 +35,7 @@ class SourcesCachingDownloader:
         helpers = getattr(recipe, "_recipe_runtime")
         self._global_conf = helpers.global_conf
         self._file_downloader = FileDownloader(
-            helpers.requester, scope=recipe.display_name, source_credentials=True)
+            helpers.requester, scope=recipe.name or "", source_credentials=True)
         self._home_folder = helpers.home_folder
         self._output = recipe.output
         self._recipe = recipe

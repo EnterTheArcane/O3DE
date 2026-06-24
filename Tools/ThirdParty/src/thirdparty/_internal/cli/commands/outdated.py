@@ -98,7 +98,7 @@ def _bump_level(current: str, latest: str) -> str:
 def _check_recipe(name: str, cls: type) -> tuple[str, str, str, str, str | None]:
     current = getattr(cls, "version", None)
     try:
-        recipe = cls(display_name=name)
+        recipe = cls()
         latest = recipe.latest_version()
     except Exception as exc:
         return (name, str(current), "?", f"error: {exc}", None)

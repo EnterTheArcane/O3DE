@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any
 
-from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.info import Info
 
 
@@ -13,32 +11,12 @@ class Infos:
         self.package = Info(set_defaults=True)
 
 
-class PartialLayout:
-    def __init__(self):
-        from thirdparty.env import Environment
-        self.buildenv_info = Environment()
-        self.runenv_info = Environment()
-        self.conf_info = Conf()
-
-    def set_relative_base_folder(self, folder: str):
-        self.buildenv_info.set_relative_base_folder(folder)
-        self.runenv_info.set_relative_base_folder(folder)
-        self.conf_info.set_relative_base_folder(folder)
-
-
 def _folder_path(base_folder: str | None, relative_folder: str = "") -> Path | None:
     if base_folder is None:
         return None
     if not relative_folder:
         return Path(os.path.normpath(base_folder))
     return Path(os.path.normpath(os.path.join(base_folder, relative_folder)))
-
-
-class Layouts:
-    def __init__(self):
-        self.source = PartialLayout()
-        self.build = PartialLayout()
-        self.package = PartialLayout()
 
 
 class Folders:

@@ -4,7 +4,6 @@ from collections import OrderedDict
 from typing import Any
 
 from thirdparty._internal.graph.graph import RECIPE_PLATFORM
-from thirdparty._internal.model.recipe_interface import RecipeInterface
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty.errors import RecipeException
 
@@ -100,7 +99,7 @@ class RecipeDependencies(UserRequirementsDict):
     @staticmethod
     def from_node(node: Any) -> RecipeDependencies:
         d = OrderedDict(
-            (require, RecipeInterface(transitive.node.recipe, node.recipe)) for require, transitive in node.transitive_deps.items())
+            (require, transitive.node.recipe) for require, transitive in node.transitive_deps.items())
         if node.replaced_requires:
             cant_be_removed = set()
             for old_req, new_req in node.replaced_requires.items():

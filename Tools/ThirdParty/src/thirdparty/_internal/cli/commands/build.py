@@ -17,7 +17,6 @@ from thirdparty._internal.loader import (
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.recipe_base import RecipeBase
-from thirdparty._internal.model.recipe_interface import RecipeInterface
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
 from thirdparty._internal.util.detect import detect_settings, make_conf, detect_platform_tag
@@ -178,26 +177,26 @@ def _build_dep_graph(
     target_arch: str | None,
     jobs: int | None = None,
     tool_names: list[str] | None = None,
-    _iface_cache: dict | None = None, ) -> RecipeDependencies:
+    _recipe_cache: dict | None = None, ) -> RecipeDependencies:
     """Create a RecipeDependencies from a list of already-built packages.
 
     dep_names  — host (non-build) deps (build=False); inherit the parent's effective
                  target platform (``target_os``/``target_arch``).
     tool_names — tool_requires (build=True); built for the BUILD MACHINE (target reset).
 
-    _iface_cache is a shared dict[(dep_name, os, arch) → (Requirement, RecipeInterface)]
-    passed through recursive calls so that the *same* RecipeInterface object is reused
+    _recipe_cache is a shared dict[(dep_name, os, arch) → (Requirement, RecipeBase)]
+    passed through recursive calls so that the *same* RecipeBase object is reused
     whenever the same package appears at multiple levels of the dep tree.  This is required
     for get_transitive_requires() (used by CMakeDeps) to correctly resolve header-transitive
-    deps: it compares RecipeInterface objects by identity, so the object for e.g. fast_float
+    deps: it compares RecipeBase objects by identity, so the object for e.g. fast_float
     must be the same instance whether it appears in c4core's dep graph or in rapidyaml's.
     The platform is part of the key so a package built for the host and for the build
     machine (cross-compile) stay distinct.
     """
     deps_dict: OrderedDict = OrderedDict()
 
-    if _iface_cache is None:
-        _iface_cache = {}
+    if _recipe_cache is None:
+        _recipe_cache = {}
 
     def _add_dep(dep_name: str, is_build: bool, direct: bool = True) -> None:
         # Host deps inherit the parent's target; tool_requires (build context) reset to the
@@ -205,10 +204,10 @@ def _build_dep_graph(
         dep_os = None if is_build else target_os
         dep_arch = None if is_build else target_arch
         cache_key = (dep_name, dep_os, dep_arch)
-        # If we already created a RecipeInterface for this dep+platform, reuse it.
+        # If we already created a recipe for this dep+platform, reuse it.
         # This ensures object identity holds across all levels (needed by transitive_requires).
-        if cache_key in _iface_cache:
-            cached_req, cached_iface = _iface_cache[cache_key]
+        if cache_key in _recipe_cache:
+            cached_req, cached_recipe = _recipe_cache[cache_key]
             # Add to the current level's deps_dict with the appropriate directness flag.
             # Preserve run= so tool_requires keep run=True; VirtualBuildEnv only adds a
             # build dep's bindir to PATH when its requirement has run=True.
@@ -216,7 +215,7 @@ def _build_dep_graph(
             if existing is None:
                 new_req = Requirement(
                     cached_req.ref, build=is_build, run=cached_req.run, direct=direct)
-                deps_dict[new_req] = cached_iface
+                deps_dict[new_req] = cached_recipe
             else:
                 # A dep reached both transitively (direct=False) and as a direct require must
                 # be marked direct so its buildenv_info propagates (e.g. pkgconf's PKG_CONFIG);
@@ -239,7 +238,7 @@ def _build_dep_graph(
         dep_plat = detect_platform_tag(dep_os, dep_arch)
         pkg_dir = str((build_root / dep_name / dep_version / dep_plat / "package").resolve())
 
-        dep = dep_cls(display_name=dep_name)
+        dep = dep_cls()
         dep.version = dep_version
         dep.recipe_folder = str(recipes_root / dep_name)
         dep.folders.set_base_package(pkg_dir)
@@ -287,9 +286,8 @@ def _build_dep_graph(
                 _pattern = "*.so*"
             _is_shared = _lib_path.is_dir() and any(_lib_path.glob(_pattern))
             req = Requirement(ref, build=False, run=_is_shared, direct=direct)
-        iface = RecipeInterface(dep, None)
-        _iface_cache[cache_key] = (req, iface)
-        deps_dict[req] = iface
+        _recipe_cache[cache_key] = (req, dep)
+        deps_dict[req] = dep
 
         # Populate dep's own transitive dep graph so generators can resolve
         # component dependencies (e.g. spirv-tools-core → spirv-headers).
@@ -298,20 +296,20 @@ def _build_dep_graph(
             _sub_host = [str(r.ref.name) for r in dep.requires.values() if not r.build]
             _sub_tools = [str(r.ref.name) for r in dep.requires.values() if r.build]
             dep._recipe_dependencies = _build_dep_graph(
-                recipes_root, build_root, _sub_host, build_type, dep_os, dep_arch, jobs=jobs, tool_names=_sub_tools, _iface_cache=_iface_cache, )
+                recipes_root, build_root, _sub_host, build_type, dep_os, dep_arch, jobs=jobs, tool_names=_sub_tools, _recipe_cache=_recipe_cache, )
         except Exception:
             dep._recipe_dependencies = RecipeDependencies(OrderedDict())
 
         # Also propagate all transitive (non-direct) deps of this dep up to the current
         # deps_dict.  This ensures that when CMakeDeps calls get_transitive_requires() to
         # resolve header-transitive dependencies (transitive_headers=True), the transitive
-        # packages are present in the consumer's dep graph with the same interface objects.
-        for trans_req, trans_iface in dep._recipe_dependencies._data.items():
+        # packages are present in the consumer's dep graph with the same recipe objects.
+        for trans_req, trans_recipe in dep._recipe_dependencies._data.items():
             trans_name = str(trans_req.ref.name)
             if not any(str(r.ref.name) == trans_name for r in deps_dict.keys()):
                 non_direct_req = Requirement(
                     trans_req.ref, build=trans_req.build, run=trans_req.run, direct=False)
-                deps_dict[non_direct_req] = trans_iface
+                deps_dict[non_direct_req] = trans_recipe
 
         if hasattr(dep, "package_info"):
             try:

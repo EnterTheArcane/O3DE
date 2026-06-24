@@ -75,8 +75,6 @@ class _Component:
         self._sysroot: str | None = None
         self._requires: list[str] | None = None
 
-        self._consumer_recipe: RecipeBase | None = None
-
         if set_defaults:
             self.includedirs = ["include"]
             self.libdirs = ["lib"]
@@ -85,9 +83,6 @@ class _Component:
         self._type: PackageType | None = None
         self._location: str | None = None
         self._link_location: str | None = None
-
-    def set_consumer(self, recipe: RecipeBase):
-        self._consumer_recipe = recipe
 
     def serialize(self) -> dict[str, Any]:
         return {
@@ -117,15 +112,6 @@ class _Component:
             "link_location": self._link_location,
             "languages": self._languages,
         }
-
-    @staticmethod
-    def _evaluate_cond(item: str, flags: list[str], recipe: RecipeBase | None) -> list[str]:
-        if recipe is None:
-            return flags
-        flags_map = recipe._recipe_runtime.flags_map  # noqa
-        if flags_map is None:
-            return flags
-        return flags_map(recipe=recipe, item=item, flags=flags)
 
     @staticmethod
     def deserialize(contents: dict[str, Any]) -> _Component:
@@ -344,7 +330,7 @@ class _Component:
     def cflags(self) -> list[str]:
         if self._cflags is None:
             self._cflags = []
-        return self._evaluate_cond("cflags", self._cflags, self._consumer_recipe)
+        return self._cflags
 
     @cflags.setter
     def cflags(self, value: list[str]):
@@ -354,7 +340,7 @@ class _Component:
     def cxxflags(self) -> list[str]:
         if self._cxxflags is None:
             self._cxxflags = []
-        return self._evaluate_cond("cxxflags", self._cxxflags, self._consumer_recipe)
+        return self._cxxflags
 
     @cxxflags.setter
     def cxxflags(self, value: list[str]):
@@ -364,8 +350,7 @@ class _Component:
     def sharedlinkflags(self) -> list[str]:
         if self._sharedlinkflags is None:
             self._sharedlinkflags = []
-        return self._evaluate_cond(
-            "sharedlinkflags", self._sharedlinkflags, self._consumer_recipe)
+        return self._sharedlinkflags
 
     @sharedlinkflags.setter
     def sharedlinkflags(self, value: list[str]):
@@ -375,7 +360,7 @@ class _Component:
     def exelinkflags(self) -> list[str]:
         if self._exelinkflags is None:
             self._exelinkflags = []
-        return self._evaluate_cond("exelinkflags", self._exelinkflags, self._consumer_recipe)
+        return self._exelinkflags
 
     @exelinkflags.setter
     def exelinkflags(self, value: list[str]):
@@ -699,11 +684,6 @@ class Info:
         self.components = defaultdict(lambda: _Component(set_defaults))
         self.default_components: list[str] | None = None
         self._package = _Component(set_defaults)
-
-    def set_consumer(self, recipe: RecipeBase):
-        self._package.set_consumer(recipe)
-        for comp in self.components.values():
-            comp.set_consumer(recipe)
 
     def __getattr__(self, attr: str) -> Any:
         # all info.xxx of not defined things will go to the global package

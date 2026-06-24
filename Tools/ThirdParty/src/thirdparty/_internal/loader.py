@@ -131,10 +131,6 @@ class RecipeRuntime:
         self.global_conf = conf
         self.requester = HttpRequester(conf)
         self.home_folder = None
-        # Optional compiler-flag-mapping hook read by Info._evaluate_cond when a consumer
-        # recipe reads a dependency's cflags/cxxflags/linkflags.  This system has no flags
-        # plugin, so it stays None (flags are returned unchanged) — matching Conan's default.
-        self.flags_map = None
 
 
 def make_probe_recipe(
@@ -147,7 +143,7 @@ def make_probe_recipe(
     No build folders are created — this is for dependency discovery only.  ``build.py``
     layers folder setup on top of this for actual builds.
     """
-    recipe = recipe_cls(display_name=name)
+    recipe = recipe_cls()
     recipe.version = version
     recipe.recipe_folder = str(recipes_root / name)
 

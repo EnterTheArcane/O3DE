@@ -2,9 +2,10 @@ import os
 import subprocess
 from typing import IO, Any
 
+from thirdparty._internal.graph.graph import CONTEXT_BUILD
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.layout import Folders, Infos, Layouts
+from thirdparty._internal.model.layout import Folders, Infos
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.requires import Requirements
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
@@ -59,8 +60,7 @@ class RecipeBase:
     conf_info: "Conf | None" = None
     conf: Conf
 
-    def __init__(self, display_name=""):
-        self.display_name: str = display_name
+    def __init__(self):
         # something that can run commands, as os.sytem
 
         self._recipe_runtime: Any = None
@@ -91,19 +91,20 @@ class RecipeBase:
         # layout() method related variables:
         self.folders = Folders()
         self.infos = Infos()
-        self.layouts = Layouts()
 
     @property
     def output(self) -> Output:
         # an output stream (writeln, info, warn error)
-        scope = self.display_name
-        if not scope:
-            scope = self.ref if self._recipe_node else ""
+        scope = self.name or (self.ref if self._recipe_node else "")
         return Output(scope=scope)
 
     @property
     def context(self):
         return self._recipe_node.context
+
+    @property
+    def is_build_context(self):
+        return self.context == CONTEXT_BUILD
 
     @property
     def dependencies(self):
@@ -203,4 +204,4 @@ class RecipeBase:
         return retcode
 
     def __repr__(self):
-        return self.display_name
+        return self.name or ""
