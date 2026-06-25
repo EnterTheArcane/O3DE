@@ -1,7 +1,7 @@
+import jinja2
 import textwrap
 from pathlib import Path
 from typing import Any
-
 
 from thirdparty.build.cpu import build_jobs
 from thirdparty.errors import RecipeException

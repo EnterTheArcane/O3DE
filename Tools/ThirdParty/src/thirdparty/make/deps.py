@@ -25,11 +25,11 @@ The recipe_deps.mk file layout is as follows:
 
 """
 
+import jinja2
 import os
 import re
 import textwrap
 from typing import Any, Optional
-
 
 from thirdparty._internal.output import Output
 from thirdparty.files import save

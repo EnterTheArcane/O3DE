@@ -22,8 +22,8 @@ Others:
     * User manual: https://bazel.build/docs/user-manual
 """
 
+import jinja2
 import textwrap
-
 
 from thirdparty._internal.internal_tools import raise_on_universal_arch
 from thirdparty.apple import to_apple_arch, is_apple_os

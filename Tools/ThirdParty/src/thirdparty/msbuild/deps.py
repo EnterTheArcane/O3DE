@@ -1,10 +1,10 @@
 import fnmatch
+import jinja2
 import os
 import re
 import textwrap
 from typing import Any
 from xml.dom import minidom
-
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
 from thirdparty._internal.util.files import load, save
