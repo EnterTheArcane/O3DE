@@ -265,7 +265,7 @@ class MesonToolchain:
         compilers_by_conf = self._recipe_conf.get(
             "tools.build:compiler_executables", default={}, check_type=dict)
         # Read the VirtualBuildEnv to update the variables
-        build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (VirtualBuildEnv(self._recipe, auto_generate=True).vars())
+        build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (VirtualBuildEnv(self._recipe).vars())
         #: Sets the Meson ``c`` variable, defaulting to the ``CC`` build environment value.
         #: If provided as a blank-separated string, it will be transformed into a list.
         #: Otherwise, it remains a single string.

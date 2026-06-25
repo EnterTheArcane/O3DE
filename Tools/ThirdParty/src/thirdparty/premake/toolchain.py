@@ -225,7 +225,7 @@ class PremakeToolchain:
         compilers_build_mapping = self._recipe.conf.get(
             "tools.build:compiler_executables", default={}, check_type=dict)
         if compilers_build_mapping:
-            build_env = VirtualBuildEnv(self._recipe, auto_generate=False)
+            build_env = VirtualBuildEnv(self._recipe)
             env = build_env.environment()
             if "c" in compilers_build_mapping:
                 env.define("CC", compilers_build_mapping["c"])

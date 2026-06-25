@@ -126,6 +126,10 @@ class RecipeBase:
         return self._recipe_dependencies
 
     @property
+    def recipe(self) -> "str | None":
+        return self._recipe_node.recipe if self._recipe_node else None
+
+    @property
     def ref(self):
         return self._recipe_node.ref
 

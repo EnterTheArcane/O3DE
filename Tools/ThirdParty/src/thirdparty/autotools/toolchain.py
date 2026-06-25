@@ -171,7 +171,7 @@ class AutotoolsToolchain:
                 "READELF": os.path.join(ndk_bin, "llvm-readelf"),
                 "ELFEDIT": os.path.join(ndk_bin, "llvm-elfedit"),
             }
-        build_env = VirtualBuildEnv(self._recipe, auto_generate=True).vars()
+        build_env = VirtualBuildEnv(self._recipe).vars()
         for var_name, var_path in recipe_vars.items():
             # User variables have more priority than Recipe ones, so if it was defined within
             # the build env then do nothing
