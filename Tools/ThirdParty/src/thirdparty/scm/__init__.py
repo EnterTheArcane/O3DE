@@ -1,4 +1,3 @@
-from __future__ import annotations
 from thirdparty._internal.model.version import Version
 from thirdparty.scm.bitbucket import BitbucketRepository
 from thirdparty.scm.git import Git

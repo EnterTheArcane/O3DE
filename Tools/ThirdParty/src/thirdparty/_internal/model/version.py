@@ -1,4 +1,3 @@
-from __future__ import annotations
 from functools import total_ordering
 
 from thirdparty.errors import RecipeException

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import textwrap
 from io import StringIO
 from typing import TYPE_CHECKING, Any

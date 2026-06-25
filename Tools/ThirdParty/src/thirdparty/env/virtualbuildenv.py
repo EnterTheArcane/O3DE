@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from thirdparty.env import Environment
 from thirdparty.env.virtualrunenv import runenv_from_cpp_info
 

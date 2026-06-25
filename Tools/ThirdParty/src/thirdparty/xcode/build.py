@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key

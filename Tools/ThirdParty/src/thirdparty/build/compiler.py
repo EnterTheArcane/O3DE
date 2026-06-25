@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from thirdparty._internal.model.version import Version
 from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 

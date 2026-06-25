@@ -1,7 +1,6 @@
 """
     This is a helper class which offers a lot of useful methods and attributes
 """
-from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 

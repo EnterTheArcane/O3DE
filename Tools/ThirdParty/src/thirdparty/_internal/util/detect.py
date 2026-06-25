@@ -119,8 +119,7 @@ def _machine_arch() -> str:
     return "ARM" if ("arm64" in machine or "aarch64" in machine) else "X64"
 
 
-def detect_settings(build_type: str = "Release", target_os: str | None = None,
-                    target_arch: str | None = None) -> Settings:
+def detect_settings(build_type: str = "Release", target_os: str=None, target_arch: str=None) -> Settings:
     """Detect build settings for the *target* platform.
 
     ``target_os``/``target_arch`` select the HOST/target platform the package will run

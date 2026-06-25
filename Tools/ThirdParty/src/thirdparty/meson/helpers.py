@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.output import Output
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag

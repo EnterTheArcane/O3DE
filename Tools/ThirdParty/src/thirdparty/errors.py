@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 class RecipeException(Exception):
     """Generic recipe exception."""
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 default_settings_yml = """
 build_type:
   - null

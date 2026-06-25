@@ -1,4 +1,3 @@
-from __future__ import annotations
 from thirdparty.meson.build import Meson
 from thirdparty.meson.toolchain import MesonToolchain
 

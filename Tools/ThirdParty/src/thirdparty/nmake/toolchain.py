@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from thirdparty.build.flags import build_type_flags, cppstd_flag, build_type_link_flags

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from thirdparty.errors import RecipeException
 
 from typing import TYPE_CHECKING

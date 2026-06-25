@@ -1,4 +1,3 @@
-from __future__ import annotations
 from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty.errors import RecipeException
 

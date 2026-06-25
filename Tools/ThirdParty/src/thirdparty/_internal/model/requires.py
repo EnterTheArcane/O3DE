@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from thirdparty._internal.model.refs import RecipeReference

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from graphlib import TopologicalSorter
 from typing import TYPE_CHECKING
 

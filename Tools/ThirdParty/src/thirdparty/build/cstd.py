@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import operator
 
 from thirdparty._internal.model.version import Version

@@ -21,7 +21,6 @@ Others:
     * CLI options: https://bazel.build/reference/command-line-reference
     * User manual: https://bazel.build/docs/user-manual
 """
-from __future__ import annotations
 
 import textwrap
 

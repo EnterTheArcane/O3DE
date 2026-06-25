@@ -24,7 +24,6 @@ The recipe_deps.mk file layout is as follows:
 - Aggregated global variables for simplification, sum all dependencies to common variables (e.g. RECIPE_INCLUDE_DIRS)
 
 """
-from __future__ import annotations
 
 import os
 import re
