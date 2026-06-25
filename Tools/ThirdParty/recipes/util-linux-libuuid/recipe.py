@@ -4,7 +4,6 @@ from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
-from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):
@@ -107,5 +106,5 @@ class Recipe(RecipeBase):
         self.info.libs = ["uuid"]
         self.info.includedirs.append(os.path.join("include", "uuid"))
 
-        if self.settings.os == "Linux" and Version(self.version) >= "2.41.2":
+        if self.settings.os == "Linux":
             self.info.system_libs.extend(["pthread"])

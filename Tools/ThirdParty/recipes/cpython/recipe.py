@@ -89,11 +89,7 @@ class Recipe(RecipeBase):
             self.requires("openssl")
             self.requires("expat")
             self.requires("libffi")
-            if Version(self.version) < "3.10" or is_apple_os(self):
-                # FIXME: mpdecimal > 2.5.0 on MacOS causes the _decimal module to not be importable
-                self.requires("mpdecimal")
-            else:
-                self.requires("mpdecimal")
+            self.requires("mpdecimal")
         if self.settings.os != "Windows":
             if not is_apple_os(self):
                 self.requires("util-linux-libuuid")
@@ -114,7 +110,7 @@ class Recipe(RecipeBase):
             self.requires("ncurses")
         if self.options.get_safe("with_lzma", False):
             self.requires("xz_utils")
-        if Version(self.version) >= "3.11" and not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
+        if not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
 
     def source(self):
@@ -141,30 +137,11 @@ class Recipe(RecipeBase):
             "--with-system-libmpdec",
             f"--with-openssl={self.dependencies['openssl'].folders.package}",
         ]
-        if Version(self.version) < "3.12":
-            tc.configure_args.append("--with-system-ffi")
-        if Version(self.version) >= "3.10":
-            tc.configure_args.append("--disable-test-modules")
+        tc.configure_args.append("--disable-test-modules")
         if self.options.get_safe("with_sqlite3"):
             tc.configure_args.append(
                 f"--enable-loadable-sqlite-extensions={yes_no(not self.dependencies['sqlite3'].options.omit_load_extension)}"
             )
-        if self.options.with_tkinter and Version(self.version) < "3.11":
-            tcltk_includes = []
-            tcltk_libs = []
-            # FIXME: collect using some recipe util (upstream issue 7656)
-            for dep in ("tcl", "tk", "zlib"):
-                info = self.dependencies[dep].info.aggregated_components()
-                tcltk_includes += [f"-I{d}" for d in info.includedirs]
-                tcltk_libs += [f"-L{lib}" for lib in info.libdirs]
-                tcltk_libs += [f"-l{lib}" for lib in info.libs]
-            if self.settings.os in ["Linux", "FreeBSD"] and not self.dependencies["tk"].options.shared:
-                # FIXME: use info from xorg.components (x11, xscrnsaver)
-                tcltk_libs.extend([f"-l{lib}" for lib in ("X11", "Xss")])
-            tc.configure_args += [
-                f"--with-tcltk-includes={' '.join(tcltk_includes)}",
-                f"--with-tcltk-libs={' '.join(tcltk_libs)}",
-            ]
         if self._supports_modules and "mpdecimal" in self.dependencies:
             # mpdecimal >= 4.0 renamed CONFIG_64/CONFIG_32 → MPD_CONFIG_64/MPD_CONFIG_32.
             # CPython 3.12 _decimal.c still checks the old names; provide compat defines.
@@ -191,9 +168,8 @@ class Recipe(RecipeBase):
 
         deps = AutotoolsDeps(self)
         deps.generate()
-        if Version(self.version) >= "3.11":
-            deps = PkgConfigDeps(self)
-            deps.generate()
+        deps = PkgConfigDeps(self)
+        deps.generate()
 
     def generate(self):
         VirtualRunEnv(self).generate(scope="build")
@@ -226,40 +202,6 @@ class Recipe(RecipeBase):
                 search,
                 search + f'<Import Project="{self.folders.generators}/recipe_{dep_name}.props" />')
 
-    def _patch_setup_py(self):
-        setup_py = os.path.join(self.folders.source, "setup.py")
-        if Version(self.version) < "3.10":
-            replace_in_file(self, setup_py, ":libmpdec.so.2", "mpdec")
-
-        if self.options.get_safe("with_curses", False):
-            libcurses = self.dependencies["ncurses"].info.components["libcurses"]
-            tinfo = self.dependencies["ncurses"].info.components["tinfo"]
-            libs = libcurses.libs + libcurses.system_libs + tinfo.libs + tinfo.system_libs
-            replace_in_file(
-                self, setup_py,
-                "curses_libs = ",
-                f"curses_libs = {repr(libs)} #")
-
-        if self._supports_modules:
-            openssl = self.dependencies["openssl"].info.aggregated_components()
-            zlib = self.dependencies["zlib"].info.aggregated_components()
-            if Version(self.version) < "3.11":
-                replace_in_file(
-                    self, setup_py,
-                    "openssl_includes = ",
-                    f"openssl_includes = {openssl.includedirs + zlib.includedirs} #")
-                replace_in_file(
-                    self, setup_py,
-                    "openssl_libdirs = ",
-                    f"openssl_libdirs = {openssl.libdirs + zlib.libdirs} #")
-                replace_in_file(
-                    self, setup_py,
-                    "openssl_libs = ",
-                    f"openssl_libs = {openssl.libs + zlib.libs} #")
-
-            if Version(self.version) < "3.11":
-                replace_in_file(self, setup_py, "if (MACOS and self.detect_tkinter_darwin())", "if (False)")
-
     def _patch_msvc_projects(self):
         # Don't build vendored bz2
         self._regex_replace_in_file(self._msvc_project_path("_bz2"), r'.*Include=\"\$\(bz2Dir\).*', "")
@@ -267,9 +209,6 @@ class Recipe(RecipeBase):
         if self._supports_modules:
             # Don't import vendored libffi
             replace_in_file(self, self._msvc_project_path("_ctypes"), '<Import Project="libffi.props" />', "")
-            if Version(self.version) < "3.11":
-                # Don't add this define, it should be added conditionally by the libffi package
-                replace_in_file(self, self._msvc_project_path("_ctypes"), "FFI_BUILDING;", "")
 
         # Don't import vendored openssl
         replace_in_file(self, self._msvc_project_path("_hashlib"), '<Import Project="openssl.props" />', "")
@@ -304,8 +243,7 @@ class Recipe(RecipeBase):
             r"<AdditionalIncludeDirectories>$(PySourcePath)Modules\expat;",
             "<AdditionalIncludeDirectories>")
         # Remove XML_STATIC, this should conditionally be set by the expat library.
-        # TODO: Why HAVE_EXPAT_H? (It is at least removed in later versions)
-        replace_in_file(self, self._msvc_project_path("pyexpat"), ("HAVE_EXPAT_H;" if Version(self.version) < "3.11" else "") + "XML_STATIC;", "")
+        replace_in_file(self, self._msvc_project_path("pyexpat"), "XML_STATIC;", "")
         self._regex_replace_in_file(self._msvc_project_path("pyexpat"), r'.*Include=\"\.\.\\Modules\\expat\\.*" />', "")
 
         # Don't include vendored expat headers
@@ -318,13 +256,12 @@ class Recipe(RecipeBase):
         # Remove vendored expat
         self._regex_replace_in_file(self._msvc_project_path("_elementtree"), r'.*Include=\"\.\.\\Modules\\expat\\.*" />', "")
 
-        if Version(self.version) >= "3.9":
-            # deflate.c has warning 4244 disabled, need special patching else it breaks the regex below
-            # Add an extra space to avoid being picked up by the regex
-            replace_in_file(
-                self, self._msvc_project_path("pythoncore"),
-                r'<ClCompile Include="$(zlibDir)\deflate.c">',
-                r'<ClCompile Include= "$(zlibDir)\deflate.c" Condition="False">')
+        # deflate.c has warning 4244 disabled, need special patching else it breaks the regex below
+        # Add an extra space to avoid being picked up by the regex
+        replace_in_file(
+            self, self._msvc_project_path("pythoncore"),
+            r'<ClCompile Include="$(zlibDir)\deflate.c">',
+            r'<ClCompile Include= "$(zlibDir)\deflate.c" Condition="False">')
         # Don't use vendored zlib
         self._regex_replace_in_file(self._msvc_project_path("pythoncore"), r'.*Include=\"\$\(zlibDir\).*', "")
 
@@ -342,13 +279,6 @@ class Recipe(RecipeBase):
 
         # Disable "ValidateUcrtbase" target (TODO: Why?)
         replace_in_file(self, self._msvc_project_path("python"), "$(Configuration) != 'PGInstrument'", "False")
-
-        if Version(self.version) < "3.11":
-            # TODO: Why?
-            replace_in_file(
-                self, self._msvc_project_path("_freeze_importlib"),
-                "<Target Name=\"RebuildImportLib\" AfterTargets=\"AfterBuild\" Condition=\"$(Configuration) == 'Debug' or $(Configuration) == 'Release'\"",
-                "<Target Name=\"RebuildImportLib\" AfterTargets=\"AfterBuild\" Condition=\"False\"")
 
         # Remove vendored openssl file
         replace_in_file(
@@ -373,17 +303,11 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         apply_patches(self)
-        # <=3.10 requires a lot of manual injection of dependencies through setup.py
-        # 3.12 removes setup.py completely, and uses pkgconfig dependencies
-        # 3.11 is an in awkward transition state where some dependencies use pkgconfig, and others use setup.py
-        if Version(self.version) < "3.12":
-            self._patch_setup_py()
-        if Version(self.version) >= "3.11":
-            replace_in_file(
-                self, os.path.join(self.folders.source, "configure"),
-                'OPENSSL_LIBS="-lssl -lcrypto"',
-                'OPENSSL_LIBS="-lssl -lcrypto -lz"',
-                strict=False)
+        replace_in_file(
+            self, os.path.join(self.folders.source, "configure"),
+            'OPENSSL_LIBS="-lssl -lcrypto"',
+            'OPENSSL_LIBS="-lssl -lcrypto -lz"',
+            strict=False)
         if is_msvc(self):
             runtime_library = {
                 "MT": "MultiThreaded",
@@ -406,12 +330,6 @@ class Recipe(RecipeBase):
         # Remove vendored packages
         rmdir(self, os.path.join(self.folders.source, "Modules", "_decimal", "libmpdec"))
         rmdir(self, os.path.join(self.folders.source, "Modules", "expat"))
-
-        if Version(self.version) < "3.12":
-            replace_in_file(
-                self, os.path.join(self.folders.source, "Makefile.pre.in"),
-                "$(RUNSHARED) CC='$(CC)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'",
-                "$(RUNSHARED) CC='$(CC) $(CONFIGURE_CFLAGS) $(CONFIGURE_CPPFLAGS)' LDSHARED='$(BLDSHARED)' OPT='$(OPT)'")
 
         # Enable static MSVC cpython
         if not self.options.shared:
@@ -921,4 +839,3 @@ class Recipe(RecipeBase):
             # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Setting PYTHON_ROOT environment variable: {python_root}")
         self.conf_info.define("user.cpython:python_root", python_root)
-

@@ -26,14 +26,10 @@ class Recipe(RecipeBase):
     }
 
     def config_options(self):
-        if Version(self.version) >= "0.5.0":
-            # Set it to false for iOS, tvOS, watchOS, visionOS
-            # to prevent cmake from creating a bundle for the md2html executable
-            is_ios_variant = is_apple_os(self) and not self.settings.os == "Mac"
-            self.options.md2html = not is_ios_variant
-        else:
-            # md2html was introduced in 0.5.0
-            del self.options.md2html
+        # Set it to false for iOS, tvOS, watchOS, visionOS
+        # to prevent cmake from creating a bundle for the md2html executable
+        is_ios_variant = is_apple_os(self) and not self.settings.os == "Mac"
+        self.options.md2html = not is_ios_variant
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")

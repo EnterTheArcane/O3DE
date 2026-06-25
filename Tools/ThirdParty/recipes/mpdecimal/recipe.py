@@ -6,7 +6,6 @@ from thirdparty.files import get, chdir, copy, apply_patches, mkdir, rename
 from thirdparty.autotools import AutotoolsToolchain, Autotools
 from thirdparty.nmake import NMakeDeps, NMakeToolchain
 from thirdparty.microsoft import VCVars, is_msvc
-from thirdparty.scm import Version
 
 
 class Recipe(RecipeBase):
@@ -53,11 +52,10 @@ class Recipe(RecipeBase):
             deps.generate()
 
             tc = NMakeToolchain(self)
-            if Version(self.version) >= "2.5.1":
-                if self.options.shared:
-                    tc.extra_cflags.append("-DMPDECIMAL_DLL")
-                    if self.options.cxx:
-                        tc.extra_cxxflags.append("-DLIBMPDECXX_DLL")
+            if self.options.shared:
+                tc.extra_cflags.append("-DMPDECIMAL_DLL")
+                if self.options.cxx:
+                    tc.extra_cxxflags.append("-DLIBMPDECXX_DLL")
             tc.generate()
         else:
             # inject requires_tool env vars in build scope (not needed if there is no requires_tool)
@@ -204,10 +202,7 @@ class Recipe(RecipeBase):
 
         self.info.components["libmpdecimal"].libs = ["{}mpdec{}".format(*lib_pre_suf)]
         if self.options.shared and is_msvc(self):
-            if Version(self.version) >= "2.5.1":
-                self.info.components["libmpdecimal"].defines = ["MPDECIMAL_DLL"]
-            else:
-                self.info.components["libmpdecimal"].defines = ["USE_DLL"]
+            self.info.components["libmpdecimal"].defines = ["MPDECIMAL_DLL"]
 
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.components["libmpdecimal"].system_libs = ["m"]
@@ -217,5 +212,5 @@ class Recipe(RecipeBase):
             self.info.components["libmpdecimal++"].requires = ["libmpdecimal"]
             if self.settings.os in ["Linux", "FreeBSD"]:
                 self.info.components["libmpdecimal++"].system_libs = ["pthread"]
-            if self.options.shared and Version(self.version) >= "2.5.1":
+            if self.options.shared:
                 self.info.components["libmpdecimal++"].defines = ["MPDECIMALXX_DLL"]

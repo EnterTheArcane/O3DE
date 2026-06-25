@@ -157,6 +157,3 @@ class Recipe(RecipeBase):
             self.info.components["spirv-tools-diff"].set_property("cmake_target_name", "SPIRV-Tools-diff")
             self.info.components["spirv-tools-diff"].libs = ["SPIRV-Tools-diff"]
             self.info.components["spirv-tools-diff"].requires = ["spirv-tools-core", "spirv-tools-opt"]
-
-        if Version(self.version) < "1.3" and not self.options.shared:
-            del self.info.components["spirv-tools-diff"]
