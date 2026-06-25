@@ -1,93 +1,50 @@
 from __future__ import annotations
 
-import fnmatch
+import sys
 from functools import total_ordering
 from typing import Any
 
-from thirdparty._internal.model.version import Version
-from thirdparty.errors import RecipeException
+
+def _ref_name(other: Any) -> str | None:
+    """Best-effort recipe name for *other*, so a reference can be compared against a bare
+    name string, another ``RecipeReference``, or a recipe object (anything exposing ``name``)
+    directly. Returns ``None`` when *other* names no recipe."""
+    if isinstance(other, str):
+        return other
+    # A RecipeReference, a recipe object, or anything else carrying a recipe name.
+    return getattr(other, "name", None)
 
 
 @total_ordering
 class RecipeReference:
-    """Recipe reference: ``name/version``.
+    """Reference to a recipe by name.
+
+    This system has exactly one recipe per name, so the name alone is the identity. The name
+    is interned so comparisons are cheap, and a reference compares equal to anything naming the
+    same recipe -- a bare name string, another ``RecipeReference``, or a recipe object.
     """
 
-    def __init__(self, name: str | None = None, version: Any = None):
-        self.name: str | None = name
-        if version is not None and not isinstance(version, Version):
-            version = Version(version)
-        self.version: Version | None = version
+    def __init__(self, name: str):
+        self._name: str = sys.intern(name)
 
-    def copy(self) -> RecipeReference:
-        return RecipeReference(self.name, self.version)
+    @property
+    def name(self) -> str:
+        return self._name
 
     def __repr__(self) -> str:
-        return str(self)
-
-    def repr_notime(self) -> str:
-        return str(self)
-
-    def repr_humantime(self) -> str:
-        return str(self)
+        return self._name
 
     def __str__(self) -> str:
-        if self.name is None:
-            return ""
-        if self.version is None:
-            return self.name
-        return "/".join([self.name, str(self.version)])
+        return self._name
 
-    def __lt__(self, ref: RecipeReference) -> bool:
-        # Identity is by NAME only: this system has exactly one recipe per name, so the
-        # version is never part of dependency lookup/dedup/ordering (it is only carried for
-        # layout paths, generators like config-version.cmake, and publishing/out-of-date).
-        return self.name < ref.name
+    def __eq__(self, other: Any) -> bool:
+        return self._name == _ref_name(other)
 
-    def __eq__(self, ref: Any) -> bool:
-        if ref is None:
-            return False
-        return self.name == ref.name
+    def __lt__(self, other: Any) -> bool:
+        name = _ref_name(other)
+        if name is None:
+            return NotImplemented
+        return self._name < name
 
     def __hash__(self) -> int:
-        return hash(self.name)
-
-    @staticmethod
-    def loads(rref: str) -> RecipeReference:
-        try:
-            # Tolerate (and discard) any legacy @user/channel, #revision or %timestamp suffix.
-            text = rref.split("%", 1)[0].split("#", 1)[0].split("@", 1)[0]
-            # A dep is identified by NAME; the version lives in its own recipe.  Accept a bare
-            # name (``abseil``) as well as the explicit ``name/version`` form.
-            if "/" in text:
-                name, version = text.split("/", 1)
-                assert name and version
-                return RecipeReference(name, version)
-            assert text
-            return RecipeReference(text, None)
-        except Exception:
-            raise RecipeException(
-                f"{rref} is not a valid recipe reference, provide a reference"
-                f" in the form name or name/version")
-
-    def matches(self, pattern: str, is_consumer: bool) -> bool:
-        negate = False
-        if pattern.startswith("!") or pattern.startswith("~"):
-            pattern = pattern[1:]
-            negate = True
-
-        # ``@`` / ``@#`` suffixes meant "no user/channel"; always true here, just strip them.
-        if pattern.endswith("@"):
-            pattern = pattern[:-1]
-        elif "@#" in pattern:
-            pattern = pattern.replace("@#", "#")
-
-        condition = ((pattern == "&" and is_consumer) or fnmatch.fnmatchcase(str(self), pattern))
-        return not condition if negate else condition
-
-
-def ref_matches(ref: Any, pattern: str, is_consumer: bool) -> bool:
-    if not ref or not str(ref):
-        assert is_consumer
-        ref = RecipeReference.loads("*/*")  # FIXME: ugly
-    return ref.matches(pattern, is_consumer=is_consumer)
+        return hash(self._name)

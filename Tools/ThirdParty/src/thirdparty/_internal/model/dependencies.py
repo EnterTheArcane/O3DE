@@ -4,7 +4,6 @@ from collections import OrderedDict
 from typing import Any
 
 from thirdparty._internal.graph import RECIPE_PLATFORM
-from thirdparty._internal.model.refs import RecipeReference
 from thirdparty.errors import RecipeException
 
 
@@ -42,17 +41,9 @@ class UserRequirementsDict:
             kwargs["build"] = build
         data = self.filter(kwargs)
         ret = []
-        if "/" in ref:
-            # FIXME: Validate reference
-            ref = RecipeReference.loads(ref)
-            for require, value in data.items():
-                if require.ref == ref:
-                    ret.append((require, value))
-        else:
-            name = ref
-            for require, value in data.items():
-                if require.ref.name == name:
-                    ret.append((require, value))
+        for require, value in data.items():
+            if require.ref == ref:  # RecipeReference == bare name string
+                ret.append((require, value))
         if len(ret) > 1:
             current_filters = data._require_filter or "{}"
             requires = "\n".join([f"- {require}" for require, _ in ret])

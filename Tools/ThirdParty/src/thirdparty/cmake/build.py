@@ -8,7 +8,7 @@ from thirdparty.cmake.presets import load_cmake_presets
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.files import chdir, mkdir
-from thirdparty.msbuild.builder import msbuild_verbosity_cmd_line_arg
+from thirdparty.msbuild.build import msbuild_verbosity_cmd_line_arg
 
 if TYPE_CHECKING:
     from thirdparty._internal.model.recipe import RecipeBase

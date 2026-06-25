@@ -53,7 +53,7 @@ class Node:
 
     @property
     def ref(self) -> RecipeReference:
-        return RecipeReference(self._name, self._version)
+        return RecipeReference(self._name)
 
     @property
     def all_deps(self) -> list[str]:

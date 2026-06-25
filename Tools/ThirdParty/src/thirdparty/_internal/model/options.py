@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from thirdparty._internal.model.refs import ref_matches
 from thirdparty.errors import RecipeException
 
 _falsey_options = ["false", "none", "0", "off", ""]
@@ -372,60 +371,3 @@ class Options:
         self._package_options.update_options(other._package_options)
         for pkg, pkg_option in other._deps_package_options.items():
             self._deps_package_options.setdefault(pkg, _PackageOptions()).update_options(pkg_option)
-
-    def apply_downstream(self, down_options: Options, profile_options: Options, own_ref: Any, is_consumer: bool):
-        """ compute the current package options, starting from the self defined ones and applying
-        the options defined by the downstrream consumers and the profile
-        Only modifies the current package_options, not the dependencies ones
-        """
-        assert isinstance(down_options, Options)
-        assert isinstance(profile_options, Options)
-
-        for defined_options in down_options, profile_options:
-            if own_ref is None or own_ref.name is None:
-                # If the current package doesn't have a name defined, is a pure consumer without name
-                # Get the non-scoped options, plus the "all-matching=*" pattern
-                self._package_options.update_options(defined_options._package_options)
-                for pattern, options in defined_options._deps_package_options.items():
-                    if ref_matches(None, pattern, is_consumer=is_consumer):
-                        self._package_options.update_options(options, is_pattern=True)
-            else:
-                # If the current package has a name, there should be a match, either exact name
-                # match, or a fnmatch approximate one
-                for pattern, options in defined_options._deps_package_options.items():
-                    if ref_matches(own_ref, pattern, is_consumer=is_consumer):
-                        self._package_options.update_options(options, is_pattern="*" in pattern)
-
-        self._package_options.freeze()
-
-    def get_upstream_options(self, down_options: Options, own_ref: Any, is_consumer: bool):
-        """ compute which options should be propagated to the dependencies, a combination of the
-        downstream defined default_options with the current default_options ones. This happens
-        at "configure()" time, while building the graph. Also compute the minimum "self_options"
-        which is the state that a package should define in order to reproduce
-        """
-        assert isinstance(down_options, Options)
-        # We need to store a copy for internal propagation for requires_tool
-        private_deps_options = Options()
-        private_deps_options._deps_package_options = self._deps_package_options.copy()
-        # self_options are the minimal necessary for a build-order
-        # TODO: check this, isn't this just a copy?
-        self_options = Options()
-        # compute now the necessary to propagate all down - self + self deps
-        upstream_options = Options()
-        for pattern, options in down_options._deps_package_options.items():
-            if ref_matches(own_ref, pattern, is_consumer=is_consumer):
-                # keep it for reproduction of state
-                self_options._deps_package_options.update({pattern: options})
-                # Remove the exact match-name to this package, don't further propagate up
-                pattern_name = pattern.split("/", 1)[0]
-                if "*" not in pattern_name:
-                    continue
-            self._deps_package_options.setdefault(pattern, _PackageOptions()).update_options(options)
-
-        upstream_options._deps_package_options = self._deps_package_options
-        # When the upstream is computed, the current dependencies are invalidated, so users will
-        # not be able to do ``self.options["mydep"]`` because it will be empty. self.dependencies
-        # is the way to access dependencies (in other methods)
-        self._deps_package_options = {}
-        return self_options, upstream_options, private_deps_options

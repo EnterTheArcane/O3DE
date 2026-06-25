@@ -12,7 +12,6 @@ from typing import Any
 
 
 from thirdparty._internal.model.options import _PackageOption
-from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.model.settings import SettingsItem
 from thirdparty._internal.util import detect_api
 from thirdparty._internal.util.files import load, save
@@ -611,18 +610,6 @@ class ConfDefinition:
         else:
             pattern, name = None, pattern_name
         return pattern, name
-
-    def get_recipe_conf(self, ref: Any, is_consumer: bool = False) -> Conf:
-        """ computes package-specific Conf
-        it is only called when recipe.buildenv is called
-        the last one found in the profile file has top priority
-        """
-        result = Conf()
-        for pattern, conf in self._pattern_confs.items():
-            if pattern is None or ref_matches(ref, pattern, is_consumer):
-                # Latest declared has priority, copy() necessary to not destroy data
-                result = conf.copy().compose_conf(result)
-        return result
 
     def update_conf_definition(self, other: ConfDefinition):
         """

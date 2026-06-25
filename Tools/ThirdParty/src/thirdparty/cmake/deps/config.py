@@ -114,7 +114,7 @@ class ConfigTemplate2:
                 libraries.append(root_target_name or f"{pkg_name}::{pkg_name}")
             libraries = " ".join(libraries) if libraries else ""
         return {
-            "additional_variables_prefixes": prefixes, "version": self._recipe.ref.version, "include_dirs": include_dirs, "definitions": definitions, "libraries": libraries,
+            "additional_variables_prefixes": prefixes, "version": self._recipe.version, "include_dirs": include_dirs, "definitions": definitions, "libraries": libraries,
         }
 
     @property

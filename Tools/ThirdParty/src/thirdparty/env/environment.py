@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from shlex import quote
 from typing import TYPE_CHECKING, Any
 
-from thirdparty._internal.model.refs import ref_matches
 from thirdparty._internal.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
 from thirdparty._internal.util.files import save
@@ -720,107 +719,6 @@ def _sh_deactivate_contents(deactivation_mode: str | None, values: Any, filename
            fi
         done
         """)
-
-
-class ProfileEnvironment:
-    def __init__(self):
-        self._environments: OrderedDict[str | None, Environment] = OrderedDict()
-
-    def __repr__(self) -> str:
-        return repr(self._environments)
-
-    def __bool__(self) -> bool:
-        return bool(self._environments)
-
-    def get_profile_env(self, ref: Any, is_consumer: bool = False) -> Environment:
-        """ computes package-specific Environment
-        it is only called when recipe.buildenv is called
-        the last one found in the profile file has top priority
-        """
-        result = Environment()
-        for pattern, env in self._environments.items():
-            if pattern is None or ref_matches(ref, pattern, is_consumer):
-                # Latest declared has priority, copy() necessary to not destroy data
-                result = env.copy().compose_env(result)
-        return result
-
-    def update_profile_env(self, other: ProfileEnvironment):
-        """
-        :type other: ProfileEnvironment
-        :param other: The argument profile has priority/precedence over the current one.
-        """
-        for pattern, environment in other._environments.items():
-            existing = self._environments.get(pattern)
-            if existing is not None:
-                self._environments[pattern] = environment.compose_env(existing)
-            else:
-                self._environments[pattern] = environment
-
-    def dumps(self) -> str:
-        result = []
-        for pattern, env in self._environments.items():
-            if pattern is None:
-                result.append(env.dumps())
-            else:
-                result.append(
-                    "\n".join(
-                        f"{pattern}:{line}" if line else "" for line in env.dumps().splitlines()))
-        if result:
-            result.append("")
-        return "\n".join(result)
-
-    @staticmethod
-    def loads(text: str) -> ProfileEnvironment:
-        result = ProfileEnvironment()
-        for line in text.splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            for op, method in (
-                    ("+=", "append"), ("=+", "prepend"), ("=!", "unset"), ("=", "define"),
-            ):
-                tokens = line.split(op, 1)
-                if len(tokens) != 2:
-                    continue
-                pattern_name, value = tokens
-                pattern_name = pattern_name.split(":", 1)
-                if len(pattern_name) == 2:
-                    pattern, name = pattern_name
-                else:
-                    pattern, name = None, pattern_name[0]
-
-                # strip whitespaces before/after =
-                # values are not strip() unless they are a path, to preserve potential whitespaces
-                name = name.strip()
-
-                # When loading from profile file, latest line has priority
-                env = Environment()
-                if method == "unset":
-                    env.unset(name)
-                elif value.strip().startswith("(sep="):
-                    value = value.strip()
-                    sep = value[5]
-                    value = value[7:]
-                    if value.strip().startswith("(path)"):
-                        msg = f"Cannot use (sep) and (path) qualifiers simultaneously: {line}"
-                        raise RecipeException(msg)
-                    getattr(env, method)(name, value, separator=sep)
-                else:
-                    if value.strip().startswith("(path)"):
-                        value = value.strip()
-                        value = value[6:]
-                        method = method + "_path"
-                    getattr(env, method)(name, value)
-
-                existing = result._environments.get(pattern)
-                if existing is None:
-                    result._environments[pattern] = env
-                else:
-                    result._environments[pattern] = env.compose_env(existing)
-                break
-            else:
-                raise RecipeException(f"Bad env definition: {line}")
-        return result
 
 
 def create_env_script(recipe: RecipeBase, content: str, filename: str, scope: str = "build"):

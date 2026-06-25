@@ -267,7 +267,7 @@ def _build_dep_graph(
             pass
 
         # Register in cache BEFORE recursing to handle diamond/cycle deps.
-        ref = RecipeReference(dep_name, dep_version)
+        ref = RecipeReference(dep_name)
         if is_build:
             req = Requirement(
                 ref, headers=False, libs=False, build=True, run=True, direct=direct)

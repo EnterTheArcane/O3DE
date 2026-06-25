@@ -130,13 +130,13 @@ class NotFoundException(RecipeException):  # 404
 class RecipeNotFoundException(NotFoundException):
 
     def __init__(self, ref):
-        super().__init__(f"Recipe not found: '{ref.repr_notime()}'")
+        super().__init__(f"Recipe not found: '{ref}'")
 
 
 class PackageNotFoundException(NotFoundException):
 
     def __init__(self, pref):
-        super().__init__(f"Binary package not found: '{pref.repr_notime()}'")
+        super().__init__(f"Binary package not found: '{pref}'")
 
 
 EXCEPTION_CODE_MAPPING = {

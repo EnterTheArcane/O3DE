@@ -91,12 +91,12 @@ class RecipeBase:
                  run: bool = False) -> None:
         """Declare a regular (library) dependency. Call from requirements()."""
         self._add_requirement(
-            Requirement(RecipeReference.loads(ref), headers=headers, libs=libs, run=run))
+            Requirement(RecipeReference(ref), headers=headers, libs=libs, run=run))
 
     def requires_tool(self, ref: str, *, run: bool = True) -> None:
         """Declare a build tool dependency (e.g. cmake). Call from requirements()."""
         self._add_requirement(
-            Requirement(RecipeReference.loads(ref), headers=False, libs=False, build=True, run=run))
+            Requirement(RecipeReference(ref), headers=False, libs=False, build=True, run=run))
 
     def _add_requirement(self, req: Requirement) -> None:
         if any(r == req for r in self._requires):  # equality == (name, build)
@@ -131,18 +131,10 @@ class RecipeBase:
 
     @property
     def buildenv(self):
-        # Lazy computation of the package buildenv based on the profileone
-        from thirdparty.env import Environment
-        if not isinstance(self._recipe_buildenv, Environment):
-            self._recipe_buildenv = self._recipe_buildenv.get_profile_env(self.ref, self._is_consumer_recipe)
         return self._recipe_buildenv
 
     @property
     def runenv(self):
-        # Lazy computation of the package runenv based on the profile one
-        from thirdparty.env import Environment
-        if not isinstance(self._recipe_runenv, Environment):
-            self._recipe_runenv = self._recipe_runenv.get_profile_env(self.ref, self._is_consumer_recipe)
         return self._recipe_runenv
 
     @property

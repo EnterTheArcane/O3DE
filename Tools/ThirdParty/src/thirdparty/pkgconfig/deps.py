@@ -238,7 +238,7 @@ class _PCFilesDeps:
             # At first, let's check if we have defined some components requires, e.g., "dep::cmp1"
             comp_requires = self._get_component_requirement_names(comp_cpp_info)
             comp_name = self._get_name(self._dep, pkg_name, comp_ref_name)
-            version = (self._get_property("component_version", self._dep, comp_ref_name) or self._get_property("system_package_version", self._dep, comp_ref_name) or self._dep.ref.version)
+            version = (self._get_property("component_version", self._dep, comp_ref_name) or self._get_property("system_package_version", self._dep, comp_ref_name) or self._dep.version)
             custom_content = self._get_property("pkg_config_custom_content", self._dep, comp_ref_name)
             pc_variables = self._get_pc_variables(self._dep, comp_cpp_info, custom_content)
             pc_context = {
@@ -267,7 +267,7 @@ class _PCFilesDeps:
                 # If no requires were found, let's try to get all the direct visible dependencies,
                 # e.g., requires = "other_pkg/1.0"
                 requires = [self._get_name(req) for req in self._transitive_reqs.values()]
-            version = (self._get_property("system_package_version", self._dep) or self._dep.ref.version)
+            version = (self._get_property("system_package_version", self._dep) or self._dep.version)
             custom_content = self._get_property("pkg_config_custom_content", self._dep)
             pc_variables = self._get_pc_variables(self._dep, info, custom_content)
             pc_context = {

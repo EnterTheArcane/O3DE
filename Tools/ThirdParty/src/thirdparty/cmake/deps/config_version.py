@@ -35,7 +35,7 @@ class ConfigVersionTemplate2:
         if policy not in ("AnyNewerVersion", "SameMajorVersion", "SameMinorVersion", "ExactVersion"):
             raise RecipeException(f"Unknown cmake_config_version_compat={policy} in {self._recipe}")
         version = self._cmakedeps.get_property("system_package_version", self._recipe)
-        version = version or self._recipe.ref.version
+        version = version or self._recipe.version
         return {
             "version": version, "policy": policy,
         }

@@ -31,6 +31,5 @@ def revision_timestamp_now():
 
 
 def timestamp_to_str(timestamp):
-    # used by ref.repr_humantime() to print human readable time
     assert timestamp is not None
     return datetime.datetime.fromtimestamp(int(timestamp), datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')

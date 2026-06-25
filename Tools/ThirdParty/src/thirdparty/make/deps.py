@@ -402,7 +402,7 @@ class DepContentGenerator:
         # {{ dep.ref }}{% if not req.direct %} (indirect dependency){% endif +%}
 
         RECIPE_NAME_{{ name }} = {{ dep.ref.name }}
-        RECIPE_VERSION_{{ name }} = {{ dep.ref.version }}
+        RECIPE_VERSION_{{ name }} = {{ dep.version }}
         RECIPE_REFERENCE_{{ name }} = {{ dep.ref }}
 
         RECIPE_ROOT_{{ name }} = {{ root }}
