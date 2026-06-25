@@ -35,7 +35,7 @@ class RecipeBase:
     settings: Any = None  # set to a Settings object by the build driver (host/target)
     settings_build: Any = None  # Settings for the build machine (tools)
     settings_target: Any = None  # Settings of what a requires_tool will build for
-    
+
     options: Any = None
     default_options: dict[str, Any] | None = None
     default_build_options: dict[str, Any] | None = None
@@ -55,6 +55,14 @@ class RecipeBase:
     runenv_info: Environment
     conf_info: Conf
     conf: Conf
+
+    def __init_subclass__(cls, **kwargs: Any):
+        super().__init_subclass__(**kwargs)
+        license = cls.__dict__.get("license")
+        if isinstance(license, str):
+            cls.license = (license,)
+        elif license is not None:
+            cls.license = tuple(license)
 
     def __init__(self):
         self.folders = Folders()
