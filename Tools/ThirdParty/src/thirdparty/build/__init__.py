@@ -3,7 +3,7 @@ import os
 import sys
 from collections.abc import Iterable
 from shlex import quote
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty.build.compiler import check_min_compiler_version
 from thirdparty.build.cppstd import check_max_cppstd, check_min_cppstd, valid_max_cppstd, valid_min_cppstd, default_cppstd, supported_cppstd
@@ -13,9 +13,7 @@ from thirdparty.build.cstd import check_max_cstd, check_min_cstd, valid_max_cstd
 from thirdparty.build.flags import cppstd_flag
 from thirdparty.build.stdcpp_library import stdcpp_library
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 RECIPE_TOOLCHAIN_ARGS_FILE = "buildenv.conf"
 RECIPE_TOOLCHAIN_ARGS_SECTION = "toolchain"

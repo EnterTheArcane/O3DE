@@ -1,10 +1,6 @@
 from thirdparty.env import Environment
 from thirdparty.env.virtualrunenv import runenv_from_cpp_info
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class VirtualBuildEnv:

@@ -1,9 +1,5 @@
 import os
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def bazel_layout(recipe: RecipeBase, src_folder: str = ".", build_folder: str = ".", target_folder=None):

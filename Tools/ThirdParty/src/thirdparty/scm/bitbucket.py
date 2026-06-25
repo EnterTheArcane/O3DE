@@ -4,11 +4,7 @@ from functools import cached_property
 import requests
 
 from thirdparty._internal.model.version import Version
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class BitbucketRepository:

@@ -1,6 +1,6 @@
 import textwrap
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 
 from thirdparty.build.cpu import build_jobs
@@ -9,9 +9,7 @@ from thirdparty.files import save
 from thirdparty.msbuild import MSBuild
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 from thirdparty.premake.toolchain import PremakeToolchain
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 # Source: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 PREMAKE_VS_VERSION = {

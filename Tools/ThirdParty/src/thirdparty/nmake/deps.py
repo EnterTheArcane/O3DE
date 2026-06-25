@@ -1,11 +1,8 @@
 import os
-from typing import TYPE_CHECKING
 
 from thirdparty import Info
 from thirdparty.env import Environment
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def format_defines(defines: list[str], toolchain: bool = False) -> list[str]:

@@ -1,15 +1,13 @@
 import os
 import re
 import textwrap
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 
 from thirdparty._internal.util.files import load, save
 from thirdparty.apple.utils import _to_apple_arch
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 GLOBAL_XCCONFIG_TEMPLATE = textwrap.dedent(
     """

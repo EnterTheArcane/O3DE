@@ -1,13 +1,11 @@
 import textwrap
 from io import StringIO
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty.build import cmd_args_to_string
 from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class PkgConfig:

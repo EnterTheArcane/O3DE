@@ -33,11 +33,7 @@ from typing import Any, Optional
 
 from thirdparty._internal.output import Output
 from thirdparty.files import save
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 RECIPE_MAKEFILE_FILENAME = "recipe_deps.mk"
 

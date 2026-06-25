@@ -7,11 +7,7 @@ from thirdparty._internal.util.files import mkdir
 from thirdparty._internal.util.runners import check_output_runner
 from thirdparty.errors import RecipeException
 from thirdparty.files import chdir
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class Git:

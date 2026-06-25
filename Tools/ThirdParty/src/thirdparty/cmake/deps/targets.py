@@ -2,10 +2,8 @@ import textwrap
 
 import jinja2
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from typing import Any
+from thirdparty.recipe import RecipeBase
 
 
 class TargetsTemplate2:

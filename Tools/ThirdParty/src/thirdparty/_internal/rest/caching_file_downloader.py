@@ -12,10 +12,8 @@ from thirdparty._internal.util.files import mkdir, set_dirty_context_manager, re
 from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty.errors import RecipeException
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from typing import Any
+from thirdparty.recipe import RecipeBase
 
 
 def _o3de_download_cache_folder() -> str:

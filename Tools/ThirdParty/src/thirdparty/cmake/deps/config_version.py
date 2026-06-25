@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any
 import jinja2
 
 from thirdparty.errors import RecipeException
+from thirdparty.recipe import RecipeBase
 
 if TYPE_CHECKING:
     from thirdparty.cmake.deps.cmakedeps import CMakeDeps
-    from thirdparty._internal.model.recipe import RecipeBase
 
 
 class ConfigVersionTemplate2:

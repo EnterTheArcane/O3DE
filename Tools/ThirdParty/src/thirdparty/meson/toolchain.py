@@ -1,6 +1,6 @@
 import os
 import textwrap
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 
 from thirdparty._internal.internal_tools import raise_on_universal_arch
@@ -11,11 +11,9 @@ from thirdparty.build.flags import (
     architecture_link_flag, libcxx_flags, architecture_flag, threads_flags, )
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty.meson.helpers import get_apple_subsystem, to_cppstd_flag, to_cstd_flag, to_meson_machine, to_meson_value
 from thirdparty.microsoft import VCVars, msvc_runtime_flag
+from thirdparty.recipe import RecipeBase
 
 
 class MesonToolchain:

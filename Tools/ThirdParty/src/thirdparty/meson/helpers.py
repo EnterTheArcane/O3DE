@@ -1,11 +1,7 @@
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.output import Output
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 # https://mesonbuild.com/Reference-tables.html#operating-system-names
 _meson_system_map = {

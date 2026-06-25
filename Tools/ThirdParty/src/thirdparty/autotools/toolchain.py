@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.apple.utils import is_apple_os, resolve_apple_flags, apple_extra_flags
@@ -10,9 +10,7 @@ from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.errors import RecipeException
 from thirdparty.autotools.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class AutotoolsToolchain:

@@ -1,9 +1,6 @@
-from typing import TYPE_CHECKING
 
 from thirdparty._internal.errors import recipe_exception_formatter
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def run_configure_method(recipe: RecipeBase):

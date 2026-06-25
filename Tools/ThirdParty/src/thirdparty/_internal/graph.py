@@ -2,10 +2,10 @@ from graphlib import TopologicalSorter
 from typing import TYPE_CHECKING
 
 from thirdparty._internal.model.refs import RecipeReference
+from thirdparty.recipe import RecipeBase
 
 if TYPE_CHECKING:
     from pathlib import Path  # noqa: F401  (annotation only)
-    from thirdparty._internal.model.recipe import RecipeBase  # noqa: F401
 
 # Recipe-origin states (assigned to Node.recipe).
 RECIPE_INCACHE = "Cache"  # a normal, locally-resolved recipe

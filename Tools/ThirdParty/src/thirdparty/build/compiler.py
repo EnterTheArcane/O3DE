@@ -1,10 +1,6 @@
 from thirdparty._internal.model.version import Version
 from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def check_min_compiler_version(recipe: RecipeBase, compiler_restrictions):

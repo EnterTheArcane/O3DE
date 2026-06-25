@@ -7,11 +7,7 @@ from github.GithubException import GithubException
 from github.Repository import Repository
 
 from thirdparty._internal.model.version import Version
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def _tag_version(tag: str) -> Version | None:

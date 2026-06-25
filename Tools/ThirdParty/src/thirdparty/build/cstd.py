@@ -4,10 +4,8 @@ from thirdparty._internal.model.version import Version
 from thirdparty._internal.util.detect_api import default_cstd as default_cstd_
 from thirdparty.errors import RecipeInvalidConfiguration, RecipeException
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from typing import Any
+from thirdparty.recipe import RecipeBase
 
 
 def check_min_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False):

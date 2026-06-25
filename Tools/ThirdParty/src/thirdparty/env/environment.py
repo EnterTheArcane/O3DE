@@ -3,15 +3,13 @@ import textwrap
 from collections import OrderedDict
 from contextlib import contextmanager
 from shlex import quote
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty._internal.output import Output
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS, subsystem_path
 from thirdparty._internal.util.files import save
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class _EnvVarPlaceHolder:

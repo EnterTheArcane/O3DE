@@ -1,7 +1,7 @@
 import os
 import re
 import textwrap
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
@@ -14,9 +14,7 @@ from thirdparty.cmake.deps.target_configuration import TargetConfigurationTempla
 from thirdparty.cmake.deps.targets import TargetsTemplate2
 from thirdparty.errors import RecipeException
 from thirdparty.files import save
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 FIND_MODE_MODULE = "module"
 FIND_MODE_CONFIG = "config"

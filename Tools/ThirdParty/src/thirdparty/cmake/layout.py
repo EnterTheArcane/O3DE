@@ -3,11 +3,7 @@ import tempfile
 
 from thirdparty._internal.graph import RECIPE_CONSUMER, RECIPE_EDITABLE
 from thirdparty.errors import RecipeException
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def is_consumer(recipe: RecipeBase) -> bool:

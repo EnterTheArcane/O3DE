@@ -12,10 +12,8 @@ from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft import is_msvc
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from typing import Any
+from thirdparty.recipe import RecipeBase
 
 
 def write_cmake_presets(

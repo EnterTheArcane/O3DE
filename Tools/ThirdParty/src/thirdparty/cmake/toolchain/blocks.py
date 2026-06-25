@@ -19,10 +19,8 @@ from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_version_to_toolset_version, msvc_platform_from_arch
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from typing import Any
+from thirdparty.recipe import RecipeBase
 
 
 class Block:

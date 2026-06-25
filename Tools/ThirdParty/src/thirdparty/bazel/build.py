@@ -1,11 +1,8 @@
 import os
 import platform
-from typing import TYPE_CHECKING
 
 from thirdparty.bazel.toolchain import BazelToolchain
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class Bazel:

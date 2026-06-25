@@ -2,14 +2,12 @@
     This is a helper class which offers a lot of useful methods and attributes
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
 from thirdparty.apple.utils import is_apple_os
 from thirdparty.microsoft import is_msvc
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class GnuDepsFlags:

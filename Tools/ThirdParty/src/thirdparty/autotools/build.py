@@ -1,16 +1,13 @@
 import os
 import re
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
 
 from thirdparty._internal.subsystems import subsystem_path, deduce_subsystem
 from thirdparty.build import build_jobs, cmd_args_to_string, load_toolchain_args
 from thirdparty.errors import RecipeException
 from thirdparty.files import chdir
 from thirdparty.microsoft import unix_path
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def join_arguments(args: Iterable[str | None]) -> str:

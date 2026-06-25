@@ -5,10 +5,8 @@ import jinja2
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty.cmake.utils import parse_extra_variable, cmake_escape_value
 
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from typing import Any
+from thirdparty.recipe import RecipeBase
 
 
 class ConfigTemplate2:

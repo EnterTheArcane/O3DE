@@ -1,14 +1,12 @@
 import os
 from io import StringIO
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty._internal.internal_tools import universal_arch_separator
 from thirdparty._internal.util.runners import check_output_runner
 from thirdparty.build import cmd_args_to_string
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def is_apple_os(recipe: RecipeBase, build_context: bool = False) -> bool:

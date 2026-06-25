@@ -1,6 +1,5 @@
 import os
 import textwrap
-from typing import TYPE_CHECKING
 from xml.dom import minidom
 
 
@@ -8,10 +7,8 @@ from thirdparty._internal.util.detect_vs import vs_installation_path
 from thirdparty._internal.util.files import save, load
 from thirdparty.build import build_jobs
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty.microsoft.visual import VCVars, msvs_toolset, msvc_runtime_flag, msvc_platform_from_arch, vs_ide_version
+from thirdparty.recipe import RecipeBase
 
 
 class MSBuildToolchain:

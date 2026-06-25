@@ -1,9 +1,5 @@
 from thirdparty.errors import RecipeException
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 universal_arch_separator = '|'
 

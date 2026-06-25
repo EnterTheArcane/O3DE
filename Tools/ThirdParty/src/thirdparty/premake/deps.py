@@ -1,13 +1,11 @@
 import glob
 import itertools
 import re
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty._internal.util.files import save
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 # Filename format strings
 PREMAKE_VAR_FILE = "recipe_{pkgname}_vars_{config}.premake5.lua"

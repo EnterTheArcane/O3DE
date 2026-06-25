@@ -1,10 +1,7 @@
-from typing import TYPE_CHECKING
 
 from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key
 from thirdparty.build import cmd_args_to_string
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class XcodeBuild:

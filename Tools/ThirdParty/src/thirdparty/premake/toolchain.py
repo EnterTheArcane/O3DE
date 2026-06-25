@@ -1,7 +1,6 @@
 import os
 import textwrap
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 
 from thirdparty.build.cross_building import cross_building
@@ -10,9 +9,7 @@ from thirdparty.env.virtualbuildenv import VirtualBuildEnv
 from thirdparty.files import save
 from thirdparty.microsoft.visual import VCVars
 from thirdparty.premake.deps import PREMAKE_ROOT_FILE
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def _generate_flags(self, recipe: RecipeBase):

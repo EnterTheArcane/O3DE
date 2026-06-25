@@ -1,7 +1,6 @@
 import os
 import textwrap
 from collections import OrderedDict
-from typing import TYPE_CHECKING
 
 
 from thirdparty._internal.model.options import _PackageOption
@@ -37,15 +36,14 @@ from thirdparty.cmake.toolchain.blocks import (
     VSDebuggerEnvironment,
     VariablesBlock,
     PreprocessorBlock,
-    RpathLinkFlagsBlock, )
+    RpathLinkFlagsBlock
+)
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft import VCVars
 from thirdparty.microsoft.visual import vs_ide_version
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class Variables(OrderedDict):

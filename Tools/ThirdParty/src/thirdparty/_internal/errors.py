@@ -2,11 +2,7 @@ import traceback
 from contextlib import contextmanager
 
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 @contextmanager

@@ -1,11 +1,9 @@
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty import Info
 from thirdparty.env import Environment
 from thirdparty.build.gnudeps_flags import GnuDepsFlags
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class AutotoolsDeps:

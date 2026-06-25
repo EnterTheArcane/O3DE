@@ -9,15 +9,13 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from fnmatch import fnmatch
 from shutil import which
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 from thirdparty._internal.output import TimedOutput
 from thirdparty._internal.rest.caching_file_downloader import SourcesCachingDownloader
 from thirdparty._internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class FileProgress(io.FileIO):

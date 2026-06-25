@@ -30,11 +30,7 @@ from thirdparty.apple import to_apple_arch, is_apple_os
 from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import cppstd_flag
 from thirdparty.files import save
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def _get_cpu_name(recipe: RecipeBase) -> str:

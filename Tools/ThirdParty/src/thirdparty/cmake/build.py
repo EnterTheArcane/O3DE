@@ -1,5 +1,5 @@
 import os
-from typing import IO, TYPE_CHECKING, Any
+from typing import IO, Any
 
 from thirdparty.build import build_jobs, cmd_args_to_string
 from thirdparty.cmake.presets import load_cmake_presets
@@ -7,9 +7,7 @@ from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
 from thirdparty.files import chdir, mkdir
 from thirdparty.msbuild.build import msbuild_verbosity_cmd_line_arg
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]:

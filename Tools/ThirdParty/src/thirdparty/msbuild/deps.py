@@ -2,7 +2,7 @@ import fnmatch
 import os
 import re
 import textwrap
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from xml.dom import minidom
 
 
@@ -11,9 +11,7 @@ from thirdparty._internal.util.files import load, save
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 VALID_LIB_EXTENSIONS = (".so", ".lib", ".a", ".dylib", ".bc")
 

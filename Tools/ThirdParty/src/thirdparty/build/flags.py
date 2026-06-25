@@ -1,13 +1,11 @@
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from thirdparty._internal.model.version import Version
 from thirdparty.errors import RecipeException
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
-def disable_flag(recipe: RecipeBase, flag: str) -> bool:
+def disable_flag(recipe: Recipe, flag: str) -> bool:
     disable_flags = recipe.conf.get("tools.gnu:disable_flags", check_type=list)
     if disable_flags is None:
         return False

@@ -1,12 +1,9 @@
 import os
-from typing import TYPE_CHECKING
 
 from thirdparty.build import build_jobs
 from thirdparty.errors import RecipeException
 from thirdparty.meson.toolchain import MesonToolchain
-
-if TYPE_CHECKING:
-    from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty.recipe import RecipeBase
 
 
 class Meson:
