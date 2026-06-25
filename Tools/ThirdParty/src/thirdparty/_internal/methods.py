@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from thirdparty._internal.errors import recipe_exception_formatter

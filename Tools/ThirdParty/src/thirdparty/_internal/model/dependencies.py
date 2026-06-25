@@ -16,7 +16,7 @@ class UserRequirementsDict:
         self._require_filter = require_filter  # dict {trait: value} for requirements
 
     def filter(self, require_filter: Any) -> UserRequirementsDict:
-        def filter_fn(require):
+        def filter_fn(require) -> bool:
             for k, v in require_filter.items():
                 if getattr(require, k) != v:
                     return False
@@ -89,7 +89,7 @@ class RecipeDependencies(UserRequirementsDict):
 
     def filter(self, require_filter: Any, remove_system: bool = True) -> RecipeDependencies:
         # FIXME: Copy of hte above, to return RecipeDependencies class object
-        def filter_fn(require):
+        def filter_fn(require) -> bool:
             for k, v in require_filter.items():
                 if getattr(require, k) != v:
                     return False

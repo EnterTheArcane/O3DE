@@ -79,14 +79,14 @@ class VirtualBuildEnv:
 
         return self._buildenv
 
-    def vars(self, scope="build"):
+    def vars(self, scope: str = "build"):
         """
         :param scope: Scope to be used.
         :return: An ``EnvVars`` instance containing the computed environment variables.
         """
         return self.environment().vars(self._recipe, scope=scope)
 
-    def generate(self, scope="build"):
+    def generate(self, scope: str = "build"):
         """
         Produces the launcher scripts activating the variables for the build context.
 

@@ -572,7 +572,7 @@ def check_sha256(recipe: RecipeBase, file_path: str, signature: str):
     check_with_algorithm_sum("sha256", file_path, signature)
 
 
-def replace_in_file(recipe: RecipeBase, file_path: str, search: str, replace: str, strict: bool = True, encoding: str = "utf-8"):
+def replace_in_file(recipe: RecipeBase, file_path: str, search: str, replace: str, strict: bool = True, encoding: str = "utf-8") -> bool:
     """
     Replace a string ``search`` in the contents of the file ``file_path`` with the string replace.
 

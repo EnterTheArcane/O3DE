@@ -170,7 +170,7 @@ class MSBuildDeps:
         :return: varfile content
         """
 
-        def add_valid_ext(libname, libdirs=None):
+        def add_valid_ext(libname, libdirs=None) -> str:
             ext = os.path.splitext(libname)[1]
             if ext in VALID_LIB_EXTENSIONS:
                 return f"{libname};"

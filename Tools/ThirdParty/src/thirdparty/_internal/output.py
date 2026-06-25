@@ -1,3 +1,4 @@
+from __future__ import annotations
 import fnmatch
 import os
 import sys
@@ -271,7 +272,7 @@ class Output:
             self._write_message(msg, fg=Color.BLUE)
         return self
 
-    def debug(self, msg: str, fg: str = Color.MAGENTA, bg: str | None = None):
+    def debug(self, msg: str, fg: str = Color.MAGENTA, bg: str | None = None) -> Output:
         """ With a high level of detail, it is mainly used for debugging code.
 
         This message won't be printed unless the user has set the log level to debug

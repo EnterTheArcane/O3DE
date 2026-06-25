@@ -12,14 +12,14 @@ if TYPE_CHECKING:
     from thirdparty._internal.model.recipe import RecipeBase
 
 
-def is_consumer(recipe: RecipeBase):
+def is_consumer(recipe: RecipeBase) -> bool:
     try:
         return recipe._recipe_node.recipe in (RECIPE_CONSUMER, RECIPE_EDITABLE)  # noqa
     except AttributeError:
-        pass
+        return False
 
 
-def cmake_layout(recipe: RecipeBase, generator=None, src_folder=".", build_folder="build"):
+def cmake_layout(recipe: RecipeBase, generator=None, src_folder: str = ".", build_folder: str = "build"):
     """
     :param recipe: The current recipe object. Always use ``self``.
     :param generator: Allow defining the CMake generator. In most cases it doesn't need to be passed,

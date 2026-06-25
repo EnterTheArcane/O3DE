@@ -86,7 +86,7 @@ class XcodeToolchain:
             _xcconfig_conditional(self._recipe.settings, self.configuration), self._cppstd) if self._cppstd else ""
 
     @property
-    def _vars_xconfig_filename(self):
+    def _vars_xconfig_filename(self) -> str:
         return "recipe_toolchain{}{}".format(
             _xcconfig_settings_filename(
                 self._recipe.settings, self.configuration), self.extension)

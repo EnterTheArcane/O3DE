@@ -21,7 +21,7 @@ class Git:
     Git is a wrapper for several common patterns used with *git* tool.
     """
 
-    def __init__(self, recipe: RecipeBase, folder=".", excluded=None):
+    def __init__(self, recipe: RecipeBase, folder: str = ".", excluded=None):
         """
         :param recipe: Recipefile instance.
         :param folder: Current directory, by default ``.``, the current working directory.
@@ -77,7 +77,7 @@ class Git:
         except Exception as e:
             raise RecipeException("Unable to get git commit in '%s': %s" % (self.folder, str(e)))
 
-    def get_remote_url(self, remote="origin"):
+    def get_remote_url(self, remote: str = "origin"):
         """
         Obtains the URL of the remote git remote repository, with ``git remote -v``
 
@@ -103,7 +103,7 @@ class Git:
                     url = url.replace("\\", "/")
                 return url
 
-    def commit_in_remote(self, commit, remote="origin"):
+    def commit_in_remote(self, commit, remote: str = "origin") -> bool:
         """
         Checks that the given commit exists in the remote, with ``branch -r --contains <commit>``
         and checking an occurrence of a branch in that remote exists.
@@ -162,7 +162,7 @@ class Git:
         self._recipe.output.debug(f"Filtered git status: {lines}")
         return bool(lines)
 
-    def get_url_and_commit(self, remote="origin", repository: bool = False):
+    def get_url_and_commit(self, remote: str = "origin", repository: bool = False):
         """
         This is an advanced method, that returns both the current commit, and the remote repository url.
         This method is intended to capture the current remote coordinates for a package creation,
@@ -221,7 +221,7 @@ class Git:
         folder = self.run("rev-parse --show-toplevel")
         return folder.replace("\\", "/")
 
-    def clone(self, url, target="", args=None, hide_url: bool = True):
+    def clone(self, url, target: str = "", args=None, hide_url: bool = True):
         """
         Performs a ``git clone <url> <args> <target>`` operation, where target is the target directory.
 

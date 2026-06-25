@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from thirdparty._internal.model.recipe import RecipeBase
 
 
-def _get_cpu_name(recipe: RecipeBase):
+def _get_cpu_name(recipe: RecipeBase) -> str:
     host_os = recipe.settings.get_safe('os').lower()
     host_arch = recipe.settings.get_safe('arch')
     if is_apple_os(recipe):

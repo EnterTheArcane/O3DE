@@ -19,6 +19,7 @@ Potential scenarios:
   - Targeting Subsystem (os.subsystem = msys2/cygwin)
 
 """
+from __future__ import annotations
 import os
 import platform
 import re

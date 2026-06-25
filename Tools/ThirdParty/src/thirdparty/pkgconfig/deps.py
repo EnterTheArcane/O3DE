@@ -73,7 +73,7 @@ class _PCFilesDeps:
         return comp_aliases or []
 
     def _get_name(self, dep: Any, pkg_name: str | None = None, comp_ref_name: str | None = None) -> str:
-        def _get_dep_name():
+        def _get_dep_name() -> str:
             dep_name = self._get_property("pkg_config_name", dep) or dep.ref.name
             return f"{dep_name}{self._suffix}"
 

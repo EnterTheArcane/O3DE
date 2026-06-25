@@ -1,7 +1,8 @@
+from __future__ import annotations
 from thirdparty.errors import RecipeException
 
 
-def is_multi_configuration(generator):
+def is_multi_configuration(generator) -> bool:
     if not generator:
         return False
     return "Visual" in generator or "Xcode" in generator or "Multi-Config" in generator

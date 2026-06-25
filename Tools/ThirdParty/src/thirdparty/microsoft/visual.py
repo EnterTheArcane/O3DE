@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import textwrap
 
@@ -16,7 +17,7 @@ def msvc_platform_from_arch(arch: str) -> str:
     }.get(arch)
 
 
-def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True):
+def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True) -> bool:
     """
     This is a helper method to allow the migration of 1.X -> 2.0 and VisualStudio -> msvc settings
     without breaking recipes.

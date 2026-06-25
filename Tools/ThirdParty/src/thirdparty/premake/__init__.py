@@ -1,3 +1,4 @@
+from __future__ import annotations
 from thirdparty.premake.build import Premake
 from thirdparty.premake.deps import PremakeDeps
 from thirdparty.premake.toolchain import PremakeToolchain

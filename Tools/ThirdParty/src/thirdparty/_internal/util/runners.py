@@ -1,9 +1,11 @@
+from __future__ import annotations
 import os
 import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
 from io import StringIO
+from typing import IO, Any
 
 from thirdparty._internal.util.files import load
 from thirdparty.errors import RecipeException
@@ -31,7 +33,8 @@ else:
         yield
 
 
-def run_command(command, stdout=None, stderr=None, cwd=None, shell: bool = True):
+def run_command(command: str, stdout: IO[Any] | None = None, stderr: IO[Any] | None = None,
+                cwd: str | None = None, shell: bool = True) -> int:
     """
     @param shell:
     @param stderr:
@@ -54,14 +57,14 @@ def run_command(command, stdout=None, stderr=None, cwd=None, shell: bool = True)
         proc_stdout, proc_stderr = proc.communicate()
         # If the output is piped, like user provided a StringIO or testing, the communicate
         # will capture and return something when thing finished
-        if proc_stdout:
+        if proc_stdout and stdout is not None:
             stdout.write(proc_stdout.decode("utf-8", errors="ignore"))
-        if proc_stderr:
+        if proc_stderr and stderr is not None:
             stderr.write(proc_stderr.decode("utf-8", errors="ignore"))
         return proc.returncode
 
 
-def detect_runner(command):
+def detect_runner(command: str) -> tuple[int, str]:
     # Running detect.py automatic detection of profile
     proc = subprocess.Popen(
         command, shell=True, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -78,7 +81,7 @@ def detect_runner(command):
     return proc.returncode, "".join(output_buffer)
 
 
-def check_output_runner(cmd, stderr=None, ignore_error: bool = False):
+def check_output_runner(cmd: str, stderr: Any = None, ignore_error: bool = False) -> str:
     # Used to run several utilities, like Pacman detect, AIX version, uname, SCM
     assert isinstance(cmd, str)
     d = tempfile.mkdtemp()

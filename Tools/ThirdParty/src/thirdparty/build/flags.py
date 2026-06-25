@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from thirdparty._internal.model.recipe import RecipeBase
 
 
-def disable_flag(recipe: RecipeBase, flag: str):
+def disable_flag(recipe: RecipeBase, flag: str) -> bool:
     disable_flags = recipe.conf.get("tools.gnu:disable_flags", check_type=list)
     if disable_flags is None:
         return False

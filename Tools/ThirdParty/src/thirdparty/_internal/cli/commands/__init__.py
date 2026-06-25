@@ -1,3 +1,4 @@
+from __future__ import annotations
 import argparse
 from collections.abc import Callable
 from typing import TypeGuard

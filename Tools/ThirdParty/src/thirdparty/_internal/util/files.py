@@ -1,3 +1,4 @@
+from __future__ import annotations
 import errno
 import hashlib
 import os
@@ -32,7 +33,7 @@ def is_dirty(folder: str) -> bool:
     return os.path.exists(dirty_file)
 
 
-def remove_if_dirty(item: str):
+def remove_if_dirty(item: str) -> bool:
     # TODO: Apply to other places this pattern is common
     if is_dirty(item):
         if os.path.exists(item):

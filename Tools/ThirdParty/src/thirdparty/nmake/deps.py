@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 def format_defines(defines: list[str], toolchain: bool = False) -> list[str]:
-    def is_hex_or_numeric(s):
+    def is_hex_or_numeric(s) -> bool:
         try:
             # Check for Hexadecimal (base 16)
             int(s, 16)
@@ -85,8 +85,8 @@ class NMakeDeps:
             self._environment = env
         return self._environment
 
-    def vars(self, scope="build"):
+    def vars(self, scope: str = "build"):
         return self.environment.vars(self._recipe, scope=scope)
 
-    def generate(self, scope="build"):
+    def generate(self, scope: str = "build"):
         self.vars(scope).save_script("nmakedeps")

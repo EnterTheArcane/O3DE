@@ -1,3 +1,4 @@
+from __future__ import annotations
 import calendar
 import datetime
 import time
@@ -5,7 +6,7 @@ import time
 from dateutil import parser
 
 
-def from_timestamp_to_iso8601(timestamp):
+def from_timestamp_to_iso8601(timestamp) -> str:
     # Used exclusively by recipe_server to return the date in iso format (same as artifactory)
     return "%s" % datetime.datetime.fromtimestamp(timestamp, datetime.timezone.utc).isoformat()
 

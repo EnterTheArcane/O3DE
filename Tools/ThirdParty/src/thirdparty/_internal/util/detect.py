@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import platform
 import re
@@ -11,7 +12,7 @@ from thirdparty._internal.model.settings import Settings
 
 
 @lru_cache(maxsize=1)
-def _settings_template():
+def _settings_template() -> Settings:
     """Parse the (static) settings definition once.
 
     ``detect_settings`` is called once per recipe (often hundreds of times for ``list`` /
@@ -49,7 +50,7 @@ def _detect_msvc_version():
 
 
 @lru_cache(maxsize=1)
-def _detect_apple_clang_version():
+def _detect_apple_clang_version() -> str | None:
     for cmd in (["xcrun", "clang", "--version"], ["clang", "--version"]):
         try:
             out = subprocess.check_output(cmd, text=True, stderr=subprocess.STDOUT)
@@ -85,7 +86,7 @@ _OS_NAMES = ("Windows", "Linux", "Mac", "Android", "iOS", "tvOS")
 _ARCH_NAMES = ("X64", "ARM")
 
 
-def normalize_os(name):
+def normalize_os(name: str) -> str:
     """Case-insensitively match *name* to a canonical OS name (e.g. ``mac`` -> ``Mac``).
 
     Unknown names are returned unchanged (settings validation handles the rest).
@@ -98,7 +99,7 @@ def normalize_os(name):
     return name
 
 
-def normalize_arch(name):
+def normalize_arch(name: str) -> str:
     """Case-insensitively match *name* to a canonical arch name (e.g. ``arm`` -> ``ARM``)."""
     if name is None:
         return None
@@ -108,17 +109,18 @@ def normalize_arch(name):
     return name
 
 
-def _machine_os():
+def _machine_os() -> str:
     the_os = platform.system()
     return "Mac" if the_os == "Darwin" else the_os
 
 
-def _machine_arch():
+def _machine_arch() -> str:
     machine = platform.machine().lower()
     return "ARM" if ("arm64" in machine or "aarch64" in machine) else "X64"
 
 
-def detect_settings(build_type="Release", target_os=None, target_arch=None):
+def detect_settings(build_type: str = "Release", target_os: str | None = None,
+                    target_arch: str | None = None) -> Settings:
     """Detect build settings for the *target* platform.
 
     ``target_os``/``target_arch`` select the HOST/target platform the package will run
@@ -210,7 +212,7 @@ def detect_platform_tag(target_os=None, target_arch=None) -> str:
     return f"{the_os}-{arch}".lower()
 
 
-def make_conf(jobs=None):
+def make_conf(jobs=None) -> Conf:
     conf = Conf()
     conf.define("tools.cmake.cmaketoolchain:generator", "Ninja")
     conf.define("tools.meson.mesontoolchain:backend", "ninja")

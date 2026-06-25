@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import platform
 import re
@@ -111,7 +112,7 @@ def detect_libc(ldd: str = "/usr/bin/ldd"):
 def detect_libcxx(compiler: str, version: Any, compiler_exe: str | None = None):
     assert isinstance(version, Version)
 
-    def _detect_gcc_libcxx(version_, executable):
+    def _detect_gcc_libcxx(version_, executable) -> str:
         output = Output(scope="detect_api")
         # Assumes a working g++ executable
         if executable == "g++":  # we can rule out old gcc versions
@@ -240,7 +241,7 @@ def detect_cppstd(compiler: str, compiler_version: Any):
 def default_cstd(compiler: str, compiler_version: Any):
     """returns the default cstd for the compiler-version. This is not detected, just the default"""
 
-    def _clang_cstd_default(version):
+    def _clang_cstd_default(version) -> str:
         if version >= "11":
             return "gnu17"  # https://releases.llvm.org/11.0.0/tools/clang/docs/ReleaseNotes.html#c-language-changes-in-clang
         elif version >= "4":  # 3.5 actually
@@ -248,7 +249,7 @@ def default_cstd(compiler: str, compiler_version: Any):
         else:
             return "gnu99"  # It was gnu89 actually
 
-    def _gcc_cstd_default(version):
+    def _gcc_cstd_default(version) -> str:
         if version >= "15":  # https://www.gnu.org/software/gcc/gcc-15/changes.html#c
             return "gnu23"
         elif version >= "8":
@@ -261,7 +262,7 @@ def default_cstd(compiler: str, compiler_version: Any):
     def _visual_cstd_default(version):
         return None
 
-    def _apple_clang_cstd_default(version):
+    def _apple_clang_cstd_default(version) -> str:
         # Based on which LLVM/Clang versions these are based on
         if version >= "12":
             return "gnu17"

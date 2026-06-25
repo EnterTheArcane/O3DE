@@ -85,14 +85,14 @@ class VirtualRunEnv:
 
         return self._runenv
 
-    def vars(self, scope="run"):
+    def vars(self, scope: str = "run"):
         """
         :param scope: Scope to be used.
         :return: An ``EnvVars`` instance containing the computed environment variables.
         """
         return self.environment().vars(self._recipe, scope=scope)
 
-    def generate(self, scope="run"):
+    def generate(self, scope: str = "run"):
         """
         Produces the launcher scripts activating the variables for the run context.
 

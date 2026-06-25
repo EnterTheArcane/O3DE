@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import os
 from shutil import which
@@ -54,7 +55,7 @@ def _vs_installation_path(version):
 
 
 def vswhere(
-    all_: bool = False, prerelease: bool = True, products=None, requires=None, version="", latest: bool = False, legacy: bool = False, property_="", nologo: bool = True):
+    all_: bool = False, prerelease: bool = True, products=None, requires=None, version: str = "", latest: bool = False, legacy: bool = False, property_: str = "", nologo: bool = True):
     # 'version' option only works if Visual Studio 2017 is installed:
     # https://github.com/Microsoft/vswhere/issues/91
 

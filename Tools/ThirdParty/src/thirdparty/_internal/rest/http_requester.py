@@ -1,3 +1,4 @@
+from __future__ import annotations
 import jinja2
 import fnmatch
 import json
@@ -89,7 +90,7 @@ class HttpRequester:
         self._user_agent = "O3DE-ThirdParty/1.0 (%s)" % (platform_info)
 
     @staticmethod
-    def _get_retries(max_retries):
+    def _get_retries(max_retries: int):
         retry = max_retries
         if retry == 0:
             return 0
@@ -105,7 +106,7 @@ class HttpRequester:
         return urllib3.Retry(
             total=retry, backoff_factor=0.05, status_forcelist=retry_status_code_set)
 
-    def _should_skip_proxy(self, url: str):
+    def _should_skip_proxy(self, url: str) -> bool:
         if self._no_proxy_match:
             for entry in self._no_proxy_match:
                 if fnmatch.fnmatch(url, entry):

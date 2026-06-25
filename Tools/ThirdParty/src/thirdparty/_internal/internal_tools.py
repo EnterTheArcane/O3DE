@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 universal_arch_separator = '|'
 
 
-def is_universal_arch(settings_value, valid_definitions):
+def is_universal_arch(settings_value: str, valid_definitions: list[str]) -> bool:
     if (settings_value is None or valid_definitions is None or universal_arch_separator not in settings_value):
         return False
 

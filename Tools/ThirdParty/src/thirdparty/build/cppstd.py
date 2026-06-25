@@ -135,7 +135,7 @@ def _check_cppstd(recipe: RecipeBase, cppstd: Any, comparator: Any, gnu_extensio
     if not str(cppstd).isdigit():
         raise RecipeException("cppstd parameter must be a number")
 
-    def compare(lhs, rhs, comp):
+    def compare(lhs, rhs, comp) -> bool:
         def extract_cpp_version(_cppstd):
             return str(_cppstd).replace("gnu", "")
 

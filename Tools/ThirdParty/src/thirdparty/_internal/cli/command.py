@@ -1,6 +1,7 @@
+from __future__ import annotations
 import argparse
 from collections.abc import Callable
-from typing import TypeGuard, overload
+from typing import Any, TypeGuard, overload
 
 _COMMAND_ATTR = "_is_thirdparty_command"
 _COMMAND_NAME_ATTR = "_thirdparty_command_name"
@@ -17,7 +18,7 @@ def command(fn: CommandFn) -> CommandFn: ...
 def command(*, name: str) -> Callable[[CommandFn], CommandFn]: ...
 
 
-def command(fn: CommandFn | None = None, *, name: str | None = None):
+def command(fn: CommandFn | None = None, *, name: str | None = None) -> Callable[..., Any]:
     """Decorator that registers a function as a CLI subcommand.
 
     Used bare (``@command``) the function name becomes the command name.  Pass

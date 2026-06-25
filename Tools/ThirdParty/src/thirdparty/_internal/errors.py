@@ -35,7 +35,7 @@ def recipe_remove_attr(recipe: RecipeBase, names, method):
 
 
 @contextmanager
-def recipe_exception_formatter(recipe: RecipeBase, funcname):
+def recipe_exception_formatter(recipe: RecipeBase, funcname: str):
     """
     Decorator to throw an exception formatted with the line of the recipe where the error ocurrs.
     """

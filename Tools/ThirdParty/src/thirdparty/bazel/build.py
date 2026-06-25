@@ -50,7 +50,7 @@ class Bazel:
         opts = " ".join(["--bazelrc=" + rc.replace("\\", "/") for rc in bazelrc_paths])
         return f" {opts}" if opts else ""
 
-    def build(self, args=None, target="//...", clean: bool = True):
+    def build(self, args=None, target: str = "//...", clean: bool = True):
         """
         Runs "bazel <rcpaths> build <configs> <args> <targets>" command where:
 

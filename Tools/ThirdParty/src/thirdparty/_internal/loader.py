@@ -1,3 +1,4 @@
+from __future__ import annotations
 import inspect
 import os
 import sys
@@ -57,7 +58,7 @@ class RecipeLoader:
             return None
 
 
-def _parse_module(recipe_module: Any, module_id: Any):
+def _parse_module(recipe_module: Any, module_id: Any) -> type[RecipeBase]:
     """ Parses a python in-memory module, to extract the class defining the Recipe.
     @param recipe_module: the module to be processed
     @return: the main RecipeBase class from the module

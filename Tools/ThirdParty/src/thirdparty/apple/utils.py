@@ -32,7 +32,7 @@ def to_apple_arch(recipe: RecipeBase, default: Any = None) -> str | None:
     return _to_apple_arch(arch_, default)
 
 
-def apple_sdk_path(recipe: RecipeBase, is_cross_building: bool = True):
+def apple_sdk_path(recipe: RecipeBase, is_cross_building: bool = True) -> str | None:
     sdk_path = recipe.conf.get("tools.apple:sdk_path")
     if not sdk_path:
         # XCRun already knows how to extract os.sdk from recipe.settings
@@ -44,7 +44,7 @@ def apple_sdk_path(recipe: RecipeBase, is_cross_building: bool = True):
     return sdk_path
 
 
-def get_apple_sdk_fullname(recipe: RecipeBase):
+def get_apple_sdk_fullname(recipe: RecipeBase) -> str | None:
     """
     Returns the 'os.sdk' + 'os.sdk_version ' value. Every user should specify it because
     there could be several ones depending on the OS architecture.
@@ -87,7 +87,8 @@ def apple_min_version_flag(recipe: RecipeBase) -> str:
 
 
 def resolve_apple_flags(
-    recipe: RecipeBase, is_cross_building: bool = False, is_universal: bool = False):
+    recipe: RecipeBase, is_cross_building: bool = False,
+    is_universal: bool = False) -> tuple[str, str | None, str | None]:
     """
     Gets the most common flags in Apple systems. If it's a cross-building context
     SDK path is mandatory so if it could raise an exception if SDK is not found.
@@ -122,7 +123,7 @@ def resolve_apple_flags(
     return min_version_flag, apple_arch_flags, apple_isysroot_flag
 
 
-def xcodebuild_deployment_target_key(os_name: str) -> str:
+def xcodebuild_deployment_target_key(os_name: str) -> str | None:
     return {
         "Mac": "MACOSX_DEPLOYMENT_TARGET", "iOS": "IPHONEOS_DEPLOYMENT_TARGET", "tvOS": "TVOS_DEPLOYMENT_TARGET", "visionOS": "XROS_DEPLOYMENT_TARGET",
     }.get(os_name) if os_name else None
@@ -152,7 +153,7 @@ class XCRun:
         self.settings = settings
         self.sdk = sdk
 
-    def _invoke(self, args: Any):
+    def _invoke(self, args: list[str]) -> str:
         command = ['xcrun']
         if self.sdk:
             command.extend(['-sdk', self.sdk])
@@ -162,7 +163,7 @@ class XCRun:
         self._recipe.run(f"{cmd_str}", stdout=output, quiet=True)
         return output.getvalue().strip()
 
-    def find(self, tool: str):
+    def find(self, tool: str) -> str:
         """find SDK tools (e.g. clang, ar, ranlib, lipo, codesign, etc.)"""
         return self._invoke(['--find', tool])
 
@@ -227,7 +228,7 @@ class XCRun:
         return self.find('install_name_tool')
 
 
-def _get_dylib_install_name(otool: Any, path_to_dylib: str):
+def _get_dylib_install_name(otool: str, path_to_dylib: str) -> str:
     command = f"{otool} -D {path_to_dylib}"
     output = iter(check_output_runner(command).splitlines())
     # Note: if otool return multiple entries for different architectures
@@ -252,24 +253,24 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
     otool = xcrun.otool
     install_name_tool = xcrun.install_name_tool
 
-    def _darwin_is_binary(file, binary_type):
+    def _darwin_is_binary(file: str, binary_type: str) -> bool:
         if binary_type not in ("DYLIB", "EXECUTE") or os.path.islink(file) or os.path.isdir(file):
             return False
         check_file = f"{otool} -hv {file}"
         return binary_type in check_output_runner(check_file)
 
-    def _darwin_collect_binaries(folder, binary_type):
+    def _darwin_collect_binaries(folder: str, binary_type: str) -> list[str]:
         return [os.path.join(folder, f) for f in os.listdir(folder) if _darwin_is_binary(os.path.join(folder, f), binary_type)]
 
-    def _fix_install_name(dylib_path, new_name):
+    def _fix_install_name(dylib_path: str, new_name: str):
         command = f"{install_name_tool} {dylib_path} -id {new_name}"
         recipe.run(command)
 
-    def _fix_dep_name(dylib_path, old_name, new_name):
+    def _fix_dep_name(dylib_path: str, old_name: str, new_name: str):
         command = f"{install_name_tool} {dylib_path} -change {old_name} {new_name}"
         recipe.run(command)
 
-    def _get_rpath_entries(binary_file):
+    def _get_rpath_entries(binary_file: str) -> list[str]:
         entries = []
         command = f"{otool} -l {binary_file}"
         otool_output = check_output_runner(command).splitlines()
@@ -280,14 +281,14 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
                 entries.append(rpath_entry)
         return entries
 
-    def _get_shared_dependencies(binary_file):
+    def _get_shared_dependencies(binary_file: str) -> list[str]:
         command = f"{otool} -L {binary_file}"
         all_shared = check_output_runner(command).strip().split(":")[1].strip()
         ret = [s.split("(")[0].strip() for s in all_shared.splitlines()]
         return ret
 
-    def _fix_dylib_files():
-        substitutions = {}
+    def _fix_dylib_files() -> dict[str, str]:
+        substitutions: dict[str, str] = {}
         libdirs = getattr(recipe.infos.package, "libdirs")
         for libdir in libdirs:
             full_folder = os.path.join(recipe.folders.package, libdir)
@@ -312,7 +313,7 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
 
         return substitutions
 
-    def _fix_executables(substitutions):
+    def _fix_executables(substitutions: dict[str, str]):
         # Fix the install name for executables inside the package
         # that reference libraries we just patched
         bindirs = getattr(recipe.infos.package, "bindirs")
@@ -353,13 +354,13 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
         _fix_executables(substitutes)
 
 
-def apple_extra_flags(recipe: RecipeBase):
+def apple_extra_flags(recipe: RecipeBase) -> list[str]:
     if not is_apple_os(recipe):
         return []
     enable_bitcode = recipe.conf.get("tools.apple:enable_bitcode", check_type=bool)
     enable_visibility = recipe.conf.get("tools.apple:enable_visibility", check_type=bool)
     is_debug = recipe.settings.get_safe('build_type') == "Debug"
-    flags = []
+    flags: list[str] = []
     if enable_bitcode:
         if is_debug:
             flags.append("-fembed-bitcode-marker")

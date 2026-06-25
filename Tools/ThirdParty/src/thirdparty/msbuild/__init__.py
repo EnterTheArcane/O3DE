@@ -1,3 +1,4 @@
+from __future__ import annotations
 from thirdparty.msbuild.build import MSBuild
 from thirdparty.msbuild.deps import MSBuildDeps
 from thirdparty.msbuild.toolchain import MSBuildToolchain

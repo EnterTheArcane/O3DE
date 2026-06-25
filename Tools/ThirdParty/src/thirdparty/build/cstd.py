@@ -144,7 +144,7 @@ def _check_cstd(recipe: RecipeBase, cstd: Any, comparator: Any, gnu_extensions: 
     if not str(cstd).isdigit():
         raise RecipeException("cstd parameter must be a number")
 
-    def compare(lhs, rhs, comp):
+    def compare(lhs, rhs, comp) -> bool:
         def extract_cpp_version(_cstd):
             return str(_cstd).replace("gnu", "")
 

@@ -84,7 +84,7 @@ def _makefy_properties(properties: Optional[dict]) -> dict[str, Any]:
     return {_makefy(name): value for name, value in properties.items()} if properties else {}
 
 
-def _check_property_value(name, value, output):
+def _check_property_value(name, value, output) -> bool:
     if "\n" in value:
         output.warning(f"Skipping propery '{name}' because it contains newline")
         return False

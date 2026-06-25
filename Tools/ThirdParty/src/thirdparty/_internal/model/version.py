@@ -1,3 +1,4 @@
+from __future__ import annotations
 from functools import total_ordering
 
 from thirdparty.errors import RecipeException
@@ -9,14 +10,14 @@ class _VersionItem:
     They can be int or strings
     """
 
-    def __init__(self, item):
+    def __init__(self, item: int | str):
         try:
-            self._v = int(item)
+            self._v: int | str = int(item)
         except ValueError:
             self._v = item
 
     @property
-    def value(self):
+    def value(self) -> int | str:
         return self._v
 
     def __str__(self):
@@ -26,22 +27,23 @@ class _VersionItem:
         # necessary for the "bump()" functionality. Other aritmetic operations are missing
         return self._v + other
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, _VersionItem):
-            other = _VersionItem(other)
+            other = _VersionItem(other)  # type: ignore[arg-type]
         return self._v == other._v
 
     def __hash__(self):
         return hash(self._v)
 
-    def __lt__(self, other):
+    def __lt__(self, other: _VersionItem | int | str) -> bool:
         """
         @type other: _VersionItem
         """
         if not isinstance(other, _VersionItem):
             other = _VersionItem(other)
         try:
-            return self._v < other._v
+            # _v is int | str; mixed int/str comparison is intentional and TypeError-guarded.
+            return self._v < other._v  # type: ignore[operator]
         except TypeError:
             return str(self._v) < str(other._v)
 
@@ -53,7 +55,7 @@ class Version:
     It is just a helper to parse "." or "-" and compare taking into account integers when possible
     """
 
-    def __init__(self, value, qualifier: bool = False):
+    def __init__(self, value: object, qualifier: bool = False):
         value = str(value)
         self._value = value
         self._build = None
@@ -160,7 +162,7 @@ class Version:
     def __repr__(self):
         return self._value
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if other is None:
             return False
         if not isinstance(other, Version):
@@ -171,7 +173,7 @@ class Version:
     def __hash__(self):
         return hash((self._nonzero_items, self._pre, self._build))
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
         if other is None:
             return False
         if not isinstance(other, Version):

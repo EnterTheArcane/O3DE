@@ -120,7 +120,7 @@ class NMakeToolchain:
     def vars(self):
         return self.environment().vars(self._recipe, scope="build")
 
-    def generate(self, env=None, scope="build"):
+    def generate(self, env=None, scope: str = "build"):
         env = env or self.environment()
         env.vars(self._recipe, scope=scope).save_script("nmaketoolchain")
         VCVars(self._recipe).generate(scope=scope)
