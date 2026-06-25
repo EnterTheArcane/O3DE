@@ -1,8 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
-from thirdparty.files import copy, load, save, apply_patches
-from thirdparty.scm import Git
+from thirdparty.files import copy, get, load, save, apply_patches
 
 
 class Recipe(RecipeBase):
@@ -11,11 +10,12 @@ class Recipe(RecipeBase):
     license = "GPL-3.0-or-later", "autoconf-special-exception"
 
     def source(self):
-        git = Git(self, self.folders.source)
-        git.clone(
-            url="https://git.savannah.gnu.org/git/config.git",
-            target=".",
-            args=["--depth", "1"])
+        get(
+            self,
+            url="https://github.com/build2/config/archive/191bcb948f7191c36eefe634336f5fc5c0c4c2be.tar.gz",
+            sha256="302e5e7f3c4996976c58efde8b2f28f71d51357e784330eeed738e129300dc33",
+            destination=self.folders.source,
+            strip_root=True)
         apply_patches(self)
 
     def build(self):

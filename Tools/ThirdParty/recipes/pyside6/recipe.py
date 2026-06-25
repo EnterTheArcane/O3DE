@@ -62,7 +62,7 @@ class Recipe(RecipeBase):
         # Shiboken uses find_package(Python ...) (unversioned), so set Python_ variables too.
         tc.variables["Python_ROOT_DIR"] = python_root
         tc.variables["Python_FIND_STRATEGY"] = "LOCATION"
-        cpython_ver = str(self.dependencies["cpython"].ref.version)
+        cpython_ver = str(self.dependencies["cpython"].version)
         ver_parts = cpython_ver.split(".")
         py_maj, py_min = ver_parts[0], ver_parts[1]
         py_exe = f"{python_root}/bin/python.exe" if self.settings.os == "Windows" else f"{python_root}/bin/python{py_maj}.{py_min}"
@@ -78,7 +78,7 @@ class Recipe(RecipeBase):
             tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
             tc.variables["Python_FIND_REGISTRY"] = "NEVER"
 
-        qt_version = str(self.dependencies["qt"].ref.version)
+        qt_version = str(self.dependencies["qt"].version)
         qt_pkg_fwd = qt_pkg.as_posix()
         qt_cmake_dir = (qt_pkg / "lib" / "cmake" / "Qt6").as_posix()
         tc.variables["Qt6Core_VERSION"] = qt_version
@@ -351,7 +351,7 @@ class Recipe(RecipeBase):
         import glob
         import shutil
 
-        cpython_ver = str(self.dependencies["cpython"].ref.version)
+        cpython_ver = str(self.dependencies["cpython"].version)
         py_maj, py_min = cpython_ver.split(".")[:2]
 
         # After cmake.build(target="shibokenmodule"), the shiboken6 Python package

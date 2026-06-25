@@ -178,7 +178,7 @@ class Recipe(RecipeBase):
         tc.cache_variables["USE_FFMPEG"] = self.options.with_ffmpeg
         if self.options.with_ffmpeg:
             tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_FFmpeg"] = True
-            tc.cache_variables["FFMPEG_VERSION"] = f'"{str(self.dependencies["ffmpeg"].ref.version)}"'
+            tc.cache_variables["FFMPEG_VERSION"] = f'"{str(self.dependencies["ffmpeg"].version)}"'
 
         tc.cache_variables["BUILD_MISSING_ROBINMAP"] = False
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Robinmap"] = True

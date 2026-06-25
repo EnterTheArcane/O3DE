@@ -17,9 +17,10 @@ from thirdparty.errors import RecipeException
 
 
 class _Infos:
-    source: Info = Info()
-    build: Info = Info()
-    package: Info = Info(set_defaults=True)
+    def __init__(self):
+        self.source: Info = Info()
+        self.build: Info = Info()
+        self.package: Info = Info(set_defaults=True)
 
 
 class RecipeBase:
@@ -61,22 +62,25 @@ class RecipeBase:
     # Populated at load time by the recipe loader from the recipe module's direct imports.
     _implicit_requires_tool: frozenset[str] = frozenset()
 
-    # Package information
-    folders = Folders()
-    infos = _Infos()
-    buildenv_info = Environment()
-    runenv_info = Environment()
-    conf_info = Conf()
+    # Package information.
+    folders: Folders
+    infos: _Infos
+    buildenv_info: Environment
+    runenv_info: Environment
+    conf_info: Conf
     conf: Conf
-    
+
     _recipe_runtime: Any = None
     _recipe_buildenv: Any = None  # The profile buildenv, will be assigned initialize()
     _recipe_runenv: Any = None
     _recipe_node: Any = None  # access to container Node object, to access info, context, deps...
 
     def __init__(self):
-        if isinstance(self.settings, str):
-            self.settings = [self.settings]
+        self.folders = Folders()
+        self.infos = _Infos()
+        self.buildenv_info = Environment()
+        self.runenv_info = Environment()
+        self.conf_info = Conf()
 
         # Requirements accumulate here as the recipe calls self.requires() /
         # self.requires_tool() from requirements(). Implicit tools (from imported build-system

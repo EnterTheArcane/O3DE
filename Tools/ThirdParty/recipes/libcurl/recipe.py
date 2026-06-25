@@ -293,7 +293,7 @@ class Recipe(RecipeBase):
             deps.set_property("zstd", "cmake_file_name", "Zstd")
             deps.set_property("zstd", "cmake_target_name", "CURL::zstd")
             deps.set_property("zstd", "cmake_additional_variables_prefixes", ["ZSTD", ])
-            deps.set_property("zstd", "cmake_extra_variables", {"ZSTD_FOUND": "1", "ZSTD_VERSION": str(self.dependencies["zstd"].ref.version)})
+            deps.set_property("zstd", "cmake_extra_variables", {"ZSTD_FOUND": "1", "ZSTD_VERSION": str(self.dependencies["zstd"].version)})
 
         if self.options.with_c_ares:
             deps.set_property("c-ares", "cmake_file_name", "Cares")

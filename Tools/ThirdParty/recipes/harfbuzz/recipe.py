@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Mac":
             # Ensure that the gettext we use at build time is compatible
             # with the libiconv that is transitively exposed by glib
-            self.requires_tool("gettext")
+            self.requires_tool("libgettext")
 
     def latest_version(self):
         repo = GithubRepository(self, "harfbuzz/harfbuzz")

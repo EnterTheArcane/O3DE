@@ -168,7 +168,7 @@ class Recipe(RecipeBase):
         if self._supports_modules and "mpdecimal" in self.dependencies:
             # mpdecimal >= 4.0 renamed CONFIG_64/CONFIG_32 → MPD_CONFIG_64/MPD_CONFIG_32.
             # CPython 3.12 _decimal.c still checks the old names; provide compat defines.
-            if Version(str(self.dependencies["mpdecimal"].ref.version)) >= "4.0":
+            if Version(str(self.dependencies["mpdecimal"].version)) >= "4.0":
                 _arch = str(self.settings.arch)
                 if _arch in ("X64", "ARM"):
                     tc.extra_defines.append("CONFIG_64")
