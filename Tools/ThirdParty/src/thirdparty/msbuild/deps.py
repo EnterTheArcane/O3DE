@@ -150,7 +150,7 @@ class MSBuildDeps:
 
     @staticmethod
     def _dep_name(dep: Any, build: bool) -> str:
-        dep_name = dep.ref.name
+        dep_name = dep.name
         if build:  # dep.context == CONTEXT_BUILD:
             dep_name += "_build"
         return MSBuildDeps._get_valid_xml_format(dep_name)

@@ -60,7 +60,7 @@ class CMakeDeps:
             if cmake_find_mode == FIND_MODE_NONE:
                 continue
             if cmake_find_mode in (FIND_MODE_MODULE, FIND_MODE_BOTH):
-                Output(self._recipe.ref).warning(
+                Output(self._recipe.name or "").warning(
                     "CMakeDeps does not support "
                     f"module find mode in {dep}.\n"
                     f"Config mode will be used regardless.", # Should this be risk?
@@ -91,7 +91,7 @@ class CMakeDeps:
                 msg.append(f"    find_package({self.get_cmake_filename(dep)}){note}")
                 if not require.build and not dep.info.exe:
                     target_name = self.get_property("cmake_target_name", dep)
-                    link_targets.append(target_name or f"{dep.ref.name}::{dep.ref.name}")
+                    link_targets.append(target_name or f"{dep.name}::{dep.name}")
             if link_targets:
                 msg.append(f"    target_link_libraries(... {' '.join(link_targets)})")
             self._recipe.output.info("\n".join(msg), fg=Color.CYAN)
@@ -113,7 +113,7 @@ class CMakeDeps:
         self._properties.setdefault(f"{dep}{build_suffix}", {}).update({prop: value})
 
     def get_property(self, prop: str, dep: Any, comp_name: str | None = None, check_type: Any = None) -> Any:
-        dep_name = dep.ref.name
+        dep_name = dep.name
         # Find the requirement that points to this "dep".
         # TODO: It would probably be more explicit if it was an argument as "dep", but to keep
         #   diff minimal
@@ -143,7 +143,7 @@ class CMakeDeps:
         # - The name of the defined XXX_DIR variables
         # - The name of transitive dependencies for calls to find_dependency
         ret = self.get_property("cmake_file_name", dep)
-        return ret or dep.ref.name
+        return ret or dep.name
 
     def _get_find_mode(self, dep: Any) -> str:
         tmp = self.get_property("cmake_find_mode", dep)
@@ -182,13 +182,13 @@ class _PathGenerator:
             cppinfo_dirs = getattr(cppinfo, dirs_name, [])
             if not cppinfo_dirs:
                 continue
-            previous = paths.get(req.ref.name)
+            previous = paths.get(req.name)
             if previous:
                 self._recipe.output.info(
-                    f"There is already a '{req.ref}' package contributing"
+                    f"There is already a '{req.name}' package contributing"
                     f" to {cmake_vars[dirs_name]}. Using the one"
                     f" defined by the context={dep.context}.")
-            paths[req.ref.name] = cppinfo_dirs
+            paths[req.name] = cppinfo_dirs
         return [d for dirs in paths.values() for d in dirs]
 
     def generate(self):
@@ -262,20 +262,20 @@ class _PathGenerator:
             lowercase_variants = {variant.lower() for variant in extra_variants}
             if len(lowercase_variants) > 1:
                 raise RecipeException(
-                    f"'{dep.ref}' 'cmake_file_name_variants' property contains different words. "
+                    f"'{dep.name}' 'cmake_file_name_variants' property contains different words. "
                     "They should be the same with different upper/lower cases only.")
             if lowercase_variants:
                 if cmake_filename.lower() not in lowercase_variants:
                     is_cmake_filename_defined = self._cmakedeps.get_property("cmake_file_name", dep) is not None
                     if is_cmake_filename_defined:
                         extra_variants = []
-                        msg = (f"'{dep.ref}' 'cmake_file_name_variants' property contains names "
+                        msg = (f"'{dep.name}' 'cmake_file_name_variants' property contains names "
                                f"with different casings than the defined name '{cmake_filename}'. "
                                f"The specified 'cmake_file_name'='{cmake_filename}' property "
                                f"will be used as the only name and the variants will be ignored.")
                         self._recipe.output.warning(msg)
                     else:
-                        msg = (f"'{dep.ref}' 'cmake_file_name_variants' property contains entries "
+                        msg = (f"'{dep.name}' 'cmake_file_name_variants' property contains entries "
                                f"that differ from the default 'cmake_file_name'='{cmake_filename}'. "
                                f"They should be the same with different upper/lower cases only.")
                         raise RecipeException(msg)

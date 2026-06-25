@@ -1,7 +1,6 @@
 from graphlib import TopologicalSorter
 from typing import TYPE_CHECKING
 
-from thirdparty._internal.model.refs import RecipeReference
 from thirdparty.recipe import RecipeBase
 
 if TYPE_CHECKING:
@@ -23,7 +22,7 @@ class Node:
 
     Serves two roles with a single type:
       * the recipe's identity that recipe methods read back via ``self._recipe_node``
-        (``ref``/``context``/recipe-origin ``recipe`` state), and
+        (``context``/recipe-origin ``recipe`` state), and
       * a vertex in a resolved :class:`Graph` (recipe class + direct host/tool dep names)
         used for build ordering.
     Dependency-graph nodes are produced by :meth:`Graph.build`; identity nodes are created by
@@ -48,10 +47,6 @@ class Node:
     @property
     def version(self) -> str:
         return self._version
-
-    @property
-    def ref(self) -> RecipeReference:
-        return RecipeReference(self._name)
 
     @property
     def all_deps(self) -> list[str]:
@@ -88,7 +83,7 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
     host_names: list[str] = []
     tool_names: list[str] = []
     for req in recipe._requires:
-        dep_name = str(req.ref.name)
+        dep_name = str(req.name)
         if req.build:
             tool_names.append(dep_name)
         else:

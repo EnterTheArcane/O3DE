@@ -214,7 +214,7 @@ class PremakeDeps:
         dep_names = []
         config_sets = []
         for require, dep in full_req:
-            dep_name = require.ref.name
+            dep_name = require.name
             dep_names.append(dep_name)
 
             # Convert and aggregate dependency's

@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
                 self.requires_tool("msys2")
 
         if cross_building(self) and hasattr(self, "settings_build"):
-            self.requires_tool(str(self.ref))
+            self.requires_tool(self.name)
 
     def latest_version(self):
         repo = GithubRepository(self, "unicode-org/icu")

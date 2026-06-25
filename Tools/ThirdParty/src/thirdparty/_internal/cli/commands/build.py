@@ -144,7 +144,7 @@ def _instantiate(
     recipe = make_probe_recipe(
         recipe_cls, recipes_root, name, version, build_type, jobs=jobs, target_os=target_os, target_arch=target_arch)
     # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeDeps
-    # and anything reading ``recipe.ref`` rely on this being present.
+    # and anything reading ``recipe.context``/recipe-origin state rely on this being present.
     recipe._recipe_node = _Node(
         name, version, context=_CONTEXT_HOST, recipe_state=_RECIPE_INCACHE)
 
@@ -209,7 +209,7 @@ def _build_dep_graph(
             # Add to the current level's deps_dict with the appropriate directness flag.
             # Preserve run= so requires_tool keep run=True; VirtualBuildEnv only adds a
             # build dep's bindir to PATH when its requirement has run=True.
-            existing = next((r for r in deps_dict if str(r.ref.name) == dep_name), None)
+            existing = next((r for r in deps_dict if str(r.name) == dep_name), None)
             if existing is None:
                 new_req = Requirement(
                     cached_req.ref, build=is_build, run=cached_req.run, direct=direct)
@@ -291,8 +291,8 @@ def _build_dep_graph(
         # component dependencies (e.g. spirv-tools-core → spirv-headers).
         # dep._requires was already populated by run_configure_method above.
         try:
-            _sub_host = [str(r.ref.name) for r in dep._requires if not r.build]
-            _sub_tools = [str(r.ref.name) for r in dep._requires if r.build]
+            _sub_host = [str(r.name) for r in dep._requires if not r.build]
+            _sub_tools = [str(r.name) for r in dep._requires if r.build]
             dep._recipe_dependencies = _build_dep_graph(
                 recipes_root, build_root, _sub_host, build_type, dep_os, dep_arch, jobs=jobs, tool_names=_sub_tools, _recipe_cache=_recipe_cache, )
         except Exception:
@@ -303,8 +303,8 @@ def _build_dep_graph(
         # resolve header-transitive dependencies (transitive_headers=True), the transitive
         # packages are present in the consumer's dep graph with the same recipe objects.
         for trans_req, trans_recipe in dep._recipe_dependencies._data.items():
-            trans_name = str(trans_req.ref.name)
-            if not any(str(r.ref.name) == trans_name for r in deps_dict.keys()):
+            trans_name = str(trans_req.name)
+            if not any(str(r.name) == trans_name for r in deps_dict.keys()):
                 non_direct_req = Requirement(
                     trans_req.ref, build=trans_req.build, run=trans_req.run, direct=False)
                 deps_dict[non_direct_req] = trans_recipe

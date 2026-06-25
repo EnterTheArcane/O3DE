@@ -47,7 +47,7 @@ class Recipe(RecipeBase):
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.requires_tool("pkgconf")
         if not can_run(self):
-            self.requires_tool(str(self.ref))
+            self.requires_tool(self.name)
 
     def latest_version(self):
         repo = GitlabRepository(self, "wayland/wayland", host="gitlab.freedesktop.org")
@@ -75,7 +75,7 @@ class Recipe(RecipeBase):
             deps.build_context_activated = ["wayland"]
         elif self.dependencies["expat"].is_build_context:  # wayland is being built as a tool
             # If wayland is a tool requirement, all its dependencies are in the build context
-            deps.build_context_activated = [dep.ref.name for _, dep in self.dependencies.host.items()]
+            deps.build_context_activated = [dep.name for _, dep in self.dependencies.host.items()]
         deps.generate()
         tc = MesonToolchain(self)
         tc.project_options["libdir"] = "lib"

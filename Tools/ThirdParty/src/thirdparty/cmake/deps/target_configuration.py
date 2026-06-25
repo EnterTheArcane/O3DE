@@ -61,7 +61,7 @@ class TargetConfigurationTemplate2:
     def _requires(self, info: Any, components: Any) -> dict[str, Any]:
         result = {}
         requires = info.parsed_requires()
-        pkg_name = self._recipe.ref.name
+        pkg_name = self._recipe.name
         pkg_type = info.type
         assert isinstance(pkg_type, PackageType), f"Pkg type {pkg_type} {type(pkg_type)}"
         transitive_reqs = self._cmakedeps.get_transitive_requires(self._recipe)
@@ -72,7 +72,7 @@ class TargetConfigurationTemplate2:
                 if d.info.exe:
                     continue
                 dep_target = self._cmakedeps.get_property("cmake_target_name", d)
-                dep_target = dep_target or f"{d.ref.name}::{d.ref.name}"
+                dep_target = dep_target or f"{d.name}::{d.name}"
                 link_feature = self._cmakedeps.get_property("cmake_link_feature", d)
                 link = req.libs
                 result[dep_target] = {
@@ -112,7 +112,7 @@ class TargetConfigurationTemplate2:
                         if dep.info.exe:
                             continue  # It doesn't make sense to link a package that is an App
                         comp = None
-                        default_target = f"{dep.ref.name}::{dep.ref.name}"  # replace_requires
+                        default_target = f"{dep.name}::{dep.name}"  # replace_requires
                         link = req.libs  # Do what the requirement to that package says
                     else:
                         if dep_comp.type is PackageType.APP or dep_comp.exe:
@@ -137,7 +137,7 @@ class TargetConfigurationTemplate2:
     def _context(self) -> dict[str, Any]:
         info = self._full_cpp_info
         assert isinstance(info.type, PackageType)
-        pkg_name = self._recipe.ref.name
+        pkg_name = self._recipe.name
         # fallback to consumer configuration if it doesn't have build_type
         config = self._recipe.settings.get_safe("build_type", self._cmakedeps.configuration)
         config = config.upper() if config else None

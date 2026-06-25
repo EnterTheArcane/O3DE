@@ -198,7 +198,7 @@ class CMakeToolchain:
 
     def _find_cmake_exe(self):
         for req in self._recipe.dependencies.direct_build.values():
-            if req.ref.name == "cmake":
+            if req.name == "cmake":
                 for bindir in req.info.bindirs:
                     cmake_path = os.path.join(bindir, "cmake")
                     cmake_exe_path = os.path.join(bindir, "cmake.exe")

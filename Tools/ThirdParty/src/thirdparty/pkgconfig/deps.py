@@ -57,34 +57,34 @@ class _PCFilesDeps:
             return _get_dep_aliases()
         if comp_ref_name not in dep.info.components:
             # Either foo::foo might be referencing the root info
-            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and info.requires is the root one, e.g.,
+            if (dep.name == comp_ref_name or # Or a "replace_require" is used and info.requires is the root one, e.g.,
                 # zlib/*: zlib-ng/*, and self.info.requires = ["zlib::zlib"]
-                (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
+                (dep.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_aliases()
             raise RecipeException(
                 "Component '{name}::{cname}' not found in '{name}' "
                 "package requirement".format(
-                    name=dep.ref.name, cname=comp_ref_name))
+                    name=dep.name, cname=comp_ref_name))
         comp_aliases = self._get_property("pkg_config_aliases", dep, comp_ref_name, check_type=list)
         return comp_aliases or []
 
     def _get_name(self, dep: Any, pkg_name: str | None = None, comp_ref_name: str | None = None) -> str:
         def _get_dep_name() -> str:
-            dep_name = self._get_property("pkg_config_name", dep) or dep.ref.name
+            dep_name = self._get_property("pkg_config_name", dep) or dep.name
             return f"{dep_name}{self._suffix}"
 
         if pkg_name is None and comp_ref_name is None:
             return _get_dep_name()
         if comp_ref_name not in dep.info.components:
             # Either foo::foo might be referencing the root info
-            if (dep.ref.name == comp_ref_name or # Or a "replace_require" is used and info.requires is the root one, e.g.,
+            if (dep.name == comp_ref_name or # Or a "replace_require" is used and info.requires is the root one, e.g.,
                 # zlib/*: zlib-ng/*, and self.info.requires = ["zlib::zlib"]
-                (dep.ref.name != pkg_name and pkg_name == comp_ref_name)):
+                (dep.name != pkg_name and pkg_name == comp_ref_name)):
                 return _get_dep_name()
             raise RecipeException(
                 "Component '{name}::{cname}' not found in '{name}' "
                 "package requirement".format(
-                    name=dep.ref.name, cname=comp_ref_name))
+                    name=dep.name, cname=comp_ref_name))
         comp_name = self._get_property("pkg_config_name", dep, comp_ref_name)
         if comp_name:
             return f"{comp_name}{self._suffix}"
@@ -94,7 +94,7 @@ class _PCFilesDeps:
             return f"{dep_name}-{comp_ref_name}"
 
     def _get_property(self, prop: str, dep: Any, comp_name: str | None = None, check_type: Any = None) -> Any:
-        dep_name = dep.ref.name
+        dep_name = dep.name
         dep_comp = f"{str(dep_name)}::{comp_name}" if comp_name else f"{str(dep_name)}"
         try:
             value = self._properties[f"{dep_comp}{self._suffix}"][prop]
@@ -191,7 +191,7 @@ class _PCFilesDeps:
                 self.info.components["cmp"].requires = ["other::cmp1"]
         ```
         """
-        dep_ref_name = self._dep.ref.name
+        dep_ref_name = self._dep.name
         ret = []
         for req in info.requires:
             pkg_ref_name, comp_ref_name = req.split("::") if "::" in req else (dep_ref_name, req)
@@ -328,8 +328,8 @@ class PkgConfigDeps:
                     "PkgConfigDeps.build_context_suffix attribute has been "
                     "deprecated. Use PkgConfigDeps.build_context_folder instead.")
             # Check if it exists both as a host and tool requirement without a suffix
-            activated_br = {r.ref.name for r in build_req.values() if r.ref.name in self.build_context_activated}
-            common_names = {r.ref.name for r in host_req.values()}.intersection(activated_br)
+            activated_br = {r.name for r in build_req.values() if r.name in self.build_context_activated}
+            common_names = {r.name for r in host_req.values()}.intersection(activated_br)
             without_suffixes = [common_name for common_name in common_names if not self.build_context_suffix.get(common_name)]
             if without_suffixes:
                 raise RecipeException(
@@ -343,7 +343,7 @@ class PkgConfigDeps:
 
         for require, dep in list(host_req.items()) + list(build_req.items()):
             # Filter the tool requirements not activated with PkgConfigDeps.build_context_activated
-            if require.build and dep.ref.name not in self.build_context_activated:
+            if require.build and dep.name not in self.build_context_activated:
                 continue
             yield require, dep
 
@@ -360,7 +360,7 @@ class PkgConfigDeps:
             return f"{self.build_context_folder}/{name_}.pc" if build else f"{name_}.pc"
 
         for require, dep in self._get_dependencies():
-            suffix = self.build_context_suffix.get(require.ref.name, "") if require.build else ""
+            suffix = self.build_context_suffix.get(require.name, "") if require.build else ""
             # Save all the *.pc files and their contents
             for name, content in _PCFilesDeps(self, dep, suffix=suffix).items():
                 pc_name = _pc_file_name(

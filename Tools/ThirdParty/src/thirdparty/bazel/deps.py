@@ -185,19 +185,19 @@ class _BazelDepBuildGenerator:
         return root_folder.replace("\\", "/")
 
     def _get_repository_name(self, dep: Any) -> str:
-        pkg_name = dep.info.get_property("bazel_repository_name") or dep.ref.name
+        pkg_name = dep.info.get_property("bazel_repository_name") or dep.name
         return f"build-{pkg_name}" if self._is_build_require else pkg_name
 
     @staticmethod
     def _get_target_name(dep: Any) -> str:
-        pkg_name = dep.info.get_property("bazel_target_name") or dep.ref.name
+        pkg_name = dep.info.get_property("bazel_target_name") or dep.name
         return pkg_name
 
     def _get_component_name(self, dep: Any, comp_ref_name: str) -> str:
         pkg_name = self._get_target_name(dep)
         if comp_ref_name not in dep.info.components:
             # foo::foo might be referencing the root cppinfo
-            if dep.ref.name == comp_ref_name:
+            if dep.name == comp_ref_name:
                 return pkg_name
             return f"{pkg_name}-{comp_ref_name}"
         comp_name = dep.info.components[comp_ref_name].get_property("bazel_target_name")
@@ -260,7 +260,7 @@ class _BazelDepBuildGenerator:
                 self.info.components["cmp"].requires = ["other::cmp1"]
         ```
         """
-        dep_ref_name = self._dep.ref.name
+        dep_ref_name = self._dep.name
         ret = []
         for req in info.requires:
             pkg_ref_name, comp_ref_name = req.split("::") if "::" in req else (dep_ref_name, req)
@@ -523,7 +523,7 @@ class BazelDeps:
             # Require is not used at the moment, but its information could be used,
             # and will be used in Recipe 2.0
             # Filter the tool requirements not activated with self.build_context_activated
-            if require.build and dep.ref.name not in build_context_activated:
+            if require.build and dep.name not in build_context_activated:
                 continue
             yield require, dep
 

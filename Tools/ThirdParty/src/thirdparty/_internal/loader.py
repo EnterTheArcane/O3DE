@@ -159,8 +159,8 @@ def make_probe_recipe(
     recipe._recipe_dependencies = RecipeDependencies(OrderedDict())
     recipe._recipe_buildenv = Environment()
     recipe._recipe_runenv = Environment()
-    # Give the probe a graph node so recipes can read self.ref / self.context during
-    # config/requirements (e.g. cross-build recipes doing requires_tool(str(self.ref))).
+    # Give the probe a graph node so recipes can read self.context / recipe-origin state
+    # during config/requirements (e.g. cross-build recipes doing requires_tool(self.name)).
     from thirdparty._internal.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
     recipe._recipe_node = Node(name, version, context=CONTEXT_HOST, recipe_state=RECIPE_INCACHE)
     # Mirror RecipeLoader: run the recipe's init() hook if it defines one.

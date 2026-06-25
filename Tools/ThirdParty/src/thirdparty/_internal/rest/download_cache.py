@@ -130,18 +130,9 @@ class DownloadCache:
         else:
             summary = {"references": {}, "timestamp": timestamp_now()}
 
-        try:
-            summary_key = str(recipe.ref)
-        except AttributeError:
-            # If there's no node associated with the recipe,
-            # try to construct a reference from the recipe itself.
-            # We accept it if we have a name and a version at least.
-            if recipe.name and recipe.version:
-                summary_key = f"{recipe.name}/{recipe.version}"
-            else:
-                # The recipe path would be different between machines
-                # So best we can do is to set this as unknown
-                summary_key = "unknown"
+        # The recipe path would differ between machines, so when a recipe has no name fall
+        # back to "unknown".
+        summary_key = recipe.name or "unknown"
 
         if not isinstance(urls, (list, tuple)):
             urls = [urls]

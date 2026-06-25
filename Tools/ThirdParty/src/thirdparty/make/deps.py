@@ -334,7 +334,7 @@ class DepComponentContentGenerator:
 
     template = textwrap.dedent(
         """
-        # {{ dep.ref.name }}::{{ comp_name }}
+        # {{ dep.name }}::{{ comp_name }}
 
         {{  define_variable_value_safe("RECIPE_INCLUDE_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'include_dirs') -}}
         {{- define_variable_value_safe("RECIPE_LIB_DIRS_{}_{}".format(dep_name, name), cpp_info_dirs, 'lib_dirs') -}}
@@ -376,7 +376,7 @@ class DepComponentContentGenerator:
         context = {
             "dep": self._dep,
             "comp_name": self._name,
-            "dep_name": _makefy(self._dep.ref.name),
+            "dep_name": _makefy(self._dep.name),
             "name": _makefy(self._name),
             "cpp_info_dirs": self._dirs,
             "cpp_info_flags": self._flags,
@@ -394,11 +394,11 @@ class DepContentGenerator:
 
     template = textwrap.dedent(
         """
-        # {{ dep.ref }}{% if not req.direct %} (indirect dependency){% endif +%}
+        # {{ dep.name }}{% if not req.direct %} (indirect dependency){% endif +%}
 
-        RECIPE_NAME_{{ name }} = {{ dep.ref.name }}
+        RECIPE_NAME_{{ name }} = {{ dep.name }}
         RECIPE_VERSION_{{ name }} = {{ dep.version }}
-        RECIPE_REFERENCE_{{ name }} = {{ dep.ref }}
+        RECIPE_REFERENCE_{{ name }} = {{ dep.name }}
 
         RECIPE_ROOT_{{ name }} = {{ root }}
 
@@ -440,7 +440,7 @@ class DepContentGenerator:
         context = {
             "dep": self._dep,
             "req": self._req,
-            "name": _makefy(self._dep.ref.name),
+            "name": _makefy(self._dep.name),
             "root": self._root,
             "sysroot": self._sysroot,
             "components": list(self._dep.info.get_sorted_components().keys()),
@@ -485,7 +485,7 @@ class DepComponentGenerator:
             if formatted_dirs:
                 self._makeinfo.dirs_append(var)
                 var = var.replace("dirs", "_dirs")
-                formatted_dirs = self._rootify(self._root, self._dep.ref.name, cppinfo_value)
+                formatted_dirs = self._rootify(self._root, self._dep.name, cppinfo_value)
                 dirs[var] = [_recipe_prefix_flag(flag) + it for it in formatted_dirs]
         return dirs
 
@@ -540,7 +540,7 @@ class DepGenerator:
     def __init__(self, dependency: Any, require: Any, output: Any):
         self._dep = dependency
         self._req = require
-        self._info = MakeInfo(self._dep.ref.name, [], [])
+        self._info = MakeInfo(self._dep.name, [], [])
         self._output = output
 
     @property
@@ -561,9 +561,9 @@ class DepGenerator:
         for var, prefix in _common_cppinfo_dirs().items():
             cppinfo_value = getattr(dependency.info, var)
             if not cppinfo_value:  # The root value is not defined, there might be components
-                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
+                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
                 prefix = ""
-            formatted_dirs = _get_formatted_dirs(cppinfo_value, root, _makefy(dependency.ref.name))
+            formatted_dirs = _get_formatted_dirs(cppinfo_value, root, _makefy(dependency.name))
             if formatted_dirs:
                 self._info.dirs_append(var)
                 var = var.replace("dirs", "_dirs")
@@ -580,7 +580,7 @@ class DepGenerator:
             cppinfo_value = getattr(dependency.info, var)
             # Use component info info when does not provide any value
             if not cppinfo_value:
-                cppinfo_value = [f"$(RECIPE_{var.upper()}_{_makefy(dependency.ref.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
+                cppinfo_value = [f"$(RECIPE_{var.upper()}_{_makefy(dependency.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
                 # avoid repeating same prefix twice
                 prefix_var = ""
             if "flags" in var:
@@ -598,7 +598,7 @@ class DepGenerator:
         # sysroot may return ['']
         if not sysroot or not sysroot[0]:
             return []
-        return _get_formatted_dirs(sysroot, root, _makefy(self._dep.ref.name)) if sysroot and sysroot[0] else None
+        return _get_formatted_dirs(sysroot, root, _makefy(self._dep.name)) if sysroot and sysroot[0] else None
 
     def _get_root_folder(self) -> str:
         """

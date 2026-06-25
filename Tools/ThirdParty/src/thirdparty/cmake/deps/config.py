@@ -35,7 +35,7 @@ class ConfigTemplate2:
     def _context(self) -> dict[str, Any]:
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         targets_include = f"{f}Targets.cmake"
-        pkg_name = self._recipe.ref.name
+        pkg_name = self._recipe.name
         build_modules_paths = self._cmakedeps.get_property(
             "cmake_build_modules", self._recipe, check_type=list) or []
         # FIXME: Proper escaping of paths for CMake and relativization
@@ -84,7 +84,7 @@ class ConfigTemplate2:
 
     def _get_legacy_vars(self) -> dict[str, Any]:
         # Auxiliary variables for legacy consumption and try_compile cases
-        pkg_name = self._recipe.ref.name
+        pkg_name = self._recipe.name
         prefixes = self._cmakedeps.get_property(
             "cmake_additional_variables_prefixes", self._recipe, check_type=list) or []
 

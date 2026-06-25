@@ -41,7 +41,7 @@ def run_configure_method(recipe: RecipeBase):
     # "cmake"), after requirements() so explicit declarations win. Skip the recipe's own name
     # and anything already declared as a tool.
     own = recipe.name
-    existing = {r.ref.name for r in recipe._requires if r.build}
+    existing = {r.name for r in recipe._requires if r.build}
     for tool in getattr(type(recipe), "_implicit_requires_tool", ()):
         if tool != own and tool not in existing:
             recipe.requires_tool(tool)

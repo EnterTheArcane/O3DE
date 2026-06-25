@@ -28,8 +28,10 @@ class RecipeBase:
     The base class for all package recipes
     """
 
-    # Reference
-    name: str | None = None
+    # Reference. Every concrete recipe declares ``name`` (it must match the recipe's directory);
+    # the empty-string default only applies to the abstract base, so ``name`` is effectively a
+    # required ``str`` and callers can read it directly instead of going through a reference.
+    name: str = ""
     version: str | None = None  # Any str, can be "1.1" or whatever
 
     # Metadata
@@ -104,13 +106,13 @@ class RecipeBase:
 
     def _add_requirement(self, req: Requirement) -> None:
         if any(r == req for r in self._requires):  # equality == (name, build)
-            raise RecipeException(f"Duplicated requirement: {req.ref}")
+            raise RecipeException(f"Duplicated requirement: {req.name}")
         self._requires.append(req)
 
     @property
     def output(self) -> Output:
         # an output stream (writeln, info, warn error)
-        scope = self.name or (self.ref if self._recipe_node else "")
+        scope = self.name or ""
         return Output(scope=scope)
 
     @property
@@ -132,10 +134,6 @@ class RecipeBase:
     @property
     def recipe(self) -> "str | None":
         return self._recipe_node.recipe if self._recipe_node else None
-
-    @property
-    def ref(self):
-        return self._recipe_node.ref
 
     @property
     def buildenv(self):

@@ -653,7 +653,7 @@ class _Component:
             raise RecipeException(f"{name} has a library but .type {self._type} is not static/shared")
 
         # If no location is defined, it's time to guess the location
-        self._auto_deduce_locations(recipe, library_name=component_name or recipe.ref.name)
+        self._auto_deduce_locations(recipe, library_name=component_name or recipe.name)
 
 
 class Info:
@@ -816,7 +816,7 @@ class Info:
         # Only direct host (not test) dependencies can define required components
         # We use recipe.dependencies to use the already replaced ones by "replace_requires"
         # So consumers can keep their ``self.info.requires = ["pkg_name::comp"]``
-        direct_dependencies = [r.ref.name for r, d in recipe.dependencies.items() if r.direct and not r.build and not r.is_test and r.visible and not r.override]
+        direct_dependencies = [r.name for r, d in recipe.dependencies.items() if r.direct and not r.build and not r.is_test and r.visible and not r.override]
 
         for e in external:
             if e not in direct_dependencies:
@@ -860,7 +860,7 @@ class Info:
             common.libs = []
             common.type = str(PackageType.HEADER)  # the type of components is a string!
             if not common.requires:
-                common.requires = [f"{c.ref.name}::{c.ref.name}" for c in recipe.dependencies.direct_host.values()]
+                common.requires = [f"{c.name}::{c.name}" for c in recipe.dependencies.direct_host.values()]
             result.components["_common"] = common
 
             for lib in self.libs:

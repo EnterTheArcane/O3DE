@@ -19,6 +19,11 @@ class Requirement:
     direct: bool = True    # a direct (vs transitively pulled) requirement
     skip: bool = False     # excluded from the consumer's effective dependency set
 
+    @property
+    def name(self) -> str:
+        """Name of the recipe this requirement targets."""
+        return self.ref.name
+
     def __hash__(self) -> int:
         return hash((self.ref.name, self.build))
 

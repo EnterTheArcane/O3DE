@@ -29,7 +29,7 @@ class TargetsTemplate2:
     def _context(self) -> dict[str, Any]:
         filename = self._cmakedeps.get_cmake_filename(self._recipe)
         ret = {
-            "ref": str(self._recipe.ref), "filename": filename,
+            "ref": self._recipe.name, "filename": filename,
         }
         return ret
 

@@ -205,7 +205,7 @@ class XcodeDeps:
         content_multi = content or self._all_xconfig
 
         for dep in deps.values():
-            include_file = f'recipe_{_format_name(dep.ref.name)}.xcconfig'
+            include_file = f'recipe_{_format_name(dep.name)}.xcconfig'
             if include_file not in content_multi:
                 content_multi = content_multi + f'\n#include "{include_file}"\n'
         return content_multi
@@ -270,7 +270,7 @@ class XcodeDeps:
         elif not pkg_dep.info.has_components:
             for _, d in pkg_dep.dependencies.direct_host.items():
                 XcodeDeps._resolve_external(
-                    f"{d.ref.name}::{d.ref.name}", all_deps, collected, visited)
+                    f"{d.name}::{d.name}", all_deps, collected, visited)
 
     @staticmethod
     def _resolve_external(req: str, all_deps: Any, collected: Any, visited: Any):
@@ -302,7 +302,7 @@ class XcodeDeps:
         # If a package has no components the name is recipe_pkgname_pkgname.xcconfig
         # All components are included in the recipe_pkgname.xcconfig file
         host_req = self._recipe.dependencies.host
-        all_deps = {dep.ref.name: dep for _, dep in host_req.items()}
+        all_deps = {dep.name: dep for _, dep in host_req.items()}
 
         direct_deps = self._recipe.dependencies.filter(
             {
@@ -310,7 +310,7 @@ class XcodeDeps:
             })
         for require, dep in direct_deps.items():
 
-            dep_name = _format_name(dep.ref.name)
+            dep_name = _format_name(dep.name)
 
             include_components_names = []
             if dep.info.has_components:
