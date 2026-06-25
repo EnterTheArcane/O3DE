@@ -43,9 +43,9 @@ def cmake_layout(recipe: RecipeBase, generator=None, src_folder: str = ".", buil
         raise RecipeException("'build_type' setting not defined, it is necessary for cmake_layout()")
 
     if is_consumer(recipe):
-        folder = "test_folder" if recipe.tested_reference_str else "build_folder"
+        folder = "build_folder"
         build_folder = recipe.conf.get(f"tools.cmake.cmake_layout:{folder}") or build_folder
-        if build_folder == "$TMP" and folder == "test_folder":
+        if build_folder == "$TMP":
             build_folder = tempfile.mkdtemp()
 
     build_folder = build_folder if not subproject else os.path.join(subproject, build_folder)
@@ -71,17 +71,11 @@ def cmake_layout(recipe: RecipeBase, generator=None, src_folder: str = ".", buil
 def get_build_folder_custom_vars(recipe: RecipeBase):
     recipe_vars = recipe.folders.build_folder_vars
     build_vars = recipe.conf.get("tools.cmake.cmake_layout:build_folder_vars", check_type=list)
-    if recipe.tested_reference_str:
-        if build_vars is None:  # The user can define conf build_folder_vars = [] for no vars
-            build_vars = recipe_vars or [
-                "settings.compiler", "settings.compiler.version", "settings.arch", "settings.compiler.cppstd", "settings.build_type", "options.shared",
-            ]
-    else:
-        if is_consumer(recipe):
-            if build_vars is None:
-                build_vars = recipe_vars or []
-        else:
+    if is_consumer(recipe):
+        if build_vars is None:
             build_vars = recipe_vars or []
+    else:
+        build_vars = recipe_vars or []
 
     ret = []
     for s in build_vars:

@@ -24,18 +24,9 @@ class _Infos:
 
 
 class RecipeBase:
-    """
-    The base class for all package recipes
-    """
-
-    # Reference. Every concrete recipe declares ``name`` (it must match the recipe's directory);
-    # the empty-string default only applies to the abstract base, so ``name`` is effectively a
-    # required ``str`` and callers can read it directly instead of going through a reference.
-    name: str = ""
-    version: str | None = None  # Any str, can be "1.1" or whatever
-
-    # Metadata
-    license: str | tuple[str, ...] | None = None
+    name: str
+    version: str
+    license: str | tuple[str, ...]
 
     # Binary model: Settings and Options
     # NOTE: ``settings``/``options`` are intentionally ``Any``: recipe authors may set them as a
@@ -44,6 +35,7 @@ class RecipeBase:
     settings: Any = None  # set to a Settings object by the build driver (host/target)
     settings_build: Any = None  # Settings for the build machine (tools)
     settings_target: Any = None  # Settings of what a requires_tool will build for
+    
     options: Any = None
     default_options: dict[str, Any] | None = None
     default_build_options: dict[str, Any] | None = None
@@ -51,31 +43,18 @@ class RecipeBase:
     win_bash: bool | None = None
     win_bash_run: bool | None = None  # For run scope
 
-    _is_consumer_recipe: bool = False
-
-    # #### Requirements
-    # Dependencies are declared imperatively from requirements() via self.requires() /
-    # self.requires_tool(); they accumulate in self._requires (set up in __init__).
-    tested_reference_str: str | None = None
-
     recipe_folder: str | None = None
 
     # Tools implied by the build-system helpers a recipe imports (e.g. CMake -> "cmake").
     # Populated at load time by the recipe loader from the recipe module's direct imports.
     _implicit_requires_tool: frozenset[str] = frozenset()
 
-    # Package information.
     folders: Folders
     infos: _Infos
     buildenv_info: Environment
     runenv_info: Environment
     conf_info: Conf
     conf: Conf
-
-    _recipe_runtime: Any = None
-    _recipe_buildenv: Any = None  # The profile buildenv, will be assigned initialize()
-    _recipe_runenv: Any = None
-    _recipe_node: Any = None  # access to container Node object, to access info, context, deps...
 
     def __init__(self):
         self.folders = Folders()
@@ -92,6 +71,11 @@ class RecipeBase:
         self.options = Options(self.options or {}, self.default_options)
         self._recipe_dependencies: "RecipeDependencies | None" = None
         self.env_scripts = {}  # Accumulate the env scripts generated in order
+        
+        self._recipe_runtime = None
+        self._recipe_buildenv = None  # The profile buildenv, will be assigned initialize()
+        self._recipe_runenv = None
+        self._recipe_node = None  # access to container Node object, to access info, context, deps...
 
     def requires(self, ref: str, *, headers: bool = True, libs: bool = True,
                  run: bool = False) -> None:
