@@ -1,0 +1,140 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+#
+
+name: ThirdParty Windows
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      target_os:
+        required: true
+        type: string
+      target_arch:
+        required: true
+        type: string
+      recipes:
+        required: false
+        type: string
+        default: ""
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Image
+        required: false
+        type: string
+        default: windows-2022
+      target_os:
+        description: Target OS
+        required: false
+        type: string
+        default: Windows
+      target_arch:
+        description: Target Arch
+        required: false
+        type: choice
+        options:
+          - X64
+          - ARM
+        default: X64
+      recipes:
+        description: "Optional whitespace-separated recipe names or glob patterns. Blank builds everything."
+        required: false
+        type: string
+
+run-name: ThirdParty Windows ${{ inputs.target_arch }}
+
+jobs:
+  Build:
+    runs-on: ${{ inputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          show-progress: false
+
+      - name: Setup DevDrive
+        uses: samypr100/setup-dev-drive@b9079d2711b01ed39de859c79c96484bfd80e078 # v3.4.1
+        with:
+          drive-size: 130GB
+          drive-format: NTFS
+          drive-path: "D:/dev_drive.vhdx"
+          workspace-copy: true
+          trusted-dev-drive: true
+
+      - name: Setup build folders
+        run: |
+          "build", ".o3de", "Tools\ThirdParty\build" | % { New-Item "${{ env.DEV_DRIVE_WORKSPACE }}\$_" -ItemType Directory -Force }
+          "temp" | % { New-Item "${{ env.DEV_DRIVE }}\$_" -ItemType Directory -Force }
+
+      - name: Move Page File to Workspace drive
+        run: |
+          Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" `
+            -Name "PagingFiles" -Value "${{ env.DEV_DRIVE }}\temp\pagefile.sys 8192 8192"
+          echo "Page file moved to ${{ env.DEV_DRIVE }}\temp\pagefile.sys"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: Tools/ThirdParty/pyproject.toml
+
+      - name: Set MSBuild options
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+
+      - name: Install ThirdParty tool
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
+        run: python -m pip install -e Tools\ThirdParty
+
+      - name: Check ThirdParty command
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}
+        run: thirdparty --help
+
+      - name: Compute cache key
+        id: cache-key
+        env:
+          RECIPES: ${{ inputs.recipes }}
+        run: |
+          $bytes = [System.Text.Encoding]::UTF8.GetBytes($env:RECIPES)
+          $hash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes)).Replace("-", "").ToLowerInvariant()
+          "recipes_hash=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Restore ThirdParty build cache
+        uses: actions/cache@v4
+        continue-on-error: true
+        with:
+          path: ${{ env.DEV_DRIVE_WORKSPACE }}\Tools\ThirdParty\build
+          key: thirdparty-${{ inputs.target_os }}-${{ inputs.target_arch }}-${{ steps.cache-key.outputs.recipes_hash }}-${{ hashFiles('.github/workflows/thirdparty*.yml', 'Tools/ThirdParty/pyproject.toml', 'Tools/ThirdParty/src/**', 'Tools/ThirdParty/recipes/**') }}
+          restore-keys: |
+            thirdparty-${{ inputs.target_os }}-${{ inputs.target_arch }}-${{ steps.cache-key.outputs.recipes_hash }}-
+            thirdparty-${{ inputs.target_os }}-${{ inputs.target_arch }}-
+
+      - name: Build
+        working-directory: ${{ env.DEV_DRIVE_WORKSPACE }}\Tools\ThirdParty
+        timeout-minutes: 330
+        env:
+          RECIPES: ${{ inputs.recipes }}
+          TEMP: ${{ env.DEV_DRIVE }}\temp
+          TMP: ${{ env.DEV_DRIVE }}\temp
+        run: |
+          $arguments = @(
+            "build",
+            "--target-os", "${{ inputs.target_os }}",
+            "--target-arch", "${{ inputs.target_arch }}",
+            "--fail-fast"
+          )
+
+          if (![string]::IsNullOrWhiteSpace($env:RECIPES)) {
+            $arguments += $env:RECIPES -split '\s+'
+          }
+
+          thirdparty @arguments

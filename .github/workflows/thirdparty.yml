@@ -1,0 +1,91 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+#
+
+name: ThirdParty
+
+run-name: ThirdParty - ${{ github.ref_name }}
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      recipes:
+        description: "Optional whitespace-separated recipe names or glob patterns. Blank builds everything."
+        required: false
+        type: string
+      mac_arm:
+        description: Build Mac ARM
+        required: false
+        type: boolean
+        default: true
+      linux_x64:
+        description: Build Linux X64
+        required: false
+        type: boolean
+        default: true
+      linux_arm:
+        description: Build Linux ARM
+        required: false
+        type: boolean
+        default: true
+      windows_x64:
+        description: Build Windows X64
+        required: false
+        type: boolean
+        default: true
+      windows_arm:
+        description: Build Windows ARM
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  Linux-X64:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_x64 }}
+    uses: ./.github/workflows/thirdparty-linux.yml
+    with:
+      image: ubuntu-24.04
+      target_os: Linux
+      target_arch: X64
+      recipes: ${{ inputs.recipes || '' }}
+
+  Linux-ARM:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_arm }}
+    uses: ./.github/workflows/thirdparty-linux.yml
+    with:
+      image: ubuntu-24.04
+      target_os: Linux
+      target_arch: ARM
+      recipes: ${{ inputs.recipes || '' }}
+
+  Mac-ARM:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_arm }}
+    uses: ./.github/workflows/thirdparty-mac.yml
+    with:
+      image: macos-15
+      target_os: Mac
+      target_arch: ARM
+      recipes: ${{ inputs.recipes || '' }}
+
+  Windows-X64:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_x64 }}
+    uses: ./.github/workflows/thirdparty-windows.yml
+    with:
+      image: windows-2022
+      target_os: Windows
+      target_arch: X64
+      recipes: ${{ inputs.recipes || '' }}
+
+  Windows-ARM:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_arm }}
+    uses: ./.github/workflows/thirdparty-windows.yml
+    with:
+      image: windows-2022
+      target_os: Windows
+      target_arch: ARM
+      recipes: ${{ inputs.recipes || '' }}
