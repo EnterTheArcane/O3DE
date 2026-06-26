@@ -2,6 +2,7 @@ import os
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
+from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
 
@@ -43,6 +44,8 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
+        VirtualBuildEnv(self).generate()
+
         tc = AutotoolsToolchain(self)
         tc.configure_args.append("--disable-all-programs")
         tc.configure_args.append("--enable-libuuid")

@@ -4,7 +4,7 @@ import shutil
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
-from thirdparty.env import Environment
+from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.errors import RecipeException
 from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
@@ -53,6 +53,8 @@ class Recipe(RecipeBase[_Options]):
         return os.path.join(self.folders.package, "res")
 
     def generate(self):
+        VirtualBuildEnv(self).generate()
+
         if is_msvc(self):
             # __VSCMD_ARG_NO_LOGO: this test_package has too many invocations,
             #                      this avoids printing the logo everywhere

@@ -23,7 +23,7 @@ class MSBuildDeps:
     """
 
     _vars_props = textwrap.dedent(
-        """
+        """\
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
             <PropertyGroup Label="RecipeVariables">
@@ -44,7 +44,7 @@ class MSBuildDeps:
         """)
 
     _conf_props = textwrap.dedent(
-        """
+        """\
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
             <ImportGroup Label="PropertySheets">
@@ -266,7 +266,7 @@ class MSBuildDeps:
             content_multi = load(filename)
         else:
             content_multi = textwrap.dedent(
-                """
+                """\
                 <?xml version="1.0" encoding="utf-8"?>
                 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
                     <ImportGroup Label="PropertySheets">
@@ -304,7 +304,7 @@ class MSBuildDeps:
         return content_multi
 
     _recipe_dedup_props = textwrap.dedent(
-        """
+        """\
         <?xml version="1.0" encoding="utf-8"?>
         <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
             <PropertyGroup>
@@ -349,7 +349,7 @@ class MSBuildDeps:
         recipe_deps_filename = "recipe_deps.props"
         direct_deps = self._recipe.dependencies.filter({"direct": True})
         pkg_aggregated_content = textwrap.dedent(
-            """
+            """\
             <?xml version="1.0" encoding="utf-8"?>
             <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
                 <ImportGroup Label="PropertySheets">

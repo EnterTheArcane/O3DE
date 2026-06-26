@@ -376,6 +376,10 @@ class Recipe(RecipeBase[_Options]):
         VirtualBuildEnv(self).generate()
         tc = AutotoolsToolchain(self)
         env = tc.environment()
+        if self._use_nmake:
+            env.define("CC", "cl")
+            env.define("CXX", "cl")
+            env.define("LD", "link")
         env.define_path("PERL", self._perl)
         if self.settings.compiler == "apple-clang":
             xcrun = XCRun(self)

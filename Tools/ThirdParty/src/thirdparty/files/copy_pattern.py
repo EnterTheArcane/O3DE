@@ -15,7 +15,7 @@ def copy(
     recipe: RecipeBase,
     pattern: str,
     src: Path,
-    dst: str,
+    dst: Path,
     keep_path: bool = True,
     excludes: Any = None,
     ignore_case: bool = True,

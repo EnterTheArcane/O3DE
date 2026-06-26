@@ -19,7 +19,7 @@ class MSBuildToolchain:
     filename = "recipe_toolchain.props"
 
     _config_toolchain_props = textwrap.dedent(
-        """
+        """\
         <?xml version="1.0" encoding="utf-8"?>
         <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
             {% if toolset_version_full_path %}
@@ -176,7 +176,7 @@ class MSBuildToolchain:
             content = load(main_toolchain_path)
         else:
             content = textwrap.dedent(
-                """
+                """\
                 <?xml version="1.0" encoding="utf-8"?>
                 <Project ToolsVersion="4.0"
                         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -193,7 +193,7 @@ class MSBuildToolchain:
             recipe_package_version = self._recipe.version if self._recipe.version else ""
             content = content.format(recipe_package_name, recipe_package_version)
 
-        dom = minidom.parseString(content.strip())
+        dom = minidom.parseString(content)
         try:
             import_group = dom.getElementsByTagName('ImportGroup')[0]
         except Exception:

@@ -4,7 +4,7 @@ from typing import Literal
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
-from thirdparty.env import Environment
+from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.files import copy, get
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.pkgconfig import PkgConfigDeps
@@ -70,6 +70,8 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
+        VirtualBuildEnv(self).generate()
+
         tc = AutotoolsToolchain(self)
         yes_no = lambda v: "yes" if v else "no"
         tc.configure_args += [

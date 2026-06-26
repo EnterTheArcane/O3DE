@@ -3,7 +3,7 @@ import shutil
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, XCRun, fix_apple_shared_install_name
-from thirdparty.env import Environment
+from thirdparty.env import Environment, VirtualBuildEnv
 from thirdparty.files import copy, rename, get, rmdir, chdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, unix_path
@@ -44,6 +44,8 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
+        VirtualBuildEnv(self).generate()
+
         tc = AutotoolsToolchain(self)
 
         extra_asflags = []

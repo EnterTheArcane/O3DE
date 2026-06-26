@@ -4,7 +4,7 @@ import textwrap
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
-from thirdparty.env import VirtualRunEnv
+from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
 from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
 from thirdparty.pkgconfig import PkgConfigDeps
@@ -153,6 +153,7 @@ class Recipe(RecipeBase[_Options]):
         deps.generate()
 
     def generate(self):
+        VirtualBuildEnv(self).generate()
         VirtualRunEnv(self).generate(scope="build")
 
         if is_msvc(self):
@@ -280,7 +281,7 @@ class Recipe(RecipeBase[_Options]):
         self._inject_recipe_props_file("_ctypes", "libffi", self._supports_modules)
         self._inject_recipe_props_file("_decimal", "mpdecimal", self._supports_modules)
         self._inject_recipe_props_file("_lzma", "xz_utils", self.options.get_safe("with_lzma"))
-        self._inject_recipe_props_file("_bsddb", "libdb", self.options.with_bsddb)
+        self._inject_recipe_props_file("_bsddb", "libdb", self.options.get_safe("with_bsddb", False))
 
     def _patch_sources(self):
         apply_patches(self)

@@ -4,7 +4,7 @@ import os
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import cross_building
-from thirdparty.env import VirtualRunEnv, Environment
+from thirdparty.env import VirtualBuildEnv, VirtualRunEnv, Environment
 from thirdparty.files import copy, get, rename
 from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.scm import GnuFtp
@@ -70,6 +70,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
+        VirtualBuildEnv(self).generate()
 
         if not cross_building(self):
             VirtualRunEnv(self).generate(scope="build")
@@ -222,7 +223,7 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     if not recipe.settings.get_safe("compiler.runtime"):
         return
-    libdirs = getattr(recipe.cpp.package, "libdirs")
+    libdirs = recipe.info.libdirs
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
             full_folder = os.path.join(recipe.folders.package, libdir)

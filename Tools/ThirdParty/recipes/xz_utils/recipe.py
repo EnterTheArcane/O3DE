@@ -3,9 +3,7 @@ import textwrap
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get, replace_in_file, rmdir, save
-from thirdparty.msbuild import MSBuild, MSBuildToolchain
-from thirdparty.microsoft import check_min_vs, is_msvc_static_runtime
+from thirdparty.files import copy, get, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -20,15 +18,6 @@ class Recipe(RecipeBase[_Options]):
     name = "xz_utils"
     version = "5.8.3"
     license = "Unlicense", "LGPL-2.1-or-later", "GPL-2.0-or-later", "GPL-3.0-or-later"
-
-    @property
-    def _effective_msbuild_type(self):
-        # treat "RelWithDebInfo" and "MinSizeRel" as "Release"
-        # there is no DebugMT configuration in upstream vcxproj, we patch Debug configuration afterwards
-        return "{}{}".format(
-            "Debug" if self.settings.build_type == "Debug" else "Release",
-            "MT" if is_msvc_static_runtime(self) and self.settings.build_type != "Debug" else "",
-        )
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
@@ -73,45 +62,6 @@ class Recipe(RecipeBase[_Options]):
             tc.configure_args.append("--enable-debug")
         tc.generate()
 
-    def _build_msvc(self):
-        is_msvc_modern = check_min_vs(self, 191)
-        build_script_folder = os.path.join(self.folders.source, "windows", "vs2017" if is_msvc_modern else "vs2013")
-
-        # ==============================
-        # TODO: to remove once upstream PR 12817 available in recipe client.
-        vcxproj_files = [
-            os.path.join(build_script_folder, "liblzma.vcxproj"),
-            os.path.join(build_script_folder, "liblzma_dll.vcxproj"),
-        ]
-        old_toolset = "v141" if is_msvc_modern else "v120"
-        new_toolset = MSBuildToolchain(self).toolset
-        recipe_toolchain_props = os.path.join(self.folders.generators, MSBuildToolchain.filename)
-        for vcxproj_file in vcxproj_files:
-            replace_in_file(
-                self, vcxproj_file,
-                f"<PlatformToolset>{old_toolset}</PlatformToolset>",
-                f"<PlatformToolset>{new_toolset}</PlatformToolset>",
-            )
-            replace_in_file(
-                self, vcxproj_file,
-                "<Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />",
-                f"<Import Project=\"{recipe_toolchain_props}\" /><Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />",
-            )
-
-            if self.settings.arch == "ARM":
-                replace_in_file(self, vcxproj_file, "x64", "ARM64")
-
-        solution_file = os.path.join(build_script_folder, "xz_win.sln")
-        if self.settings.arch == "ARM":
-            replace_in_file(self, solution_file, "x64", "ARM64")
-
-        # ==============================
-
-        msbuild = MSBuild(self)
-        msbuild.build_type = self._effective_msbuild_type
-        msbuild.platform = "Win32" if self.settings.arch == "x86" else msbuild.platform
-        msbuild.build(os.path.join(build_script_folder, solution_file), targets=["liblzma_dll" if self.options.shared else "liblzma"])
-
     def build(self):
         cmake = CMake(self)
         rmdir(self, os.path.join(self.folders.source, "tests"))  # optionally included
@@ -125,9 +75,7 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
         rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
         rmdir(self, os.path.join(self.folders.package, "share"))
-        self._create_cmake_module_variables(os.path.join(self.folders.package, self._module_file_rel_path))
 
-    def _create_cmake_module_variables(self, module_file):
         # TODO: also add LIBLZMA_HAS_AUTO_DECODER, LIBLZMA_HAS_EASY_ENCODER & LIBLZMA_HAS_LZMA_PRESET
         content = textwrap.dedent(
             f"""
@@ -143,6 +91,7 @@ class Recipe(RecipeBase[_Options]):
             set(LIBLZMA_VERSION_PATCH {Version(self.version).patch})
             set(LIBLZMA_VERSION_STRING "{self.version}")
             """)
+        module_file = os.path.join(self.folders.package, self._module_file_rel_path)
         save(self, module_file, content)
 
     @property
