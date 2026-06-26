@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -9,37 +9,24 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_libde265: bool = True
+    with_x265: bool = True
+    with_x264: bool = True
+    with_libaomav1: bool = True
+    with_dav1d: bool = True
+    with_jpeg: bool = True
+    with_openjpeg: bool = False
+    with_openjph: bool = True
+    with_openh264: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libheif"
     version = "1.22.0"
     license = "LGPL-3.0-only", "GPL-3.0-or-later", "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_libde265": [True, False],
-        "with_x265": [True, False],
-        "with_x264": [True, False],
-        "with_libaomav1": [True, False],
-        "with_dav1d": [True, False],
-        "with_jpeg": [True, False],
-        "with_openjpeg": [True, False],
-        "with_openjph": [True, False],
-        "with_openh264": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_libde265": True,
-        "with_x265": True,
-        "with_x264": True,
-        "with_libaomav1": True,
-        "with_dav1d": True,
-        "with_jpeg": True,
-        "with_openjpeg": False,
-        "with_openjph": True,
-        "with_openh264": False,
-    }
 
     def requirements(self):
         if self.options.with_libde265:
@@ -50,15 +37,15 @@ class Recipe(RecipeBase):
             self.requires("libaom-av1")
         if self.options.with_dav1d:
             self.requires("dav1d")
-        if self.options.get_safe("with_jpeg"):
+        if self.options.with_jpeg:
             self.requires("libjpeg")
-        if self.options.get_safe("with_openjpeg"):
+        if self.options.with_openjpeg:
             self.requires("openjpeg")
-        if self.options.get_safe("with_openjph"):
+        if self.options.with_openjph:
             self.requires("openjph")
-        if self.options.get_safe("with_openh264"):
+        if self.options.with_openh264:
             self.requires("openh264")
-        if self.options.get_safe("with_x264"):
+        if self.options.with_x264:
             self.requires("libx264")
 
     def latest_version(self):
@@ -87,18 +74,18 @@ class Recipe(RecipeBase):
         if self.options.with_libaomav1:
             tc.cache_variables["AOM_ENCODER_FOUND"] = "YES"
             tc.cache_variables["AOM_DECODER_FOUND"] = "YES"
-        tc.cache_variables["WITH_X264"] = self.options.get_safe("with_x264", False)
+        tc.cache_variables["WITH_X264"] = self.options.with_x264
         tc.cache_variables["WITH_RAV1E"] = False
         tc.cache_variables["WITH_DAV1D"] = self.options.with_dav1d
         tc.cache_variables["WITH_EXAMPLES"] = False
         tc.cache_variables["WITH_GDK_PIXBUF"] = False
         tc.cache_variables["BUILD_TESTING"] = False
-        tc.cache_variables["WITH_JPEG_DECODER"] = self.options.get_safe("with_jpeg", False)
-        tc.cache_variables["WITH_JPEG_ENCODER"] = self.options.get_safe("with_jpeg", False)
-        tc.cache_variables["WITH_OpenJPEG_DECODER"] = self.options.get_safe("with_openjpeg", False)
-        tc.cache_variables["WITH_OpenJPEG_ENCODER"] = self.options.get_safe("with_openjpeg", False)
-        tc.cache_variables["WITH_OPENJPH_ENCODER"] = self.options.get_safe("with_openjph", False)
-        tc.cache_variables["WITH_OPENH264_DECODER"] = self.options.get_safe("with_openh264", False)
+        tc.cache_variables["WITH_JPEG_DECODER"] = self.options.with_jpeg
+        tc.cache_variables["WITH_JPEG_ENCODER"] = self.options.with_jpeg
+        tc.cache_variables["WITH_OpenJPEG_DECODER"] = self.options.with_openjpeg
+        tc.cache_variables["WITH_OpenJPEG_ENCODER"] = self.options.with_openjpeg
+        tc.cache_variables["WITH_OPENJPH_ENCODER"] = self.options.with_openjph
+        tc.cache_variables["WITH_OPENH264_DECODER"] = self.options.with_openh264
 
         # Disable finding possible Doxygen in system, so no docs are built
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_Doxygen"] = True
@@ -148,13 +135,13 @@ class Recipe(RecipeBase):
             self.info.requires.append("libaom-av1::libaom-av1")
         if self.options.with_dav1d:
             self.info.requires.append("dav1d::dav1d")
-        if self.options.get_safe("with_jpeg"):
+        if self.options.with_jpeg:
             self.info.requires.append("libjpeg::libjpeg")
-        if self.options.get_safe("with_openjpeg"):
+        if self.options.with_openjpeg:
             self.info.requires.append("openjpeg::openjpeg")
-        if self.options.get_safe("with_openjph"):
+        if self.options.with_openjph:
             self.info.requires.append("openjph::openjph")
-        if self.options.get_safe("with_openh264"):
+        if self.options.with_openh264:
             self.info.requires.append("openh264::openh264")
-        if self.options.get_safe("with_x264"):
+        if self.options.with_x264:
             self.info.requires.append("libx264::libx264")

@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, get, copy, rm, rmdir, replace_in_file, collect_libs
@@ -10,31 +10,21 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    secure: bool = False
+    override: bool = False
+    inject: bool = False
+    single_object: bool = False
+    guarded: bool = False
+    win_redirect: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "mimalloc"
     version = "3.3.2"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "secure": [True, False],
-        "override": [True, False],
-        "inject": [True, False],
-        "single_object": [True, False],
-        "guarded": [True, False],
-        "win_redirect": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "secure": False,
-        "override": False,
-        "inject": False,
-        "single_object": False,
-        "guarded": False,
-        "win_redirect": False,
-    }
 
     def config_options(self):
         if self.settings.os == "Windows":
@@ -52,17 +42,17 @@ class Recipe(RecipeBase):
 
         # single_object is valid only for static override:
         if self.options.shared:
-            self.options.rm_safe("single_object")
+            del self.options.single_object
 
         # inject is valid only for Unix-like dynamic override:
         if not self.options.shared:
-            self.options.rm_safe("inject")
+            del self.options.inject
 
         # single_object and inject are valid only when
         # overriding on Unix-like platforms:
         if not self.options.override:
-            self.options.rm_safe("single_object")
-            self.options.rm_safe("inject")
+            del self.options.single_object
+            del self.options.inject
 
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/mimalloc")
@@ -86,7 +76,7 @@ class Recipe(RecipeBase):
         tc.variables["MI_SECURE"] = "ON" if self.options.secure else "OFF"
         tc.variables["MI_WIN_REDIRECT"] = "ON" if self.options.get_safe("win_redirect") else "OFF"
         tc.variables["MI_INSTALL_TOPLEVEL"] = "ON"
-        tc.variables["MI_GUARDED"] = self.options.get_safe("guarded", False)
+        tc.variables["MI_GUARDED"] = self.options.guarded
         tc.generate()
         venv = VirtualBuildEnv(self)
         venv.generate(scope="build")

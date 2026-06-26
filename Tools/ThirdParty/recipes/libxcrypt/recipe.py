@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeInvalidConfiguration
@@ -9,19 +9,15 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import unix_path
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libxcrypt"
     version = "4.4.36"
     license = "LGPL-2.1-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     def validate(self):
         if self.settings.os == "Windows":

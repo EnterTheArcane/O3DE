@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, XCRun, fix_apple_shared_install_name
 from thirdparty.env import Environment
 from thirdparty.files import copy, rename, get, rmdir, chdir
@@ -9,19 +9,15 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, unix_path
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libx264"
     version = "20250910"
     license = "GPL-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")

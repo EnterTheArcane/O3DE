@@ -4,8 +4,9 @@ import fnmatch
 import os
 import shutil
 import subprocess
+from typing import Any
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.files import chdir, get, replace_in_file, copy
 
@@ -32,24 +33,17 @@ class OpLock:
     __del__ = close
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    exclude_files: str = '*/link.exe'
+    packages: Any
+    additional_packages: str | None = None
+    no_kill: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "msys2"
     version = "latest"
     license = "MSYS license"
-
-    # "exclude_files" "packages" "additional_packages" values are a comma separated list
-    options = {
-        "exclude_files": ["ANY"],
-        "packages": ["ANY"],
-        "additional_packages": [None, "ANY"],
-        "no_kill": [True, False],
-    }
-    default_options = {
-        "exclude_files": "*/link.exe",
-        # "packages": "base-devel,binutils,gcc", # see config_options
-        "additional_packages": None,
-        "no_kill": False,
-    }
 
     def config_options(self):
         default_packages = "base-devel,binutils,gcc"

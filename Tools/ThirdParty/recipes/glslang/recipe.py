@@ -1,29 +1,23 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    build_executables: bool = False
+    enable_optimizer: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "glslang"
     version = "1.4.350.0"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "build_executables": [True, False],
-        "enable_optimizer": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "build_executables": False,
-        "enable_optimizer": True,
-    }
 
     def requirements(self):
         if self.options.enable_optimizer:

@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir
@@ -10,25 +11,18 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    bit_depth: Literal['all', 8, 16] = 'all'
+    with_tools: bool = True
+    assembly: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "dav1d"
     version = "1.5.3"
     license = "BSD-2-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "bit_depth": ["all", 8, 16],
-        "with_tools": [True, False],
-        "assembly": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "bit_depth": "all",
-        "with_tools": True,
-        "assembly": True,
-    }
 
     def config_options(self):
         if is_msvc(self) and self.settings.build_type == "Debug":

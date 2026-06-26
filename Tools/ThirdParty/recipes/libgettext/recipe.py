@@ -1,7 +1,7 @@
 import glob
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualRunEnv, Environment
@@ -12,7 +12,16 @@ from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    threads: str
+
+
+_Options.__possible_values__ = {"threads": ['posix', 'solaris', 'pth', 'windows', 'disabled']}
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libgettext"
     version = "0.26"
     # Some parts of the project are GPL-3.0-or-later and some are LGPL-2.1-or-later.
@@ -20,16 +29,6 @@ class Recipe(RecipeBase):
     # If you modify this package to include other portions of the library, please configure the license accordingly.
     # The licensing of the project is documented here: https://www.gnu.org/software/gettext/manual/gettext.html#Licenses
     license = "LGPL-2.1-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "threads": ["posix", "solaris", "pth", "windows", "disabled"],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     @property
     def _is_clang_cl(self):

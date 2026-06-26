@@ -1,23 +1,19 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, get, load, save
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "minizip"
     version = "1.3.1"
     license = "Zlib"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")

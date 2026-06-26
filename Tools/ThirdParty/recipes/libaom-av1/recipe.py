@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, rmdir
@@ -8,21 +8,16 @@ from thirdparty.scm import Version
 from thirdparty.scm.google import GoogleSourceRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    assembly: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libaom-av1"
     version = "3.14.1"
     license = "BSD-2-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "assembly": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "assembly": False,
-    }
 
     def config_options(self):
         if self.settings.arch not in ("X64",):

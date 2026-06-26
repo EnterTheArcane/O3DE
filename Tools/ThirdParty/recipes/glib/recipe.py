@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
@@ -12,25 +12,18 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_elf: bool = True
+    with_selinux: bool = True
+    with_mount: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "glib"
     version = "2.85.3"
     license = "LGPL-2.1-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_elf": [True, False],
-        "with_selinux": [True, False],
-        "with_mount": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_elf": True,
-        "with_mount": True,
-        "with_selinux": True,
-    }
 
     def config_options(self):
         if self.settings.os != "Linux":

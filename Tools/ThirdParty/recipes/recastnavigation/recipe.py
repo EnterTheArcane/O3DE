@@ -1,25 +1,21 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, rm
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "recastnavigation"
     version = "1.6.0"
     license = "Zlib"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     def latest_version(self):
         repo = GithubRepository(self, "recastnavigation/recastnavigation")

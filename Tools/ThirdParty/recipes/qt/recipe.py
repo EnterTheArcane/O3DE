@@ -3,8 +3,9 @@ import glob
 import os
 import platform
 import textwrap
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building, default_cppstd
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -70,95 +71,99 @@ MODULE_STATUSES = [
 ]
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    opengl: Literal['no', 'desktop', 'dynamic'] = 'no'
+    with_vulkan: bool = False
+    openssl: bool = True
+    with_pcre2: bool = True
+    with_glib: bool = False
+    with_doubleconversion: bool = True
+    with_freetype: bool = True
+    with_fontconfig: bool = True
+    with_icu: bool = True
+    with_harfbuzz: bool = True
+    with_libjpeg: Literal['libjpeg', 'libjpeg-turbo', False] = False
+    with_libpng: bool = True
+    with_sqlite3: bool = True
+    with_mysql: bool = False
+    with_pq: bool = False
+    with_odbc: bool = False
+    with_zstd: bool = False
+    with_brotli: bool = True
+    with_dbus: bool = False
+    with_libalsa: bool = False
+    with_openal: bool = True
+    with_gstreamer: bool = False
+    with_pulseaudio: bool = False
+    with_gssapi: bool = False
+    with_md4c: bool = True
+    with_x11: bool = True
+    with_egl: bool = False
+    gui: bool = True
+    widgets: bool = True
+    device: str | None = None
+    cross_compile: str | None = None
+    sysroot: str | None = None
+    multiconfiguration: bool = False
+    disabled_features: str | None = ''
+    qt3d: bool
+    qt5compat: bool
+    qtactiveqt: bool
+    qtcanvaspainter: bool
+    qtcharts: bool
+    qtcoap: bool
+    qtconnectivity: bool
+    qtdatavis3d: bool
+    qtdeclarative: bool
+    qtdoc: bool
+    qtgraphs: bool
+    qtgrpc: bool
+    qthttpserver: bool
+    qtimageformats: bool
+    qtlanguageserver: bool
+    qtlocation: bool
+    qtlottie: bool
+    qtmqtt: bool
+    qtmultimedia: bool
+    qtnetworkauth: bool
+    qtopcua: bool
+    qtopenapi: bool
+    qtpositioning: bool
+    qtquick3d: bool
+    qtquick3dphysics: bool
+    qtquickcontrols2: bool
+    qtquickeffectmaker: bool
+    qtquicktimeline: bool
+    qtremoteobjects: bool
+    qtscxml: bool
+    qtsensors: bool
+    qtserialbus: bool
+    qtserialport: bool
+    qtshadertools: bool
+    qtspeech: bool
+    qtsvg: bool
+    qttasktree: bool
+    qttools: bool
+    qttranslations: bool
+    qtvirtualkeyboard: bool
+    qtwayland: bool
+    qtwebchannel: bool
+    qtwebengine: bool
+    qtwebsockets: bool
+    qtwebview: bool
+    essential_modules: bool = False
+    addon_modules: bool = False
+    deprecated_modules: bool = False
+    preview_modules: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "qt"
     version = "6.11.1"
     license = "LGPL-3.0-only"
-
-    options = {
-        "shared": [True, False],
-        "opengl": ["no", "desktop", "dynamic"],
-        "with_vulkan": [True, False],
-        "openssl": [True, False],
-        "with_pcre2": [True, False],
-        "with_glib": [True, False],
-        "with_doubleconversion": [True, False],
-        "with_freetype": [True, False],
-        "with_fontconfig": [True, False],
-        "with_icu": [True, False],
-        "with_harfbuzz": [True, False],
-        "with_libjpeg": ["libjpeg", "libjpeg-turbo", False],
-        "with_libpng": [True, False],
-        "with_sqlite3": [True, False],
-        "with_mysql": [True, False],
-        "with_pq": [True, False],
-        "with_odbc": [True, False],
-        "with_zstd": [True, False],
-        "with_brotli": [True, False],
-        "with_dbus": [True, False],
-        "with_libalsa": [True, False],
-        "with_openal": [True, False],
-        "with_gstreamer": [True, False],
-        "with_pulseaudio": [True, False],
-        "with_gssapi": [True, False],
-        "with_md4c": [True, False],
-        "with_x11": [True, False],
-        "with_egl": [True, False],
-
-        "gui": [True, False],
-        "widgets": [True, False],
-
-        "device": [None, "ANY"],
-        "cross_compile": [None, "ANY"],
-        "sysroot": [None, "ANY"],
-        "multiconfiguration": [True, False],
-        "disabled_features": [None, "ANY"],
-    }
-    options.update({module: [True, False] for module in SUBMODULES})
-    options.update({f"{status}_modules": [True, False] for status in MODULE_STATUSES})
-
-    default_options = {
-        "shared": False,
-        "opengl": "no",
-        "with_vulkan": False,
-        "openssl": True,
-        "with_pcre2": True,
-        "with_glib": False,
-        "with_doubleconversion": True,
-        "with_freetype": True,
-        "with_fontconfig": True,
-        "with_icu": True,
-        "with_harfbuzz": True,
-        "with_libjpeg": False,
-        "with_libpng": True,
-        "with_sqlite3": True,
-        "with_mysql": False,
-        "with_pq": False,
-        "with_odbc": False,
-        "with_zstd": False,
-        "with_brotli": True,
-        "with_dbus": False,
-        "with_libalsa": False,
-        "with_openal": True,
-        "with_gstreamer": False,
-        "with_pulseaudio": False,
-        "with_gssapi": False,
-        "with_md4c": True,
-        "with_x11": True,
-        "with_egl": False,
-
-        "gui": True,
-        "widgets": True,
-
-        "device": None,
-        "cross_compile": None,
-        "sysroot": None,
-        "multiconfiguration": False,
-        "disabled_features": "",
-    }
     # essential_modules, addon_modules, deprecated_modules, preview_modules:
     #    these are only provided for convenience, set to False by default
-    default_options.update({f"{status}_modules": False for status in MODULE_STATUSES})
 
     _submodules_tree = None
 
@@ -212,20 +217,20 @@ class Recipe(RecipeBase):
         for submodule in SUBMODULES:
             if submodule not in self._get_module_tree:
                 self.output.debug(f"Qt6: Removing {submodule} option as it is not in the module tree for this version, or is marked as obsolete or ignore")
-                self.options.rm_safe(submodule)
+                delattr(self.options, submodule)
 
     def configure(self):
         if not self.options.gui:
             del self.options.opengl
             del self.options.with_vulkan
             del self.options.with_freetype
-            self.options.rm_safe("with_fontconfig")
+            del self.options.with_fontconfig
             del self.options.with_harfbuzz
             del self.options.with_libjpeg
             del self.options.with_libpng
             del self.options.with_md4c
-            self.options.rm_safe("with_x11")
-            self.options.rm_safe("with_egl")
+            del self.options.with_x11
+            del self.options.with_egl
 
         if self.options.multiconfiguration:
             del self.settings.build_type
@@ -277,7 +282,7 @@ class Recipe(RecipeBase):
                 setattr(self.options, module, False)
 
         if not self.options.get_safe("qtmultimedia"):
-            self.options.rm_safe("with_libalsa")
+            del self.options.with_libalsa
             del self.options.with_openal
             del self.options.with_gstreamer
             del self.options.with_pulseaudio
@@ -292,7 +297,7 @@ class Recipe(RecipeBase):
             self.output.debug(
                 f"qt6 removing convenience option: {option_name},"
                 f" see individual module options")
-            self.options.rm_safe(option_name)
+            delattr(self.options, option_name)
 
         for option in self.options.items():
             self.output.debug(f"qt6 option: {option}")

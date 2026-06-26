@@ -1,6 +1,10 @@
 import os
 import subprocess
-from typing import IO, Any
+import types
+from typing import (
+    IO, Any, ClassVar, Generic, Literal, TypeVar, Union, cast, get_args, get_origin,
+    get_type_hints,
+)
 
 from thirdparty._internal.graph import CONTEXT_BUILD
 from thirdparty._internal.model.conf import Conf
@@ -16,6 +20,86 @@ from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
 
 
+TOptions = TypeVar("TOptions", default=Any)
+
+
+_ANY_OPTION_VALUE = "ANY"
+_SCALAR_OPTION_TYPES = {str, int, float, Any}
+
+
+class RecipeOptions:
+    __defaults__: ClassVar[dict[str, Any]]
+    __possible_values__: ClassVar[dict[str, list[Any]]]
+
+    def get_safe(self, field: str, default: Any = None) -> Any:
+        ...
+
+
+def _is_none_type(annotation: Any) -> bool:
+    return annotation is None or annotation is type(None)
+
+
+def _append_unique(values: list[Any], value: Any) -> None:
+    if value not in values:
+        values.append(value)
+
+
+def _derive_possible_values(name: str, annotation: Any) -> list[Any]:
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+
+    if _is_none_type(annotation):
+        return [None]
+    if annotation is bool:
+        return [True, False]
+    if origin is Literal:
+        return list(args)
+    if annotation in _SCALAR_OPTION_TYPES:
+        return [_ANY_OPTION_VALUE]
+    if origin in (types.UnionType, Union):
+        result: list[Any] = []
+        for arg in args:
+            for value in _derive_possible_values(name, arg):
+                _append_unique(result, value)
+        if None in result:
+            result.remove(None)
+            result.insert(0, None)
+        return result
+
+    raise RecipeException(
+        f"Unsupported typed option '{name}' annotation {annotation!r}. "
+        "Supported annotations are bool, Literal, str, int, float, Any, "
+        "and optional scalar forms like str | None")
+
+
+def _typed_options_class(cls: type[Any]) -> type[Any] | None:
+    for base in getattr(cls, "__orig_bases__", ()):
+        if get_origin(base) is RecipeBase:
+            args = get_args(base)
+            if args and args[0] is not Any:
+                return args[0]
+    return None
+
+
+def _derive_options(options_cls: type[Any]) -> tuple[dict[str, list[Any]], dict[str, Any]]:
+    annotations = get_type_hints(options_cls, include_extras=True)
+    explicit_defaults = getattr(options_cls, "__defaults__", {})
+    explicit_possible_values = getattr(options_cls, "__possible_values__", {})
+    options: dict[str, list[Any]] = {}
+    defaults: dict[str, Any] = {}
+
+    for name, annotation in annotations.items():
+        if name.startswith("_"):
+            continue
+        options[name] = explicit_possible_values.get(name, _derive_possible_values(name, annotation))
+        if name in options_cls.__dict__:
+            defaults[name] = getattr(options_cls, name)
+        elif name in explicit_defaults:
+            defaults[name] = explicit_defaults[name]
+
+    return options, defaults
+
+
 class _Infos:
     def __init__(self):
         self.source: Info = Info()
@@ -23,20 +107,19 @@ class _Infos:
         self.package: Info = Info(set_defaults=True)
 
 
-class RecipeBase:
+class RecipeBase(Generic[TOptions]):
     name: str
     version: str
     license: str | tuple[str, ...]
 
     # Binary model: Settings and Options
-    # NOTE: ``settings``/``options`` are intentionally ``Any``: recipe authors may set them as a
-    # tuple/dict (e.g. ``options = {...}``) while at runtime they hold model objects
-    # (``Settings``, ``Options``).  ``Any`` keeps both valid.
+    # ``settings`` is intentionally ``Any`` because the build driver assigns the settings model.
+    # ``options`` is generic for recipe author typing, but still holds the runtime Options proxy.
     settings: Any = None  # set to a Settings object by the build driver (host/target)
     settings_build: Any = None  # Settings for the build machine (tools)
     settings_target: Any = None  # Settings of what a requires_tool will build for
 
-    options: Any = None
+    options: TOptions
     default_options: dict[str, Any] | None = None
     default_build_options: dict[str, Any] | None = None
 
@@ -58,6 +141,17 @@ class RecipeBase:
 
     def __init_subclass__(cls, **kwargs: Any):
         super().__init_subclass__(**kwargs)
+        typed_options = _typed_options_class(cls)
+        if typed_options is not None:
+            if "options" in cls.__dict__ or "default_options" in cls.__dict__:
+                raise RecipeException(
+                    "Typed recipes must define options only in the RecipeBase[...] "
+                    "options class, not with explicit options/default_options dictionaries")
+            options, default_options = _derive_options(typed_options)
+            recipe_cls = cast(Any, cls)
+            recipe_cls.options = options
+            recipe_cls.default_options = default_options
+
         license = cls.__dict__.get("license")
         if isinstance(license, str):
             cls.license = (license,)
@@ -76,7 +170,8 @@ class RecipeBase:
         # helpers) are registered afterwards in run_configure_method, so explicit decls win.
         self._requires: list[Requirement] = []
 
-        self.options = Options(self.options or {}, self.default_options)
+        recipe_options = getattr(type(self), "options", None)
+        cast(Any, self).options = Options(recipe_options or {}, self.default_options)
         self._recipe_dependencies: "RecipeDependencies | None" = None
         self.env_scripts = {}  # Accumulate the env scripts generated in order
         

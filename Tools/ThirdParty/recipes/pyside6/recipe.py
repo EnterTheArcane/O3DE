@@ -1,25 +1,21 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = True
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "pyside6"
     version = "6.11.1"
     license = "LGPL-3.0-only"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": True,
-        "fPIC": True,
-    }
 
     def requirements(self):
         self.requires("cpython")

@@ -1,29 +1,23 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    enable_cxx: bool = True
+    hl: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "hdf5"
     version = "2.1.1"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "enable_cxx": [True, False],
-        "hl": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "enable_cxx": True,
-        "hl": True,
-    }
 
     def configure(self):
         if not self.options.enable_cxx:

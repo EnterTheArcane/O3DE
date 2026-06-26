@@ -1,22 +1,19 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    thread_safe: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "cereal"
     version = "1.3.2"
     license = "BSD-3-Clause"
-
-    options = {
-        "thread_safe": [True, False],
-    }
-    default_options = {
-        "thread_safe": False,
-    }
 
     def latest_version(self):
         repo = GithubRepository(self, "USCiLab/cereal")

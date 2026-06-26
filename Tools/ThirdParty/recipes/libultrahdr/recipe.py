@@ -1,27 +1,23 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import apply_patches, copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_jpeg: Literal['libjpeg', 'libjpeg-turbo', 'mozjpeg'] = 'libjpeg'
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libultrahdr"
     version = "1.4.0"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_jpeg": ["libjpeg", "libjpeg-turbo", "mozjpeg"],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_jpeg": "libjpeg",
-    }
 
     def requirements(self):
         if self.options.with_jpeg == "libjpeg":

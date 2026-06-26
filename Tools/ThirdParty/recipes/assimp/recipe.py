@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import collect_libs, copy, get, replace_in_file, rmdir, save
@@ -10,21 +10,82 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    double_precision: bool = False
+    with_3d: bool = True
+    with_3ds: bool = True
+    with_3ds_exporter: bool = True
+    with_3mf: bool = True
+    with_3mf_exporter: bool = True
+    with_ac: bool = True
+    with_amf: bool = True
+    with_ase: bool = True
+    with_assbin: bool = True
+    with_assbin_exporter: bool = True
+    with_assxml_exporter: bool = True
+    with_assjson_exporter: bool = True
+    with_b3d: bool = True
+    with_blend: bool = True
+    with_bvh: bool = True
+    with_ms3d: bool = True
+    with_cob: bool = True
+    with_collada: bool = True
+    with_collada_exporter: bool = True
+    with_csm: bool = True
+    with_dxf: bool = True
+    with_fbx: bool = True
+    with_fbx_exporter: bool = True
+    with_gltf: bool = True
+    with_gltf_exporter: bool = True
+    with_hmp: bool = True
+    with_ifc: bool = True
+    with_irr: bool = True
+    with_irrmesh: bool = True
+    with_lwo: bool = True
+    with_lws: bool = True
+    with_md2: bool = True
+    with_md3: bool = True
+    with_md5: bool = True
+    with_mdc: bool = True
+    with_mdl: bool = True
+    with_mmd: bool = True
+    with_ndo: bool = True
+    with_nff: bool = True
+    with_obj: bool = True
+    with_obj_exporter: bool = True
+    with_off: bool = True
+    with_ogre: bool = True
+    with_opengex: bool = True
+    with_opengex_exporter: bool = True
+    with_pbrt_exporter: bool = True
+    with_ply: bool = True
+    with_ply_exporter: bool = True
+    with_q3bsp: bool = True
+    with_q3d: bool = True
+    with_raw: bool = True
+    with_sib: bool = True
+    with_smd: bool = True
+    with_step: bool = True
+    with_step_exporter: bool = True
+    with_stl: bool = True
+    with_stl_exporter: bool = True
+    with_terragen: bool = True
+    with_x: bool = True
+    with_x_exporter: bool = True
+    with_x3d: bool = True
+    with_x3d_exporter: bool = True
+    with_xgl: bool = True
+    with_m3d: bool = True
+    with_m3d_exporter: bool = True
+    with_iqm: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "assimp"
     version = "6.0.5"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "double_precision": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "double_precision": False,
-    }
 
     _format_option_map = {
         "with_3d": "ASSIMP_BUILD_3D_IMPORTER",
@@ -94,9 +155,6 @@ class Recipe(RecipeBase):
         "with_m3d_exporter": "ASSIMP_BUILD_M3D_EXPORTER",
         "with_iqm": "ASSIMP_BUILD_IQM_IMPORTER",
     }
-    options.update(dict.fromkeys(_format_option_map, [True, False]))
-    default_options.update(dict.fromkeys(_format_option_map, True))
-
     @property
     def _depends_on_kuba_zip(self):
         return self.options.with_3mf_exporter

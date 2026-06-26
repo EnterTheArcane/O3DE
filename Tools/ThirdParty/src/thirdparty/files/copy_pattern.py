@@ -1,6 +1,7 @@
 import filecmp
 import fnmatch
 import os
+from pathlib import Path
 import shutil
 
 from thirdparty._internal.util.files import mkdir
@@ -11,7 +12,14 @@ from thirdparty.recipe import RecipeBase
 
 
 def copy(
-    recipe: RecipeBase, pattern: str, src: str, dst: str, keep_path: bool = True, excludes: Any = None, ignore_case: bool = True, overwrite_equal: bool = False) -> list[str]:
+    recipe: RecipeBase,
+    pattern: str,
+    src: Path,
+    dst: str,
+    keep_path: bool = True,
+    excludes: Any = None,
+    ignore_case: bool = True,
+    overwrite_equal: bool = False) -> list[str]:
     """
     Copy the files matching the pattern (fnmatch) at the src folder to a dst folder.
 
@@ -59,7 +67,12 @@ def copy(
     return copied_files
 
 
-def _filter_files(src: str, pattern: str, excludes: Any, ignore_case: bool, excluded_folder: str) -> tuple[list[str], list[str]]:
+def _filter_files(
+        src: str,
+        pattern: str,
+        excludes: Any,
+        ignore_case: bool,
+        excluded_folder: str) -> tuple[list[str], list[str]]:
     """ return a list of the files matching the patterns
     The list will be relative path names wrt to the root src folder
     """

@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rmdir
 from thirdparty.microsoft import is_msvc
@@ -8,25 +8,18 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    header_only: bool = False
+    shared: bool = False
+    fPIC: bool = True
+    with_fmt_alias: bool = False
+    with_os_api: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "fmt"
     version = "12.1.0"
     license = "MIT"
-
-    options = {
-        "header_only": [True, False],
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_fmt_alias": [True, False],
-        "with_os_api": [True, False],
-    }
-    default_options = {
-        "header_only": False,
-        "shared": False,
-        "fPIC": True,
-        "with_fmt_alias": False,
-        "with_os_api": True,
-    }
 
     def config_options(self):
         if str(self.settings.os) == "baremetal":
@@ -34,11 +27,11 @@ class Recipe(RecipeBase):
 
     def configure(self):
         if self.options.header_only:
-            self.options.rm_safe("fPIC")
-            self.options.rm_safe("shared")
-            self.options.rm_safe("with_os_api")
+            del self.options.fPIC
+            del self.options.shared
+            del self.options.with_os_api
         elif self.options.shared:
-            self.options.rm_safe("fPIC")
+            del self.options.fPIC
 
     def latest_version(self):
         repo = GithubRepository(self, "fmtlib/fmt")

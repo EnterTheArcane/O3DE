@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
@@ -8,25 +8,18 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_openmp: bool = False
+    with_skia: bool = False
+    utility: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "msdfgen"
     version = "1.13"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_openmp": [True, False],
-        "with_skia": [True, False],
-        "utility": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_openmp": False,
-        "with_skia": False,
-        "utility": True,
-    }
 
     def requirements(self):
         self.requires("freetype")

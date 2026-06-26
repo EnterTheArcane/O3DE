@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import collect_libs, copy, get, rmdir
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
@@ -8,23 +9,17 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    char_type: Literal['char', 'wchar_t', 'ushort'] = 'char'
+    large_size: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "expat"
     version = "2.8.1"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "char_type": ["char", "wchar_t", "ushort"],
-        "large_size": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "char_type": "char",
-        "large_size": False,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
@@ -77,9 +72,9 @@ class Recipe(RecipeBase):
         self.info.libs = collect_libs(self)
         if not self.options.shared:
             self.info.defines = ["XML_STATIC"]
-        if self.options.get_safe("char_type") in ("wchar_t", "ushort"):
+        if self.options.char_type in ("wchar_t", "ushort"):
             self.info.defines.append("XML_UNICODE")
-        elif self.options.get_safe("char_type") == "wchar_t":
+        elif self.options.char_type == "wchar_t":
             self.info.defines.append("XML_UNICODE_WCHAR_T")
         if self.options.large_size:
             self.info.defines.append("XML_LARGE_SIZE")

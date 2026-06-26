@@ -1,35 +1,28 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import collect_libs, copy, get, load, replace_in_file, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    header_only: bool = False
+    wchar_mode: bool = False
+    no_exceptions: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "pugixml"
     version = "1.15"
     license = "MIT"
 
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "header_only": [True, False],
-        "wchar_mode": [True, False],
-        "no_exceptions": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "header_only": False,
-        "wchar_mode": False,
-        "no_exceptions": False,
-    }
-
     def configure(self):
         if self.options.shared or self.options.header_only:
-            self.options.rm_safe("fPIC")
+            del self.options.fPIC
         if self.options.header_only:
             del self.options.shared
 

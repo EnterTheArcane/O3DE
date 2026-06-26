@@ -2,7 +2,7 @@ import os
 import re
 import textwrap
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.env import VirtualRunEnv
 from thirdparty.files import apply_patches, copy, get, load, mkdir, replace_in_file, rm, rmdir, save, unzip
@@ -13,46 +13,27 @@ from thirdparty.microsoft import is_msvc, msvc_runtime_flag, msvs_toolset
 from thirdparty.scm import Version
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = True
+    fPIC: bool = True
+    optimizations: bool = False
+    lto: bool = False
+    docstrings: bool = True
+    pymalloc: bool = True
+    with_bz2: bool = True
+    with_gdbm: bool = True
+    with_nis: bool = False
+    with_sqlite3: bool = True
+    with_tkinter: bool = True
+    with_curses: bool = True
+    with_lzma: bool = True
+    env_vars: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "cpython"
     version = "3.12.7"
     license = "Python-2.0"
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "optimizations": [True, False],
-        "lto": [True, False],
-        "docstrings": [True, False],
-        "pymalloc": [True, False],
-        "with_bz2": [True, False],
-        "with_gdbm": [True, False],
-        "with_nis": [True, False],
-        "with_sqlite3": [True, False],
-        "with_tkinter": [True, False],
-        "with_curses": [True, False],
-        "with_lzma": [True, False],
-
-        # options that don't change package id
-        "env_vars": [True, False],  # set environment variables
-    }
-    default_options = {
-        "shared": True,
-        "fPIC": True,
-        "optimizations": False,
-        "lto": False,
-        "docstrings": True,
-        "pymalloc": True,
-        "with_bz2": True,
-        "with_gdbm": True,
-        "with_nis": False,
-        "with_sqlite3": True,
-        "with_tkinter": True,
-        "with_curses": True,
-        "with_lzma": True,
-
-        # options that don't change package id
-        "env_vars": True,
-    }
 
     @property
     def _supports_modules(self):
@@ -78,10 +59,10 @@ class Recipe(RecipeBase):
 
     def configure(self):
         if not self._supports_modules:
-            self.options.rm_safe("with_bz2")
-            self.options.rm_safe("with_sqlite3")
-            self.options.rm_safe("with_tkinter")
-            self.options.rm_safe("with_lzma")
+            del self.options.with_bz2
+            del self.options.with_sqlite3
+            del self.options.with_tkinter
+            del self.options.with_lzma
 
     def requirements(self):
         self.requires("zlib")
@@ -299,7 +280,7 @@ class Recipe(RecipeBase):
         self._inject_recipe_props_file("_ctypes", "libffi", self._supports_modules)
         self._inject_recipe_props_file("_decimal", "mpdecimal", self._supports_modules)
         self._inject_recipe_props_file("_lzma", "xz_utils", self.options.get_safe("with_lzma"))
-        self._inject_recipe_props_file("_bsddb", "libdb", self.options.get_safe("with_bsddb"))
+        self._inject_recipe_props_file("_bsddb", "libdb", self.options.with_bsddb)
 
     def _patch_sources(self):
         apply_patches(self)

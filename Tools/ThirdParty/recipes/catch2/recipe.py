@@ -1,33 +1,25 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_prefix: bool = False
+    default_reporter: str | None = None
+    console_width: str = '80'
+    no_posix_signals: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "catch2"
     version = "3.15.0"
     license = "BSL-1.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_prefix": [True, False],
-        "default_reporter": [None, "ANY"],
-        "console_width": ["ANY"],
-        "no_posix_signals": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_prefix": False,
-        "default_reporter": None,
-        "console_width": "80",
-        "no_posix_signals": False,
-    }
 
     @property
     def _default_reporter_str(self):

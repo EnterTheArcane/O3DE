@@ -1,31 +1,24 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    wchar_support: bool = False
+    wchar_filenames: bool = False
+    wchar_console: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "spdlog"
     version = "1.17.0"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "wchar_support": [True, False],
-        "wchar_filenames": [True, False],
-        "wchar_console": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "wchar_support": False,
-        "wchar_filenames": False,
-        "wchar_console": False,
-    }
 
     def config_options(self):
         if self.settings.os == "Windows":

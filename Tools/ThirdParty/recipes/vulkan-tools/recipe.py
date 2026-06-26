@@ -1,27 +1,22 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    build_cube: bool = True
+    build_vulkaninfo: bool = True
+    build_icd: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "vulkan-tools"
     version = "1.4.350.0"
     license = "Apache-2.0"
-
-    options = {
-        "build_cube": [True, False],
-        "build_vulkaninfo": [True, False],
-        "build_icd": [True, False],
-    }
-    default_options = {
-        "build_cube": True,
-        "build_vulkaninfo": True,
-        "build_icd": True,
-    }
 
     def requirements(self):
         self.requires("vulkan-headers")

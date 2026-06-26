@@ -1,26 +1,21 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get
 from thirdparty.microsoft import is_msvc
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    utils: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "giflib"
     version = "5.2.2"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "utils": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "utils": True,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")

@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv
@@ -19,19 +19,15 @@ from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = True
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libiconv"
     version = "1.18"
     license = "LGPL-2.1-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": True,
-        "fPIC": True,
-    }
 
     @property
     def _is_clang_cl(self):

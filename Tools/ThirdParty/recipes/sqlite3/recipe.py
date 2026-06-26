@@ -1,80 +1,49 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import get, load, save
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    threadsafe: Literal[0, 1, 2] = 1
+    enable_column_metadata: bool = True
+    enable_dbstat_vtab: bool = False
+    enable_explain_comments: bool = False
+    enable_fts3: bool = False
+    enable_fts3_parenthesis: bool = False
+    enable_fts4: bool = False
+    enable_fts5: bool = False
+    enable_icu: bool = False
+    enable_json1: bool = False
+    enable_memsys5: bool = False
+    enable_soundex: bool = False
+    enable_preupdate_hook: bool = False
+    enable_rtree: bool = True
+    use_alloca: bool = False
+    use_uri: bool = False
+    omit_load_extension: bool = False
+    omit_deprecated: bool = False
+    enable_math_functions: bool = True
+    enable_unlock_notify: bool = True
+    enable_default_secure_delete: bool = False
+    disable_gethostuuid: bool = False
+    max_column: str | None = None
+    max_variable_number: str | None = None
+    max_blob_size: str | None = None
+    build_executable: bool = True
+    enable_default_vfs: bool = True
+    enable_dbpage_vtab: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "sqlite3"
     version = "3.53.1"
     license = "Unlicense"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "threadsafe": [0, 1, 2],
-        "enable_column_metadata": [True, False],
-        "enable_dbstat_vtab": [True, False],
-        "enable_explain_comments": [True, False],
-        "enable_fts3": [True, False],
-        "enable_fts3_parenthesis": [True, False],
-        "enable_fts4": [True, False],
-        "enable_fts5": [True, False],
-        "enable_icu": [True, False],
-        "enable_json1": [True, False],
-        "enable_memsys5": [True, False],
-        "enable_soundex": [True, False],
-        "enable_preupdate_hook": [True, False],
-        "enable_rtree": [True, False],
-        "use_alloca": [True, False],
-        "use_uri": [True, False],
-        "omit_load_extension": [True, False],
-        "omit_deprecated": [True, False],
-        "enable_math_functions": [True, False],
-        "enable_unlock_notify": [True, False],
-        "enable_default_secure_delete": [True, False],
-        "disable_gethostuuid": [True, False],
-        "max_column": [None, "ANY"],
-        "max_variable_number": [None, "ANY"],
-        "max_blob_size": [None, "ANY"],
-        "build_executable": [True, False],
-        "enable_default_vfs": [True, False],
-        "enable_dbpage_vtab": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "threadsafe": 1,
-        "enable_column_metadata": True,
-        "enable_dbstat_vtab": False,
-        "enable_explain_comments": False,
-        "enable_fts3": False,
-        "enable_fts3_parenthesis": False,
-        "enable_fts4": False,
-        "enable_fts5": False,
-        "enable_icu": False,
-        "enable_json1": False,
-        "enable_memsys5": False,
-        "enable_soundex": False,
-        "enable_preupdate_hook": False,
-        "enable_rtree": True,
-        "use_alloca": False,
-        "use_uri": False,
-        "omit_load_extension": False,
-        "omit_deprecated": False,
-        "enable_math_functions": True,
-        "enable_unlock_notify": True,
-        "enable_default_secure_delete": False,
-        "disable_gethostuuid": False,
-        "max_column": None,  # Uses default value from source
-        "max_variable_number": None,  # Uses default value from source
-        "max_blob_size": None,  # Uses default value from source
-        "build_executable": True,
-        "enable_default_vfs": True,
-        "enable_dbpage_vtab": False,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
@@ -165,7 +134,7 @@ class Recipe(RecipeBase):
                 self.info.components["sqlite"].system_libs.append("pthread")
             if not self.options.omit_load_extension:
                 self.info.components["sqlite"].system_libs.append("dl")
-            if self.options.enable_fts5 or self.options.get_safe("enable_math_functions"):
+            if self.options.enable_fts5 or self.options.enable_math_functions:
                 self.info.components["sqlite"].system_libs.append("m")
         elif self.settings.os == "Windows":
             if self.options.shared:

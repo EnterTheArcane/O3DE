@@ -1,27 +1,23 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    isa: Literal['avx2', 'sse4.1', 'sse2', 'neon', 'none', 'native'] = 'native'
+
+
+class Recipe(RecipeBase[_Options]):
     name = "astc-encoder"
     version = "5.4.0"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "isa": ["avx2", "sse4.1", "sse2", "neon", "none", "native"],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "isa": "native",
-    }
 
     def config_options(self):
         if self.settings.arch in ["ARM"]:

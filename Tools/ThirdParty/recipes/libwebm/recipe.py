@@ -1,29 +1,23 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_pes_ts: bool = True
+    with_new_parser_api: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libwebm"
     version = "1.0.0.32"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_pes_ts": [True, False],
-        "with_new_parser_api": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_pes_ts": True,
-        "with_new_parser_api": False,
-    }
 
     def latest_version(self):
         repo = GithubRepository(self, "webmproject/libwebm")

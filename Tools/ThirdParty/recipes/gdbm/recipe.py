@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
@@ -10,35 +10,26 @@ from thirdparty.scm import GnuFtp
 from thirdparty.scm import Version
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    libgdbm_compat: bool = False
+    gdbmtool_debug: bool = True
+    with_libiconv: bool = False
+    with_readline: bool = False
+    with_nls: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "gdbm"
     version = "1.26"
     license = "GPL-3.0-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "libgdbm_compat": [True, False],
-        "gdbmtool_debug": [True, False],
-        "with_libiconv": [True, False],
-        "with_readline": [True, False],
-        "with_nls": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "libgdbm_compat": False,
-        "gdbmtool_debug": True,
-        "with_libiconv": False,
-        "with_readline": False,
-        "with_nls": True,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
         if not self.options.with_nls:
-            self.options.rm_safe("with_libiconv")
+            del self.options.with_libiconv
 
     def validate(self):
         from thirdparty.errors import RecipeInvalidConfiguration

@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, rmdir
@@ -8,17 +8,14 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "d3d12-memory-allocator"
     version = "3.1.0"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-    }
-    default_options = {
-        "shared": False,
-    }
 
     def validate(self):
         if self.settings.os != "Windows":

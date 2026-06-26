@@ -1,7 +1,7 @@
 import os
 import re
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, load
@@ -10,21 +10,16 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    zlib_compat: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "zlib-ng"
     version = "2.3.3"
     license = "Zlib"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "zlib_compat": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "zlib_compat": False,
-    }
 
     @property
     def _is_windows(self):

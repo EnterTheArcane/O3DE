@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, copy, get, rename, rm, rmdir, replace_in_file
 from thirdparty.meson import Meson, MesonToolchain
@@ -9,28 +9,23 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    enable_lib: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "pkgconf"
     version = "2.5.1"
     license = "ISC"
 
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "enable_lib": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "enable_lib": False,
-    }
-
     def configure(self):
         if not self.options.enable_lib:
-            self.options.rm_safe("fPIC")
-            self.options.rm_safe("shared")
+            del self.options.fPIC
+            del self.options.shared
         elif self.options.shared:
-            self.options.rm_safe("fPIC")
+            del self.options.fPIC
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")

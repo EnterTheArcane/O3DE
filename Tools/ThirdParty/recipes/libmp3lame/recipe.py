@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, chdir, copy, get, rename, replace_in_file, rm, rmdir
@@ -10,19 +10,15 @@ from thirdparty.nmake import NMakeToolchain
 from thirdparty.microsoft import is_msvc
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libmp3lame"
     version = "3.100"
     license = "LGPL-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     @property
     def _is_clang_cl(self):

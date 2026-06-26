@@ -1,7 +1,7 @@
 import os
 import textwrap
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir, save
 from thirdparty.msbuild import MSBuild, MSBuildToolchain
@@ -10,21 +10,16 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_tools: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "xz_utils"
     version = "5.8.3"
     license = "Unlicense", "LGPL-2.1-or-later", "GPL-2.0-or-later", "GPL-3.0-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_tools": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_tools": False,
-    }
 
     @property
     def _effective_msbuild_type(self):

@@ -1,61 +1,40 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_libjpeg: Literal['libjpeg', 'libjpeg-turbo'] = 'libjpeg'
+    with_libjxl: bool = True
+    with_libpng: bool = True
+    with_freetype: bool = True
+    with_opencolorio: bool = True
+    with_opencv: bool = False
+    with_tbb: bool = False
+    with_dicom: bool = False
+    with_ffmpeg: bool = False
+    with_giflib: bool = True
+    with_libheif: bool = True
+    with_raw: bool = False
+    with_openjpeg: bool = True
+    with_openjph: bool = True
+    with_openvdb: bool = False
+    with_ptex: bool = True
+    with_libwebp: bool = True
+    with_libultrahdr: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "openimageio"
     version = "3.1.13.1"
     license = "Apache-2.0", "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_libjpeg": ["libjpeg", "libjpeg-turbo"],
-        "with_libjxl": [True, False],
-        "with_libpng": [True, False],
-        "with_freetype": [True, False],
-        "with_opencolorio": [True, False],
-        "with_opencv": [True, False],
-        "with_tbb": [True, False],
-        "with_dicom": [True, False],
-        "with_ffmpeg": [True, False],
-        "with_giflib": [True, False],
-        "with_libheif": [True, False],
-        "with_raw": [True, False],
-        "with_openjpeg": [True, False],
-        "with_openjph": [True, False],
-        "with_openvdb": [True, False],
-        "with_ptex": [True, False],
-        "with_libwebp": [True, False],
-        "with_libultrahdr": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_libjpeg": "libjpeg",
-        "with_libjxl": True,
-        "with_libpng": True,
-        "with_freetype": True,
-        "with_opencolorio": True,
-        "with_opencv": False,
-        "with_tbb": False,
-        "with_dicom": False,  # Heavy dependency, disabled by default
-        "with_ffmpeg": False,
-        "with_giflib": True,
-        "with_libheif": True,
-        "with_raw": False,  # libraw is available under CDDL-1.0 or LGPL-2.1, for this reason it is disabled by default
-        "with_openjpeg": True,
-        "with_openjph": True,
-        "with_openvdb": False,  # FIXME: broken on M1
-        "with_ptex": True,
-        "with_libwebp": True,
-        "with_libultrahdr": True,
-    }
 
     def config_options(self):
         del self.options.with_opencolorio
@@ -70,7 +49,7 @@ class Recipe(RecipeBase):
             self.requires("libjpeg")
         elif self.options.with_libjpeg == "libjpeg-turbo":
             self.requires("libjpeg-turbo")
-        if self.options.get_safe("with_libjxl"):
+        if self.options.with_libjxl:
             self.requires("libjxl")
         self.requires("pugixml")
         self.requires("libsquish")
@@ -101,7 +80,7 @@ class Recipe(RecipeBase):
             self.requires("libraw")
         if self.options.with_openjpeg:
             self.requires("openjpeg")
-        if self.options.get_safe("with_openjph", False):
+        if self.options.with_openjph:
             self.requires("openjph")
         if self.options.with_openvdb:
             self.requires("openvdb")
@@ -109,7 +88,7 @@ class Recipe(RecipeBase):
             self.requires("ptex")
         if self.options.with_libwebp:
             self.requires("libwebp")
-        if self.options.get_safe("with_libultrahdr"):
+        if self.options.with_libultrahdr:
             self.requires("libultrahdr")
         # TODO: R3DSDK dependency
         # TODO: Nuke dependency
@@ -154,7 +133,7 @@ class Recipe(RecipeBase):
         tc.variables[
             "USE_JPEG"
         ] = True  # Needed for jpeg.imageio plugin, libjpeg/libjpeg-turbo selection still works
-        tc.cache_variables["USE_JXL"] = self.options.get_safe("with_libjxl", False)
+        tc.cache_variables["USE_JXL"] = self.options.with_libjxl
         tc.variables["USE_OPENCOLORIO"] = self.options.get_safe("with_opencolorio", True)
         tc.variables["USE_OPENCV"] = self.options.with_opencv
         tc.variables["USE_TBB"] = self.options.with_tbb
@@ -173,7 +152,7 @@ class Recipe(RecipeBase):
         tc.variables["USE_FREETYPE"] = self.options.with_freetype
         tc.variables["USE_LIBWEBP"] = self.options.with_libwebp
         tc.variables["USE_OPENJPEG"] = self.options.with_openjpeg
-        tc.cache_variables["USE_OPENJPH"] = self.options.get_safe("with_openjph", False)
+        tc.cache_variables["USE_OPENJPH"] = self.options.with_openjph
 
         tc.cache_variables["USE_FFMPEG"] = self.options.with_ffmpeg
         if self.options.with_ffmpeg:
@@ -197,15 +176,15 @@ class Recipe(RecipeBase):
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Libheif"] = self.options.with_libheif
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_LibRaw"] = self.options.with_raw
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_OpenJPEG"] = self.options.with_openjpeg
-        tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_openjph"] = self.options.get_safe("with_openjph", False)
+        tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_openjph"] = self.options.with_openjph
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Ptex"] = self.options.with_ptex
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_WebP"] = self.options.with_libwebp
-        tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_JXL"] = self.options.get_safe("with_libjxl", False)
+        tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_JXL"] = self.options.with_libjxl
 
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_libjpeg-turbo"] = self.options.with_libjpeg != "libjpeg-turbo"
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_R3DSDK"] = True
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_Nuke"] = True
-        tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_JXL"] = not self.options.get_safe("with_libjxl", False)
+        tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_JXL"] = not self.options.with_libjxl
 
         if self.settings.os == "Linux":
             # Workaround for: upstream issue 13560
@@ -315,7 +294,7 @@ class Recipe(RecipeBase):
             open_image_io.requires.append("libraw::libraw")
         if self.options.with_openjpeg:
             open_image_io.requires.append("openjpeg::openjpeg")
-        if self.options.get_safe("with_openjph", False):
+        if self.options.with_openjph:
             open_image_io.requires.append("openjph::openjph")
         if self.options.with_openvdb:
             open_image_io.requires.append("openvdb::openvdb")
@@ -323,9 +302,9 @@ class Recipe(RecipeBase):
             open_image_io.requires.append("ptex::ptex")
         if self.options.with_libwebp:
             open_image_io.requires.append("libwebp::libwebp")
-        if self.options.get_safe("with_libultrahdr"):
+        if self.options.with_libultrahdr:
             open_image_io.requires.append("libultrahdr::libultrahdr")
-        if self.options.get_safe("with_libjxl"):
+        if self.options.with_libjxl:
             open_image_io.requires.extend(["libjxl::libjxl", "libjxl::jxl_threads"])
         if self.settings.os in ["Linux", "FreeBSD"]:
             open_image_io.system_libs.extend(["dl", "m", "pthread"])

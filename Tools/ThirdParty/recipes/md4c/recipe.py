@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
@@ -8,22 +9,17 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    md2html: bool
+    encoding: Literal['utf-8', 'utf-16', 'ascii'] = 'utf-8'
+
+
+class Recipe(RecipeBase[_Options]):
     name = "md4c"
     version = "0.5.3"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "md2html": [True, False],
-        "encoding": ["utf-8", "utf-16", "ascii"],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "encoding": "utf-8",
-    }
 
     def config_options(self):
         # Set it to false for iOS, tvOS, watchOS, visionOS
@@ -49,7 +45,7 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.cache_variables["BUILD_MD2HTML_EXECUTABLE"] = self.options.get_safe("md2html", True)
+        tc.cache_variables["BUILD_MD2HTML_EXECUTABLE"] = self.options.md2html
         if self.options.encoding == "utf-8":
             tc.preprocessor_definitions["MD4C_USE_UTF8"] = "1"
         elif self.options.encoding == "utf-16":

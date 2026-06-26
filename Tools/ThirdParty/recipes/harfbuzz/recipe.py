@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
 from thirdparty.env import Environment, VirtualBuildEnv
@@ -12,31 +12,21 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_glib: bool = False
+    with_gdi: bool = True
+    with_uniscribe: bool = True
+    with_directwrite: bool = False
+    with_subset: bool = True
+    with_coretext: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "harfbuzz"
     version = "14.2.0"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_glib": [True, False],
-        "with_gdi": [True, False],
-        "with_uniscribe": [True, False],
-        "with_directwrite": [True, False],
-        "with_subset": [True, False],
-        "with_coretext": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_glib": False,
-        "with_gdi": True,
-        "with_uniscribe": True,
-        "with_directwrite": False,
-        "with_subset": True,
-        "with_coretext": True,
-    }
 
     def config_options(self):
         if self.settings.os == "Windows":

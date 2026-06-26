@@ -1,43 +1,30 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMakeToolchain, CMakeDeps, CMake
 from thirdparty.files import copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.gitlab import GitlabRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    build_encoder: bool = True
+    build_decoder: bool = True
+    minimal_build: bool = False
+    with_neon: bool = True
+    with_arm_crc32: bool = True
+    with_neon_dotprod: bool = True
+    with_neon_i8mm: bool = True
+    with_neon_sve: bool = True
+    with_neon_sve2: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "svt-av1"
     version = "2.2.1"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "build_encoder": [True, False],
-        "build_decoder": [True, False],
-        "minimal_build": [True, False],
-        "with_neon": [True, False],
-        "with_arm_crc32": [True, False],
-        "with_neon_dotprod": [True, False],
-        "with_neon_i8mm": [True, False],
-        "with_neon_sve": [True, False],
-        "with_neon_sve2": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "build_encoder": True,
-        "build_decoder": True,
-        "minimal_build": False,
-        "with_neon": True,
-        "with_arm_crc32": True,
-        "with_neon_dotprod": True,
-        "with_neon_i8mm": True,
-        "with_neon_sve": True,
-        "with_neon_sve2": True,
-    }
 
     def config_options(self):
         del self.options.build_decoder

@@ -1,4 +1,4 @@
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
@@ -8,21 +8,16 @@ from thirdparty.nmake import NMakeDeps, NMakeToolchain
 from thirdparty.microsoft import VCVars, is_msvc
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    cxx: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "mpdecimal"
     version = "4.0.0"
     license = "BSD-2-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "cxx": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "cxx": False,
-    }
 
     def configure(self):
         if not self.options.cxx:

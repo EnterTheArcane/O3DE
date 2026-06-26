@@ -1,7 +1,7 @@
 import os
 import textwrap
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir, save
@@ -9,39 +9,25 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    build_executable: bool = True
+    exceptions: bool = True
+    glsl: bool = True
+    hlsl: bool = True
+    msl: bool = True
+    cpp: bool = True
+    reflect: bool = True
+    c_api: bool = True
+    util: bool = True
+    namespace: str = 'spirv_cross'
+
+
+class Recipe(RecipeBase[_Options]):
     name = "spirv-cross"
     version = "1.4.350.0"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "build_executable": [True, False],
-        "exceptions": [True, False],
-        "glsl": [True, False],
-        "hlsl": [True, False],
-        "msl": [True, False],
-        "cpp": [True, False],
-        "reflect": [True, False],
-        "c_api": [True, False],
-        "util": [True, False],
-        "namespace": ["ANY"],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "build_executable": True,
-        "exceptions": True,
-        "glsl": True,
-        "hlsl": True,
-        "msl": True,
-        "cpp": True,
-        "reflect": True,
-        "c_api": True,
-        "util": True,
-        "namespace": "spirv_cross",
-    }
 
     def configure(self):
         if self.options.shared:

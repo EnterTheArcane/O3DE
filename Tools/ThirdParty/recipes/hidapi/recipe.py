@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
@@ -9,19 +9,15 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    fPIC: bool = True
+    shared: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "hidapi"
     version = "0.15.0"
     license = "GPL-3.0-or-later", "BSD-3-Clause"
-
-    options = {
-        "fPIC": [True, False],
-        "shared": [True, False],
-    }
-    default_options = {
-        "fPIC": True,
-        "shared": False,
-    }
 
     @property
     def _msbuild_configuration(self):

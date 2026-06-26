@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.microsoft import is_msvc
@@ -8,29 +9,20 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    neon: Literal[True, 'check', False] = True
+    msa: bool = True
+    sse: bool = True
+    vsx: bool = True
+    api_prefix: str = ''
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libpng"
     version = "1.6.58"
     license = "libpng-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "neon": [True, "check", False],
-        "msa": [True, False],
-        "sse": [True, False],
-        "vsx": [True, False],
-        "api_prefix": ["ANY"],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "neon": True,
-        "msa": True,
-        "sse": True,
-        "vsx": True,
-        "api_prefix": "",
-    }
 
     @property
     def _is_clang_cl(self):

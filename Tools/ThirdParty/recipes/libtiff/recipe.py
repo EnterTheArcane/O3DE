@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.microsoft import is_msvc
@@ -8,35 +9,23 @@ from thirdparty.scm import Version
 from thirdparty.scm.gitlab import GitlabRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    lzma: bool = True
+    jpeg: Literal[False, "libjpeg", "libjpeg-turbo", "mozjpeg"] = "libjpeg"
+    zlib: bool = True
+    libdeflate: bool = False
+    zstd: bool = False
+    jbig: bool = False
+    webp: bool = False
+    cxx: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libtiff"
     version = "4.7.1"
     license = "libtiff"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "lzma": [True, False],
-        "jpeg": [False, "libjpeg", "libjpeg-turbo", "mozjpeg"],
-        "zlib": [True, False],
-        "libdeflate": [True, False],
-        "zstd": [True, False],
-        "jbig": [True, False],
-        "webp": [True, False],
-        "cxx": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "lzma": True,
-        "jpeg": "libjpeg",
-        "zlib": True,
-        "libdeflate": False,
-        "zstd": False,
-        "jbig": False,
-        "webp": False,
-        "cxx": True,
-    }
 
     def configure(self):
         if not self.options.cxx:

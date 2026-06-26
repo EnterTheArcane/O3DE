@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.microsoft import msvc_runtime_flag
@@ -8,21 +8,16 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    no_main: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "googletest"
     version = "1.17.0"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "no_main": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "no_main": False,
-    }
 
     def latest_version(self):
         repo = GithubRepository(self, "google/googletest")

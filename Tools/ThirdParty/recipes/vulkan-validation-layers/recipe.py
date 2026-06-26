@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rename, rm, replace_in_file
 from thirdparty.pkgconfig import PkgConfigDeps
@@ -8,21 +8,16 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    with_wsi_xcb: bool = True
+    with_wsi_xlib: bool = True
+    with_wsi_wayland: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "vulkan-validation-layers"
     version = "1.4.352"
     license = "Apache-2.0"
-
-    options = {
-        "with_wsi_xcb": [True, False],
-        "with_wsi_xlib": [True, False],
-        "with_wsi_wayland": [True, False],
-    }
-    default_options = {
-        "with_wsi_xcb": True,
-        "with_wsi_xlib": True,
-        "with_wsi_wayland": True,
-    }
 
     @property
     def _has_wsi_options(self):

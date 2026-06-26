@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.env import VirtualBuildEnv
@@ -10,107 +11,59 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    build_executable: bool = False
+    with_ssl: Literal[False, 'openssl', 'wolfssl', 'schannel', 'mbedtls', 'libressl'] = 'openssl'
+    with_file: bool = True
+    with_ftp: bool = True
+    with_http: bool = True
+    with_ldap: bool = False
+    with_rtsp: bool = True
+    with_dict: bool = True
+    with_telnet: bool = True
+    with_tftp: bool = True
+    with_pop3: bool = True
+    with_imap: bool = True
+    with_smb: bool = False
+    with_smtp: bool = True
+    with_gopher: bool = True
+    with_mqtt: bool = True
+    with_libssh2: bool = False
+    with_libidn: bool = False
+    with_libgsasl: bool = False
+    with_libpsl: bool = False
+    with_largemaxwritesize: bool = False
+    with_nghttp2: bool = False
+    with_zlib: bool = True
+    with_brotli: bool = False
+    with_zstd: bool = False
+    with_c_ares: bool = False
+    with_threaded_resolver: bool = True
+    with_proxy: bool = True
+    with_crypto_auth: bool = True
+    with_ntlm: bool = False
+    with_cookies: bool = True
+    with_ipv6: bool = True
+    with_docs: bool = False
+    with_misc_docs: bool = False
+    with_verbose_debug: bool = True
+    with_symbol_hiding: bool = False
+    with_unix_sockets: bool = True
+    with_verbose_strings: bool = True
+    with_ca_bundle: Literal[False, 'auto'] | str = 'auto'
+    with_ca_path: Literal[False, 'auto'] | str = 'auto'
+    with_ca_fallback: bool = False
+    with_form_api: bool = True
+    with_websockets: bool = True
+    with_apple_sectrust: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libcurl"
     version = "8.20.0"
     license = "curl"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "build_executable": [True, False],
-        "with_ssl": [False, "openssl", "wolfssl", "schannel", "mbedtls", "libressl"],
-        "with_file": [True, False],
-        "with_ftp": [True, False],
-        "with_http": [True, False],
-        "with_ldap": [True, False],
-        "with_rtsp": [True, False],
-        "with_dict": [True, False],
-        "with_telnet": [True, False],
-        "with_tftp": [True, False],
-        "with_pop3": [True, False],
-        "with_imap": [True, False],
-        "with_smb": [True, False],
-        "with_smtp": [True, False],
-        "with_gopher": [True, False],
-        "with_mqtt": [True, False],
-        "with_libssh2": [True, False],
-        "with_libidn": [True, False],
-        "with_libgsasl": [True, False],
-        "with_libpsl": [True, False],
-        "with_largemaxwritesize": [True, False],
-        "with_nghttp2": [True, False],
-        "with_zlib": [True, False],
-        "with_brotli": [True, False],
-        "with_zstd": [True, False],
-        "with_c_ares": [True, False],
-        "with_threaded_resolver": [True, False],
-        "with_proxy": [True, False],
-        "with_crypto_auth": [True, False],
-        "with_ntlm": [True, False],
-        "with_cookies": [True, False],
-        "with_ipv6": [True, False],
-        "with_docs": [True, False],
-        "with_misc_docs": [True, False],
-        "with_verbose_debug": [True, False],
-        "with_symbol_hiding": [True, False],
-        "with_unix_sockets": [True, False],
-        "with_verbose_strings": [True, False],
-        "with_ca_bundle": [False, "auto", "ANY"],
-        "with_ca_path": [False, "auto", "ANY"],
-        "with_ca_fallback": [True, False],
-        "with_form_api": [True, False],
-        "with_websockets": [True, False],
-        "with_apple_sectrust": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "build_executable": False,
-        "with_ssl": "openssl",
-        "with_dict": True,
-        "with_file": True,
-        "with_ftp": True,
-        "with_gopher": True,
-        "with_http": True,
-        "with_imap": True,
-        "with_ldap": False,
-        "with_mqtt": True,
-        "with_pop3": True,
-        "with_rtsp": True,
-        "with_smb": False,
-        "with_smtp": True,
-        "with_telnet": True,
-        "with_tftp": True,
-        "with_libssh2": False,
-        "with_libidn": False,
-        "with_libgsasl": False,
-        "with_libpsl": False,
-        "with_largemaxwritesize": False,
-        "with_nghttp2": False,
-        "with_zlib": True,
-        "with_brotli": False,
-        "with_zstd": False,
-        "with_c_ares": False,
-        "with_threaded_resolver": True,
-        "with_proxy": True,
-        "with_crypto_auth": True,
-        "with_ntlm": False,
-        "with_cookies": True,
-        "with_ipv6": True,
-        "with_docs": False,
-        "with_misc_docs": False,
-        "with_verbose_debug": True,
-        "with_symbol_hiding": False,
-        "with_unix_sockets": True,
-        "with_verbose_strings": True,
-        "with_ca_bundle": "auto",
-        "with_ca_path": "auto",
-        "with_ca_fallback": False,
-        "with_form_api": True,
-        "with_websockets": True,
-        "with_apple_sectrust": False,
-    }
 
     @property
     def _is_mingw(self):
@@ -158,7 +111,7 @@ class Recipe(RecipeBase):
             self.requires("zstd")
         if self.options.with_c_ares:
             self.requires("c-ares")
-        if self.options.get_safe("with_libpsl"):
+        if self.options.with_libpsl:
             self.requires("libpsl")
         if self.options.with_libidn:
             self.requires("libidn2")
@@ -304,7 +257,7 @@ class Recipe(RecipeBase):
             deps.set_property("libidn2", "cmake_target_name", "CURL::libidn2")
             deps.set_property("libidn2", "cmake_additional_variables_prefixes", ["LIBIDN2"])
 
-        if self.options.get_safe("with_libpsl"):
+        if self.options.with_libpsl:
             deps.set_property("libpsl", "cmake_target_name", "CURL::libpsl")
 
         if self.options.with_libssh2:
@@ -408,7 +361,7 @@ class Recipe(RecipeBase):
             self.info.components["curl"].requires.append("zstd::zstd")
         if self.options.with_c_ares:
             self.info.components["curl"].requires.append("c-ares::c-ares")
-        if self.options.get_safe("with_libpsl"):
+        if self.options.with_libpsl:
             self.info.components["curl"].requires.append("libpsl::libpsl")
         if self.options.with_libidn:
             self.info.components["curl"].requires.append("libidn2::libidn2")

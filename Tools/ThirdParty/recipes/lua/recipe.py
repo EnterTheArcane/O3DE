@@ -1,35 +1,28 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import get, load, save, apply_patches, collect_libs
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    compile_as_cpp: bool = False
+    with_tools: bool = False
+    with_readline: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "lua"
     version = "5.5.0"
     license = "MIT"
 
-    options = {
-        "shared": [False, True],
-        "fPIC": [True, False],
-        "compile_as_cpp": [True, False],
-        "with_tools": [True, False],
-        "with_readline": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "compile_as_cpp": False,
-        "with_tools": False,
-        "with_readline": False,
-    }
-
     def configure(self):
         if not self.options.compile_as_cpp:
-            self.options.rm_safe("compiler.libcxx")
-            self.options.rm_safe("compiler.cppstd")
+            self.settings.rm_safe("compiler.libcxx")
+            self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
         if self.options.with_tools and self.options.with_readline:

@@ -1,7 +1,7 @@
 import os
 import re
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
 from thirdparty.env import Environment, VirtualBuildEnv
@@ -12,24 +12,26 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    mmx: bool = True
+    sse: bool = True
+    sse2: bool = True
+    sse3: bool = True
+    ssse3: bool = True
+    sse4_1: bool = True
+    avx: bool = False
+    avx2: bool = False
+    avx512: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libvpx"
     version = "1.16.0"
     license = "BSD-3-Clause"
 
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
-
     _arch_options = ["mmx", "sse", "sse2", "sse3", "ssse3", "sse4_1", "avx", "avx2", "avx512"]
-
-    options.update({name: [True, False] for name in _arch_options})
-    default_options.update({name: "avx" not in name for name in _arch_options})
 
     def config_options(self):
         if str(self.settings.arch) not in ["X64"]:
@@ -40,7 +42,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             del self.options.shared
         if self.options.get_safe("shared"):
-            self.options.rm_safe("fPIC")
+            del self.options.fPIC
         if self.settings.os == "Android":
             del self.options.shared
 

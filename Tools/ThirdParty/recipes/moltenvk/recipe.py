@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.errors import RecipeInvalidConfiguration
@@ -9,23 +9,17 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = True
+    fPIC: bool = True
+    hide_vulkan_symbols: bool = False
+    tools: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "moltenvk"
     version = "1.4.1"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "hide_vulkan_symbols": [True, False],
-        "tools": [True, False],
-    }
-    default_options = {
-        "shared": True,
-        "fPIC": True,
-        "hide_vulkan_symbols": False,
-        "tools": True,
-    }
 
     def validate(self):
         if not is_apple_os(self):
@@ -34,9 +28,9 @@ class Recipe(RecipeBase):
 
     def configure(self):
         if self.options.shared:
-            self.options.rm_safe("fPIC")
+            del self.options.fPIC
         else:
-            self.options.rm_safe("hide_vulkan_symbols")
+            del self.options.hide_vulkan_symbols
 
     def requirements(self):
         self.requires("cereal")

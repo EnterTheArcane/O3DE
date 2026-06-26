@@ -1,7 +1,7 @@
 import os
 import re
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, chdir, copy, get, load, replace_in_file, rm, rmdir, save
@@ -9,19 +9,15 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.msbuild import MSBuild, MSBuildToolchain
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libjpeg"
     version = "9f"
     license = "IJG"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     @property
     def _is_cl_like(self):

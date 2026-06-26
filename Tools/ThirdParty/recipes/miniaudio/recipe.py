@@ -1,31 +1,26 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    header_only: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "miniaudio"
     version = "0.11.25"
     license = "Unlicense"
 
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "header_only": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "header_only": True,
-    }
-
     def configure(self):
         if self.options.header_only or self.options.shared:
-            self.options.rm_safe("fPIC")
+            del self.options.fPIC
         if self.options.header_only:
             del self.options.shared
         self.settings.rm_safe("compiler.libcxx")
@@ -83,7 +78,7 @@ class Recipe(RecipeBase):
             cmake.install()
 
     def package_info(self):
-        if self.options.get_safe("header_only"):
+        if self.options.header_only:
             self.info.bindirs = []
             self.info.libdirs = []
         if self.settings.os in ["Linux", "FreeBSD"]:

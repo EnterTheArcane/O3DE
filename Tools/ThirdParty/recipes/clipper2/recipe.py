@@ -1,31 +1,25 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import get, copy, rmdir, apply_patches, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    usingz: Literal['ON', 'OFF', 'ONLY'] = 'ON'
+    with_max_precision: int = 8
+    with_hi_precision: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "clipper2"
     version = "2.0.1"
     license = "BSL-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "usingz": ["ON", "OFF", "ONLY"],
-        "with_max_precision": ["ANY"],
-        "with_hi_precision": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "usingz": "ON",
-        "with_max_precision": 8,
-        "with_hi_precision": False,
-    }
 
     def latest_version(self):
         repo = GithubRepository(self, "AngusJohnson/Clipper2")

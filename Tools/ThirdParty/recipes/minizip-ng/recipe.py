@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir
@@ -8,37 +8,24 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    mz_compatibility: bool = False
+    with_zlib: bool = True
+    with_bzip2: bool = True
+    with_lzma: bool = True
+    with_zstd: bool = True
+    with_openssl: bool = True
+    with_iconv: bool = True
+    with_libbsd: bool = True
+    with_libcomp: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "minizip-ng"
     version = "4.2.1"
     license = "Zlib"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "mz_compatibility": [True, False],
-        "with_zlib": [True, False],
-        "with_bzip2": [True, False],
-        "with_lzma": [True, False],
-        "with_zstd": [True, False],
-        "with_openssl": [True, False],
-        "with_iconv": [True, False],
-        "with_libbsd": [True, False],
-        "with_libcomp": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "mz_compatibility": False,
-        "with_zlib": True,
-        "with_bzip2": True,
-        "with_lzma": True,
-        "with_zstd": True,
-        "with_openssl": True,
-        "with_iconv": True,
-        "with_libbsd": True,
-        "with_libcomp": True,
-    }
 
     def config_options(self):
         if self.settings.os == "Windows":

@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import cross_building, stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
@@ -8,30 +9,21 @@ from thirdparty.files import apply_patches, copy, get, replace_in_file, rename, 
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    assembly: bool = True
+    bit_depth: Literal[8, 10, 12] = 8
+    HDR10: bool = False
+    SVG_HEVC_encoder: bool = False
+    with_numa: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libx265"
     version = "4.2"
     # https://bitbucket.org/multicoreware/x265/src/default/COPYING
     license = "GPL-2.0-only", "commercial"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "assembly": [True, False],
-        "bit_depth": [8, 10, 12],
-        "HDR10": [True, False],
-        "SVG_HEVC_encoder": [True, False],
-        "with_numa": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "assembly": True,
-        "bit_depth": 8,
-        "HDR10": False,
-        "SVG_HEVC_encoder": False,
-        "with_numa": False,
-    }
 
     def config_options(self):
         if self.settings.os != "Linux":

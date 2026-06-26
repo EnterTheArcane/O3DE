@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMakeToolchain, CMake
 from thirdparty.files import load, get, apply_patches, rmdir, copy, replace_in_file, save
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
@@ -8,25 +9,18 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    release_build_type: Literal['profile', 'release'] = 'release'
+    enable_simd: bool = True
+    enable_float_point_precise_math: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "physx"
     version = "4.1.2"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "release_build_type": ["profile", "release"],
-        "enable_simd": [True, False],
-        "enable_float_point_precise_math": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "release_build_type": "release",
-        "enable_simd": True,
-        "enable_float_point_precise_math": False,
-    }
 
     def config_options(self):
         if self.settings.build_type != "Release":

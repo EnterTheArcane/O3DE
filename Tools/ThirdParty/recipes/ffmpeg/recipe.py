@@ -2,8 +2,9 @@ import glob
 import os
 import re
 import shutil
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building
 from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
@@ -18,195 +19,103 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    avdevice: bool = True
+    avcodec: bool = True
+    avformat: bool = True
+    swresample: bool = True
+    swscale: bool = True
+    postproc: bool = True
+    avfilter: bool = True
+    with_asm: bool = True
+    with_zlib: bool = True
+    with_bzip2: bool = True
+    with_lzma: bool = True
+    with_libiconv: bool = True
+    with_freetype: bool = True
+    with_libxml2: bool = False
+    with_fontconfig: bool = False
+    with_fribidi: bool = False
+    with_harfbuzz: bool = False
+    with_libjxl: bool = False
+    with_openapv: bool = False
+    with_openjpeg: bool = True
+    with_openh264: bool = True
+    with_opus: bool = True
+    with_vorbis: bool = True
+    with_zeromq: bool = False
+    with_sdl: bool = False
+    with_libx264: bool = True
+    with_libx265: bool = True
+    with_libvpx: bool = True
+    with_libmp3lame: bool = True
+    with_libfdk_aac: bool = True
+    with_libwebp: bool = True
+    with_ssl: Literal[False, 'openssl', 'securetransport'] = 'openssl'
+    with_libalsa: bool = True
+    with_pulse: bool = True
+    with_vaapi: bool = True
+    with_vdpau: bool = True
+    with_vulkan: bool = False
+    with_whisper: bool = False
+    with_xcb: bool = True
+    with_soxr: bool = False
+    with_appkit: bool = True
+    with_avfoundation: bool = True
+    with_coreimage: bool = True
+    with_audiotoolbox: bool = True
+    with_videotoolbox: bool = True
+    with_programs: bool = True
+    with_libsvtav1: bool = True
+    with_libaom: bool = True
+    with_libdav1d: bool = True
+    with_libdrm: bool = False
+    with_jni: bool = False
+    with_mediacodec: bool = False
+    with_xlib: bool = True
+    disable_everything: bool = False
+    disable_all_encoders: bool = False
+    disable_encoders: str | None = None
+    enable_encoders: str | None = None
+    disable_all_decoders: bool = False
+    disable_decoders: str | None = None
+    enable_decoders: str | None = None
+    disable_all_hardware_accelerators: bool = False
+    disable_hardware_accelerators: str | None = None
+    enable_hardware_accelerators: str | None = None
+    disable_all_muxers: bool = False
+    disable_muxers: str | None = None
+    enable_muxers: str | None = None
+    disable_all_demuxers: bool = False
+    disable_demuxers: str | None = None
+    enable_demuxers: str | None = None
+    disable_all_parsers: bool = False
+    disable_parsers: str | None = None
+    enable_parsers: str | None = None
+    disable_all_bitstream_filters: bool = False
+    disable_bitstream_filters: str | None = None
+    enable_bitstream_filters: str | None = None
+    disable_all_protocols: bool = False
+    disable_protocols: str | None = None
+    enable_protocols: str | None = None
+    disable_all_devices: bool = False
+    disable_all_input_devices: bool = False
+    disable_input_devices: str | None = None
+    enable_input_devices: str | None = None
+    disable_all_output_devices: bool = False
+    disable_output_devices: str | None = None
+    enable_output_devices: str | None = None
+    disable_all_filters: bool = False
+    disable_filters: str | None = None
+    enable_filters: str | None = None
+
+
+class Recipe(RecipeBase[_Options]):
     name = "ffmpeg"
     version = "8.1.1"
     license = "LGPL-2.1-or-later", "GPL-2.0-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "avdevice": [True, False],
-        "avcodec": [True, False],
-        "avformat": [True, False],
-        "swresample": [True, False],
-        "swscale": [True, False],
-        "postproc": [True, False],
-        "avfilter": [True, False],
-        "with_asm": [True, False],
-        "with_zlib": [True, False],
-        "with_bzip2": [True, False],
-        "with_lzma": [True, False],
-        "with_libiconv": [True, False],
-        "with_freetype": [True, False],
-        "with_libxml2": [True, False],
-        "with_fontconfig": [True, False],
-        "with_fribidi": [True, False],
-        "with_harfbuzz": [True, False],
-        "with_libjxl": [True, False],
-        "with_openapv": [True, False],
-        "with_openjpeg": [True, False],
-        "with_openh264": [True, False],
-        "with_opus": [True, False],
-        "with_vorbis": [True, False],
-        "with_zeromq": [True, False],
-        "with_sdl": [True, False],
-        "with_libx264": [True, False],
-        "with_libx265": [True, False],
-        "with_libvpx": [True, False],
-        "with_libmp3lame": [True, False],
-        "with_libfdk_aac": [True, False],
-        "with_libwebp": [True, False],
-        "with_ssl": [False, "openssl", "securetransport"],
-        "with_libalsa": [True, False],
-        "with_pulse": [True, False],
-        "with_vaapi": [True, False],
-        "with_vdpau": [True, False],
-        "with_vulkan": [True, False],
-        "with_whisper": [True, False],
-        "with_xcb": [True, False],
-        "with_soxr": [True, False],
-        "with_appkit": [True, False],
-        "with_avfoundation": [True, False],
-        "with_coreimage": [True, False],
-        "with_audiotoolbox": [True, False],
-        "with_videotoolbox": [True, False],
-        "with_programs": [True, False],
-        "with_libsvtav1": [True, False],
-        "with_libaom": [True, False],
-        "with_libdav1d": [True, False],
-        "with_libdrm": [True, False],
-        "with_jni": [True, False],
-        "with_mediacodec": [True, False],
-        "with_xlib": [True, False],
-        "disable_everything": [True, False],
-        "disable_all_encoders": [True, False],
-        "disable_encoders": [None, "ANY"],
-        "enable_encoders": [None, "ANY"],
-        "disable_all_decoders": [True, False],
-        "disable_decoders": [None, "ANY"],
-        "enable_decoders": [None, "ANY"],
-        "disable_all_hardware_accelerators": [True, False],
-        "disable_hardware_accelerators": [None, "ANY"],
-        "enable_hardware_accelerators": [None, "ANY"],
-        "disable_all_muxers": [True, False],
-        "disable_muxers": [None, "ANY"],
-        "enable_muxers": [None, "ANY"],
-        "disable_all_demuxers": [True, False],
-        "disable_demuxers": [None, "ANY"],
-        "enable_demuxers": [None, "ANY"],
-        "disable_all_parsers": [True, False],
-        "disable_parsers": [None, "ANY"],
-        "enable_parsers": [None, "ANY"],
-        "disable_all_bitstream_filters": [True, False],
-        "disable_bitstream_filters": [None, "ANY"],
-        "enable_bitstream_filters": [None, "ANY"],
-        "disable_all_protocols": [True, False],
-        "disable_protocols": [None, "ANY"],
-        "enable_protocols": [None, "ANY"],
-        "disable_all_devices": [True, False],
-        "disable_all_input_devices": [True, False],
-        "disable_input_devices": [None, "ANY"],
-        "enable_input_devices": [None, "ANY"],
-        "disable_all_output_devices": [True, False],
-        "disable_output_devices": [None, "ANY"],
-        "enable_output_devices": [None, "ANY"],
-        "disable_all_filters": [True, False],
-        "disable_filters": [None, "ANY"],
-        "enable_filters": [None, "ANY"],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "avdevice": True,
-        "avcodec": True,
-        "avformat": True,
-        "swresample": True,
-        "swscale": True,
-        "postproc": True,
-        "avfilter": True,
-        "with_asm": True,
-        "with_zlib": True,
-        "with_bzip2": True,
-        "with_lzma": True,
-        "with_libiconv": True,
-        "with_freetype": True,
-        "with_libxml2": False,
-        "with_fontconfig": False,
-        "with_fribidi": False,
-        "with_harfbuzz": False,
-        "with_libjxl": False,
-        "with_openapv": False,
-        "with_openjpeg": True,
-        "with_openh264": True,
-        "with_opus": True,
-        "with_vorbis": True,
-        "with_zeromq": False,
-        "with_sdl": False,
-        "with_libx264": True,
-        "with_libx265": True,
-        "with_libvpx": True,
-        "with_libmp3lame": True,
-        "with_libfdk_aac": True,
-        "with_libwebp": True,
-        "with_ssl": "openssl",
-        "with_libalsa": True,
-        "with_pulse": True,
-        "with_vaapi": True,
-        "with_vdpau": True,
-        "with_vulkan": False,
-        "with_whisper": False,
-        "with_xcb": True,
-        "with_soxr": False,
-        "with_appkit": True,
-        "with_avfoundation": True,
-        "with_coreimage": True,
-        "with_audiotoolbox": True,
-        "with_videotoolbox": True,
-        "with_programs": True,
-        "with_libsvtav1": True,
-        "with_libaom": True,
-        "with_libdav1d": True,
-        "with_libdrm": False,
-        "with_jni": False,
-        "with_mediacodec": False,
-        "with_xlib": True,
-        "disable_everything": False,
-        "disable_all_encoders": False,
-        "disable_encoders": None,
-        "enable_encoders": None,
-        "disable_all_decoders": False,
-        "disable_decoders": None,
-        "enable_decoders": None,
-        "disable_all_hardware_accelerators": False,
-        "disable_hardware_accelerators": None,
-        "enable_hardware_accelerators": None,
-        "disable_all_muxers": False,
-        "disable_muxers": None,
-        "enable_muxers": None,
-        "disable_all_demuxers": False,
-        "disable_demuxers": None,
-        "enable_demuxers": None,
-        "disable_all_parsers": False,
-        "disable_parsers": None,
-        "enable_parsers": None,
-        "disable_all_bitstream_filters": False,
-        "disable_bitstream_filters": None,
-        "enable_bitstream_filters": None,
-        "disable_all_protocols": False,
-        "disable_protocols": None,
-        "enable_protocols": None,
-        "disable_all_devices": False,
-        "disable_all_input_devices": False,
-        "disable_input_devices": None,
-        "enable_input_devices": None,
-        "disable_all_output_devices": False,
-        "disable_output_devices": None,
-        "enable_output_devices": None,
-        "disable_all_filters": False,
-        "disable_filters": None,
-        "enable_filters": None,
-    }
 
     @property
     def _dependencies(self):
@@ -294,17 +203,17 @@ class Recipe(RecipeBase):
             self.requires("xz_utils")
         if self.options.with_libiconv:
             self.requires("libiconv")
-        if self.options.get_safe("with_freetype"):
+        if self.options.with_freetype:
             self.requires("freetype")
         if self.options.with_libxml2:
             self.requires("libxml2")
-        if self.options.get_safe("with_fontconfig"):
+        if self.options.with_fontconfig:
             self.requires("fontconfig")
-        if self.options.get_safe("with_fribidi"):
+        if self.options.with_fribidi:
             self.requires("fribidi")
-        if self.options.get_safe("with_harfbuzz"):
+        if self.options.with_harfbuzz:
             self.requires("harfbuzz")
-        if self.options.get_safe("with_libjxl"):
+        if self.options.with_libjxl:
             self.requires("libjxl")
         if self.options.with_openjpeg:
             self.requires("openjpeg")
@@ -336,7 +245,7 @@ class Recipe(RecipeBase):
             self.requires("libalsa")
         if self.options.get_safe("with_xcb") or self.options.get_safe("with_xlib"):
             self.requires("xorg")
-        if self.options.get_safe("with_soxr"):
+        if self.options.with_soxr:
             self.requires("soxr")
         if self.options.get_safe("with_pulse"):
             self.requires("pulseaudio")
@@ -346,17 +255,17 @@ class Recipe(RecipeBase):
             self.requires("vdpau")
         if self.options.get_safe("with_vulkan"):
             self.requires("vulkan-loader")
-        if self.options.get_safe("with_libsvtav1"):
+        if self.options.with_libsvtav1:
             self.requires("svt-av1")
         if self.options.with_libaom:
             self.requires("libaom-av1")
-        if self.options.get_safe("with_libdav1d"):
+        if self.options.with_libdav1d:
             self.requires("dav1d")
         if self.options.get_safe("with_libdrm"):
             self.requires("libdrm")
-        if self.options.get_safe("with_whisper"):
+        if self.options.with_whisper:
             self.requires("whisper-cpp")
-        if self.options.get_safe("with_openapv"):
+        if self.options.with_openapv:
             self.requires("openapv")
         if self.settings.arch == "X64":
             self.requires_tool("nasm")
@@ -494,9 +403,9 @@ class Recipe(RecipeBase):
             opt_enable_disable("libxml2", self.options.with_libxml2),
             opt_enable_disable("lzma", self.options.with_lzma),
             opt_enable_disable("iconv", self.options.with_libiconv),
-            opt_enable_disable("libfreetype", self.options.get_safe("with_freetype")),
-            opt_enable_disable("libfontconfig", self.options.get_safe("with_fontconfig")),
-            opt_enable_disable("libfribidi", self.options.get_safe("with_fribidi")),
+            opt_enable_disable("libfreetype", self.options.with_freetype),
+            opt_enable_disable("libfontconfig", self.options.with_fontconfig),
+            opt_enable_disable("libfribidi", self.options.with_fribidi),
             opt_enable_disable("libopenjpeg", self.options.with_openjpeg),
             opt_enable_disable("libopenh264", self.options.with_openh264),
             opt_enable_disable("libvorbis", self.options.with_vorbis),
@@ -520,7 +429,7 @@ class Recipe(RecipeBase):
             opt_enable_disable("libxcb-shm", self.options.get_safe("with_xcb")),
             opt_enable_disable("libxcb-shape", self.options.get_safe("with_xcb")),
             opt_enable_disable("libxcb-xfixes", self.options.get_safe("with_xcb")),
-            opt_enable_disable("libsoxr", self.options.get_safe("with_soxr")),
+            opt_enable_disable("libsoxr", self.options.with_soxr),
             opt_enable_disable("appkit", self.options.get_safe("with_appkit")),
             opt_enable_disable("avfoundation", self.options.get_safe("with_avfoundation")),
             opt_enable_disable("coreimage", self.options.get_safe("with_coreimage")),
@@ -528,7 +437,7 @@ class Recipe(RecipeBase):
             opt_enable_disable("videotoolbox", self.options.get_safe("with_videotoolbox")),
             opt_enable_disable("securetransport", self.options.with_ssl == "securetransport"),
             opt_enable_disable("vulkan", self.options.get_safe("with_vulkan")),
-            opt_enable_disable("libdav1d", self.options.get_safe("with_libdav1d")),
+            opt_enable_disable("libdav1d", self.options.with_libdav1d),
             opt_enable_disable("jni", self.options.get_safe("with_jni")),
             opt_enable_disable("mediacodec", self.options.get_safe("with_mediacodec")),
             opt_enable_disable("xlib", self.options.get_safe("with_xlib")),
@@ -630,8 +539,8 @@ class Recipe(RecipeBase):
         if "with_openapv" in self.options:
             args.append(opt_enable_disable("liboapv", self.options.with_openapv))
 
-        args.append(opt_enable_disable("libsvtav1", self.options.get_safe("with_libsvtav1")))
-        args.append(opt_enable_disable("libharfbuzz", self.options.get_safe("with_harfbuzz")))
+        args.append(opt_enable_disable("libsvtav1", self.options.with_libsvtav1))
+        args.append(opt_enable_disable("libharfbuzz", self.options.with_harfbuzz))
         if is_apple_os(self):
             # relocatable shared libs
             args.append("--install-name-dir=@rpath")
@@ -847,7 +756,7 @@ class Recipe(RecipeBase):
             _add_component("swscale", [])
         if self.options.swresample:
             swresample = _add_component("swresample", [])
-            if self.options.get_safe("with_soxr"):
+            if self.options.with_soxr:
                 swresample.requires.append("soxr::soxr")
         if self.options.get_safe("postproc"):
             _add_component("postproc", [])
@@ -934,15 +843,15 @@ class Recipe(RecipeBase):
                 avcodec.frameworks.append("AudioToolbox")
             if self.options.get_safe("with_videotoolbox"):
                 avcodec.frameworks.append("VideoToolbox")
-            if self.options.get_safe("with_libsvtav1"):
+            if self.options.with_libsvtav1:
                 avcodec.requires.extend(["libsvtav1::decoder", "libsvtav1::encoder"])
-            if self.options.get_safe("with_libaom"):
+            if self.options.with_libaom:
                 avcodec.requires.append("libaom-av1::libaom-av1")
-            if self.options.get_safe("with_libdav1d"):
+            if self.options.with_libdav1d:
                 avcodec.requires.append("dav1d::dav1d")
-            if self.options.get_safe("with_libjxl"):
+            if self.options.with_libjxl:
                 avcodec.requires.append("libjxl::libjxl")
-            if self.options.get_safe("with_openapv"):
+            if self.options.with_openapv:
                 avcodec.requires.append("openapv::openapv")
 
         if self.options.avformat:
@@ -956,13 +865,13 @@ class Recipe(RecipeBase):
                 avformat.frameworks.append("Security")
 
         if self.options.avfilter:
-            if self.options.get_safe("with_freetype"):
+            if self.options.with_freetype:
                 avfilter.requires.append("freetype::freetype")
-            if self.options.get_safe("with_fontconfig"):
+            if self.options.with_fontconfig:
                 avfilter.requires.append("fontconfig::fontconfig")
-            if self.options.get_safe("with_fribidi"):
+            if self.options.with_fribidi:
                 avfilter.requires.append("fribidi::fribidi")
-            if self.options.get_safe("with_harfbuzz"):
+            if self.options.with_harfbuzz:
                 avfilter.requires.append("harfbuzz::harfbuzz")
             if self.options.with_zeromq:
                 avfilter.requires.append("zeromq::libzmq")
@@ -972,7 +881,7 @@ class Recipe(RecipeBase):
                 avfilter.frameworks.append("CoreImage")
             if is_apple_os(self):
                 avfilter.frameworks.append("Metal")
-            if self.options.get_safe("with_whisper"):
+            if self.options.with_whisper:
                 avfilter.requires.append("whisper-cpp::whisper-cpp")
 
         if self.options.get_safe("with_libdrm"):

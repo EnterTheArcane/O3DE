@@ -2,7 +2,7 @@ import os
 import re
 import textwrap
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import (
     collect_libs, copy, load,
@@ -12,23 +12,17 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_bzip2: bool = True
+    subpixel: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "freetype"
     version = "2.14.3"
     license = "FTL"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_bzip2": [True, False],
-        "subpixel": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_bzip2": True,
-        "subpixel": False,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")

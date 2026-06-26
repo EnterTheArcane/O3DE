@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import cross_building, stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, save, rm, replace_in_file
@@ -10,27 +10,19 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    avx512: bool = False
+    avx512_spr: bool = False
+    avx512_zen4: bool = False
+    with_tcmalloc: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libjxl"
     version = "0.11.2"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "avx512": [True, False],
-        "avx512_spr": [True, False],
-        "avx512_zen4": [True, False],
-        "with_tcmalloc": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "avx512": False,
-        "avx512_spr": False,
-        "avx512_zen4": False,
-        "with_tcmalloc": False,
-    }
 
     def config_options(self):
         if self.settings.arch not in ["X64"]:

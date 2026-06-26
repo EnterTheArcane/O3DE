@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import valid_min_cppstd
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
@@ -8,33 +8,22 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_opengl: bool = False
+    with_omp: bool = False
+    with_cuda: bool = False
+    with_clew: bool = False
+    with_opencl: bool = False
+    with_dx: bool = False
+    with_metal: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "opensubdiv"
     version = "3.7.0"
     license = "LicenseRef-LICENSE.txt"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_opengl": [True, False],
-        "with_omp": [True, False],
-        "with_cuda": [True, False],
-        "with_clew": [True, False],
-        "with_opencl": [True, False],
-        "with_dx": [True, False],
-        "with_metal": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_opengl": False,
-        "with_omp": False,
-        "with_cuda": False,
-        "with_clew": False,
-        "with_opencl": False,
-        "with_dx": False,
-        "with_metal": True,
-    }
 
     @property
     def _min_cppstd(self):

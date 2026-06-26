@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir
@@ -8,21 +8,16 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    sse: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libde265"
     version = "1.0.19"
     license = "LGPL-3.0-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "sse": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "sse": True,
-    }
 
     def config_options(self):
         if self.settings.arch not in ["X64"]:

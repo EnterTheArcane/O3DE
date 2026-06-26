@@ -1,29 +1,22 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    openmp: bool = False
+    sse2_intrinsics: bool = False
+    altivec_intrinsics: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libsquish"
     version = "1.15"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "openmp": [True, False],
-        "sse2_intrinsics": [True, False],
-        "altivec_intrinsics": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "openmp": False,
-        "sse2_intrinsics": False,
-        "altivec_intrinsics": False,
-    }
 
     @property
     def _sse2_compliant_archs(self):

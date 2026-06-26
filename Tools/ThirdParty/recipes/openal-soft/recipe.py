@@ -1,7 +1,7 @@
 import os
 import textwrap
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
@@ -10,19 +10,15 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "openal-soft"
     version = "1.25.2"
     license = "LGPL-2.0-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     def configure(self):
         # OpenAL's API is pure C, thus the c++ standard does not matter

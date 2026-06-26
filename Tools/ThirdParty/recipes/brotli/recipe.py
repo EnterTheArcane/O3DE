@@ -1,37 +1,28 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    target_bits: Literal[64, 32, None] = None
+    endianness: Literal['big', 'little', 'neutral', None] = None
+    enable_portable: bool = False
+    enable_rbit: bool = True
+    enable_debug: bool = False
+    enable_log: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "brotli"
     version = "1.2.0"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "target_bits": [64, 32, None],
-        "endianness": ["big", "little", "neutral", None],
-        "enable_portable": [True, False],
-        "enable_rbit": [True, False],
-        "enable_debug": [True, False],
-        "enable_log": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "target_bits": None,
-        "endianness": None,
-        "enable_portable": False,
-        "enable_rbit": True,
-        "enable_debug": False,
-        "enable_log": False,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
@@ -55,15 +46,15 @@ class Recipe(RecipeBase):
         tc.variables["BROTLI_BUNDLED_MODE"] = False
         tc.variables["BROTLI_DISABLE_TESTS"] = True
         tc.variables["BROTLI_BUILD_TOOLS"] = False
-        if self.options.get_safe("target_bits") == 32:
+        if self.options.target_bits == 32:
             tc.preprocessor_definitions["BROTLI_BUILD_32_BIT"] = 1
-        elif self.options.get_safe("target_bits") == 64:
+        elif self.options.target_bits == 64:
             tc.preprocessor_definitions["BROTLI_BUILD_64_BIT"] = 1
-        if self.options.get_safe("endianness") == "big":
+        if self.options.endianness == "big":
             tc.preprocessor_definitions["BROTLI_BUILD_BIG_ENDIAN"] = 1
-        elif self.options.get_safe("endianness") == "neutral":
+        elif self.options.endianness == "neutral":
             tc.preprocessor_definitions["BROTLI_BUILD_ENDIAN_NEUTRAL"] = 1
-        elif self.options.get_safe("endianness") == "little":
+        elif self.options.endianness == "little":
             tc.preprocessor_definitions["BROTLI_BUILD_LITTLE_ENDIAN"] = 1
         if self.options.enable_portable:
             tc.preprocessor_definitions["BROTLI_BUILD_PORTABLE"] = 1

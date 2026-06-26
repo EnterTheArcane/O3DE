@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, get, copy, rm, rmdir
@@ -9,21 +9,16 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    use_sse: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "opencolorio"
     version = "2.5.2"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "use_sse": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "use_sse": True,
-    }
 
     def config_options(self):
         if self.settings.arch not in ["X64"]:

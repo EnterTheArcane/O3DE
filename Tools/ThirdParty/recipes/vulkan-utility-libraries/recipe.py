@@ -1,23 +1,20 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import copy, get, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "vulkan-utility-libraries"
     version = "1.4.352"
     license = "Apache-2.0"
-
-    options = {
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "fPIC": True,
-    }
 
     def requirements(self):
         self.requires(f"vulkan-headers")

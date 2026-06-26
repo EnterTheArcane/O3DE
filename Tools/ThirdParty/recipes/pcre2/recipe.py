@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
@@ -8,37 +9,24 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    build_pcre2_8: bool = True
+    build_pcre2_16: bool = True
+    build_pcre2_32: bool = True
+    build_pcre2grep: bool = True
+    with_zlib: bool = True
+    with_bzip2: bool = True
+    support_jit: bool = False
+    grep_support_callout_fork: bool = True
+    link_size: Literal[2, 3, 4] = 2
+
+
+class Recipe(RecipeBase[_Options]):
     name = "pcre2"
     version = "10.47"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "build_pcre2_8": [True, False],
-        "build_pcre2_16": [True, False],
-        "build_pcre2_32": [True, False],
-        "build_pcre2grep": [True, False],
-        "with_zlib": [True, False],
-        "with_bzip2": [True, False],
-        "support_jit": [True, False],
-        "grep_support_callout_fork": [True, False],
-        "link_size": [2, 3, 4],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "build_pcre2_8": True,
-        "build_pcre2_16": True,
-        "build_pcre2_32": True,
-        "build_pcre2grep": True,
-        "with_zlib": True,
-        "with_bzip2": True,
-        "support_jit": False,
-        "grep_support_callout_fork": True,
-        "link_size": 2,
-    }
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")

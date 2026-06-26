@@ -1,35 +1,27 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    target: Literal['draco', 'encode_and_decode', 'encode_only', 'decode_only'] = 'draco'
+    enable_point_cloud_compression: bool = True
+    enable_mesh_compression: bool = True
+    enable_standard_edgebreaker: bool = True
+    enable_predictive_edgebreaker: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "draco"
     version = "1.5.7"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "target": ["draco", "encode_and_decode", "encode_only", "decode_only"],
-        "enable_point_cloud_compression": [True, False],
-        "enable_mesh_compression": [True, False],
-        "enable_standard_edgebreaker": [True, False],
-        "enable_predictive_edgebreaker": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "target": "draco",
-        "enable_point_cloud_compression": True,
-        "enable_mesh_compression": True,
-        "enable_standard_edgebreaker": True,
-        "enable_predictive_edgebreaker": True,
-    }
 
     def configure(self):
         if not self.options.enable_mesh_compression:

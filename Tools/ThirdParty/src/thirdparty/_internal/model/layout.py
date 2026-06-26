@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
 
+from thirdparty.errors import RecipeException
 
-def _folder_path(base_folder: str | None, relative_folder: str = "") -> Path | None:
+
+def _folder_path(base_folder: str | None, relative_folder: str = "") -> Path:
     if base_folder is None:
-        return None
+        raise RecipeException("Base folder is not set, cannot compute the final folder path")   
     if not relative_folder:
         return Path(os.path.normpath(base_folder))
     return Path(os.path.normpath(os.path.join(base_folder, relative_folder)))
@@ -55,7 +57,7 @@ class Folders:
         self._base_export_sources = output_folder or base_folder
 
     @property
-    def source(self) -> Path | None:
+    def source(self) -> Path:
         return _folder_path(self._base_source, self._source)
 
     @property
@@ -66,7 +68,7 @@ class Folders:
         self._base_source = folder
 
     @property
-    def build(self) -> Path | None:
+    def build(self) -> Path:
         return _folder_path(self._base_build, self._build)
 
     @property
@@ -84,7 +86,7 @@ class Folders:
         self._base_package = folder
 
     @property
-    def package(self) -> Path | None:
+    def package(self) -> Path:
         """For the cache, the package folder is only the base"""
         return _folder_path(self._base_package)
 
@@ -93,11 +95,11 @@ class Folders:
         self.set_base_package(folder)
 
     @property
-    def immutable_package(self) -> Path | None:
+    def immutable_package(self) -> Path:
         return self._immutable_package_folder or self.package
 
     @property
-    def generators(self) -> Path | None:
+    def generators(self) -> Path:
         return _folder_path(self._base_generators, self._generators)
 
     def set_base_generators(self, folder: str | None):
@@ -118,9 +120,9 @@ class Folders:
         self._base_export_sources = folder
 
     @property
-    def export(self) -> Path | None:
+    def export(self) -> Path:
         return _folder_path(self._base_export)
 
     @property
-    def export_sources(self) -> Path | None:
+    def export_sources(self) -> Path:
         return _folder_path(self._base_export_sources)

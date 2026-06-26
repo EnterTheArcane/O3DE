@@ -2,8 +2,9 @@ import glob
 import hashlib
 import os
 import shutil
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building, stdcpp_library
 from thirdparty.env import Environment, VirtualBuildEnv
@@ -14,29 +15,20 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = True
+    fPIC: bool = True
+    data_packaging: Literal['files', 'archive', 'library', 'static'] = 'archive'
+    with_dyload: bool = True
+    dat_package_file: str | None = None
+    with_icuio: bool = True
+    with_extras: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "icu"
     version = "78.3"
     license = "ICU"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "data_packaging": ["files", "archive", "library", "static"],
-        "with_dyload": [True, False],
-        "dat_package_file": [None, "ANY"],
-        "with_icuio": [True, False],
-        "with_extras": [True, False],
-    }
-    default_options = {
-        "shared": True,
-        "fPIC": True,
-        "data_packaging": "archive",
-        "with_dyload": True,
-        "dat_package_file": None,
-        "with_icuio": True,
-        "with_extras": False,
-    }
 
     @property
     def _enable_icu_tools(self):

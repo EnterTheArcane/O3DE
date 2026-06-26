@@ -2,7 +2,7 @@ import os
 import re
 import shutil
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
@@ -13,19 +13,15 @@ from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libtool"
     version = "2.4.7"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-    }
 
     def requirements(self):
         self.requires("automake")

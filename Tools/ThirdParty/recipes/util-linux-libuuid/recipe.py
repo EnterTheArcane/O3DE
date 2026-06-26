@@ -1,26 +1,21 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_python_bindings: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "util-linux-libuuid"
     version = "2.41.2"
     license = "BSD-3-Clause"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_python_bindings": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_python_bindings": False,
-    }
 
     @property
     def _has_sys_file_header(self):

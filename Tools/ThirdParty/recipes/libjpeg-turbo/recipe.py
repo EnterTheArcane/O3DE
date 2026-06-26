@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir, apply_patches
@@ -9,37 +9,24 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    SIMD: bool = True
+    arithmetic_encoder: bool = True
+    arithmetic_decoder: bool = True
+    libjpeg7_compatibility: bool = True
+    libjpeg8_compatibility: bool = True
+    mem_src_dst: bool = True
+    turbojpeg: bool = True
+    java: bool = False
+    enable12bit: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "libjpeg-turbo"
     version = "3.1.4.1"
     license = "IJG", "BSD-3-Clause", "Zlib"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "SIMD": [True, False],
-        "arithmetic_encoder": [True, False],
-        "arithmetic_decoder": [True, False],
-        "libjpeg7_compatibility": [True, False],
-        "libjpeg8_compatibility": [True, False],
-        "mem_src_dst": [True, False],
-        "turbojpeg": [True, False],
-        "java": [True, False],
-        "enable12bit": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "SIMD": True,
-        "arithmetic_encoder": True,
-        "arithmetic_decoder": True,
-        "libjpeg7_compatibility": True,
-        "libjpeg8_compatibility": True,
-        "mem_src_dst": True,
-        "turbojpeg": True,
-        "java": False,
-        "enable12bit": False,
-    }
 
     def config_options(self):
         del self.options.enable12bit
@@ -58,7 +45,7 @@ class Recipe(RecipeBase):
             del self.options.arithmetic_encoder
             del self.options.arithmetic_decoder
         if self.options.libjpeg8_compatibility:
-            self.options.rm_safe("mem_src_dst")
+            del self.options.mem_src_dst
 
     def requirements(self):
         if self.options.get_safe("SIMD") and self.settings.arch in ["X64"]:

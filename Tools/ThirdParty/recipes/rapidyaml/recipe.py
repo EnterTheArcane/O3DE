@@ -1,31 +1,24 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import get, copy, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_default_callbacks: bool = True
+    with_tab_tokens: bool = False
+    with_default_callback_uses_exceptions: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "rapidyaml"
     version = "0.13.0"
     license = "MIT"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_default_callbacks": [True, False],
-        "with_tab_tokens": [True, False],
-        "with_default_callback_uses_exceptions": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_default_callbacks": True,
-        "with_tab_tokens": False,
-        "with_default_callback_uses_exceptions": False,
-    }
 
     @property
     def _minimum_cpp_standard(self):
@@ -34,7 +27,7 @@ class Recipe(RecipeBase):
     def configure(self):
         # with_default_callback_uses_exceptions should only be valid if with_default_callbacks is true
         if not self.options.with_default_callbacks:
-            self.options.rm_safe("with_default_callback_uses_exceptions")
+            del self.options.with_default_callback_uses_exceptions
 
     def requirements(self):
         self.requires("c4core")

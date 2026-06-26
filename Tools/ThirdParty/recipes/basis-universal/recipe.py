@@ -1,27 +1,22 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_sse: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "basis-universal"
     version = "2.1.0"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_sse": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_sse": True,
-    }
 
     @property
     def _has_sse(self):

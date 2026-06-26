@@ -140,10 +140,6 @@ class _PackageOptions:
     def get_safe(self, field: str, default: Any = None) -> Any:
         return self._data.get(field, default)
 
-    def rm_safe(self, field: str):
-        # This should never raise any exception, in any case
-        self._data.pop(field, None)
-
     def validate(self):
         for child in self._data.values():
             child.validate()

@@ -1,6 +1,7 @@
 import os
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
 from thirdparty.env import Environment
@@ -11,35 +12,23 @@ from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    with_widec: bool = True
+    with_extended_colors: bool = True
+    with_cxx: bool = True
+    with_progs: bool = True
+    with_ticlib: Literal['auto', True, False] = 'auto'
+    with_reentrant: bool = False
+    with_tinfo: Literal['auto', True, False] = 'auto'
+    with_pcre2: bool = False
+
+
+class Recipe(RecipeBase[_Options]):
     name = "ncurses"
     version = "6.5"
     license = "X11"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "with_widec": [True, False],
-        "with_extended_colors": [True, False],
-        "with_cxx": [True, False],
-        "with_progs": [True, False],
-        "with_ticlib": ["auto", True, False],
-        "with_reentrant": [True, False],
-        "with_tinfo": ["auto", True, False],
-        "with_pcre2": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "with_widec": True,
-        "with_extended_colors": True,
-        "with_cxx": True,
-        "with_progs": True,
-        "with_ticlib": "auto",
-        "with_reentrant": False,
-        "with_tinfo": "auto",
-        "with_pcre2": False,
-    }
 
     @property
     def _is_mingw(self):
@@ -55,7 +44,7 @@ class Recipe(RecipeBase):
             self.settings.rm_safe("compiler.libcxx")
             self.settings.rm_safe("compiler.cppstd")
         if not self.options.with_widec:
-            self.options.rm_safe("with_extended_colors")
+            del self.options.with_extended_colors
 
     def requirements(self):
         if self.options.with_pcre2:

@@ -1,6 +1,6 @@
 import os
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir, save
@@ -8,23 +8,17 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    sse: bool = True
+    tools: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "ktx-software"
     version = "4.4.2"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "sse": [True, False],
-        "tools": [True, False],
-    }
-    default_options = {
-        "shared": False,
-        "fPIC": True,
-        "sse": True,
-        "tools": True,
-    }
 
     @property
     def _has_sse_support(self):

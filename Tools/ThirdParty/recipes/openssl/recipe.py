@@ -1,8 +1,9 @@
 import fnmatch
 import os
 import textwrap
+from typing import Literal
 
-from thirdparty import RecipeBase
+from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.build import build_jobs
 from thirdparty.env import VirtualBuildEnv
@@ -13,82 +14,80 @@ from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    fPIC: bool = True
+    enable_weak_ssl_ciphers: bool = False
+    capieng_dialog: bool = False
+    enable_capieng: bool = False
+    enable_trace: bool = False
+    no_aria: bool = False
+    no_apps: bool = False
+    no_autoload_config: bool = False
+    no_asm: bool = False
+    no_async: bool = False
+    no_blake2: bool = False
+    no_bf: bool = False
+    no_camellia: bool = False
+    no_chacha: bool = False
+    no_cms: bool = False
+    no_comp: bool = False
+    no_ct: bool = False
+    no_cast: bool = False
+    no_deprecated: bool = False
+    no_des: bool = False
+    no_dgram: bool = False
+    no_dh: bool = False
+    no_dsa: bool = False
+    no_dso: bool = False
+    no_ec: bool = False
+    no_ecdh: bool = False
+    no_ecdsa: bool = False
+    no_engine: bool = False
+    no_filenames: bool = False
+    no_fips: bool = False
+    no_gost: bool = False
+    no_idea: bool = False
+    no_legacy: bool = False
+    no_md2: bool = True
+    no_md4: bool = False
+    no_mdc2: bool = False
+    no_module: bool = False
+    no_ocsp: bool = False
+    no_pinshared: bool = False
+    no_rc2: bool = False
+    no_rc4: bool = False
+    no_rc5: bool = False
+    no_rfc3779: bool = False
+    no_rmd160: bool = False
+    no_sm2: bool = False
+    no_sm3: bool = False
+    no_sm4: bool = False
+    no_srp: bool = False
+    no_srtp: bool = False
+    no_sse2: bool = False
+    no_ssl: bool = False
+    no_stdio: bool = False
+    no_seed: bool = False
+    no_sock: bool = False
+    no_ssl3: bool = False
+    no_threads: bool = False
+    no_tls1: bool = False
+    no_ts: bool = False
+    no_whirlpool: bool = False
+    no_zlib: bool = False
+    openssldir: str | None = None
+    tls_security_level: Literal[None, 0, 1, 2, 3, 4, 5] = None
+
+
+_Options.__annotations__["386"] = bool
+_Options.__defaults__ = {"386": False}
+
+
+class Recipe(RecipeBase[_Options]):
     name = "openssl"
     version = "3.6.2"
     license = "Apache-2.0"
-
-    options = {
-        "shared": [True, False],
-        "fPIC": [True, False],
-        "enable_weak_ssl_ciphers": [True, False],
-        "386": [True, False],
-        "capieng_dialog": [True, False],
-        "enable_capieng": [True, False],
-        "enable_trace": [True, False],
-        "no_aria": [True, False],
-        "no_apps": [True, False],
-        "no_autoload_config": [True, False],
-        "no_asm": [True, False],
-        "no_async": [True, False],
-        "no_blake2": [True, False],
-        "no_bf": [True, False],
-        "no_camellia": [True, False],
-        "no_chacha": [True, False],
-        "no_cms": [True, False],
-        "no_comp": [True, False],
-        "no_ct": [True, False],
-        "no_cast": [True, False],
-        "no_deprecated": [True, False],
-        "no_des": [True, False],
-        "no_dgram": [True, False],
-        "no_dh": [True, False],
-        "no_dsa": [True, False],
-        "no_dso": [True, False],
-        "no_ec": [True, False],
-        "no_ecdh": [True, False],
-        "no_ecdsa": [True, False],
-        "no_engine": [True, False],
-        "no_filenames": [True, False],
-        "no_fips": [True, False],
-        "no_gost": [True, False],
-        "no_idea": [True, False],
-        "no_legacy": [True, False],
-        "no_md2": [True, False],
-        "no_md4": [True, False],
-        "no_mdc2": [True, False],
-        "no_module": [True, False],
-        "no_ocsp": [True, False],
-        "no_pinshared": [True, False],
-        "no_rc2": [True, False],
-        "no_rc4": [True, False],
-        "no_rc5": [True, False],
-        "no_rfc3779": [True, False],
-        "no_rmd160": [True, False],
-        "no_sm2": [True, False],
-        "no_sm3": [True, False],
-        "no_sm4": [True, False],
-        "no_srp": [True, False],
-        "no_srtp": [True, False],
-        "no_sse2": [True, False],
-        "no_ssl": [True, False],
-        "no_stdio": [True, False],
-        "no_seed": [True, False],
-        "no_sock": [True, False],
-        "no_ssl3": [True, False],
-        "no_threads": [True, False],
-        "no_tls1": [True, False],
-        "no_ts": [True, False],
-        "no_whirlpool": [True, False],
-        "no_zlib": [True, False],
-        "openssldir": [None, "ANY"],
-        "tls_security_level": [None, 0, 1, 2, 3, 4, 5],
-    }
-    default_options = {key: False for key in options.keys()}
-    default_options["fPIC"] = True
-    default_options["no_md2"] = True
-    default_options["openssldir"] = None
-    default_options["tls_security_level"] = None
 
     @property
     def _is_clang_cl(self):
@@ -105,10 +104,10 @@ class Recipe(RecipeBase):
 
     def config_options(self):
         if self.settings.os != "Windows":
-            self.options.rm_safe("capieng_dialog")
-            self.options.rm_safe("enable_capieng")
+            del self.options.capieng_dialog
+            del self.options.enable_capieng
         else:
-            self.options.rm_safe("fPIC")
+            del self.options.fPIC
 
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
@@ -328,12 +327,12 @@ class Recipe(RecipeBase):
         else:
             args.append("-fPIC" if self.options.get_safe("fPIC", True) else "no-pic")
 
-        args.append("no-fips" if self.options.get_safe("no_fips", True) else "enable-fips")
-        args.append("no-md2" if self.options.get_safe("no_md2", True) else "enable-md2")
+        args.append("no-fips" if self.options.no_fips else "enable-fips")
+        args.append("no-md2" if self.options.no_md2 else "enable-md2")
         if str(self.options.tls_security_level) != "None":
             args.append(f"-DOPENSSL_TLS_SECURITY_LEVEL={self.options.tls_security_level}")
 
-        if self.options.get_safe("enable_trace"):
+        if self.options.enable_trace:
             args.append("enable-trace")
 
         if self.settings.os == "Neutrino":
