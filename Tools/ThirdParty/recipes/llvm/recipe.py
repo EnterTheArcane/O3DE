@@ -6,33 +6,33 @@ from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
-_BASE_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.6"
+_BASE_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8"
 
 _SOURCES = {
     "Windows": {
         "X64": {
-            "url": f"{_BASE_URL}/clang+llvm-22.1.6-x86_64-pc-windows-msvc.tar.xz",
-            "sha256": "657343edf361ca463bd642e39c74b251c6338b96cdbd55ff277555298b027696",
+            "url": f"{_BASE_URL}/clang+llvm-22.1.8-x86_64-pc-windows-msvc.tar.xz",
+            "sha256": "d96c2cc1736f4eb7fa43cb9bbdf56d93551a9ae0a9aadb9c99c3c3b2b712a234",
         },
         "ARM": {
-            "url": f"{_BASE_URL}/clang+llvm-22.1.6-aarch64-pc-windows-msvc.tar.xz",
-            "sha256": "841278d0f7e091653af22cea7643fbeba587f702edf19247713180036c5b4cdb",
+            "url": f"{_BASE_URL}/clang+llvm-22.1.8-aarch64-pc-windows-msvc.tar.xz",
+            "sha256": "de718c58ebbc5f61d58c17b90457fcf42983bc2c4a4aba3e010d108713bfd7f1",
         },
     },
     "Linux": {
         "X64": {
-            "url": f"{_BASE_URL}/LLVM-22.1.6-Linux-X64.tar.xz",
-            "sha256": "c5ac8ef89ca39d30cb32e9b83772f995dd891c685ebc188d593c943a64d5f8b5",
+            "url": f"{_BASE_URL}/LLVM-22.1.8-Linux-X64.tar.xz",
+            "sha256": "df0e1ecf16caf3489a272a5eea4eec9b0d82878f6477fa309504f918a0006384",
         },
         "ARM": {
-            "url": f"{_BASE_URL}/LLVM-22.1.6-Linux-ARM64.tar.xz",
-            "sha256": "b67817634e8e1c2632dfc056af14d61b94f8e6502f4e557560eea227aa22ce37",
+            "url": f"{_BASE_URL}/LLVM-22.1.8-Linux-ARM64.tar.xz",
+            "sha256": "805efad2bb91cb4967fa569e0881d10c0f69c04461cf671cccbae19f547acc34",
         },
     },
     "Mac": {
         "ARM": {
-            "url": f"{_BASE_URL}/LLVM-22.1.6-macOS-ARM64.tar.xz",
-            "sha256": "8059d9d9eeb059c30d812b4a37291888f8dcba04d2b5ace61fd12d2904eaa0e9",
+            "url": f"{_BASE_URL}/LLVM-22.1.8-macOS-ARM64.tar.xz",
+            "sha256": "f260f4f7c0d430828a81ae8a3826a1d63fc0963ec2459489308cc23b1f7eab4f",
         },
     },
 }
@@ -40,7 +40,7 @@ _SOURCES = {
 
 class Recipe(RecipeBase):
     name = "llvm"
-    version = "22.1.6"
+    version = "22.1.8"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -60,9 +60,10 @@ class Recipe(RecipeBase):
 
     def package(self):
         for subdir in ("bin", "include", "lib", "libexec", "share"):
-            src = os.path.join(self.folders.build, subdir)
+            src = self.folders.build / subdir
+            dst = self.folders.package / subdir
             if os.path.isdir(src):
-                copy(self, "*", src=src, dst=os.path.join(self.folders.package, subdir))
+                copy(self, "*", src=src, dst=dst)
 
     def package_info(self):
         bin_dir = os.path.join(self.folders.package, "bin")
