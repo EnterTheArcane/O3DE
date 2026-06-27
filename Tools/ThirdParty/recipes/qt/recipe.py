@@ -402,8 +402,8 @@ class Recipe(RecipeBase[_Options]):
 
         if self.options.qtwayland:
             self.requires_tool("wayland")
-        if cross_building(self):
-            self.requires_tool(f"qt")
+        # if cross_building(self):
+        #     self.requires_tool(f"qt")
 
     def generate(self):
         ms = VirtualBuildEnv(self)
