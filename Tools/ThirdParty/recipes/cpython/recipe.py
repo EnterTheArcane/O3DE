@@ -300,14 +300,15 @@ class Recipe(RecipeBase[_Options]):
             self.output.info("Patching runtime")
             replace_in_file(
                 self, self.folders.source / "PCbuild" / "pyproject.props",
-                "MultiThreadedDLL", runtime_library)
+                "MultiThreadedDLL", runtime_library, strict=False)
             replace_in_file(
                 self, self.folders.source / "PCbuild" / "pyproject.props",
-                "MultiThreadedDebugDLL", runtime_library)
+                "MultiThreadedDebugDLL", runtime_library, strict=False)
             replace_in_file(
                 self, self.folders.source / "PCbuild" / "pyproject.props",
                 "<WholeProgramOptimization>true</WholeProgramOptimization>",
-                "<WholeProgramOptimization>false</WholeProgramOptimization>")
+                "<WholeProgramOptimization>false</WholeProgramOptimization>",
+                strict=False)
 
         # Remove vendored packages
         rmdir(self, self.folders.source / "Modules" / "_decimal" / "libmpdec")

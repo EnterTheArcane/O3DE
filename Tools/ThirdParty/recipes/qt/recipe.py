@@ -602,9 +602,9 @@ class Recipe(RecipeBase[_Options]):
             tc.variables["QT_QMAKE_DEVICE_OPTIONS"] = f"CROSS_COMPILE={self.options.cross_compile}"
         if cross_building(self):
             # Mainly to locate Qt6HostInfoConfig.cmake
-            tc.cache_variables["QT_HOST_PATH"] = self.dependencies.direct_build["qt"].folders.package
+            tc.cache_variables["QT_HOST_PATH"] = self.dependencies.direct_build["qt"].folders.package.as_posix()
             # Stand-in for Qt6CoreTools - which is loaded for the executable targets
-            tc.cache_variables["CMAKE_PROJECT_Qt_INCLUDE"] = self.dependencies.direct_build["qt"].folders.package / self._cmake_executables_file
+            tc.cache_variables["CMAKE_PROJECT_Qt_INCLUDE"] = (self.dependencies.direct_build["qt"].folders.package / self._cmake_executables_file).as_posix()
             # Ensure tools for host are always built
             tc.cache_variables["QT_FORCE_BUILD_TOOLS"] = True
 

@@ -89,7 +89,7 @@ class Recipe(RecipeBase):
                 fullpath = binpath / filename
                 if not os.path.isfile(fullpath):
                     continue
-                rename(self, fullpath, fullpath + ".exe")
+                rename(self, fullpath, fullpath.parent / (fullpath.name + ".exe"))
 
     def package_info(self):
         self.info.libdirs = []

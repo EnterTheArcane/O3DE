@@ -88,21 +88,3 @@ class Recipe(RecipeBase[_Options]):
 
         fontconfig_path = self.folders.package / "res" / "etc" / "fonts"
         self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
-
-
-
-def fix_msvc_libname(recipe, remove_lib_prefix=True):
-    """remove lib prefix & change extension to .lib in case of cl like compiler"""
-    if not recipe.settings.get_safe("compiler.runtime"):
-        return
-    from thirdparty.files import rename
-    import glob
-    libdirs = getattr(recipe.cpp.package, "libdirs")
-    for libdir in libdirs:
-        for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = recipe.folders.package / libdir
-            for filepath in glob.glob(full_folder / f"*{ext}"):
-                libname = os.path.basename(filepath)[0:-len(ext)]
-                if remove_lib_prefix and libname[0:3] == "lib":
-                    libname = libname[3:]
-                rename(recipe, filepath, os.path.join(os.path.dirname(filepath), f"{libname}.lib"))

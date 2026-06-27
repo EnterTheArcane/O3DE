@@ -186,7 +186,7 @@ class Recipe(RecipeBase[_Options]):
                     self.folders.source / "build" / "make" / "gen_msvs_vcxproj.sh",
                     "tag_content WholeProgramOptimization true",
                     "tag_content WholeProgramOptimization false",
-                    )
+                    strict=False)
             else:
                 self.output.info("Enabling LTO")
 

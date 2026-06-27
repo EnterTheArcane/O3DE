@@ -95,7 +95,7 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self):
             tc.variables["WITH_CRT_DLL"] = True  # avoid replacing /MD by /MT in compiler flags
         if self.options.get_safe("java", False):
-            tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = self.folders.package / "lib" / "java"
+            tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = (self.folders.package / "lib" / "java").as_posix()
         tc.generate()
 
     def build(self):

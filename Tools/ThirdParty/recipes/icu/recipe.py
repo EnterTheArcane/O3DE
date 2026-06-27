@@ -139,7 +139,7 @@ class Recipe(RecipeBase[_Options]):
             self.folders.source / "source" / "configure",
             "if test -z \"$PYTHON\"",
             "if true",
-        )
+            strict=False)
 
         if self.settings.os == "Windows":
             # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545
@@ -148,7 +148,8 @@ class Recipe(RecipeBase[_Options]):
                 self,
                 makeconv_cpp,
                 "pathBuf.appendPathPart(arg, localError);",
-                "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);")
+                "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);",
+                strict=False)
 
         # relocatable shared libs on macOS
         mh_darwin = self.folders.source / "source" / "config" / "mh-darwin"

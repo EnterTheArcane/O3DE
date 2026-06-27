@@ -169,8 +169,8 @@ class Recipe(RecipeBase[_Options]):
             obj_ext = "o"
             obj_file = f"{self._obj_name}.{obj_ext}"
             obj_path = self.folders.package / "lib" / obj_file
-            self.info.exelinkflags = [obj_path]
-            self.info.sharedlinkflags = [obj_path]
+            self.info.exelinkflags = [obj_path.as_posix()]
+            self.info.sharedlinkflags = [obj_path.as_posix()]
             self.info.libdirs = []
             self.info.bindirs = []
         else:

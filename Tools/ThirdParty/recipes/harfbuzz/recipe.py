@@ -188,18 +188,17 @@ class Recipe(RecipeBase[_Options]):
 def fix_msvc_libname(recipe, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
-    import glob
     if not recipe.settings.get_safe("compiler.runtime"):
         return
     libdirs = recipe.info.libdirs
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
             full_folder = recipe.folders.package / libdir
-            for filepath in glob.glob(full_folder / f"*{ext}"):
-                libname = os.path.basename(filepath)[0:-len(ext)]
+            for filepath in full_folder.glob(f"*{ext}"):
+                libname = filepath.name[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]
-                dst = os.path.join(os.path.dirname(filepath), f"{libname}.lib")
-                if os.path.exists(dst):
-                    os.remove(dst)
+                dst = filepath.parent / f"{libname}.lib"
+                if dst.exists():
+                    dst.unlink()
                 rename(recipe, filepath, dst)

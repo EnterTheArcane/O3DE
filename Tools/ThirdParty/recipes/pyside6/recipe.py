@@ -408,12 +408,10 @@ class Recipe(RecipeBase[_Options]):
         # Expose the shiboken6 generator location via conf
         self.conf_info.define(
             "user.pyside6:shiboken6_generator",
-            self.folders.package / "bin" / "shiboken6",
-        )
+            (self.folders.package / "bin" / "shiboken6").as_posix())
         self.conf_info.define(
             "user.pyside6:pyside6_dir",
-            self.folders.package,
-        )
+            self.folders.package.as_posix())
 
         bin_dir = self.folders.package / "bin"
         self.buildenv_info.prepend_path("PATH", bin_dir)

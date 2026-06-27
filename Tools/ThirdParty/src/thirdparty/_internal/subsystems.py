@@ -20,6 +20,7 @@ Potential scenarios:
 
 """
 import os
+from pathlib import Path
 import platform
 import re
 
@@ -74,7 +75,7 @@ def _windows_bash_wrapper(
         raise RecipeException(
             "The config 'tools.microsoft.bash:path' is "
             "needed to run commands in a Windows subsystem")
-    shell_path = shell_path.replace("\\", "/")  # Should work in all terminals
+    shell_path = Path(shell_path).as_posix()  # Should work in all terminals
     env = env or []
     if subsystem == MSYS2:
         # Configure MSYS2 to inherith the PATH
@@ -166,10 +167,11 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
     return WINDOWS
 
 
-def subsystem_path(subsystem: str | None, path: str) -> str | None:
+def subsystem_path(subsystem: str | None, path: str | os.PathLike[str]) -> str | None:
     """"Used to translate windows paths to MSYS unix paths like
     c/users/path/to/file. Not working in a regular console or MinGW!
     """
+    path = os.fspath(path)
     if subsystem is None or subsystem == WINDOWS:
         return path
 
