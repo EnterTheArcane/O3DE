@@ -15,6 +15,7 @@ from thirdparty._internal.model.layout import Folders
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
+from thirdparty._internal.model.version import Version
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
 from thirdparty.env import Environment
@@ -298,7 +299,7 @@ class RecipeBase(ABC, Generic[TOptions]):
 
         return retcode
 
-    def latest_version(self) -> "str": ...
+    def latest_version(self) -> Version | None: ...
     def init(self) -> None: ...
     def config_options(self) -> None: ...
     def configure(self) -> None: ...
