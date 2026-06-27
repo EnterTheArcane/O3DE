@@ -14,65 +14,76 @@ on:
   push:
   workflow_dispatch:
     inputs:
-      build_mac_arm:
-        description: Build Mac ARM
-        required: false
+      mac_arm:
+        description: Mac ARM
         type: boolean
+        required: false
         default: true
-      build_linux_arm:
-        description: Build Linux ARM
-        required: false
+      mac_x64:
+        description: Mac X64
         type: boolean
+        required: false
         default: true
-      build_linux_x64:
-        description: Build Linux X64
-        required: false
+      linux_arm:
+        description: Linux ARM
         type: boolean
+        required: false
         default: true
-      build_windows_arm:
-        description: Build Windows ARM
-        required: false
+      linux_x64:
+        description: Linux X64
         type: boolean
+        required: false
         default: true
-      build_windows_x64:
-        description: Build Windows X64
-        required: false
+      windows_arm:
+        description: Windows ARM
         type: boolean
+        required: false
+        default: true
+      windows_x64:
+        description: Windows X64
+        type: boolean
+        required: false
         default: true
 
 jobs:
   linux-arm:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_arm }}
+    name: Linux-ARM
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_arm }}
     uses: ./.github/workflows/thirdparty-linux.yml
     with:
       arch: ARM
 
   linux-x64:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_x64 }}
+    name: Linux-X64
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_x64 }}
     uses: ./.github/workflows/thirdparty-linux.yml
     with:
       arch: X64
 
   mac-arm:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_mac_arm }}
+    name: Mac-ARM
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_arm }}
     uses: ./.github/workflows/thirdparty-mac.yml
     with:
       arch: ARM
 
   mac-x64:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_mac_arm }}
+    name: Mac-X64
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_x64 }}
     uses: ./.github/workflows/thirdparty-mac.yml
     with:
       arch: X64
 
   windows-arm:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows_arm }}
+    name: Windows-ARM
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_arm }}
     uses: ./.github/workflows/thirdparty-windows.yml
     with:
       arch: ARM
 
-  windows-X64:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows_x64 }}
+  windows-x64:
+    name: Windows-X64
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_x64 }}
     uses: ./.github/workflows/thirdparty-windows.yml
     with:
       arch: X64

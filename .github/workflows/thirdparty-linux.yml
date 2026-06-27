@@ -29,6 +29,7 @@ run-name: Linux ${{ inputs.arch }}
 
 jobs:
   build:
+    name: Build
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

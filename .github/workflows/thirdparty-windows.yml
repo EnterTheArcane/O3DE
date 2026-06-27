@@ -28,7 +28,8 @@ on:
 run-name: Windows ${{ inputs.arch }}
 
 jobs:
-  Build:
+  build:
+    name: Build
     runs-on: windows-2022
     steps:
       - name: Checkout

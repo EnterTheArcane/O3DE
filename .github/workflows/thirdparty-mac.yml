@@ -29,6 +29,7 @@ run-name: Mac ${{ inputs.arch }}
 
 jobs:
   build:
+    name: Build
     runs-on: macos-15
     steps:
       - name: Checkout
