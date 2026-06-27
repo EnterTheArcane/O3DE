@@ -44,7 +44,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.folders.source, "include", "libmp3lame.sym"), "lame_init_old\n", "", strict=False)
+        replace_in_file(self, self.folders.source / "include" / "libmp3lame.sym", "lame_init_old\n", "", strict=False)
 
     def generate(self):
         if is_msvc(self) or self._is_clang_cl:
@@ -109,21 +109,21 @@ class Recipe(RecipeBase[_Options]):
             self._build_autotools()
 
     def package(self):
-        copy(self, pattern="LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, pattern="LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         if is_msvc(self) or self._is_clang_cl:
-            copy(self, pattern="*.h", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include", "lame"))
+            copy(self, pattern="*.h", src=self.folders.source / "include", dst=self.folders.package / "include" / "lame")
             name = "libmp3lame.lib" if self.options.shared else "libmp3lame-static.lib"
-            copy(self, name, src=os.path.join(self.folders.source, "output"), dst=os.path.join(self.folders.package, "lib"))
+            copy(self, name, src=self.folders.source / "output", dst=self.folders.package / "lib")
             if self.options.shared:
-                copy(self, pattern="*.dll", src=os.path.join(self.folders.source, "output"), dst=os.path.join(self.folders.package, "bin"))
+                copy(self, pattern="*.dll", src=self.folders.source / "output", dst=self.folders.package / "bin")
             rename(
-                self, os.path.join(self.folders.package, "lib", name),
-                os.path.join(self.folders.package, "lib", "mp3lame.lib"))
+                self, self.folders.package / "lib" / name,
+                self.folders.package / "lib" / "mp3lame.lib")
         else:
             autotools = Autotools(self)
             autotools.install()
-            rmdir(self, os.path.join(self.folders.package, "share"))
-            rm(self, "*.la", os.path.join(self.folders.package, "lib"))
+            rmdir(self, self.folders.package / "share")
+            rm(self, "*.la", self.folders.package / "lib")
             fix_apple_shared_install_name(self)
 
     def package_info(self):

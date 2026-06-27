@@ -75,7 +75,7 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "CMakeLists.txt"),
+            self.folders.source / "CMakeLists.txt",
             "set (CMAKE_POSITION_INDEPENDENT_CODE ON)",
             "")
         cmake = CMake(self)
@@ -83,14 +83,14 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rm(self, "libhdf5.settings", os.path.join(self.folders.package, "lib"))
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rm(self, "libhdf5.settings", self.folders.package / "lib")
+        rm(self, "*.pdb", self.folders.package / "bin")
         if self.options.shared:
-            for root, _, files in os.walk(os.path.join(self.folders.package, "lib")):
+            for root, _, files in os.walk(self.folders.package / "lib"):
                 for f in files:
                     if f.endswith(".a") and not f.endswith(".dll.a"):
                         os.remove(os.path.join(root, f))

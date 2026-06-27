@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -42,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744",
             destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.folders.source, "cmake", "utils.cmake"), "/WX", "")
+        replace_in_file(self, self.folders.source / "cmake" / "utils.cmake", "/WX", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -72,12 +70,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, "LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "spdlog", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "spdlog" / "cmake")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "spdlog")

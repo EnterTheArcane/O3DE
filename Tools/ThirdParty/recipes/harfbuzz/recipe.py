@@ -116,18 +116,18 @@ class Recipe(RecipeBase[_Options]):
         tc.generate()
 
     def build(self):
-        replace_in_file(self, os.path.join(self.folders.source, "meson.build"), "subdir('util')", "", strict=False)
+        replace_in_file(self, self.folders.source / "meson.build", "subdir('util')", "", strict=False)
         meson = Meson(self)
         meson.configure()
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", self.folders.source, self.folders.package / "licenses")
         meson = Meson(self)
         meson.install()
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rm(self, "*.pdb", self.folders.package / "bin")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
         fix_apple_shared_install_name(self)
         fix_msvc_libname(self)
 
@@ -194,8 +194,8 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.folders.package, libdir)
-            for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
+            full_folder = recipe.folders.package / libdir
+            for filepath in glob.glob(full_folder / f"*{ext}"):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]

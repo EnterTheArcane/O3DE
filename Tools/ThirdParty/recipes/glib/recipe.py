@@ -97,7 +97,7 @@ class Recipe(RecipeBase[_Options]):
         apply_patches(self)
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "meson.build"),
+            self.folders.source / "meson.build",
             "subdir('fuzzing')",
             "#subdir('fuzzing')",
             )  # https://gitlab.gnome.org/GNOME/glib/-/issues/2152
@@ -105,20 +105,14 @@ class Recipe(RecipeBase[_Options]):
             # allow to find gettext
             replace_in_file(
                 self,
-                os.path.join(self.folders.source, "meson.build"),
+                self.folders.source / "meson.build",
                 "libintl = dependency('intl', required: false",
                 "libintl = dependency('libgettext', method : 'pkg-config', required : false",
                 )
 
         replace_in_file(
             self,
-            os.path.join(
-                self.folders.source,
-                "gio",
-                "gdbus-2.0",
-                "codegen",
-                "gdbus-codegen.in",
-            ),
+            self.folders.source / "gio" / "gdbus-2.0" / "codegen" / "gdbus-codegen.in",
             "'share'",
             "'res'",
             )
@@ -130,16 +124,16 @@ class Recipe(RecipeBase[_Options]):
         meson.build()
 
     def package(self):
-        copy(self, pattern="LGPL-2.1-or-later.txt", dst=os.path.join(self.folders.package, "licenses"), src=os.path.join(self.folders.source, "LICENSES"))
+        copy(self, pattern="LGPL-2.1-or-later.txt", dst=self.folders.package / "licenses", src=self.folders.source / "LICENSES")
         meson = Meson(self)
         meson.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "libexec"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "libexec")
         shutil.move(
-            os.path.join(self.folders.package, "share"),
-            os.path.join(self.folders.package, "res"),
+            self.folders.package / "share",
+            self.folders.package / "res",
         )
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rm(self, "*.pdb", self.folders.package / "bin")
         fix_apple_shared_install_name(self)
         fix_msvc_libname(self)
 
@@ -273,8 +267,8 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.folders.package, libdir)
-            for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
+            full_folder = recipe.folders.package / libdir
+            for filepath in glob.glob(full_folder / f"*{ext}"):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]

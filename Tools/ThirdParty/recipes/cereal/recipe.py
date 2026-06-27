@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
@@ -28,7 +26,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(self, "include/*", src=self.folders.source, dst=self.folders.package)
 
     def package_info(self):

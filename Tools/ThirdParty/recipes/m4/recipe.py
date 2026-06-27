@@ -76,7 +76,7 @@ class Recipe(RecipeBase):
         env.prepend_path("PATH", self.folders.source)
         # handle msvc
         if is_msvc(self):
-            ar_wrapper = unix_path(self, os.path.join(self.folders.source, "build-aux", "ar-lib"))
+            ar_wrapper = unix_path(self, self.folders.source / "build-aux" / "ar-lib")
             env.define("CC", "cl -nologo")
             env.define("CXX", "cl -nologo")
             env.define("AR", f"{ar_wrapper} lib")
@@ -91,7 +91,7 @@ class Recipe(RecipeBase):
         apply_patches(self)
         if shutil.which("help2man") == None:
             # dummy file for configure
-            help2man = os.path.join(self.folders.source, "help2man")
+            help2man = self.folders.source / "help2man"
             save(self, help2man, "#!/usr/bin/env bash\n:")
             if os.name == "posix":
                 os.chmod(help2man, os.stat(help2man).st_mode | 0o111)
@@ -103,10 +103,10 @@ class Recipe(RecipeBase):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.libdirs = []
@@ -114,6 +114,6 @@ class Recipe(RecipeBase):
 
         # M4 environment variable is used by a lot of scripts as a way to override a hard-coded embedded m4 path
         bin_ext = ".exe" if self.settings.os == "Windows" else ""
-        m4_bin = os.path.join(self.folders.package, "bin", f"m4{bin_ext}").replace("\\", "/")
+        m4_bin = (self.folders.package / "bin" / f"m4{bin_ext}").as_posix()
         self.runenv_info.define_path("M4", m4_bin)
         self.buildenv_info.define_path("M4", m4_bin)

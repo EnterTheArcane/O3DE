@@ -45,8 +45,8 @@ class Recipe(RecipeBase):
         cmake = CMake(self)
         cmake.install()
 
-        copy(self, "COPYING.*", self.folders.source, os.path.join(self.folders.package, "licenses"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        copy(self, "COPYING.*", self.folders.source, self.folders.package / "licenses")
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "Eigen3")

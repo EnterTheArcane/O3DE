@@ -42,17 +42,17 @@ class Recipe(RecipeBase):
             strip_root=False)
 
     def package(self):
-        dst = os.path.join(self.folders.package, "bin")
+        dst = self.folders.package / "bin"
         if str(self.settings.os) == "Windows":
             copy(self, "ninja.exe", src=self.folders.build, dst=dst)
         else:
             copy(self, "ninja", src=self.folders.build, dst=dst)
             import stat
-            ninja_path = os.path.join(dst, "ninja")
+            ninja_path = dst / "ninja"
             os.chmod(ninja_path, os.stat(ninja_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     def package_info(self):
         self.info.libdirs = []
         self.info.includedirs = []
-        bin_dir = os.path.join(self.folders.package, "bin")
+        bin_dir = self.folders.package / "bin"
         self.buildenv_info.prepend_path("PATH", bin_dir)

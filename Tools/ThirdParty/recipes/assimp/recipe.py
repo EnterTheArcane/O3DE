@@ -253,7 +253,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Windows":
             tc.preprocessor_definitions["NOMINMAX"] = 1
 
-        tc.cache_variables["CMAKE_PROJECT_Assimp_INCLUDE"] = os.path.join(self.folders.generators, "recipe_deps.cmake").replace("\\", "/")
+        tc.cache_variables["CMAKE_PROJECT_Assimp_INCLUDE"] = (self.folders.generators / "recipe_deps.cmake").as_posix()
         tc.cache_variables["WITH_CLIPPER"] = self._depends_on_clipper
         tc.cache_variables["WITH_DRACO"] = self._depends_on_draco
         tc.cache_variables["WITH_KUBAZIP"] = self._depends_on_kuba_zip
@@ -275,7 +275,7 @@ class Recipe(RecipeBase[_Options]):
         # CMakeDeps emits); calls are non-REQUIRED so options-disabled deps are harmless.
         _agg_pkgs = ["BZip2", "ZLIB", "minizip", "pugixml", "utf8cpp", "zip",
                      "poly2tri", "RapidJSON", "draco", "clipper", "stb", "openddlparser"]
-        save(self, os.path.join(self.folders.generators, "recipe_deps.cmake"),
+        save(self, self.folders.generators / "recipe_deps.cmake",
              "".join(f"find_package({p})\n" for p in _agg_pkgs))
 
     def _patch_sources(self):
@@ -287,11 +287,11 @@ class Recipe(RecipeBase[_Options]):
             'SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_DEBUG /Zi /Od")',
             'SET(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG:FULL /PDBALTPATH:%_PDB% /OPT:REF /OPT:ICF")',
         ]:
-            replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), pattern, "")
+            replace_in_file(self, self.folders.source / "CMakeLists.txt", pattern, "")
 
         for pattern in ["-Werror", "/WX"]:
-            replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), pattern, "")
-            replace_in_file(self, os.path.join(self.folders.source, "code", "CMakeLists.txt"), pattern, "")
+            replace_in_file(self, self.folders.source / "CMakeLists.txt", pattern, "")
+            replace_in_file(self, self.folders.source / "code" / "CMakeLists.txt", pattern, "")
 
         # Make sure vendored libs are not used by accident by removing their subdirs
         allow_vendored = ["Open3DGC", "earcut-hpp"]
@@ -336,21 +336,21 @@ class Recipe(RecipeBase[_Options]):
             (os.path.join("zip", "src", "zip.h"), "zip/zip.h"),
         ]:
             save(
-                self, os.path.join(self.folders.source, "contrib", contrib_header),
+                self, self.folders.source / "contrib" / contrib_header,
                 f"#include <{include}>\n")
-        rmdir(self, os.path.join(self.folders.source, "contrib", "utf8cpp"))
+        rmdir(self, self.folders.source / "contrib" / "utf8cpp")
 
         # minizip is provided via recipe_deps.cmake, no need to use pkgconfig
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "CMakeLists.txt"),
+            self.folders.source / "CMakeLists.txt",
             "use_pkgconfig(UNZIP minizip)",
             "set(UNZIP_FOUND TRUE)")
 
         # ZLIB is unvendored, no need to install it
         # https://github.com/assimp/assimp/blob/v5.3.1/CMakeLists.txt#L483-L487
         # https://github.com/assimp/assimp/blob/v5.1.6/CMakeLists.txt#L463-L466
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "INSTALL( TARGETS zlib", "set(_ #")
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "INSTALL( TARGETS zlib", "set(_ #")
 
     def build(self):
         cmake = CMake(self)
@@ -358,11 +358,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "assimp")

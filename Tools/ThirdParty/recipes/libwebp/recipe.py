@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rmdir
@@ -67,9 +65,9 @@ class Recipe(RecipeBase[_Options]):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "WebP")

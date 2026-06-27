@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
@@ -39,7 +37,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="3258da280511d24b49d6b08615bbe824d0cacc9842b0e4caf11c52cf2b043893",
             destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "cmake_policy(SET CMP0091 OLD)", "")
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "cmake_policy(SET CMP0091 OLD)", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -56,12 +54,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "SampleRate")

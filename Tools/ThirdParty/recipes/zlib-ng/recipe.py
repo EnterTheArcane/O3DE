@@ -1,4 +1,3 @@
-import os
 import re
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -63,7 +62,7 @@ class Recipe(RecipeBase[_Options]):
         tc.generate()
 
     def _get_zlib_header_version(self):
-        zlib_h = load(self, os.path.join(self.folders.source, "zlib.h.in"))
+        zlib_h = load(self, self.folders.source / "zlib.h.in")
         match = re.search(r'#define\s+ZLIB_VERSION\s+"([0-9]+\.[0-9]+\.[0-9]+)\.zlib-ng"', zlib_h)
         return match.group(1) if match and match.group(1) else None
 
@@ -77,12 +76,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        license_folder = os.path.join(self.folders.package, "licenses")
+        license_folder = self.folders.package / "licenses"
         copy(self, "LICENSE.md", src=self.folders.source, dst=license_folder)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
         # upstream CMakeLists intentionally hardcodes install_name with full
         # install path (to match autootools behavior), instead of @rpath
         fix_apple_shared_install_name(self)

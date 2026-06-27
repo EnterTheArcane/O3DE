@@ -322,15 +322,15 @@ class Recipe(RecipeBase[_Options]):
     def _patch_sources(self):
         if self.options.with_ssl == "openssl":
             # https://trac.ffmpeg.org/ticket/5675
-            openssl_libs = load(self, os.path.join(self.folders.build, "openssl_libs.list"))
+            openssl_libs = load(self, self.folders.build / "openssl_libs.list")
             replace_in_file(
                 self,
-                os.path.join(self.folders.source, "configure"),
+                self.folders.source / "configure",
                 "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto ||",
                 f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} ||",
                 strict=False)
 
-        # replace_in_file(self, os.path.join(self.folders.source, "configure"), "echo libx264.lib", "echo x264.lib")
+            # replace_in_file(self, self.folders.source / "configure", "echo libx264.lib", "echo x264.lib")
 
     @property
     def _default_compilers(self):
@@ -651,7 +651,7 @@ class Recipe(RecipeBase[_Options]):
             # Include system_libs (crypt32, ws2_32, ... on Windows) so configure's check_lib
             # link test for DTLS_get_data_mtu can actually resolve openssl's symbols.
             openssl_libs = " ".join([f"-l{lib}" for lib in openssl_cpp.libs] + [f"-l{lib}" for lib in openssl_cpp.system_libs])
-            save(self, os.path.join(self.folders.build, "openssl_libs.list"), openssl_libs)
+            save(self, self.folders.build / "openssl_libs.list", openssl_libs)
 
     def _split_and_format_options_string(self, flag_name, options_list):
         if not options_list:
@@ -677,31 +677,31 @@ class Recipe(RecipeBase[_Options]):
         autotools.make()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
         if is_msvc(self):
             if self.options.shared:
                 # ffmpeg created `.lib` files in the `/bin` folder
-                for fn in os.listdir(os.path.join(self.folders.package, "bin")):
+                for fn in os.listdir(self.folders.package / "bin"):
                     if fn.endswith(".lib"):
                         rename(
-                            self, os.path.join(self.folders.package, "bin", fn),
-                            os.path.join(self.folders.package, "lib", fn))
-                rm(self, "*.def", os.path.join(self.folders.package, "lib"))
+                            self, self.folders.package / "bin" / fn,
+                            self.folders.package / "lib" / fn)
+                rm(self, "*.def", self.folders.package / "lib")
             else:
                 # ffmpeg produces `.a` files that are actually `.lib` files
-                with chdir(self, os.path.join(self.folders.package, "lib")):
+                with chdir(self, self.folders.package / "lib"):
                     for lib in glob.glob("*.a"):
                         rename(self, lib, lib[3:-2] + ".lib")
 
     def _read_component_version(self, component_name):
         # since 5.1, major version may be defined in version_major.h instead of version.h
-        component_folder = os.path.join(self.folders.package, "include", f"lib{component_name}")
-        version_file_name = os.path.join(component_folder, "version.h")
-        version_major_file_name = os.path.join(component_folder, "version_major.h")
+        component_folder = self.folders.package / "include" / f"lib{component_name}"
+        version_file_name = component_folder / "version.h"
+        version_major_file_name = component_folder / "version_major.h"
         pattern = f"define LIB{component_name.upper()}_VERSION_(MAJOR|MINOR|MICRO)[ \t]+(\\d+)"
         version = dict()
         for file in (version_file_name, version_major_file_name):

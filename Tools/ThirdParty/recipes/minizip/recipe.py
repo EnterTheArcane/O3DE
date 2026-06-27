@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["MINIZIP_SRC_DIR"] = os.path.join(self.folders.source, "contrib", "minizip").replace("\\", "/")
+        tc.variables["MINIZIP_SRC_DIR"] = (self.folders.source / "contrib" / "minizip").as_posix()
         tc.variables["MINIZIP_ENABLE_BZIP2"] = True
         tc.variables["MINIZIP_BUILD_TOOLS"] = True
         # fopen64 and similar are unavailable before API level 24: https://github.com/madler/zlib/pull/436
@@ -46,15 +46,15 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def _extract_license(self):
-        zlib_h = load(self, os.path.join(self.folders.source, "zlib.h"))
+        zlib_h = load(self, self.folders.source / "zlib.h")
         return zlib_h[2:zlib_h.find("*/", 1)]
 
     def package(self):
-        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), self._extract_license())
+        save(self, self.folders.package / "licenses" / "LICENSE", self._extract_license())
         cmake = CMake(self)
         cmake.install()
 

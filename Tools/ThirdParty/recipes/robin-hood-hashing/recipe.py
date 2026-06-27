@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import apply_patches, copy, get
 from thirdparty.scm import Version
@@ -25,10 +23,10 @@ class Recipe(RecipeBase):
         apply_patches(self)
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(
-            self, "robin_hood.h", src=os.path.join(self.folders.source, "src", "include"),
-            dst=os.path.join(self.folders.package, "include"))
+            self, "robin_hood.h", src=self.folders.source / "src" / "include",
+            dst=self.folders.package / "include")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "robin_hood")

@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
@@ -24,8 +22,8 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "*", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "*", src=self.folders.source / "include", dst=self.folders.package / "include")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "FastFloat")

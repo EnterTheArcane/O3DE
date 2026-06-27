@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import apply_patches, chdir, copy, get, rmdir
@@ -37,8 +35,8 @@ class Recipe(RecipeBase):
         tc = AutotoolsToolchain(self)
         tcenv = tc.environment()
         if is_msvc(self):
-            compile_wrapper = unix_path(self, os.path.join(self.folders.source, "build-aux", "compile"))
-            ar_wrapper = unix_path(self, os.path.join(self.folders.source, "build-aux", "ar-lib"))
+            compile_wrapper = unix_path(self, self.folders.source / "build-aux" / "compile")
+            ar_wrapper = unix_path(self, self.folders.source / "build-aux" / "ar-lib")
             tcenv.define("CC", f"{compile_wrapper} cl -nologo")
             tcenv.define("CXX", f"{compile_wrapper} cl -nologo")
             tcenv.append("CPPFLAGS", "-D_WIN32_WINNT=_WIN32_WINNT_WIN8")
@@ -61,11 +59,11 @@ class Recipe(RecipeBase):
 
     def package(self):
         copy(self, "COPYING", src=self.folders.source,
-             dst=os.path.join(self.folders.package, "licenses"))
+             dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         with chdir(self, self.folders.source):
             autotools.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.includedirs = []

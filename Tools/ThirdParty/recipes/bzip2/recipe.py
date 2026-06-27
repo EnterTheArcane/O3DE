@@ -46,15 +46,15 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
         self._create_cmake_module_variables(
-            os.path.join(self.folders.package, self._module_file_rel_path)
+            self.folders.package / self._module_file_rel_path
         )
 
     def _create_cmake_module_variables(self, module_file):

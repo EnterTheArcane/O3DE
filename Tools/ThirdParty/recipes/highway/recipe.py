@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -40,13 +38,13 @@ class Recipe(RecipeBase[_Options]):
     def _patch_sources(self):
         # No hardcoded CMAKE_CXX_STANDARD
         replace_in_file(
-            self, os.path.join(self.folders.source, "cmake", "FindAtomics.cmake"),
+            self, self.folders.source / "cmake" / "FindAtomics.cmake",
             "set(CMAKE_CXX_STANDARD 11)", "")
         replace_in_file(
-            self, os.path.join(self.folders.source, "cmake", "FindAtomics.cmake"),
+            self, self.folders.source / "cmake" / "FindAtomics.cmake",
             "unset(CMAKE_CXX_STANDARD)", "")
         # Honor fPIC option
-        cmakelists = os.path.join(self.folders.source, "CMakeLists.txt")
+        cmakelists = self.folders.source / "CMakeLists.txt"
         replace_in_file(self, cmakelists, "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
         replace_in_file(
             self, cmakelists,
@@ -59,13 +57,13 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        license_folder = os.path.join(self.folders.package, "licenses")
+        license_folder = self.folders.package / "licenses"
         copy(self, "LICENSE", src=self.folders.source, dst=license_folder)
         copy(self, "LICENSE-BSD3", src=self.folders.source, dst=license_folder)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     def package_info(self):
         self.info.components["hwy"].set_property("pkg_config_name", "libhwy")

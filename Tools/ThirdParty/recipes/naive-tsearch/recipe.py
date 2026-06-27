@@ -45,18 +45,18 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
         if self.options.header_only:
-            rmdir(self, os.path.join(self.folders.package, "lib"))
-            rm(self, "tsearch.h", os.path.join(self.folders.package, "include", "naive-tsearch"))
+            rmdir(self, self.folders.package / "lib")
+            rm(self, "tsearch.h", self.folders.package / "include" / "naive-tsearch")
         else:
-            rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-            rm(self, "tsearch_hdronly.h", os.path.join(self.folders.package, "include", "naive-tsearch"))
-            rm(self, "tsearch.c.inc", os.path.join(self.folders.package, "include", "naive-tsearch"))
+            rmdir(self, self.folders.package / "lib" / "cmake")
+            rmdir(self, self.folders.package / "lib" / "pkgconfig")
+            rm(self, "tsearch_hdronly.h", self.folders.package / "include" / "naive-tsearch")
+            rm(self, "tsearch.c.inc", self.folders.package / "include" / "naive-tsearch")
 
     def package_info(self):
         if self.options.header_only:

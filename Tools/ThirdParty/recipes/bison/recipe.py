@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeInvalidConfiguration
@@ -48,7 +46,7 @@ class Recipe(RecipeBase):
 
     def _patch_sources(self):
         # Make the installed ``yacc`` wrapper relocatable.
-        yacc = os.path.join(self.folders.source, "src", "yacc.in")
+        yacc = self.folders.source / "src" / "yacc.in"
         replace_in_file(self, yacc, "@prefix@", "$CONAN_BISON_ROOT")
         replace_in_file(self, yacc, "@bindir@", "$CONAN_BISON_ROOT/bin")
 
@@ -60,7 +58,7 @@ class Recipe(RecipeBase):
 
     def package(self):
         copy(self, "COPYING", src=self.folders.source,
-             dst=os.path.join(self.folders.package, "licenses"))
+             dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
 
@@ -70,4 +68,4 @@ class Recipe(RecipeBase):
         self.info.resdirs = ["res"]
         self.buildenv_info.define_path("CONAN_BISON_ROOT", self.folders.package.as_posix())
         self.buildenv_info.define_path(
-            "BISON_PKGDATADIR", os.path.join(self.folders.package, "res", "bison"))
+            "BISON_PKGDATADIR", self.folders.package / "res" / "bison")

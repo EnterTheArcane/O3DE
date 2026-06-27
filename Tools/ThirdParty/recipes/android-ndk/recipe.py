@@ -73,7 +73,7 @@ class Recipe(RecipeBase):
 
     @property
     def _ndk_root(self):
-        return os.path.join(self.folders.package, self._ndk_root_rel_path)
+        return self.folders.package / self._ndk_root_rel_path
 
     @property
     def _android_abi(self):
@@ -113,16 +113,16 @@ class Recipe(RecipeBase):
             return self._wrap_executable(f"{prefix}-{tool}")
 
     def _define_tool_var(self, name, value, bare=False):
-        ndk_bin = os.path.join(self._ndk_root, "bin")
-        path = os.path.join(ndk_bin, self._tool_name(value, bare))
+        ndk_bin = self._ndk_root / "bin"
+        path = ndk_bin / self._tool_name(value, bare)
         if not os.path.isfile(path):
             self.output.error(f"Environment variable {name} could not be set: '{path}' not found")
             return "UNKNOWN"
         return path
 
     def _define_tool_var_naked(self, name, value):
-        ndk_bin = os.path.join(self._ndk_root, "bin")
-        path = os.path.join(ndk_bin, self._wrap_executable(value))
+        ndk_bin = self._ndk_root / "bin"
+        path = ndk_bin / self._wrap_executable(value)
         if not os.path.isfile(path):
             self.output.error(f"Environment variable {name} could not be set: '{path}' not found")
             return "UNKNOWN"
@@ -136,7 +136,7 @@ class Recipe(RecipeBase):
     def _fix_permissions(self):
         if os.name != "posix":
             return
-        for root, _, files in os.walk(os.path.join(self.folders.package, "bin")):
+        for root, _, files in os.walk(self.folders.package / "bin"):
             for filename in files:
                 filepath = os.path.join(root, filename)
                 with open(filepath, "rb") as f:
@@ -184,22 +184,22 @@ class Recipe(RecipeBase):
             sha256=data["sha256"])
 
     def package(self):
-        copy(self, "*", src=self.folders.source, dst=os.path.join(self.folders.package, "bin"))
-        copy(self, "*NOTICE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "*NOTICE.toolchain", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "cmake-wrapper.cmd", src=os.path.join(self.folders.source, os.pardir), dst=os.path.join(self.folders.package, "bin"))
-        copy(self, "cmake-wrapper", src=os.path.join(self.folders.source, os.pardir), dst=os.path.join(self.folders.package, "bin"))
+        copy(self, "*", src=self.folders.source, dst=self.folders.package / "bin")
+        copy(self, "*NOTICE", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "*NOTICE.toolchain", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "cmake-wrapper.cmd", src=self.folders.source / os.pardir, dst=self.folders.package / "bin")
+        copy(self, "cmake-wrapper", src=self.folders.source / os.pardir, dst=self.folders.package / "bin")
         self._fix_permissions()
-        rm(self, "*Config.cmake", os.path.join(self.folders.package, "bin"), recursive=True)
-        rm(self, "*-config.cmake", os.path.join(self.folders.package, "bin"), recursive=True)
-        rm(self, "Find*.cmake", os.path.join(self.folders.package, "bin"), recursive=True)
+        rm(self, "*Config.cmake", self.folders.package / "bin", recursive=True)
+        rm(self, "*-config.cmake", self.folders.package / "bin", recursive=True)
+        rm(self, "Find*.cmake", self.folders.package / "bin", recursive=True)
 
     def package_info(self):
         self.info.includedirs = []
         self.info.libdirs = []
 
-        self.buildenv_info.define_path("ANDROID_NDK_ROOT", os.path.join(self.folders.package, "bin"))
-        self.buildenv_info.define_path("ANDROID_NDK_HOME", os.path.join(self.folders.package, "bin"))
+        self.buildenv_info.define_path("ANDROID_NDK_ROOT", self.folders.package / "bin")
+        self.buildenv_info.define_path("ANDROID_NDK_HOME", self.folders.package / "bin")
 
         if not hasattr(self, "settings_target") or self.settings_target is None:
             return
@@ -210,11 +210,11 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("NDK_ROOT", self._ndk_root)
         self.buildenv_info.define("CHOST", self._llvm_triplet)
 
-        ndk_sysroot = os.path.join(self._ndk_root, "sysroot")
+        ndk_sysroot = self._ndk_root / "sysroot"
         self.conf_info.define("tools.build:sysroot", ndk_sysroot)
         self.buildenv_info.define_path("SYSROOT", ndk_sysroot)
         self.buildenv_info.define("ANDROID_NATIVE_API_LEVEL", str(self.settings_target.os.api_level))
-        self.conf_info.define("tools.android:ndk_path", os.path.join(self.folders.package, "bin"))
+        self.conf_info.define("tools.android:ndk_path", self.folders.package / "bin")
 
         compiler_executables = {
             "c": self._define_tool_var("CC", "clang"),

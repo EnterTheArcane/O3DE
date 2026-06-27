@@ -19,12 +19,12 @@ class Recipe(RecipeBase):
     @property
     def _nasm(self):
         suffix = "w.exe" if is_msvc(self) else ""
-        return os.path.join(self.folders.package, "bin", f"nasm{suffix}")
+        return self.folders.package / "bin" / f"nasm{suffix}"
 
     @property
     def _ndisasm(self):
         suffix = "w.exe" if is_msvc(self) else ""
-        return os.path.join(self.folders.package, "bin", f"ndisasm{suffix}")
+        return self.folders.package / "bin" / f"ndisasm{suffix}"
 
     def _chmod_plus_x(self, filename):
         if os.name == "posix":
@@ -83,17 +83,17 @@ class Recipe(RecipeBase):
                 autotools.make()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
         if is_msvc(self):
-            copy(self, pattern="*.exe", src=self.folders.source, dst=os.path.join(self.folders.package, "bin"), keep_path=False)
-            with chdir(self, os.path.join(self.folders.package, "bin")):
+            copy(self, pattern="*.exe", src=self.folders.source, dst=self.folders.package / "bin", keep_path=False)
+            with chdir(self, self.folders.package / "bin"):
                 shutil.copy2("nasm.exe", "nasmw.exe")
                 shutil.copy2("ndisasm.exe", "ndisasmw.exe")
         else:
             with chdir(self, self.folders.source):
                 autotools = Autotools(self)
                 autotools.install()
-            rmdir(self, os.path.join(self.folders.package, "share"))
+            rmdir(self, self.folders.package / "share")
         self._chmod_plus_x(self._nasm)
         self._chmod_plus_x(self._ndisasm)
 

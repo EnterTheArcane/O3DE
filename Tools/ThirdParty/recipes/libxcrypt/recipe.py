@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
@@ -42,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
 
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "Makefile.am"),
+            self.folders.source / "Makefile.am",
             "\nlibcrypt_la_LDFLAGS = ",
             "\nlibcrypt_la_LDFLAGS = -no-undefined ")
 
@@ -60,12 +58,12 @@ class Recipe(RecipeBase[_Options]):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING.LIB", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING.LIB", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install(args=[f"DESTDIR={unix_path(self, self.folders.package)}"])
-        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rm(self, "*.la", self.folders.package / "lib")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
         fix_apple_shared_install_name(self)
 
     def package_info(self):

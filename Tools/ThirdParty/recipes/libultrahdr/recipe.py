@@ -1,4 +1,3 @@
-import os
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -64,8 +63,8 @@ class Recipe(RecipeBase[_Options]):
         cmake = CMake(self)
         cmake.install()
 
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.libs = ['uhdr']

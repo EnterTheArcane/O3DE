@@ -64,17 +64,17 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        rmdir(self, os.path.join(self.folders.source, "tests"))  # optionally included
+        rmdir(self, self.folders.source / "tests")  # optionally included
         cmake.configure()
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
         # TODO: also add LIBLZMA_HAS_AUTO_DECODER, LIBLZMA_HAS_EASY_ENCODER & LIBLZMA_HAS_LZMA_PRESET
         content = textwrap.dedent(
@@ -91,7 +91,7 @@ class Recipe(RecipeBase[_Options]):
             set(LIBLZMA_VERSION_PATCH {Version(self.version).patch})
             set(LIBLZMA_VERSION_STRING "{self.version}")
             """)
-        module_file = os.path.join(self.folders.package, self._module_file_rel_path)
+        module_file = self.folders.package / self._module_file_rel_path
         save(self, module_file, content)
 
     @property

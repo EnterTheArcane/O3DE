@@ -105,7 +105,7 @@ class Recipe(RecipeBase[_Options]):
             self.conf.get("user.gnu-config:config_sub", check_type=str),
         ]:
             if gnu_config:
-                copy(self, os.path.basename(gnu_config), os.path.dirname(gnu_config), os.path.join(self.folders.source, "build-aux"))
+                copy(self, os.path.basename(gnu_config), os.path.dirname(gnu_config), self.folders.source / "build-aux")
 
     def build(self):
         self._patch_sources()
@@ -115,11 +115,11 @@ class Recipe(RecipeBase[_Options]):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", self.folders.source, self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
-        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rm(self, "*.la", self.folders.package / "lib")
+        rmdir(self, self.folders.package / "share")
         fix_apple_shared_install_name(self)
 
     def package_info(self):
@@ -127,5 +127,5 @@ class Recipe(RecipeBase[_Options]):
             self.info.libs.append("gdbm_compat")
         self.info.libs.append("gdbm")
 
-        bin_path = os.path.join(self.folders.package, "bin")
+        bin_path = self.folders.package / "bin"
         self.output.info(f"Appending PATH environment variable: {bin_path}")

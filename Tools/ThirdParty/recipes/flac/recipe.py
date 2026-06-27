@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -48,7 +46,7 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "src", "share", "getopt", "CMakeLists.txt"),
+            self.folders.source / "src" / "share" / "getopt" / "CMakeLists.txt",
             "find_package(Intl)",
             "")
         cmake = CMake(self)
@@ -60,13 +58,13 @@ class Recipe(RecipeBase[_Options]):
         cmake.install()
         copy(
             self, "COPYING.*", src=self.folders.source,
-            dst=os.path.join(self.folders.package, "licenses"), keep_path=False)
+            dst=self.folders.package / "licenses", keep_path=False)
         copy(
-            self, "*.h", src=os.path.join(self.folders.source, "include", "share"),
-            dst=os.path.join(self.folders.package, "include", "share"), keep_path=False)
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+            self, "*.h", src=self.folders.source / "include" / "share",
+            dst=self.folders.package / "include" / "share", keep_path=False)
+        rmdir(self, self.folders.package / "share")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "flac")

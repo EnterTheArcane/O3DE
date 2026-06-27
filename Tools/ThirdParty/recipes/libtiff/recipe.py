@@ -1,4 +1,3 @@
-import os
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -104,12 +103,12 @@ class Recipe(RecipeBase[_Options]):
 
         # remove FindXXXX for recipe dependencies
         for module in ["Deflate", "JBIG", "JPEG", "LERC", "WebP", "ZSTD", "liblzma", "LibLZMA"]:
-            rm(self, f"Find{module}.cmake", os.path.join(self.folders.source, "cmake"))
+            rm(self, f"Find{module}.cmake", self.folders.source / "cmake")
 
         # Export symbols of tiffxx for msvc shared
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "libtiff", "CMakeLists.txt"),
+            self.folders.source / "libtiff" / "CMakeLists.txt",
             "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
             "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")
 
@@ -119,11 +118,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"), ignore_case=True, keep_path=False)
+        copy(self, "LICENSE.md", src=self.folders.source, dst=self.folders.package / "licenses", ignore_case=True, keep_path=False)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "TIFF")

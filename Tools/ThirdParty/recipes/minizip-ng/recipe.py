@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -97,11 +95,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "minizip")
@@ -119,7 +117,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["minizip"].defines.append("HAVE_BZIP2")
 
         minizip_dir = "minizip" if self.options.mz_compatibility else "minizip-ng"
-        self.info.components["minizip"].includedirs.append(os.path.join(self.folders.package, "include", minizip_dir))
+        self.info.components["minizip"].includedirs.append(self.folders.package / "include" / minizip_dir)
 
         self.info.components["minizip"].set_property("cmake_target_name", "MINIZIP::minizip")
         self.info.components["minizip"].set_property("pkg_config_name", "minizip")

@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -32,7 +30,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="944656c33aa776dc2c882991d1a6a86c8408fec8b8a19bc5305bf7eabdd4d908",
             destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "-Werror", "")
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "-Werror", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -47,10 +45,10 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "UNLICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "UNLICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "zip")

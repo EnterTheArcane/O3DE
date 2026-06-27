@@ -37,11 +37,11 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def package(self):
-        copy(self, "lua_LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "lua_LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
 

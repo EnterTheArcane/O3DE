@@ -191,14 +191,14 @@ class Recipe(RecipeBase[_Options]):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
-        os.unlink(os.path.join(self.folders.package, "bin", f"ncurses{self._suffix}{Version(self.version).major}-config"))
+        os.unlink(self.folders.package / "bin" / f"ncurses{self._suffix}{Version(self.version).major}-config")
         copy(
             self, "*.cmake",
-            src=os.path.join(self.folders.export_sources, "cmake"),
-            dst=os.path.join(self.folders.package, self._module_subfolder))
+            src=self.folders.export_sources / "cmake",
+            dst=self.folders.package / self._module_subfolder)
         fix_apple_shared_install_name(self)
 
     @property
@@ -284,7 +284,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["libcurses"].builddirs.append(self._module_subfolder)
         self.info.set_property("cmake_build_modules", [module_rel_path])
 
-        terminfo = os.path.join(self.folders.package, "res", "terminfo")
+        terminfo = self.folders.package / "res" / "terminfo"
         self.buildenv_info.define_path("TERMINFO", terminfo)
         self.runenv_info.define_path("TERMINFO", terminfo)
         self.conf_info.define("user.ncurses:lib_suffix", self._lib_suffix)

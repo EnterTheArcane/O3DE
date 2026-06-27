@@ -1,4 +1,3 @@
-import os
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -216,15 +215,15 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE*.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE*.md", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
         if self.settings.os == "Windows":
             for vc_file in ("concrt", "msvcp", "vcruntime"):
-                rm(self, f"{vc_file}*.dll", os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+                rm(self, f"{vc_file}*.dll", self.folders.package / "bin")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     @staticmethod
     def _recipe_comp(name):

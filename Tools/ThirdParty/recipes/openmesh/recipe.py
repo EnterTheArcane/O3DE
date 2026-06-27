@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rm, rmdir
@@ -39,17 +37,17 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "libdata"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "libdata")
+        rmdir(self, self.folders.package / "share")
         if self.settings.os != "Windows":
             if self.options.shared:
-                rm(self, "*.a", os.path.join(self.folders.package, "lib"))
+                rm(self, "*.a", self.folders.package / "lib")
             else:
-                rm(self, "*.so*", os.path.join(self.folders.package, "lib"))
-                rm(self, "*.dylib", os.path.join(self.folders.package, "lib"))
+                rm(self, "*.so*", self.folders.package / "lib")
+                rm(self, "*.dylib", self.folders.package / "lib")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "OpenMesh")

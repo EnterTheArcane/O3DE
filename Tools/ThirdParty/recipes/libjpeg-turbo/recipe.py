@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
@@ -65,7 +63,7 @@ class Recipe(RecipeBase[_Options]):
         apply_patches(self)
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "sharedlib", "CMakeLists.txt"),
+            self.folders.source / "sharedlib" / "CMakeLists.txt",
             """string(REGEX REPLACE "/MT" "/MD" ${var} "${${var}}")""",
             "")
 
@@ -97,7 +95,7 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self):
             tc.variables["WITH_CRT_DLL"] = True  # avoid replacing /MD by /MT in compiler flags
         if self.options.get_safe("java", False):
-            tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = os.path.join(self.folders.package, "lib", "java")
+            tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = self.folders.package / "lib" / "java"
         tc.generate()
 
     def build(self):
@@ -106,18 +104,18 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "README.ijg", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "README.ijg", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
         # remove unneeded directories
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "doc"))
+        rmdir(self, self.folders.package / "share")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "doc")
         # remove binaries and pdb files
         for pattern_to_remove in ["cjpeg*", "djpeg*", "jpegtran*", "tjbench*", "wrjpgcom*", "rdjpgcom*", "*.pdb"]:
-            rm(self, pattern_to_remove, os.path.join(self.folders.package, "bin"))
+            rm(self, pattern_to_remove, self.folders.package / "bin")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "libjpeg-turbo")

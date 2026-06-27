@@ -146,15 +146,16 @@ class Recipe(RecipeBase[_Options]):
         download(
             self,
             cert_url,
-            os.path.join(self.folders.source, "cacert.pem"),
+            self.folders.source / "cacert.pem",
             verify=True,
             sha256=cert_sha256)
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "find_package(NGHTTP2 MODULE)", "find_package(NGHTTP2 CONFIG REQUIRED)")
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "find_package(Cares MODULE REQUIRED)", "find_package(Cares CONFIG REQUIRED)")
-        replace_in_file(self, os.path.join(self.folders.source, "CMake", "Macros.cmake"), "find_package(${_find_name})", "find_package(${_find_name} CONFIG REQUIRED)")
-        replace_in_file(self, os.path.join(self.folders.source, "CMake", "Macros.cmake"), "find_package(${_find_name} MODULE)", "find_package(${_find_name} CONFIG REQUIRED)")
-        replace_in_file(self, os.path.join(self.folders.source, "CMake", "Macros.cmake"), "find_package(${_find_name} REQUIRED)", "find_package(${_find_name} CONFIG REQUIRED)")
-        replace_in_file(self, os.path.join(self.folders.source, "CMake", "Macros.cmake"), "find_package(${_find_name} MODULE REQUIRED)", "find_package(${_find_name} CONFIG REQUIRED)")
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "find_package(NGHTTP2 MODULE)", "find_package(NGHTTP2 CONFIG REQUIRED)")
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "find_package(Cares MODULE REQUIRED)", "find_package(Cares CONFIG REQUIRED)")
+        macros_cmake = self.folders.source / "CMake" / "Macros.cmake"
+        replace_in_file(self, macros_cmake, "find_package(${_find_name})", "find_package(${_find_name} CONFIG REQUIRED)")
+        replace_in_file(self, macros_cmake, "find_package(${_find_name} MODULE)", "find_package(${_find_name} CONFIG REQUIRED)")
+        replace_in_file(self, macros_cmake, "find_package(${_find_name} REQUIRED)", "find_package(${_find_name} CONFIG REQUIRED)")
+        replace_in_file(self, macros_cmake, "find_package(${_find_name} MODULE REQUIRED)", "find_package(${_find_name} CONFIG REQUIRED)")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -287,17 +288,17 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_largemaxwritesize:
             replace_in_file(
                 self,
-                os.path.join(self.folders.source, "include", "curl", "curl.h"),
+                self.folders.source / "include" / "curl" / "curl.h",
                 "define CURL_MAX_WRITE_SIZE 16384",
                 "define CURL_MAX_WRITE_SIZE 10485760")
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "cacert.pem", src=self.folders.source, dst=os.path.join(self.folders.package, "res"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "cacert.pem", src=self.folders.source, dst=self.folders.package / "res")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "CURL")

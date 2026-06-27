@@ -70,7 +70,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=False)  # Preserve tarball root dir (msys64/)
 
     def _update_pacman(self):
-        with chdir(self, os.path.join(self._msys_dir, "usr", "bin")):
+        with chdir(self, self._msys_dir / "usr" / "bin"):
             try:
                 self._kill_pacman()
 
@@ -118,7 +118,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _msys_dir(self):
         subdir = "msys64"  # top-level directoy in tarball
-        return os.path.join(self.folders.source, subdir)
+        return self.folders.source / subdir
 
     def build(self):
         with OpLock():
@@ -133,7 +133,7 @@ class Recipe(RecipeBase[_Options]):
 
         self._update_pacman()
 
-        with chdir(self, os.path.join(self._msys_dir, "usr", "bin")):
+        with chdir(self, self._msys_dir / "usr" / "bin"):
             for package in packages:
                 self.run(f'bash -l -c "pacman -S {package} --noconfirm"')
             for package in ['pkgconf']:
@@ -145,17 +145,17 @@ class Recipe(RecipeBase[_Options]):
 
         # create /tmp dir in order to avoid
         # bash.exe: warning: could not find /tmp, please create!
-        tmp_dir = os.path.join(self._msys_dir, 'tmp')
+        tmp_dir = self._msys_dir / 'tmp'
         if not os.path.isdir(tmp_dir):
             os.makedirs(tmp_dir)
-        tmp_name = os.path.join(tmp_dir, 'dummy')
+        tmp_name = tmp_dir / 'dummy'
         with open(tmp_name, 'a', encoding='UTF-8'):
             os.utime(tmp_name, None)
 
         # Prepend the PKG_CONFIG_PATH environment variable with an eventual PKG_CONFIG_PATH environment variable
         # Note: this is no longer needed when we exclusively support Recipe 2 integrations
         replace_in_file(
-            self, os.path.join(self._msys_dir, "etc", "profile"),
+            self, self._msys_dir / "etc" / "profile",
             'PKG_CONFIG_PATH="', 'PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}')
 
     def package(self):
@@ -169,29 +169,29 @@ class Recipe(RecipeBase[_Options]):
                     if fnmatch.fnmatch(fullname, exclude):
                         os.unlink(fullname)
         # See https://github.com/recipe-io/recipe-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
-        copy(self, "*", dst=os.path.join(self.folders.package, "bin", "msys64"), src=self._msys_dir, excludes=excludes)
+        copy(self, "*", dst=self.folders.package / "bin" / "msys64", src=self._msys_dir, excludes=excludes)
         shutil.copytree(
-            os.path.join(self._msys_dir, "usr", "share", "licenses"),
-            os.path.join(self.folders.package, "licenses"))
+            self._msys_dir / "usr" / "share" / "licenses",
+            self.folders.package / "licenses")
 
     def package_info(self):
         self.info.libdirs = []
         self.info.includedirs = []
 
-        msys_root = os.path.join(self.folders.package, "bin", "msys64")
-        msys_bin = os.path.join(msys_root, "usr", "bin")
+        msys_root = self.folders.package / "bin" / "msys64"
+        msys_bin = msys_root / "usr" / "bin"
         self.info.bindirs.append(msys_bin)
 
         self.buildenv_info.define_path("MSYS_ROOT", msys_root)
         self.buildenv_info.define_path("MSYS_BIN", msys_bin)
 
         self.conf_info.define("tools.microsoft.bash:subsystem", "msys2")
-        self.conf_info.define("tools.microsoft.bash:path", os.path.join(msys_bin, "bash.exe"))
+        self.conf_info.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
 
         if self.settings_target is not None and \
                 self.settings_target.os == "Windows" and \
                 self.settings_target.arch == "ARM":
             # Expose /opt/bin to PATH, so that aarch64-w64-mingw32- prefixed tools can be found
             # Define autotools host/build triplet so that the right tools are used
-            self.info.bindirs.insert(0, os.path.join(msys_root, "opt", "bin"))
+            self.info.bindirs.insert(0, msys_root / "opt" / "bin")
             self.conf_info.define("tools.gnu:host_triplet", "aarch64-w64-mingw32")

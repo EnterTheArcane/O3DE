@@ -64,11 +64,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rm(self, "*.pdb", self.folders.package / "bin")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "msdfgen")

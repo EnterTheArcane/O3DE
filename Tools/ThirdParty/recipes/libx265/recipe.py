@@ -79,7 +79,7 @@ class Recipe(RecipeBase[_Options]):
 
     def _patch_sources(self):
         apply_patches(self)
-        cmakelists = os.path.join(self.folders.source, "source", "CMakeLists.txt")
+        cmakelists = self.folders.source / "source" / "CMakeLists.txt"
         replace_in_file(
             self, cmakelists,
             "if((WIN32 AND ENABLE_CLI) OR (WIN32 AND ENABLE_SHARED))",
@@ -97,11 +97,11 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         self._patch_sources()
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, "source"))
+        cmake.configure(build_script_folder=self.folders.source / "source")
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
 
@@ -110,19 +110,19 @@ class Recipe(RecipeBase[_Options]):
                 static_lib = "x265-static.lib"
             else:
                 static_lib = "libx265.a"
-            os.unlink(os.path.join(self.folders.package, "lib", static_lib))
+            os.unlink(self.folders.package / "lib" / static_lib)
 
         if is_msvc(self):
             name = "libx265.lib" if self.options.shared else "x265-static.lib"
             rename(
-                self, os.path.join(self.folders.package, "lib", name),
-                os.path.join(self.folders.package, "lib", "x265.lib"))
+                self, self.folders.package / "lib" / name,
+                self.folders.package / "lib" / "x265.lib")
 
         if self.settings.os == "Windows" and self.options.shared:
-            rm(self, "*[!.dll]", os.path.join(self.folders.package, "bin"))
+            rm(self, "*[!.dll]", self.folders.package / "bin")
         else:
-            rmdir(self, os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+            rmdir(self, self.folders.package / "bin")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("pkg_config_name", "x265")

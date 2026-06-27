@@ -60,23 +60,23 @@ class Recipe(RecipeBase[_Options]):
         meson.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
         meson = Meson(self)
         meson.install()
 
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
         if is_msvc(self) or self._is_clang_cl:
-            rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+            rm(self, "*.pdb", self.folders.package / "bin")
             if not self.options.shared:
-                lib_dir = os.path.join(self.folders.package, "lib")
-                gnu_lib = os.path.join(lib_dir, "libopenh264.a")
+                lib_dir = self.folders.package / "lib"
+                gnu_lib = lib_dir / "libopenh264.a"
                 # meson emits the static lib as libopenh264.a; rename to the MSVC-style
                 # openh264.lib. Clear any stale destination first so a re-run doesn't fail
                 # with "dst exists" (os.rename won't overwrite on Windows).
                 if os.path.exists(gnu_lib):
                     rm(self, "openh264.lib", lib_dir)
-                    rename(self, gnu_lib, os.path.join(lib_dir, "openh264.lib"))
+                    rename(self, gnu_lib, lib_dir / "openh264.lib")
         fix_apple_shared_install_name(self)
 
     def package_info(self):

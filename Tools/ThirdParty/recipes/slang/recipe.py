@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rm, rmdir
@@ -41,13 +39,13 @@ class Recipe(RecipeBase[_Options]):
             self,
             url="https://github.com/lua/lua/archive/3fe7be956f23385aa1950dc31e2f25127ccfc0ea.tar.gz",
             sha256="4776526f89abeea61cce41a056577859180dbb2d4cb6c1dad00955872a1007bb",
-            destination=os.path.join(self.folders.source, "external", "lua"),
+            destination=self.folders.source / "external" / "lua",
             strip_root=True)
         get(
             self,
             url="https://github.com/swiftlang/swift-cmark/archive/924936d0427cb25a61169739a7660230bffa6ea6.tar.gz",
             sha256="1c51659bd47c34df1c8976f893adc43ba039a98f6eac4fa95d53d1e08ba6072a",
-            destination=os.path.join(self.folders.source, "external", "cmark"),
+            destination=self.folders.source / "external" / "cmark",
             strip_root=True)
 
     def generate(self):
@@ -86,10 +84,10 @@ class Recipe(RecipeBase[_Options]):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        rmdir(self, os.path.join(self.folders.package, "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
+        rmdir(self, self.folders.package / "cmake")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rm(self, "*.pdb", self.folders.package / "bin")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "slang")

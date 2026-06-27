@@ -54,21 +54,16 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["PX_BUILDSNIPPETS"] = False
         tc.cache_variables["PX_BUILDPUBLICSAMPLES"] = False
         tc.cache_variables["PX_CMAKE_SUPPRESS_REGENERATION"] = False
-        cmakemodules_abspath = os.path.join(
-            self.folders.build,
-            self.folders.source,
-            "externals",
-            self._get_cmakemodules_subfolder()
-        )
-        tc.cache_variables["CMAKEMODULES_PATH"] = cmakemodules_abspath.replace("\\", "/")
-        tc.cache_variables["PHYSX_ROOT_DIR"] = os.path.join(self.folders.source, "physx").replace("\\", "/")
+        cmakemodules_abspath = self.folders.build / self.folders.source / "externals" / self._get_cmakemodules_subfolder()
+        tc.cache_variables["CMAKEMODULES_PATH"] = cmakemodules_abspath.as_posix()
+        tc.cache_variables["PHYSX_ROOT_DIR"] = (self.folders.source / "physx").as_posix()
 
         # Options defined in physx/source/compiler/cmake/CMakeLists.txt
         if self.settings.os in ["Windows", "Android"]:
             tc.cache_variables["PX_SCALAR_MATH"] = not self.options.enable_simd  # this value doesn't matter on other os
         tc.cache_variables["PX_GENERATE_STATIC_LIBRARIES"] = not self.options.shared
         tc.cache_variables["PX_EXPORT_LOWLEVEL_PDB"] = False
-        tc.cache_variables["PXSHARED_PATH"] = os.path.join(self.folders.source, "pxshared").replace("\\", "/")
+        tc.cache_variables["PXSHARED_PATH"] = (self.folders.source / "pxshared").as_posix()
         tc.cache_variables["PXSHARED_INSTALL_PREFIX"] = self.folders.package.as_posix()
         tc.cache_variables["PX_GENERATE_SOURCE_DISTRO"] = False
 
@@ -80,7 +75,7 @@ class Recipe(RecipeBase[_Options]):
             tc.cache_variables["NV_USE_DEBUG_WINCRT"] = "d" in msvc_runtime_flag(self)
         tc.cache_variables["NV_FORCE_64BIT_SUFFIX"] = False
         tc.cache_variables["NV_FORCE_32BIT_SUFFIX"] = False
-        tc.cache_variables["PX_ROOT_LIB_DIR"] = os.path.join(self.folders.package, "lib").replace("\\", "/")
+        tc.cache_variables["PX_ROOT_LIB_DIR"] = (self.folders.package / "lib").as_posix()
 
         if self.settings.os == "Windows":
             # Options defined in physx/source/compiler/cmake/windows/CMakeLists.txt
@@ -96,7 +91,7 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, "physx/compiler/public"))
+        cmake.configure(build_script_folder=self.folders.source / "physx/compiler/public")
         cmake.build(build_type=self._get_physx_build_type())
 
     def _get_cmakemodules_subfolder(self):
@@ -108,17 +103,17 @@ class Recipe(RecipeBase[_Options]):
         # There is no reason to force consumer of PhysX public headers to use one of
         # NDEBUG or _DEBUG, since none of them relies on NDEBUG or _DEBUG
         replace_in_file(
-            self, os.path.join(self.folders.source, "pxshared", "include", "foundation", "PxPreprocessor.h"),
+            self, self.folders.source / "pxshared" / "include" / "foundation" / "PxPreprocessor.h",
             "#error Exactly one of NDEBUG and _DEBUG needs to be defined!",
             "// #error Exactly one of NDEBUG and _DEBUG needs to be defined!")
 
-        physx_source_cmake_dir = os.path.join(self.folders.source, "physx", "source", "compiler", "cmake")
+        physx_source_cmake_dir = self.folders.source / "physx" / "source" / "compiler" / "cmake"
 
         # Remove global and specifics hard-coded PIC settings
         # (the recipe system CMake build helper properly sets CMAKE_POSITION_INDEPENDENT_CODE
         # depending on options)
         replace_in_file(
-            self, os.path.join(physx_source_cmake_dir, "CMakeLists.txt"),
+            self, physx_source_cmake_dir / "CMakeLists.txt",
             "SET(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
         for cmake_file in (
                 "FastXml.cmake",
@@ -139,20 +134,20 @@ class Recipe(RecipeBase[_Options]):
         ):
             target, _ = os.path.splitext(os.path.basename(cmake_file))
             replace_in_file(
-                self, os.path.join(physx_source_cmake_dir, cmake_file),
+                self, physx_source_cmake_dir / cmake_file,
                 f"SET_TARGET_PROPERTIES({target} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)", "")
 
         # No error for compiler warnings
         replace_in_file(
-            self, os.path.join(physx_source_cmake_dir, "windows", "CMakeLists.txt"),
+            self, physx_source_cmake_dir / "windows" / "CMakeLists.txt",
             "/WX", "")
         for cmake_os in ("linux", "mac", "android", "ios"):
             replace_in_file(
-                self, os.path.join(physx_source_cmake_dir, cmake_os, "CMakeLists.txt"),
+                self, physx_source_cmake_dir / cmake_os / "CMakeLists.txt",
                 "-Werror", "")
 
         if self.settings.os == "Mac":
-            mac_cmake = os.path.join(physx_source_cmake_dir, "mac", "CMakeLists.txt")
+            mac_cmake = physx_source_cmake_dir / "mac" / "CMakeLists.txt"
             # Remove hardcoded deployment target so the recipe toolchain value is used
             replace_in_file(
                 self, mac_cmake,
@@ -173,9 +168,7 @@ class Recipe(RecipeBase[_Options]):
                 replace_in_file(self, mac_cmake, " -msse2", "")
                 # Newer Clang enforces NEON lane indices as compile-time constants even in dead
                 # code branches — use if constexpr so out-of-range instantiations are discarded.
-                neon_file = os.path.join(
-                    self.folders.source, "physx", "source", "foundation",
-                    "include", "unix", "neon", "PsUnixNeonInlineAoS.h")
+                neon_file = self.folders.source / "physx" / "source" / "foundation" / "include" / "unix" / "neon" / "PsUnixNeonInlineAoS.h"
                 neon_content = load(self, neon_file)
                 neon_content = neon_content.replace("if(index < 2)", "if constexpr(index < 2)")
                 save(self, neon_file, neon_content)
@@ -204,11 +197,11 @@ class Recipe(RecipeBase[_Options]):
         cmake = CMake(self)
         cmake.install(build_type=self._get_physx_build_type())
 
-        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), self._get_license())
+        save(self, self.folders.package / "licenses" / "LICENSE", self._get_license())
 
-        cmake_installation_dir = os.path.join(self.folders.package, "lib", self._get_physx_build_type())
-        package_dst_lib_dir = os.path.join(self.folders.package, "lib")
-        package_dst_bin_dir = os.path.join(self.folders.package, "bin")
+        cmake_installation_dir = self.folders.package / "lib" / self._get_physx_build_type()
+        package_dst_lib_dir = self.folders.package / "lib"
+        package_dst_bin_dir = self.folders.package / "bin"
 
         copy(self, pattern="*.a", dst=package_dst_lib_dir, src=cmake_installation_dir, keep_path=False)
         copy(self, pattern="*.so", dst=package_dst_lib_dir, src=cmake_installation_dir, keep_path=False)
@@ -216,13 +209,13 @@ class Recipe(RecipeBase[_Options]):
         copy(self, pattern="*.lib", dst=package_dst_lib_dir, src=cmake_installation_dir, keep_path=False)
         copy(self, pattern="*.dll", dst=package_dst_bin_dir, src=cmake_installation_dir, keep_path=False)
 
-        rmdir(self, os.path.join(self.folders.package, "source"))
+        rmdir(self, self.folders.package / "source")
         rmdir(self, cmake_installation_dir)
 
         self._copy_external_bin()
 
     def _get_license(self):
-        readme = load(self, os.path.join(self.folders.source, "README.md"))
+        readme = load(self, self.folders.source / "README.md")
         begin = readme.find("Copyright")
         end = readme.find("\n## Introduction", begin)
         return readme[begin:end]
@@ -231,13 +224,13 @@ class Recipe(RecipeBase[_Options]):
         # For Windows and Linux 64 bits, PhysXGpu (and PhysXDevice on Windows)
         # precompiled shared libs must also be provided to end-user if
         # application uses GPU features.
-        external_bin_dir = os.path.join(self.folders.source, "physx", "bin")
+        external_bin_dir = self.folders.source / "physx" / "bin"
         physx_build_type = self._get_physx_build_type()
         compiler_version = self.settings.compiler.version
 
         if self.settings.os == "Linux" and self.settings.arch == "X64":
-            package_dst_lib_dir = os.path.join(self.folders.package, "lib")
-            physx_gpu_dir = os.path.join(external_bin_dir, "linux.clang", physx_build_type)
+            package_dst_lib_dir = self.folders.package / "lib"
+            physx_gpu_dir = external_bin_dir / "linux.clang" / physx_build_type
             copy(self, pattern="*PhysXGpu*.so", dst=package_dst_lib_dir, src=physx_gpu_dir, keep_path=False)
         elif self.settings.os == "Windows" and is_msvc(self):
             physx_arch = {"X64": "x86_64"}.get(str(self.settings.arch))
@@ -251,11 +244,11 @@ class Recipe(RecipeBase[_Options]):
                 },
             ]
 
-            package_dst_bin_dir = os.path.join(self.folders.package, "bin")
+            package_dst_bin_dir = self.folders.package / "bin"
 
             for dll_info in dll_info_list:
                 dll_subdir = f"win.{physx_arch}.{dll_info.get('vc_ver')}.mt"
-                dll_dir = os.path.join(external_bin_dir, dll_subdir, physx_build_type)
+                dll_dir = external_bin_dir / dll_subdir / physx_build_type
                 copy(self, pattern=dll_info.get("pattern"), dst=package_dst_bin_dir, src=dll_dir, keep_path=False)
 
     def package_info(self):

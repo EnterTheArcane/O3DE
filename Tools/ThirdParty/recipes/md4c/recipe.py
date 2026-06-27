@@ -1,4 +1,3 @@
-import os
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -60,12 +59,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE.md", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE.md", dst=self.folders.package / "licenses", src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "md4c")

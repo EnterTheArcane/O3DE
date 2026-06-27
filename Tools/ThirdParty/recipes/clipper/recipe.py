@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rmdir
@@ -33,14 +31,14 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, "cpp"))
+        cmake.configure(build_script_folder=self.folders.source / "cpp")
         cmake.build()
 
     def package(self):
-        copy(self, "License.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "License.txt", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("pkg_config_name", "polyclipping")

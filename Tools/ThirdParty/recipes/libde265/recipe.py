@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
@@ -46,7 +44,7 @@ class Recipe(RecipeBase[_Options]):
     def _patch_sources(self):
         apply_patches(self)
         replace_in_file(
-            self, os.path.join(self.folders.source, "CMakeLists.txt"),
+            self, self.folders.source / "CMakeLists.txt",
             "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
 
     def build(self):
@@ -55,11 +53,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "libde265")

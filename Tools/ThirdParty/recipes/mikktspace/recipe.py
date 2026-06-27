@@ -38,17 +38,17 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     @property
     def _extracted_license(self):
-        with open(os.path.join(self.folders.source, "mikktspace.h")) as f:
+        with open(self.folders.source / "mikktspace.h") as f:
             lines = f.readlines()
         return "".join(line[4:] for line in lines[4:21])
 
     def package(self):
-        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), self._extracted_license)
+        save(self, self.folders.package / "licenses" / "LICENSE", self._extracted_license)
         cmake = CMake(self)
         cmake.install()
 

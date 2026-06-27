@@ -38,17 +38,17 @@ class Recipe(RecipeBase):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
         for filename in ["pybind11Targets.cmake", "pybind11Config.cmake", "pybind11ConfigVersion.cmake"]:
-            rm(self, filename, os.path.join(self.folders.package, "lib", "cmake", "pybind11"))
+            rm(self, filename, self.folders.package / "lib" / "cmake" / "pybind11")
 
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
         checked_target = "pybind11"
         replace_in_file(
-            self, os.path.join(self.folders.package, "lib", "cmake", "pybind11", "pybind11Common.cmake"),
+            self, self.folders.package / "lib" / "cmake" / "pybind11" / "pybind11Common.cmake",
             "add_library(",
             "# add_library(")
 

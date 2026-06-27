@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rmdir
@@ -64,16 +62,16 @@ class Recipe(RecipeBase[_Options]):
             cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, pattern="LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         if self.options.header_only:
-            copy(self, pattern="*.h", src=os.path.join(self.folders.source, "include"), dst=os.path.join(self.folders.package, "include"))
+            copy(self, pattern="*.h", src=self.folders.source / "include", dst=self.folders.package / "include")
         else:
             cmake = CMake(self)
             cmake.install()
-            rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.folders.package, "res"))
-            rmdir(self, os.path.join(self.folders.package, "share"))
+            rmdir(self, self.folders.package / "lib" / "cmake")
+            rmdir(self, self.folders.package / "lib" / "pkgconfig")
+            rmdir(self, self.folders.package / "res")
+            rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         target = "fmt-header-only" if self.options.header_only else "fmt"

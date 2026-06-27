@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.cmake import CMake, CMakeToolchain
@@ -29,16 +27,16 @@ class Recipe(RecipeBase[_Options]):
             sha256="20b59fcc4cf61783cb0d1baa40a0dff3c557a97246651f95d9d9fed91bf17724",
             destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "add_subdirectory(examples)", "")
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "add_subdirectory(examples)", "")
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "src", "CMakeLists.txt"),
+            self.folders.source / "src" / "CMakeLists.txt",
             "DESTINATION include",
             "DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}",
         )
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "src", "CMakeLists.txt"),
+            self.folders.source / "src" / "CMakeLists.txt",
             "RVO DESTINATION lib",
             "RVO RUNTIME LIBRARY ARCHIVE",
         )
@@ -54,7 +52,7 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
         fix_apple_shared_install_name(self)

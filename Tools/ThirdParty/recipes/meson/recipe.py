@@ -20,10 +20,10 @@ class Recipe(RecipeBase):
             self,
             url="https://github.com/mesonbuild/meson/releases/download/1.11.1/meson.pyz",
             sha256="05f25d74eab0d1a9b26f1d2fe482677b9c2b9543f974016c8102a5f96b2b73f5",
-            filename=os.path.join(self.folders.build, "meson.pyz"))
+            filename=self.folders.build / "meson.pyz")
 
     def package(self):
-        dst = os.path.join(self.folders.package, "bin")
+        dst = self.folders.package / "bin"
         if str(self.settings.os) == "Windows":
             # meson.pyz is a Python zipapp. We must NOT invoke it directly: meson's
             # set_meson_command() checks whether sys.argv[0] ends with '.py' to decide
@@ -36,13 +36,13 @@ class Recipe(RecipeBase):
             # meson stores [python.exe, meson.py] as the command — executable by ninja.
             copy(self, "meson.pyz", src=self.folders.build, dst=dst)
             save(
-                self, os.path.join(dst, "meson.py"),
+                self, dst / "meson.py",
                 'import sys, os\n'
                 'sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "meson.pyz"))\n'
                 'from mesonbuild import mesonmain\n'
                 'sys.exit(mesonmain.main())\n')
             save(
-                self, os.path.join(dst, "meson.cmd"),
+                self, dst / "meson.cmd",
                 '@python "%~dp0meson.py" %*\n')
         else:
             # On Unix the shebang is honoured directly. Copy as "meson" (no extension),
@@ -50,12 +50,12 @@ class Recipe(RecipeBase):
             import shutil
             import stat
             os.makedirs(dst, exist_ok=True)
-            meson_path = os.path.join(dst, "meson")
-            shutil.copy2(os.path.join(self.folders.build, "meson.pyz"), meson_path)
+            meson_path = dst / "meson"
+            shutil.copy2(self.folders.build / "meson.pyz", meson_path)
             os.chmod(meson_path, os.stat(meson_path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     def package_info(self):
         self.info.libdirs = []
         self.info.includedirs = []
-        bin_dir = os.path.join(self.folders.package, "bin")
+        bin_dir = self.folders.package / "bin"
         self.buildenv_info.prepend_path("PATH", bin_dir)

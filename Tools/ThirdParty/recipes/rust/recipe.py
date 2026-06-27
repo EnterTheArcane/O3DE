@@ -154,7 +154,7 @@ class Recipe(RecipeBase):
         triple = self._target_triple
         for component in _COMPONENTS:
             entry = _SOURCES[triple][component]
-            component_folder = os.path.join(self.folders.build, component)
+            component_folder = self.folders.build / component
             os.makedirs(component_folder, exist_ok=True)
             get(
                 self,
@@ -166,12 +166,12 @@ class Recipe(RecipeBase):
 
     def package(self):
         triple = self._target_triple
-        os.makedirs(os.path.join(self.folders.package, ".cargo"), exist_ok=True)
+        os.makedirs(self.folders.package / ".cargo", exist_ok=True)
 
         for component in _COMPONENTS:
-            component_folder = os.path.join(self.folders.build, component)
+            component_folder = self.folders.build / component
             payload_name = f"rust-std-{triple}" if component == "rust-std" else component
-            payload_folder = os.path.join(component_folder, payload_name)
+            payload_folder = component_folder / payload_name
             if not os.path.isdir(payload_folder):
                 raise RecipeException(f"Could not find Rust component payload: {payload_folder}")
 
@@ -180,7 +180,7 @@ class Recipe(RecipeBase):
                 self,
                 "LICENSE*",
                 src=component_folder,
-                dst=os.path.join(self.folders.package, "licenses", component),
+                dst=self.folders.package / "licenses" / component,
                 keep_path=False,
             )
 
@@ -188,13 +188,13 @@ class Recipe(RecipeBase):
         self.info.libdirs = []
         self.info.includedirs = []
 
-        bin_dir = os.path.join(self.folders.package, "bin")
-        cargo = os.path.join(bin_dir, f"cargo{self._exe_suffix}")
-        rustc = os.path.join(bin_dir, f"rustc{self._exe_suffix}")
+        bin_dir = self.folders.package / "bin"
+        cargo = bin_dir / f"cargo{self._exe_suffix}"
+        rustc = bin_dir / f"rustc{self._exe_suffix}"
 
         self.buildenv_info.prepend_path("PATH", bin_dir)
         self.buildenv_info.define("RUSTUP_TOOLCHAIN", "stable")
-        self.buildenv_info.define_path("CARGO_HOME", os.path.join(self.folders.package, ".cargo"))
+        self.buildenv_info.define_path("CARGO_HOME", self.folders.package / ".cargo")
         self.buildenv_info.define_path("CARGO", cargo)
         self.buildenv_info.define_path("RUSTC", rustc)
         self.conf_info.define("tools.rust:dir", self.folders.package)

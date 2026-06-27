@@ -66,11 +66,11 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         apply_patches(self)
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
 
@@ -94,6 +94,6 @@ class Recipe(RecipeBase[_Options]):
         ]
 
         if self.options.shared:
-            moltenvk_icd_path = os.path.join(self.folders.package, "lib", "MoltenVK_icd.json")
+            moltenvk_icd_path = self.folders.package / "lib" / "MoltenVK_icd.json"
             self.runenv_info.prepend_path("VK_DRIVER_FILES", moltenvk_icd_path)
             self.runenv_info.prepend_path("VK_ICD_FILENAMES", moltenvk_icd_path)

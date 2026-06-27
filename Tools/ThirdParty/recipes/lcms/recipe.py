@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.env import VirtualBuildEnv
@@ -47,11 +45,11 @@ class Recipe(RecipeBase[_Options]):
         meson.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         meson = Meson(self)
         meson.install()
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rm(self, "*.pdb", self.folders.package / "bin")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
         fix_apple_shared_install_name(self)
 
     def package_info(self):

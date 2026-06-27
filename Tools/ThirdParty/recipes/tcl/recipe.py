@@ -84,18 +84,18 @@ class Recipe(RecipeBase[_Options]):
         apply_patches(self)
 
         if is_apple_os(self) and self.settings.arch not in ("X64",):
-            macos_configure = os.path.join(self.folders.source, "macosx", "configure")
+            macos_configure = self.folders.source / "macosx" / "configure"
             replace_in_file(self, macos_configure, "#define HAVE_CPUID 1", "#undef HAVE_CPUID")
 
-        unix_config_dir = os.path.join(self.folders.source, "unix")
+        unix_config_dir = self.folders.source / "unix"
         # When disabling 64-bit support (in 32-bit), this test must be 0 in order to use "long long" for 64-bit ints
         # (${tcl_type_64bit} can be either "__int64" or "long long")
         replace_in_file(
-            self, os.path.join(unix_config_dir, "configure"),
+            self, unix_config_dir / "configure",
             "(sizeof(${tcl_type_64bit})==sizeof(long))",
             "(sizeof(${tcl_type_64bit})!=sizeof(long))")
 
-        unix_makefile_in = os.path.join(unix_config_dir, "Makefile.in")
+        unix_makefile_in = unix_config_dir / "Makefile.in"
         # Avoid building internal libraries as shared libraries
         replace_in_file(self, unix_makefile_in, "--enable-shared --enable-threads", "--enable-threads")
         # Avoid clearing CFLAGS and LDFLAGS in the makefile
@@ -104,21 +104,21 @@ class Recipe(RecipeBase[_Options]):
         # Use CFLAGS and CPPFLAGS as argument to CC
         replace_in_file(self, unix_makefile_in, "${CFLAGS}", "${CFLAGS} ${CPPFLAGS}")
 
-        win_config_dir = os.path.join(self.folders.source, "win")
+        win_config_dir = self.folders.source / "win"
 
         # Fix install for MinGW
-        win_makefile_in = os.path.join(win_config_dir, "Makefile.in")
+        win_makefile_in = win_config_dir / "Makefile.in"
         replace_in_file(self, win_makefile_in, "INSTALL_ROOT	=", "INSTALL_ROOT	= $(DESTDIR)")
         # No link to static libgcc for MinGW
-        win_tcl_m4 = os.path.join(win_config_dir, "tcl.m4")
+        win_tcl_m4 = win_config_dir / "tcl.m4"
         replace_in_file(self, win_tcl_m4, "-static-libgcc", "")
 
         # nmake creates a temporary file with mixed forward/backward slashes
         # force the filename to avoid cryptic error messages
-        win_makefile_vc = os.path.join(win_config_dir, "makefile.vc")
+        win_makefile_vc = win_config_dir / "makefile.vc"
         replace_in_file(self, win_makefile_vc, "@type << >$@", "type <<temp.tmp >$@")
 
-        win_rules_vc = os.path.join(self.folders.source, "win", "rules.vc")
+        win_rules_vc = self.folders.source / "win" / "rules.vc"
         # do not treat nmake build warnings as errors
         replace_in_file(self, win_rules_vc, "cwarn = $(cwarn) -WX", "")
         # disable whole program optimization to be portable across different MSVC versions.
@@ -143,7 +143,7 @@ class Recipe(RecipeBase[_Options]):
         if "d" not in msvc_runtime_flag(self):
             opts.append("unchecked")
 
-        win_config_dir = os.path.join(self.folders.source, "win")
+        win_config_dir = self.folders.source / "win"
         with chdir(self, win_config_dir):
             self.run(
                 'nmake -nologo -f "{cfgdir}/makefile.vc" INSTALLDIR="{pkgdir}" OPTS={opts} {targets}'.format(
@@ -178,7 +178,7 @@ class Recipe(RecipeBase[_Options]):
             autotools.make()
 
     def package(self):
-        copy(self, "license.terms", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "license.terms", src=self.folders.source, dst=self.folders.package / "licenses")
         if is_msvc(self):
             self._build_nmake(["install-binaries", "install-libraries"])
         else:
@@ -186,13 +186,13 @@ class Recipe(RecipeBase[_Options]):
             autotools.install()
             autotools.install(target="install-private-headers")
 
-            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.folders.package, "man"))
-            rmdir(self, os.path.join(self.folders.package, "share"))
+            rmdir(self, self.folders.package / "lib" / "pkgconfig")
+            rmdir(self, self.folders.package / "man")
+            rmdir(self, self.folders.package / "share")
             fix_apple_shared_install_name(self)
 
         # Relocatable tclConfig.sh
-        tclConfigShPath = os.path.join(self.folders.package, "lib", "tclConfig.sh")
+        tclConfigShPath = self.folders.package / "lib" / "tclConfig.sh"
         ## Comment out references to build folder
         replace_in_file(self, tclConfigShPath, "\nTCL_BUILD_", "\n#TCL_BUILD_")
         replace_in_file(self, tclConfigShPath, "\nTCL_SRC_DIR", "\n#TCL_SRC_DIR")
@@ -213,7 +213,7 @@ class Recipe(RecipeBase[_Options]):
 
         # There are other libs in subfolders, but they are only used
         # for TCL extensions and should not be linked against.
-        self.info.libs = collect_libs(self, os.path.join(self.folders.package, "lib"))
+        self.info.libs = collect_libs(self, self.folders.package / "lib")
 
         if self.settings.os == "Windows":
             self.info.system_libs.extend(["ws2_32", "netapi32", "userenv"])
@@ -226,12 +226,12 @@ class Recipe(RecipeBase[_Options]):
             self.info.defines.append("STATIC_BUILD")
 
         tcl_version = Version(self.version)
-        tcl_library = os.path.join(self.folders.package, "lib", f"tcl{tcl_version.major}.{tcl_version.minor}")
+        tcl_library = self.folders.package / "lib" / f"tcl{tcl_version.major}.{tcl_version.minor}"
         self.runenv_info.define_path("TCL_LIBRARY", tcl_library)
 
         tcl_root = self.folders.package
         self.runenv_info.define_path("TCL_ROOT", tcl_root)
 
-        tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(os.path.join(self.folders.package, "bin"))))
-        tclsh = os.path.join(self.folders.package, "bin", tclsh_list[0])
+        tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(self.folders.package / "bin")))
+        tclsh = self.folders.package / "bin" / tclsh_list[0]
         self.runenv_info.define_path("TCLSH", tclsh)

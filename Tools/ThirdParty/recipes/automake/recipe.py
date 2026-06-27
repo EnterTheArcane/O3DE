@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
         apply_patches(self)
         if self.settings.os == "Windows":
             # tracing using m4 on Windows returns Windows paths => use cygpath to convert to unix paths
-            ac_local_in = os.path.join(self.folders.source, "bin", "aclocal.in")
+            ac_local_in = self.folders.source / "bin" / "aclocal.in"
             with open(ac_local_in, encoding="utf-8") as _f:
                 _content = _f.read()
             if "cygpath -u $file" not in _content:
@@ -76,17 +76,17 @@ class Recipe(RecipeBase):
     def package(self):
         autotools = Autotools(self)
         autotools.install()
-        copy(self, "COPYING*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING*", src=self.folders.source, dst=self.folders.package / "licenses")
 
-        rmdir(self, os.path.join(self.folders.package, "share", "info"))
-        rmdir(self, os.path.join(self.folders.package, "share", "man"))
-        rmdir(self, os.path.join(self.folders.package, "share", "doc"))
+        rmdir(self, self.folders.package / "share" / "info")
+        rmdir(self, self.folders.package / "share" / "man")
+        rmdir(self, self.folders.package / "share" / "doc")
 
         if self.settings.os == "Windows":
             # TODO: consider whether the following is still necessary on Windows
-            binpath = os.path.join(self.folders.package, "bin")
+            binpath = self.folders.package / "bin"
             for filename in os.listdir(binpath):
-                fullpath = os.path.join(binpath, filename)
+                fullpath = binpath / filename
                 if not os.path.isfile(fullpath):
                     continue
                 rename(self, fullpath, fullpath + ".exe")
@@ -98,8 +98,8 @@ class Recipe(RecipeBase):
 
         # For consumers with new integrations (Recipe 1 and 2 compatible):
         ver = Version(self.version)
-        automake_helper_scripts_dir = os.path.join(self.folders.package, "share", f"automake-{ver.major}.{ver.minor}")
-        compile_wrapper = os.path.join(automake_helper_scripts_dir, "compile")
-        lib_wrapper = os.path.join(automake_helper_scripts_dir, "ar-lib")
+        automake_helper_scripts_dir = self.folders.package / "share" / f"automake-{ver.major}.{ver.minor}"
+        compile_wrapper = automake_helper_scripts_dir / "compile"
+        lib_wrapper = automake_helper_scripts_dir / "ar-lib"
         self.conf_info.define("user.automake:compile-wrapper", compile_wrapper)
         self.conf_info.define("user.automake:lib-wrapper", lib_wrapper)

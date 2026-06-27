@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "CMakeLists.txt"),
+            self.folders.source / "CMakeLists.txt",
             "add_subdirectory(website/src)",
             "# add_subdirectory(website/src)")
 
@@ -60,12 +60,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "share")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     @staticmethod
     def _recipe_comp(name):

@@ -83,15 +83,15 @@ class Recipe(RecipeBase[_Options]):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING.BSD-3-Clause", src=os.path.join(self.folders.source, "Documentation", "licenses"), dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING.BSD-3-Clause", src=self.folders.source / "Documentation" / "licenses", dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
-        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "sbin"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rmdir(self, os.path.join(self.folders.package, "usr"))
+        rm(self, "*.la", self.folders.package / "lib")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "bin")
+        rmdir(self, self.folders.package / "sbin")
+        rmdir(self, self.folders.package / "share")
+        rmdir(self, self.folders.package / "usr")
         fix_apple_shared_install_name(self)
 
     def package_info(self):

@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -26,7 +24,7 @@ class Recipe(RecipeBase):
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "meson.build"),
+            self.folders.source / "meson.build",
             "dep_scanner = dependency('wayland-scanner',",
             "dep_scanner = dependency('wayland-scanner', required: false, disabler: true,")
 
@@ -45,10 +43,10 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", self.folders.source, self.folders.package / "licenses")
         meson = Meson(self)
         meson.install()
-        rmdir(self, os.path.join(self.folders.package, "res", "pkgconfig"))
+        rmdir(self, self.folders.package / "res" / "pkgconfig")
 
     def package_info(self):
         self.info.libdirs = []

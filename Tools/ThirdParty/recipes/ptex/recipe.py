@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, save
@@ -32,9 +30,9 @@ class Recipe(RecipeBase[_Options]):
             sha256="dd95fbea4b50e9e68fd042f540fb83157a0ff25053066c3439d4527de3621d34",
             destination=self.folders.source,
             strip_root=True)
-        save(self, os.path.join(self.folders.source, "src", "utils", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.folders.source, "src", "tests", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.folders.source, "src", "doc", "CMakeLists.txt"), "")
+        save(self, self.folders.source / "src" / "utils" / "CMakeLists.txt", "")
+        save(self, self.folders.source / "src" / "tests" / "CMakeLists.txt", "")
+        save(self, self.folders.source / "src" / "doc" / "CMakeLists.txt", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -50,10 +48,10 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         cmake_target = "Ptex_dynamic" if self.options.shared else "Ptex_static"

@@ -69,13 +69,13 @@ class Recipe(RecipeBase[_Options]):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", self.folders.source, self.folders.package / "licenses")
         meson = Meson(self)
         meson.install()
         rm(self, "*.pdb", self.folders.package, recursive=True)
-        rm(self, "*.conf", os.path.join(self.folders.package, "res", "etc", "fonts", "conf.d"))
-        rm(self, "*.def", os.path.join(self.folders.package, "lib"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rm(self, "*.conf", self.folders.package / "res" / "etc" / "fonts" / "conf.d")
+        rm(self, "*.def", self.folders.package / "lib")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
         fix_apple_shared_install_name(self)
 
     def package_info(self):
@@ -86,7 +86,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os in ("Linux", "FreeBSD"):
             self.info.system_libs.extend(["m", "pthread"])
 
-        fontconfig_path = os.path.join(self.folders.package, "res", "etc", "fonts")
+        fontconfig_path = self.folders.package / "res" / "etc" / "fonts"
         self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
 
 
@@ -100,8 +100,8 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.folders.package, libdir)
-            for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
+            full_folder = recipe.folders.package / libdir
+            for filepath in glob.glob(full_folder / f"*{ext}"):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]

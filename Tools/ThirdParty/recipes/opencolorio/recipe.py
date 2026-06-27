@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -49,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
         apply_patches(self)
         for module in ("expat", "lcms2", "pystring", "yaml-cpp", "Imath", "minizip-ng"):
-            rm(self, f"Find{module}.cmake", os.path.join(self.folders.source, "share", "cmake", "modules"))
+            rm(self, f"Find{module}.cmake", self.folders.source / "share" / "cmake" / "modules")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -99,18 +97,18 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.shared:
             copy(
                 self, "*",
-                src=os.path.join(self.folders.package, "lib", "static"),
-                dst=os.path.join(self.folders.package, "lib"))
-            rmdir(self, os.path.join(self.folders.package, "lib", "static"))
+                src=self.folders.package / "lib" / "static",
+                dst=self.folders.package / "lib")
+            rmdir(self, self.folders.package / "lib" / "static")
 
-        rmdir(self, os.path.join(self.folders.package, "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "share")
         # nop for 2.x
         rm(self, "OpenColorIOConfig*.cmake", self.folders.package)
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
-        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        rm(self, "*.pdb", self.folders.package / "bin")
+        copy(self, pattern="LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "OpenColorIO")

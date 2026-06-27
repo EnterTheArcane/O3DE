@@ -197,17 +197,17 @@ class Recipe(RecipeBase[_Options]):
         autotools.make()
 
     def package(self):
-        dest_lib_dir = os.path.join(self.folders.package, "lib")
-        dest_runtime_dir = os.path.join(self.folders.package, "bin")
-        dest_include_dir = os.path.join(self.folders.package, "include")
-        copy(self, "COPYING", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        dest_lib_dir = self.folders.package / "lib"
+        dest_runtime_dir = self.folders.package / "bin"
+        dest_include_dir = self.folders.package / "include"
+        copy(self, "COPYING", self.folders.source, self.folders.package / "licenses")
         copy(self, "*gnuintl*.dll", self.folders.build, dest_runtime_dir, keep_path=False)
         copy(self, "*gnuintl*.lib", self.folders.build, dest_lib_dir, keep_path=False)
         copy(self, "*gnuintl*.a", self.folders.build, dest_lib_dir, keep_path=False)
         copy(self, "*gnuintl*.so*", self.folders.build, dest_lib_dir, keep_path=False)
         copy(self, "*gnuintl*.dylib", self.folders.build, dest_lib_dir, keep_path=False)
         copy(self, "*libgnuintl.h", self.folders.build, dest_include_dir, keep_path=False)
-        rename(self, os.path.join(dest_include_dir, "libgnuintl.h"), os.path.join(dest_include_dir, "libintl.h"))
+        rename(self, dest_include_dir / "libgnuintl.h", dest_include_dir / "libintl.h")
         fix_msvc_libname(self)
         fix_apple_shared_install_name(self)
 
@@ -226,8 +226,8 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = recipe.info.libdirs
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.folders.package, libdir)
-            for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
+            full_folder = recipe.folders.package / libdir
+            for filepath in glob.glob(full_folder / f"*{ext}"):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]

@@ -66,8 +66,8 @@ class Recipe(RecipeBase):
                 copy(self, "*", src=src, dst=dst)
 
     def package_info(self):
-        bin_dir = os.path.join(self.folders.package, "bin")
+        bin_dir = self.folders.package / "bin"
         self.buildenv_info.prepend_path("PATH", bin_dir)
         self.buildenv_info.define_path("LLVM_DIR", self.folders.package)
-        self.buildenv_info.define_path("LIBCLANG_PATH", os.path.join(self.folders.package, "lib"))
+        self.buildenv_info.define_path("LIBCLANG_PATH", self.folders.package / "lib")
         self.conf_info.define("tools.llvm:dir", self.folders.package)

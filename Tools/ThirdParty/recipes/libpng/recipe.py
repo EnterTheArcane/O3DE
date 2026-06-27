@@ -1,4 +1,3 @@
-import os
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -111,17 +110,17 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
         if self.options.shared:
-            rm(self, "*[!.dll]", os.path.join(self.folders.package, "bin"))
+            rm(self, "*[!.dll]", self.folders.package / "bin")
         else:
-            rmdir(self, os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "libpng"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rm(self, "*.cmake", os.path.join(self.folders.package, "lib", "cmake", "PNG"))
+            rmdir(self, self.folders.package / "bin")
+        rmdir(self, self.folders.package / "lib" / "libpng")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
+        rm(self, "*.cmake", self.folders.package / "lib" / "cmake" / "PNG")
 
     def package_info(self):
         major_min_version = f"{Version(self.version).major}{Version(self.version).minor}"

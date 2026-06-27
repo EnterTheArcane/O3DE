@@ -62,7 +62,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)"]:
-            replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), text, "")
+            replace_in_file(self, self.folders.source / "CMakeLists.txt", text, "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -90,14 +90,14 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        rm(self, "*.pdb", self.folders.package / "bin")
         if not self.settings.os == "Windows":
             # Move json files to res, but keep in mind to preserve relative
             # path between module library and manifest json file
-            rename(self, os.path.join(self.folders.package, "share"), os.path.join(self.folders.package, "res"))
+            rename(self, self.folders.package / "share", self.folders.package / "res")
         # There is no need to use fix_apple_shared_install_name(self) as the .dylib created
         # is a BUNDLE. Running otool -hv libVkLayer_khronos_validation.dylib shows filetype=BUNDLE
 
@@ -112,7 +112,7 @@ class Recipe(RecipeBase[_Options]):
 
         # We need to expose this VK_LAYER_PATH explicitly on the runtime environment
         manifest_subfolder = "bin" if self.settings.os == "Windows" else os.path.join("res", "vulkan", "explicit_layer.d")
-        vk_layer_path = os.path.join(self.folders.package, manifest_subfolder)
+        vk_layer_path = self.folders.package / manifest_subfolder
         self.runenv_info.prepend_path("VK_LAYER_PATH", vk_layer_path)
 
         if self.settings.os == "Android":

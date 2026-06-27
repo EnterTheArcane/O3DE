@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import apply_patches, copy, get, load, save
 
@@ -20,12 +18,12 @@ class Recipe(RecipeBase):
 
     @property
     def _license_text(self):
-        content = load(self, os.path.join(self.folders.source, "getopt.h"))
+        content = load(self, self.folders.source / "getopt.h")
         return "\n".join(list(l.strip() for l in content[content.find("/**", 3):content.find("#pragma")].split("\n")))
 
     def package(self):
-        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), self._license_text)
-        copy(self, "getopt.h", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
+        save(self, self.folders.package / "licenses" / "LICENSE", self._license_text)
+        copy(self, "getopt.h", src=self.folders.source, dst=self.folders.package / "include")
 
     def package_info(self):
         self.info.bindirs = []

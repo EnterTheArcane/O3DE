@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.errors import RecipeInvalidConfiguration
@@ -45,10 +43,10 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "*LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "*LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "D3D12MemoryAllocator")

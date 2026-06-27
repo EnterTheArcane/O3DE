@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeToolchain
@@ -41,11 +39,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rm(self, "*.pdb", self.folders.package / "bin")
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "meshoptimizer")

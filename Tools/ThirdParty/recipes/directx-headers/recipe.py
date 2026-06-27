@@ -38,10 +38,10 @@ class Recipe(RecipeBase):
         meson.build()
 
     def package(self):
-        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", self.folders.source, self.folders.package / "licenses")
         meson = Meson(self)
         meson.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         if self.settings.os == "Linux" or self.settings.get_safe("os.subsystem") == "wsl":

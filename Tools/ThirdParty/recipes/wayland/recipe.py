@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import can_run
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
@@ -57,7 +55,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.folders.source, "meson.build"), "subdir('tests')", "#subdir('tests')")
+        replace_in_file(self, self.folders.source / "meson.build", "subdir('tests')", "#subdir('tests')")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -90,10 +88,10 @@ class Recipe(RecipeBase[_Options]):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         meson = Meson(self)
         meson.install()
-        pkg_config_dir = os.path.join(self.folders.package, "lib", "pkgconfig")
+        pkg_config_dir = self.folders.package / "lib" / "pkgconfig"
         rmdir(self, pkg_config_dir)
 
     def package_info(self):

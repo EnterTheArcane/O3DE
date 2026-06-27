@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import copy, get, rmdir, replace_in_file
@@ -35,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
             "set(CMAKE_POSITION_INDEPENDENT_CODE ON)",
         ]:
             replace_in_file(
-                self, os.path.join(self.folders.source, "CMakeLists.txt"),
+                self, self.folders.source / "CMakeLists.txt",
                 text, "")
 
     def generate(self):
@@ -53,10 +51,10 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "VulkanUtilityLibraries")

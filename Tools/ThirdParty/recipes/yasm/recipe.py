@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
@@ -62,18 +60,18 @@ class Recipe(RecipeBase):
             autotools.make()
 
     def package(self):
-        copy(self, "BSD.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "BSD.txt", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         if is_msvc(self):
             cmake = CMake(self)
             cmake.install()
-            rmdir(self, os.path.join(self.folders.package, "include"))
-            rmdir(self, os.path.join(self.folders.package, "lib"))
+            rmdir(self, self.folders.package / "include")
+            rmdir(self, self.folders.package / "lib")
         else:
             autotools = Autotools(self)
             autotools.install()
-            rmdir(self, os.path.join(self.folders.package, "share"))
-            rmdir(self, os.path.join(self.folders.package, "lib"))
+            rmdir(self, self.folders.package / "share")
+            rmdir(self, self.folders.package / "lib")
 
     def package_info(self):
         self.info.includedirs = []

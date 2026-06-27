@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "-ffast-math", "-ffast-math;-fno-finite-math-only")
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "-ffast-math", "-ffast-math;-fno-finite-math-only")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -58,17 +58,17 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", self._openjpeg_subdir))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake", self._openjpeg_subdir))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / self._openjpeg_subdir)
+        rmdir(self, self.folders.package / "lib" / "cmake" / self._openjpeg_subdir)
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
         self._create_cmake_module_variables(
-            os.path.join(self.folders.package, self._module_vars_rel_path)
+            self.folders.package / self._module_vars_rel_path
         )
         self._create_cmake_module_alias_targets(
-            os.path.join(self.folders.package, self._module_target_rel_path),
+            self.folders.package / self._module_target_rel_path,
             {"openjp2": "OpenJPEG::OpenJPEG"}
         )
 

@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
@@ -47,7 +45,7 @@ class Recipe(RecipeBase[_Options]):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE.TXT", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.TXT", src=self.folders.source, dst=self.folders.package / "licenses")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "webm")

@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import copy, get, rmdir
 
@@ -22,13 +20,13 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "*.h", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
-        copy(self, "stb_vorbis.c", src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
-        rmdir(self, os.path.join(self.folders.package, "include", "tests"))
-        rmdir(self, os.path.join(self.folders.package, "include", "deprecated"))
-        copy(self, "*.h", src=os.path.join(self.folders.source, "deprecated"), dst=os.path.join(self.folders.package, "include"))
-        copy(self, "stb_image.c", src=os.path.join(self.folders.source, "deprecated"), dst=os.path.join(self.folders.package, "include"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "*.h", src=self.folders.source, dst=self.folders.package / "include")
+        copy(self, "stb_vorbis.c", src=self.folders.source, dst=self.folders.package / "include")
+        rmdir(self, self.folders.package / "include" / "tests")
+        rmdir(self, self.folders.package / "include" / "deprecated")
+        copy(self, "*.h", src=self.folders.source / "deprecated", dst=self.folders.package / "include")
+        copy(self, "stb_image.c", src=self.folders.source / "deprecated", dst=self.folders.package / "include")
 
     def package_info(self):
         self.info.bindirs = []

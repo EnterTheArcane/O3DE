@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rmdir, save
@@ -32,7 +30,7 @@ class Recipe(RecipeBase[_Options]):
             self,
             url="https://github.com/KhronosGroup/glslang/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
             sha256="a6885b1631fd77c89cd689b939cf2b3032c5ec13ee99250270d34bcad1efc10c",
-            destination=os.path.join(self.folders.source, "src"),
+            destination=self.folders.source / "src",
             strip_root=True)
         wrapper = (
             "cmake_minimum_required(VERSION 3.15)\n"
@@ -42,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
             "endif()\n"
             "add_subdirectory(src)\n"
         )
-        save(self, os.path.join(self.folders.source, "CMakeLists.txt"), wrapper)
+        save(self, self.folders.source / "CMakeLists.txt", wrapper)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -67,11 +65,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        src = os.path.join(self.folders.source, "src")
-        copy(self, "LICENSE*", src=src, dst=os.path.join(self.folders.package, "licenses"))
+        src = self.folders.source / "src"
+        copy(self, "LICENSE*", src=src, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "glslang")

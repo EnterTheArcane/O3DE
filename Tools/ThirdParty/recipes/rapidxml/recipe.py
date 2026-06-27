@@ -22,8 +22,8 @@ class Recipe(RecipeBase):
         pass
 
     def package(self):
-        copy(self, "license.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "*.hpp", src=self.folders.source, dst=os.path.join(self.folders.package, "include", "rapidxml"))
+        copy(self, "license.txt", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "*.hpp", src=self.folders.source, dst=self.folders.package / "include" / "rapidxml")
 
     def package_info(self):
         self.info.includedirs.append(os.path.join("include", "rapidxml"))

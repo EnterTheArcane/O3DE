@@ -36,7 +36,7 @@ class Recipe(RecipeBase[_Options]):
         apply_patches(self)
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "build", "cmake", "lib", "CMakeLists.txt"),
+            self.folders.source / "build" / "cmake" / "lib" / "CMakeLists.txt",
             "POSITION_INDEPENDENT_CODE On",
             "")
 
@@ -50,22 +50,22 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, "build", "cmake"))
+        cmake.configure(build_script_folder=self.folders.source / "build" / "cmake")
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
         if self.options.shared:
             # If we build programs we have to build static libs (see logic in generate()),
             # but if shared is True, we only want shared lib in package folder.
-            rm(self, "*_static.*", os.path.join(self.folders.package, "lib"))
-            for lib in glob.glob(os.path.join(self.folders.package, "lib", "*.a")):
+            rm(self, "*_static.*", self.folders.package / "lib")
+            for lib in glob.glob(self.folders.package / "lib" / "*.a"):
                 if not lib.endswith(".dll.a"):
                     os.remove(lib)
 

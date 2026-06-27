@@ -1,4 +1,3 @@
-import os
 import shutil
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -90,7 +89,7 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self) and self.settings.arch == "x86" and self.options.shared:
             replace_in_file(
                 self,
-                os.path.join(self.folders.source, "CMakeLists.txt"),
+                self.folders.source / "CMakeLists.txt",
                 "mimalloc-redirect.lib",
                 "mimalloc-redirect32.lib",
                 strict=False)
@@ -99,41 +98,41 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
 
-        rmdir(self, os.path.join(self.folders.package, "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "cmake")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
         if self.options.get_safe("single_object"):
-            rm(self, "*.a", os.path.join(self.folders.package, "lib"))
+            rm(self, "*.a", self.folders.package / "lib")
             shutil.copy(
-                os.path.join(self.folders.package, "lib", self._obj_name + ".o"),
-                os.path.join(self.folders.package, "lib", self._obj_name))
+                self.folders.package / "lib" / (self._obj_name + ".o"),
+                self.folders.package / "lib" / self._obj_name)
 
         if self.settings.os == "Windows" and self.options.shared:
             if self.settings.arch == "X64":
                 copy(
                     self, "mimalloc-redirect.dll",
-                    src=os.path.join(self.folders.source, "bin"),
-                    dst=os.path.join(self.folders.package, "bin"))
+                    src=self.folders.source / "bin",
+                    dst=self.folders.package / "bin")
                 copy(
                     self, "minject.exe",
-                    src=os.path.join(self.folders.source, "bin"),
-                    dst=os.path.join(self.folders.package, "bin"))
+                    src=self.folders.source / "bin",
+                    dst=self.folders.package / "bin")
             elif self.settings.arch == "x86":
                 copy(
                     self, "mimalloc-redirect32.dll",
-                    src=os.path.join(self.folders.source, "bin"),
-                    dst=os.path.join(self.folders.package, "bin"))
+                    src=self.folders.source / "bin",
+                    dst=self.folders.package / "bin")
                 copy(
                     self, "minject32.exe",
-                    src=os.path.join(self.folders.source, "bin"),
-                    dst=os.path.join(self.folders.package, "bin"))
+                    src=self.folders.source / "bin",
+                    dst=self.folders.package / "bin")
 
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
     @property
     def _obj_name(self):
@@ -169,7 +168,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.get_safe("single_object"):
             obj_ext = "o"
             obj_file = f"{self._obj_name}.{obj_ext}"
-            obj_path = os.path.join(self.folders.package, "lib", obj_file)
+            obj_path = self.folders.package / "lib" / obj_file
             self.info.exelinkflags = [obj_path]
             self.info.sharedlinkflags = [obj_path]
             self.info.libdirs = []

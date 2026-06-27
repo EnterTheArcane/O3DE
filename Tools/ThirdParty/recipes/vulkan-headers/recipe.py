@@ -35,11 +35,11 @@ class Recipe(RecipeBase):
         cmake.configure()
 
     def package(self):
-        copy(self, "LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        copy(self, "*", src=os.path.join(self.folders.package, "share", "vulkan", "registry"), dst=os.path.join(self.folders.package, "res", "vulkan", "registry"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        copy(self, "*", src=self.folders.package / "share" / "vulkan" / "registry", dst=self.folders.package / "res" / "vulkan" / "registry")
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "VulkanHeaders")

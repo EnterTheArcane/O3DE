@@ -1,4 +1,3 @@
-import os
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -33,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(self, os.path.join(self.folders.source, "CPP", "CMakeLists.txt"), "-Werror", "")
+        replace_in_file(self, self.folders.source / "CPP" / "CMakeLists.txt", "-Werror", "")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -50,16 +49,16 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, "CPP"))
+        cmake.configure(build_script_folder=self.folders.source / "CPP")
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
 
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     def package_info(self):
         if self.options.usingz != "ONLY":

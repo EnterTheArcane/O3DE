@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
@@ -27,10 +25,10 @@ class Recipe(RecipeBase):
         self.info.clear()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(
-            self, "*.h", src=os.path.join(self.folders.source, "include", "ankerl"),
-            dst=os.path.join(self.folders.package, "include", "ankerl"))
+            self, "*.h", src=self.folders.source / "include" / "ankerl",
+            dst=self.folders.package / "include" / "ankerl")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "unordered_dense")

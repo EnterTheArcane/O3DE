@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMakeToolchain, CMakeDeps, CMake
 from thirdparty.files import copy, get, rmdir
@@ -85,11 +83,11 @@ class Recipe(RecipeBase[_Options]):
 
     def package(self):
         for license_file in ("LICENSE.md", "PATENTS.md"):
-            copy(self, license_file, self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+            copy(self, license_file, self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.configure()
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         if self.options.build_encoder:

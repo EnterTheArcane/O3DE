@@ -137,14 +137,14 @@ class Recipe(RecipeBase[_Options]):
 
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "source", "configure"),
+            self.folders.source / "source" / "configure",
             "if test -z \"$PYTHON\"",
             "if true",
         )
 
         if self.settings.os == "Windows":
             # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545
-            makeconv_cpp = os.path.join(self.folders.source, "source", "tools", "makeconv", "makeconv.cpp")
+            makeconv_cpp = self.folders.source / "source" / "tools" / "makeconv" / "makeconv.cpp"
             replace_in_file(
                 self,
                 makeconv_cpp,
@@ -152,7 +152,7 @@ class Recipe(RecipeBase[_Options]):
                 "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);")
 
         # relocatable shared libs on macOS
-        mh_darwin = os.path.join(self.folders.source, "source", "config", "mh-darwin")
+        mh_darwin = self.folders.source / "source" / "config" / "mh-darwin"
         replace_in_file(self, mh_darwin, "-install_name $(libdir)/$(notdir", "-install_name @rpath/$(notdir")
         replace_in_file(
             self,
@@ -161,21 +161,21 @@ class Recipe(RecipeBase[_Options]):
             "-install_name @rpath/$(notdir $(MIDDLE_SO_TARGET))")
 
         # workaround for https://unicode-org.atlassian.net/browse/ICU-20531
-        mkdir(self, os.path.join(self.folders.build, "data", "out", "tmp"))
+        mkdir(self, self.folders.build / "data" / "out" / "tmp")
 
         # workaround for "No rule to make target 'out/tmp/dirs.timestamp'"
-        save(self, os.path.join(self.folders.build, "data", "out", "tmp", "dirs.timestamp"), "")
+        save(self, self.folders.build / "data" / "out" / "tmp" / "dirs.timestamp", "")
 
     def build(self):
         self._patch_sources()
 
         if self.options.dat_package_file:
-            dat_package_file = glob.glob(os.path.join(self.folders.source, "source", "data", "in", "*.dat"))
+            dat_package_file = glob.glob(self.folders.source / "source" / "data" / "in" / "*.dat")
             if dat_package_file:
                 shutil.copy(str(self.options.dat_package_file), dat_package_file[0])
 
         autotools = Autotools(self)
-        autotools.configure(build_script_folder=os.path.join(self.folders.source, "source"))
+        autotools.configure(build_script_folder=self.folders.source / "source")
         autotools.make()
 
     @property
@@ -195,36 +195,36 @@ class Recipe(RecipeBase[_Options]):
         data_dir_name = "icu"
         if self.settings.os == "Windows" and self.settings.build_type == "Debug":
             data_dir_name += "d"
-        data_dir = os.path.join(self.folders.package, "lib", data_dir_name, str(self.version))
-        return os.path.join(data_dir, self._data_filename)
+        data_dir = self.folders.package / "lib" / data_dir_name / str(self.version)
+        return data_dir / self._data_filename
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
 
-        dll_files = glob.glob(os.path.join(self.folders.package, "lib", "*.dll"))
+        dll_files = glob.glob(self.folders.package / "lib" / "*.dll")
         if dll_files:
-            bin_dir = os.path.join(self.folders.package, "bin")
+            bin_dir = self.folders.package / "bin"
             mkdir(self, bin_dir)
             for dll in dll_files:
                 dll_name = os.path.basename(dll)
                 rm(self, dll_name, bin_dir)
-                rename(self, src=dll, dst=os.path.join(bin_dir, dll_name))
+                rename(self, src=dll, dst=bin_dir / dll_name)
 
         if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
-            mkdir(self, os.path.join(self.folders.package, "res"))
-            rename(self, src=self._data_path, dst=os.path.join(self.folders.package, "res", self._data_filename))
+            mkdir(self, self.folders.package / "res")
+            rename(self, src=self._data_path, dst=self.folders.package / "res" / self._data_filename)
 
         # Copy some files required for cross-compiling
-        config_dir = os.path.join(self.folders.package, "config")
-        copy(self, "icucross.mk", src=os.path.join(self.folders.build, "config"), dst=config_dir)
-        copy(self, "icucross.inc", src=os.path.join(self.folders.build, "config"), dst=config_dir)
+        config_dir = self.folders.package / "config"
+        copy(self, "icucross.mk", src=self.folders.build / "config", dst=config_dir)
+        copy(self, "icucross.inc", src=self.folders.build / "config", dst=config_dir)
 
-        rmdir(self, os.path.join(self.folders.package, "lib", "icu"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "man"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "icu")
+        rmdir(self, self.folders.package / "lib" / "man")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "ICU")
@@ -281,7 +281,7 @@ class Recipe(RecipeBase[_Options]):
 
         if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
             self.info.components["icu-data"].resdirs = ["res"]
-            data_path = os.path.join(self.folders.package, "res", self._data_filename).replace("\\", "/")
+            data_path = (self.folders.package / "res" / self._data_filename).as_posix()
             self.runenv_info.prepend_path("ICU_DATA", data_path)
             if self._enable_icu_tools or self.options.with_extras:
                 self.buildenv_info.prepend_path("ICU_DATA", data_path)

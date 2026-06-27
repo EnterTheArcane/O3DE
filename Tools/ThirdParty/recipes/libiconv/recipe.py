@@ -86,9 +86,9 @@ class Recipe(RecipeBase[_Options]):
             cc, lib, link = self._msvc_tools
             if cc.endswith("cl"):
                 cc = f"{cc} -nologo"
-            build_aux_path = os.path.join(self.folders.source, "build-aux")
-            lt_compile = unix_path(self, os.path.join(build_aux_path, "compile"))
-            lt_ar = unix_path(self, os.path.join(build_aux_path, "ar-lib"))
+            build_aux_path = self.folders.source / "build-aux"
+            lt_compile = unix_path(self, build_aux_path / "compile")
+            lt_ar = unix_path(self, build_aux_path / "ar-lib")
             env.define("CC", f"{lt_compile} {cc}")
             env.define("CXX", f"{lt_compile} {cc}")
             env.define("LD", link)
@@ -101,7 +101,7 @@ class Recipe(RecipeBase[_Options]):
 
     def _apply_resource_patch(self):
         if self.settings.arch == "x86":
-            windres_options_path = os.path.join(self.folders.source, "windows", "windres-options")
+            windres_options_path = self.folders.source / "windows" / "windres-options"
             self.output.info(f"Applying {self.settings.arch} resource patch: {windres_options_path}")
             replace_in_file(self, windres_options_path, '#   PACKAGE_VERSION_SUBMINOR', '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)
 
@@ -113,20 +113,20 @@ class Recipe(RecipeBase[_Options]):
         autotools.make()
 
     def package(self):
-        copy(self, "COPYING.LIB", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING.LIB", self.folders.source, self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
-        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rm(self, "*.la", self.folders.package / "lib")
+        rmdir(self, self.folders.package / "share")
         fix_apple_shared_install_name(self)
         if (is_msvc(self) or self._is_clang_cl) and self.options.shared:
             for import_lib in ["iconv", "charset"]:
-                dst = os.path.join(self.folders.package, "lib", f"{import_lib}.lib")
+                dst = self.folders.package / "lib" / f"{import_lib}.lib"
                 if os.path.isfile(dst):
                     os.remove(dst)
                 rename(
-                    self, os.path.join(self.folders.package, "lib", f"{import_lib}.dll.lib"),
-                    os.path.join(self.folders.package, "lib", f"{import_lib}.lib"))
+                    self, self.folders.package / "lib" / f"{import_lib}.dll.lib",
+                    self.folders.package / "lib" / f"{import_lib}.lib")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "Iconv")

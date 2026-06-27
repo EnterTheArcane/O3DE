@@ -293,7 +293,7 @@ class Recipe(RecipeBase[_Options]):
     def _get_default_openssl_dir(self):
         if self.settings.os == "Linux":
             return "/etc/ssl"
-        return os.path.join(self.folders.package, "res")
+        return self.folders.package / "res"
 
     def _adjust_path(self, path):
         if self._use_nmake:
@@ -454,7 +454,7 @@ class Recipe(RecipeBase[_Options]):
         self.output.info(f"using target: {self._target} -> {self._ancestor_target}")
         self.output.info(config)
 
-        save(self, os.path.join(self.folders.source, "Configurations", "20-thirdparty.conf"), config)
+        save(self, self.folders.source / "Configurations" / "20-thirdparty.conf", config)
 
     def _run_make(self, targets=None, parallel=True, install=False):
         command = [self._make_program]
@@ -485,7 +485,7 @@ class Recipe(RecipeBase[_Options]):
                 # causes issues on Windows
                 replace_in_file(self, "Makefile", "INSTALLTOP_dir=\\", "INSTALLTOP_dir=\\\\")
                 # replace backslashes in paths with forward slashes
-                mkinstallvars_pl = os.path.join(self.folders.source, "util", "mkinstallvars.pl")
+                mkinstallvars_pl = self.folders.source / "util" / "mkinstallvars.pl"
                 replace_in_file(self, mkinstallvars_pl, "push @{$values{$k}}, $v;", """$v =~ s|\\\\|/|g; push @{$values{$k}}, $v;""")
                 replace_in_file(self, mkinstallvars_pl, "$values{$k} = $v;", """$v->[0] =~ s|\\\\|/|g; $values{$k} = $v;""")
             self._run_make()
@@ -496,7 +496,7 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         self._make()
-        configdata_pm = self._adjust_path(os.path.join(self.folders.source, "configdata.pm"))
+        configdata_pm = self._adjust_path(self.folders.source / "configdata.pm")
         self.run(f"{self._perl} {configdata_pm} --dump")
 
     @property
@@ -514,23 +514,23 @@ class Recipe(RecipeBase[_Options]):
             replace_in_file(self, filename, f"/{e}\"", f"/{runtime}\"", strict=False)
 
     def package(self):
-        copy(self, "*LICENSE*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "*LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
         self._make_install()
         if is_apple_os(self):
             fix_apple_shared_install_name(self)
 
         rm(self, "*.pdb", self.folders.package, "lib")
         if self.options.shared:
-            libdir = os.path.join(self.folders.package, "lib")
+            libdir = self.folders.package / "lib"
             for file in os.listdir(libdir):
                 if self._is_mingw and file.endswith(".dll.a"):
                     continue
                 if file.endswith(".a"):
-                    os.unlink(os.path.join(libdir, file))
+                    os.unlink(libdir / file)
 
         if not self.options.no_fips:
-            provdir = os.path.join(self.folders.source, "providers")
-            modules_dir = os.path.join(self.folders.package, "lib", "ossl-modules")
+            provdir = self.folders.source / "providers"
+            modules_dir = self.folders.package / "lib" / "ossl-modules"
             if self.settings.os == "Mac":
                 copy(self, "fips.dylib", src=provdir, dst=modules_dir)
             elif self.settings.os == "Windows":
@@ -538,11 +538,11 @@ class Recipe(RecipeBase[_Options]):
             else:
                 copy(self, "fips.so", src=provdir, dst=modules_dir)
 
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
         self._create_cmake_module_variables(
-            os.path.join(self.folders.package, self._module_file_rel_path)
+            self.folders.package / self._module_file_rel_path
         )
 
     def _create_cmake_module_variables(self, module_file):
@@ -637,5 +637,5 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["ssl"].set_property("cmake_target_name", "OpenSSL::SSL")
         self.info.components["ssl"].set_property("pkg_config_name", "libssl")
 
-        openssl_modules_dir = os.path.join(self.folders.package, "lib", "ossl-modules")
+        openssl_modules_dir = self.folders.package / "lib" / "ossl-modules"
         self.runenv_info.define_path("OPENSSL_MODULES", openssl_modules_dir)

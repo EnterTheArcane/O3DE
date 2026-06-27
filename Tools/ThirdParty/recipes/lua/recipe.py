@@ -49,14 +49,14 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def package(self):
         # Extract the License/s from the header to a file
-        tmp = load(self, os.path.join(self.folders.source, "src", "lua.h"))
+        tmp = load(self, self.folders.source / "src" / "lua.h")
         license_contents = tmp[tmp.find("/***", 1):tmp.find("****/", 1)]
-        save(self, os.path.join(self.folders.package, "licenses", "COPYING.txt"), license_contents)
+        save(self, self.folders.package / "licenses" / "COPYING.txt", license_contents)
         cmake = CMake(self)
         cmake.install()
         fix_apple_shared_install_name(self)

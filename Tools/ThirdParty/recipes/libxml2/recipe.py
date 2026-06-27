@@ -80,19 +80,19 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"), ignore_case=True, keep_path=False)
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses", ignore_case=True, keep_path=False)
         cmake = CMake(self)
         cmake.install()
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rm(self, "*.pdb", self.folders.package / "bin")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
         for header in ["win32config.h", "wsockcompat.h"]:
             copy(
-                self, pattern=header, src=os.path.join(self.folders.source, "include"),
-                dst=os.path.join(self.folders.package, "include", "libxml2"), keep_path=False)
+                self, pattern=header, src=self.folders.source / "include",
+                dst=self.folders.package / "include" / "libxml2", keep_path=False)
         self._create_cmake_module_variables(
-            os.path.join(self.folders.package, self._module_file_rel_path)
+            self.folders.package / self._module_file_rel_path
         )
 
     def _create_cmake_module_variables(self, module_file):

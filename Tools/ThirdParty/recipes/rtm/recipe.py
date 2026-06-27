@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
@@ -27,10 +25,10 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(
-            self, "*.h", src=os.path.join(self.folders.source, "includes"),
-            dst=os.path.join(self.folders.package, "include"))
+            self, "*.h", src=self.folders.source / "includes",
+            dst=self.folders.package / "include")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "rtm")

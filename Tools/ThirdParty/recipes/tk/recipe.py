@@ -80,11 +80,11 @@ class Recipe(RecipeBase[_Options]):
             )
             tc.configure_args.append(f"--enable-aqua={yes_no(is_apple_os(self))}")
             tc.configure_args.append(
-                f"--with-tcl={os.path.join(self.dependencies['tcl'].folders.package, 'lib')}"
+                f"--with-tcl={self.dependencies['tcl'].folders.package / 'lib'}"
             )
             tc.configure_args.append(f"--with-x={yes_no(self.settings.os == 'Linux')}")
             tc.make_args.append(
-                f"TCL_GENERIC_DIR={os.path.join(self.dependencies['tcl'].folders.package, 'include')}"
+                f"TCL_GENERIC_DIR={self.dependencies['tcl'].folders.package / 'include'}"
             )
             if self.settings.os == "Windows":
                 tc.extra_defines.extend(
@@ -117,7 +117,7 @@ class Recipe(RecipeBase[_Options]):
             build_system = self._get_default_build_system()
         if build_system not in ["win", "unix", "macosx"]:
             raise RecipeException(f"Invalid build system: {build_system}")
-        return os.path.join(self.folders.source, build_system)
+        return self.folders.source / build_system
 
     def _build_nmake(self, target="release"):
         # https://core.tcl.tk/tips/doc/trunk/tip/477.md
@@ -134,17 +134,17 @@ class Recipe(RecipeBase[_Options]):
             opts.append("unchecked")
         # https://core.tcl.tk/tk/tktview?name=3d34589aa0
         # https://wiki.tcl-lang.org/page/Building+with+Visual+Studio+2017
-        tcl_lib_path = os.path.join(self.dependencies["tcl"].folders.package, "lib")
+        tcl_lib_path = self.dependencies["tcl"].folders.package / "lib"
         tclimplib, tclstublib = None, None
         for lib in os.listdir(tcl_lib_path):
             if not lib.endswith(".lib"):
                 continue
             if lib.startswith("tcl{}".format("".join(self.version.split(".")[:2]))):
-                tclimplib = os.path.join(tcl_lib_path, lib)
+                tclimplib = tcl_lib_path / lib
             elif lib.startswith(
                     "tclstub{}".format("".join(self.version.split(".")[:2]))
             ):
-                tclstublib = os.path.join(tcl_lib_path, lib)
+                tclstublib = tcl_lib_path / lib
 
         if tclimplib is None or tclstublib is None:
             raise RecipeException("tcl dependency misses tcl and/or tclstub library")
@@ -177,7 +177,7 @@ class Recipe(RecipeBase[_Options]):
             self,
             pattern="license.terms",
             src=self.folders.source,
-            dst=os.path.join(self.folders.package, "licenses"),
+            dst=self.folders.package / "licenses",
         )
         if is_msvc(self):
             self._build_nmake("install")
@@ -190,11 +190,11 @@ class Recipe(RecipeBase[_Options]):
                     target="install-private-headers",
                     args=[f"DESTDIR={self.folders.package}"],
                 )
-                rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "man"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+                rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "man")
+        rmdir(self, self.folders.package / "share")
 
-        tkConfigShPath = os.path.join(self.folders.package, "lib", "tkConfig.sh")
+        tkConfigShPath = self.folders.package / "lib" / "tkConfig.sh"
         if os.path.exists(tkConfigShPath):
             # This can only be modified after build since the value being replaced is a result
             # of variable substitution in tkConfig.sh.in
@@ -245,11 +245,7 @@ class Recipe(RecipeBase[_Options]):
                 "xorg::xdmcp",
             ]
 
-        tk_library = os.path.join(
-            self.folders.package,
-            "lib",
-            f"{self.name}{tk_version.major}.{tk_version.minor}",
-        ).replace("\\", "/")
+        tk_library = (self.folders.package / "lib" / f"{self.name}{tk_version.major}.{tk_version.minor}").as_posix()
         self.runenv_info.define("TK_LIBRARY", tk_library)
 
         tk_root = self.folders.package.as_posix()

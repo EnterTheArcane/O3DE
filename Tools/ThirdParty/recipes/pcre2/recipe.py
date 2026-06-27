@@ -1,4 +1,3 @@
-import os
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -75,7 +74,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.get_safe("grep_support_callout_fork", False)
         # 10.47 accidentally dropped the list(APPEND CMAKE_MODULE_PATH cmake/) call;
         # inject it via the toolchain so cmake/ modules (PCRE2CheckVscript etc.) can be found
-        tc.variables["CMAKE_MODULE_PATH"] = os.path.join(self.folders.source, "cmake").replace("\\", "/")
+        tc.variables["CMAKE_MODULE_PATH"] = (self.folders.source / "cmake").as_posix()
         tc.generate()
 
         deps = CMakeDeps(self)
@@ -83,7 +82,7 @@ class Recipe(RecipeBase[_Options]):
 
     def _patch_sources(self):
         apply_patches(self)
-        cmakelists = os.path.join(self.folders.source, "CMakeLists.txt")
+        cmakelists = self.folders.source / "CMakeLists.txt"
         # Avoid CMP0006 error (macos bundle)
         if self.settings.os == "Mac":
             replace_in_file(
@@ -104,13 +103,13 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENCE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENCE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "man"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "cmake")
+        rmdir(self, self.folders.package / "man")
+        rmdir(self, self.folders.package / "share")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "PCRE2")

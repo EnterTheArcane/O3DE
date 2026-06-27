@@ -49,7 +49,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _cmakelists_folder(self):
         subfolder = os.path.join("build", "cmake")
-        return os.path.join(self.folders.source, subfolder)
+        return self.folders.source / subfolder
 
     def build(self):
         cmake = CMake(self)
@@ -57,12 +57,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=os.path.join(self.folders.source, "lib"), dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source / "lib", dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
     @property
     def _lz4_target(self):

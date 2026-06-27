@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
@@ -52,15 +50,15 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(
-            self, "*.h", src=os.path.join(self.folders.source, "transcoder"),
-            dst=os.path.join(self.folders.package, "include"))
+            self, "*.h", src=self.folders.source / "transcoder",
+            dst=self.folders.package / "include")
         copy(
-            self, "*.h", src=os.path.join(self.folders.source, "encoder"),
-            dst=os.path.join(self.folders.package, "include"))
-        copy(self, "*.a", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
-        copy(self, "*.lib", src=self.folders.build, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
+            self, "*.h", src=self.folders.source / "encoder",
+            dst=self.folders.package / "include")
+        copy(self, "*.a", src=self.folders.build, dst=self.folders.package / "lib", keep_path=False)
+        copy(self, "*.lib", src=self.folders.build, dst=self.folders.package / "lib", keep_path=False)
 
     def package_info(self):
         self.info.libs = ["basisu_encoder"]

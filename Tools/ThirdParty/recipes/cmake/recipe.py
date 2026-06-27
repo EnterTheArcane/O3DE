@@ -44,12 +44,12 @@ class Recipe(RecipeBase):
 
     def package(self):
         for subdir in ("bin", "share", "lib"):
-            src = os.path.join(self.folders.build, subdir)
+            src = self.folders.build / subdir
             if os.path.isdir(src):
-                copy(self, "*", src=src, dst=os.path.join(self.folders.package, subdir))
+                copy(self, "*", src=src, dst=self.folders.package / subdir)
 
     def package_info(self):
         self.info.libdirs = []
         self.info.includedirs = []
-        bin_dir = os.path.join(self.folders.package, "bin")
+        bin_dir = self.folders.package / "bin"
         self.buildenv_info.prepend_path("PATH", bin_dir)

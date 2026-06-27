@@ -34,11 +34,11 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
 
@@ -47,5 +47,5 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_target_name", "ispc_texcomp::ispc_texcomp")
         self.info.libs = ["ispc_texcomp"]
         if self.settings.os == "Windows":
-            bin_dir = os.path.join(self.folders.package, "bin")
+            bin_dir = self.folders.package / "bin"
             self.buildenv_info.prepend_path("PATH", bin_dir)

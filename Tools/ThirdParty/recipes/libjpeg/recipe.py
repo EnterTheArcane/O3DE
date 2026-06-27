@@ -64,7 +64,7 @@ class Recipe(RecipeBase[_Options]):
                 # Rename target to 'libjpeg.lib' to match legacy behaviour (otherwise we break backwards compatibility)
                 # static: "libjpeg.lib"
                 # shared: "libjpeg.lib" (import), "libjpeg-9.dll" (DLL)
-                jpeg_vcxproj = os.path.join(self.folders.source, "jpeg.vcxproj")
+                jpeg_vcxproj = self.folders.source / "jpeg.vcxproj"
                 target_name = "libjpeg-9" if self.options.shared else "libjpeg"
                 replace_in_file(
                     self, jpeg_vcxproj, """<PropertyGroup Label="UserMacros" />""",
@@ -89,7 +89,7 @@ class Recipe(RecipeBase[_Options]):
                 # Inject recipe-generated .props file
                 # Note: importing it right before Microsoft.Cpp.props also ensures we correctly
                 #       handle the toolset setting
-                recipe_toolchain_props = os.path.join(self.folders.generators, MSBuildToolchain.filename)
+                recipe_toolchain_props = self.folders.generators / MSBuildToolchain.filename
                 replace_in_file(
                     self, jpeg_vcxproj,
                     """<Import Project="$(VCTargetsPath)\\Microsoft.Cpp.props" />""",
@@ -110,7 +110,7 @@ class Recipe(RecipeBase[_Options]):
                     for key, value in replacements.items():
                         replace_in_file(self, jpeg_vcxproj, key, value)
 
-                    replace_in_file(self, os.path.join(self.folders.source, "jpeg.sln"), "Release", str(self.settings.build_type))
+                    replace_in_file(self, self.folders.source / "jpeg.sln", "Release", str(self.settings.build_type))
 
                 msbuild = MSBuild(self)
                 if self.settings.arch == "x86":
@@ -124,35 +124,35 @@ class Recipe(RecipeBase[_Options]):
             autotools.make()
 
     def package(self):
-        copy(self, "README", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "README", src=self.folders.source, dst=self.folders.package / "licenses")
         if self._is_cl_like:
             for filename in ["jpeglib.h", "jerror.h", "jconfig.h", "jmorecfg.h"]:
-                copy(self, filename, src=self.folders.source, dst=os.path.join(self.folders.package, "include"), keep_path=False)
+                copy(self, filename, src=self.folders.source, dst=self.folders.package / "include", keep_path=False)
 
-            copy(self, "*.lib", src=self.folders.source, dst=os.path.join(self.folders.package, "lib"), keep_path=False)
+            copy(self, "*.lib", src=self.folders.source, dst=self.folders.package / "lib", keep_path=False)
             if self.options.shared:
-                copy(self, "*.dll", src=self.folders.source, dst=os.path.join(self.folders.package, "bin"), keep_path=False)
+                copy(self, "*.dll", src=self.folders.source, dst=self.folders.package / "bin", keep_path=False)
         else:
             autotools = Autotools(self)
             autotools.install()
             if self.settings.os == "Windows" and self.options.shared:
-                rm(self, "*[!.dll]", os.path.join(self.folders.package, "bin"))
+                rm(self, "*[!.dll]", self.folders.package / "bin")
             else:
-                rmdir(self, os.path.join(self.folders.package, "bin"))
-            rm(self, "*.la", os.path.join(self.folders.package, "lib"))
-            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-            rmdir(self, os.path.join(self.folders.package, "share"))
+                rmdir(self, self.folders.package / "bin")
+            rm(self, "*.la", self.folders.package / "lib")
+            rmdir(self, self.folders.package / "lib" / "pkgconfig")
+            rmdir(self, self.folders.package / "share")
             fix_apple_shared_install_name(self)
 
         for fn in ("jpegint.h", "transupp.h",):
-            copy(self, fn, src=self.folders.source, dst=os.path.join(self.folders.package, "include"))
+            copy(self, fn, src=self.folders.source, dst=self.folders.package / "include")
 
         for fn in ("jinclude.h", "transupp.c",):
-            copy(self, fn, src=self.folders.source, dst=os.path.join(self.folders.package, "res"))
+            copy(self, fn, src=self.folders.source, dst=self.folders.package / "res")
 
         # Remove export decorations of transupp symbols
         for relpath in os.path.join("include", "transupp.h"), os.path.join("res", "transupp.c"):
-            path = os.path.join(self.folders.package, relpath)
+            path = self.folders.package / relpath
             save(self, path, re.subn(r"(?:EXTERN|GLOBAL)\(([^)]+)\)", r"\1", load(self, path))[0])
 
     def package_info(self):

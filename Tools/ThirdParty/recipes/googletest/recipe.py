@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
 
-        internal_utils = os.path.join(self.folders.source, "googletest", "cmake", "internal_utils.cmake")
+        internal_utils = self.folders.source / "googletest" / "cmake" / "internal_utils.cmake"
         replace_in_file(self, internal_utils, "-WX", "")
 
     def generate(self):
@@ -50,12 +50,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", self.folders.source, self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rm(self, "*.pdb", os.path.join(self.folders.package, "lib"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rm(self, "*.pdb", self.folders.package / "lib")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "GTest")

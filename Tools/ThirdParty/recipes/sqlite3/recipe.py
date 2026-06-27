@@ -106,16 +106,16 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def _extract_license(self):
-        header = load(self, os.path.join(self.folders.source, "sqlite3.h"))
+        header = load(self, self.folders.source / "sqlite3.h")
         license_content = header[3:header.find("***", 1)]
         return license_content
 
     def package(self):
-        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), self._extract_license())
+        save(self, self.folders.package / "licenses" / "LICENSE", self._extract_license())
         cmake = CMake(self)
         cmake.install()
 

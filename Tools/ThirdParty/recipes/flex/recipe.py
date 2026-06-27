@@ -65,7 +65,7 @@ class Recipe(RecipeBase):
             if gnu_config:
                 copy(self, os.path.basename(gnu_config),
                      src=os.path.dirname(gnu_config),
-                     dst=os.path.join(self.folders.source, "build-aux"))
+                     dst=self.folders.source / "build-aux")
 
     def build(self):
         self._patch_sources()
@@ -75,11 +75,11 @@ class Recipe(RecipeBase):
 
     def package(self):
         copy(self, "COPYING", src=self.folders.source,
-             dst=os.path.join(self.folders.package, "licenses"))
+             dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rm(self, "*.la", os.path.join(self.folders.package, "lib"))
+        rmdir(self, self.folders.package / "share")
+        rm(self, "*.la", self.folders.package / "lib")
         fix_apple_shared_install_name(self)
 
     def package_info(self):
@@ -87,5 +87,5 @@ class Recipe(RecipeBase):
         self.info.system_libs = ["m"]
         # Avoid CMakeDeps messing with Conan targets
         self.info.set_property("cmake_find_mode", "none")
-        lex_path = os.path.join(self.folders.package, "bin", "flex").replace("\\", "/")
+        lex_path = (self.folders.package / "bin" / "flex").as_posix()
         self.buildenv_info.define("LEX", lex_path)

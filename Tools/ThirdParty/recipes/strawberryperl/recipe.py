@@ -1,4 +1,3 @@
-import os
 import re
 
 from thirdparty import RecipeBase
@@ -39,15 +38,15 @@ class Recipe(RecipeBase):
         )
 
     def package(self):
-        copy(self, pattern="License.rtf*", src=os.path.join(self.folders.build, "licenses"), dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, pattern="*", src=os.path.join(self.folders.build, "perl", "bin"), dst=os.path.join(self.folders.package, "bin"))
-        copy(self, pattern="*", src=os.path.join(self.folders.build, "perl", "lib"), dst=os.path.join(self.folders.package, "lib"))
-        copy(self, pattern="*", src=os.path.join(self.folders.build, "perl", "vendor", "lib"), dst=os.path.join(self.folders.package, "lib"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        copy(self, pattern="License.rtf*", src=self.folders.build / "licenses", dst=self.folders.package / "licenses")
+        copy(self, pattern="*", src=self.folders.build / "perl" / "bin", dst=self.folders.package / "bin")
+        copy(self, pattern="*", src=self.folders.build / "perl" / "lib", dst=self.folders.package / "lib")
+        copy(self, pattern="*", src=self.folders.build / "perl" / "vendor" / "lib", dst=self.folders.package / "lib")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.libdirs = []
         self.info.includedirs = []
 
-        perl_path = os.path.join(self.folders.package, "bin", "perl.exe").replace("\\", "/")
+        perl_path = (self.folders.package / "bin" / "perl.exe").as_posix()
         self.conf_info.define("user.strawberryperl:perl", perl_path)

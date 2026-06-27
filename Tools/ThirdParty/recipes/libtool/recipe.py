@@ -50,7 +50,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _datarootdir(self):
-        return os.path.join(self.folders.package, "res")
+        return self.folders.package / "res"
 
     def generate(self):
         VirtualBuildEnv(self).generate()
@@ -91,8 +91,8 @@ class Recipe(RecipeBase[_Options]):
         apply_patches(self)
         config_guess = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
         config_sub = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_sub")
-        shutil.copy(config_sub, os.path.join(self.folders.source, "build-aux", "config.sub"))
-        shutil.copy(config_guess, os.path.join(self.folders.source, "build-aux", "config.guess"))
+        shutil.copy(config_sub, self.folders.source / "build-aux" / "config.sub")
+        shutil.copy(config_guess, self.folders.source / "build-aux" / "config.guess")
 
     def build(self):
         self._patch_sources()
@@ -123,31 +123,31 @@ class Recipe(RecipeBase[_Options]):
         else:
             regex_out = re.compile("^$")
         for directory in (
-                os.path.join(self.folders.package, "bin"),
-                os.path.join(self.folders.package, "lib"),
+                self.folders.package / "bin",
+                self.folders.package / "lib",
         ):
             for file in os.listdir(directory):
                 if regex_in.match(file) and not regex_out.match(file):
                     os.unlink(os.path.join(directory, file))
 
     def package(self):
-        copy(self, "COPYING*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING*", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
         fix_apple_shared_install_name(self)
 
-        rmdir(self, os.path.join(self._datarootdir, "info"))
-        rmdir(self, os.path.join(self._datarootdir, "man"))
+        rmdir(self, self._datarootdir / "info")
+        rmdir(self, self._datarootdir / "man")
 
-        os.unlink(os.path.join(self.folders.package, "lib", "libltdl.la"))
+        os.unlink(self.folders.package / "lib" / "libltdl.la")
         if self.options.shared:
             self._rm_binlib_files_containing(self._static_ext, self._shared_ext)
         else:
             self._rm_binlib_files_containing(self._shared_ext)
 
         files = (
-            os.path.join(self.folders.package, "bin", "libtool"),
-            os.path.join(self.folders.package, "bin", "libtoolize"),
+            self.folders.package / "bin" / "libtool",
+            self.folders.package / "bin" / "libtoolize",
         )
         replaces = {
             "GREP": "/usr/bin/env grep",
@@ -164,22 +164,22 @@ class Recipe(RecipeBase[_Options]):
                     raise RecipeException(f"Failed to find {key} in {repl}")
             open(file, "w").write(contents)
 
-        binpath = os.path.join(self.folders.package, "bin")
+        binpath = self.folders.package / "bin"
         if self.settings.os == "Windows":
             rename(
-                self, os.path.join(binpath, "libtoolize"),
-                os.path.join(binpath, "libtoolize.exe"))
+                self, binpath / "libtoolize",
+                binpath / "libtoolize.exe")
             rename(
-                self, os.path.join(binpath, "libtool"),
-                os.path.join(binpath, "libtool.exe"))
+                self, binpath / "libtool",
+                binpath / "libtool.exe")
 
         if is_msvc(self) and self.options.shared:
             rename(
-                self, os.path.join(self.folders.package, "lib", "ltdl.dll.lib"),
-                os.path.join(self.folders.package, "lib", "ltdl.lib"))
+                self, self.folders.package / "lib" / "ltdl.dll.lib",
+                self.folders.package / "lib" / "ltdl.lib")
 
         # allow libtool to link static libs into shared for more platforms
-        libtool_m4 = os.path.join(self._datarootdir, "aclocal", "libtool.m4")
+        libtool_m4 = self._datarootdir / "aclocal" / "libtool.m4"
         method_pass_all = "lt_cv_deplibs_check_method=pass_all"
         replace_in_file(
             self, libtool_m4,
@@ -201,7 +201,7 @@ class Recipe(RecipeBase[_Options]):
                 self.info.system_libs = ["dl"]
 
         # Define environment variables such that libtool m4 files are seen by Automake
-        libtool_aclocal_dir = os.path.join(self._datarootdir, "aclocal")
+        libtool_aclocal_dir = self._datarootdir / "aclocal"
 
         self.buildenv_info.append_path("ACLOCAL_PATH", libtool_aclocal_dir)
         self.buildenv_info.append_path("AUTOMAKE_RECIPE_INCLUDES", libtool_aclocal_dir)

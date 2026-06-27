@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, rm, rmdir
@@ -50,15 +48,15 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, "Build"))
+        cmake.configure(build_script_folder=self.folders.source / "Build")
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rm(self, "*.cmake", os.path.join(self.folders.package, "include", "Jolt"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rm(self, "*.cmake", self.folders.package / "include" / "Jolt")
 
     def package_info(self):
         self.info.libs = ["Jolt"]

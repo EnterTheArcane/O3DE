@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import get, copy
 
@@ -21,13 +19,13 @@ class Recipe(RecipeBase):
         copy(
             self,
             pattern="LICENSE.txt",
-            dst=os.path.join(self.folders.package, "licenses"),
-            src=os.path.join(self.folders.source))
+            dst=self.folders.package / "licenses",
+            src=self.folders.source)
         copy(
             self,
             pattern="**.hpp",
-            dst=os.path.join(self.folders.package, "include"),
-            src=os.path.join(self.folders.source),
+            dst=self.folders.package / "include",
+            src=self.folders.source,
             keep_path=True)
 
     def package_info(self):

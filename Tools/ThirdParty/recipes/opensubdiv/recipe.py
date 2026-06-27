@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import valid_min_cppstd
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -100,10 +98,10 @@ class Recipe(RecipeBase[_Options]):
     def _patch_sources(self):
         apply_patches(self)
         if self.settings.os == "Mac" and not self._osd_gpu_enabled:
-            path = os.path.join(self.folders.source, "opensubdiv", "CMakeLists.txt")
+            path = self.folders.source / "opensubdiv" / "CMakeLists.txt"
             replace_in_file(self, path, "$<TARGET_OBJECTS:osd_gpu_obj>", "")
         # No warnings as errors
-        replace_in_file(self, os.path.join(self.folders.source, "CMakeLists.txt"), "/WX", "", strict=False)
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "/WX", "", strict=False)
 
     def build(self):
         self._patch_sources()
@@ -112,12 +110,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
         if self.options.shared:
-            rm(self, "*.a", os.path.join(self.folders.package, "lib"))
+            rm(self, "*.a", self.folders.package / "lib")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "OpenSubdiv")

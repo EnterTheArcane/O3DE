@@ -56,17 +56,17 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE.txt", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE.txt", dst=self.folders.package / "licenses", src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "share")
         for cmake_file in ["ParseAndAddCatchTests.cmake", "Catch.cmake", "CatchAddTests.cmake"]:
             copy(
                 self,
                 cmake_file,
-                src=os.path.join(self.folders.source, "extras"),
-                dst=os.path.join(self.folders.package, "lib", "cmake", "Catch2"),
+                src=self.folders.source / "extras",
+                dst=self.folders.package / "lib" / "cmake" / "Catch2",
                 )
 
     def package_info(self):

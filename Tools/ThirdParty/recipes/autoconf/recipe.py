@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rmdir, replace_in_file, apply_patches
@@ -59,7 +57,7 @@ class Recipe(RecipeBase):
                 tc.configure_args.append(f"--host={host}")
 
         env = tc.environment()
-        env.define_path("INSTALL", unix_path(self, os.path.join(self.folders.source, "build-aux", "install-sh")))
+        env.define_path("INSTALL", unix_path(self, self.folders.source / "build-aux" / "install-sh"))
         tc.generate(env)
 
     def build(self):
@@ -71,16 +69,16 @@ class Recipe(RecipeBase):
         autotools = Autotools(self)
         autotools.install()
 
-        copy(self, "COPYING*", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        rmdir(self, os.path.join(self.folders.package, "res", "info"))
-        rmdir(self, os.path.join(self.folders.package, "res", "man"))
+        copy(self, "COPYING*", src=self.folders.source, dst=self.folders.package / "licenses")
+        rmdir(self, self.folders.package / "res" / "info")
+        rmdir(self, self.folders.package / "res" / "man")
 
-        autom4te_cfg = os.path.join(self.folders.package, "res", "autoconf", "autom4te.cfg")
+        autom4te_cfg = self.folders.package / "res" / "autoconf" / "autom4te.cfg"
         if self.settings.os == "Windows":
-            actual_data_path = unix_path(self, os.path.join(self.folders.package, "res", "autoconf"))
+            actual_data_path = unix_path(self, self.folders.package / "res" / "autoconf")
             replace_in_file(self, autom4te_cfg, "'/res/autoconf'", f"'{actual_data_path}'")
         else:
-            actual_data_path = os.path.join(self.folders.package, "res", "autoconf")
+            actual_data_path = self.folders.package / "res" / "autoconf"
             replace_in_file(self, autom4te_cfg, "'//res/autoconf'", f"'{actual_data_path}'")
 
     def package_info(self):
@@ -89,13 +87,13 @@ class Recipe(RecipeBase):
         self.info.includedirs = []
         self.info.resdirs = ["res"]
 
-        bin_path = os.path.join(self.folders.package, "bin")
-        self.buildenv_info.define_path("AUTOCONF", os.path.join(bin_path, "autoconf"))
-        self.buildenv_info.define_path("AUTORECONF", os.path.join(bin_path, "autoreconf"))
-        self.buildenv_info.define_path("AUTOHEADER", os.path.join(bin_path, "autoheader"))
-        self.buildenv_info.define_path("AUTOM4TE", os.path.join(bin_path, "autom4te"))
+        bin_path = self.folders.package / "bin"
+        self.buildenv_info.define_path("AUTOCONF", bin_path / "autoconf")
+        self.buildenv_info.define_path("AUTORECONF", bin_path / "autoreconf")
+        self.buildenv_info.define_path("AUTOHEADER", bin_path / "autoheader")
+        self.buildenv_info.define_path("AUTOM4TE", bin_path / "autom4te")
 
-        perllib_path = os.path.join(self.folders.package, "res", "autoconf")
+        perllib_path = self.folders.package / "res" / "autoconf"
         self.buildenv_info.define_path("autom4te_perllibdir", perllib_path)
         self.buildenv_info.define_path("AC_MACRODIR", perllib_path)
-        self.buildenv_info.define_path("trailer_m4", os.path.join(perllib_path, "autoconf", "trailer.m4"))
+        self.buildenv_info.define_path("trailer_m4", perllib_path / "autoconf" / "trailer.m4")

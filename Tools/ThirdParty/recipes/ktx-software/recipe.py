@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -44,11 +42,11 @@ class Recipe(RecipeBase[_Options]):
             sha256="9412cb45045a503005acd47d98f9e8b47154634a50b4df21e17a1dfa8971d323",
             destination=self.folders.source,
             strip_root=True)
-        rmdir(self, os.path.join(self.folders.source, "tests"))
-        save(self, os.path.join(self.folders.source, "tests", "CMakeLists.txt"), "")
+        rmdir(self, self.folders.source / "tests")
+        save(self, self.folders.source / "tests" / "CMakeLists.txt", "")
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "external", "astc-encoder", "CMakeLists.txt"),
+            self.folders.source / "external" / "astc-encoder" / "CMakeLists.txt",
             "set(CMAKE_CXX_STANDARD", "#")
         apply_patches(self)
 
@@ -69,11 +67,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.md", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "*", src=os.path.join(self.folders.source, "LICENSES"), dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.md", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "*", src=self.folders.source / "LICENSES", dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "Ktx")

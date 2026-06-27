@@ -1,4 +1,3 @@
-import os
 import re
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -184,7 +183,7 @@ class Recipe(RecipeBase[_Options]):
                 self.output.info("Disabling LTO")
                 replace_in_file(
                     self,
-                    os.path.join(self.folders.source, "build", "make", "gen_msvs_vcxproj.sh"),
+                    self.folders.source / "build" / "make" / "gen_msvs_vcxproj.sh",
                     "tag_content WholeProgramOptimization true",
                     "tag_content WholeProgramOptimization false",
                     )
@@ -196,7 +195,7 @@ class Recipe(RecipeBase[_Options]):
         # This can fail some of the configure tests, and -lpthread isn't added to the link command.
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "build", "make", "configure.sh"),
+            self.folders.source / "build" / "make" / "configure.sh",
             "  LD=${LD:-${CROSS}${link_with_cc:-ld}}",
             """
   LD=${LD:-${CROSS}${link_with_cc:-ld}}
@@ -220,36 +219,32 @@ class Recipe(RecipeBase[_Options]):
         return f"vpx{suffix}"
 
     def package(self):
-        copy(self, pattern="LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, pattern="LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
         autotools.install()
 
         # The workaround requires us to move the outputs into place now
         rename(
             self,
-            os.path.join(self.folders.package, self._install_tmp_folder, "include"),
-            os.path.join(self.folders.package, "include")
+            self.folders.package / self._install_tmp_folder / "include",
+            self.folders.package / "include"
             )
 
         if is_msvc(self):
             # Libs are still in the build folder, get from there directly.
             # The makefile cannot correctly install the debug libs (see note about --enable-debug_libs)
             system = {"ARM": "ARM64"}
-            libs_from = os.path.join(
-                self.folders.build,
-                system.get(str(self.settings.arch), "x64"),
-                "Debug" if self.settings.build_type == "Debug" else "Release"
-            )
+            libs_from = self.folders.build / system.get(str(self.settings.arch), "x64") / ("Debug" if self.settings.build_type == "Debug" else "Release")
             # Copy for msvc, as it will generate a release and debug library, so take what we want
             # Note that libvpx's configure/make doesn't support shared lib builds on windows yet.
-            copy(self, f"{self._lib_name}.lib", libs_from, os.path.join(self.folders.package, "lib"))
+            copy(self, f"{self._lib_name}.lib", libs_from, self.folders.package / "lib")
         else:
             # if not msvc, then libs were installed into package (in the wrong place), move them
-            libs_from = os.path.join(self.folders.package, self._install_tmp_folder, "lib")
-            rename(self, libs_from, os.path.join(self.folders.package, "lib"))
+            libs_from = self.folders.package / self._install_tmp_folder / "lib"
+            rename(self, libs_from, self.folders.package / "lib")
 
-        rmdir(self, os.path.join(self.folders.package, self._install_tmp_folder))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / self._install_tmp_folder)
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
         fix_apple_shared_install_name(self)
 

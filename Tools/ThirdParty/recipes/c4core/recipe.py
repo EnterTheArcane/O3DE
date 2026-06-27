@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, rm, rmdir
@@ -46,12 +44,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, pattern="LICENSE*", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, pattern="LICENSE*", dst=self.folders.package / "licenses", src=self.folders.source)
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rm(self, "*.natvis", os.path.join(self.folders.package, "include"), recursive=True)
+        rmdir(self, self.folders.package / "cmake")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rm(self, "*.natvis", self.folders.package / "include", recursive=True)
 
     def package_info(self):
         self.info.libs = ["c4core"]

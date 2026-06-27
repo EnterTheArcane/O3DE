@@ -55,7 +55,7 @@ class Recipe(RecipeBase[_Options]):
         # which _patch_sources() empties. The deps are instead resolved by the CMakeDeps
         # aggregator (recipe_deps.cmake), injected right after project() so the hwy::hwy /
         # Brotli / LCMS2 targets exist before lib/CMakeLists.txt references them.
-        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = os.path.join(self.folders.generators, "recipe_deps.cmake").replace("\\", "/")
+        tc.variables["CMAKE_PROJECT_LIBJXL_INCLUDE"] = (self.folders.generators / "recipe_deps.cmake").as_posix()
         tc.variables["BUILD_TESTING"] = False
         tc.variables["JPEGXL_STATIC"] = False
         tc.variables["JPEGXL_BUNDLE_LIBPNG"] = False
@@ -110,7 +110,7 @@ class Recipe(RecipeBase[_Options]):
         # aggregator that libjxl injects via CMAKE_PROJECT_LIBJXL_INCLUDE (its own
         # find_package(HWY/Brotli/LCMS2) lives in third_party/CMakeLists.txt which
         # _patch_sources empties).  Write an equivalent so those targets exist at project() time.
-        save(self, os.path.join(self.folders.generators, "recipe_deps.cmake"),
+        save(self, self.folders.generators / "recipe_deps.cmake",
              "find_package(Brotli)\nfind_package(HWY)\nfind_package(LCMS2)\n")
 
         # For tcmalloc
@@ -123,14 +123,14 @@ class Recipe(RecipeBase[_Options]):
 
     def _patch_sources(self):
         # Disable tools, extras and third_party
-        save(self, os.path.join(self.folders.source, "tools", "CMakeLists.txt"), "")
-        save(self, os.path.join(self.folders.source, "third_party", "CMakeLists.txt"), "")
+        save(self, self.folders.source / "tools" / "CMakeLists.txt", "")
+        save(self, self.folders.source / "third_party" / "CMakeLists.txt", "")
         # FindAtomics.cmake values are set by CMakeToolchain instead
-        save(self, os.path.join(self.folders.source, "cmake", "FindAtomics.cmake"), "")
+        save(self, self.folders.source / "cmake" / "FindAtomics.cmake", "")
 
         # Allow fPIC to be set by Recipe (top-level set() was removed in 0.11.2; individual targets handle it)
         for cmake_file in ["jxl.cmake", "jxl_threads.cmake", "jxl_cms.cmake", "jpegli.cmake"]:
-            path = os.path.join(self.folders.source, "lib", cmake_file)
+            path = self.folders.source / "lib" / cmake_file
             if os.path.exists(path):
                 fpic = "ON" if self.options.get_safe("fPIC", True) else "OFF"
                 replace_in_file(self, path, "POSITION_INDEPENDENT_CODE ON", f"POSITION_INDEPENDENT_CODE {fpic}")
@@ -144,11 +144,11 @@ class Recipe(RecipeBase[_Options]):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        copy(self, "LICENSE", self.folders.source, self.folders.package / "licenses")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
         if self.options.shared:
-            rm(self, "*.a", os.path.join(self.folders.package, "lib"))
-            rm(self, "*-static.lib", os.path.join(self.folders.package, "lib"))
+            rm(self, "*.a", self.folders.package / "lib")
+            rm(self, "*-static.lib", self.folders.package / "lib")
 
     def package_info(self):
         libcxx = stdcpp_library(self)

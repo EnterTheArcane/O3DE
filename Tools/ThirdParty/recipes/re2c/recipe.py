@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMakeToolchain, CMake
 from thirdparty.files import copy, get, rmdir
@@ -43,22 +41,22 @@ class Recipe(RecipeBase):
         copy(
             self, "LICENSE",
             src=self.folders.source,
-            dst=os.path.join(self.folders.package, "licenses"),
+            dst=self.folders.package / "licenses",
             keep_path=False)
         copy(
             self, "NO_WARRANTY",
             src=self.folders.source,
-            dst=os.path.join(self.folders.package, "licenses"),
+            dst=self.folders.package / "licenses",
             keep_path=False)
         copy(
             self, "*.re",
-            src=os.path.join(self.folders.source, "include"),
-            dst=os.path.join(self.folders.package, "include"),
+            src=self.folders.source / "include",
+            dst=self.folders.package / "include",
             keep_path=False)
 
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.frameworkdirs = []
@@ -66,5 +64,5 @@ class Recipe(RecipeBase):
         self.info.resdirs = []
         self.info.includedirs = []
 
-        include_dir = os.path.join(self.folders.package, "include")
+        include_dir = self.folders.package / "include"
         self.buildenv_info.define("RE2C_STDLIB_DIR", include_dir)

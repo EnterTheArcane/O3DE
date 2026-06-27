@@ -1,4 +1,3 @@
-import os
 import shutil
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -84,7 +83,8 @@ class Recipe(RecipeBase[_Options]):
 
         if self._with_nasm:
             env = Environment()
-            env.define("AS", unix_path(self, os.path.join(self.dependencies.build["nasm"].folders.package, "bin", "nasm{}".format(".exe" if self.settings.os == "Windows" else ""))))
+            nasm_exe = "nasm{}".format(".exe" if self.settings.os == "Windows" else "")
+            env.define("AS", unix_path(self, self.dependencies.build["nasm"].folders.package / "bin" / nasm_exe))
             env.vars(self).save_script("buildenv_nasm")
 
         if is_msvc(self):
@@ -117,23 +117,23 @@ class Recipe(RecipeBase[_Options]):
             autotools.make()
 
     def package(self):
-        copy(self, pattern="COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, pattern="COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         with chdir(self, self.folders.source):
             autotools = Autotools(self)
             autotools.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
         if is_msvc(self):
             ext = ".dll.lib" if self.options.shared else ".lib"
-            libdir = os.path.join(self.folders.package, "lib")
+            libdir = self.folders.package / "lib"
             rename(
-                self, os.path.join(libdir, f"libx264{ext}"),
-                os.path.join(libdir, "x264.lib"))
+                self, libdir / f"libx264{ext}",
+                libdir / "x264.lib")
             # ffmpeg's MSVC configure hardcodes `-lx264` -> `libx264.lib` (x264's native
             # MSVC library name; see ffmpeg's configure msvc_flags filter).  Provide that
             # name as well so such consumers link successfully, while keeping x264.lib for
             # pkg-config (`-lx264`) / CMake consumers.
-            shutil.copy2(os.path.join(libdir, "x264.lib"),
-                         os.path.join(libdir, "libx264.lib"))
+            shutil.copy2(libdir / "x264.lib",
+                         libdir / "libx264.lib")
         fix_apple_shared_install_name(self)
 
     def package_info(self):

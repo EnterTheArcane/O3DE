@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
@@ -32,9 +30,9 @@ class Recipe(RecipeBase):
         get(self, url=url, sha256=sha256, destination=self.folders.build, strip_root=True)
 
     def package(self):
-        copy(self, "*", src=self.folders.build, dst=os.path.join(self.folders.package, "bin"))
+        copy(self, "*", src=self.folders.build, dst=self.folders.package / "bin")
 
     def package_info(self):
         self.info.libdirs = []
         self.info.includedirs = []
-        self.buildenv_info.prepend_path("PATH", os.path.join(self.folders.package, "bin"))
+        self.buildenv_info.prepend_path("PATH", self.folders.package / "bin")

@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import collect_libs, copy, get, load, replace_in_file, rmdir, save
@@ -48,7 +46,7 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         if not self.options.header_only:
-            header_file = os.path.join(self.folders.source, "src", "pugiconfig.hpp")
+            header_file = self.folders.source / "src" / "pugiconfig.hpp"
             # For the library build mode, options applied via change the configuration file
             if self.options.wchar_mode:
                 replace_in_file(self, header_file, "// #define PUGIXML_WCHAR_MODE", "#define PUGIXML_WCHAR_MODE", strict=False)
@@ -59,17 +57,17 @@ class Recipe(RecipeBase[_Options]):
             cmake.build()
 
     def package(self):
-        readme_contents = load(self, os.path.join(self.folders.source, "readme.txt"))
+        readme_contents = load(self, self.folders.source / "readme.txt")
         license_contents = readme_contents[readme_contents.find("This library is"):]
-        save(self, os.path.join(self.folders.package, "licenses", "LICENSE"), license_contents)
+        save(self, self.folders.package / "licenses" / "LICENSE", license_contents)
         if self.options.header_only:
-            source_dir = os.path.join(self.folders.source, "src")
-            copy(self, "*", src=source_dir, dst=os.path.join(self.folders.package, "include"))
+            source_dir = self.folders.source / "src"
+            copy(self, "*", src=source_dir, dst=self.folders.package / "include")
         else:
             cmake = CMake(self)
             cmake.install()
-            rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-            rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+            rmdir(self, self.folders.package / "lib" / "cmake")
+            rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "pugixml")

@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.files import apply_patches, copy, get
 from thirdparty.scm import Version
@@ -28,9 +26,9 @@ class Recipe(RecipeBase):
         apply_patches(self)
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        include_dir = os.path.join(self.folders.source, "include")
-        copy(self, "vk_mem_alloc.h", src=include_dir, dst=os.path.join(self.folders.package, "include"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=self.folders.package / "licenses")
+        include_dir = self.folders.source / "include"
+        copy(self, "vk_mem_alloc.h", src=include_dir, dst=self.folders.package / "include")
 
     def package_info(self):
         self.info.bindirs = []

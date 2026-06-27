@@ -54,24 +54,24 @@ class Recipe(RecipeBase[_Options]):
         if self.options.header_only:
             return
         cmake = CMake(self)
-        cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
+        cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", dst=os.path.join(self.folders.package, "licenses"), src=self.folders.source)
+        copy(self, "LICENSE", dst=self.folders.package / "licenses", src=self.folders.source)
         copy(
             self,
             pattern="**",
-            dst=os.path.join(self.folders.package, "include", "extras"),
-            src=os.path.join(self.folders.source, "extras"),
+            dst=self.folders.package / "include" / "extras",
+            src=self.folders.source / "extras",
         )
         if self.options.header_only:
-            copy(self, "miniaudio.h", dst=os.path.join(self.folders.package, "include"), src=self.folders.source)
+            copy(self, "miniaudio.h", dst=self.folders.package / "include", src=self.folders.source)
             copy(
                 self,
                 pattern="miniaudio.*",
-                dst=os.path.join(self.folders.package, "include", "extras", "miniaudio_split"),
-                src=os.path.join(self.folders.source, "extras", "miniaudio_split"),
+                dst=self.folders.package / "include" / "extras" / "miniaudio_split",
+                src=self.folders.source / "extras" / "miniaudio_split",
             )
         else:
             cmake = CMake(self)

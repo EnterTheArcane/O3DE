@@ -1,4 +1,3 @@
-import os
 import re
 
 from thirdparty import RecipeBase
@@ -44,11 +43,11 @@ class Recipe(RecipeBase):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=self.folders.package / "licenses")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
+        rm(self, "*.pdb", self.folders.package / "bin")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "TBB")
@@ -64,7 +63,7 @@ class Recipe(RecipeBase):
         if self.settings.os == "Windows":
             version_info = load(
                 self,
-                os.path.join(self.folders.package, "include", "oneapi", "tbb", "version.h"))
+                self.folders.package / "include" / "oneapi" / "tbb" / "version.h")
             binary_version = re.sub(
                 r".*" + re.escape("#define __TBB_BINARY_VERSION ") + r"(\d+).*",
                 r"\1",

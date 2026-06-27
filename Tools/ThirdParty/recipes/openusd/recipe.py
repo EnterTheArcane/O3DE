@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -36,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
         replace_in_file(
             self,
-            os.path.join(self.folders.source, "pxr", "base", "work", "workTBB", "dispatcher_impl.h"),
+            self.folders.source / "pxr" / "base" / "work" / "workTBB" / "dispatcher_impl.h",
             "#include <tbb/blocked_range.h>",
             "#include <tbb/version.h>\n#include <tbb/blocked_range.h>")
 
@@ -98,10 +96,10 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE.txt", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.txt", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "cmake"))
+        rmdir(self, self.folders.package / "cmake")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "pxr")

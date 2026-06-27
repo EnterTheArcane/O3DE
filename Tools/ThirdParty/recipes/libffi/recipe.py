@@ -90,7 +90,7 @@ class Recipe(RecipeBase[_Options]):
             elif self.settings.compiler == "clang":
                 architecture_flag = "-clang-cl"
 
-            compile_wrapper = unix_path(self, os.path.join(self.folders.source, "msvcc.sh"))
+            compile_wrapper = unix_path(self, self.folders.source / "msvcc.sh")
             if architecture_flag:
                 compile_wrapper = f"{compile_wrapper} {architecture_flag}"
 
@@ -105,8 +105,8 @@ class Recipe(RecipeBase[_Options]):
             env.define("STRIP", ":")
             env.define("CXXCPP", "cl -nologo -EP")
             env.define("CPP", "cl -nologo -EP")
-            env.define("LIBTOOL", unix_path(self, os.path.join(self.folders.source, "ltmain.sh")))
-            env.define("INSTALL", unix_path(self, os.path.join(self.folders.source, "install-sh")))
+            env.define("LIBTOOL", unix_path(self, self.folders.source / "ltmain.sh"))
+            env.define("INSTALL", unix_path(self, self.folders.source / "install-sh"))
         tc.generate(env=env)
 
     def build(self):
@@ -119,27 +119,27 @@ class Recipe(RecipeBase[_Options]):
         autotools = Autotools(self)
         autotools.install(args=[f"DESTDIR={unix_path(self, self.folders.package)}"])  # Need to specify the `DESTDIR` as a Unix path, aware of the subsystem
         fix_apple_shared_install_name(self)
-        mkdir(self, os.path.join(self.folders.package, "bin"))
-        for dll in glob.glob(os.path.join(self.folders.package, "lib", "*.dll")):
-            shutil.move(dll, os.path.join(self.folders.package, "bin"))
+        mkdir(self, self.folders.package / "bin")
+        for dll in glob.glob(self.folders.package / "lib" / "*.dll"):
+            shutil.move(dll, self.folders.package / "bin")
         if is_msvc(self) and self.options.shared:
-            for lib_path in glob.glob(os.path.join(self.folders.package, "lib", "*.dll.lib")):
+            for lib_path in glob.glob(self.folders.package / "lib" / "*.dll.lib"):
                 libname = os.path.basename(lib_path)[:-len(".dll.lib")]
-                dst = os.path.join(self.folders.package, "lib", f"{libname}.lib")
+                dst = self.folders.package / "lib" / f"{libname}.lib"
                 if os.path.isfile(dst):
                     os.remove(dst)
                 shutil.move(lib_path, dst)
         elif is_msvc(self) and not self.options.shared:
-            for a_path in glob.glob(os.path.join(self.folders.package, "lib", "*.a")):
+            for a_path in glob.glob(self.folders.package / "lib" / "*.a"):
                 libname = os.path.basename(a_path)[:-2]  # strip .a
-                dst = os.path.join(self.folders.package, "lib", f"{libname}.lib")
+                dst = self.folders.package / "lib" / f"{libname}.lib"
                 if os.path.isfile(dst):
                     os.remove(dst)
                 shutil.move(a_path, dst)
-        copy(self, "LICENSE", self.folders.source, os.path.join(self.folders.package, "licenses"))
-        rm(self, "*.la", os.path.join(self.folders.package, "lib"), recursive=True)
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rmdir(self, os.path.join(self.folders.package, "share"))
+        copy(self, "LICENSE", self.folders.source, self.folders.package / "licenses")
+        rm(self, "*.la", self.folders.package / "lib", recursive=True)
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "share")
 
     def package_info(self):
         self.info.libs = ["{}ffi".format("lib" if is_msvc(self) else "")]

@@ -94,7 +94,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["QT_SKIP_AUTO_PLUGIN_INCLUSION"] = "ON"
 
         if self.settings.os == "Mac":
-            llvm_lib = os.path.join(llvm_pkg, "lib").replace("\\", "/")
+            llvm_lib = (llvm_pkg / "lib").as_posix()
             # LLVM's libc++ does NOT re-export libc++abi symbols (unlike system libc++).
             # Without explicit -lc++abi, std::length_error and similar symbols are attributed
             # to libc++ at link time (via the system SDK stub), but LLVM's libc++.1.dylib
@@ -140,8 +140,8 @@ class Recipe(RecipeBase[_Options]):
             'unset(_t)\n'
             'unset(_type)\n'
         )
-        fix_script_path = os.path.join(self.folders.generators, "fix_msvc_runtime.cmake")
-        fix_script_fwd = fix_script_path.replace("\\", "/")
+        fix_script_path = self.folders.generators / "fix_msvc_runtime.cmake"
+        fix_script_fwd = fix_script_path.as_posix()
         with open(fix_script_path, "w") as f:
             f.write(fix_script_content)
 
@@ -171,10 +171,10 @@ class Recipe(RecipeBase[_Options]):
             '    endif()\n'
             'endif()\n'
         )
-        helper_path = os.path.join(self.folders.generators, "qt_pyside6_internal_targets.cmake")
+        helper_path = self.folders.generators / "qt_pyside6_internal_targets.cmake"
         with open(helper_path, "w") as f:
             f.write(helper_content)
-        toolchain_path = os.path.join(self.folders.generators, "recipe_toolchain.cmake")
+        toolchain_path = self.folders.generators / "recipe_toolchain.cmake"
         with open(toolchain_path, "a") as f:
             f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
 
@@ -225,9 +225,7 @@ class Recipe(RecipeBase[_Options]):
            of raising a symbol-not-found error. (The frameworks exist on macOS so they will
            be loaded; weak just prevents hard failure if somehow absent.)
         """
-        cmake_path = os.path.join(
-            self.folders.source, "sources", "pyside6", "PySide6", "QtCore", "CMakeLists.txt"
-        )
+        cmake_path = self.folders.source / "sources" / "pyside6" / "PySide6" / "QtCore" / "CMakeLists.txt"
         with open(cmake_path, "r") as f:
             content = f.read()
         if "_pyside6_qtcore_permplugin_patched" in content:
@@ -265,9 +263,7 @@ class Recipe(RecipeBase[_Options]):
         Without the existence guard, cmake --install fails with 'file INSTALL cannot
         find' for each missing .app bundle.
         """
-        cmake_path = os.path.join(
-            self.folders.source, "sources", "pyside-tools", "CMakeLists.txt"
-        )
+        cmake_path = self.folders.source / "sources" / "pyside-tools" / "CMakeLists.txt"
         with open(cmake_path, "r") as f:
             content = f.read()
         old = (
@@ -314,9 +310,9 @@ class Recipe(RecipeBase[_Options]):
         """
         import glob
         llvm_pkg = self.dependencies["llvm"].folders.package
-        llvm_lib = os.path.join(llvm_pkg, "lib")
+        llvm_lib = llvm_pkg / "lib"
 
-        search_pattern = os.path.join(self.folders.build, "**", "shiboken_wrapper.sh")
+        search_pattern = self.folders.build / "**" / "shiboken_wrapper.sh"
         found = list(glob.glob(search_pattern, recursive=True, include_hidden=True))
 
         for wrapper_path in found:
@@ -354,42 +350,40 @@ class Recipe(RecipeBase[_Options]):
         # lives in {build_folder}/sources/shiboken6/ because shibokenmodule sets
         # LIBRARY_OUTPUT_DIRECTORY to ${CMAKE_CURRENT_BINARY_DIR}/.. (i.e. one level
         # above the shibokenmodule build dir).
-        src_dir = os.path.join(self.folders.build, "sources", "shiboken6")
+        src_dir = self.folders.build / "sources" / "shiboken6"
         # PYTHON_SITE_PACKAGES (where generate_pyi.py imports shiboken6 from) follows the
         # interpreter's layout: Windows cpython uses lib/site-packages, while Unix uses
         # lib/pythonX.Y/site-packages.
         if self.settings.os == "Windows":
-            site_pkgs = os.path.join(self.folders.package, "lib", "site-packages")
+            site_pkgs = self.folders.package / "lib" / "site-packages"
         else:
-            site_pkgs = os.path.join(
-                self.folders.package, "lib", f"python{py_maj}.{py_min}", "site-packages"
-            )
-        dst_dir = os.path.join(site_pkgs, "shiboken6")
+            site_pkgs = self.folders.package / "lib" / f"python{py_maj}.{py_min}" / "site-packages"
+        dst_dir = site_pkgs / "shiboken6"
         os.makedirs(dst_dir, exist_ok=True)
 
         # Copy Python files and extension modules from the shiboken6 build output dir.
         patterns = [
-            os.path.join(src_dir, "*.py"),
-            os.path.join(src_dir, "*.pyi"),
-            os.path.join(src_dir, "py.typed"),
-            os.path.join(src_dir, "Shiboken*.so"),  # macOS / Linux Python extension
-            os.path.join(src_dir, "Shiboken*.dylib"),  # alternate macOS extension name
-            os.path.join(src_dir, "Shiboken*.pyd"),  # Windows Python extension
+            src_dir / "*.py",
+            src_dir / "*.pyi",
+            src_dir / "py.typed",
+            src_dir / "Shiboken*.so",  # macOS / Linux Python extension
+            src_dir / "Shiboken*.dylib",  # alternate macOS extension name
+            src_dir / "Shiboken*.pyd",  # Windows Python extension
         ]
         for pattern in patterns:
             for src_file in glob.glob(pattern):
-                shutil.copy2(src_file, os.path.join(dst_dir, os.path.basename(src_file)))
+                shutil.copy2(src_file, dst_dir / os.path.basename(src_file))
 
         # _config.py is generated in the shibokenmodule subdirectory, not the parent dir.
-        config_src = os.path.join(src_dir, "shibokenmodule", "_config.py")
+        config_src = src_dir / "shibokenmodule" / "_config.py"
         if os.path.exists(config_src):
-            shutil.copy2(config_src, os.path.join(dst_dir, "_config.py"))
+            shutil.copy2(config_src, dst_dir / "_config.py")
 
     def package(self):
-        copy(self, "LICENSE.FDL", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "LICENSE.GPL2", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "LICENSE.GPL3", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
-        copy(self, "LICENSE.LGPL3", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE.FDL", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "LICENSE.GPL2", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "LICENSE.GPL3", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "LICENSE.LGPL3", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
 
@@ -413,12 +407,12 @@ class Recipe(RecipeBase[_Options]):
         # Expose the shiboken6 generator location via conf
         self.conf_info.define(
             "user.pyside6:shiboken6_generator",
-            os.path.join(self.folders.package, "bin", "shiboken6"),
+            self.folders.package / "bin" / "shiboken6",
         )
         self.conf_info.define(
             "user.pyside6:pyside6_dir",
             self.folders.package,
         )
 
-        bin_dir = os.path.join(self.folders.package, "bin")
+        bin_dir = self.folders.package / "bin"
         self.buildenv_info.prepend_path("PATH", bin_dir)

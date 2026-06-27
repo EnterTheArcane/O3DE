@@ -52,7 +52,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
             destination=self.folders.source,
             strip_root=True)
-        replace_in_file(self, os.path.join(self.folders.source, "meson.build"), "subdir('doc')", "")
+        replace_in_file(self, self.folders.source / "meson.build", "subdir('doc')", "")
 
     def generate(self):
         env = VirtualBuildEnv(self)
@@ -74,12 +74,12 @@ class Recipe(RecipeBase[_Options]):
         meson.build()
 
     def package(self):
-        copy(self, "COPYING", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         meson = Meson(self)
         meson.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
-        rm(self, "*.pdb", os.path.join(self.folders.package, "bin"))
-        rm(self, "*.pdb", os.path.join(self.folders.package, "lib"))
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rm(self, "*.pdb", self.folders.package / "bin")
+        rm(self, "*.pdb", self.folders.package / "lib")
         fix_apple_shared_install_name(self)
         fix_msvc_libname(self)
 
@@ -99,8 +99,8 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     libdirs = getattr(recipe.cpp.package, "libdirs")
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = os.path.join(recipe.folders.package, libdir)
-            for filepath in glob.glob(os.path.join(full_folder, f"*{ext}")):
+            full_folder = recipe.folders.package / libdir
+            for filepath in glob.glob(full_folder / f"*{ext}"):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]

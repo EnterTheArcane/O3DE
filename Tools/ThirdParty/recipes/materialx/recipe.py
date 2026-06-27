@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -31,10 +29,10 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(
-            self, os.path.join(self.folders.source, "CMakeLists.txt"),
+            self, self.folders.source / "CMakeLists.txt",
             "set(CMAKE_CXX_STANDARD", "# set(CMAKE_CXX_STANDARD")
         replace_in_file(
-            self, os.path.join(self.folders.source, "CMakeLists.txt"),
+            self, self.folders.source / "CMakeLists.txt",
             "set(CMAKE_POSITION_INDEPENDENT_CODE", "# set(CMAKE_POSITION_INDEPENDENT_CODE")
 
     def generate(self):
@@ -54,11 +52,11 @@ class Recipe(RecipeBase[_Options]):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=os.path.join(self.folders.package, "licenses"))
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         cmake = CMake(self)
         cmake.install()
-        rmdir(self, os.path.join(self.folders.package, "lib", "cmake"))
-        rmdir(self, os.path.join(self.folders.package, "lib", "pkgconfig"))
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "MaterialX")
