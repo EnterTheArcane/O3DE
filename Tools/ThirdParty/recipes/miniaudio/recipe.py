@@ -18,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     version = "0.11.25"
     license = "Unlicense"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "mackron/miniaudio")
+        return Version(repo.latest_release)
+
     def configure(self):
         if self.options.header_only or self.options.shared:
             del self.options.fPIC
@@ -29,10 +33,6 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         if not self.options.header_only:
             self.requires_tool("cmake")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "mackron/miniaudio")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

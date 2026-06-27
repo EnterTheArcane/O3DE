@@ -19,6 +19,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.352"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/Vulkan-ValidationLayers")
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
+
     @property
     def _has_wsi_options(self):
         return self.settings.os in ["Linux", "FreeBSD"]
@@ -49,10 +53,6 @@ class Recipe(RecipeBase[_Options]):
         if self._needs_pkg_config and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
         self.requires_tool("cmake")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "KhronosGroup/Vulkan-ValidationLayers")
-        return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
 
     def source(self):
         get(

@@ -21,14 +21,14 @@ class Recipe(RecipeBase[_Options]):
     version = "1.13"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "Chlumsky/msdfgen")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         self.requires("freetype")
         self.requires("libpng")
         self.requires("tinyxml2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "Chlumsky/msdfgen")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

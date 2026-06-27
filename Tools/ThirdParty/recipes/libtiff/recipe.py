@@ -26,6 +26,10 @@ class Recipe(RecipeBase[_Options]):
     version = "4.7.1"
     license = "libtiff"
 
+    def latest_version(self):
+        repo = GitlabRepository(self, "libtiff/libtiff")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def configure(self):
         if not self.options.cxx:
             self.settings.rm_safe("compiler.cppstd")
@@ -50,10 +54,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires("zstd")
         if self.options.webp:
             self.requires("libwebp")
-
-    def latest_version(self):
-        repo = GitlabRepository(self, "libtiff/libtiff")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

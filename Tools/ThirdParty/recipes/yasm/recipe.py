@@ -11,9 +11,6 @@ class Recipe(RecipeBase):
     version = "1.3.0"
     license = "BSD-2-Clause"
 
-    def package_id(self):
-        del self.info.settings.compiler
-
     def requirements(self):
         self.requires_tool("cmake")
         if self.settings.os == "Windows" and not is_msvc(self):

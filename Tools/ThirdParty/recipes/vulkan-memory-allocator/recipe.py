@@ -9,12 +9,12 @@ class Recipe(RecipeBase):
     version = "3.3.0"
     license = "MIT"
 
-    def requirements(self):
-        self.requires("vulkan-headers")
-
     def latest_version(self):
         repo = GithubRepository(self, "GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def requirements(self):
+        self.requires("vulkan-headers")
 
     def source(self):
         get(

@@ -16,12 +16,12 @@ class Recipe(RecipeBase[_Options]):
     version = "2020.03.25"
     license = "Zlib"
 
+    def latest_version(self):
+        return Version(self.version)
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
-
-    def latest_version(self):
-        return Version(self.version)
 
     def source(self):
         get(

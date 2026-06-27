@@ -16,12 +16,12 @@ class Recipe(RecipeBase[_Options]):
     version = "0.27.3"
     license = "BSD-2-Clause"
 
-    def requirements(self):
-        self.requires("libtiff")
-
     def latest_version(self):
         repo = GithubRepository(self, "aous72/OpenJPH")
         return Version(repo.latest_release)
+
+    def requirements(self):
+        self.requires("libtiff")
 
     def source(self):
         get(

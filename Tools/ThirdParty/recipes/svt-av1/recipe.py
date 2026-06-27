@@ -24,6 +24,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.2.1"
     license = "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GitlabRepository(self, "AOMediaCodec/SVT-AV1")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def config_options(self):
         del self.options.build_decoder
         if self.settings.arch not in ("ARM",):
@@ -39,10 +43,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("cmake")
         if self.settings.arch in ("X64",):
             self.requires_tool("nasm")
-
-    def latest_version(self):
-        repo = GitlabRepository(self, "AOMediaCodec/SVT-AV1")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

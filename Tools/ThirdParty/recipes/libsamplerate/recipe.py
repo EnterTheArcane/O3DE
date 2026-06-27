@@ -17,6 +17,10 @@ class Recipe(RecipeBase[_Options]):
     version = "0.2.2"
     license = "BSD-2-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "libsndfile/libsamplerate")
+        return Version(repo.latest_release)
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -25,10 +29,6 @@ class Recipe(RecipeBase[_Options]):
         if is_apple_os(self) and self.options.shared:
             # see https://github.com/libsndfile/libsamplerate/blob/0.2.2/src/CMakeLists.txt#L110-L119
             self.requires_tool("cmake")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "libsndfile/libsamplerate")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

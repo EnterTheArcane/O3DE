@@ -15,16 +15,16 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.350.0"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/Vulkan-Loader")
+        return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
         self.requires("vulkan-headers")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "KhronosGroup/Vulkan-Loader")
-        return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
 
     def source(self):
         get(

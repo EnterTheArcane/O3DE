@@ -19,6 +19,10 @@ class Recipe(RecipeBase[_Options]):
     version = "12.1.0"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "fmtlib/fmt")
+        return Version(repo.latest_release)
+
     def config_options(self):
         if str(self.settings.os) == "baremetal":
             self.options.with_os_api = False
@@ -30,10 +34,6 @@ class Recipe(RecipeBase[_Options]):
             del self.options.with_os_api
         elif self.options.shared:
             del self.options.fPIC
-
-    def latest_version(self):
-        repo = GithubRepository(self, "fmtlib/fmt")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

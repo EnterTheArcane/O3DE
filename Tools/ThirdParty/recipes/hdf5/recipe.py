@@ -19,6 +19,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.1.1"
     license = "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "HDFGroup/hdf5")
+        return Version(repo.latest_release)
+
     def configure(self):
         if not self.options.enable_cxx:
             self.settings.rm_safe("compiler.cppstd")
@@ -26,10 +30,6 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires("zlib")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "HDFGroup/hdf5")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

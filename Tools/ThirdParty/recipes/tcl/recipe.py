@@ -22,6 +22,11 @@ class Recipe(RecipeBase[_Options]):
     version = "8.6.13"
     license = "TCL"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "tcltk/tcl")
+        tag = repo.latest_tag("core-")
+        return Version(tag.removeprefix("core-").replace("-", "."))
+
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -32,11 +37,6 @@ class Recipe(RecipeBase[_Options]):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "tcltk/tcl")
-        tag = repo.latest_tag("core-")
-        return Version(tag.removeprefix("core-").replace("-", "."))
 
     def source(self):
         get(

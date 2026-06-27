@@ -65,6 +65,10 @@ class Recipe(RecipeBase[_Options]):
     version = "8.20.0"
     license = "curl"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "curl/curl")
+        return Version(repo.latest_tag("curl-").removeprefix("curl-").replace("_", "."))
+
     @property
     def _is_mingw(self):
         return self.settings.os == "Windows" and self.settings.compiler == "gcc"
@@ -129,10 +133,6 @@ class Recipe(RecipeBase[_Options]):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "curl/curl")
-        return Version(repo.latest_tag("curl-").removeprefix("curl-").replace("_", "."))
 
     def source(self):
         get(

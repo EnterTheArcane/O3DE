@@ -22,6 +22,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.5.2"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "libffi/libffi")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -33,10 +37,6 @@ class Recipe(RecipeBase[_Options]):
                 self.requires_tool("msys2")
         if self.settings_build.os == "Windows" and self.settings.get_safe("compiler.runtime"):
             self.requires_tool("automake")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "libffi/libffi")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

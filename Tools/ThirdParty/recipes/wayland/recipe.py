@@ -19,6 +19,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.25.0"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GitlabRepository(self, "wayland/wayland", host="gitlab.freedesktop.org")
+        return Version(repo.latest_release)
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -42,10 +46,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool("pkgconf")
         if not can_run(self):
             self.requires_tool(self.name)
-
-    def latest_version(self):
-        repo = GitlabRepository(self, "wayland/wayland", host="gitlab.freedesktop.org")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

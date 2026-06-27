@@ -23,6 +23,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.4.7"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
+    def latest_version(self):
+        repo = GnuFtp(self, "libtool")
+        return Version(repo.latest_release)
+
     def requirements(self):
         self.requires("automake")
         self.requires_tool("automake")
@@ -35,10 +39,6 @@ class Recipe(RecipeBase[_Options]):
 
     _SOURCE_URL = "https://ftpmirror.gnu.org/libtool/libtool-2.4.7.tar.gz"
     _SOURCE_SHA256 = "04e96c2404ea70c590c546eba4202a4e12722c640016c12b9b2f1ce3d481e9a8"
-
-    def latest_version(self):
-        repo = GnuFtp(self, "libtool")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

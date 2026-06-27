@@ -155,6 +155,9 @@ class Recipe(RecipeBase[_Options]):
         "with_m3d_exporter": "ASSIMP_BUILD_M3D_EXPORTER",
         "with_iqm": "ASSIMP_BUILD_IQM_IMPORTER",
     }
+    def latest_version(self):
+        repo = GithubRepository(self, "assimp/assimp")
+        return Version(repo.latest_release.removeprefix("v"))
     @property
     def _depends_on_kuba_zip(self):
         return self.options.with_3mf_exporter
@@ -205,10 +208,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires("stb")
         if self._depends_on_openddlparser:
             self.requires("openddl-parser")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "assimp/assimp")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -17,16 +17,16 @@ class Recipe(RecipeBase[_Options]):
     version = "6.11.1"
     license = "LGPL-3.0-only"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "qtproject/pyside-pyside-setup")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         self.requires("cpython")
         self.requires("llvm")
         self.requires("qt")
         self.requires_tool("cmake")
         self.requires_tool("cpython")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "qtproject/pyside-pyside-setup")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

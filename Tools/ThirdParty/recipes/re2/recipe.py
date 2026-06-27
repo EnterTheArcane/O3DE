@@ -15,13 +15,13 @@ class Recipe(RecipeBase[_Options]):
     version = "20251105"
     license = "BSD-3-Clause"
 
-    def requirements(self):
-        self.requires("abseil")
-        self.requires("icu")
-
     def latest_version(self):
         repo = GithubRepository(self, "google/re2")
         return Version(repo.latest_release.replace("-", ""))
+
+    def requirements(self):
+        self.requires("abseil")
+        self.requires("icu")
 
     def source(self):
         get(

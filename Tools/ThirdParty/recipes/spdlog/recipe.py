@@ -18,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.17.0"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "gabime/spdlog")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -28,10 +32,6 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires("fmt")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "gabime/spdlog")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

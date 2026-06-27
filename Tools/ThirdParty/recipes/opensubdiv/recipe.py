@@ -23,6 +23,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.7.0"
     license = "LicenseRef-LICENSE.txt"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "PixarAnimationStudios/OpenSubdiv")
+        return Version(repo.latest_release.removeprefix("v").replace("_", "."))
+
     @property
     def _min_cppstd(self):
         if self.options.get_safe("with_metal"):
@@ -45,10 +49,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires("glfw")
         if self.options.get_safe("with_metal"):
             self.requires("metal-cpp")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "PixarAnimationStudios/OpenSubdiv")
-        return Version(repo.latest_release.removeprefix("v").replace("_", "."))
 
     def source(self):
         get(

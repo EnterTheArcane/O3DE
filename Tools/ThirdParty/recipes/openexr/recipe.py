@@ -17,6 +17,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.4.12"
     license = "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "AcademySoftwareFoundation/openexr")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         self.requires("zlib")
         # Note: OpenEXR and Imath are versioned independently.
@@ -24,10 +28,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("libdeflate")
 
         self.requires("openjph")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "AcademySoftwareFoundation/openexr")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

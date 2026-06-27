@@ -20,6 +20,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.25.2"
     license = "LGPL-2.0-or-later"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "kcat/openal-soft")
+        return Version(repo.latest_release)
+
     def configure(self):
         # OpenAL's API is pure C, thus the c++ standard does not matter
         # Because the backend is C++, the C++ STL matters
@@ -28,10 +32,6 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         if self.settings.os == "Linux":
             self.requires("libalsa")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "kcat/openal-soft")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

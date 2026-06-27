@@ -35,6 +35,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.1.13.1"
     license = "Apache-2.0", "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")
+        return Version(repo.latest_tag("v").removeprefix("v"))
+
     def config_options(self):
         del self.options.with_opencolorio
 
@@ -92,10 +96,6 @@ class Recipe(RecipeBase[_Options]):
         # TODO: R3DSDK dependency
         # TODO: Nuke dependency
         self.requires_tool("cmake")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")
-        return Version(repo.latest_tag("v").removeprefix("v"))
 
     def source(self):
         get(

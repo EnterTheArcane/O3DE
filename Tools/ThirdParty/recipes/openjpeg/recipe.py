@@ -18,13 +18,13 @@ class Recipe(RecipeBase[_Options]):
     version = "2.5.4"
     license = "BSD-2-Clause"
 
-    def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
-
     def latest_version(self):
         repo = GithubRepository(self, "uclouvain/openjpeg")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def configure(self):
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
         get(

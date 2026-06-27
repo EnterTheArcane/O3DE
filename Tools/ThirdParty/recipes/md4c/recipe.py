@@ -20,6 +20,10 @@ class Recipe(RecipeBase[_Options]):
     version = "0.5.3"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "mity/md4c")
+        return Version(repo.latest_release.removeprefix("release-"))
+
     def config_options(self):
         # Set it to false for iOS, tvOS, watchOS, visionOS
         # to prevent cmake from creating a bundle for the md2html executable
@@ -29,10 +33,6 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "mity/md4c")
-        return Version(repo.latest_release.removeprefix("release-"))
 
     def source(self):
         get(

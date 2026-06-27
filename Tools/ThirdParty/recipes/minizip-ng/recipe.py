@@ -25,6 +25,10 @@ class Recipe(RecipeBase[_Options]):
     version = "4.2.1"
     license = "Zlib"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "zlib-ng/minizip-ng")
+        return Version(repo.latest_release)
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -53,10 +57,6 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Windows":
             if self.options.get_safe("with_iconv"):
                 self.requires("libiconv")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "zlib-ng/minizip-ng")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

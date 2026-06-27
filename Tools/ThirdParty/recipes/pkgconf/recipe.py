@@ -20,6 +20,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.5.1"
     license = "ISC"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "pkgconf/pkgconf")
+        return Version(repo.latest_release.removeprefix("pkgconf-"))
+
     def configure(self):
         if not self.options.enable_lib:
             del self.options.fPIC
@@ -29,10 +33,6 @@ class Recipe(RecipeBase[_Options]):
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "pkgconf/pkgconf")
-        return Version(repo.latest_release.removeprefix("pkgconf-"))
 
     def source(self):
         get(

@@ -12,14 +12,6 @@ class Recipe(RecipeBase):
     version = "5.42.2.1"
     license = "Artistic-1.0", "GPL-1.0"
 
-    def validate(self):
-        if self.settings.os != "Windows":
-            raise RecipeInvalidConfiguration("Strawberry Perl is only supported on Windows")
-
-    def compatibility(self):
-        if self.settings.arch == "ARM":
-            return [{"settings": [("arch", "X64")]}]
-
     def latest_version(self):
         repo = GithubRepository(self, "StrawberryPerl/Perl-Dist-Strawberry")
         tag = repo.latest_release_matching(r"SP_")
@@ -28,6 +20,14 @@ class Recipe(RecipeBase):
             raise RuntimeError(f"unexpected tag: {tag}")
         digits = m.group(1)
         return Version(".".join([digits[0], digits[1:3]] + list(digits[3:])))
+
+    def validate(self):
+        if self.settings.os != "Windows":
+            raise RecipeInvalidConfiguration("Strawberry Perl is only supported on Windows")
+
+    def compatibility(self):
+        if self.settings.arch == "ARM":
+            return [{"settings": [("arch", "X64")]}]
 
     def build(self):
         get(

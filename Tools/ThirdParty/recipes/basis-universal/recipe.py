@@ -16,6 +16,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.1.0"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "BinomialLLC/basis_universal")
+        return Version(repo.latest_release.lstrip("v").replace("_", "."))
+
     @property
     def _has_sse(self):
         return self.settings.arch in ["X64"]
@@ -23,10 +27,6 @@ class Recipe(RecipeBase[_Options]):
     def config_options(self):
         if not self._has_sse:
             del self.options.with_sse
-
-    def latest_version(self):
-        repo = GithubRepository(self, "BinomialLLC/basis_universal")
-        return Version(repo.latest_release.lstrip("v").replace("_", "."))
 
     def source(self):
         get(

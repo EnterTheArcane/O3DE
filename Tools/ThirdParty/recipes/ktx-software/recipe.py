@@ -18,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     version = "4.4.2"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/KTX-Software")
+        return Version(repo.latest_release.lstrip("v"))
+
     @property
     def _has_sse_support(self):
         return self.settings.arch in ["X64"]
@@ -30,10 +34,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("zstd")
         if self.options.tools:
             self.requires("fmt")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "KhronosGroup/KTX-Software")
-        return Version(repo.latest_release.lstrip("v"))
 
     def source(self):
         get(

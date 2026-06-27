@@ -10,13 +10,13 @@ class Recipe(RecipeBase):
     version = "4.5.1"
     license = "LicenseRef-re2c"
 
-    def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
-
     def latest_version(self):
         repo = GithubRepository(self, "skvadrik/re2c")
         return Version(repo.latest_release)
+
+    def configure(self):
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
         get(

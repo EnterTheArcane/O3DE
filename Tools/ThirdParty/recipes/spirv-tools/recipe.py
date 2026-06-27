@@ -17,12 +17,12 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.352.0"
     license = "Apache-2.0"
 
-    def requirements(self):
-        self.requires(f"spirv-headers")
-
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/SPIRV-Tools")
         return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
+
+    def requirements(self):
+        self.requires(f"spirv-headers")
 
     def source(self):
         get(

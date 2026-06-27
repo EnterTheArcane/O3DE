@@ -18,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.15.3"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "GNOME/libxml2")
+        return Version(repo.latest_tag("v").removeprefix("v"))
+
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -26,10 +30,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("icu")
         self.requires("libiconv")
         self.requires("zlib")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "GNOME/libxml2")
-        return Version(repo.latest_tag("v").removeprefix("v"))
 
     def source(self):
         get(

@@ -21,6 +21,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.6.0"
     license = "BSD-2-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "cisco/openh264")
+        return Version(repo.latest_release.removeprefix("v"))
+
     @property
     def _is_clang_cl(self):
         return self.settings.os == 'Windows' and self.settings.compiler == 'clang'
@@ -34,10 +38,6 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self) and self.settings.arch == "ARM":
             self.requires_tool("strawberryperl")
             self.requires_tool("gas-preprocessor")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "cisco/openh264")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

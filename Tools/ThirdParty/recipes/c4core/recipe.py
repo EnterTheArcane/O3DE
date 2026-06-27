@@ -15,12 +15,12 @@ class Recipe(RecipeBase[_Options]):
     version = "0.3.0"
     license = "MIT",
 
-    def requirements(self):
-        self.requires("fast-float")
-
     def latest_version(self):
         repo = GithubRepository(self, "biojppm/c4core")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def requirements(self):
+        self.requires("fast-float")
 
     def source(self):
         get(

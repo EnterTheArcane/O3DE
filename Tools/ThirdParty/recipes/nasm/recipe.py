@@ -16,6 +16,10 @@ class Recipe(RecipeBase):
     version = "3.01"
     license = "BSD-2-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "netwide-assembler/nasm")
+        return Version(repo.latest_release.removeprefix("nasm-"))
+
     @property
     def _nasm(self):
         suffix = "w.exe" if is_msvc(self) else ""
@@ -41,10 +45,6 @@ class Recipe(RecipeBase):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "netwide-assembler/nasm")
-        return Version(repo.latest_release.removeprefix("nasm-"))
 
     def source(self):
         get(

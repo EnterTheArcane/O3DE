@@ -28,6 +28,10 @@ class Recipe(RecipeBase[_Options]):
     version = "14.2.0"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "harfbuzz/harfbuzz")
+        return Version(repo.latest_release)
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -56,10 +60,6 @@ class Recipe(RecipeBase[_Options]):
             # Ensure that the gettext we use at build time is compatible
             # with the libiconv that is transitively exposed by glib
             self.requires_tool("libgettext")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "harfbuzz/harfbuzz")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

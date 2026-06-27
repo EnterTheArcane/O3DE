@@ -17,13 +17,13 @@ class Recipe(RecipeBase[_Options]):
     version = "2.19.1"
     license = "MIT"
 
-    def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
-
     def latest_version(self):
         repo = GithubRepository(self, "mm2/Little-CMS")
         return Version(repo.latest_release.removeprefix("lcms"))
+
+    def configure(self):
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
         get(

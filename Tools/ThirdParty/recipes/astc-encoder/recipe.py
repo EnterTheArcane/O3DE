@@ -18,13 +18,13 @@ class Recipe(RecipeBase[_Options]):
     version = "5.4.0"
     license = "Apache-2.0"
 
-    def config_options(self):
-        if self.settings.arch in ["ARM"]:
-            self.options.isa = "neon"
-
     def latest_version(self):
         repo = GithubRepository(self, "ARM-software/astc-encoder")
         return Version(repo.latest_release)
+
+    def config_options(self):
+        if self.settings.arch in ["ARM"]:
+            self.options.isa = "neon"
 
     def source(self):
         get(

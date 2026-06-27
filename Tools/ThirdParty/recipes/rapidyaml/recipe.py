@@ -18,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     version = "0.13.0"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "biojppm/rapidyaml")
+        return Version(repo.latest_release.removeprefix("v"))
+
     @property
     def _minimum_cpp_standard(self):
         return 11
@@ -29,10 +33,6 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires("c4core")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "biojppm/rapidyaml")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

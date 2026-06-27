@@ -26,6 +26,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.1.4.1"
     license = "IJG", "BSD-3-Clause", "Zlib"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "libjpeg-turbo/libjpeg-turbo")
+        return Version(repo.latest_release)
+
     def config_options(self):
         del self.options.enable12bit
         del self.options.mem_src_dst
@@ -48,10 +52,6 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         if self.options.get_safe("SIMD") and self.settings.arch in ["X64"]:
             self.requires_tool("nasm")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "libjpeg-turbo/libjpeg-turbo")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

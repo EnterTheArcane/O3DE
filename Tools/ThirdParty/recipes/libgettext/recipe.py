@@ -30,6 +30,10 @@ class Recipe(RecipeBase[_Options]):
     # The licensing of the project is documented here: https://www.gnu.org/software/gettext/manual/gettext.html#Licenses
     license = "LGPL-2.1-or-later"
 
+    def latest_version(self):
+        repo = GnuFtp(self, "gettext")
+        return Version(repo.latest_release)
+
     @property
     def _is_clang_cl(self):
         return self.settings.os == "Windows" \
@@ -55,10 +59,6 @@ class Recipe(RecipeBase[_Options]):
                 self.requires_tool("msys2")
         if is_msvc(self) or self._is_clang_cl:
             self.requires_tool("automake")
-
-    def latest_version(self):
-        repo = GnuFtp(self, "gettext")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

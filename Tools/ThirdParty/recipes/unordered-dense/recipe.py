@@ -21,9 +21,6 @@ class Recipe(RecipeBase):
             destination=self.folders.source,
             strip_root=True)
 
-    def package_id(self):
-        self.info.clear()
-
     def package(self):
         copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(

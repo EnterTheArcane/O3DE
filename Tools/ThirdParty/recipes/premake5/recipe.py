@@ -12,9 +12,6 @@ class Recipe(RecipeBase):
     version = "5.0.0-beta8"
     license = "BSD-3-Clause"
 
-    def package_id(self):
-        del self.info.settings.compiler
-
     def latest_version(self):
         repo = GithubRepository(self, "premake/premake-core")
         return Version(repo.latest_release.lstrip("v"))

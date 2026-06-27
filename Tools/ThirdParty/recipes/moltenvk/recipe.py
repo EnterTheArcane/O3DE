@@ -21,6 +21,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.1"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/MoltenVK")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def validate(self):
         if not is_apple_os(self):
             raise RecipeInvalidConfiguration(
@@ -38,10 +42,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("spirv-cross")
         self.requires("spirv-tools")
         self.requires("vulkan-headers")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "KhronosGroup/MoltenVK")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

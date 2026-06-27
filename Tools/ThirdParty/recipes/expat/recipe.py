@@ -20,13 +20,13 @@ class Recipe(RecipeBase[_Options]):
     version = "2.8.1"
     license = "MIT"
 
-    def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
-
     def latest_version(self):
         repo = GithubRepository(self, "libexpat/libexpat")
         return Version(repo.latest_release.removeprefix("R_").replace("_", "."))
+
+    def configure(self):
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
         get(

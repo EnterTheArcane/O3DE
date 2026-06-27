@@ -17,6 +17,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.14.1"
     license = "BSD-2-Clause"
 
+    def latest_version(self):
+        repo = GoogleSourceRepository(self, "https://aomedia.googlesource.com/aom")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def config_options(self):
         if self.settings.arch not in ("X64",):
             del self.options.assembly
@@ -30,10 +34,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool("nasm")
         if self.settings.os == "Windows":
             self.requires_tool("strawberryperl")
-
-    def latest_version(self):
-        repo = GoogleSourceRepository(self, "https://aomedia.googlesource.com/aom")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

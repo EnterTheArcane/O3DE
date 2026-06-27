@@ -21,13 +21,13 @@ class Recipe(RecipeBase[_Options]):
     version = "3.15.0"
     license = "BSL-1.0"
 
-    @property
-    def _default_reporter_str(self):
-        return str(self.options.default_reporter).strip('"')
-
     def latest_version(self):
         repo = GithubRepository(self, "catchorg/Catch2")
         return Version(repo.latest_release.removeprefix("v"))
+
+    @property
+    def _default_reporter_str(self):
+        return str(self.options.default_reporter).strip('"')
 
     def source(self):
         get(

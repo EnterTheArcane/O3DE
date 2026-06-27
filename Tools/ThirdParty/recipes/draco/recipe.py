@@ -22,14 +22,14 @@ class Recipe(RecipeBase[_Options]):
     version = "1.5.7"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "google/draco")
+        return Version(repo.latest_release)
+
     def configure(self):
         if not self.options.enable_mesh_compression:
             del self.options.enable_standard_edgebreaker
             del self.options.enable_predictive_edgebreaker
-
-    def latest_version(self):
-        repo = GithubRepository(self, "google/draco")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

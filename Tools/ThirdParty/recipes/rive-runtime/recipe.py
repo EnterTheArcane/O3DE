@@ -11,12 +11,12 @@ class Recipe(RecipeBase):
     version = "0.1.99"
     license = "MIT"
 
-    def requirements(self):
-        self.requires_tool("premake5")
-
     def latest_version(self):
         repo = GithubRepository(self, "rive-app/rive-runtime")
         return Version(repo.latest_tag("runtime-v").removeprefix("runtime-v"))
+
+    def requirements(self):
+        self.requires_tool("premake5")
 
     def source(self):
         get(

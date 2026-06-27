@@ -9,9 +9,6 @@ class Recipe(RecipeBase):
     version = "2.3.1"
     license = "MIT"
 
-    def package_id(self):
-        self.info.clear()
-
     def latest_version(self):
         repo = GithubRepository(self, "nfrechette/rtm")
         return Version(repo.latest_release.lstrip("v"))

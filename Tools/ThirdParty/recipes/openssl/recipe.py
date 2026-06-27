@@ -89,6 +89,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.6.2"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "openssl/openssl")
+        return Version(repo.latest_release.removeprefix("openssl-"))
+
     @property
     def _is_clang_cl(self):
         return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
@@ -127,10 +131,6 @@ class Recipe(RecipeBase[_Options]):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "openssl/openssl")
-        return Version(repo.latest_release.removeprefix("openssl-"))
 
     def source(self):
         get(

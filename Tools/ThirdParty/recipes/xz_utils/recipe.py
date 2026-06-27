@@ -19,6 +19,10 @@ class Recipe(RecipeBase[_Options]):
     version = "5.8.3"
     license = "Unlicense", "LGPL-2.1-or-later", "GPL-2.0-or-later", "GPL-3.0-or-later"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "tukaani-project/xz")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -29,10 +33,6 @@ class Recipe(RecipeBase[_Options]):
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
         self.requires_tool("cmake")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "tukaani-project/xz")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

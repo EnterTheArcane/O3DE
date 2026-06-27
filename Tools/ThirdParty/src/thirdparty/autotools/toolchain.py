@@ -14,6 +14,49 @@ from thirdparty.recipe import RecipeBase
 
 
 class AutotoolsToolchain:
+    _recipe: RecipeBase
+    _namespace: str | None
+    _prefix: str
+    
+    extra_cxxflags: list[str]
+    extra_cflags: list[str]
+    extra_ldflags: list[str]
+    extra_defines: list[str]
+    
+    ndebug: str | None
+    
+    build_type_flags: list[str]
+    build_type_link_flags: list[str]
+    cppstd: str | None
+    cstd: str | None
+    arch_flag: str | None
+    arch_ld_flag: str | None
+    threads_flags: list[str]
+    libcxx: str | None
+    gcc_cxx11_abi: str | None
+    fpic: bool | None
+    msvc_runtime_flag: str | None
+    msvc_extra_flags: list[str]
+    msvc_runtime_link_flags: list[str]
+    
+    _is_universal_arch: bool
+    
+    _host: str | None
+    _build: str | None
+    _target: str | None
+    
+    android_cross_flags: dict[str, str]
+    _is_cross_building: bool
+    
+    sysroot_flag: str | None
+    configure_args: list[str]
+    autoreconf_args: list[str]
+    make_args: list[str]
+    apple_arch_flag: str | None
+    apple_isysroot_flag: str | None
+    apple_min_version_flag: str | None
+    apple_extra_flags: list[str]
+    
     def __init__(self, recipe: RecipeBase, namespace: str | None = None, prefix: str = "/"):
         """
         :param recipe: The current recipe object. Always use ``self``.

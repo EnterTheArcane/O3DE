@@ -30,6 +30,10 @@ class Recipe(RecipeBase[_Options]):
     version = "78.3"
     license = "ICU"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "unicode-org/icu")
+        return Version(repo.latest_release.removeprefix("release-"))
+
     @property
     def _enable_icu_tools(self):
         return self.settings.os not in ["iOS", "tvOS", "watchOS", "Emscripten"]
@@ -58,10 +62,6 @@ class Recipe(RecipeBase[_Options]):
 
         if cross_building(self) and hasattr(self, "settings_build"):
             self.requires_tool(self.name)
-
-    def latest_version(self):
-        repo = GithubRepository(self, "unicode-org/icu")
-        return Version(repo.latest_release.removeprefix("release-"))
 
     def source(self):
         get(

@@ -17,13 +17,13 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.350.0"
     license = "BSD-3-Clause"
 
-    def requirements(self):
-        if self.options.enable_optimizer:
-            self.requires("spirv-tools")
-
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/glslang")
         return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
+
+    def requirements(self):
+        if self.options.enable_optimizer:
+            self.requires("spirv-tools")
 
     def source(self):
         get(

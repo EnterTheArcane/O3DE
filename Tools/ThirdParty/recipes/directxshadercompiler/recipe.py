@@ -12,13 +12,13 @@ class Recipe(RecipeBase):
     version = "1.9.2602"
     license = "NCSA"
 
-    def validate(self):
-        if self.settings.os not in ["Windows", "Linux"]:
-            raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
-
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/DirectXShaderCompiler")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def validate(self):
+        if self.settings.os not in ["Windows", "Linux"]:
+            raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
 
     def build(self):
         if self.settings.os == "Windows":

@@ -17,6 +17,10 @@ class Recipe(RecipeBase[_Options]):
     version = "0.15.0"
     license = "GPL-3.0-or-later", "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "libusb/hidapi")
+        return Version(repo.latest_release.removeprefix("hidapi-"))
+
     @property
     def _msbuild_configuration(self):
         return "Debug" if self.settings.build_type == "Debug" else "Release"
@@ -38,10 +42,6 @@ class Recipe(RecipeBase[_Options]):
                 self.win_bash = True
                 if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                     self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "libusb/hidapi")
-        return Version(repo.latest_release.removeprefix("hidapi-"))
 
     def source(self):
         get(

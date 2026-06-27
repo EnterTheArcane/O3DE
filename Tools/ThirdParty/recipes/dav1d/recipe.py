@@ -24,6 +24,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.5.3"
     license = "BSD-2-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "videolan/dav1d")
+        return Version(repo.latest_release)
+
     def config_options(self):
         if is_msvc(self) and self.settings.build_type == "Debug":
             # debug builds with assembly often causes linker hangs or LNK1000
@@ -40,10 +44,6 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self) and self.settings.arch == "ARM":
             self.requires_tool("gas-preprocessor")
             self.requires_tool("strawberryperl")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "videolan/dav1d")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

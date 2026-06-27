@@ -19,13 +19,13 @@ class Recipe(RecipeBase[_Options]):
     version = "1.0.8"
     license = "bzip2-1.0.6"
 
-    def configure(self):
-        self.settings.compiler.rm_safe("libcxx")
-        self.settings.compiler.rm_safe("cppstd")
-
     def latest_version(self):
         repo = GitlabRepository(self, "bzip2/bzip2")
         return Version(repo.latest_release.removeprefix("bzip2-"))
+
+    def configure(self):
+        self.settings.compiler.rm_safe("libcxx")
+        self.settings.compiler.rm_safe("cppstd")
 
     def source(self):
         get(

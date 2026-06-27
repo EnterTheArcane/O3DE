@@ -20,6 +20,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.18.0"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GitlabRepository(self, "fontconfig/fontconfig", host="gitlab.freedesktop.org")
+        return Version(repo.latest_formal_release.removeprefix("v"))
+
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -31,10 +35,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.requires_tool("pkgconf")
-
-    def latest_version(self):
-        repo = GitlabRepository(self, "fontconfig/fontconfig", host="gitlab.freedesktop.org")
-        return Version(repo.latest_formal_release.removeprefix("v"))
 
     def source(self):
         get(

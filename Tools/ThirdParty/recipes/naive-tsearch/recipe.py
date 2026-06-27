@@ -17,13 +17,13 @@ class Recipe(RecipeBase[_Options]):
     version = "0.1.1"
     license = "MIT"
 
-    def configure(self):
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
-
     def latest_version(self):
         repo = GithubRepository(self, "kulp/naive-tsearch")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def configure(self):
+        self.settings.rm_safe("compiler.libcxx")
+        self.settings.rm_safe("compiler.cppstd")
 
     def source(self):
         get(

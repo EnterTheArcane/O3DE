@@ -16,15 +16,15 @@ class Recipe(RecipeBase):
     version = "1.4.20"
     license = "GPL-3.0-only"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "autotools-mirror/m4")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "autotools-mirror/m4")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

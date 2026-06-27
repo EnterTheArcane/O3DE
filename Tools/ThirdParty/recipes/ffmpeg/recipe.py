@@ -117,6 +117,10 @@ class Recipe(RecipeBase[_Options]):
     version = "8.1.1"
     license = "LGPL-2.1-or-later", "GPL-2.0-or-later"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "FFmpeg/FFmpeg")
+        return Version(repo.latest_release.removeprefix("n"))
+
     @property
     def _dependencies(self):
         return {
@@ -279,10 +283,6 @@ class Recipe(RecipeBase[_Options]):
                 self.requires_tool("msys2")
             if self.settings.arch == "ARM" and is_msvc(self):
                 self.requires_tool("gas-preprocessor")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "FFmpeg/FFmpeg")
-        return Version(repo.latest_release.removeprefix("n"))
 
     def source(self):
         get(

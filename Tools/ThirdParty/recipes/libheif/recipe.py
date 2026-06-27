@@ -26,6 +26,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.22.0"
     license = "LGPL-3.0-only", "GPL-3.0-or-later", "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "strukturag/libheif")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         if self.options.with_libde265:
             self.requires("libde265")
@@ -45,10 +49,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires("openh264")
         if self.options.with_x264:
             self.requires("libx264")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "strukturag/libheif")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

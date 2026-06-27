@@ -29,15 +29,15 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.350.0"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "KhronosGroup/SPIRV-Cross")
+        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
+
     def configure(self):
         if self.options.shared:
             # these options don't contribute to shared binary
             del self.options.c_api
             del self.options.util
-
-    def latest_version(self):
-        repo = GithubRepository(self, "KhronosGroup/SPIRV-Cross")
-        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
 
     def source(self):
         get(

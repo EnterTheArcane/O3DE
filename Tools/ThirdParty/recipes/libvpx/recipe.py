@@ -32,6 +32,10 @@ class Recipe(RecipeBase[_Options]):
 
     _arch_options = ["mmx", "sse", "sse2", "sse3", "ssse3", "sse4_1", "avx", "avx2", "avx512"]
 
+    def latest_version(self):
+        repo = GithubRepository(self, "webmproject/libvpx")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def config_options(self):
         if str(self.settings.arch) not in ["X64"]:
             for name in self._arch_options:
@@ -52,10 +56,6 @@ class Recipe(RecipeBase[_Options]):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "webmproject/libvpx")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -24,6 +24,10 @@ class Recipe(RecipeBase[_Options]):
     version = "0.11.2"
     license = "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "libjxl/libjxl")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def config_options(self):
         if self.settings.arch not in ["X64"]:
             del self.options.avx512
@@ -36,10 +40,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("lcms")
         if self.options.with_tcmalloc:
             self.requires("gperftools")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "libjxl/libjxl")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

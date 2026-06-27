@@ -12,6 +12,10 @@ class Recipe(RecipeBase):
     version = "2.72"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "autotools-mirror/autoconf")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         self.requires("m4")  # Needed at runtime by downstream clients as well
         self.requires_tool("m4")
@@ -19,10 +23,6 @@ class Recipe(RecipeBase):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "autotools-mirror/autoconf")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -18,13 +18,13 @@ class Recipe(RecipeBase[_Options]):
     version = "1.5.7"
     license = "BSD-3-Clause"
 
-    def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
-
     def latest_version(self):
         repo = GithubRepository(self, "facebook/zstd")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def configure(self):
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
         get(

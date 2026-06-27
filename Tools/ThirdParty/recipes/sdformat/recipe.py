@@ -17,6 +17,11 @@ class Recipe(RecipeBase[_Options]):
     version = "16.0.1"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "gazebosim/sdformat")
+        tag = repo.latest_release
+        return Version(tag.split("_", 1)[-1])
+
     def requirements(self):
         self.requires("gz-cmake")
         self.requires("gz-math")
@@ -24,11 +29,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("tinyxml2")
         self.requires_tool("cmake")
         self.requires_tool("gz-cmake")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "gazebosim/sdformat")
-        tag = repo.latest_release
-        return Version(tag.split("_", 1)[-1])
 
     def source(self):
         get(

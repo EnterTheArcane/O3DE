@@ -18,15 +18,15 @@ class Recipe(RecipeBase[_Options]):
     version = "1.15"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "zeux/pugixml")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def configure(self):
         if self.options.shared or self.options.header_only:
             del self.options.fPIC
         if self.options.header_only:
             del self.options.shared
-
-    def latest_version(self):
-        repo = GithubRepository(self, "zeux/pugixml")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

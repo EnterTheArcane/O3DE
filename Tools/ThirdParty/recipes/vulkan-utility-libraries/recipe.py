@@ -14,12 +14,12 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.352"
     license = "Apache-2.0"
 
-    def requirements(self):
-        self.requires(f"vulkan-headers")
-
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-Utility-Libraries")
         return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
+
+    def requirements(self):
+        self.requires(f"vulkan-headers")
 
     def source(self):
         get(

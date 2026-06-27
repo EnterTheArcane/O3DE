@@ -15,6 +15,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2026.9.1"
     license = "Apache-2.0", "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "shader-slang/slang")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         self.requires("lz4")
         self.requires("lua")  # TODO
@@ -23,10 +27,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("unordered-dense")
         self.requires("vulkan-headers")
         self.requires("zstd")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "shader-slang/slang")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

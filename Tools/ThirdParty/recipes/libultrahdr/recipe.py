@@ -18,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.4.0"
     license = "Apache-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "google/libultrahdr")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         if self.options.with_jpeg == "libjpeg":
             self.requires("libjpeg")
@@ -25,10 +29,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libjpeg-turbo")
         elif self.options.with_jpeg == "mozjpeg":
             self.requires("mozjpeg")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "google/libultrahdr")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

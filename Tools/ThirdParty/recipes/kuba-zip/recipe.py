@@ -15,13 +15,13 @@ class Recipe(RecipeBase[_Options]):
     version = "0.3.8"
     license = "Unlicense"
 
-    def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
-
     def latest_version(self):
         repo = GithubRepository(self, "kuba--/zip")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def configure(self):
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
 
     def source(self):
         get(

@@ -25,6 +25,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.85.3"
     license = "LGPL-2.1-or-later"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "GNOME/glib")
+        return Version(repo.latest_release)
+
     def config_options(self):
         if self.settings.os != "Linux":
             del self.options.with_mount
@@ -59,10 +63,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "GNOME/glib")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -20,6 +20,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.3.3"
     license = "Zlib"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "zlib-ng/zlib-ng")
+        return Version(repo.latest_release)
+
     @property
     def _is_windows(self):
         return self.settings.os in ["Windows", "WindowsStore"]
@@ -35,10 +39,6 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "zlib-ng/zlib-ng")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -15,13 +15,13 @@ class Recipe(RecipeBase[_Options]):
     version = "3.1.0"
     license = "MIT"
 
-    def validate(self):
-        if self.settings.os != "Windows":
-            raise RecipeInvalidConfiguration(f"{self.name} is only supported on Windows")
-
     def latest_version(self):
         repo = GithubRepository(self, "GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def validate(self):
+        if self.settings.os != "Windows":
+            raise RecipeInvalidConfiguration(f"{self.name} is only supported on Windows")
 
     def source(self):
         get(

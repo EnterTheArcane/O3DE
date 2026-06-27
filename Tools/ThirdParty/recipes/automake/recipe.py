@@ -13,6 +13,10 @@ class Recipe(RecipeBase):
     version = "1.16.5"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "autotools-mirror/automake")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -24,10 +28,6 @@ class Recipe(RecipeBase):
             self.win_bash = True
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "autotools-mirror/automake")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

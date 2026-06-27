@@ -25,6 +25,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.26"
     license = "GPL-3.0-or-later"
 
+    def latest_version(self):
+        repo = GnuFtp(self, "gdbm")
+        return Version(repo.latest_release)
+
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -44,10 +48,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("bison")
         self.requires_tool("flex")
         self.requires_tool("gnu-config")
-
-    def latest_version(self):
-        repo = GnuFtp(self, "gdbm")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

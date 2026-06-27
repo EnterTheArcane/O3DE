@@ -15,15 +15,15 @@ class Recipe(RecipeBase[_Options]):
     version = "26.05"
     license = "LicenseRef-LICENSE.txt"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "PixarAnimationStudios/OpenUSD")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def requirements(self):
         self.requires("cpython")
         self.requires("onetbb")
         self.requires_tool("cmake")
         self.requires_tool("cpython")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "PixarAnimationStudios/OpenUSD")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

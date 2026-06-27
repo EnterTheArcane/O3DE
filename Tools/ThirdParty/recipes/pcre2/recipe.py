@@ -27,6 +27,10 @@ class Recipe(RecipeBase[_Options]):
     version = "10.47"
     license = "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "PCRE2Project/pcre2")
+        return Version(repo.latest_release.removeprefix("pcre2-"))
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -40,10 +44,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires("zlib")
         if self.options.get_safe("with_bzip2"):
             self.requires("bzip2")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "PCRE2Project/pcre2")
-        return Version(repo.latest_release.removeprefix("pcre2-"))
 
     def source(self):
         get(

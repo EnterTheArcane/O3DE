@@ -29,6 +29,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.18"
     license = "LGPL-2.1-or-later"
 
+    def latest_version(self):
+        repo = GnuFtp(self, "libiconv")
+        return Version(repo.latest_release)
+
     @property
     def _is_clang_cl(self):
         return self.settings.compiler == "clang" and self.settings.os == "Windows" and \
@@ -49,10 +53,6 @@ class Recipe(RecipeBase[_Options]):
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
             self.win_bash = True
-
-    def latest_version(self):
-        repo = GnuFtp(self, "libiconv")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

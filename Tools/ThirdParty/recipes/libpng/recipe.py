@@ -23,6 +23,10 @@ class Recipe(RecipeBase[_Options]):
     version = "1.6.58"
     license = "libpng-2.0"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "pnggroup/libpng")
+        return Version(repo.latest_release.removeprefix("v"))
+
     @property
     def _is_clang_cl(self):
         return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
@@ -68,10 +72,6 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires("zlib")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "pnggroup/libpng")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

@@ -18,6 +18,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.5.2"
     license = "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "AcademySoftwareFoundation/OpenColorIO")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def config_options(self):
         if self.settings.arch not in ["X64"]:
             del self.options.use_sse
@@ -33,10 +37,6 @@ class Recipe(RecipeBase[_Options]):
         # for tools only
         self.requires("lcms")
         # TODO: add GLUT (needed for ociodisplay tool)
-
-    def latest_version(self):
-        repo = GithubRepository(self, "AcademySoftwareFoundation/OpenColorIO")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

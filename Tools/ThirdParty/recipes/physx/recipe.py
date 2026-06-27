@@ -22,6 +22,10 @@ class Recipe(RecipeBase[_Options]):
     version = "4.1.2"
     license = "BSD-3-Clause"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "NVIDIA-Omniverse/PhysX")
+        return Version(repo.latest_release)
+
     def config_options(self):
         if self.settings.build_type != "Release":
             del self.options.release_build_type
@@ -29,10 +33,6 @@ class Recipe(RecipeBase[_Options]):
             del self.options.enable_float_point_precise_math
         if self.settings.os not in ["Windows", "Android"]:
             del self.options.enable_simd
-
-    def latest_version(self):
-        repo = GithubRepository(self, "NVIDIA-Omniverse/PhysX")
-        return Version(repo.latest_release)
 
     def source(self):
         get(

@@ -15,13 +15,13 @@ class Recipe(RecipeBase[_Options]):
     version = "2.5.2"
     license = "BSD-3-Clause"
 
-    def requirements(self):
-        self.requires("zlib")
-        self.requires("libdeflate")
-
     def latest_version(self):
         repo = GithubRepository(self, "wdas/ptex")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def requirements(self):
+        self.requires("zlib")
+        self.requires("libdeflate")
 
     def source(self):
         get(

@@ -25,6 +25,10 @@ class Recipe(RecipeBase[_Options]):
     version = "3.3.2"
     license = "MIT"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "microsoft/mimalloc")
+        return Version(repo.latest_release.removeprefix("v"))
+
     def config_options(self):
         if self.settings.os == "Windows":
             del self.options.fPIC
@@ -52,10 +56,6 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.override:
             self.options.rm_safe("single_object")
             self.options.rm_safe("inject")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "microsoft/mimalloc")
-        return Version(repo.latest_release.removeprefix("v"))
 
     def source(self):
         get(

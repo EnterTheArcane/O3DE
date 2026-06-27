@@ -24,6 +24,10 @@ class Recipe(RecipeBase[_Options]):
     version = "2.14.3"
     license = "FTL"
 
+    def latest_version(self):
+        repo = GithubRepository(self, "freetype/freetype")
+        return Version(repo.latest_release.removeprefix("VER-").replace("-", "."))
+
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -33,10 +37,6 @@ class Recipe(RecipeBase[_Options]):
         self.requires("bzip2")
         self.requires("libpng")
         self.requires("zlib")
-
-    def latest_version(self):
-        repo = GithubRepository(self, "freetype/freetype")
-        return Version(repo.latest_release.removeprefix("VER-").replace("-", "."))
 
     def source(self):
         get(

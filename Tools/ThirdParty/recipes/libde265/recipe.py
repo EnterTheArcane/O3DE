@@ -17,13 +17,13 @@ class Recipe(RecipeBase[_Options]):
     version = "1.0.19"
     license = "LGPL-3.0-or-later"
 
-    def config_options(self):
-        if self.settings.arch not in ["X64"]:
-            del self.options.sse
-
     def latest_version(self):
         repo = GithubRepository(self, "strukturag/libde265")
         return Version(repo.latest_release.removeprefix("v"))
+
+    def config_options(self):
+        if self.settings.arch not in ["X64"]:
+            del self.options.sse
 
     def source(self):
         get(
