@@ -176,7 +176,7 @@ class Recipe(RecipeBase[_Options]):
             f.write(helper_content)
         toolchain_path = self.folders.generators / "recipe_toolchain.cmake"
         with open(toolchain_path, "a") as f:
-            f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.replace(chr(92), "/")}")\n')
+            f.write(f'\nset(CMAKE_PROJECT_INCLUDE "{helper_path.as_posix()}")\n')
 
         deps = CMakeDeps(self)
         deps.set_property("llvm", "cmake_find_mode", "none")
@@ -312,7 +312,7 @@ class Recipe(RecipeBase[_Options]):
         llvm_pkg = self.dependencies["llvm"].folders.package
         llvm_lib = llvm_pkg / "lib"
 
-        search_pattern = self.folders.build / "**" / "shiboken_wrapper.sh"
+        search_pattern = (self.folders.build / "**" / "shiboken_wrapper.sh").as_posix()
         found = list(glob.glob(search_pattern, recursive=True, include_hidden=True))
 
         for wrapper_path in found:
@@ -371,7 +371,7 @@ class Recipe(RecipeBase[_Options]):
             src_dir / "Shiboken*.pyd",  # Windows Python extension
         ]
         for pattern in patterns:
-            for src_file in glob.glob(pattern):
+            for src_file in glob.glob(pattern.as_posix()):
                 shutil.copy2(src_file, dst_dir / os.path.basename(src_file))
 
         # _config.py is generated in the shibokenmodule subdirectory, not the parent dir.

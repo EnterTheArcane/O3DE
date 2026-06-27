@@ -543,7 +543,13 @@ def check_sha256(recipe: RecipeBase, file_path: str, signature: str):
     check_with_algorithm_sum("sha256", file_path, signature)
 
 
-def replace_in_file(recipe: RecipeBase, file_path: str, search: str, replace: str, strict: bool = True, encoding: str = "utf-8") -> bool:
+def replace_in_file(
+        recipe: RecipeBase, 
+        file_path: Path, 
+        search: str, 
+        replace: str, 
+        strict: bool = True, 
+        encoding: str = "utf-8") -> bool:
     """
     Replace a string ``search`` in the contents of the file ``file_path`` with the string replace.
 
@@ -571,7 +577,7 @@ def replace_in_file(recipe: RecipeBase, file_path: str, search: str, replace: st
     return True
 
 
-def collect_libs(recipe: RecipeBase, folder: str | None = None):
+def collect_libs(recipe: RecipeBase, folder: str | None = None) -> list[str]:
     """
     Returns a sorted list of library names from the libraries (files with extensions *.so*, *.lib*,
     *.a* and *.dylib*) located inside the ``recipe.info.libdirs`` (by default) or the
@@ -593,7 +599,7 @@ def collect_libs(recipe: RecipeBase, folder: str | None = None):
     else:
         lib_folders = [os.path.join(recipe.folders.package, folder) for folder in recipe.info.libdirs]
 
-    ref_libs = {}
+    ref_libs: dict[str, str] = {}
     for lib_folder in lib_folders:
         if not os.path.exists(lib_folder):
             recipe.output.warning(
@@ -609,7 +615,7 @@ def collect_libs(recipe: RecipeBase, folder: str | None = None):
                 if real_lib not in ref_libs or len(f) < len(ref_libs[real_lib]):
                     ref_libs[real_lib] = f
 
-    result = []
+    result: list[str] = []
     for f in ref_libs.values():
         name, ext = os.path.splitext(f)
         if ext != ".lib" and name.startswith("lib"):

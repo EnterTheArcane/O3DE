@@ -1,6 +1,7 @@
 import configparser
 import glob
 import os
+from pathlib import Path
 import platform
 import textwrap
 from typing import Literal
@@ -282,7 +283,7 @@ class Recipe(RecipeBase[_Options]):
                 setattr(self.options, module, False)
 
         if not self.options.get_safe("qtmultimedia"):
-            del self.options.with_libalsa
+            self.options.rm_safe("with_libalsa")
             del self.options.with_openal
             del self.options.with_gstreamer
             del self.options.with_pulseaudio
@@ -432,7 +433,8 @@ class Recipe(RecipeBase[_Options]):
 
         for f in glob.glob("*.cmake"):
             replace_in_file(
-                self, f,
+                self,
+                Path(f),
                 " IMPORTED)\n",
                 " IMPORTED GLOBAL)\n", strict=False)
 
@@ -827,16 +829,16 @@ class Recipe(RecipeBase[_Options]):
         for m in os.listdir(self.folders.package / "lib" / "cmake"):
             if os.path.isfile(self.folders.package / "lib" / "cmake" / m / f"{m}Macros.cmake"):
                 continue
-            if glob.glob(self.folders.package / "lib" / "cmake" / m / "QtPublic*Helpers.cmake"):
+            if (self.folders.package / "lib" / "cmake" / m).glob("QtPublic*Helpers.cmake"):
                 continue
-            if glob.glob(self.folders.package / "lib" / "cmake" / m / "Qt6QmlPublic*Helpers.cmake"):
+            if (self.folders.package / "lib" / "cmake" / m).glob("Qt6QmlPublic*Helpers.cmake"):
                 continue
             if m.endswith("Tools"):
                 if os.path.isfile(self.folders.package / "lib" / "cmake" / m / f"{m[:-5]}Macros.cmake"):
                     continue
             if m.endswith("Private"):
                 continue
-            if glob.glob(self.folders.package / "lib" / "cmake" / m / "Qt6*Config.cmake"):
+            if (self.folders.package / "lib" / "cmake" / m).glob("Qt6*Config.cmake"):
                 continue
             if m != "Qt6HostInfo":
                 rmdir(self, self.folders.package / "lib" / "cmake" / m)
@@ -1624,9 +1626,9 @@ class Recipe(RecipeBase[_Options]):
                 if os.path.isfile(module):
                     _add_build_module(component_name, module)
 
-                for helper_modules in glob.glob(qt_cmake_dir / m / "QtPublic*Helpers.cmake"):
+                for helper_modules in (qt_cmake_dir / m).glob("QtPublic*Helpers.cmake"):
                     _add_build_module(component_name, helper_modules)
-                for helper_modules in glob.glob(qt_cmake_dir / m / "Qt6QmlPublic*Helpers.cmake"):
+                for helper_modules in (qt_cmake_dir / m).glob("Qt6QmlPublic*Helpers.cmake"):
                     _add_build_module(component_name, helper_modules)
                 self.info.components[component_name].builddirs.append(os.path.join("lib", "cmake", m))
 
@@ -1636,7 +1638,7 @@ class Recipe(RecipeBase[_Options]):
                     _add_build_module(component_name[:-5], module)
                 self.info.components[component_name[:-5]].builddirs.append(os.path.join("lib", "cmake", m))
 
-        objects_dirs = glob.glob(self.folders.package / "lib" / "objects-*/")
+        objects_dirs = (self.folders.package / "lib").glob("objects-*/")
         for object_dir in objects_dirs:
             for m in os.listdir(object_dir):
                 component = "qt" + m[:m.find("_")]

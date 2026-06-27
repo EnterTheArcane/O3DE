@@ -43,7 +43,7 @@ class Recipe(RecipeBase[_Options]):
             del self.options.arithmetic_encoder
             del self.options.arithmetic_decoder
         if self.options.libjpeg8_compatibility:
-            del self.options.mem_src_dst
+            self.options.rm_safe("mem_src_dst")
 
     def requirements(self):
         if self.options.get_safe("SIMD") and self.settings.arch in ["X64"]:

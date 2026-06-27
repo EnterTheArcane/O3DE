@@ -38,19 +38,20 @@ class Recipe(RecipeBase[_Options]):
             del self.options.inject
 
     def configure(self):
-        # single_object is valid only for static override:
         if self.options.shared:
-            del self.options.single_object
+            self.options.rm_safe("fPIC")
+            # single_object is valid only for static override:
+            self.options.rm_safe("single_object")
 
         # inject is valid only for Unix-like dynamic override:
         if not self.options.shared:
-            del self.options.inject
+            self.options.rm_safe("inject")
 
         # single_object and inject are valid only when
         # overriding on Unix-like platforms:
         if not self.options.override:
-            del self.options.single_object
-            del self.options.inject
+            self.options.rm_safe("single_object")
+            self.options.rm_safe("inject")
 
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/mimalloc")

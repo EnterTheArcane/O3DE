@@ -4,7 +4,7 @@ from thirdparty import RecipeBase
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.errors import RecipeInvalidConfiguration
-from thirdparty.files import apply_patches, copy, get, rm, rmdir
+from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 
 
@@ -56,7 +56,10 @@ class Recipe(RecipeBase):
         tc.generate()
 
     def _patch_sources(self):
-        apply_patches(self)
+        # libtool's generated configure only enables -undefined dynamic_lookup for macOS 10.x.
+        # On newer Darwin (11+) the version case falls through and leaves the allow-undefined flag empty, breaking the link.
+        # Turn the "10.*" arm into a catch-all "*".
+        replace_in_file(self, self.folders.source / "configure", "10.*)", "*)")
         # Refresh config.guess/config.sub so newer hosts (e.g. Apple Silicon) are recognised.
         for gnu_config in (
             self.conf.get("user.gnu-config:config_guess", check_type=str),

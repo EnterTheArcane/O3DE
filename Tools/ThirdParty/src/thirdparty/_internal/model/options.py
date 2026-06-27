@@ -6,11 +6,12 @@ _falsey_options = ["false", "none", "0", "off", ""]
 
 
 def option_not_exist_msg(option_name: str, existing_options: Any) -> str:
-    """ Someone is referencing an option that is not available in the current package
-    options
+    """
+    Someone is referencing an option that is not available in the current package options
     """
     result = [
-        "option '%s' doesn't exist" % option_name, "Possible options are %s" % existing_options or "none",
+        "option '%s' doesn't exist" % option_name,
+        "Possible options are %s" % existing_options or "none",
     ]
     return "\n".join(result)
 
@@ -98,6 +99,10 @@ class _PackageOption:
 
 
 class _PackageOptions:
+    _constrainted: bool
+    _data: dict[str, _PackageOption]
+    _freeze: bool
+    
     def __init__(self, recipe_options_definition: Any = None):
         if recipe_options_definition is None:
             self._constrained = False
@@ -139,6 +144,9 @@ class _PackageOptions:
 
     def get_safe(self, field: str, default: Any = None) -> Any:
         return self._data.get(field, default)
+
+    def rm_safe(self, field: str):
+        self._data.pop(field, None)
 
     def validate(self):
         for child in self._data.values():
