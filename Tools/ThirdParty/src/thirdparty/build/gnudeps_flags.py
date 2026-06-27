@@ -11,7 +11,6 @@ from thirdparty.recipe import RecipeBase
 
 
 class GnuDepsFlags:
-
     def __init__(self, recipe: RecipeBase, info: Any):
         self._recipe = recipe
         self._subsystem = deduce_subsystem(recipe, scope="build")

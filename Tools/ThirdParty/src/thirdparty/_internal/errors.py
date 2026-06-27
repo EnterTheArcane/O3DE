@@ -87,52 +87,41 @@ class ConnectionErrorException(RecipeException):
 
 
 class InternalErrorException(RecipeException):
-    """
-         Generic 500 error
-    """
     pass
 
 
 class RequestErrorException(RecipeException):
-    """
-         Generic 400 error
-    """
     pass
 
 
 class AuthenticationException(RecipeException):  # 401
-    """
-        401 error
-    """
     pass
 
 
 class ForbiddenException(RecipeException):  # 403
-    """
-        403 error
-    """
     pass
 
 
 class NotFoundException(RecipeException):  # 404
-    """
-        404 error
-    """
     pass
 
 
 class RecipeNotFoundException(NotFoundException):
-
     def __init__(self, ref):
         super().__init__(f"Recipe not found: '{ref}'")
 
 
 class PackageNotFoundException(NotFoundException):
-
     def __init__(self, pref):
         super().__init__(f"Binary package not found: '{pref}'")
 
 
 EXCEPTION_CODE_MAPPING = {
-    InternalErrorException: 500, RequestErrorException: 400, AuthenticationException: 401, ForbiddenException: 403, NotFoundException: 404, RecipeNotFoundException: 404, PackageNotFoundException: 404,
+    InternalErrorException: 500,
+    RequestErrorException: 400,
+    AuthenticationException: 401,
+    ForbiddenException: 403,
+    NotFoundException: 404,
+    RecipeNotFoundException: 404,
+    PackageNotFoundException: 404,
 }

@@ -110,7 +110,6 @@ class Recipe(RecipeBase[_Options]):
         tc.generate(env=env)
 
     def build(self):
-
         autotools = Autotools(self)
         autotools.configure()
         autotools.make()

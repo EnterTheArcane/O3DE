@@ -29,7 +29,6 @@ def format_defines(defines: list[str], toolchain: bool = False) -> list[str]:
 
 
 class NMakeDeps:
-
     def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.

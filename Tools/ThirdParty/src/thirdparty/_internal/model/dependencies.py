@@ -84,7 +84,6 @@ class UserRequirementsDict:
 
 
 class RecipeDependencies(UserRequirementsDict):
-
     def filter(self, require_filter: Any, remove_system: bool = True) -> RecipeDependencies:
         # FIXME: Copy of hte above, to return RecipeDependencies class object
         def filter_fn(require) -> bool:

@@ -134,7 +134,6 @@ class Recipe(RecipeBase[_Options]):
             env.vars(self).save_script("buildenv_icu_msvc")
 
     def _patch_sources(self):
-
         replace_in_file(
             self,
             self.folders.source / "source" / "configure",

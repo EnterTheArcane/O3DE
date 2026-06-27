@@ -24,7 +24,6 @@ FIND_MODE_BOTH = "both"
 
 
 class CMakeDeps:
-
     def __init__(self, recipe: RecipeBase):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.

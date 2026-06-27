@@ -219,7 +219,6 @@ class Environment:
         return repr(self._values)
 
     def dumps(self) -> str:
-
         """
         :return: A string with a profile-like original definition, not the full environment
                  values

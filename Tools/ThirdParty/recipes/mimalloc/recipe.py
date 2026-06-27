@@ -38,7 +38,6 @@ class Recipe(RecipeBase[_Options]):
             del self.options.inject
 
     def configure(self):
-
         # single_object is valid only for static override:
         if self.options.shared:
             del self.options.single_object

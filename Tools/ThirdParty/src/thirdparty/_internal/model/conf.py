@@ -157,7 +157,6 @@ class _ConfVarPlaceHolder:
 
 
 class _ConfValue:
-
     def __init__(self, name: str, value: Any, path: bool = False, update: bool | None = None, important: bool = False):
         self.name = name
         self._important = important

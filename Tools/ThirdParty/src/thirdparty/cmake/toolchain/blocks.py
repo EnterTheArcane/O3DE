@@ -400,7 +400,6 @@ class ParallelBlock(Block):
 
     def context(self) -> dict[str, Any] | None:
         # TODO: Check this conf
-
         compiler = self._recipe.settings.get_safe("compiler")
         if compiler != "msvc" or "Visual" not in self._toolchain.generator:
             return
@@ -1096,7 +1095,6 @@ class GenericSystemBlock(Block):
             return cmake_system_name_map.get(os_host, os_host)
 
     def _is_apple_cross_building(self):
-
         if is_universal_arch(
             self._recipe.settings.get_safe("arch"), self._recipe.settings.possible_values().get("arch")):
             return False
@@ -1265,7 +1263,6 @@ class ExtraVariablesBlock(Block):
 
 
 class OutputDirsBlock(Block):
-
     @property
     def template(self) -> str:
         return textwrap.dedent(

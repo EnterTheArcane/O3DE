@@ -192,7 +192,6 @@ class PremakeDeps:
 
     @property
     def content(self) -> dict[str, str]:
-
         self.output_files = {}
         conf_name = self._config_suffix()
 

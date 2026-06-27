@@ -294,7 +294,6 @@ class _PCFilesDeps:
 
 
 class PkgConfigDeps:
-
     def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
         # Activate the build *.pc files for the specified libraries

@@ -67,7 +67,6 @@ class _SourceURLCredentials:
 
 
 class HttpRequester:
-
     def __init__(self, config: Any, cache_folder: Any = None):
         self._url_creds = _SourceURLCredentials(cache_folder)
         _max_retries = config.get("core.net.http:max_retries", default=2, check_type=int)

@@ -41,7 +41,6 @@ class Recipe(RecipeBase[_Options]):
         return "gettext-tools"
 
     def config_options(self):
-
         self.options.threads = {"Solaris": "solaris", "Windows": "windows"}.get(str(self.settings.os), "posix")
 
     def configure(self):

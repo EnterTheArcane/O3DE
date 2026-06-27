@@ -114,7 +114,6 @@ class MSBuildToolchain:
 
     @property
     def context_config_toolchain(self):
-
         def format_macro(key, value):
             return '%s=%s' % (key, value) if value is not None else key
 

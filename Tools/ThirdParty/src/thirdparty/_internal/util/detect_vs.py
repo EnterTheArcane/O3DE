@@ -57,7 +57,6 @@ def vswhere(
     all_: bool = False, prerelease: bool = True, products=None, requires=None, version: str = "", latest: bool = False, legacy: bool = False, property_: str = "", nologo: bool = True):
     # 'version' option only works if Visual Studio 2017 is installed:
     # https://github.com/Microsoft/vswhere/issues/91
-
     products = list() if products is None else products
     requires = list() if requires is None else requires
 

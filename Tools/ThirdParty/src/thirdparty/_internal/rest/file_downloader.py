@@ -12,7 +12,6 @@ from thirdparty.errors import RecipeException
 
 
 class FileDownloader:
-
     def __init__(self, requester: Any, scope: Any = None, source_credentials: Any = None):
         self._output = Output(scope=scope)
         self._requester = requester

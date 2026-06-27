@@ -525,7 +525,6 @@ class _Component:
         return [r.split("::", 1) if "::" in r else (None, r) for r in self.requires]
 
     def _auto_deduce_locations(self, recipe: RecipeBase, library_name: str):
-
         def _lib_match_by_glob(dir_, filename):
             # Run a glob.glob function to find the file given by the filename
             matches = glob.glob(f"{dir_}/{filename}")

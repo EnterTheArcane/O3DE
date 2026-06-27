@@ -14,7 +14,6 @@ from thirdparty.recipe import RecipeBase
 
 
 class AutotoolsToolchain:
-
     def __init__(self, recipe: RecipeBase, namespace: str | None = None, prefix: str = "/"):
         """
         :param recipe: The current recipe object. Always use ``self``.
@@ -407,7 +406,6 @@ class AutotoolsToolchain:
 
     # FIXME: Remove all these update_xxxx whenever xxxx_args are dicts or new ones replace them
     def _update_flags(self, attr_name: str, updated_flags: dict[str, Any]):
-
         def _list_to_dict(flags):
             ret = {}
             for flag in flags:

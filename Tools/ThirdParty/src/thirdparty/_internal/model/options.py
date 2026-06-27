@@ -213,7 +213,6 @@ class _PackageOptions:
 
 
 class Options:
-
     def __init__(self, options: Any = None, options_values: Any = None):
         # options=None means an unconstrained/profile definition
         try:
