@@ -117,9 +117,21 @@ class Graph:
         Only edges between nodes present in this graph are considered; external
         dependencies are ignored for ordering.  Ties are broken alphabetically for
         deterministic output.
+
+        A recipe that declares a ``requires_tool`` on *itself* is the cross-compile
+        bootstrap pattern (e.g. ``qt``/``wayland`` need a native build of themselves
+        before cross-building).  That self tool-edge is not a real cycle: the native copy
+        lives in the build context and the target copy in the host context (see conan's
+        two-context model), and the build executor (``_build_recipe``) builds the native
+        copy first via its own recursion — keyed by ``(name, target_os, target_arch)`` —
+        rather than as a second node here.  So a self *tool* edge is dropped for ordering
+        and the single name-keyed node is emitted once.  A self *host* require is left in
+        place so it still surfaces as a ``graphlib.CycleError`` (it is a real recipe bug).
         """
         sorter = TopologicalSorter(
-            {name: [d for d in node.all_deps if d in self.nodes] for name, node in self.nodes.items()})
+            {name: [d for d in node.all_deps
+                    if d in self.nodes and not (d == name and name in node.tool_deps)]
+             for name, node in self.nodes.items()})
         sorter.prepare()
 
         order: list[str] = []
