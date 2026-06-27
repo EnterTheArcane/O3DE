@@ -134,5 +134,4 @@ jobs:
           thirdparty build \
             --target-os "${{ inputs.target_os }}" \
             --target-arch "${{ inputs.target_arch }}" \
-            --fail-fast \
             "${recipes[@]}"

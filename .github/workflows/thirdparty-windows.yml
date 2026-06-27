@@ -129,8 +129,7 @@ jobs:
           $arguments = @(
             "build",
             "--target-os", "${{ inputs.target_os }}",
-            "--target-arch", "${{ inputs.target_arch }}",
-            "--fail-fast"
+            "--target-arch", "${{ inputs.target_arch }}"
           )
 
           if (![string]::IsNullOrWhiteSpace($env:RECIPES)) {
