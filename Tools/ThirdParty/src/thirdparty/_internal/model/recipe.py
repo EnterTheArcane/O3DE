@@ -1,6 +1,7 @@
 import os
 import subprocess
 import types
+from abc import ABC
 from typing import (
     IO, Any, ClassVar, Generic, Literal, TypeVar, Union, cast, get_args, get_origin,
     get_type_hints,
@@ -107,7 +108,7 @@ class _Infos:
         self.package: Info = Info(set_defaults=True)
 
 
-class RecipeBase(Generic[TOptions]):
+class RecipeBase(ABC, Generic[TOptions]):
     name: str
     version: str
     license: str | tuple[str, ...]
@@ -296,6 +297,15 @@ class RecipeBase(Generic[TOptions]):
             raise RecipeException("Error %d while executing" % retcode)
 
         return retcode
+
+    def latest_version(self) -> "str": ...
+    def validate(self) -> None: ...
+    def requirements(self) -> None: ...
+    def source(self) -> None: ...
+    def generate(self) -> None: ...
+    def build(self) -> None: ...
+    def package(self) -> None: ...
+    def package_info(self) -> None: ...
 
     def __repr__(self):
         return self.name or ""
