@@ -6,7 +6,7 @@ import textwrap
 from thirdparty._internal.output import Output, Color
 from thirdparty._internal.util.files import save, load
 from thirdparty.build import build_jobs
-from thirdparty.cmake.layout import get_build_folder_custom_vars, is_consumer
+
 from thirdparty.cmake.toolchain.blocks import GenericSystemBlock
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.errors import RecipeException
@@ -180,7 +180,7 @@ class _CMakePresets:
             return f'"{val}"' if type(val) is str and " " in val else f"{val}"
 
         # only for consumer that is not a "test_package"
-        if is_consumer(recipe) and recipe.tested_reference_str is None:
+        if recipe.is_consumer and recipe.tested_reference_str is None:
             # upstream PR 12034#issuecomment-1253776285
             vars_tip = " ".join([f"-D{k}={_format_val(v)}" for k, v in cache_variables.items()])
             tc_tip = f"-DCMAKE_TOOLCHAIN_FILE=<output_folder>/{toolchain_file} " if "CMAKE_TOOLCHAIN_FILE" not in vars_tip else ""
@@ -228,32 +228,14 @@ class _CMakePresets:
     @staticmethod
     def _build_and_test_preset_name(recipe: RecipeBase) -> str:
         build_type = recipe.settings.get_safe("build_type")
-        custom_conf, user_defined_build = get_build_folder_custom_vars(recipe)
-        if user_defined_build:
-            return custom_conf
-
-        if custom_conf:
-            if build_type:
-                return f"{custom_conf}-{build_type.lower()}"
-            else:
-                return custom_conf
         return build_type.lower() if build_type else "default"
 
     @staticmethod
     def _configure_preset_name(recipe: RecipeBase, multiconfig: bool) -> str:
         build_type = recipe.settings.get_safe("build_type")
-        custom_conf, user_defined_build = get_build_folder_custom_vars(recipe)
-
-        if user_defined_build:
-            return custom_conf
-
         if multiconfig or not build_type:
-            return "default" if not custom_conf else custom_conf
-
-        if custom_conf:
-            return f"{custom_conf}-{str(build_type).lower()}"
-        else:
-            return str(build_type).lower()
+            return "default"
+        return str(build_type).lower()
 
 
 class _IncludingPresets:

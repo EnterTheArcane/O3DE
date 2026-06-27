@@ -7,7 +7,7 @@ from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import save
 from thirdparty.build import use_win_mingw
-from thirdparty.cmake.layout import is_consumer
+
 from thirdparty.cmake.presets import write_cmake_presets
 from thirdparty.cmake.toolchain import RECIPE_TOOLCHAIN_FILENAME
 from thirdparty.cmake.toolchain.blocks import (
@@ -249,7 +249,7 @@ class CMakeToolchain:
             cmake_executable = cmake_executable or self._find_cmake_exe()
 
         user_presets = self.user_presets_path
-        if is_consumer(self._recipe):
+        if self._recipe.is_consumer:
             user_presets = self._recipe.conf.get(
                 "tools.cmake.cmaketoolchain:user_presets", default=self.user_presets_path)
 

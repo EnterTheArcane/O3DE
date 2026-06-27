@@ -7,7 +7,7 @@ from typing import (
     get_type_hints,
 )
 
-from thirdparty._internal.graph import CONTEXT_BUILD
+from thirdparty._internal.graph import CONTEXT_BUILD, RECIPE_CONSUMER, RECIPE_EDITABLE
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.info import Info
@@ -211,6 +211,13 @@ class RecipeBase(ABC, Generic[TOptions]):
     @property
     def is_build_context(self):
         return self.context == CONTEXT_BUILD
+
+    @property
+    def is_consumer(self) -> bool:
+        try:
+            return self._recipe_node.recipe in (RECIPE_CONSUMER, RECIPE_EDITABLE)
+        except AttributeError:
+            return False
 
     @property
     def dependencies(self):
