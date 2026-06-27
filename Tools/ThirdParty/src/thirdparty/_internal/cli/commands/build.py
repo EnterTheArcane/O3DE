@@ -9,7 +9,7 @@ from pathlib import Path
 
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph import (
-    Node as _Node, Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER, CONTEXT_HOST as _CONTEXT_HOST, RECIPE_INCACHE as _RECIPE_INCACHE, )
+    Node as _Node, Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER, CONTEXT_HOST as _CONTEXT_HOST, CONTEXT_BUILD as _CONTEXT_BUILD, RECIPE_INCACHE as _RECIPE_INCACHE, )
 from thirdparty._internal.loader import (
     RecipeRuntime as _RecipeRuntime, make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
@@ -182,14 +182,15 @@ def _build_dep_graph(
                  target platform (``target_os``/``target_arch``).
     tool_names — requires_tool (build=True); built for the BUILD MACHINE (target reset).
 
-    _recipe_cache is a shared dict[(dep_name, os, arch) → (Requirement, RecipeBase)]
+    _recipe_cache is a shared dict[(dep_name, os, arch, is_build) → (Requirement, RecipeBase)]
     passed through recursive calls so that the *same* RecipeBase object is reused
     whenever the same package appears at multiple levels of the dep tree.  This is required
     for get_transitive_requires() (used by CMakeDeps) to correctly resolve header-transitive
     deps: it compares RecipeBase objects by identity, so the object for e.g. fast_float
     must be the same instance whether it appears in c4core's dep graph or in rapidyaml's.
-    The platform is part of the key so a package built for the host and for the build
-    machine (cross-compile) stay distinct.
+    The platform and context are part of the key so a package built for the host and for
+    the build machine stay distinct, including native builds where the same package is both
+    a library dependency and a build tool.
     """
     deps_dict: OrderedDict = OrderedDict()
 
@@ -201,7 +202,7 @@ def _build_dep_graph(
         # build machine.  Effective target fully determines the dep's settings + output folder.
         dep_os = None if is_build else target_os
         dep_arch = None if is_build else target_arch
-        cache_key = (dep_name, dep_os, dep_arch)
+        cache_key = (dep_name, dep_os, dep_arch, is_build)
         # If we already created a recipe for this dep+platform, reuse it.
         # This ensures object identity holds across all levels (needed by transitive_requires).
         if cache_key in _recipe_cache:
@@ -209,7 +210,7 @@ def _build_dep_graph(
             # Add to the current level's deps_dict with the appropriate directness flag.
             # Preserve run= so requires_tool keep run=True; VirtualBuildEnv only adds a
             # build dep's bindir to PATH when its requirement has run=True.
-            existing = next((r for r in deps_dict if str(r.name) == dep_name), None)
+            existing = next((r for r in deps_dict if str(r.name) == dep_name and r.build == is_build), None)
             if existing is None:
                 new_req = Requirement(
                     cached_req.ref, build=is_build, run=cached_req.run, direct=direct)
@@ -255,7 +256,9 @@ def _build_dep_graph(
         dep._recipe_runenv = Environment()
 
         dep._recipe_node = _Node(
-            dep_name, dep_version, context=_CONTEXT_HOST, recipe_state=_RECIPE_INCACHE)
+            dep_name, dep_version,
+            context=_CONTEXT_BUILD if is_build else _CONTEXT_HOST,
+            recipe_state=_RECIPE_INCACHE)
 
         # Full config phase (config_options/configure + auto-fPIC + package-type +
         # requirements); populates dep.requires for the sub-graph below.
@@ -304,7 +307,7 @@ def _build_dep_graph(
         # packages are present in the consumer's dep graph with the same recipe objects.
         for trans_req, trans_recipe in dep._recipe_dependencies._data.items():
             trans_name = str(trans_req.name)
-            if not any(str(r.name) == trans_name for r in deps_dict.keys()):
+            if not any(str(r.name) == trans_name and r.build == trans_req.build for r in deps_dict.keys()):
                 non_direct_req = Requirement(
                     trans_req.ref, build=trans_req.build, run=trans_req.run, direct=False)
                 deps_dict[non_direct_req] = trans_recipe

@@ -9,7 +9,7 @@ from thirdparty.errors import RecipeException
 from thirdparty.files import apply_patches, copy, get, rename, replace_in_file, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.scm import GnuFtp
-from thirdparty.microsoft import is_msvc
+from thirdparty.microsoft import is_msvc, unix_path
 from thirdparty.scm import Version
 
 
@@ -76,8 +76,11 @@ class Recipe(RecipeBase[_Options]):
 
         env = tc.environment()
         if is_msvc(self):
+            ar_wrapper = self.dependencies.build["automake"].conf_info.get("user.automake:lib-wrapper")
+            ar_wrapper = unix_path(self, ar_wrapper)
             env.define("CC", "cl -nologo")
             env.define("CXX", "cl -nologo")
+            env.define("AR", f'{ar_wrapper} "lib -nologo"')
 
             # Disable Fortran detection to handle issue with VS 2022
             # See: https://savannah.gnu.org/patch/?9313#comment1

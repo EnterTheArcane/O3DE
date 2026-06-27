@@ -48,6 +48,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["FORCE_LIMITED_API"] = "no"
         if self.settings.os == "Windows":
             tc.cache_variables["CMAKE_LINKER_TYPE"] = "MSVC"
+            tc.variables["DISABLE_PYI"] = True
 
         tc.variables["CLANG_INSTALL_DIR"] = llvm_pkg.as_posix()
         tc.variables["Clang_DIR"] = (llvm_pkg / "lib" / "cmake" / "clang").as_posix()

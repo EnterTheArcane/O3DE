@@ -108,14 +108,14 @@ class Recipe(RecipeBase[_Options]):
                 self.folders.source / "meson.build",
                 "libintl = dependency('intl', required: false",
                 "libintl = dependency('libgettext', method : 'pkg-config', required : false",
-                )
+                strict=False)
 
         replace_in_file(
             self,
             self.folders.source / "gio" / "gdbus-2.0" / "codegen" / "gdbus-codegen.in",
             "'share'",
             "'res'",
-            )
+            strict=False)
 
     def build(self):
         self._patch_sources()
@@ -264,7 +264,7 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     import glob
     if not recipe.settings.get_safe("compiler.runtime"):
         return
-    libdirs = getattr(recipe.cpp.package, "libdirs")
+    libdirs = recipe.info.libdirs
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
             full_folder = recipe.folders.package / libdir

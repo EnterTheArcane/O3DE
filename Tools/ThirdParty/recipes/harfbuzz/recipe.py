@@ -191,7 +191,7 @@ def fix_msvc_libname(recipe, remove_lib_prefix=True):
     import glob
     if not recipe.settings.get_safe("compiler.runtime"):
         return
-    libdirs = getattr(recipe.cpp.package, "libdirs")
+    libdirs = recipe.info.libdirs
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
             full_folder = recipe.folders.package / libdir
