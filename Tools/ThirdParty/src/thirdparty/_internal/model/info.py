@@ -15,10 +15,6 @@ from thirdparty.recipe import RecipeBase
 
 
 class PackageType(Enum):
-    """The kind of a built library, *deduced* from the produced artifacts (see
-    ``deduce_full_info``).  Recipes no longer declare a package-level type; this is the
-    vocabulary the deduction produces and that the CMake/Bazel generators consume to emit the
-    correct target type."""
     STATIC = "static-library"
     SHARED = "shared-library"
     HEADER = "header-library"
@@ -39,6 +35,36 @@ _SINGLE_VALUE_VARS = "_type", "_exe", "_location", "_link_location", "_languages
 
 
 class _Component:
+    _properties: dict[str, Any] | None
+    
+    _includedirs: list[str] | None
+    _srcdirs: list[str] | None
+    _libdirs: list[str] | None
+    _resdirs: list[str] | None
+    _bindirs: list[str] | None
+    _builddirs: list[str] | None
+    _frameworkdirs: list[str] | None
+    
+    _system_libs: list[str] | None
+    _package_framework: str | None
+    _frameworks: list[str] | None
+    _libs: list[str] | None
+    _defines: list[str] | None
+    _cflags: list[str] | None
+    _cxxflags: list[str] | None
+    _sharedlinkflags: list[str] | None
+    _exelinkflags: list[str] | None
+    _objects: list[str] | None
+    _sources: list[str] | None
+    _exe: str | None
+    _languages: list[str] | None
+    
+    _sysroot: str | None
+    _requires: list[str] | None
+    
+    _type: PackageType | None
+    _location: str | None
+    _link_location: str | None
 
     def __init__(self, set_defaults: bool = False):
         # ###### PROPERTIES
@@ -301,11 +327,6 @@ class _Component:
 
     @property
     def languages(self) -> list[str] | None:
-        """Open list of source-language tokens for this package (e.g. ``"C"``, ``"C++"``,
-        ``"Rust"``, ``"Zig"``, ``"Swift"``, ``"Fortran"``). Not restricted to the C family:
-        each generator interprets the tokens it understands -- the CMake generator maps known
-        CMake languages to ``IMPORTED_LINK_INTERFACE_LANGUAGES`` and ignores the rest (which
-        then link via CMake's default rules)."""
         return self._languages
 
     @languages.setter
@@ -405,8 +426,6 @@ class _Component:
     @property
     def required_component_names(self) -> list[str]:
         """ Names of the required INTERNAL components of the same package (not scoped with ::)"""
-        if self.requires is None:
-            return []
         return [r for r in self.requires if "::" not in r]
 
     def set_property(self, property_name: str, value: Any):
@@ -676,6 +695,11 @@ class Info:
     is the package-phase instance; ``recipe.infos`` holds the source/build/package phases.
     """
 
+    components: dict[str, _Component]
+    default_components: list[str] | None
+
+    _package: _Component
+
     def __init__(self, set_defaults: bool = False):
         self.components = defaultdict(lambda: _Component(set_defaults))
         self.default_components: list[str] | None = None
@@ -692,7 +716,7 @@ class Info:
             setattr(self._package, attr, value)
 
     def serialize(self) -> dict[str, Any]:
-        ret = {"root": self._package.serialize()}
+        ret: dict[str, Any] = {"root": self._package.serialize()}
         if self.default_components:
             ret["default_components"] = self.default_components
         for component_name, info in self.components.items():
@@ -752,10 +776,10 @@ class Info:
 
         :return: ``OrderedDict`` {component_name: component}
         """
-        result = OrderedDict()
+        result = OrderedDict[str, _Component]()
         opened = self.components.copy()
         while opened:
-            new_open = OrderedDict()
+            new_open = OrderedDict[str, _Component]()
             for name, c in opened.items():
                 if not any(n in opened for n in c.required_component_names):
                     result[name] = c

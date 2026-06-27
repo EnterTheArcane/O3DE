@@ -1,6 +1,7 @@
 import gzip
 import io
 import os
+from pathlib import Path
 import platform
 import shutil
 import stat
@@ -27,7 +28,7 @@ class FileProgress(io.FileIO):
         self._bytes_read = 0
         self.msg = msg
 
-    def read(self, size: int = -1) -> bytes:
+    def read(self, size: int | None = -1) -> bytes:
         block = super().read(size)
         self._bytes_read += len(block)
         if self._reporter:
@@ -120,7 +121,7 @@ def get(
     md5: str | None = None,
     sha1: str | None = None,
     sha256: str | None = None,
-    destination: str = ".",
+    destination: Path = Path("."),
     filename: str = "",
     keep_permissions: bool = False,
     pattern: Any = None,
@@ -173,44 +174,6 @@ def get(
     os.unlink(filename)
 
 
-def ftp_download(recipe: RecipeBase, host: str, filename: str, login: str = '', password: str = '', secure: bool = False):
-    """
-    Ftp download of a file. Retrieves a file from an FTP server.
-
-    :param recipe: The current recipe object. Always use ``self``.
-    :param host: IP or host of the FTP server.
-    :param filename: Path to the file to be downloaded.
-    :param login: Authentication login.
-    :param password: Authentication password.
-    :param secure: Set to True to use FTP over TLS/SSL (FTPS). Defaults to False for regular FTP.
-    """
-    # TODO: Check if we want to join this method with download() one, based on ftp:// protocol
-    # this has been requested by some users, but the hash is a bit divergent
-    import ftplib
-    ftp = None
-    try:
-        if secure:
-            ftp = ftplib.FTP_TLS(host)
-            ftp.prot_p()
-        else:
-            ftp = ftplib.FTP(host)
-        ftp.login(login, password)
-        filepath, filename = os.path.split(filename)
-        if filepath:
-            ftp.cwd(filepath)
-        with open(filename, 'wb') as f:
-            ftp.retrbinary('RETR ' + filename, f.write)
-    except Exception as e:
-        try:
-            os.unlink(filename)
-        except OSError:
-            pass
-        raise RecipeException("Error in FTP download from %s\n%s" % (host, str(e)))
-    finally:
-        if ftp:
-            ftp.quit()
-
-
 def download(
     recipe: RecipeBase,
     url: Any,
@@ -250,9 +213,9 @@ def download(
     """
     config = recipe.conf
 
-    retry = retry if retry is not None else 2
+    retry: int = retry if retry is not None else 2
     retry = config.get("tools.files.download:retry", check_type=int, default=retry)
-    retry_wait = retry_wait if retry_wait is not None else 5
+    retry_wait: int = retry_wait if retry_wait is not None else 5
     retry_wait = config.get("tools.files.download:retry_wait", check_type=int, default=retry_wait)
     verify = config.get("tools.files.download:verify", check_type=bool, default=verify)
 
@@ -391,7 +354,14 @@ def chmod(
 
 
 def unzip(
-    recipe: RecipeBase, filename: str, destination: str = ".", keep_permissions: bool = False, pattern: Any = None, strip_root: bool = False, extract_filter: Any = None, excludes: Any = None):
+    recipe: RecipeBase,
+    filename: str,
+    destination: Path = Path("."),
+    keep_permissions: bool = False,
+    pattern: Any = None,
+    strip_root: bool = False,
+    extract_filter: Any = None,
+    excludes: Any = None):
     """
     Extract different compressed formats
 
@@ -486,7 +456,12 @@ def unzip(
 
 
 def untargz(
-    filename: str, destination: str = ".", pattern: Any = None, strip_root: bool = False, extract_filter: Any = None, excludes: Any = None):
+    filename: str,
+    destination: Path = Path("."),
+    pattern: Any = None,
+    strip_root: bool = False,
+    extract_filter: Any = None,
+    excludes: Any = None):
     # NOT EXPOSED at `thirdparty.tools.files` but used in tests
     import tarfile
     with tarfile.TarFile.open(filename, mode='r:*') as tarredgzippedFile:

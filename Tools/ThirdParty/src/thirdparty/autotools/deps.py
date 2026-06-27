@@ -24,7 +24,7 @@ class AutotoolsDeps:
         return self._ordered_deps
 
     def _get_cpp_info(self) -> Info:
-        ret = Info(self._recipe)
+        ret = Info()
         for dep in self.ordered_deps:
             dep_cppinfo = dep.info.aggregated_components()
             # In case we have components, aggregate them, we do not support isolated

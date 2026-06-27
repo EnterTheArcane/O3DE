@@ -232,7 +232,7 @@ if platform.system() == "Windows":
                         "Close any app using it and retry.")
                 time.sleep(delay)
 else:
-    def rmdir(path):
+    def rmdir(path: str | os.PathLike[str]):
         if not os.path.isdir(path):
             return
         try:

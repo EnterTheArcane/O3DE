@@ -39,7 +39,7 @@ class NMakeDeps:
 
     # TODO: This is similar from AutotoolsDeps: Refactor and make common
     def _get_cpp_info(self):
-        ret = Info(self._recipe)
+        ret = Info()
         deps = self._recipe.dependencies.host.topological_sort
         deps = [dep for dep in reversed(deps.values())]
         for dep in deps:
