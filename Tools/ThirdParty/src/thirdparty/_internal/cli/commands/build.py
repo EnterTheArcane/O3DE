@@ -592,8 +592,7 @@ def _build_recipe(
     # empty build trees behind.
     try:
         _run_configure_method(recipe)
-        if hasattr(recipe, "validate"):
-            recipe.validate()
+        recipe.validate()
     except Exception as _cfg_exc:
         from thirdparty.errors import RecipeInvalidConfiguration
         if isinstance(_cfg_exc, RecipeInvalidConfiguration):
@@ -609,7 +608,7 @@ def _build_recipe(
     Path(recipe.folders.export_sources).mkdir(parents=True, exist_ok=True)
     _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.folders.export_sources))
 
-    if not generate_only and hasattr(recipe, "source"):
+    if not generate_only and type(recipe).source is not RecipeBase.source:
         src_folder = Path(recipe.folders.source)
         src_folder.mkdir(parents=True, exist_ok=True)
         # Only run source() once per package; skip if already completed successfully.
@@ -627,8 +626,8 @@ def _build_recipe(
             finally:
                 os.chdir(_orig_cwd_src)
             (src_folder / _COMPLETE_MARKER).write_text("")
-    gen_folder = recipe.folders.generators if hasattr(recipe, "generate") else None
-    if hasattr(recipe, "generate"):
+    gen_folder = recipe.folders.generators if type(recipe).generate is not RecipeBase.generate else None
+    if type(recipe).generate is not RecipeBase.generate:
         # Recipe generators write files with bare filenames and expect CWD == generators_folder
         # (the comment in CMakeDeps says "# Current directory is the generators_folder").
         # We must chdir there before calling generate() so files land in the build tree, not here.
@@ -650,7 +649,7 @@ def _build_recipe(
             _recipe_deps.write_text(_legacy.read_text(encoding="utf-8"), encoding="utf-8")
     generate_aggregated_env(recipe)
     if not generate_only:
-        if hasattr(recipe, "build"):
+        if type(recipe).build is not RecipeBase.build:
             Path(recipe.folders.build).mkdir(parents=True, exist_ok=True)
             _orig_cwd_build = os.getcwd()
             try:
@@ -664,7 +663,7 @@ def _build_recipe(
                 raise
             finally:
                 os.chdir(_orig_cwd_build)
-        if hasattr(recipe, "package"):
+        if type(recipe).package is not RecipeBase.package:
             Path(recipe.folders.build).mkdir(parents=True, exist_ok=True)
             _wipe(recipe.folders.package)
             Path(recipe.folders.package).mkdir(parents=True, exist_ok=True)

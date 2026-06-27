@@ -16,15 +16,13 @@ def run_configure_method(recipe: RecipeBase):
     """
     initial_requires_count = len(recipe._requires)
 
-    if hasattr(recipe, "config_options"):
-        with recipe_exception_formatter(recipe, "config_options"):
-            recipe.config_options()
+    with recipe_exception_formatter(recipe, "config_options"):
+        recipe.config_options()
 
     auto_language(recipe)  # default implementation removes `compiler.cstd`
 
-    if hasattr(recipe, "configure"):
-        with recipe_exception_formatter(recipe, "configure"):
-            recipe.configure()
+    with recipe_exception_formatter(recipe, "configure"):
+        recipe.configure()
 
     _auto_fpic_configure(recipe)
 
@@ -33,9 +31,8 @@ def run_configure_method(recipe: RecipeBase):
             "Requirements should only be added in the requirements() method, "
             "not configure()/config_options().", warn_tag="deprecated")
 
-    if hasattr(recipe, "requirements"):
-        with recipe_exception_formatter(recipe, "requirements"):
-            recipe.requirements()
+    with recipe_exception_formatter(recipe, "requirements"):
+        recipe.requirements()
 
     # Register tools implied by the build-system helpers the recipe imports (e.g. CMake ->
     # "cmake"), after requirements() so explicit declarations win. Skip the recipe's own name

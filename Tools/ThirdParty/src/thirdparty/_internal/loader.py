@@ -164,8 +164,7 @@ def make_probe_recipe(
     from thirdparty._internal.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
     recipe._recipe_node = Node(name, version, context=CONTEXT_HOST, recipe_state=RECIPE_INCACHE)
     # Mirror RecipeLoader: run the recipe's init() hook if it defines one.
-    if hasattr(recipe, "init") and callable(recipe.init):
-        recipe.init()
+    recipe.init()
     return recipe
 
 
