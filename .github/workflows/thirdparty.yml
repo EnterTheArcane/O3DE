@@ -14,78 +14,65 @@ on:
   push:
   workflow_dispatch:
     inputs:
-      recipes:
-        description: "Optional whitespace-separated recipe names or glob patterns. Blank builds everything."
-        required: false
-        type: string
-      mac_arm:
+      build_mac_arm:
         description: Build Mac ARM
         required: false
         type: boolean
         default: true
-      linux_x64:
-        description: Build Linux X64
-        required: false
-        type: boolean
-        default: true
-      linux_arm:
+      build_linux_arm:
         description: Build Linux ARM
         required: false
         type: boolean
         default: true
-      windows_x64:
-        description: Build Windows X64
+      build_linux_x64:
+        description: Build Linux X64
         required: false
         type: boolean
         default: true
-      windows_arm:
+      build_windows_arm:
         description: Build Windows ARM
+        required: false
+        type: boolean
+        default: true
+      build_windows_x64:
+        description: Build Windows X64
         required: false
         type: boolean
         default: true
 
 jobs:
-  Linux-X64:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_x64 }}
+  linux-arm:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_arm }}
     uses: ./.github/workflows/thirdparty-linux.yml
     with:
-      image: ubuntu-24.04
-      target_os: Linux
-      target_arch: X64
-      recipes: ${{ inputs.recipes || '' }}
+      arch: ARM
 
-  Linux-ARM:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.linux_arm }}
+  linux-x64:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_linux_x64 }}
     uses: ./.github/workflows/thirdparty-linux.yml
     with:
-      image: ubuntu-24.04
-      target_os: Linux
-      target_arch: ARM
-      recipes: ${{ inputs.recipes || '' }}
+      arch: X64
 
-  Mac-ARM:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mac_arm }}
+  mac-arm:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_mac_arm }}
     uses: ./.github/workflows/thirdparty-mac.yml
     with:
-      image: macos-15
-      target_os: Mac
-      target_arch: ARM
-      recipes: ${{ inputs.recipes || '' }}
+      arch: ARM
 
-  Windows-X64:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_x64 }}
+  mac-x64:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_mac_arm }}
+    uses: ./.github/workflows/thirdparty-mac.yml
+    with:
+      arch: X64
+
+  windows-arm:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows_arm }}
     uses: ./.github/workflows/thirdparty-windows.yml
     with:
-      image: windows-2022
-      target_os: Windows
-      target_arch: X64
-      recipes: ${{ inputs.recipes || '' }}
+      arch: ARM
 
-  Windows-ARM:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.windows_arm }}
+  windows-X64:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_windows_x64 }}
     uses: ./.github/workflows/thirdparty-windows.yml
     with:
-      image: windows-2022
-      target_os: Windows
-      target_arch: ARM
-      recipes: ${{ inputs.recipes || '' }}
+      arch: X64
