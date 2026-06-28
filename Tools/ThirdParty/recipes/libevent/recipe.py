@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    with_openssl: bool = False
+    with_openssl: bool = True
     disable_threads: bool = False
 
 

@@ -76,14 +76,3 @@ def get_recipe_user_home():
             "please specify an absolute or path starting with ~/ "
             "(relative to user home)" % user_home)
     return user_home
-
-
-# Files
-RECIPE_FILE = 'recipe.py'
-RECIPE_TXT = "recipe.txt"
-RECIPE_MANIFEST = "manifest.txt"
-PACKAGE_INFO = "package_id_info.txt"
-PACKAGE_FILE_NAME = "recipe_package.t"
-EXPORT_FILE_NAME = "recipe_export.t"
-EXPORT_SOURCES_FILE_NAME = "recipe_sources.t"
-COMPRESSIONS = "gz", "xz", "zst"

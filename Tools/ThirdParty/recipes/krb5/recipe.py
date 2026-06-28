@@ -1,8 +1,8 @@
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.apple import fix_apple_shared_install_name
-from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
+from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.build import can_run
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.errors import RecipeInvalidConfiguration
@@ -85,7 +85,12 @@ class Recipe(RecipeBase[_Options]):
             if self.options.get_safe("with_keyutils")
             else "--without-keyutils",
         ])
+        if is_apple_os(self):
+            for dependency in self.dependencies.host.values():
+                for libdir in dependency.info.aggregated_components().libdirs:
+                    tc.extra_ldflags.append(f"-Wl,-rpath,{libdir}")
         tc.generate()
+        AutotoolsDeps(self).generate()
 
     def build(self):
         autotools = Autotools(self)
