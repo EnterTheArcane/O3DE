@@ -95,7 +95,7 @@ UPDATES: list[RecipeUpdate] = [
         "", "944656c33aa776dc2c882991d1a6a86c8408fec8b8a19bc5305bf7eabdd4d908",
     ),
     RecipeUpdate(
-        "lcms", "2.17", "2.19.1",
+        "little-cms", "2.17", "2.19.1",
         "https://github.com/mm2/Little-CMS/releases/download/lcms2.17/lcms2-2.17.tar.gz",
         "https://github.com/mm2/Little-CMS/releases/download/lcms2.19.1/lcms2-2.19.1.tar.gz",
         "", "bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8",

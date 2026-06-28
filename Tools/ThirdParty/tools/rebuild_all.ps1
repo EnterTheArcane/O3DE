@@ -42,7 +42,7 @@ $packages = @(
     "zlib-ng", "minizip-ng",
 
     # --- graphics / math ---
-    "imath", "lcms", "msdfgen", "meshoptimizer",
+    "imath", "little-cms", "msdfgen", "meshoptimizer",
     "icu", "freetype",
     "libxml2", "libtiff",
 

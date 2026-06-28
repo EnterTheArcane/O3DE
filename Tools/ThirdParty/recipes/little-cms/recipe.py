@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "lcms"
+    name = "little-cms"
     version = "2.19.1"
     license = "MIT"
 
@@ -54,6 +54,8 @@ class Recipe(RecipeBase[_Options]):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
+        self.info.set_property("cmake_file_name", "lcms")
+        self.info.set_property("cmake_target_name", "lcms::lcms")
         self.info.set_property("pkg_config_name", "lcms2")
         self.info.libs = ["lcms2"]
         if self.settings.os == "Windows" and self.options.shared:

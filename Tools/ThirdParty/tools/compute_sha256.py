@@ -48,7 +48,7 @@ UPDATES: list[RecipeUpdate] = [
         "https://github.com/akheron/jansson/releases/download/v2.15.0/jansson-2.15.0.tar.bz2"),
     RecipeUpdate("kuba-zip",        "0.3.2",   "0.3.8",
         "https://github.com/kuba--/zip/archive/v0.3.8.tar.gz"),
-    RecipeUpdate("lcms",            "2.17",    "2.19.1",
+    RecipeUpdate("little-cms",      "2.17",    "2.19.1",
         "https://github.com/mm2/Little-CMS/releases/download/lcms2.19.1/lcms2-2.19.1.tar.gz"),
     RecipeUpdate("libde265",        "1.0.15",  "1.0.19",
         "https://github.com/strukturag/libde265/releases/download/v1.0.19/libde265-1.0.19.tar.gz"),

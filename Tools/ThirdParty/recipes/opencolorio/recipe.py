@@ -36,7 +36,7 @@ class Recipe(RecipeBase[_Options]):
         self.requires("minizip-ng")
 
         # for tools only
-        self.requires("lcms")
+        self.requires("little-cms")
         # TODO: add GLUT (needed for ociodisplay tool)
 
     def source(self):

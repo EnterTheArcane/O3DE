@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("cmake")
         self.requires("brotli")
         self.requires("highway")
-        self.requires("lcms")
+        self.requires("little-cms")
         if self.options.with_tcmalloc:
             self.requires("gperftools")
 
@@ -103,8 +103,8 @@ class Recipe(RecipeBase[_Options]):
         deps.set_property("highway", "cmake_file_name", "HWY")
         deps.set_property("highway::hwy", "cmake_target_name", "hwy::hwy")
         deps.set_property("highway::hwy_contrib", "cmake_target_name", "hwy_contrib::hwy_contrib")
-        deps.set_property("lcms", "cmake_file_name", "LCMS2")
-        deps.set_property("lcms", "cmake_target_name", "lcms2")
+        deps.set_property("little-cms", "cmake_file_name", "LCMS2")
+        deps.set_property("little-cms", "cmake_target_name", "lcms2")
         deps.generate()
 
         # CMakeDeps does not generate the CMakeDeps `recipe_deps.cmake` find_package
