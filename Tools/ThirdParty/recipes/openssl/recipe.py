@@ -404,7 +404,7 @@ class Recipe(RecipeBase[_Options]):
                     inherit_from => {ancestor},
                     cflags => add("{cflags}"),
                     cxxflags => add("{cxxflags}"),
-                    {defs}
+                    {defines}
                     lflags => add("{lflags}"),
                     {shared_target}
                     {shared_cflag}

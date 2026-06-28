@@ -397,7 +397,7 @@ class AutotoolsToolchain:
         # If someone want arguments but not the defaults can pass them in args manually
         configure_install_flags.extend(
             [
-                f"--prefix={self._prefix}",
+                f"--prefix={self._prefix.as_posix()}",
                 _get_argument("bindir", "bindirs"),
                 _get_argument("sbindir", "bindirs"),
                 _get_argument("libdir", "libdirs"),

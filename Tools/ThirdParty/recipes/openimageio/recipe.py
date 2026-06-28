@@ -1,5 +1,3 @@
-from typing import Literal
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
@@ -10,7 +8,6 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    with_libjpeg: Literal['libjpeg', 'libjpeg-turbo'] = 'libjpeg'
     with_libjxl: bool = True
     with_libpng: bool = True
     with_freetype: bool = True
@@ -48,10 +45,7 @@ class Recipe(RecipeBase[_Options]):
         self.requires("libtiff")
         self.requires("imath")
         self.requires("openexr")
-        if self.options.with_libjpeg == "libjpeg":
-            self.requires("libjpeg")
-        elif self.options.with_libjpeg == "libjpeg-turbo":
-            self.requires("libjpeg-turbo")
+        self.requires("libjpeg-turbo")
         if self.options.with_libjxl:
             self.requires("libjxl")
         self.requires("pugixml")
@@ -126,9 +120,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["BUILD_TESTING"] = False
 
         # OIIO CMake files are patched to check USE_* flags to require or not use dependencies
-        tc.variables["USE_JPEGTURBO"] = (
-                self.options.with_libjpeg == "libjpeg-turbo"
-        )
+        tc.variables["USE_JPEGTURBO"] = True
         tc.variables[
             "USE_JPEG"
         ] = True  # Needed for jpeg.imageio plugin, libjpeg/libjpeg-turbo selection still works
@@ -180,7 +172,7 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_WebP"] = self.options.with_libwebp
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_JXL"] = self.options.with_libjxl
 
-        tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_libjpeg-turbo"] = self.options.with_libjpeg != "libjpeg-turbo"
+        tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_libjpeg-turbo"] = False
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_R3DSDK"] = True
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_Nuke"] = True
         tc.cache_variables["CMAKE_DISABLE_FIND_PACKAGE_JXL"] = not self.options.with_libjxl
@@ -267,12 +259,7 @@ class Recipe(RecipeBase[_Options]):
             "openexr::openexr",
         ]
 
-        if self.options.with_libjpeg == "libjpeg":
-            open_image_io.requires.append("libjpeg::libjpeg")
-        elif self.options.with_libjpeg == "libjpeg-turbo":
-            open_image_io.requires.append(
-                "libjpeg-turbo::libjpeg-turbo"
-            )
+        open_image_io.requires.append("libjpeg-turbo::jpeg")
         if self.options.with_libpng:
             open_image_io.requires.append("libpng::libpng")
         if self.options.with_freetype:

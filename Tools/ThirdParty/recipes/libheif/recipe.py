@@ -40,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_dav1d:
             self.requires("dav1d")
         if self.options.with_jpeg:
-            self.requires("libjpeg")
+            self.requires("libjpeg-turbo")
         if self.options.with_openjpeg:
             self.requires("openjpeg")
         if self.options.with_openjph:
@@ -94,6 +94,10 @@ class Recipe(RecipeBase[_Options]):
         deps.set_property("libde265", "cmake_file_name", "LIBDE265")
         deps.set_property("openjph", "cmake_file_name", "OPENJPH")
         deps.set_property("openh264", "cmake_file_name", "OpenH264")
+        if self.options.with_jpeg:
+            # Present libjpeg-turbo as libjpeg so upstream find_package(JPEG) resolves
+            deps.set_property("libjpeg-turbo", "cmake_file_name", "JPEG")
+            deps.set_property("libjpeg-turbo", "cmake_target_name", "JPEG::JPEG")
         deps.generate()
         PkgConfigDeps(self).generate()
 
@@ -134,7 +138,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_dav1d:
             self.info.requires.append("dav1d::dav1d")
         if self.options.with_jpeg:
-            self.info.requires.append("libjpeg::libjpeg")
+            self.info.requires.append("libjpeg-turbo::jpeg")
         if self.options.with_openjpeg:
             self.info.requires.append("openjpeg::openjpeg")
         if self.options.with_openjph:

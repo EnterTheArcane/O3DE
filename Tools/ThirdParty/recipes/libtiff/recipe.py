@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
     lzma: bool = True
-    jpeg: Literal[False, "libjpeg", "libjpeg-turbo", "mozjpeg"] = "libjpeg"
+    jpeg: Literal[False, "libjpeg-turbo", "mozjpeg"] = "libjpeg-turbo"
     zlib: bool = True
     libdeflate: bool = False
     zstd: bool = False
@@ -42,9 +42,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libdeflate")
         if self.options.lzma:
             self.requires("xz_utils")
-        if self.options.jpeg == "libjpeg":
-            self.requires("libjpeg")
-        elif self.options.jpeg == "libjpeg-turbo":
+        if self.options.jpeg == "libjpeg-turbo":
             self.requires("libjpeg-turbo")
         elif self.options.jpeg == "mozjpeg":
             self.requires("mozjpeg")
@@ -96,6 +94,11 @@ class Recipe(RecipeBase[_Options]):
         deps.set_property("libdeflate", "cmake_file_name", "Deflate")
         deps.set_property("libdeflate", "cmake_target_name", "Deflate::Deflate")
         deps.set_property("zstd", "cmake_file_name", "ZSTD")
+        if self.options.jpeg == "libjpeg-turbo":
+            # libtiff strips its bundled FindJPEG.cmake and prefers config mode,
+            # so present libjpeg-turbo as a JPEGConfig.cmake for find_package(JPEG)
+            deps.set_property("libjpeg-turbo", "cmake_file_name", "JPEG")
+            deps.set_property("libjpeg-turbo", "cmake_target_name", "JPEG::JPEG")
         deps.generate()
 
     def _patch_sources(self):
@@ -142,9 +145,7 @@ class Recipe(RecipeBase[_Options]):
             requires.append("libdeflate::libdeflate")
         if self.options.lzma:
             requires.append("xz_utils::xz_utils")
-        if self.options.jpeg == "libjpeg":
-            requires.append("libjpeg::libjpeg")
-        elif self.options.jpeg == "libjpeg-turbo":
+        if self.options.jpeg == "libjpeg-turbo":
             requires.append("libjpeg-turbo::jpeg")
         elif self.options.jpeg == "mozjpeg":
             requires.append("mozjpeg::libjpeg")

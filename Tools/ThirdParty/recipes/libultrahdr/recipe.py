@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    with_jpeg: Literal['libjpeg', 'libjpeg-turbo', 'mozjpeg'] = 'libjpeg'
+    with_jpeg: Literal['libjpeg-turbo', 'mozjpeg'] = 'libjpeg-turbo'
 
 
 class Recipe(RecipeBase[_Options]):
@@ -23,9 +23,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def requirements(self):
-        if self.options.with_jpeg == "libjpeg":
-            self.requires("libjpeg")
-        elif self.options.with_jpeg == "libjpeg-turbo":
+        if self.options.with_jpeg == "libjpeg-turbo":
             self.requires("libjpeg-turbo")
         elif self.options.with_jpeg == "mozjpeg":
             self.requires("mozjpeg")
@@ -69,9 +67,7 @@ class Recipe(RecipeBase[_Options]):
     def package_info(self):
         self.info.libs = ['uhdr']
 
-        if self.options.with_jpeg == "libjpeg":
-            self.info.requires = ["libjpeg::libjpeg"]
-        elif self.options.with_jpeg == "libjpeg-turbo":
+        if self.options.with_jpeg == "libjpeg-turbo":
             self.info.requires = ["libjpeg-turbo::jpeg"]
         elif self.options.with_jpeg == "mozjpeg":
             self.info.requires = ["mozjpeg::libjpeg"]
