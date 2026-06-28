@@ -3,7 +3,6 @@ import os
 import textwrap
 from typing import Any
 
-from thirdparty._internal.internal_tools import raise_on_universal_arch
 from thirdparty._internal.util.files import save
 from thirdparty.apple.utils import is_apple_os, apple_min_version_flag, resolve_apple_flags, apple_extra_flags
 from thirdparty.build.cross_building import cross_building, can_run
@@ -129,7 +128,6 @@ class MesonToolchain:
                        makes sense if your project's ``meson.build`` uses the ``native=true``
                        (see also https://mesonbuild.com/Cross-compilation.html#mixing-host-and-build-targets).
         """
-        raise_on_universal_arch(recipe)
         self._recipe = recipe
         self._native = native
         self._is_apple_system = is_apple_os(self._recipe)

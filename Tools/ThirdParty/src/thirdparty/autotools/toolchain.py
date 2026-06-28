@@ -2,13 +2,11 @@ import os
 from pathlib import Path
 from typing import Any
 
-from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty.apple.utils import is_apple_os, resolve_apple_flags, apple_extra_flags
 from thirdparty.build import cmd_args_to_string, save_toolchain_args
 from thirdparty.build.cross_building import cross_building
 from thirdparty.build.flags import architecture_flag, architecture_link_flag, build_type_flags, cppstd_flag, build_type_link_flags, libcxx_flags, cstd_flag, llvm_clang_front, threads_flags
 from thirdparty.env import Environment, VirtualBuildEnv
-from thirdparty.errors import RecipeException
 from thirdparty.autotools.get_gnu_triplet import _get_gnu_triplet
 from thirdparty.microsoft import VCVars, msvc_runtime_flag, unix_path, check_min_vs, is_msvc
 from thirdparty.recipe import RecipeBase
@@ -40,8 +38,6 @@ class AutotoolsToolchain:
     msvc_runtime_flag: str | None
     msvc_extra_flags: list[str]
     msvc_runtime_link_flags: list[str]
-    
-    _is_universal_arch: bool
     
     _host: str | None
     _build: str | None
@@ -108,19 +104,13 @@ class AutotoolsToolchain:
         if llvm_clang_front(self._recipe) == "clang":
             self.msvc_runtime_link_flags = ["-fuse-ld=lld-link"]
 
-        self._is_universal_arch = is_universal_arch(
-            recipe.settings.get_safe("arch"), recipe.settings.possible_values().get("arch"))
-        if self._is_universal_arch and not is_apple_os(self._recipe):
-            arch_str = recipe.settings.get_safe('arch')
-            raise RecipeException(f"Universal arch '{arch_str}' is only supported in Apple OSes")
-
         # Cross build triplets
         self._host = self._recipe.conf.get("tools.gnu:host_triplet")
         self._build = self._recipe.conf.get("tools.gnu:build_triplet")
         self._target = None
 
         self.android_cross_flags = {}
-        self._is_cross_building = not self._is_universal_arch and cross_building(self._recipe)
+        self._is_cross_building = cross_building(self._recipe)
         if self._is_cross_building:
             compiler = self._recipe.settings.get_safe("compiler")
             # If cross-building and tools.android:ndk_path is defined, let's try to guess the Android
@@ -152,10 +142,10 @@ class AutotoolsToolchain:
         self.autoreconf_args = self._default_autoreconf_flags()
         self.make_args = []
         # Apple stuff
-        is_cross_building_osx = (self._is_cross_building and recipe.settings_build.get_safe('os') == "Mac" and is_apple_os(recipe) and not self._is_universal_arch)
+        is_cross_building_osx = (self._is_cross_building and recipe.settings_build.get_safe('os') == "Mac" and is_apple_os(recipe))
 
         min_flag, arch_flags, isysroot_flag = (resolve_apple_flags(
-            recipe, is_cross_building=is_cross_building_osx, is_universal=self._is_universal_arch))
+            recipe, is_cross_building=is_cross_building_osx))
         # https://man.archlinux.org/man/clang.1.en#Target_Selection_Options
         self.apple_arch_flag = arch_flags
         # -isysroot makes all includes for your library relative to the build directory

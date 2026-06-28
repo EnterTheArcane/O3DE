@@ -2,7 +2,6 @@ import os
 from io import StringIO
 from typing import Any
 
-from thirdparty._internal.internal_tools import universal_arch_separator
 from thirdparty._internal.util.runners import check_output_runner
 from thirdparty.build import cmd_args_to_string
 from thirdparty.errors import RecipeException
@@ -83,15 +82,13 @@ def apple_min_version_flag(recipe: RecipeBase) -> str:
 
 
 def resolve_apple_flags(
-    recipe: RecipeBase, is_cross_building: bool = False,
-    is_universal: bool = False) -> tuple[str, str | None, str | None]:
+    recipe: RecipeBase, is_cross_building: bool = False) -> tuple[str, str | None, str | None]:
     """
     Gets the most common flags in Apple systems. If it's a cross-building context
     SDK path is mandatory so if it could raise an exception if SDK is not found.
 
     :param recipe: <RecipeBase> instance.
     :param is_cross_building: boolean to indicate if it's a cross-building context.
-    :param is_universal: boolean to indicate if it's a universal binary.
     :return: tuple of Apple flags (apple_min_version_flag, apple_arch_flags, apple_isysroot_flag).
     """
     if not is_apple_os(recipe):
@@ -100,16 +97,7 @@ def resolve_apple_flags(
 
     apple_arch_flags = apple_isysroot_flag = None
 
-    if is_universal:
-        arch_ = recipe.settings.get_safe("arch")
-        apple_arch_flags = " ".join(
-            [f"-arch {_to_apple_arch(arch, default=arch)}" for arch in arch_.split(universal_arch_separator)])
-        sdk_path = recipe.conf.get("tools.apple:sdk_path")
-        if sdk_path:
-            # Ideally, -isysroot should be added whenever sdk_path is defined.
-            # For now, we only set it in this case to avoid changing existing behavior.
-            apple_isysroot_flag = f"-isysroot {sdk_path}"
-    elif is_cross_building:
+    if is_cross_building:
         arch = to_apple_arch(recipe)
         sdk_path = apple_sdk_path(recipe, is_cross_building=is_cross_building)
         apple_isysroot_flag = f"-isysroot {sdk_path}" if sdk_path else ""

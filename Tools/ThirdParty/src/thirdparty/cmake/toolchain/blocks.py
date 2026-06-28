@@ -3,7 +3,6 @@ import os
 import re
 import textwrap
 
-from thirdparty._internal.internal_tools import universal_arch_separator, is_universal_arch
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.subsystems import deduce_subsystem, WINDOWS
 from thirdparty._internal.util.files import load
@@ -530,17 +529,11 @@ class AppleSystemBlock(Block):
             return None
 
         def to_apple_archs(recipe: RecipeBase):
-            f"""converts recipe-style architectures into Apple-style archs
-            to be used by CMake also supports multiple architectures
-            separated by '{universal_arch_separator}'"""
+            """converts recipe-style architecture into Apple-style arch"""
             arch_ = recipe.settings.get_safe("arch") if recipe else None
             if arch_ is not None:
-                return ";".join(
-                    [_to_apple_arch(arch, default=arch) for arch in arch_.split(universal_arch_separator)])
+                return _to_apple_arch(arch_, default=arch_)
 
-        # check valid combinations of architecture - os ?
-        # for iOS a FAT library valid for simulator and device can be generated
-        # if multiple archs are specified "-DCMAKE_OSX_ARCHITECTURES=armv7;armv7s;arm64;i386;x86_64"
         host_architecture = to_apple_archs(self._recipe)
 
         host_os_version = self._recipe.settings.get_safe("os.version")
@@ -1099,10 +1092,6 @@ class GenericSystemBlock(Block):
             return cmake_system_name_map.get(os_host, os_host)
 
     def _is_apple_cross_building(self):
-        if is_universal_arch(
-            self._recipe.settings.get_safe("arch"), self._recipe.settings.possible_values().get("arch")):
-            return False
-
         os_host = self._recipe.settings.get_safe("os")
         arch_host = self._recipe.settings.get_safe("arch")
         arch_build = self._recipe.settings_build.get_safe("arch")
@@ -1134,35 +1123,33 @@ class GenericSystemBlock(Block):
         system_processor = self._recipe.conf.get("tools.cmake.toolchain:system_processor")
 
         # try to detect automatically
-        if not is_universal_arch(
-            self._recipe.settings.get_safe("arch"), self._recipe.settings.possible_values().get("arch")):
-            os_host = self._recipe.settings.get_safe("os")
-            os_host_version = self._recipe.settings.get_safe("os.version")
-            arch_host = self._recipe.settings.get_safe("arch")
-            if arch_host == "ARM":
-                arch_host = {"Windows": "ARM64", "Mac": "arm64"}.get(os_host, "aarch64")
+        os_host = self._recipe.settings.get_safe("os")
+        os_host_version = self._recipe.settings.get_safe("os.version")
+        arch_host = self._recipe.settings.get_safe("arch")
+        if arch_host == "ARM":
+            arch_host = {"Windows": "ARM64", "Mac": "arm64"}.get(os_host, "aarch64")
 
-            if system_name is None:  # Try to deduce
-                _system_version = None
-                _system_processor = None
-                if self._is_apple_cross_building():
-                    # cross-build in Macos also for M1
-                    system_name = {'Mac': 'Darwin'}.get(os_host, os_host)
-                    #  CMAKE_SYSTEM_VERSION for Apple sets the Darwin version, not the os version
-                    _system_version = self._get_darwin_version(os_host, os_host_version)
-                    _system_processor = to_apple_arch(self._recipe)
-                elif os_host != 'Android':
-                    system_name = self._get_generic_system_name()
-                    if arch_host in ['tc131', 'tc16', 'tc161', 'tc162', 'tc18']:
-                        _system_processor = "tricore"
-                    else:
-                        _system_processor = arch_host
-                    _system_version = os_host_version
+        if system_name is None:  # Try to deduce
+            _system_version = None
+            _system_processor = None
+            if self._is_apple_cross_building():
+                # cross-build in Macos also for M1
+                system_name = {'Mac': 'Darwin'}.get(os_host, os_host)
+                #  CMAKE_SYSTEM_VERSION for Apple sets the Darwin version, not the os version
+                _system_version = self._get_darwin_version(os_host, os_host_version)
+                _system_processor = to_apple_arch(self._recipe)
+            elif os_host != 'Android':
+                system_name = self._get_generic_system_name()
+                if arch_host in ['tc131', 'tc16', 'tc161', 'tc162', 'tc18']:
+                    _system_processor = "tricore"
+                else:
+                    _system_processor = arch_host
+                _system_version = os_host_version
 
-                if system_name is not None and system_version is None:
-                    system_version = _system_version
-                if system_name is not None and system_processor is None:
-                    system_processor = _system_processor
+            if system_name is not None and system_version is None:
+                system_version = _system_version
+            if system_name is not None and system_processor is None:
+                system_processor = _system_processor
 
         return system_name, system_version, system_processor
 

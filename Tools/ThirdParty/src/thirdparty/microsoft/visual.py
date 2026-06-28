@@ -11,9 +11,7 @@ RECIPE_VCVARS = "vcvars_env"
 
 
 def msvc_platform_from_arch(arch: str) -> str:
-    return {
-        "X64": "x64", "ARM": "ARM64",
-    }.get(arch)
+    return {"X64": "x64", "ARM": "ARM64"}[arch]
 
 
 def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True) -> bool:

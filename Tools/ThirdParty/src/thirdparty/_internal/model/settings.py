@@ -3,7 +3,6 @@ from typing import Any
 
 import yaml
 
-from thirdparty._internal.internal_tools import is_universal_arch
 from thirdparty._internal.util.files import save, load
 from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty.errors import RecipeException
@@ -120,8 +119,7 @@ class SettingsItem:
 
     def _validate(self, value: Any) -> str | None:
         value = str(value) if value is not None else None
-        is_universal = is_universal_arch(value, self._definition) if self._name == "settings.arch" else False
-        if "ANY" not in self._definition and value not in self._definition and not is_universal:
+        if "ANY" not in self._definition and value not in self._definition:
             raise RecipeException(bad_value_msg(self._name, value, self._definition))
         return value
 
