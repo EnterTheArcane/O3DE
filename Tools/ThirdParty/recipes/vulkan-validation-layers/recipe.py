@@ -103,7 +103,7 @@ class Recipe(RecipeBase[_Options]):
         # We need to expose this VK_LAYER_PATH explicitly on the runtime environment
         manifest_subfolder = "bin" if self.settings.os == "Windows" else os.path.join("res", "vulkan", "explicit_layer.d")
         vk_layer_path = self.folders.package / manifest_subfolder
-        self.runenv_info.prepend_path("VK_LAYER_PATH", vk_layer_path)
+        self.info.runenv.prepend_path("VK_LAYER_PATH", vk_layer_path)
 
         if self.settings.os == "Android":
             self.info.system_libs.extend(["android", "log"])

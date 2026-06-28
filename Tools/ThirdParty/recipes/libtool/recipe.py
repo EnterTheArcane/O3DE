@@ -72,7 +72,7 @@ class Recipe(RecipeBase[_Options]):
 
         env = tc.environment()
         if is_msvc(self):
-            ar_wrapper = self.dependencies.build["automake"].conf_info.get("user.automake:lib-wrapper")
+            ar_wrapper = self.dependencies.build["automake"].info.conf.get("user.automake:lib-wrapper")
             ar_wrapper = unix_path(self, ar_wrapper)
             env.define("CC", "cl -nologo")
             env.define("CXX", "cl -nologo")
@@ -165,10 +165,10 @@ class Recipe(RecipeBase[_Options]):
         # Define environment variables such that libtool m4 files are seen by Automake
         libtool_aclocal_dir = self._datarootdir / "aclocal"
 
-        self.buildenv_info.append_path("ACLOCAL_PATH", libtool_aclocal_dir)
-        self.buildenv_info.append_path("AUTOMAKE_RECIPE_INCLUDES", libtool_aclocal_dir)
-        self.runenv_info.append_path("ACLOCAL_PATH", libtool_aclocal_dir)
-        self.runenv_info.append_path("AUTOMAKE_RECIPE_INCLUDES", libtool_aclocal_dir)
+        self.info.buildenv.append_path("ACLOCAL_PATH", libtool_aclocal_dir)
+        self.info.buildenv.append_path("AUTOMAKE_RECIPE_INCLUDES", libtool_aclocal_dir)
+        self.info.runenv.append_path("ACLOCAL_PATH", libtool_aclocal_dir)
+        self.info.runenv.append_path("AUTOMAKE_RECIPE_INCLUDES", libtool_aclocal_dir)
 
     @property
     def _datarootdir(self):
@@ -176,8 +176,8 @@ class Recipe(RecipeBase[_Options]):
 
     def _patch_sources(self):
         apply_patches(self)
-        config_guess = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
-        config_sub = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_sub")
+        config_guess = self.dependencies.build["gnu-config"].info.conf.get("user.gnu-config:config_guess")
+        config_sub = self.dependencies.build["gnu-config"].info.conf.get("user.gnu-config:config_sub")
         shutil.copy(config_sub, self.folders.source / "build-aux" / "config.sub")
         shutil.copy(config_guess, self.folders.source / "build-aux" / "config.guess")
 

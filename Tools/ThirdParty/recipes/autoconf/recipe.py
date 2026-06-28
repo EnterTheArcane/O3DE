@@ -84,12 +84,12 @@ class Recipe(RecipeBase):
         self.info.resdirs = ["res"]
 
         bin_path = self.folders.package / "bin"
-        self.buildenv_info.define_path("AUTOCONF", bin_path / "autoconf")
-        self.buildenv_info.define_path("AUTORECONF", bin_path / "autoreconf")
-        self.buildenv_info.define_path("AUTOHEADER", bin_path / "autoheader")
-        self.buildenv_info.define_path("AUTOM4TE", bin_path / "autom4te")
+        self.info.buildenv.define_path("AUTOCONF", bin_path / "autoconf")
+        self.info.buildenv.define_path("AUTORECONF", bin_path / "autoreconf")
+        self.info.buildenv.define_path("AUTOHEADER", bin_path / "autoheader")
+        self.info.buildenv.define_path("AUTOM4TE", bin_path / "autom4te")
 
         perllib_path = self.folders.package / "res" / "autoconf"
-        self.buildenv_info.define_path("autom4te_perllibdir", perllib_path)
-        self.buildenv_info.define_path("AC_MACRODIR", perllib_path)
-        self.buildenv_info.define_path("trailer_m4", perllib_path / "autoconf" / "trailer.m4")
+        self.info.buildenv.define_path("autom4te_perllibdir", perllib_path)
+        self.info.buildenv.define_path("AC_MACRODIR", perllib_path)
+        self.info.buildenv.define_path("trailer_m4", perllib_path / "autoconf" / "trailer.m4")

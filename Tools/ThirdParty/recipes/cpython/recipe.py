@@ -246,17 +246,17 @@ class Recipe(RecipeBase[_Options]):
 
         if self.options.env_vars:
             bindir = self.folders.package / "bin"
-            self.runenv_info.append_path("PATH", bindir)
-            self.buildenv_info.append_path("PATH", bindir)
+            self.info.runenv.append_path("PATH", bindir)
+            self.info.buildenv.append_path("PATH", bindir)
 
             # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Appending PATH environment variable: {bindir}")
 
         python = self._cpython_interpreter_path
-        self.conf_info.define("user.cpython:python", python)
+        self.info.conf.define("user.cpython:python", python)
         if self.options.env_vars:
-            self.runenv_info.append_path("PYTHON", python)
-            self.buildenv_info.append_path("PYTHON", python)
+            self.info.runenv.append_path("PYTHON", python)
+            self.info.buildenv.append_path("PYTHON", python)
 
             # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Appending PYTHON environment variable: {python}")
@@ -265,17 +265,17 @@ class Recipe(RecipeBase[_Options]):
             pythonhome = self.folders.package / "bin"
         else:
             pythonhome = self.folders.package
-        self.conf_info.define("user.cpython:pythonhome", pythonhome)
+        self.info.conf.define("user.cpython:pythonhome", pythonhome)
 
         pythonhome_required = is_msvc(self) or is_apple_os(self)
-        self.conf_info.define("user.cpython:module_requires_pythonhome", pythonhome_required)
+        self.info.conf.define("user.cpython:module_requires_pythonhome", pythonhome_required)
 
         python_root = self.folders.package
         if self.options.env_vars:
-            self.runenv_info.append_path("PYTHON_ROOT", python_root)
-            self.buildenv_info.append_path("PYTHON_ROOT", python_root)
+            self.info.runenv.append_path("PYTHON_ROOT", python_root)
+            self.info.buildenv.append_path("PYTHON_ROOT", python_root)
 
-        self.conf_info.define("user.cpython:python_root", python_root)
+        self.info.conf.define("user.cpython:python_root", python_root)
 
     @property
     def _supports_modules(self):

@@ -256,9 +256,9 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_build_modules", [module_rel_path])
 
         terminfo = self.folders.package / "res" / "terminfo"
-        self.buildenv_info.define_path("TERMINFO", terminfo.as_posix())
-        self.runenv_info.define_path("TERMINFO", terminfo.as_posix())
-        self.conf_info.define("user.ncurses:lib_suffix", self._lib_suffix)
+        self.info.buildenv.define_path("TERMINFO", terminfo.as_posix())
+        self.info.runenv.define_path("TERMINFO", terminfo.as_posix())
+        self.info.conf.define("user.ncurses:lib_suffix", self._lib_suffix)
 
     @property
     def _is_mingw(self):

@@ -217,7 +217,7 @@ def _build_dep_graph(
                 deps_dict[new_req] = cached_recipe
             else:
                 # A dep reached both transitively (direct=False) and as a direct require must
-                # be marked direct so its buildenv_info propagates (e.g. pkgconf's PKG_CONFIG);
+                # be marked direct so its buildenv propagates (e.g. pkgconf's PKG_CONFIG);
                 # OR-in run so its bindir lands on PATH.
                 if direct:
                     existing.direct = True
@@ -570,13 +570,13 @@ def _build_recipe(
         recipe_cls, recipes_root, build_root, name, version, build_type, target_os, target_arch, jobs=jobs)
     recipe._recipe_dependencies = dep_graph
 
-    # Propagate conf_info from tool dependencies into recipe.conf so that, e.g.,
-    # msys2's conf_info (bash:path) is visible when generate()/build() run.
+    # Propagate conf from tool dependency info into recipe.conf so that, e.g.,
+    # msys2's exported bash:path is visible when generate()/build() run.
     for _req, _dep_iface in dep_graph._data.items():
         if _req.build:
-            _dep_conf_info = _dep_iface.conf_info
-            if _dep_conf_info:
-                recipe.conf.compose_conf(_dep_conf_info)
+            dep_conf = _dep_iface.info.conf
+            if dep_conf:
+                recipe.conf.compose_conf(dep_conf)
 
     pkg_dir = Path(recipe.folders.package)
     build_dir = Path(recipe.folders.build)

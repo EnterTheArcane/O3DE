@@ -120,7 +120,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.includedirs.append(os.path.join("include", "freetype2"))
 
         libtool_version = load(self, self._libtool_version_txt).strip()
-        self.conf_info.define("user.freetype:libtool_version", libtool_version)
+        self.info.conf.define("user.freetype:libtool_version", libtool_version)
         self.info.set_property("system_package_version", libtool_version)
 
         self.info.set_property("component_version", libtool_version)

@@ -53,23 +53,23 @@ class VirtualBuildEnv:
 
         build_deps = self._recipe.dependencies.build.topological_sort
         for require, build_dep in reversed(build_deps.items()):
-            if require.direct:  # Only buildenv_info from direct deps is propagated
-                # higher priority, explicit buildenv_info
-                if build_dep.buildenv_info:
-                    self._buildenv.compose_env(build_dep.buildenv_info)
+            if require.direct:  # Only direct buildenv from tool deps is propagated
+                # higher priority, explicit buildenv
+                if build_dep.info.buildenv:
+                    self._buildenv.compose_env(build_dep.info.buildenv)
             # Lower priority, the runenv of all transitive "requires" of the tool requirements
-            if build_dep.runenv_info:
-                self._buildenv.compose_env(build_dep.runenv_info)
+            if build_dep.info.runenv:
+                self._buildenv.compose_env(build_dep.info.runenv)
             # Then the implicit
             if require.run:
                 os_name = self._recipe.settings_build.get_safe("os")
                 self._buildenv.compose_env(runenv_from_cpp_info(build_dep, os_name))
 
-        # Requires in host context can also bring some direct buildenv_info
+        # Requires in host context can also bring some direct buildenv
         host_requires = self._recipe.dependencies.host.topological_sort
-        for require in reversed(host_requires.values()):
-            if require.buildenv_info:
-                self._buildenv.compose_env(require.buildenv_info)
+        for dep in reversed(host_requires.values()):
+            if dep.info.buildenv:
+                self._buildenv.compose_env(dep.info.buildenv)
 
         return self._buildenv
 

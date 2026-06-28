@@ -377,7 +377,7 @@ class AutotoolsToolchain:
         VCVars(self._recipe).generate(scope=scope)
 
     def _default_configure_shared_flags(self) -> list[str]:
-        args = []
+        args: list[str] = []
         # Just add these flags if there's a shared option defined (never add to exe's)
         shared = self._recipe.options.get_safe("shared")
         if shared is True:
@@ -388,10 +388,10 @@ class AutotoolsToolchain:
         return args
 
     def _default_configure_install_flags(self) -> list[str]:
-        configure_install_flags = []
+        configure_install_flags: list[str] = []
 
-        def _get_argument(argument_name, cppinfo_name):
-            elements = getattr(self._recipe.infos.package, cppinfo_name)
+        def _get_argument(argument_name: str, info_name: str) -> str:
+            elements = getattr(self._recipe.info, info_name)
             return f"--{argument_name}=${{prefix}}/{elements[0]}" if elements else ""
 
         # If someone want arguments but not the defaults can pass them in args manually

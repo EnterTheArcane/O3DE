@@ -85,10 +85,10 @@ class Recipe(RecipeBase):
         self.info.includedirs = []
 
         compiler_executables = {"asm": self._nasm}
-        self.conf_info.update("tools.build:compiler_executables", compiler_executables)
-        self.buildenv_info.define_path("NASM", self._nasm)
-        self.buildenv_info.define_path("NDISASM", self._ndisasm)
-        self.buildenv_info.define_path("AS", self._nasm)
+        self.info.conf.update("tools.build:compiler_executables", compiler_executables)
+        self.info.buildenv.define_path("NASM", self._nasm)
+        self.info.buildenv.define_path("NDISASM", self._ndisasm)
+        self.info.buildenv.define_path("AS", self._nasm)
 
     @property
     def _nasm(self):

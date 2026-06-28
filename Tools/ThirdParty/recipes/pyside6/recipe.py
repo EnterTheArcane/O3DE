@@ -232,15 +232,15 @@ class Recipe(RecipeBase[_Options]):
             shiboken.system_libs = ["pthread", "dl"]
 
         # Expose the shiboken6 generator location via conf
-        self.conf_info.define(
+        self.info.conf.define(
             "user.pyside6:shiboken6_generator",
             (self.folders.package / "bin" / "shiboken6").as_posix())
-        self.conf_info.define(
+        self.info.conf.define(
             "user.pyside6:pyside6_dir",
             self.folders.package.as_posix())
 
         bin_dir = self.folders.package / "bin"
-        self.buildenv_info.prepend_path("PATH", bin_dir)
+        self.info.buildenv.prepend_path("PATH", bin_dir)
 
     def _patch_qtcore_cmake(self):
         """Force-load Darwin permission plugin archives and weak-link their frameworks.

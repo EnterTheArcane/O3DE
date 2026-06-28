@@ -62,19 +62,19 @@ class Recipe(RecipeBase):
         self.info.libdirs = []
 
         ndk_root = self.folders.package / "bin"
-        self.buildenv_info.define_path("ANDROID_NDK_ROOT", ndk_root)
-        self.buildenv_info.define_path("ANDROID_NDK_HOME", ndk_root)
-        self.buildenv_info.define_path("NDK_ROOT", ndk_root)
-        self.conf_info.define("tools.android:ndk_path", ndk_root)
-        self.buildenv_info.define_path("AR", self._tool_exe("llvm-ar"))
-        self.buildenv_info.define_path("RANLIB", self._tool_exe("llvm-ranlib"))
-        self.buildenv_info.define_path("STRIP", self._tool_exe("llvm-strip"))
-        self.buildenv_info.define_path("ADDR2LINE", self._tool_exe("llvm-addr2line"))
-        self.buildenv_info.define_path("NM", self._tool_exe("llvm-nm"))
-        self.buildenv_info.define_path("OBJCOPY", self._tool_exe("llvm-objcopy"))
-        self.buildenv_info.define_path("OBJDUMP", self._tool_exe("llvm-objdump"))
-        self.buildenv_info.define_path("READELF", self._tool_exe("llvm-readelf"))
-        self.buildenv_info.define_path("ELFEDIT", self._tool_exe("llvm-elfedit"))
+        self.info.buildenv.define_path("ANDROID_NDK_ROOT", ndk_root)
+        self.info.buildenv.define_path("ANDROID_NDK_HOME", ndk_root)
+        self.info.buildenv.define_path("NDK_ROOT", ndk_root)
+        self.info.conf.define("tools.android:ndk_path", ndk_root)
+        self.info.buildenv.define_path("AR", self._tool_exe("llvm-ar"))
+        self.info.buildenv.define_path("RANLIB", self._tool_exe("llvm-ranlib"))
+        self.info.buildenv.define_path("STRIP", self._tool_exe("llvm-strip"))
+        self.info.buildenv.define_path("ADDR2LINE", self._tool_exe("llvm-addr2line"))
+        self.info.buildenv.define_path("NM", self._tool_exe("llvm-nm"))
+        self.info.buildenv.define_path("OBJCOPY", self._tool_exe("llvm-objcopy"))
+        self.info.buildenv.define_path("OBJDUMP", self._tool_exe("llvm-objdump"))
+        self.info.buildenv.define_path("READELF", self._tool_exe("llvm-readelf"))
+        self.info.buildenv.define_path("ELFEDIT", self._tool_exe("llvm-elfedit"))
 
     @property
     def _arch(self):

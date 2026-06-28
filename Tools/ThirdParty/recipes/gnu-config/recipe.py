@@ -30,8 +30,8 @@ class Recipe(RecipeBase):
         self.info.libdirs = []
 
         bin_path = self.folders.package / "bin"
-        self.conf_info.define("user.gnu-config:config_guess", bin_path / "config.guess")
-        self.conf_info.define("user.gnu-config:config_sub", bin_path / "config.sub")
+        self.info.conf.define("user.gnu-config:config_guess", bin_path / "config.guess")
+        self.info.conf.define("user.gnu-config:config_sub", bin_path / "config.sub")
 
     def _extract_license(self):
         txt_lines = load(self, self.folders.source / "config.guess").splitlines()

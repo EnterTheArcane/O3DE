@@ -45,7 +45,7 @@ class Recipe(RecipeBase):
         self.info.includedirs = []
 
         perl_path = (self.folders.package / "bin" / "perl.exe").as_posix()
-        self.conf_info.define("user.strawberryperl:perl", perl_path)
+        self.info.conf.define("user.strawberryperl:perl", perl_path)
 
     def compatibility(self):
         if self.settings.arch == "ARM":

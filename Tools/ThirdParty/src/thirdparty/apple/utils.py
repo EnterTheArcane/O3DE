@@ -272,7 +272,7 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
 
     def _fix_dylib_files() -> dict[str, str]:
         substitutions: dict[str, str] = {}
-        libdirs = getattr(recipe.infos.package, "libdirs")
+        libdirs = getattr(recipe.info, "libdirs")
         for libdir in libdirs:
             full_folder = os.path.join(recipe.folders.package, libdir)
             if not os.path.exists(full_folder):
@@ -299,7 +299,7 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
     def _fix_executables(substitutions: dict[str, str]):
         # Fix the install name for executables inside the package
         # that reference libraries we just patched
-        bindirs = getattr(recipe.infos.package, "bindirs")
+        bindirs = getattr(recipe.info, "bindirs")
         for bindir in bindirs:
             full_folder = os.path.join(recipe.folders.package, bindir)
             if not os.path.exists(full_folder):
@@ -320,7 +320,7 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
 
                 # Add relative rpath to library directories, avoiding possible
                 # existing duplicates
-                libdirs = getattr(recipe.infos.package, "libdirs")
+                libdirs = getattr(recipe.info, "libdirs")
                 libdirs = [os.path.join(recipe.folders.package, libdir) for libdir in libdirs]
                 rel_paths = [f"@executable_path/{os.path.relpath(libdir, full_folder)}" for libdir in libdirs]
                 existing_rpaths = _get_rpath_entries(executable)

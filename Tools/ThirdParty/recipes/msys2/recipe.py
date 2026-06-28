@@ -100,10 +100,10 @@ class Recipe(RecipeBase[_Options]):
         msys_bin = msys_root / "usr" / "bin"
         self.info.bindirs.append(msys_bin)
 
-        self.buildenv_info.define_path("MSYS_ROOT", msys_root)
-        self.buildenv_info.define_path("MSYS_BIN", msys_bin)
+        self.info.buildenv.define_path("MSYS_ROOT", msys_root)
+        self.info.buildenv.define_path("MSYS_BIN", msys_bin)
 
-        self.conf_info.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
+        self.info.conf.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
 
     def compatibility(self):
         if self.settings.arch == "ARM":

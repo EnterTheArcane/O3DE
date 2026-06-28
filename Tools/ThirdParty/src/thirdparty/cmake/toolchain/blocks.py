@@ -1288,9 +1288,9 @@ class OutputDirsBlock(Block):
             """)
 
     def _get_cpp_info_value(self, name):
-        # Why not taking cpp.build? because this variables are used by the "cmake install"
-        # that correspond to the package folder (even if the root is the build directory)
-        elements = getattr(self._recipe.infos.package, name)
+        # These variables are used by "cmake install" and therefore refer to the package
+        # layout, even when the root path comes from the build directory.
+        elements = getattr(self._recipe.info, name)
         return elements[0] if elements else None
 
     def context(self) -> dict[str, Any] | None:

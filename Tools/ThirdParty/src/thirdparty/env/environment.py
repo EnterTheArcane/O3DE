@@ -236,6 +236,37 @@ class Environment:
         """
         return "\n".join([v.dumps() for v in reversed(self._values.values())])
 
+    def serialize(self) -> dict[str, Any]:
+        result = []
+        for name, value in self._values.items():
+            result.append({
+                "name": name,
+                "values": [
+                    os.fspath(v) if v is not _EnvVarPlaceHolder else None
+                    for v in value._values
+                ],
+                "placeholder_indexes": [
+                    i for i, v in enumerate(value._values) if v is _EnvVarPlaceHolder
+                ],
+                "separator": value._sep,
+                "path": value._path,
+            })
+        return {"values": result}
+
+    def deserialize(self, content: dict[str, Any]) -> "Environment":
+        self._values = OrderedDict()
+        for entry in content.get("values", []):
+            values = list(entry.get("values", []))
+            for index in entry.get("placeholder_indexes", []):
+                values[index] = _EnvVarPlaceHolder
+            self._values[entry["name"]] = _EnvValue(
+                entry["name"],
+                values,
+                entry.get("separator", " "),
+                entry.get("path", False),
+            )
+        return self
+
     def define(
         self,
         name: str,

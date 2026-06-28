@@ -888,10 +888,10 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("pkg_config_name", "qt6")
 
         # consumers will need the QT_PLUGIN_PATH defined in runenv
-        self.runenv_info.define("QT_PLUGIN_PATH", str(self.folders.package / "plugins"))
-        self.buildenv_info.define("QT_PLUGIN_PATH", str(self.folders.package / "plugins"))
+        self.info.runenv.define("QT_PLUGIN_PATH", str(self.folders.package / "plugins"))
+        self.info.buildenv.define("QT_PLUGIN_PATH", str(self.folders.package / "plugins"))
 
-        self.buildenv_info.define("QT_HOST_PATH", str(self.folders.package))
+        self.info.buildenv.define("QT_HOST_PATH", str(self.folders.package))
 
         build_modules: dict[str, list[str | Path]] = {}
 
@@ -1543,7 +1543,7 @@ class Recipe(RecipeBase[_Options]):
 
         self.info.set_property("cmake_build_modules", build_modules_list)
 
-        self.conf_info.define("user.qt:tools_directory", self.folders.package / ("bin" if self.settings.os == "Windows" else "libexec"))
+        self.info.conf.define("user.qt:tools_directory", self.folders.package / ("bin" if self.settings.os == "Windows" else "libexec"))
 
     def _excluded_module_patterns(self) -> list[str]:
         root = f"qt-everywhere-src-{self.version}"

@@ -75,7 +75,7 @@ class Recipe(RecipeBase):
         # Avoid CMakeDeps messing with Conan targets
         self.info.set_property("cmake_find_mode", "none")
         lex_path = (self.folders.package / "bin" / "flex").as_posix()
-        self.buildenv_info.define("LEX", lex_path)
+        self.info.buildenv.define("LEX", lex_path)
 
     def _patch_sources(self):
         # libtool's generated configure only enables -undefined dynamic_lookup for macOS 10.x.

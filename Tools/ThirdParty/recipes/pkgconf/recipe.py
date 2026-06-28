@@ -97,12 +97,12 @@ class Recipe(RecipeBase[_Options]):
 
         exesuffix = ".exe" if self.settings.os == "Windows" else ""
         pkg_config = (bindir / ("pkgconf" + exesuffix)).as_posix()
-        self.buildenv_info.define_path("PKG_CONFIG", pkg_config)
+        self.info.buildenv.define_path("PKG_CONFIG", pkg_config)
 
         pkgconf_aclocal = self.folders.package / "bin" / "aclocal"
-        self.buildenv_info.prepend_path("ACLOCAL_PATH", pkgconf_aclocal)
+        self.info.buildenv.prepend_path("ACLOCAL_PATH", pkgconf_aclocal)
         # TODO: evaluate if `ACLOCAL_PATH` is enough and we can stop using `AUTOMAKE_RECIPE_INCLUDES`
-        self.buildenv_info.prepend_path("AUTOMAKE_RECIPE_INCLUDES", pkgconf_aclocal)
+        self.info.buildenv.prepend_path("AUTOMAKE_RECIPE_INCLUDES", pkgconf_aclocal)
 
     def _patch_sources(self):
         apply_patches(self)

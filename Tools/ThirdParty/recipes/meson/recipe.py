@@ -61,4 +61,4 @@ class Recipe(RecipeBase):
         self.info.libdirs = []
         self.info.includedirs = []
         bin_dir = self.folders.package / "bin"
-        self.buildenv_info.prepend_path("PATH", bin_dir)
+        self.info.buildenv.prepend_path("PATH", bin_dir)

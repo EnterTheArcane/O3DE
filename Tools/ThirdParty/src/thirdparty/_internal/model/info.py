@@ -6,8 +6,10 @@ import re
 from collections import OrderedDict, defaultdict
 from enum import Enum
 
+from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import load, save
+from thirdparty.env.environment import Environment
 from thirdparty.errors import RecipeException
 
 from typing import Any
@@ -694,31 +696,42 @@ class Info:
 
     An :class:`Info` exposes a default (``_package``) component plus a ``components`` dict;
     plain attribute access (``info.libs``) delegates to the default component. ``recipe.info``
-    is the package-phase instance; ``recipe.infos`` holds the source/build/package phases.
+    is the per-recipe package metadata instance.
     """
 
     components: dict[str, _Component]
     default_components: list[str] | None
 
     _package: _Component
+    buildenv: Environment
+    runenv: Environment
+    conf: Conf
 
     def __init__(self, set_defaults: bool = False):
         self.components = defaultdict(lambda: _Component(set_defaults))
         self.default_components: list[str] | None = None
         self._package = _Component(set_defaults)
+        self.buildenv = Environment()
+        self.runenv = Environment()
+        self.conf = Conf()
 
     def __getattr__(self, attr: str) -> Any:
         # all info.xxx of not defined things will go to the global package
         return getattr(self._package, attr)
 
     def __setattr__(self, attr: str, value: Any):
-        if attr in ("components", "default_components", "_package", "_aggregated", "required_components"):
+        if attr in ("components", "default_components", "_package", "_aggregated", "required_components", "buildenv", "runenv", "conf"):
             super(Info, self).__setattr__(attr, value)
         else:
             setattr(self._package, attr, value)
 
     def serialize(self) -> dict[str, Any]:
-        ret: dict[str, Any] = {"root": self._package.serialize()}
+        ret: dict[str, Any] = {
+            "root": self._package.serialize(),
+            "buildenv": self.buildenv.serialize(),
+            "runenv": self.runenv.serialize(),
+            "conf": self.conf.serialize_state(),
+        }
         if self.default_components:
             ret["default_components"] = self.default_components
         for component_name, info in self.components.items():
@@ -727,8 +740,13 @@ class Info:
 
     def deserialize(self, content: dict[str, Any]) -> Info:
         self._package = _Component.deserialize(content.pop("root"))
+        self.buildenv = Environment().deserialize(content.pop("buildenv", {}))
+        self.runenv = Environment().deserialize(content.pop("runenv", {}))
+        self.conf = Conf().deserialize_state(content.pop("conf", {}))
         self.default_components = content.get("default_components")
         for component_name, info in content.items():
+            if component_name == "default_components":
+                continue
             self.components[component_name] = _Component.deserialize(info)
         return self
 
@@ -754,6 +772,9 @@ class Info:
         self._package.merge(other._package, overwrite)
         # sysroot only of package, not components, first defined wins
         self._package.sysroot = self._package.sysroot or other._package.sysroot
+        self.buildenv.compose_env(other.buildenv)
+        self.runenv.compose_env(other.runenv)
+        self.conf.compose_conf(other.conf)
         # COMPONENTS
         for cname, c in other.components.items():
             # Make sure each component created on the fly does not bring new defaults
@@ -764,12 +785,18 @@ class Info:
         self._package.set_relative_base_folder(folder)
         for component in self.components.values():
             component.set_relative_base_folder(folder)
+        self.buildenv.set_relative_base_folder(folder)
+        self.runenv.set_relative_base_folder(folder)
+        self.conf.set_relative_base_folder(folder)
 
     def deploy_base_folder(self, package_folder: str, deploy_folder: str):
         """Prepend the folder to all the directories"""
         self._package.deploy_base_folder(package_folder, deploy_folder)
         for component in self.components.values():
             component.deploy_base_folder(package_folder, deploy_folder)
+        self.buildenv.deploy_base_folder(package_folder, deploy_folder)
+        self.runenv.deploy_base_folder(package_folder, deploy_folder)
+        self.conf.deploy_base_folder(package_folder, deploy_folder)
 
     def get_sorted_components(self) -> OrderedDict[str, _Component]:
         """
@@ -817,6 +844,9 @@ class Info:
             result = copy.copy(self._package)
         aggregated = Info()
         aggregated._package = result
+        aggregated.buildenv = self.buildenv.copy()
+        aggregated.runenv = self.runenv.copy()
+        aggregated.conf = self.conf.copy()
         return aggregated
 
     def check_component_requires(self, recipe: RecipeBase):

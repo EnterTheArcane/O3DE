@@ -265,6 +265,25 @@ class _ConfValue:
         elif isinstance(self._value, str):
             self._value = os.path.join(folder, self._value)
 
+    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
+        if not self._path:
+            return
+
+        def _relocate(value: Any) -> Any:
+            if value is _ConfVarPlaceHolder:
+                return value
+            rel_path = os.path.relpath(value, package_folder)
+            if rel_path.startswith(".."):
+                return value
+            return os.path.join(deploy_folder, rel_path)
+
+        if isinstance(self._value, list):
+            self._value = [_relocate(v) for v in self._value]
+        elif isinstance(self._value, dict):
+            self._value = {k: _relocate(v) for k, v in self._value.items()}
+        elif isinstance(self._value, str):
+            self._value = _relocate(self._value)
+
 
 class Conf:
     # Putting some default expressions to check that any value could be false
@@ -373,6 +392,55 @@ class Conf:
             ret.update(v.serialize())
         return ret
 
+    def serialize_state(self) -> dict[str, Any]:
+        values = []
+        for conf_value in self._values.values():
+            raw_value = conf_value._value
+            if isinstance(raw_value, list):
+                serialized_value = [
+                    os.fspath(v) if v is not _ConfVarPlaceHolder else None
+                    for v in raw_value
+                ]
+                placeholder_indexes = [
+                    i for i, v in enumerate(raw_value) if v is _ConfVarPlaceHolder
+                ]
+            elif isinstance(raw_value, dict):
+                serialized_value = {k: os.fspath(v) for k, v in raw_value.items()}
+                placeholder_indexes = []
+            else:
+                serialized_value = os.fspath(raw_value) if hasattr(raw_value, "__fspath__") else raw_value
+                placeholder_indexes = []
+
+            values.append({
+                "name": conf_value.name,
+                "value": serialized_value,
+                "placeholder_indexes": placeholder_indexes,
+                "path": conf_value._path,
+                "update": conf_value._update,
+                "important": conf_value._important,
+            })
+        return {"values": values}
+
+    def deserialize_state(self, content: dict[str, Any]) -> "Conf":
+        self._values = {}
+        for entry in content.get("values", []):
+            raw_value = entry.get("value")
+            if isinstance(raw_value, list):
+                value = list(raw_value)
+                for index in entry.get("placeholder_indexes", []):
+                    value[index] = _ConfVarPlaceHolder
+            else:
+                value = raw_value
+            conf_value = _ConfValue(
+                entry["name"],
+                value,
+                path=entry.get("path", False),
+                update=entry.get("update"),
+                important=entry.get("important", False),
+            )
+            self._values[conf_value.name] = conf_value
+        return self
+
     def define(self, name: str, value: Any):
         """
         Define a value for the given configuration name.
@@ -468,6 +536,10 @@ class Conf:
     def set_relative_base_folder(self, folder: str):
         for v in self._values.values():
             v.set_relative_base_folder(folder)
+
+    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
+        for v in self._values.values():
+            v.deploy_base_folder(package_folder, deploy_folder)
 
     @staticmethod
     def _check_conf_name(conf: str):

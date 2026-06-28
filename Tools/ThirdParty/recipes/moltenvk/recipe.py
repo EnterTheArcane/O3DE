@@ -94,5 +94,5 @@ class Recipe(RecipeBase[_Options]):
 
         if self.options.shared:
             moltenvk_icd_path = self.folders.package / "lib" / "MoltenVK_icd.json"
-            self.runenv_info.prepend_path("VK_DRIVER_FILES", moltenvk_icd_path)
-            self.runenv_info.prepend_path("VK_ICD_FILENAMES", moltenvk_icd_path)
+            self.info.runenv.prepend_path("VK_DRIVER_FILES", moltenvk_icd_path)
+            self.info.runenv.prepend_path("VK_ICD_FILENAMES", moltenvk_icd_path)

@@ -105,8 +105,8 @@ class Recipe(RecipeBase):
         # M4 environment variable is used by a lot of scripts as a way to override a hard-coded embedded m4 path
         bin_ext = ".exe" if self.settings.os == "Windows" else ""
         m4_bin = (self.folders.package / "bin" / f"m4{bin_ext}").as_posix()
-        self.runenv_info.define_path("M4", m4_bin)
-        self.buildenv_info.define_path("M4", m4_bin)
+        self.info.runenv.define_path("M4", m4_bin)
+        self.info.buildenv.define_path("M4", m4_bin)
 
     def _patch_sources(self):
         apply_patches(self)

@@ -86,4 +86,4 @@ class Recipe(RecipeBase[_Options]):
             self.info.system_libs.extend(["m", "pthread"])
 
         fontconfig_path = self.folders.package / "res" / "etc" / "fonts"
-        self.runenv_info.append_path("FONTCONFIG_PATH", fontconfig_path)
+        self.info.runenv.append_path("FONTCONFIG_PATH", fontconfig_path)

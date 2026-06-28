@@ -71,8 +71,8 @@ class VirtualRunEnv:
 
         host_req = self._recipe.dependencies.host
         for require, dep in host_req.items():
-            if dep.runenv_info:
-                self._runenv.compose_env(dep.runenv_info)
+            if dep.info.runenv:
+                self._runenv.compose_env(dep.info.runenv)
             if require.run:  # Only if the require is run (shared or application to be run)
                 _os = self._recipe.settings.get_safe("os")
                 self._runenv.compose_env(runenv_from_cpp_info(dep, _os))

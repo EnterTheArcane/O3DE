@@ -59,8 +59,8 @@ class Recipe(RecipeBase):
         self.info.includedirs = []
         self.info.libs = ["y"]
         self.info.resdirs = ["res"]
-        self.buildenv_info.define_path("CONAN_BISON_ROOT", self.folders.package.as_posix())
-        self.buildenv_info.define_path(
+        self.info.buildenv.define_path("CONAN_BISON_ROOT", self.folders.package.as_posix())
+        self.info.buildenv.define_path(
             "BISON_PKGDATADIR", self.folders.package / "res" / "bison")
 
     def _patch_sources(self):

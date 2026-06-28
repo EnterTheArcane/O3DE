@@ -184,10 +184,10 @@ class Recipe(RecipeBase[_Options]):
             ]
 
         tk_library = (self.folders.package / "lib" / f"{self.name}{tk_version.major}.{tk_version.minor}").as_posix()
-        self.runenv_info.define("TK_LIBRARY", tk_library)
+        self.info.runenv.define("TK_LIBRARY", tk_library)
 
         tk_root = self.folders.package.as_posix()
-        self.runenv_info.define("TK_ROOT", tk_root)
+        self.info.runenv.define("TK_ROOT", tk_root)
 
     def _get_default_build_system(self):
         if is_apple_os(self):
@@ -240,7 +240,7 @@ class Recipe(RecipeBase[_Options]):
             "INSTALLDIR": self.folders.package,
             "OPTS": ",".join(opts),
             "TCLDIR": self.dependencies["tcl"].folders.package,
-            "TCL_LIBRARY": self.dependencies["tcl"].runenv_info.vars(self).get("TCL_LIBRARY"),
+            "TCL_LIBRARY": self.dependencies["tcl"].info.runenv.vars(self).get("TCL_LIBRARY"),
             "TCLIMPLIB": tclimplib,
             "TCLSTUBLIB": tclstublib,
         }

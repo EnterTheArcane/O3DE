@@ -139,4 +139,4 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["krad"].libs = ["krad"]
         self.info.components["krad"].requires = ["libkrb5", "libverto::verto"]
 
-        self.runenv_info.define_path("KRB5_CONFIG", self.folders.package / "bin" / "krb5-config")
+        self.info.runenv.define_path("KRB5_CONFIG", self.folders.package / "bin" / "krb5-config")

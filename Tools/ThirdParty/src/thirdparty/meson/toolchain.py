@@ -339,7 +339,7 @@ class MesonToolchain:
         """
 
         def _get_cpp_info_value(name):
-            elements = getattr(self._recipe.infos.package, name)
+            elements = getattr(self._recipe.info, name)
             return elements[0] if elements else None
 
         ret = {}

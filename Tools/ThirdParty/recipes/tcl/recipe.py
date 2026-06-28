@@ -146,14 +146,14 @@ class Recipe(RecipeBase[_Options]):
 
         tcl_version = Version(self.version)
         tcl_library = self.folders.package / "lib" / f"tcl{tcl_version.major}.{tcl_version.minor}"
-        self.runenv_info.define_path("TCL_LIBRARY", tcl_library)
+        self.info.runenv.define_path("TCL_LIBRARY", tcl_library)
 
         tcl_root = self.folders.package
-        self.runenv_info.define_path("TCL_ROOT", tcl_root)
+        self.info.runenv.define_path("TCL_ROOT", tcl_root)
 
         tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(self.folders.package / "bin")))
         tclsh = self.folders.package / "bin" / tclsh_list[0]
-        self.runenv_info.define_path("TCLSH", tclsh)
+        self.info.runenv.define_path("TCLSH", tclsh)
 
     def _patch_sources(self):
         apply_patches(self)

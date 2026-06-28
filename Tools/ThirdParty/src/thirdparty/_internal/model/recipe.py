@@ -118,13 +118,6 @@ def _derive_options(options_cls: type[Any]) -> tuple[dict[str, list[Any]], dict[
     return options, defaults
 
 
-class _Infos:
-    def __init__(self):
-        self.source: Info = Info()
-        self.build: Info = Info()
-        self.package: Info = Info(set_defaults=True)
-
-
 class RecipeBase(ABC, Generic[TOptions]):
     name: str
     version: str
@@ -144,10 +137,7 @@ class RecipeBase(ABC, Generic[TOptions]):
     recipe_folder: str | None = None
 
     folders: Folders
-    infos: _Infos
-    buildenv_info: Environment
-    runenv_info: Environment
-    conf_info: Conf
+    info: Info
     conf: Conf
 
     def __init_subclass__(cls, **kwargs: Any):
@@ -169,10 +159,7 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     def __init__(self):
         self.folders = Folders()
-        self.infos = _Infos()
-        self.buildenv_info = Environment()
-        self.runenv_info = Environment()
-        self.conf_info = Conf()
+        self.info = Info(set_defaults=True)
 
         # Requirements accumulate here as the recipe calls self.requires() /
         # self.requires_tool() from requirements().
@@ -249,18 +236,6 @@ class RecipeBase(ABC, Generic[TOptions]):
     def runenv(self):
         return self._recipe_runenv
 
-    @property
-    def info(self):
-        """
-        Same as using ``self.infos.package`` in the ``layout()`` method. Use it if you need to read
-        the ``package_folder`` to locate the already located artifacts.
-        """
-        return self.infos.package
-
-    @info.setter
-    def info(self, value):
-        self.infos.package = value
-
     def run(
         self,
         command: str,
@@ -317,14 +292,14 @@ class RecipeBase(ABC, Generic[TOptions]):
         return retcode
 
     def latest_version(self) -> Version | None: ...
-    def configure(self) -> None: ...
-    def validate(self) -> None: ...
-    def requirements(self) -> None: ...
-    def source(self) -> None: ...
-    def generate(self) -> None: ...
-    def build(self) -> None: ...
-    def package(self) -> None: ...
-    def package_info(self) -> None: ...
+    def configure(self): ...
+    def validate(self): ...
+    def requirements(self): ...
+    def source(self): ...
+    def generate(self): ...
+    def build(self): ...
+    def package(self): ...
+    def package_info(self): ...
 
     def __repr__(self):
         return self.name or ""

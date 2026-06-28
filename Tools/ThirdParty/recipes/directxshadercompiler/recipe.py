@@ -39,7 +39,7 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         bin_dir = self.folders.package / "bin"
-        self.buildenv_info.prepend_path("PATH", bin_dir)
+        self.info.buildenv.prepend_path("PATH", bin_dir)
 
         if self.settings.os == "Windows":
             self.info.libs = ["dxcompiler"]

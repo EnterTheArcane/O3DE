@@ -177,12 +177,12 @@ class Recipe(RecipeBase):
         cargo = bin_dir / f"cargo{self._exe_suffix}"
         rustc = bin_dir / f"rustc{self._exe_suffix}"
 
-        self.buildenv_info.prepend_path("PATH", bin_dir)
-        self.buildenv_info.define("RUSTUP_TOOLCHAIN", "stable")
-        self.buildenv_info.define_path("CARGO_HOME", self.folders.package / ".cargo")
-        self.buildenv_info.define_path("CARGO", cargo)
-        self.buildenv_info.define_path("RUSTC", rustc)
-        self.conf_info.define("tools.rust:dir", self.folders.package)
+        self.info.buildenv.prepend_path("PATH", bin_dir)
+        self.info.buildenv.define("RUSTUP_TOOLCHAIN", "stable")
+        self.info.buildenv.define_path("CARGO_HOME", self.folders.package / ".cargo")
+        self.info.buildenv.define_path("CARGO", cargo)
+        self.info.buildenv.define_path("RUSTC", rustc)
+        self.info.conf.define("tools.rust:dir", self.folders.package)
 
     @property
     def _target_triple(self):

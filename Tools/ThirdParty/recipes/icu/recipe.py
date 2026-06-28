@@ -209,9 +209,9 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Windows" and self.options.data_packaging in ["files", "archive"]:
             self.info.components["icu-data"].resdirs = ["res"]
             data_path = (self.folders.package / "res" / self._data_filename).as_posix()
-            self.runenv_info.prepend_path("ICU_DATA", data_path)
+            self.info.runenv.prepend_path("ICU_DATA", data_path)
             if self._enable_icu_tools or self.options.with_extras:
-                self.buildenv_info.prepend_path("ICU_DATA", data_path)
+                self.info.buildenv.prepend_path("ICU_DATA", data_path)
 
         if self._enable_icu_tools:
             # icutu

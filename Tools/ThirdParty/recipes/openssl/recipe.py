@@ -224,7 +224,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["ssl"].set_property("pkg_config_name", "libssl")
 
         openssl_modules_dir = self.folders.package / "lib" / "ossl-modules"
-        self.runenv_info.define_path("OPENSSL_MODULES", openssl_modules_dir)
+        self.info.runenv.define_path("OPENSSL_MODULES", openssl_modules_dir)
 
     @property
     def _is_clang_cl(self) -> bool:
@@ -550,7 +550,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _perl(self):
         if self._use_nmake:
-            return self.dependencies.build["strawberryperl"].conf_info.get("user.strawberryperl:perl", check_type=str)
+            return self.dependencies.build["strawberryperl"].info.conf.get("user.strawberryperl:perl", check_type=str)
         return "perl"
 
     def _make(self):
