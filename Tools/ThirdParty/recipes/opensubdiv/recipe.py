@@ -41,6 +41,7 @@ class Recipe(RecipeBase[_Options]):
         self.license = "DocumentRef-LICENSE.txt:LicenseRef-Tomorrow-Open-Source-Technology"
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("onetbb")
         if self.options.with_opengl:
             self.requires("opengl")

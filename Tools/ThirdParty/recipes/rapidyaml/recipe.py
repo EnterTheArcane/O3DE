@@ -32,6 +32,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.with_default_callback_uses_exceptions = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("c4core")
 
     def source(self):

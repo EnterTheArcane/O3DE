@@ -25,6 +25,7 @@ class Recipe(RecipeBase[_Options]):
             self.settings.rm_safe("compiler.cppstd")
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.options.with_tools and self.options.with_readline:
             self.requires("readline")
 

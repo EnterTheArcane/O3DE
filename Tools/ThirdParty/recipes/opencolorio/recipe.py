@@ -27,6 +27,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.use_sse = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("expat")
         self.requires("openexr")
         self.requires("imath")

@@ -15,6 +15,9 @@ class Recipe(RecipeBase):
         tag = repo.latest_release
         return Version(tag.split("_", 1)[-1])
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

@@ -21,6 +21,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("libtiff")
 
     def source(self):

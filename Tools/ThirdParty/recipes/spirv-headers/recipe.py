@@ -14,6 +14,9 @@ class Recipe(RecipeBase):
         repo = GithubRepository(self, "KhronosGroup/SPIRV-Headers")
         return Version(repo.latest_release)
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

@@ -42,10 +42,6 @@ def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]
 class CMake:
     """ CMake helper to use together with the CMakeToolchain feature """
 
-    # Importing this class into a recipe implicitly adds requires_tool("cmake") and the
-    # Ninja backend that make_conf() configures as the CMake generator.
-    _implicit_requires_tool = ("cmake", "ninja")
-
     _recipe: RecipeBase
     _generator: str | None
     _toolchain_file: str | None

@@ -26,6 +26,9 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.arch in ["ARM"]:
             self.options.isa = "neon"
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

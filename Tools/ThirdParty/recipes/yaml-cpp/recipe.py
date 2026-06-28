@@ -20,6 +20,9 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "jbeder/yaml-cpp")
         return Version(repo.latest_release.removeprefix("yaml-cpp-"))
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

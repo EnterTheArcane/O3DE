@@ -25,6 +25,9 @@ class Recipe(RecipeBase[_Options]):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
+    def requirements(self):
+        self.requires_tool("meson")
+
     def source(self):
         get(
             self,

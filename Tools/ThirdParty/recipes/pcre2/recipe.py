@@ -40,6 +40,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.grep_support_callout_fork = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.options.with_zlib:
             self.requires("zlib")
         if self.options.with_bzip2:

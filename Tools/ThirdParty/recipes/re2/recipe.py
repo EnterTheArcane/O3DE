@@ -20,6 +20,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.replace("-", ""))
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("abseil")
         self.requires("icu")
 

@@ -35,6 +35,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.hide_vulkan_symbols = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("cereal")
         self.requires("glslang")
         self.requires("spirv-cross")

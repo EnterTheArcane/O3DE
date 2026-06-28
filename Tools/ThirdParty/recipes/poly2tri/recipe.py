@@ -15,6 +15,9 @@ class Recipe(RecipeBase[_Options]):
     version = "20130502"
     license = "BSD-3-Clause"
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

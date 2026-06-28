@@ -50,6 +50,7 @@ class Recipe(RecipeBase[_Options]):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.options.enable_icu:
             self.requires("icu")
 

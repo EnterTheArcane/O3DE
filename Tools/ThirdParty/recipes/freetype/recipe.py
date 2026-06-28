@@ -34,6 +34,7 @@ class Recipe(RecipeBase[_Options]):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("brotli")
         self.requires("bzip2")
         self.requires("libpng")

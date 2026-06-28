@@ -49,6 +49,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.mem_src_dst = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.options.SIMD and self.settings.arch in ["X64"]:
             self.requires_tool("nasm")
 

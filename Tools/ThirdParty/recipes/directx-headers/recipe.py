@@ -17,6 +17,9 @@ class Recipe(RecipeBase):
         repo = GithubRepository(self, "microsoft/DirectX-Headers")
         return Version(repo.latest_release.removeprefix("v"))
 
+    def requirements(self):
+        self.requires_tool("meson")
+
     def source(self):
         get(
             self,

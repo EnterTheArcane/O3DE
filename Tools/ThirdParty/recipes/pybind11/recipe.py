@@ -16,6 +16,9 @@ class Recipe(RecipeBase):
         repo = GithubRepository(self, "pybind/pybind11")
         return Version(repo.latest_release.removeprefix("v"))
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

@@ -45,13 +45,6 @@ class RecipeLoader:
             module, cls = _parse_recipe(str(recipe_path))
             if not (isinstance(cls, type) and issubclass(cls, RecipeBase)):
                 return None
-            # Collect implicit requires_tool from the recipe's DIRECT imports only.  A module's
-            # namespace contains only the names it imported/defined itself, so build-system
-            # helpers pulled in transitively by thirdparty.* are never counted here.
-            implicit: set[str] = set()
-            for obj in vars(module).values():
-                implicit.update(getattr(obj, "_implicit_requires_tool", ()))
-            cls._implicit_requires_tool = frozenset(implicit)
             return cls
         except Exception:
             return None
@@ -162,8 +155,6 @@ def make_probe_recipe(
     # during config/requirements (e.g. cross-build recipes doing requires_tool(self.name)).
     from thirdparty._internal.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
     recipe._recipe_node = Node(name, version, context=CONTEXT_HOST, recipe_state=RECIPE_INCACHE)
-    # Mirror RecipeLoader: run the recipe's init() hook if it defines one.
-    recipe.init()
     return recipe
 
 

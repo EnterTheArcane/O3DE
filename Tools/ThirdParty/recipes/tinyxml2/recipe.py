@@ -19,6 +19,9 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "leethomason/tinyxml2")
         return Version(repo.latest_release)
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

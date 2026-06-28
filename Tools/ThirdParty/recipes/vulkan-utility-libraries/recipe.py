@@ -19,6 +19,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires(f"vulkan-headers")
 
     def source(self):

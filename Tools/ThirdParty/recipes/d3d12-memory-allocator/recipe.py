@@ -23,6 +23,9 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Windows":
             raise RecipeInvalidConfiguration(f"{self.name} is only supported on Windows")
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

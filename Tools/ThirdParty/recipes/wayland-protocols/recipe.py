@@ -15,6 +15,9 @@ class Recipe(RecipeBase):
         repo = GitlabRepository(self, "wayland/wayland-protocols", host="gitlab.freedesktop.org")
         return Version(repo.latest_release)
 
+    def requirements(self):
+        self.requires_tool("meson")
+
     def source(self):
         get(
             self,

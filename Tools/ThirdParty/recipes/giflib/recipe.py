@@ -22,6 +22,7 @@ class Recipe(RecipeBase[_Options]):
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
+        self.requires_tool("cmake")
         if is_msvc(self) and self.options.utils:
             self.requires("getopt-for-visual-studio")
 

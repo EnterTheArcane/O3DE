@@ -12,10 +12,6 @@ class Meson:
     this one should be used together with the ``MesonToolchain`` generator.
     """
 
-    # Importing this class into a recipe implicitly adds requires_tool("meson") and the
-    # Ninja backend that make_conf() configures for Meson.
-    _implicit_requires_tool = ("meson", "ninja")
-
     _recipe: RecipeBase
 
     def __init__(self, recipe: RecipeBase):

@@ -27,6 +27,10 @@ class Recipe(RecipeBase[_Options]):
         if self.options.header_only:
             self.options.with_os_api = False
 
+    def requirements(self):
+        if not self.options.header_only:
+            self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

@@ -143,10 +143,6 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     recipe_folder: str | None = None
 
-    # Tools implied by the build-system helpers a recipe imports (e.g. CMake -> "cmake").
-    # Populated at load time by the recipe loader from the recipe module's direct imports.
-    _implicit_requires_tool: frozenset[str] = frozenset()
-
     folders: Folders
     infos: _Infos
     buildenv_info: Environment
@@ -179,8 +175,7 @@ class RecipeBase(ABC, Generic[TOptions]):
         self.conf_info = Conf()
 
         # Requirements accumulate here as the recipe calls self.requires() /
-        # self.requires_tool() from requirements(). Implicit tools (from imported build-system
-        # helpers) are registered afterwards in run_configure_method, so explicit decls win.
+        # self.requires_tool() from requirements().
         self._requires: list[Requirement] = []
 
         typed_options = _typed_options_class(type(self))
@@ -322,7 +317,6 @@ class RecipeBase(ABC, Generic[TOptions]):
         return retcode
 
     def latest_version(self) -> Version | None: ...
-    def init(self) -> None: ...
     def configure(self) -> None: ...
     def validate(self) -> None: ...
     def requirements(self) -> None: ...

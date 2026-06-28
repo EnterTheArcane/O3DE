@@ -28,6 +28,9 @@ class Recipe(RecipeBase[_Options]):
         if not self._has_sse:
             self.options.with_sse = False
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

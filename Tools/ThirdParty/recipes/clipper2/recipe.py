@@ -24,6 +24,9 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "AngusJohnson/Clipper2")
         return Version(repo.latest_release.removeprefix("Clipper2_"))
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

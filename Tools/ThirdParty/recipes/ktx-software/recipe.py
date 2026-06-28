@@ -31,6 +31,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.sse = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("zstd")
         if self.options.tools:
             self.requires("fmt")

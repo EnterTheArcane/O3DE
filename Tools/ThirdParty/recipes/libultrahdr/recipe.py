@@ -23,6 +23,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.options.with_jpeg == "libjpeg-turbo":
             self.requires("libjpeg-turbo")
         elif self.options.with_jpeg == "mozjpeg":

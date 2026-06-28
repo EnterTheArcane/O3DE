@@ -25,6 +25,9 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.arch not in ["X64"]:
             self.options.sse = False
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

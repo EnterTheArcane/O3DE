@@ -39,6 +39,9 @@ class Recipe(RecipeBase[_Options]):
             # util does not contribute to the shared binary
             self.options.util = False
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

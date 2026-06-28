@@ -38,6 +38,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.assembly = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.options.with_numa:
             self.requires("libnuma")
         if self.options.assembly:

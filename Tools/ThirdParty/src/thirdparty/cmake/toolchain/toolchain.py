@@ -81,10 +81,6 @@ class Variables(OrderedDict):
 class CMakeToolchain:
     filename = RECIPE_TOOLCHAIN_FILENAME
 
-    # Importing this class into a recipe implicitly adds requires_tool("cmake") and the
-    # Ninja backend that make_conf() configures as the CMake generator.
-    _implicit_requires_tool = ("cmake", "ninja")
-
     _template = textwrap.dedent(
         """
         # Recipe automatically generated toolchain file

@@ -21,6 +21,9 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "AcademySoftwareFoundation/MaterialX")
         return Version(repo.latest_release.lstrip("v"))
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

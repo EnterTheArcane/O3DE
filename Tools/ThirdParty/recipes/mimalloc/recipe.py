@@ -53,6 +53,9 @@ class Recipe(RecipeBase[_Options]):
             self.options.single_object = False
             self.options.inject = False
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

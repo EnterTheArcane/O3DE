@@ -32,6 +32,9 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os not in ["Windows", "Android"]:
             self.options.enable_simd = False
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

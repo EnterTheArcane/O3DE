@@ -30,6 +30,9 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.arch not in self._altivec_compliant_archs:
             self.options.altivec_intrinsics = False
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

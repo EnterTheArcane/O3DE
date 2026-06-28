@@ -192,6 +192,7 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         # TODO: unvendor others libs:
         # - Open3DGC
+        self.requires_tool("cmake")
         self.requires("minizip")
         self.requires("pugixml")
         self.requires("utfcpp")

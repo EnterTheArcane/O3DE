@@ -29,6 +29,9 @@ class Recipe(RecipeBase[_Options]):
     def _default_reporter_str(self):
         return str(self.options.default_reporter).strip('"')
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

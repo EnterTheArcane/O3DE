@@ -21,6 +21,9 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "webmproject/libwebm")
         return Version(repo.latest_release.removeprefix("libwebm-"))
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

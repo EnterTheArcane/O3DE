@@ -31,6 +31,9 @@ class Recipe(RecipeBase[_Options]):
             self.options.enable_standard_edgebreaker = False
             self.options.enable_predictive_edgebreaker = False
 
+    def requirements(self):
+        self.requires_tool("cmake")
+
     def source(self):
         get(
             self,

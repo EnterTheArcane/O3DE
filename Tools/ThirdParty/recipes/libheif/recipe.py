@@ -31,6 +31,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.options.with_libde265:
             self.requires("libde265")
         if self.options.with_x265:

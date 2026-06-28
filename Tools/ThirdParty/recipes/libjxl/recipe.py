@@ -35,6 +35,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.avx512_zen4 = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("brotli")
         self.requires("highway")
         self.requires("lcms")
