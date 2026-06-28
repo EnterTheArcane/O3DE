@@ -2,6 +2,7 @@ import os
 import subprocess
 import types
 from abc import ABC
+from functools import cache
 from typing import (
     IO, Any, ClassVar, Generic, Literal, TypeVar, Union, cast, get_args, get_origin,
     get_type_hints,
@@ -97,6 +98,7 @@ def _typed_options_class(cls: type[Any]) -> type[Any] | None:
     return None
 
 
+@cache
 def _derive_options(options_cls: type[Any]) -> tuple[dict[str, list[Any]], dict[str, Any]]:
     annotations = get_type_hints(options_cls, include_extras=True)
     explicit_defaults = getattr(options_cls, "__defaults__", {})
@@ -136,7 +138,6 @@ class RecipeBase(ABC, Generic[TOptions]):
     settings_build: Settings = None  # type: ignore[assignment]  # Settings for the build machine (tools)
 
     options: TOptions
-    default_options: dict[str, Any] | None = None
 
     win_bash: bool | None = None
 
@@ -155,16 +156,14 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     def __init_subclass__(cls, **kwargs: Any):
         super().__init_subclass__(**kwargs)
+        if "options" in cls.__dict__ or "default_options" in cls.__dict__:
+            raise RecipeException(
+                "Recipes must define options only in the RecipeBase[...] options class, "
+                "not with explicit options/default_options dictionaries")
+
         typed_options = _typed_options_class(cls)
         if typed_options is not None:
-            if "options" in cls.__dict__ or "default_options" in cls.__dict__:
-                raise RecipeException(
-                    "Typed recipes must define options only in the RecipeBase[...] "
-                    "options class, not with explicit options/default_options dictionaries")
-            options, default_options = _derive_options(typed_options)
-            recipe_cls = cast(Any, cls)
-            recipe_cls.options = options
-            recipe_cls.default_options = default_options
+            _derive_options(typed_options)
 
         license = cls.__dict__.get("license")
         if isinstance(license, str):
@@ -184,8 +183,12 @@ class RecipeBase(ABC, Generic[TOptions]):
         # helpers) are registered afterwards in run_configure_method, so explicit decls win.
         self._requires: list[Requirement] = []
 
-        recipe_options = getattr(type(self), "options", None)
-        cast(Any, self).options = Options(recipe_options or {}, self.default_options)
+        typed_options = _typed_options_class(type(self))
+        if typed_options is None:
+            options_definition, default_options = {}, {}
+        else:
+            options_definition, default_options = _derive_options(typed_options)
+        cast(Any, self).options = Options(options_definition, default_options)
         self._recipe_dependencies: "RecipeDependencies | None" = None
         self.env_scripts = {}  # Accumulate the env scripts generated in order
         

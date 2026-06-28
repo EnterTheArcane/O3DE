@@ -6,12 +6,14 @@ from typing import Any, Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from thirdparty._internal.model.recipe import RecipeBase, RecipeOptions as RecipeOptionsBase
+from thirdparty._internal.model.recipe import (
+    RecipeBase, RecipeOptions as RecipeOptionsBase, _derive_options,
+)
 from thirdparty.errors import RecipeException
 
 
 class TypedRecipeOptionsTests(unittest.TestCase):
-    def test_typed_options_derive_recipe_dictionaries(self):
+    def test_typed_options_derive_recipe_metadata(self):
         class RecipeOptions(RecipeOptionsBase):
             shared: bool = False
             mode: Literal[False, "libjpeg", "turbo"] = "libjpeg"
@@ -25,28 +27,24 @@ class TypedRecipeOptionsTests(unittest.TestCase):
             version = "1.0"
             license = "MIT"
 
-        self.assertEqual(
-            Recipe.options,
-            {
-                "shared": [True, False],
-                "mode": [False, "libjpeg", "turbo"],
-                "package_name": [None, "ANY"],
-                "ca_path": [False, "auto", "ANY"],
-                "jobs": ["ANY"],
-                "extra": ["ANY"],
-            },
-        )
-        self.assertEqual(
-            Recipe.default_options,
-            {
-                "shared": False,
-                "mode": "libjpeg",
-                "package_name": None,
-                "ca_path": "auto",
-                "jobs": 4,
-                "extra": None,
-            },
-        )
+        options, defaults = _derive_options(RecipeOptions)
+
+        self.assertEqual(options, {
+            "shared": [True, False],
+            "mode": [False, "libjpeg", "turbo"],
+            "package_name": [None, "ANY"],
+            "ca_path": [False, "auto", "ANY"],
+            "jobs": ["ANY"],
+            "extra": ["ANY"],
+        })
+        self.assertEqual(defaults, {
+            "shared": False,
+            "mode": "libjpeg",
+            "package_name": None,
+            "ca_path": "auto",
+            "jobs": 4,
+            "extra": None,
+        })
 
     def test_typed_options_initialize_runtime_options(self):
         class RecipeOptions(RecipeOptionsBase):
@@ -62,18 +60,14 @@ class TypedRecipeOptionsTests(unittest.TestCase):
         self.assertTrue(recipe.options.shared)
         self.assertEqual(recipe.options.dumps(), "shared=True")
 
-    def test_old_dictionary_options_still_work(self):
-        class Recipe(RecipeBase):
-            name = "old-style"
-            version = "1.0"
-            license = "MIT"
-            options = {"shared": [True, False]}
-            default_options = {"shared": False}
-
-        recipe = Recipe()
-
-        self.assertFalse(recipe.options.shared)
-        self.assertEqual(recipe.options.dumps(), "shared=False")
+    def test_old_dictionary_options_are_rejected(self):
+        with self.assertRaisesRegex(RecipeException, "explicit options/default_options"):
+            class Recipe(RecipeBase):
+                name = "old-style"
+                version = "1.0"
+                license = "MIT"
+                options = {"shared": [True, False]}
+                default_options = {"shared": False}
 
     def test_typed_options_allow_missing_defaults(self):
         class RecipeOptions(RecipeOptionsBase):
@@ -84,8 +78,9 @@ class TypedRecipeOptionsTests(unittest.TestCase):
             version = "1.0"
             license = "MIT"
 
-        self.assertEqual(Recipe.options, {"shared": [True, False]})
-        self.assertEqual(Recipe.default_options, {})
+        options, defaults = _derive_options(RecipeOptions)
+        self.assertEqual(options, {"shared": [True, False]})
+        self.assertEqual(defaults, {})
 
     def test_typed_options_support_possible_value_overrides(self):
         class RecipeOptions(RecipeOptionsBase):
@@ -100,8 +95,9 @@ class TypedRecipeOptionsTests(unittest.TestCase):
             version = "1.0"
             license = "MIT"
 
-        self.assertEqual(Recipe.options, {"thread_model": ["posix", "windows", "disabled"]})
-        self.assertEqual(Recipe.default_options, {})
+        options, defaults = _derive_options(RecipeOptions)
+        self.assertEqual(options, {"thread_model": ["posix", "windows", "disabled"]})
+        self.assertEqual(defaults, {})
 
     def test_typed_options_support_non_identifier_names(self):
         class RecipeOptions(RecipeOptionsBase):
@@ -113,8 +109,9 @@ class TypedRecipeOptionsTests(unittest.TestCase):
             version = "1.0"
             license = "MIT"
 
-        self.assertEqual(Recipe.options, {"386": [True, False]})
-        self.assertEqual(Recipe.default_options, {"386": False})
+        options, defaults = _derive_options(RecipeOptions)
+        self.assertEqual(options, {"386": [True, False]})
+        self.assertEqual(defaults, {"386": False})
 
     def test_typed_options_reject_unsupported_annotations(self):
         class RecipeOptions(RecipeOptionsBase):

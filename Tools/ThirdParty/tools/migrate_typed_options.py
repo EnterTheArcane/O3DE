@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import ast
 import keyword
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -12,9 +11,6 @@ import libcst as cst
 
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "src"))
-
-from thirdparty._internal.loader import _parse_recipe
 
 
 def _literal(value: Any) -> str:
@@ -81,8 +77,23 @@ def _uses_typing(type_expr: str) -> set[str]:
 
 
 def _load_recipe_options(path: Path) -> tuple[dict[str, list[Any]], dict[str, Any]]:
-    _, recipe_cls = _parse_recipe(path.resolve())
-    return dict(recipe_cls.options or {}), dict(recipe_cls.default_options or {})
+    options: dict[str, list[Any]] = {}
+    defaults: dict[str, Any] = {}
+    tree = ast.parse(path.read_text())
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or node.name != "Recipe":
+            continue
+        for stmt in node.body:
+            if not isinstance(stmt, ast.Assign):
+                continue
+            for target in stmt.targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if target.id == "options":
+                    options = ast.literal_eval(stmt.value)
+                elif target.id == "default_options":
+                    defaults = ast.literal_eval(stmt.value)
+    return dict(options), dict(defaults)
 
 
 def _has_explicit_options(path: Path) -> bool:

@@ -360,7 +360,7 @@ class Recipe(RecipeBase[_Options]):
                     f'--with-zlib-lib="{zlib_lib_flag}"',
                 ])
 
-        for option_name in (self.default_options or {}).keys():
+        for option_name, _ in self.options.items():
             if self.options.get_safe(option_name, False) and option_name not in ("shared", "fPIC", "openssldir", "tls_security_level", "capieng_dialog", "enable_capieng", "zlib", "no_fips", "no_md2"):
                 self.output.info(f"Activated option: {option_name}")
                 args.append(option_name.replace("_", "-"))
