@@ -11,7 +11,7 @@ from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building, default_cppstd
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
-from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
@@ -65,18 +65,11 @@ SUBMODULES = [
     "qtwebview",
 ]
 
-MODULE_STATUSES = [
-    "essential",
-    "addon",
-    "deprecated",
-    "preview",
-]
-
 
 class _Options(RecipeOptions):
     shared: bool = False
     opengl: Literal['no', 'desktop', 'dynamic'] = 'no'
-    with_vulkan: bool = False
+    with_vulkan: bool = True
     openssl: bool = True
     with_pcre2: bool = True
     with_glib: bool = False
@@ -91,14 +84,14 @@ class _Options(RecipeOptions):
     with_mysql: bool = False
     with_pq: bool = False
     with_odbc: bool = False
-    with_zstd: bool = False
+    with_zstd: bool = True
     with_brotli: bool = True
-    with_dbus: bool = False
-    with_libalsa: bool = False
+    with_dbus: bool = True
+    with_libalsa: bool = True
     with_openal: bool = True
-    with_gstreamer: bool = False
-    with_pulseaudio: bool = False
-    with_gssapi: bool = False
+    with_gstreamer: bool = True
+    with_pulseaudio: bool = True
+    with_gssapi: bool = True
     with_md4c: bool = True
     with_x11: bool = True
     with_egl: bool = False
@@ -109,63 +102,57 @@ class _Options(RecipeOptions):
     sysroot: str | None = None
     multiconfiguration: bool = False
     disabled_features: str | None = ''
-    qt3d: bool
-    qt5compat: bool
-    qtactiveqt: bool
-    qtcanvaspainter: bool
-    qtcharts: bool
-    qtcoap: bool
-    qtconnectivity: bool
-    qtdatavis3d: bool
-    qtdeclarative: bool
-    qtdoc: bool
-    qtgraphs: bool
-    qtgrpc: bool
-    qthttpserver: bool
-    qtimageformats: bool
-    qtlanguageserver: bool
-    qtlocation: bool
-    qtlottie: bool
-    qtmqtt: bool
-    qtmultimedia: bool
-    qtnetworkauth: bool
-    qtopcua: bool
-    qtopenapi: bool
-    qtpositioning: bool
-    qtquick3d: bool
-    qtquick3dphysics: bool
-    qtquickcontrols2: bool
-    qtquickeffectmaker: bool
-    qtquicktimeline: bool
-    qtremoteobjects: bool
-    qtscxml: bool
-    qtsensors: bool
-    qtserialbus: bool
-    qtserialport: bool
-    qtshadertools: bool
-    qtspeech: bool
-    qtsvg: bool
-    qttasktree: bool
-    qttools: bool
-    qttranslations: bool
-    qtvirtualkeyboard: bool
-    qtwayland: bool
-    qtwebchannel: bool
-    qtwebengine: bool
-    qtwebsockets: bool
-    qtwebview: bool
-    essential_modules: bool = False
-    addon_modules: bool = False
-    deprecated_modules: bool = False
-    preview_modules: bool = False
+    qt3d: bool = False
+    qt5compat: bool = False
+    qtactiveqt: bool = False
+    qtcanvaspainter: bool = False
+    qtcharts: bool = False
+    qtcoap: bool = False
+    qtconnectivity: bool = False
+    qtdatavis3d: bool = False
+    qtdeclarative: bool = False
+    qtdoc: bool = False
+    qtgraphs: bool = False
+    qtgrpc: bool = False
+    qthttpserver: bool = False
+    qtimageformats: bool = True
+    qtlanguageserver: bool = False
+    qtlocation: bool = False
+    qtlottie: bool = False
+    qtmqtt: bool = False
+    qtmultimedia: bool = False
+    qtnetworkauth: bool = False
+    qtopcua: bool = False
+    qtopenapi: bool = False
+    qtpositioning: bool = False
+    qtquick3d: bool = False
+    qtquick3dphysics: bool = False
+    qtquickcontrols2: bool = False
+    qtquickeffectmaker: bool = False
+    qtquicktimeline: bool = False
+    qtremoteobjects: bool = False
+    qtscxml: bool = False
+    qtsensors: bool = False
+    qtserialbus: bool = False
+    qtserialport: bool = False
+    qtshadertools: bool = False
+    qtspeech: bool = False
+    qtsvg: bool = True
+    qttasktree: bool = False
+    qttools: bool = True
+    qttranslations: bool = True
+    qtvirtualkeyboard: bool = False
+    qtwayland: bool = True
+    qtwebchannel: bool = False
+    qtwebengine: bool = False
+    qtwebsockets: bool = False
+    qtwebview: bool = False
 
 
 class Recipe(RecipeBase[_Options]):
     name = "qt"
     version = "6.11.1"
     license = "LGPL-3.0-only"
-    # essential_modules, addon_modules, deprecated_modules, preview_modules:
-    #    these are only provided for convenience, set to False by default
 
     _submodules_tree: dict[str, dict[str, Any]] | None = None
 
@@ -187,8 +174,6 @@ class Recipe(RecipeBase[_Options]):
                 continue
             status = str(config.get(section, "status"))
             if status not in ["obsolete", "ignore", "additionalLibrary"]:
-                if status not in MODULE_STATUSES:
-                    raise RecipeException(f"module {modulename} has status {status} which is not in MODULE_STATUSES {MODULE_STATUSES}")
                 assert modulename in SUBMODULES, f"module {modulename} not in SUBMODULES"
                 self._submodules_tree[modulename] = {
                     "status": status,
@@ -293,20 +278,8 @@ class Recipe(RecipeBase[_Options]):
             if self.options.get_safe("qtwebengine"):
                 self.options.with_fontconfig = True
 
-        for status in MODULE_STATUSES:
-            # These are convenience only, should not affect package_id
-            option_name = f"{status}_modules"
-            self.output.debug(
-                f"qt6 removing convenience option: {option_name},"
-                f" see individual module options")
-            delattr(self.options, option_name)
-
         for option in self.options.items():
             self.output.debug(f"qt6 option: {option}")
-
-        # no_copy_source slightly speeds up Linux builds.
-        # no_copy_source causes long relative paths, hitting Window's PATH limit when building Qt WebEngine.
-        self.no_copy_source = not (self.settings_build.os == "Windows" and self.options.get_safe("qtwebengine"))
 
     def requirements(self):
         self.requires("zlib")
@@ -315,10 +288,6 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_pcre2:
             self.requires("pcre2")
         if self.options.get_safe("with_vulkan"):
-            # Note: the versions of vulkan-loader and moltenvk
-            #       must be exactly part of the same Vulkan SDK version
-            #       do not update either without checking both
-            #       require exactly the same version of vulkan-headers
             self.requires("vulkan-loader")
             self.requires("vulkan-headers")
             if is_apple_os(self):
@@ -644,6 +613,16 @@ class Recipe(RecipeBase[_Options]):
 
         tc.generate()
 
+    def _excluded_module_patterns(self) -> list[str]:
+        root = f"qt-everywhere-src-{self.version}"
+        patterns: list[str] = []
+        for module, info in self._get_module_tree.items():
+            if not self.options.get_safe(module):
+                path = info["path"]
+                patterns.append(f"{root}/{path}")
+                patterns.append(f"{root}/{path}/*")
+        return patterns
+
     def source(self):
         destination = self.folders.source
         if platform.system() == "Windows":
@@ -654,21 +633,43 @@ class Recipe(RecipeBase[_Options]):
             url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
             sha256="252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03",
             strip_root=True,
-            destination=destination)
+            destination=destination,
+            excludes=self._excluded_module_patterns())
 
-        # patching in source method because of no_copy_source attribute
         apply_patches(self)
-        for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
-            replace_in_file(
-                self, self.folders.source / "qtwebengine" / "src" / "3rdparty" / "chromium" / "third_party" / "blink" / f / "BUILD.gn",
-                "  if (enable_precompiled_headers) {\n    if (is_win) {",
-                "  if (enable_precompiled_headers) {\n    if (false) {"
-                )
+        if self.options.get_safe("qtwebengine"):
+            for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
+                replace_in_file(
+                    self, self.folders.source / "qtwebengine" / "src" / "3rdparty" / "chromium" / "third_party" / "blink" / f / "BUILD.gn",
+                    "  if (enable_precompiled_headers) {\n    if (is_win) {",
+                    "  if (enable_precompiled_headers) {\n    if (false) {"
+                    )
 
         for f in ["FindPostgreSQL.cmake"]:
             file = self.folders.source / "qtbase" / "cmake" / f
             if os.path.isfile(file):
                 os.remove(file)
+
+        # qt_internal_disable_find_package_global_promotion calls set_target_properties, which
+        # CMake forbids on ALIAS targets. zstd ships alias targets (e.g. zstd::libzstd ->
+        # zstd::libzstd_static), so guard with ALIASED_TARGET before setting properties.
+        replace_in_file(
+            self,
+            self.folders.source / "qtbase" / "cmake" / "QtPublicFindPackageHelpers.cmake",
+            textwrap.dedent(
+                """\
+                function(qt_internal_disable_find_package_global_promotion target)
+                    set_target_properties("${target}" PROPERTIES _qt_no_promote_global TRUE)
+                endfunction()"""),
+            textwrap.dedent(
+                """\
+                function(qt_internal_disable_find_package_global_promotion target)
+                    get_target_property(_aliased_target "${target}" ALIASED_TARGET)
+                    if(_aliased_target)
+                        return()
+                    endif()
+                    set_target_properties("${target}" PROPERTIES _qt_no_promote_global TRUE)
+                endfunction()"""))
 
         # workaround QTBUG-94356
         replace_in_file(self, self.folders.source / "qtbase" / "cmake" / "FindWrapSystemZLIB.cmake", '"-lz"', 'ZLIB::ZLIB')
@@ -878,7 +879,8 @@ class Recipe(RecipeBase[_Options]):
                 # and `qhelpgenerator` is a subdirectory of assistant in qttools
                 targets.extend(["qhelpgenerator"])
             if "linguist" not in disabled_features:
-                targets.extend(["lconvert", "lprodump", "lrelease", "lrelease-pro", "lupdate", "lupdate-pro"])
+                #targets.extend(["lconvert", "lprodump", "lrelease", "lrelease-pro", "lupdate", "lupdate-pro"])
+                targets.extend(["lconvert", "lrelease", "lrelease-pro", "lupdate", "lupdate-pro"])
         if self.options.qtshadertools:
             targets.append("qsb")
         if self.options.qtdeclarative:
