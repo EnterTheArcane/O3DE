@@ -23,7 +23,7 @@ $packages = @(
     "robin-hood-hashing",
 
     # --- low-level compression / crypto ---
-    "zlib", "bzip2", "xz_utils", "zstd", "brotli", "lz4", "libdeflate", "miniz",
+    "zlib", "bzip2", "xz", "zstd", "brotli", "lz4", "libdeflate", "miniz",
     "openssl",
 
     # --- strings / parsing / scripting ---

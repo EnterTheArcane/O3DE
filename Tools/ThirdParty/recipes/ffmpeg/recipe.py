@@ -205,7 +205,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_bzip2:
             self.requires("bzip2")
         if self.options.with_lzma:
-            self.requires("xz_utils")
+            self.requires("xz")
         if self.options.with_libiconv:
             self.requires("libiconv")
         if self.options.with_freetype:
@@ -819,7 +819,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_zlib:
                 avcodec.requires.append("zlib::zlib")
             if self.options.with_lzma:
-                avcodec.requires.append("xz_utils::xz_utils")
+                avcodec.requires.append("xz::xz")
             if self.options.with_libiconv:
                 avcodec.requires.append("libiconv::libiconv")
             if self.options.with_libxml2:

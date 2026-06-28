@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "xz_utils"
+    name = "xz"
     version = "5.8.3"
     license = "Unlicense", "LGPL-2.1-or-later", "GPL-2.0-or-later", "GPL-3.0-or-later"
 

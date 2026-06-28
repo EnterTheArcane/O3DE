@@ -49,7 +49,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_bzip2:
             self.requires("bzip2")
         if self.options.with_lzma:
-            self.requires("xz_utils")
+            self.requires("xz")
         if self.options.with_zstd:
             self.requires("zstd")
         if self.options.with_openssl:
@@ -126,7 +126,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_bzip2:
             self.info.components["minizip"].requires.append("bzip2::bzip2")
         if self.options.with_lzma:
-            self.info.components["minizip"].requires.append("xz_utils::xz_utils")
+            self.info.components["minizip"].requires.append("xz::xz")
         if self.options.with_zstd:
             self.info.components["minizip"].requires.append("zstd::zstd")
         if self.options.with_openssl:

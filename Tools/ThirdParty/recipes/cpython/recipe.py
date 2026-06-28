@@ -92,7 +92,7 @@ class Recipe(RecipeBase[_Options]):
             # https://github.com/python/cpython/blob/v3.10.13/Include/py_curses.h#L34
             self.requires("ncurses")
         if self.options.get_safe("with_lzma", False):
-            self.requires("xz_utils")
+            self.requires("xz")
         if not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
 
@@ -293,7 +293,7 @@ class Recipe(RecipeBase[_Options]):
         self._inject_recipe_props_file("pythonw", "zlib")
         self._inject_recipe_props_file("_ctypes", "libffi", self._supports_modules)
         self._inject_recipe_props_file("_decimal", "mpdecimal", self._supports_modules)
-        self._inject_recipe_props_file("_lzma", "xz_utils", self.options.get_safe("with_lzma"))
+        self._inject_recipe_props_file("_lzma", "xz", self.options.get_safe("with_lzma"))
         self._inject_recipe_props_file("_bsddb", "libdb", self.options.get_safe("with_bsddb", False))
 
     def _patch_sources(self):
@@ -782,7 +782,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.get_safe("with_curses", False):
                 self.info.components["_hidden"].requires.append("ncurses::ncurses")
             if self.options.get_safe("with_lzma"):
-                self.info.components["_hidden"].requires.append("xz_utils::xz_utils")
+                self.info.components["_hidden"].requires.append("xz::xz")
             if self.options.get_safe("with_tkinter"):
                 self.info.components["_hidden"].requires.append("tk::tk")
             self.info.components["_hidden"].includedirs = []

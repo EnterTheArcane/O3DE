@@ -41,7 +41,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.libdeflate:
             self.requires("libdeflate")
         if self.options.lzma:
-            self.requires("xz_utils")
+            self.requires("xz")
         if self.options.jpeg == "libjpeg-turbo":
             self.requires("libjpeg-turbo")
         elif self.options.jpeg == "mozjpeg":
@@ -89,8 +89,8 @@ class Recipe(RecipeBase[_Options]):
         deps = CMakeDeps(self)
         deps.set_property("jbig", "cmake_file_name", "JBIG")
         deps.set_property("jbig", "cmake_target_name", "JBIG::JBIG")
-        deps.set_property("xz_utils", "cmake_file_name", "liblzma")
-        deps.set_property("xz_utils", "cmake_target_name", "liblzma::liblzma")
+        deps.set_property("xz", "cmake_file_name", "liblzma")
+        deps.set_property("xz", "cmake_target_name", "liblzma::liblzma")
         deps.set_property("libdeflate", "cmake_file_name", "Deflate")
         deps.set_property("libdeflate", "cmake_target_name", "Deflate::Deflate")
         deps.set_property("zstd", "cmake_file_name", "ZSTD")
@@ -144,7 +144,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.libdeflate:
             requires.append("libdeflate::libdeflate")
         if self.options.lzma:
-            requires.append("xz_utils::xz_utils")
+            requires.append("xz::xz")
         if self.options.jpeg == "libjpeg-turbo":
             requires.append("libjpeg-turbo::jpeg")
         elif self.options.jpeg == "mozjpeg":
