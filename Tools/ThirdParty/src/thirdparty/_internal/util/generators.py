@@ -2,7 +2,11 @@ import os
 from thirdparty.recipe import RecipeBase
 
 
-def relativize_path(path, recipe: RecipeBase, placeholder, normalize: bool = True):
+def relativize_path(
+    path,
+    recipe: RecipeBase,
+    placeholder,
+    normalize: bool = True):
     """
     relative path from the "generators_folder" to "path", asuming the root file, like
     recipe_toolchain.cmake will be directly in the "generators_folder"

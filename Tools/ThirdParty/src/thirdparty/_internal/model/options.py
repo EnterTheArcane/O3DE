@@ -17,7 +17,11 @@ def option_not_exist_msg(option_name: str, existing_options: Any) -> str:
 
 
 class _PackageOption:
-    def __init__(self, name: str, value: Any, possible_values: Any = None):
+    def __init__(
+        self,
+        name: str,
+        value: Any,
+        possible_values: Any = None):
         self._name = name
         self._value = value  # Value None = not defined
         self.important = False

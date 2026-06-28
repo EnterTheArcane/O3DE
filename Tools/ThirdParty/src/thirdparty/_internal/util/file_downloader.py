@@ -38,7 +38,11 @@ def response_to_str(response):
 
 
 class FileDownloader:
-    def __init__(self, requester: Any, scope: Any = None, source_credentials: Any = None):
+    def __init__(
+        self,
+        requester: Any,
+        scope: Any = None,
+        source_credentials: Any = None):
         self._output = Output(scope=scope)
         self._requester = requester
         self._source_credentials = source_credentials
@@ -94,7 +98,11 @@ class FileDownloader:
             raise
 
     @staticmethod
-    def check_checksum(file_path: str, md5: str | None, sha1: str | None, sha256: str | None):
+    def check_checksum(
+        file_path: str,
+        md5: str | None,
+        sha1: str | None,
+        sha256: str | None):
         if md5 is not None:
             check_with_algorithm_sum("md5", file_path, md5)
         if sha1 is not None:
@@ -102,7 +110,14 @@ class FileDownloader:
         if sha256 is not None:
             check_with_algorithm_sum("sha256", file_path, sha256)
 
-    def _download_file(self, url: str, auth: Any, headers: Any, file_path: str, verify_ssl: bool, try_resume: bool = False):
+    def _download_file(
+        self,
+        url: str,
+        auth: Any,
+        headers: Any,
+        file_path: str,
+        verify_ssl: bool,
+        try_resume: bool = False):
         if try_resume and os.path.exists(file_path):
             range_start = os.path.getsize(file_path)
             headers = headers.copy() if headers else {}

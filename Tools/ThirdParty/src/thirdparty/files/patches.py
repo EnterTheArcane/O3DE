@@ -21,7 +21,14 @@ class PatchLogHandler(logging.Handler):
             self._scoped_output.info("%s: %s" % (self.patchname, logstr))
 
 
-def patch(recipe: RecipeBase, base_path=None, patch_file=None, patch_string=None, strip: int = 0, fuzz: bool = False, **kwargs):
+def patch(
+    recipe: RecipeBase,
+    base_path=None,
+    patch_file=None,
+    patch_string=None,
+    strip: int = 0,
+    fuzz: bool = False,
+    **kwargs):
     """
     Applies a diff from file (patch_file) or string (patch_string) in the recipe.folders.source
     directory. The folder containing the sources can be customized with the self.folders attribute

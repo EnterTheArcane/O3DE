@@ -175,7 +175,12 @@ class PremakeDeps:
         return "\n".join(
             [f"{self.tab * indent}{line}" for line in list(filter(None, string.splitlines()))])
 
-    def _premake_filtered(self, content: Any, configuration: Any, architecture: Any, indent: int = 0) -> list[str]:
+    def _premake_filtered(
+        self,
+        content: Any,
+        configuration: Any,
+        architecture: Any,
+        indent: int = 0) -> list[str]:
         """
         - Surrounds the lua line(s) contained within ``content`` with a premake "filter" and returns the result.
         - A "filter" will affect all premake function calls after it's set. It's used to limit following project

@@ -119,7 +119,11 @@ def supported_cstd(recipe: RecipeBase, compiler: str | None = None, compiler_ver
     return None
 
 
-def _check_cstd(recipe: RecipeBase, cstd: Any, comparator: Any, gnu_extensions: bool):
+def _check_cstd(
+    recipe: RecipeBase,
+    cstd: Any,
+    comparator: Any,
+    gnu_extensions: bool):
     """ Check if current cstd fits the version required according to a given comparator.
 
         In case the current cstd doesn't fit the maximum version required

@@ -38,7 +38,12 @@ class TargetConfigurationTemplate2:
     FooTarget-release.cmake
     """
 
-    def __init__(self, cmakedeps: Any, recipe: RecipeBase, require: Any, full_cpp_info: Any):
+    def __init__(
+        self,
+        cmakedeps: Any,
+        recipe: RecipeBase,
+        require: Any,
+        full_cpp_info: Any):
         self._cmakedeps = cmakedeps
         self._recipe = recipe  # The dependency recipe, not the consumer one
         self._require = require
@@ -179,7 +184,12 @@ class TargetConfigurationTemplate2:
             "dependencies": dependencies, "pkg_folder": pkg_folder, "pkg_folder_var": pkg_folder_var, "config": config, "exes": exes, "libs": libs, "context": self._recipe.context,
         }
 
-    def _get_libs(self, info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
+    def _get_libs(
+        self,
+        info: Any,
+        pkg_name: str,
+        pkg_folder: str,
+        pkg_folder_var: str) -> dict[str, Any]:
         libs = {}
         if info.has_components:
             for name, component in info.components.items():
@@ -202,7 +212,13 @@ class TargetConfigurationTemplate2:
                 libs[target_name] = target
         return libs
 
-    def _get_cmake_lib(self, info: Any, components: Any, pkg_folder: str, pkg_folder_var: str, comp_name: str | None = None) -> dict[str, Any] | None:
+    def _get_cmake_lib(
+        self,
+        info: Any,
+        components: Any,
+        pkg_folder: str,
+        pkg_folder_var: str,
+        comp_name: str | None = None) -> dict[str, Any] | None:
         if info.exe or not (info.package_framework or info.frameworks or info.includedirs or info.libs or info.system_libs or info.defines or info.requires):
             return
 
@@ -271,7 +287,11 @@ class TargetConfigurationTemplate2:
         aliases = self._cmakedeps.get_property("cmake_target_aliases", self._recipe, comp_name, check_type=list) or []
         return aliases
 
-    def _add_root_lib_target(self, libs: dict[str, Any], pkg_name: str, info: Any):
+    def _add_root_lib_target(
+        self,
+        libs: dict[str, Any],
+        pkg_name: str,
+        info: Any):
         """
         Add a new pkgname::pkgname INTERFACE target that depends on default_components or
         on all other library targets (not exes)
@@ -305,7 +325,12 @@ class TargetConfigurationTemplate2:
                 "type": "INTERFACE", "requires": all_requires, "cmake_target_aliases": cmake_target_aliases,
             }
 
-    def _get_exes(self, info: Any, pkg_name: str, pkg_folder: str, pkg_folder_var: str) -> dict[str, Any]:
+    def _get_exes(
+        self,
+        info: Any,
+        pkg_name: str,
+        pkg_folder: str,
+        pkg_folder_var: str) -> dict[str, Any]:
         exes = {}
 
         if info.has_components:

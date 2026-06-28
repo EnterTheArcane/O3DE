@@ -15,7 +15,11 @@ class PkgConfig:
     _pkg_config_path: str | None
     _variables: dict[str, str] | None
 
-    def __init__(self, recipe: RecipeBase, library: str, pkg_config_path: str | None = None):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        library: str,
+        pkg_config_path: str | None = None):
         """
 
         :param recipe: The current recipe object. Always use ``self``.

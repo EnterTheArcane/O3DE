@@ -190,7 +190,11 @@ class Output:
     def is_terminal(self) -> bool:
         return hasattr(self.stream, "isatty") and self.stream.isatty()
 
-    def writeln(self, data: str, fg: str | None = None, bg: str | None = None):
+    def writeln(
+        self,
+        data: str,
+        fg: str | None = None,
+        bg: str | None = None):
         return self.write(data, fg, bg, newline=True)
 
     def write(
@@ -271,7 +275,11 @@ class Output:
             self._write_message(msg, fg=Color.BLUE)
         return self
 
-    def debug(self, msg: str, fg: str = Color.MAGENTA, bg: str | None = None) -> Output:
+    def debug(
+        self,
+        msg: str,
+        fg: str = Color.MAGENTA,
+        bg: str | None = None) -> Output:
         """ With a high level of detail, it is mainly used for debugging code.
 
         This message won't be printed unless the user has set the log level to debug
@@ -283,7 +291,11 @@ class Output:
             self._write_message(msg, fg=fg, bg=bg)
         return self
 
-    def verbose(self, msg: str, fg: str | None = None, bg: str | None = None):
+    def verbose(
+        self,
+        msg: str,
+        fg: str | None = None,
+        bg: str | None = None):
         """ Displays additional and detailed information that, while not critical,
         can be useful for better understanding how the system is working.
 
@@ -296,7 +308,12 @@ class Output:
             self._write_message(msg, fg=fg, bg=bg)
         return self
 
-    def status(self, msg: str, fg: str | None = None, bg: str | None = None, newline: bool = True):
+    def status(
+        self,
+        msg: str,
+        fg: str | None = None,
+        bg: str | None = None,
+        newline: bool = True):
         """ Provides general information about the system or ongoing operations.
 
         Info messages are basic and used to inform about common events,
@@ -405,13 +422,21 @@ def cli_out_write(
 
 
 class TimedOutput:
-    def __init__(self, interval: float, out: Any = None, msg_format: Any = None):
+    def __init__(
+        self,
+        interval: float,
+        out: Any = None,
+        msg_format: Any = None):
         self._interval = interval
         self._msg_format = msg_format
         self._t = time.time()
         self._out = out or Output()
 
-    def info(self, msg: Any, *args: Any, **kwargs: Any):
+    def info(
+        self,
+        msg: Any,
+        *args: Any,
+        **kwargs: Any):
         t = time.time()
         if t - self._t > self._interval:
             self._t = t

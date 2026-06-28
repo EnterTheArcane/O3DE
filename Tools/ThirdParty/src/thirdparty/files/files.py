@@ -20,7 +20,13 @@ from thirdparty.recipe import RecipeBase
 
 
 class FileProgress(io.FileIO):
-    def __init__(self, path: str, msg: str = "Uploading", interval: float = 10, *args: Any, **kwargs: Any):
+    def __init__(
+        self,
+        path: str,
+        msg: str = "Uploading",
+        interval: float = 10,
+        *args: Any,
+        **kwargs: Any):
         super().__init__(path, *args, **kwargs)
         self._size = os.path.getsize(path)
         self._filename = os.path.basename(path)
@@ -37,7 +43,10 @@ class FileProgress(io.FileIO):
         return block
 
 
-def load(recipe: RecipeBase, path: str | os.PathLike[str], encoding: str = "utf-8") -> str:
+def load(
+    recipe: RecipeBase,
+    path: str | os.PathLike[str],
+    encoding: str = "utf-8") -> str:
     """
     Utility function to load files in one line. It will manage the open and close of the file,
     and load binary encodings. Returns the content of the file.
@@ -224,7 +233,10 @@ def download(
     downloader.download(url, filename, retry, retry_wait, verify, auth, headers, md5, sha1, sha256)
 
 
-def rename(recipe: RecipeBase, src: str, dst: str):
+def rename(
+    recipe: RecipeBase,
+    src: str,
+    dst: str):
     """
     Utility functions to rename a file or folder src to dst with retrying. ``os.rename()``
     frequently raises “Access is denied” exception on Windows.
@@ -260,7 +272,9 @@ def rename(recipe: RecipeBase, src: str, dst: str):
 
 
 @contextmanager
-def chdir(recipe: RecipeBase, newdir: str | os.PathLike[str]) -> Iterator[None]:
+def chdir(
+    recipe: RecipeBase,
+    newdir: str | os.PathLike[str]) -> Iterator[None]:
     """
     This is a context manager that allows to temporary change the current directory in your recipe
 
@@ -277,7 +291,12 @@ def chdir(recipe: RecipeBase, newdir: str | os.PathLike[str]) -> Iterator[None]:
 
 
 def chmod(
-    recipe: RecipeBase, path: str, read: Optional[bool] = None, write: Optional[bool] = None, execute: Optional[bool] = None, recursive: bool = False):
+    recipe: RecipeBase,
+    path: str,
+    read: Optional[bool] = None,
+    write: Optional[bool] = None,
+    execute: Optional[bool] = None,
+    recursive: bool = False):
     """Change file or directory permissions cross-platform.
 
     .. versionadded:: 2.15
@@ -507,7 +526,10 @@ def untargz(
             tarredgzippedFile.extractall(destination, members=members)
 
 
-def check_sha1(recipe: RecipeBase, file_path: str, signature: str):
+def check_sha1(
+    recipe: RecipeBase,
+    file_path: str,
+    signature: str):
     """
     Check that the specified ``SHA-1`` hash of the ``file_path`` matches the actual hash.
     If doesn't match it will raise a ``RecipeException``.
@@ -519,7 +541,10 @@ def check_sha1(recipe: RecipeBase, file_path: str, signature: str):
     check_with_algorithm_sum("sha1", file_path, signature)
 
 
-def check_md5(recipe: RecipeBase, file_path: str, signature: str):
+def check_md5(
+    recipe: RecipeBase,
+    file_path: str,
+    signature: str):
     """
     Check that the specified ``MD5`` hash of the ``file_path`` matches the actual hash.
     If doesn't match it will raise a ``RecipeException``.
@@ -531,7 +556,10 @@ def check_md5(recipe: RecipeBase, file_path: str, signature: str):
     check_with_algorithm_sum("md5", file_path, signature)
 
 
-def check_sha256(recipe: RecipeBase, file_path: str, signature: str):
+def check_sha256(
+    recipe: RecipeBase,
+    file_path: str,
+    signature: str):
     """
     Check that the specified ``SHA-256`` hash of the ``file_path`` matches the actual hash.
     If doesn't match it will raise a ``RecipeException``.
@@ -625,7 +653,10 @@ def collect_libs(recipe: RecipeBase, folder: str | None = None) -> list[str]:
     return result
 
 
-def move_folder_contents(recipe: RecipeBase, src_folder: str, dst_folder: str):
+def move_folder_contents(
+    recipe: RecipeBase,
+    src_folder: str,
+    dst_folder: str):
     """ replaces the dst_folder contents with the contents of the src_folder, which can be a
     child folder of dst_folder. This is used in the SCM monorepo flow, when it is necessary
     to use one subproject subfolder to replace the whole cloned git repo

@@ -15,7 +15,12 @@ class ConfigTemplate2:
     foo-config.cmake
     """
 
-    def __init__(self, cmakedeps: Any, require: Any, recipe: RecipeBase, full_cpp_info: Any):
+    def __init__(
+        self,
+        cmakedeps: Any,
+        require: Any,
+        recipe: RecipeBase,
+        full_cpp_info: Any):
         self._cmakedeps = cmakedeps
         self._require = require
         self._recipe = recipe

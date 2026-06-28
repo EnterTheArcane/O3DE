@@ -15,7 +15,11 @@ class Git:
     Git is a wrapper for several common patterns used with *git* tool.
     """
 
-    def __init__(self, recipe: RecipeBase, folder: str = ".", excluded=None):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        folder: str = ".",
+        excluded=None):
         """
         :param recipe: Recipefile instance.
         :param folder: Current directory, by default ``.``, the current working directory.
@@ -215,7 +219,12 @@ class Git:
         folder = self.run("rev-parse --show-toplevel")
         return folder.replace("\\", "/")
 
-    def clone(self, url, target: str = "", args=None, hide_url: bool = True):
+    def clone(
+        self,
+        url,
+        target: str = "",
+        args=None,
+        hide_url: bool = True):
         """
         Performs a ``git clone <url> <args> <target>`` operation, where target is the target directory.
 
@@ -235,7 +244,11 @@ class Git:
         self.run(
             f'clone "{url}" {" ".join(args)} {target_path}', hidden_output=url if hide_url else None)
 
-    def fetch_commit(self, url, commit, hide_url: bool = True):
+    def fetch_commit(
+        self,
+        url,
+        commit,
+        hide_url: bool = True):
         """
         Experimental: does a single commit fetch and checkout, instead of a full clone,
         should be faster.

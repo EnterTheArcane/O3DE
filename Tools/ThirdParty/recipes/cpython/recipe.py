@@ -170,12 +170,20 @@ class Recipe(RecipeBase[_Options]):
     def _msvc_project_path(self, name):
         return self.folders.source / "PCbuild" / f"{name}.vcxproj"
 
-    def _regex_replace_in_file(self, filename, pattern, replacement):
+    def _regex_replace_in_file(
+        self,
+        filename,
+        pattern,
+        replacement):
         content = load(self, filename)
         content = re.sub(pattern, replacement, content)
         save(self, filename, content)
 
-    def _inject_recipe_props_file(self, project_basename, dep_name, condition=True):
+    def _inject_recipe_props_file(
+        self,
+        project_basename,
+        dep_name,
+        condition=True):
         if condition:
             search = '<Import Project="python.props" />'
             replace_in_file(

@@ -15,7 +15,11 @@ def bad_value_msg(name: str, value: Any, value_range: Any) -> str:
             % (value, name, [v for v in value_range if v is not None]))
 
 
-def undefined_field(name: str, field: str, fields: Any = None, value: Any = None) -> RecipeException:
+def undefined_field(
+    name: str,
+    field: str,
+    fields: Any = None,
+    value: Any = None) -> RecipeException:
     value_str = " for '%s'" % value if value else ""
     result = [
         "'%s.%s' doesn't exist%s" % (name, field, value_str), "'%s' possible configurations are %s" % (name, fields or "none"),
@@ -30,7 +34,11 @@ class SettingsItem:
     - A dict {subsetting: definition}, e.g. {version: [], runtime: []} for VS
     """
 
-    def __init__(self, definition: Any, name: str, value: Any):
+    def __init__(
+        self,
+        definition: Any,
+        name: str,
+        value: Any):
         self._definition = definition  # range of possible values
         self._name = name  # settings.compiler
         self._value = value  # gcc
@@ -192,7 +200,11 @@ class SettingsItem:
 
 
 class Settings:
-    def __init__(self, definition: Any = None, name: str = "settings", parent_value: Any = "settings"):
+    def __init__(
+        self,
+        definition: Any = None,
+        name: str = "settings",
+        parent_value: Any = "settings"):
         if parent_value is None and definition:
             raise RecipeException("settings.yml: null setting can't have subsettings")
         definition = definition or {}

@@ -112,7 +112,11 @@ class Recipe(RecipeBase):
             prefix = "llvm" if bare else f"{self._llvm_triplet}"
             return self._wrap_executable(f"{prefix}-{tool}")
 
-    def _define_tool_var(self, name, value, bare=False):
+    def _define_tool_var(
+        self,
+        name,
+        value,
+        bare=False):
         ndk_bin = self._ndk_root / "bin"
         path = ndk_bin / self._tool_name(value, bare)
         if not os.path.isfile(path):
@@ -152,7 +156,11 @@ class Recipe(RecipeBase):
                 ):
                     self._chmod_plus_x(filepath)
 
-    def _unzip_fix_symlinks(self, url, target_folder, sha256):
+    def _unzip_fix_symlinks(
+        self,
+        url,
+        target_folder,
+        sha256):
         filename = "android_sdk.zip"
         download(self, url, filename, sha256=sha256)
         unzip(self, filename, destination=target_folder, strip_root=True)

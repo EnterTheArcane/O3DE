@@ -98,7 +98,12 @@ class Premake:
         # --verbose does not print compilation commands but internal Makefile progress logic
         return " verbose=1" if verbosity == "verbose" else ""
 
-    def build(self, workspace, targets=None, configuration=None, msbuild_platform=None):
+    def build(
+        self,
+        workspace,
+        targets=None,
+        configuration=None,
+        msbuild_platform=None):
         """
         Depending on the action, this method will run either ``msbuild`` or ``make`` with ``N_JOBS``.
         You can specify ``N_JOBS`` through the configuration line ``tools.build:jobs=N_JOBS``

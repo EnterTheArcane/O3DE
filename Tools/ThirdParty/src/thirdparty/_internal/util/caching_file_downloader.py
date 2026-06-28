@@ -167,14 +167,26 @@ class PackageCacheDownloader:
     """ This is used for the download of Recipe packages from server, not for sources/backup sources
     """
 
-    def __init__(self, requester: Any, config: Any, scope: Any = None):
+    def __init__(
+        self,
+        requester: Any,
+        config: Any,
+        scope: Any = None):
         self._download_cache = config.get("core.download:download_cache")
         if self._download_cache and not os.path.isabs(self._download_cache):
             raise RecipeException("core.download:download_cache must be an absolute path")
         self._file_downloader = FileDownloader(requester, scope=scope)
         self._scope = scope
 
-    def download(self, url: str, file_path: str, auth: Any, verify_ssl: bool, retry: int, retry_wait: int, metadata: bool = False):
+    def download(
+        self,
+        url: str,
+        file_path: str,
+        auth: Any,
+        verify_ssl: bool,
+        retry: int,
+        retry_wait: int,
+        metadata: bool = False):
         if not self._download_cache or metadata:  # Metadata not cached and can be overwritten
             self._file_downloader.download(
                 url, file_path, retry=retry, retry_wait=retry_wait, verify_ssl=verify_ssl, auth=auth, overwrite=metadata)

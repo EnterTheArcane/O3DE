@@ -329,7 +329,11 @@ def _build_dep_graph(
     return RecipeDependencies(deps_dict)
 
 
-def _is_sourced(build_root: Path, name: str, version: str, platform_tag: str) -> bool:
+def _is_sourced(
+    build_root: Path,
+    name: str,
+    version: str,
+    platform_tag: str) -> bool:
     return (build_root / name / version / platform_tag / "source" / _COMPLETE_MARKER).is_file()
 
 

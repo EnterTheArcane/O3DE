@@ -22,7 +22,11 @@ class OpLock:
         if status not in [0, 0x80]:
             raise ctypes.WinError()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type,
+        exc_val,
+        exc_tb):
         status = ctypes.windll.kernel32.ReleaseMutex(self.handle)
         if not status:
             raise ctypes.WinError()

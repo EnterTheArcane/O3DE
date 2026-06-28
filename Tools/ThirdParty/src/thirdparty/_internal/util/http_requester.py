@@ -150,7 +150,11 @@ class HttpRequester:
     def post(self, url: str, **kwargs: Any):
         return self._call_method("post", url, **kwargs)
 
-    def _call_method(self, method: str, url: str, **kwargs: Any):
+    def _call_method(
+        self,
+        method: str,
+        url: str,
+        **kwargs: Any):
         popped = False
         if self._clean_system_proxy:
             old_env = dict(os.environ)

@@ -26,10 +26,18 @@ class UserRequirementsDict:
     def __bool__(self) -> bool:
         return bool(self._data)
 
-    def get(self, ref: str, build: Any = None, **kwargs: Any) -> Any:
+    def get(
+        self,
+        ref: str,
+        build: Any = None,
+        **kwargs: Any) -> Any:
         return self._get(ref, build, **kwargs)[1]
 
-    def _get(self, ref: str, build: Any = None, **kwargs: Any) -> tuple[Any, Any]:
+    def _get(
+        self,
+        ref: str,
+        build: Any = None,
+        **kwargs: Any) -> tuple[Any, Any]:
         if build is None:
             current_filters = self._require_filter or {}
             if "build" not in current_filters:
@@ -78,7 +86,11 @@ class UserRequirementsDict:
             # so it's definitely in the dict
             return True
 
-    def of(self, ref: str, build: Any = None, **kwargs: Any) -> tuple[Any, Any]:
+    def of(
+        self,
+        ref: str,
+        build: Any = None,
+        **kwargs: Any) -> tuple[Any, Any]:
         # TODO: come up with a better name
         return self._get(ref, build, **kwargs)
 

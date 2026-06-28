@@ -394,7 +394,12 @@ class Recipe(RecipeBase[_Options]):
         self._create_targets(tc.cflags, tc.cxxflags, tc.defines, tc.ldflags)
         tc.generate(env)
 
-    def _create_targets(self, cflags, cxxflags, defines, ldflags):
+    def _create_targets(
+        self,
+        cflags,
+        cxxflags,
+        defines,
+        ldflags):
         config_template = textwrap.dedent(
             """
             {targets} = (
@@ -456,7 +461,11 @@ class Recipe(RecipeBase[_Options]):
 
         save(self, self.folders.source / "Configurations" / "20-thirdparty.conf", config)
 
-    def _run_make(self, targets=None, parallel=True, install=False):
+    def _run_make(
+        self,
+        targets=None,
+        parallel=True,
+        install=False):
         command = [self._make_program]
         if install:
             command.append(f"DESTDIR={self._adjust_path(self.folders.package)}")

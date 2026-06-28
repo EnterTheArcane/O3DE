@@ -75,7 +75,12 @@ def environment_wrap_command(
 
 
 class _EnvValue:
-    def __init__(self, name: str, value: Any = None, separator: str = " ", path: bool = False):
+    def __init__(
+        self,
+        name: str,
+        value: Any = None,
+        separator: str = " ",
+        path: bool = False):
         self._name = name
         self._values: list[Any] = [] if value is None else value if isinstance(value, list) else [value]
         self._path = path
@@ -142,7 +147,13 @@ class _EnvValue:
             new_value[index:index + 1] = other._values  # replace the placeholder
             self._values = new_value
 
-    def get_str(self, placeholder: str | None, subsystem: Any, pathsep: str, root_path: str | None = None, script_path: str | None = None) -> str:
+    def get_str(
+        self,
+        placeholder: str | None,
+        subsystem: Any,
+        pathsep: str,
+        root_path: str | None = None,
+        script_path: str | None = None) -> str:
         """
         :param subsystem:
         :param placeholder: a OS dependant string pattern of the previous env-var value like
@@ -225,7 +236,11 @@ class Environment:
         """
         return "\n".join([v.dumps() for v in reversed(self._values.values())])
 
-    def define(self, name: str, value: str, separator: str = " "):
+    def define(
+        self,
+        name: str,
+        value: str,
+        separator: str = " "):
         """
         Define `name` environment variable with value `value`
 
@@ -246,7 +261,11 @@ class Environment:
         """
         self._values[name] = _EnvValue(name, None)
 
-    def append(self, name: str, value: str | list[str], separator: str | None = None):
+    def append(
+        self,
+        name: str,
+        value: str | list[str],
+        separator: str | None = None):
         """
         Append the `value` to an environment variable `name`
 
@@ -265,7 +284,11 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder, path=True)).append(value)
 
-    def prepend(self, name: str, value: str | list[str], separator: str | None = None):
+    def prepend(
+        self,
+        name: str,
+        value: str | list[str],
+        separator: str | None = None):
         """
         Prepend the `value` to an environment variable `name`
 
@@ -343,7 +366,11 @@ class EnvVars:
 
     """
 
-    def __init__(self, recipe: RecipeBase, values: Any, scope: str):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        values: Any,
+        scope: str):
         self._values = values  # {var_name: _EnvValue}, just a reference to the Environment
         self._recipe = recipe
         self._scope = scope
@@ -360,7 +387,11 @@ class EnvVars:
     def keys(self):
         return self._values.keys()
 
-    def get(self, name: str, default: Any = None, variable_reference: str | None = None) -> Any:
+    def get(
+        self,
+        name: str,
+        default: Any = None,
+        variable_reference: str | None = None) -> Any:
         """ get the value of a env-var
 
         :param name: The name of the environment variable.
@@ -716,7 +747,11 @@ def _sh_deactivate_contents(deactivation_mode: str | None, values: Any, filename
         """)
 
 
-def create_env_script(recipe: RecipeBase, content: str, filename: str, scope: str = "build"):
+def create_env_script(
+    recipe: RecipeBase,
+    content: str,
+    filename: str,
+    scope: str = "build"):
     """
     Create a file with any content which will be registered as a new script for the defined "scope".
 

@@ -24,7 +24,11 @@ from thirdparty.recipe import RecipeBase
 
 
 class Block:
-    def __init__(self, recipe: RecipeBase, toolchain: Any, name: str):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        toolchain: Any,
+        name: str):
         self._recipe = recipe
         self._toolchain = toolchain
         self._context_values: dict[str, Any] | None = None
@@ -1392,7 +1396,11 @@ class PreprocessorBlock(Block):
 
 
 class ToolchainBlocks:
-    def __init__(self, recipe: RecipeBase, toolchain: Any, items: Any = None):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        toolchain: Any,
+        items: Any = None):
         self._blocks: dict[str, Block] = {}
         self._recipe = recipe
         self._toolchain = toolchain

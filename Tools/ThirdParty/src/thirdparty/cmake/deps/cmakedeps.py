@@ -95,7 +95,12 @@ class CMakeDeps:
                 msg.append(f"    target_link_libraries(... {' '.join(link_targets)})")
             self._recipe.output.info("\n".join(msg), fg=Color.CYAN)
 
-    def set_property(self, dep: Any, prop: str, value: Any, build_context: bool = False):
+    def set_property(
+        self,
+        dep: Any,
+        prop: str,
+        value: Any,
+        build_context: bool = False):
         """
         Using this method you can overwrite the :ref:`property<CMakeDeps Properties>` values
         set by the Recipe recipes from the consumer.
@@ -111,7 +116,12 @@ class CMakeDeps:
         build_suffix = "&build" if build_context else ""
         self._properties.setdefault(f"{dep}{build_suffix}", {}).update({prop: value})
 
-    def get_property(self, prop: str, dep: Any, comp_name: str | None = None, check_type: Any = None) -> Any:
+    def get_property(
+        self,
+        prop: str,
+        dep: Any,
+        comp_name: str | None = None,
+        check_type: Any = None) -> Any:
         dep_name = dep.name
         # Find the requirement that points to this "dep".
         # TODO: It would probably be more explicit if it was an argument as "dep", but to keep

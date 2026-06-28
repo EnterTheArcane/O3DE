@@ -50,7 +50,11 @@ class GitlabRepository:
     blocked on some instances without a token.
     """
 
-    def __init__(self, recipe: RecipeBase, slug: str, host: str = "gitlab.com") -> None:
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        slug: str,
+        host: str = "gitlab.com") -> None:
         self._recipe = recipe
         self._slug = slug
         self._host = host

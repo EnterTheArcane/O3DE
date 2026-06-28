@@ -125,7 +125,13 @@ class XcodeDeps:
         for generator_file, content in generator_files.items():
             save(generator_file, content)
 
-    def _conf_xconfig_file(self, require: Any, pkg_name: str, comp_name: str, package_folder: str, transitive_cpp_infos: Any) -> str:
+    def _conf_xconfig_file(
+        self,
+        require: Any,
+        pkg_name: str,
+        comp_name: str,
+        package_folder: str,
+        transitive_cpp_infos: Any) -> str:
         """
         content for recipe_poco_x86_release.xcconfig, containing the activation
         """
@@ -174,7 +180,13 @@ class XcodeDeps:
         content_multi = template.render(**fields)
         return content_multi
 
-    def _dep_xconfig_file(self, pkg_name: str, comp_name: str, name_general: str, dep_xconfig_filename: str, reqs: Any) -> str:
+    def _dep_xconfig_file(
+        self,
+        pkg_name: str,
+        comp_name: str,
+        name_general: str,
+        dep_xconfig_filename: str,
+        reqs: Any) -> str:
         # Current directory is the generators_folder
         multi_path = name_general
         if os.path.isfile(multi_path):
@@ -224,7 +236,13 @@ class XcodeDeps:
         return _add_includes_to_file_or_create(
             GLOBAL_XCCONFIG_FILENAME, GLOBAL_XCCONFIG_TEMPLATE, [self.general_name])
 
-    def _get_content_for_component(self, require: Any, pkg_name: str, component_name: str, package_folder: str, transitive_cpp_infos: Any) -> dict[str, str]:
+    def _get_content_for_component(
+        self,
+        require: Any,
+        pkg_name: str,
+        component_name: str,
+        package_folder: str,
+        transitive_cpp_infos: Any) -> dict[str, str]:
         result = {}
 
         conf_name = _xcconfig_settings_filename(self._recipe.settings, self.configuration)
@@ -240,7 +258,12 @@ class XcodeDeps:
         return result
 
     @staticmethod
-    def _collect_all_transitive(info: Any, pkg_dep: Any, all_deps: Any, collected: Any, visited: Any = None):
+    def _collect_all_transitive(
+        info: Any,
+        pkg_dep: Any,
+        all_deps: Any,
+        collected: Any,
+        visited: Any = None):
         """Recursively collect all transitive Info objects (internal and external)
         into a flat list.
 
@@ -273,7 +296,11 @@ class XcodeDeps:
                     f"{d.name}::{d.name}", all_deps, collected, visited)
 
     @staticmethod
-    def _resolve_external(req: str, all_deps: Any, collected: Any, visited: Any):
+    def _resolve_external(
+        req: str,
+        all_deps: Any,
+        collected: Any,
+        visited: Any):
         """Resolve and follow an external requirement (pkg::comp)."""
 
         ext_pkg, ext_comp = req.split("::", 1)

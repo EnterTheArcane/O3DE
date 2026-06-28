@@ -40,14 +40,22 @@ class _PCFilesDeps:
         Requires: {{aliased}}
         """)
 
-    def __init__(self, pkgconfigdeps: Any, dep: Any, suffix: str = ""):
+    def __init__(
+        self,
+        pkgconfigdeps: Any,
+        dep: Any,
+        suffix: str = ""):
         self._recipe = pkgconfigdeps._recipe  # noqa
         self._properties = pkgconfigdeps._properties  # noqa
         self._transitive_reqs = get_transitive_requires(self._recipe, dep)
         self._dep = dep
         self._suffix = suffix
 
-    def _get_aliases(self, dep: Any, pkg_name: str | None = None, comp_ref_name: str | None = None) -> list[Any]:
+    def _get_aliases(
+        self,
+        dep: Any,
+        pkg_name: str | None = None,
+        comp_ref_name: str | None = None) -> list[Any]:
         def _get_dep_aliases():
             pkg_aliases = self._get_property("pkg_config_aliases", dep, check_type=list)
             return pkg_aliases or []
@@ -68,7 +76,11 @@ class _PCFilesDeps:
         comp_aliases = self._get_property("pkg_config_aliases", dep, comp_ref_name, check_type=list)
         return comp_aliases or []
 
-    def _get_name(self, dep: Any, pkg_name: str | None = None, comp_ref_name: str | None = None) -> str:
+    def _get_name(
+        self,
+        dep: Any,
+        pkg_name: str | None = None,
+        comp_ref_name: str | None = None) -> str:
         def _get_dep_name() -> str:
             dep_name = self._get_property("pkg_config_name", dep) or dep.name
             return f"{dep_name}{self._suffix}"
@@ -93,7 +105,12 @@ class _PCFilesDeps:
             # Creating a component name with namespace, e.g., dep-comp1
             return f"{dep_name}-{comp_ref_name}"
 
-    def _get_property(self, prop: str, dep: Any, comp_name: str | None = None, check_type: Any = None) -> Any:
+    def _get_property(
+        self,
+        prop: str,
+        dep: Any,
+        comp_name: str | None = None,
+        check_type: Any = None) -> Any:
         dep_name = dep.name
         dep_comp = f"{str(dep_name)}::{comp_name}" if comp_name else f"{str(dep_name)}"
         try:
@@ -105,7 +122,11 @@ class _PCFilesDeps:
         except KeyError:
             return dep.info.get_property(prop, check_type=check_type) if not comp_name else dep.info.components[comp_name].get_property(prop, check_type=check_type)
 
-    def _get_pc_variables(self, dep: Any, info: Any, custom_content: Any = None) -> dict[str, Any]:
+    def _get_pc_variables(
+        self,
+        dep: Any,
+        info: Any,
+        custom_content: Any = None) -> dict[str, Any]:
         """
         Get all the freeform variables defined by Recipe and
         users (through ``pkg_config_custom_content``). This last ones will override the
@@ -366,7 +387,11 @@ class PkgConfigDeps:
                     name, is_build_context=require.build, has_suffix=bool(suffix))
                 save(pc_name, content)
 
-    def set_property(self, dep: Any, prop: str, value: Any):
+    def set_property(
+        self,
+        dep: Any,
+        prop: str,
+        value: Any):
         """
         Using this method you can overwrite the :ref:`property<PkgConfigDeps Properties>` values set by
         the Recipe recipes from the consumer. This can be done for `pkg_config_name`,

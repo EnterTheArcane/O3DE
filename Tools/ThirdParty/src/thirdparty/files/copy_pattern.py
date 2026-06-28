@@ -132,7 +132,12 @@ def _filter_files(
     return files_to_copy, files_symlinked_to_folders
 
 
-def _copy_files(files: Any, src: str, dst: str, keep_path: bool, overwrite_equal: bool) -> list[str]:
+def _copy_files(
+    files: Any,
+    src: str,
+    dst: str,
+    keep_path: bool,
+    overwrite_equal: bool) -> list[str]:
     """ executes a multiple file copy from [(src_file, dst_file), (..)]
     managing symlinks if necessary
     """

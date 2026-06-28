@@ -144,7 +144,13 @@ class _ConfVarPlaceHolder:
 
 
 class _ConfValue:
-    def __init__(self, name: str, value: Any, path: bool = False, update: bool | None = None, important: bool = False):
+    def __init__(
+        self,
+        name: str,
+        value: Any,
+        path: bool = False,
+        update: bool | None = None,
+        important: bool = False):
         self.name = name
         self._important = important
         self._value = value
@@ -153,7 +159,11 @@ class _ConfValue:
         self._update = update
 
     @staticmethod
-    def parse(name: str, value: Any, path: bool = False, update: bool | None = None) -> _ConfValue:
+    def parse(
+        name: str,
+        value: Any,
+        path: bool = False,
+        update: bool | None = None) -> _ConfValue:
         if name != name.lower():
             raise RecipeException(f"Conf '{name}' must be lowercase")
         name, important = (name[:-1], True) if name[-1] == "!" else (name, False)
@@ -554,7 +564,12 @@ class ConfDefinition:
     def __bool__(self) -> bool:
         return bool(self._pattern_confs)
 
-    def get(self, conf_name: str, default: Any = None, check_type: Any = None, choices: Any = None) -> Any:
+    def get(
+        self,
+        conf_name: str,
+        default: Any = None,
+        check_type: Any = None,
+        choices: Any = None) -> Any:
         """
         Get the value of the conf name requested and convert it to the [type]-like passed.
         """
@@ -623,7 +638,12 @@ class ConfDefinition:
         self._pattern_confs = result._pattern_confs
         return
 
-    def update(self, key: str, value: Any, profile: bool = False, method: str = "define"):
+    def update(
+        self,
+        key: str,
+        value: Any,
+        profile: bool = False,
+        method: str = "define"):
         """
         Define/append/prepend/unset any Conf line
         >> update("tools.build:verbosity", "verbose")

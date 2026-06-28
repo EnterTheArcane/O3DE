@@ -8,7 +8,11 @@ from thirdparty.recipe import RecipeBase
 
 
 class GnuFtp:
-    def __init__(self, recipe: RecipeBase, package: str, url: str | None = None) -> None:
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        package: str,
+        url: str | None = None) -> None:
         self._recipe = recipe
         self._package = package
         self._url = url or f"https://ftp.gnu.org/gnu/{package}/"

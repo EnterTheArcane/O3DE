@@ -57,7 +57,11 @@ class AutotoolsToolchain:
     apple_min_version_flag: str | None
     apple_extra_flags: list[str]
     
-    def __init__(self, recipe: RecipeBase, namespace: str | None = None, prefix: str = "/"):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        namespace: str | None = None,
+        prefix: str = "/"):
         """
         :param recipe: The current recipe object. Always use ``self``.
         :param namespace: This argument avoids collisions when you have multiple toolchain calls in
@@ -157,7 +161,11 @@ class AutotoolsToolchain:
         self.apple_min_version_flag = min_flag
         self.apple_extra_flags = apple_extra_flags(self._recipe)
 
-    def yes_no(self, option_name: str, default: Any = None, negated: bool = False) -> str:
+    def yes_no(
+        self,
+        option_name: str,
+        default: Any = None,
+        negated: bool = False) -> str:
         """
         Simple wrapper to return "yes" or "no" depending on whether ``option_name`` evaluates
         as True or False.  Convenient for autotools ``--enable-x=yes/no`` configure arguments.

@@ -216,7 +216,11 @@ class _CMakePresets:
         return ret
 
     @staticmethod
-    def _test_preset_fields(recipe: RecipeBase, multiconfig: bool, preset_prefix: Any, runenv: Any) -> dict[str, Any]:
+    def _test_preset_fields(
+        recipe: RecipeBase,
+        multiconfig: bool,
+        preset_prefix: Any,
+        runenv: Any) -> dict[str, Any]:
         ret = _CMakePresets._common_preset_fields(recipe, multiconfig, preset_prefix)
         build_preset_jobs = build_jobs(recipe)
         if build_preset_jobs:
@@ -298,7 +302,11 @@ class _IncludingPresets:
         save(user_presets_path, data)
 
     @staticmethod
-    def _update_stubs(data: Any, inherited_user: Any, output_dir: str, absolute_paths: Any) -> dict[str, Any]:
+    def _update_stubs(
+        data: Any,
+        inherited_user: Any,
+        output_dir: str,
+        absolute_paths: Any) -> dict[str, Any]:
         """
         Set configurePresets/buildPresets/testPresets to stubs for recipe-* presets
         that the user inherits but that don't have a real preset of the same type in the includes.

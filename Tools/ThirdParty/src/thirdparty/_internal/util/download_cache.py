@@ -51,7 +51,11 @@ class DownloadCache:
             finally:
                 thread_lock.release()
 
-    def get_backup_sources_files(self, excluded_urls: Any, package_list: Any = None, only_upload: bool = True):
+    def get_backup_sources_files(
+        self,
+        excluded_urls: Any,
+        package_list: Any = None,
+        only_upload: bool = True):
         """Get list of backup source files currently present in the cache,
         either all of them if no package_list is give, or filtered by those belonging to the references in the package_list
 

@@ -1059,7 +1059,11 @@ class Recipe(RecipeBase[_Options]):
                 requires.append("Core")
             self.info.components[componentname].requires = _get_corrected_reqs(requires)
 
-        def _create_plugin(pluginname, libname, plugintype, requires):
+        def _create_plugin(
+            pluginname,
+            libname,
+            plugintype,
+            requires):
             componentname = f"qt{pluginname}"
             assert componentname not in self.info.components, f"Plugin {pluginname} already present in self.info.components"
             self.info.components[componentname].set_property("cmake_target_name", f"Qt6::{pluginname}")

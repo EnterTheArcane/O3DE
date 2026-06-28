@@ -130,7 +130,11 @@ class XCRun:
     XCRun is a wrapper for the Apple **xcrun** tool used to get information for building.
     """
 
-    def __init__(self, recipe: RecipeBase, sdk: str | None = None, use_settings_target: bool = False):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        sdk: str | None = None,
+        use_settings_target: bool = False):
         """
         :param recipe: Recipefile instance.
         :param sdk: Will skip the flag when ``False`` is passed and will try to adjust the

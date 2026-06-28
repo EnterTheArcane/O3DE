@@ -115,7 +115,11 @@ def supported_cppstd(recipe: RecipeBase, compiler: str | None = None, compiler_v
     return None
 
 
-def _check_cppstd(recipe: RecipeBase, cppstd: Any, comparator: Any, gnu_extensions: bool):
+def _check_cppstd(
+    recipe: RecipeBase,
+    cppstd: Any,
+    comparator: Any,
+    gnu_extensions: bool):
     """ Check if current cppstd fits the version required according to a given comparator.
 
         In case the current cppstd doesn't fit the maximum version required

@@ -59,7 +59,11 @@ def to_meson_value(value):
     return value
 
 
-def to_cppstd_flag(recipe: RecipeBase, compiler, compiler_version, cppstd):
+def to_cppstd_flag(
+    recipe: RecipeBase,
+    compiler,
+    compiler_version,
+    cppstd):
     """Gets a valid cppstd flag.
     :param recipe: ``RecipeBase`` instance.
     :param compiler: ``str`` compiler name.

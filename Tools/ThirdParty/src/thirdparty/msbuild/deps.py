@@ -159,7 +159,13 @@ class MSBuildDeps:
     def _get_valid_xml_format(name: str) -> str:
         return re.compile(r"[.+]").sub("_", name)
 
-    def _vars_props_file(self, require: Any, dep: Any, name: str, info: Any, build: bool) -> str:
+    def _vars_props_file(
+        self,
+        require: Any,
+        dep: Any,
+        name: str,
+        info: Any,
+        build: bool) -> str:
         """
         content for recipe_vars_poco_x86_release.props, containing the variables for 1 config
         This will be for 1 package or for one component of a package
@@ -236,7 +242,12 @@ class MSBuildDeps:
             self._vars_props, trim_blocks=True, lstrip_blocks=True).render(**fields)
         return formatted_template
 
-    def _activate_props_file(self, dep_name: str, vars_filename: str, deps: Any, build: bool) -> str:
+    def _activate_props_file(
+        self,
+        dep_name: str,
+        vars_filename: str,
+        deps: Any,
+        build: bool) -> str:
         """
         Actual activation of the VS variables, per configuration
             - recipe_pkgname_x86_release.props / recipe_pkgname_compname_x86_release.props
@@ -254,7 +265,12 @@ class MSBuildDeps:
         return content_multi
 
     @staticmethod
-    def _dep_props_file(dep_name: str, filename: str, aggregated_filename: str, condition: str, content: Any = None) -> str:
+    def _dep_props_file(
+        dep_name: str,
+        filename: str,
+        aggregated_filename: str,
+        condition: str,
+        content: Any = None) -> str:
         """
         The file aggregating all configurations for a given pkg / component
             - recipe_pkgname.props
@@ -364,7 +380,11 @@ class MSBuildDeps:
                 "", recipe_deps_filename, filename, condition=comp_condition, content=pkg_aggregated_content)
         return {recipe_deps_filename: pkg_aggregated_content}
 
-    def _package_props_files(self, require: Any, dep: Any, build: bool = False) -> dict[str, str]:
+    def _package_props_files(
+        self,
+        require: Any,
+        dep: Any,
+        build: bool = False) -> dict[str, str]:
         """ all the files for a given package:
         - recipe_pkgname_vars_config.props: definition of variables, one per config
         - recipe_pkgname_config.props: The one using those variables. This is very different for

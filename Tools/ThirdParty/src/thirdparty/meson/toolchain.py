@@ -113,7 +113,11 @@ class MesonToolchain:
         {% endfor %}
         """)
 
-    def __init__(self, recipe: RecipeBase, backend: str | None = None, native: bool = False):
+    def __init__(
+        self,
+        recipe: RecipeBase,
+        backend: str | None = None,
+        native: bool = False):
         """
         :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
         :param backend: (**DEPRECATED**, use ``self.backend`` instead) ``str`` ``backend`` Meson variable

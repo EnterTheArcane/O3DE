@@ -181,7 +181,11 @@ class MakeInfo:
     Store temporary information about each dependency
     """
 
-    def __init__(self, name: str, dirs: list[Any], flags: list[Any]):
+    def __init__(
+        self,
+        name: str,
+        dirs: list[Any],
+        flags: list[Any]):
         """
         :param name: Dependency or component raw name
         :param dirs: info folders supported by the dependency
@@ -356,7 +360,13 @@ class DepComponentContentGenerator:
         {{- define_multiple_variable_value("RECIPE_PROPERTY_{}_{}".format(dep_name, name), properties) -}}
         """)
 
-    def __init__(self, dependency: Any, component_name: str, dirs: dict[str, Any], flags: dict[str, Any], output: Any):
+    def __init__(
+        self,
+        dependency: Any,
+        component_name: str,
+        dirs: dict[str, Any],
+        flags: dict[str, Any],
+        output: Any):
         """
         :param dependency: The dependency object that owns the component
         :param component_name: component raw name e.g. poco::poco_json
@@ -424,7 +434,15 @@ class DepContentGenerator:
         {{- define_multiple_variable_value("RECIPE_PROPERTY_{}".format(name), properties) -}}
         """)
 
-    def __init__(self, dependency: Any, require: Any, root: str, sysroot: Any, dirs: dict[str, Any], flags: dict[str, Any], output: Any):
+    def __init__(
+        self,
+        dependency: Any,
+        require: Any,
+        root: str,
+        sysroot: Any,
+        dirs: dict[str, Any],
+        flags: dict[str, Any],
+        output: Any):
         self._dep = dependency
         self._req = require
         self._root = root
@@ -458,7 +476,14 @@ class DepComponentGenerator:
     Generates Makefile content for a dependency component
     """
 
-    def __init__(self, dependency: Any, makeinfo: MakeInfo, component_name: str, component: Any, root: str, output: Any):
+    def __init__(
+        self,
+        dependency: Any,
+        makeinfo: MakeInfo,
+        component_name: str,
+        component: Any,
+        root: str,
+        output: Any):
         """
         :param dependency: The dependency object that owns the component
         :param makeinfo: Makeinfo to store component variables
@@ -537,7 +562,11 @@ class DepGenerator:
     Process a dependency info variables and generate its Makefile content
     """
 
-    def __init__(self, dependency: Any, require: Any, output: Any):
+    def __init__(
+        self,
+        dependency: Any,
+        require: Any,
+        output: Any):
         self._dep = dependency
         self._req = require
         self._info = MakeInfo(self._dep.name, [], [])
