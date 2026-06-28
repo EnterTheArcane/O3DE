@@ -1,10 +1,9 @@
-import configparser
 import glob
 import os
 from pathlib import Path
 import platform
 import textwrap
-from typing import Any, Literal
+from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
@@ -66,14 +65,59 @@ SUBMODULES = [
 ]
 
 
+_MODULE_DEPENDS: dict[str, list[str]] = {
+    "qt3d": ["qtbase"],
+    "qt5compat": ["qtbase", "qtdeclarative"],
+    "qtactiveqt": ["qtbase"],
+    "qtcanvaspainter": ["qtbase", "qtdeclarative", "qtshadertools"],
+    "qtcharts": ["qtbase"],
+    "qtcoap": ["qtbase"],
+    "qtconnectivity": ["qtbase"],
+    "qtdatavis3d": ["qtbase"],
+    "qtdeclarative": ["qtbase"],
+    "qtdoc": ["qtdeclarative", "qttools"],
+    "qtgraphs": ["qtbase", "qtdeclarative", "qtquick3d"],
+    "qtgrpc": ["qtbase"],
+    "qthttpserver": ["qtbase"],
+    "qtimageformats": ["qtbase"],
+    "qtlanguageserver": ["qtbase"],
+    "qtlocation": ["qtbase", "qtpositioning"],
+    "qtlottie": ["qtbase", "qtdeclarative"],
+    "qtmqtt": ["qtbase", "qtdeclarative"],
+    "qtmultimedia": ["qtbase", "qtshadertools"],
+    "qtnetworkauth": ["qtbase"],
+    "qtopcua": ["qtbase", "qtdeclarative"],
+    "qtopenapi": ["qtbase"],
+    "qtpositioning": ["qtbase"],
+    "qtquick3d": ["qtbase", "qtdeclarative", "qtshadertools"],
+    "qtquick3dphysics": ["qtbase", "qtdeclarative", "qtquick3d", "qtshadertools"],
+    "qtquickeffectmaker": ["qtbase", "qtdeclarative", "qtshadertools"],
+    "qtquicktimeline": ["qtbase", "qtdeclarative"],
+    "qtremoteobjects": ["qtbase"],
+    "qtscxml": ["qtbase", "qtdeclarative"],
+    "qtsensors": ["qtbase"],
+    "qtserialbus": ["qtbase"],
+    "qtserialport": ["qtbase"],
+    "qtshadertools": ["qtbase"],
+    "qtspeech": ["qtbase", "qtmultimedia"],
+    "qtsvg": ["qtbase"],
+    "qttasktree": ["qtbase"],
+    "qttools": ["qtbase"],
+    "qttranslations": ["qttools"],
+    "qtvirtualkeyboard": ["qtbase", "qtdeclarative", "qtsvg"],
+    "qtwayland": ["qtbase"],
+    "qtwebchannel": ["qtbase"],
+    "qtwebengine": ["qtdeclarative"],
+    "qtwebsockets": ["qtbase"],
+    "qtwebview": ["qtdeclarative"],
+}
+
+
 class _Options(RecipeOptions):
     shared: bool = False
 
-    opengl: Literal['no', 'desktop', 'dynamic'] = 'no'
-    openssl: bool = True
-
     with_brotli: bool = True
-    with_dbus: bool = True
+    with_dbus: bool = False
     with_doubleconversion: bool = True
     with_egl: bool = False
     with_fontconfig: bool = True
@@ -90,6 +134,8 @@ class _Options(RecipeOptions):
     with_mysql: bool = False
     with_odbc: bool = False
     with_openal: bool = True
+    with_opengl: Literal['no', 'desktop', 'dynamic'] = 'no'
+    with_openssl: bool = True
     with_pcre2: bool = True
     with_pq: bool = False
     with_pulseaudio: bool = True
@@ -157,39 +203,6 @@ class Recipe(RecipeBase[_Options]):
     version = "6.11.1"
     license = "LGPL-3.0-only"
 
-    _submodules_tree: dict[str, dict[str, Any]] | None = None
-
-    @property
-    def _get_module_tree(self) -> dict[str, dict[str, Any]]:
-        if self._submodules_tree:
-            return self._submodules_tree
-        config = configparser.ConfigParser()
-        # the reference https://code.qt.io/cgit/qt/qt5.git/tree/.gitmodules?h={self.version}
-        config.read(os.path.join(self.recipe_folder or "", f"qtmodules{self.version}.conf"))
-        self._submodules_tree = {}
-        assert config.sections(), f"no qtmodules.conf file for version {self.version}"
-        for s in config.sections():
-            section = str(s)
-            assert section.startswith("submodule ")
-            assert section.count('"') == 2
-            modulename = section[section.find('"') + 1: section.rfind('"')]
-            if modulename in ["qtbase", "qtqa", "qtrepotools"]:
-                continue
-            status = str(config.get(section, "status"))
-            if status not in ["obsolete", "ignore", "additionalLibrary"]:
-                assert modulename in SUBMODULES, f"module {modulename} not in SUBMODULES"
-                self._submodules_tree[modulename] = {
-                    "status": status,
-                    "path": str(config.get(section, "path")), "depends": [],
-                }
-                if config.has_option(section, "depends"):
-                    self._submodules_tree[modulename]["depends"] = [str(i) for i in config.get(section, "depends").split()]
-
-        return self._submodules_tree
-
-    def export(self):
-        copy(self, f"qtmodules{self.version}.conf", self.recipe_folder or "", self.folders.export)
-
     def configure(self):
         if self.settings.os not in ["Linux", "FreeBSD"]:
             self.options.with_icu = False
@@ -205,12 +218,12 @@ class Recipe(RecipeBase[_Options]):
             self.options.qtwayland = False
 
         for submodule in SUBMODULES:
-            if submodule not in self._get_module_tree:
-                self.output.debug(f"Qt6: Removing {submodule} option as it is not in the module tree for this version, or is marked as obsolete or ignore")
+            if submodule not in _MODULE_DEPENDS:
+                self.output.debug(f"Qt6: Removing {submodule} option as it is not in the module tree for this version")
                 setattr(self.options, submodule, False)
 
         if not self.options.gui:
-            self.options.opengl = "no"
+            self.options.with_opengl = "no"
             self.options.with_vulkan = False
             self.options.with_freetype = False
             self.options.with_fontconfig = False
@@ -221,28 +234,13 @@ class Recipe(RecipeBase[_Options]):
             self.options.with_x11 = False
             self.options.with_egl = False
 
-        # Requested modules:
-        # - any module for non-removed options that have 'True' value
-        # - any enabled via `xxx_modules` that does not have a 'False' value
-        # Note that at this point, the submodule options dont have a value unless one is given externally
-        # to the recipe (e.g. via the command line, a profile, or a consumer)
         requested_modules = set([module for module in SUBMODULES if self.options.get_safe(module)])
-        for module in [m for m in SUBMODULES if m in self._get_module_tree]:
-            status = self._get_module_tree[module]['status']
-            is_disabled = self.options.get_safe(module) == False
-            if self.options.get_safe(f"{status}_modules"):
-                if not is_disabled:
-                    requested_modules.add(module)
-                else:
-                    self.output.warning(
-                        f"qt6: {module} requested because {status}_modules=True"
-                        f" but it has been explicitly disabled with {module}=False")
 
         self.output.debug(f"qt6: requested modules {list(requested_modules)}")
 
         required_modules: dict[str, list[str]] = {}
         for module in requested_modules:
-            deps = self._get_module_tree[module]["depends"]
+            deps = _MODULE_DEPENDS[module]
             for dep in deps:
                 required_modules.setdefault(dep, []).append(module)
 
@@ -282,7 +280,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires("zlib")
-        if self.options.openssl:
+        if self.options.with_openssl:
             self.requires("openssl")
         if self.options.with_pcre2:
             self.requires("pcre2")
@@ -326,7 +324,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("xorg")
         if self.options.with_egl:
             self.requires("egl")
-        if self.settings.os != "Windows" and self.options.opengl != "no":
+        if self.settings.os != "Windows" and self.options.with_opengl != "no":
             self.requires("opengl")
         if self.options.with_zstd:
             self.requires("zstd")
@@ -450,17 +448,17 @@ class Recipe(RecipeBase[_Options]):
 
         tc.variables["FEATURE_optimize_size"] = ("ON" if self.settings.get_safe("build_type") == "MinSizeRel" else "OFF")
 
-        for module in self._get_module_tree:
+        for module in _MODULE_DEPENDS:
             tc.variables[f"BUILD_{module}"] = ("ON" if self.options.get_safe(module) else "OFF")
         tc.variables["BUILD_qtqa"] = "OFF"
         tc.variables["BUILD_qtrepotools"] = "OFF"
 
         tc.variables["FEATURE_system_zlib"] = "ON"
 
-        tc.variables["INPUT_opengl"] = self.options.opengl
+        tc.variables["INPUT_opengl"] = self.options.with_opengl
 
         # openSSL
-        if not self.options.openssl:
+        if not self.options.with_openssl:
             tc.variables["INPUT_openssl"] = "no"
         else:
             tc.variables["HAVE_openssl"] = "ON"
@@ -607,11 +605,10 @@ class Recipe(RecipeBase[_Options]):
     def _excluded_module_patterns(self) -> list[str]:
         root = f"qt-everywhere-src-{self.version}"
         patterns: list[str] = []
-        for module, info in self._get_module_tree.items():
+        for module in _MODULE_DEPENDS:
             if not self.options.get_safe(module):
-                path = info["path"]
-                patterns.append(f"{root}/{path}")
-                patterns.append(f"{root}/{path}/*")
+                patterns.append(f"{root}/{module}")
+                patterns.append(f"{root}/{module}/*")
         return patterns
 
     def source(self):
@@ -814,7 +811,7 @@ class Recipe(RecipeBase[_Options]):
             self.folders.source,
             self.folders.package / "licenses",
             excludes="qtbase/examples/*")
-        for module in self._get_module_tree:
+        for module in _MODULE_DEPENDS:
             if not self.options.get_safe(module):
                 rmdir(self, self.folders.package / "licenses" / module)
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
@@ -1099,7 +1096,7 @@ class Recipe(RecipeBase[_Options]):
             core_reqs.append("zstd::zstd")
         if self.options.with_glib:
             core_reqs.append("glib::glib")
-        if self.options.openssl:
+        if self.options.with_openssl:
             core_reqs.append("openssl::openssl")  # used by QCryptographicHash
 
         _create_module("Core", core_reqs)
@@ -1142,7 +1139,7 @@ class Recipe(RecipeBase[_Options]):
                     gui_reqs.append("xorg::xorg")
                 if self.options.with_egl:
                     gui_reqs.append("egl::egl")
-            if self.settings.os != "Windows" and self.options.opengl != "no":
+            if self.settings.os != "Windows" and self.options.with_opengl != "no":
                 gui_reqs.append("opengl::opengl")
             if self.options.with_vulkan:
                 gui_reqs.append("vulkan-loader::vulkan-loader")
@@ -1253,7 +1250,7 @@ class Recipe(RecipeBase[_Options]):
             else:
                 self.info.components["qtQODBCDriverPlugin"].system_libs.append("odbc32")
         networkReqs: list[str] = []
-        if self.options.openssl:
+        if self.options.with_openssl:
             networkReqs.append("openssl::openssl")
         if self.options.with_brotli:
             networkReqs.append("brotli::brotli")
@@ -1272,9 +1269,9 @@ class Recipe(RecipeBase[_Options]):
                 ]
         if self.options.gui and self.options.widgets:
             _create_module("PrintSupport", ["Gui", "Widgets"])
-        if self.options.opengl != "no" and self.options.gui:
+        if self.options.with_opengl != "no" and self.options.gui:
             _create_module("OpenGL", ["Gui"])
-        if self.options.widgets and self.options.opengl != "no":
+        if self.options.widgets and self.options.with_opengl != "no":
             _create_module("OpenGLWidgets", ["OpenGL", "Widgets"])
         _create_module("Concurrent", [])
         _create_module("Xml", [])
