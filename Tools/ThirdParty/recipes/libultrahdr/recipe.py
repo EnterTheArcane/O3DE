@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    with_jpeg: Literal['libjpeg-turbo', 'mozjpeg'] = 'libjpeg-turbo'
+    with_jpeg: Literal["libjpeg-turbo", "mozjpeg"] = "libjpeg-turbo"
 
 
 class Recipe(RecipeBase[_Options]):
@@ -42,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
 
         # Force-disable fallback to internal dependency builder if no deps found
         tc.cache_variables["UHDR_BUILD_DEPS"] = False
-        tc.cache_variables['UHDR_BUILD_EXAMPLES'] = False
+        tc.cache_variables["UHDR_BUILD_EXAMPLES"] = False
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_JPEG"] = True
 
         tc.generate()
@@ -65,7 +65,7 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
-        self.info.libs = ['uhdr']
+        self.info.libs = ["uhdr"]
 
         if self.options.with_jpeg == "libjpeg-turbo":
             self.info.requires = ["libjpeg-turbo::jpeg"]

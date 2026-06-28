@@ -42,8 +42,8 @@ def _get_gnu_arch(os_, arch):
             # https://lists.gnu.org/archive/html/config-patches/2015-03/msg00000.html
             machine = "e2k-unknown"
         elif "riscv64" in arch:
-            machine = 'riscv64'
-        elif 'riscv32' in arch:
+            machine = "riscv64"
+        elif "riscv32" in arch:
             machine = "riscv32"
 
     if machine is None:
@@ -86,5 +86,5 @@ def _get_gnu_triplet(os_, arch, compiler=None):
     machine = _get_gnu_arch(os_, arch)
     op_system = _get_gnu_os(os_, arch, compiler=compiler)
     return {
-        'machine': machine, 'system': op_system, 'triplet': f"{machine}-{op_system}",
+        "machine": machine, "system": op_system, "triplet": f"{machine}-{op_system}",
     }

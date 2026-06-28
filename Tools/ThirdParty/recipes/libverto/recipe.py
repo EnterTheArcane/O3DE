@@ -55,7 +55,7 @@ class Recipe(RecipeBase[_Options]):
         tc.configure_args.extend([
             "--enable-shared" if self.options.shared else "--disable-shared",
             "--disable-static" if self.options.shared else "--enable-static",
-            f"--with-pthread={tc.yes_no('pthread')}",
+            f"--with-pthread={tc.yes_no("pthread")}",
             "--with-glib=no",
             "--with-libev=no",
             "--with-libevent=builtin",

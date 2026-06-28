@@ -100,10 +100,10 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["wayland-scanner"].requires = ["expat::expat"]
         self.info.components["wayland-scanner"].requires.append("libxml2::libxml2")
         pkgconfig_variables = {
-            'datarootdir': '${prefix}/res',
-            'pkgdatadir': '${datarootdir}/wayland',
-            'bindir': '${prefix}/bin',
-            'wayland_scanner': '${bindir}/wayland-scanner',
+            "datarootdir": "${prefix}/res",
+            "pkgdatadir": "${datarootdir}/wayland",
+            "bindir": "${prefix}/bin",
+            "wayland_scanner": "${bindir}/wayland-scanner",
         }
         self.info.components["wayland-scanner"].set_property(
             "pkg_config_custom_content",
@@ -121,8 +121,8 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["wayland-server"].system_libs += ["rt"]
             self.info.components["wayland-server"].set_property("component_version", self.version)
             pkgconfig_variables = {
-                'datarootdir': '${prefix}/res',
-                'pkgdatadir': '${datarootdir}/wayland',
+                "datarootdir": "${prefix}/res",
+                "pkgdatadir": "${datarootdir}/wayland",
             }
             self.info.components["wayland-server"].set_property(
                 "pkg_config_custom_content",
@@ -138,8 +138,8 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["wayland-client"].system_libs += ["rt"]
             self.info.components["wayland-client"].set_property("component_version", self.version)
             pkgconfig_variables = {
-                'datarootdir': '${prefix}/res',
-                'pkgdatadir': '${datarootdir}/wayland',
+                "datarootdir": "${prefix}/res",
+                "pkgdatadir": "${datarootdir}/wayland",
             }
             self.info.components["wayland-client"].set_property(
                 "pkg_config_custom_content",

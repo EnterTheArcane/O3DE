@@ -235,8 +235,8 @@ class MSBuildDeps:
             bin_dirs = ""
 
         fields = {
-            'name': name, 'root_folder': relative_root_folder, 'bin_dirs': bin_dirs, 'res_dirs': res_dirs, 'include_dirs': include_dirs, 'lib_dirs': lib_dirs, 'libs': libs, # TODO: Missing objects
-            'system_libs': system_libs, 'definitions': definitions, 'compiler_flags': compiler_flags, 'linker_flags': linker_flags, 'host_context': not build,
+            "name": name, "root_folder": relative_root_folder, "bin_dirs": bin_dirs, "res_dirs": res_dirs, "include_dirs": include_dirs, "lib_dirs": lib_dirs, "libs": libs, # TODO: Missing objects
+            "system_libs": system_libs, "definitions": definitions, "compiler_flags": compiler_flags, "linker_flags": linker_flags, "host_context": not build,
         }
         formatted_template = jinja2.Template(
             self._vars_props, trim_blocks=True, lstrip_blocks=True).render(**fields)
@@ -295,7 +295,7 @@ class MSBuildDeps:
             content_multi = jinja2.Template(content_multi).render({"name": dep_name})
         # parse the multi_file and add new import statement if needed
         dom = minidom.parseString(content_multi)
-        import_vars = dom.getElementsByTagName('ImportGroup')[0]
+        import_vars = dom.getElementsByTagName("ImportGroup")[0]
 
         # Current vars
         children = import_vars.getElementsByTagName("Import")
@@ -303,16 +303,16 @@ class MSBuildDeps:
             if aggregated_filename == node.getAttribute("Project") and condition == node.getAttribute("Condition"):
                 break
         else:  # create a new import statement
-            import_node = dom.createElement('Import')
-            import_node.setAttribute('Condition', condition)
-            import_node.setAttribute('Project', aggregated_filename)
+            import_node = dom.createElement("Import")
+            import_node.setAttribute("Condition", condition)
+            import_node.setAttribute("Project", aggregated_filename)
             import_vars.appendChild(import_node)
 
         # Import recipe_dedup.props
         if "recipe_dedup.props" not in content_multi:
-            dedup_import = dom.createElement('Import')
-            dedup_import.setAttribute('Condition', "'$(RecipeDedupPropsImported)' != 'True'")
-            dedup_import.setAttribute('Project', 'recipe_dedup.props')
+            dedup_import = dom.createElement("Import")
+            dedup_import.setAttribute("Condition", "'$(RecipeDedupPropsImported)' != 'True'")
+            dedup_import.setAttribute("Project", "recipe_dedup.props")
             import_vars.appendChild(dedup_import)
 
         content_multi = dom.toprettyxml()

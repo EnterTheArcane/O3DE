@@ -316,7 +316,7 @@ class LinkerScriptsBlock(Block):
             "tools.build:linker_scripts", check_type=list, default=[])
         if not linker_scripts:
             return
-        linker_scripts = [linker_script.replace('\\', '/') for linker_script in linker_scripts]
+        linker_scripts = [linker_script.replace("\\", "/") for linker_script in linker_scripts]
         linker_scripts = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in linker_scripts]
         linker_script_flags = [r'-T\"' + linker_script + r'\"' for linker_script in linker_scripts]
         return {"linker_script_flags": " ".join(linker_script_flags)}
@@ -444,7 +444,7 @@ class AndroidSystemBlock(Block):
 
         android_ndk_path = self._recipe.conf.get("tools.android:ndk_path")
         if not android_ndk_path:
-            raise RecipeException('CMakeToolchain needs tools.android:ndk_path configuration defined')
+            raise RecipeException("CMakeToolchain needs tools.android:ndk_path configuration defined")
         android_ndk_path = android_ndk_path.replace("\\", "/")
         android_ndk_path = relativize_path(
             android_ndk_path, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
@@ -455,11 +455,11 @@ class AndroidSystemBlock(Block):
             use_cmake_legacy_toolchain = "ON" if use_cmake_legacy_toolchain else "OFF"
 
         ctxt_toolchain = {
-            'android_platform': 'android-' + str(self._recipe.settings.os.api_level),
-            'android_abi': android_abi(self._recipe),
-            'android_stl': libcxx_str,
-            'android_ndk_path': android_ndk_path,
-            'android_use_legacy_toolchain_file': use_cmake_legacy_toolchain,
+            "android_platform": "android-" + str(self._recipe.settings.os.api_level),
+            "android_abi": android_abi(self._recipe),
+            "android_stl": libcxx_str,
+            "android_ndk_path": android_ndk_path,
+            "android_use_legacy_toolchain_file": use_cmake_legacy_toolchain,
         }
         return ctxt_toolchain
 
@@ -538,7 +538,7 @@ class AppleSystemBlock(Block):
 
         host_os_version = self._recipe.settings.get_safe("os.version")
         host_sdk_name = self._recipe.conf.get("tools.apple:sdk_path") or get_apple_sdk_fullname(self._recipe)
-        is_debug = self._recipe.settings.get_safe('build_type') == "Debug"
+        is_debug = self._recipe.settings.get_safe("build_type") == "Debug"
 
         # Reading some configurations to enable or disable some Xcode toolchain flags and variables
         # Issue related: upstream issue 9448
@@ -638,9 +638,9 @@ class FindFiles(Block):
 
     def _runtime_dirs_value(self, dirs):
         if is_multi_configuration(self._toolchain.generator):
-            return ' '.join(f'"$<$<CONFIG:{c}>:{i}>"' for c, v in dirs.items() for i in v)
+            return " ".join(f'"$<$<CONFIG:{c}>:{i}>"' for c, v in dirs.items() for i in v)
         else:
-            return ' '.join(f'"{item}"' for _, items in dirs.items() for item in items)
+            return " ".join(f'"{item}"' for _, items in dirs.items() for item in items)
 
     def _get_host_runtime_dirs(self, host_req):
         settings = self._recipe.settings
@@ -671,7 +671,7 @@ class FindFiles(Block):
         return host_runtime_dirs
 
     def _join_paths(self, paths):
-        paths = [p.replace('\\', '/').replace('$', '\\$').replace('"', '\\"') for p in paths]
+        paths = [p.replace("\\", "/").replace("$", "\\$").replace('"', '\\"') for p in paths]
         paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in paths]
         return " ".join([f'"{p}"' for p in paths])
 
@@ -961,7 +961,7 @@ class CompilersBlock(Block):
         compilers = {}
         # Allowed <LANG> variables (and <LANG>_LAUNCHER)
         compilers_mapping = {
-            "c": "C", "cuda": "CUDA", "cpp": "CXX", "objc": "OBJC", "objcpp": "OBJCXX", "rc": "RC", 'fortran': "Fortran", 'asm': "ASM", "hip": "HIP", "ispc": "ISPC",
+            "c": "C", "cuda": "CUDA", "cpp": "CXX", "objc": "OBJC", "objcpp": "OBJCXX", "rc": "RC", "fortran": "Fortran", "asm": "ASM", "hip": "HIP", "ispc": "ISPC",
         }
         for comp, lang in compilers_mapping.items():
             # To set CMAKE_<LANG>_COMPILER
@@ -1085,7 +1085,7 @@ class GenericSystemBlock(Block):
             # os_host would be 'baremetal' for tricore, but it's ideal to use the Generic-ELF
             # system name instead of just "Generic" because it matches how Aurix Dev Studio
             # generated makefiles behave by generating binaries with the '.elf' extension.
-            if arch_host in ['tc131', 'tc16', 'tc161', 'tc162', 'tc18']:
+            if arch_host in ["tc131", "tc16", "tc161", "tc162", "tc18"]:
                 return "Generic-ELF"
             return cmake_system_name_map.get(os_host, os_host)
         elif arch_host is not None and arch_host != arch_build:
@@ -1096,7 +1096,7 @@ class GenericSystemBlock(Block):
         arch_host = self._recipe.settings.get_safe("arch")
         arch_build = self._recipe.settings_build.get_safe("arch")
         os_build = self._recipe.settings_build.get_safe("os")
-        return os_host in ('iOS', 'tvOS', 'visionOS') or (os_host == 'Mac' and (arch_host != arch_build or os_build != os_host))
+        return os_host in ("iOS", "tvOS", "visionOS") or (os_host == "Mac" and (arch_host != arch_build or os_build != os_host))
 
     @staticmethod
     def _get_darwin_version(os_name, os_version):
@@ -1134,13 +1134,13 @@ class GenericSystemBlock(Block):
             _system_processor = None
             if self._is_apple_cross_building():
                 # cross-build in Macos also for M1
-                system_name = {'Mac': 'Darwin'}.get(os_host, os_host)
+                system_name = {"Mac": "Darwin"}.get(os_host, os_host)
                 #  CMAKE_SYSTEM_VERSION for Apple sets the Darwin version, not the os version
                 _system_version = self._get_darwin_version(os_host, os_host_version)
                 _system_processor = to_apple_arch(self._recipe)
-            elif os_host != 'Android':
+            elif os_host != "Android":
                 system_name = self._get_generic_system_name()
-                if arch_host in ['tc131', 'tc16', 'tc161', 'tc162', 'tc18']:
+                if arch_host in ["tc131", "tc16", "tc161", "tc162", "tc18"]:
                     _system_processor = "tricore"
                 else:
                     _system_processor = arch_host
@@ -1415,7 +1415,7 @@ class ToolchainBlocks:
 
     def __setitem__(self, name: str, block_type: Any):
         # Create a new class inheriting Block with the elements of the provided one
-        block_type = type('proxyUserBlock', (Block,), dict(block_type.__dict__))
+        block_type = type("proxyUserBlock", (Block,), dict(block_type.__dict__))
         self._blocks[name] = block_type(self._recipe, self._toolchain, name)
 
     def __getitem__(self, name: str):

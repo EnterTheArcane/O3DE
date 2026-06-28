@@ -32,7 +32,7 @@ class GnuDepsFlags:
 
         # Not used?  # self.bin_paths  # self.build_paths  # self.src_paths
 
-    _GCC_LIKE = ['clang', 'apple-clang', 'gcc']
+    _GCC_LIKE = ["clang", "apple-clang", "gcc"]
 
     @staticmethod
     def _format_defines(defines: Any):
@@ -83,9 +83,9 @@ class GnuDepsFlags:
 
     def _adjust_path(self, path: str):
         if is_msvc(self._recipe):
-            path = path.replace('/', '\\')
+            path = path.replace("/", "\\")
         else:
-            path = path.replace('\\', '/')
+            path = path.replace("\\", "/")
 
         path = subsystem_path(self._subsystem, path)
-        return '"%s"' % path if ' ' in path else path
+        return '"%s"' % path if " " in path else path

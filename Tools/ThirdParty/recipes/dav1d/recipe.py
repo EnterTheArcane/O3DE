@@ -13,7 +13,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    bit_depth: Literal['all', 8, 16] = 'all'
+    bit_depth: Literal["all", 8, 16] = "all"
     with_tools: bool = True
     assembly: bool = True
 

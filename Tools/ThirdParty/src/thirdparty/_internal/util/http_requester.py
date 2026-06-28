@@ -39,7 +39,7 @@ class _SourceURLCredentials:
         def _get_auth(credentials):
             if ("headers" in credentials or "token" in credentials or ("user" in credentials and "password" in credentials)):
                 return credentials
-            raise RecipeException(f"Unknown credentials method for '{credentials['url']}'")
+            raise RecipeException(f"Unknown credentials method for '{credentials["url"]}'")
 
         try:
             template = jinja2.Template(load(creds_path))

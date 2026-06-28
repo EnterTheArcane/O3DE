@@ -22,7 +22,7 @@ class GnuFtp:
         resp = requests.get(self._url, timeout=30)
         resp.raise_for_status()
         pattern = re.compile(
-            rf'{re.escape(self._package)}-(\d[\d.]+)\.(tar\.(gz|bz2|xz|lz))')
+            rf"{re.escape(self._package)}-(\d[\d.]+)\.(tar\.(gz|bz2|xz|lz))")
         best_str: str | None = None
         best_version: Version | None = None
         for m in pattern.finditer(resp.text):

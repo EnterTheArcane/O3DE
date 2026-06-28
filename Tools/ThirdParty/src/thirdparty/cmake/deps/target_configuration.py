@@ -248,7 +248,7 @@ class TargetConfigurationTemplate2:
         }
         # System frameworks (only Apple OS)
         if info.frameworks:
-            target['frameworks'] = " ".join([f"-framework {frw}" for frw in info.frameworks])
+            target["frameworks"] = " ".join([f"-framework {frw}" for frw in info.frameworks])
         # FIXME: We're ignoring this value at this moment. It relies on cmake_target_name or lib name
         #        Revisit when cpp.exe value is used too.
         if info.package_framework:

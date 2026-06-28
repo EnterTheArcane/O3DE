@@ -50,27 +50,27 @@ def architecture_flag(recipe: RecipeBase) -> str:
             return ""
         # TODO: Maybe Clang-Mingw runtime does, but with C++ is impossible to test
         return {"X64": "-m64"}.get(arch, "")
-    elif compiler in ['gcc', 'apple-clang', 'clang', 'sun-cc']:
-        if the_os == 'Mac' and subsystem == 'catalyst':
+    elif compiler in ["gcc", "apple-clang", "clang", "sun-cc"]:
+        if the_os == "Mac" and subsystem == "catalyst":
             # FIXME: This might be conflicting with Autotools --target cli arg
             apple_arch = _to_apple_arch(arch)
             if apple_arch:
                 # TODO: Could we define anything like `to_apple_target()`?
                 #       Check https://github.com/rust-lang/rust/issues/48862
-                return f'--target={apple_arch}-apple-ios{subsystem_ios_version}-macabi'
-        elif arch in ['X64']:
-            return '-m64'
-        elif arch in ['x86', 'sparc']:
-            return '-m32'
-        elif arch in ['s390']:
-            return '-m31'
-        elif arch in ['tc131', 'tc16', 'tc161', 'tc162', 'tc18']:
-            return f'-m{arch}'
-        elif the_os == 'AIX':
-            if arch in ['ppc32']:
-                return '-maix32'
-            elif arch in ['ppc64']:
-                return '-maix64'
+                return f"--target={apple_arch}-apple-ios{subsystem_ios_version}-macabi"
+        elif arch in ["X64"]:
+            return "-m64"
+        elif arch in ["x86", "sparc"]:
+            return "-m32"
+        elif arch in ["s390"]:
+            return "-m31"
+        elif arch in ["tc131", "tc16", "tc161", "tc162", "tc18"]:
+            return f"-m{arch}"
+        elif the_os == "AIX":
+            if arch in ["ppc32"]:
+                return "-maix32"
+            elif arch in ["ppc64"]:
+                return "-maix64"
     elif compiler == "mcst-lcc":
         return {
             "e2k-v2": "-march=elbrus-v2", "e2k-v3": "-march=elbrus-v3", "e2k-v4": "-march=elbrus-v4", "e2k-v5": "-march=elbrus-v5", "e2k-v6": "-march=elbrus-v6", "e2k-v7": "-march=elbrus-v7",
@@ -107,7 +107,7 @@ def libcxx_flags(recipe: RecipeBase):
     lib = stdlib11 = None
     if compiler == "apple-clang":
         # In apple-clang 2 only values atm are "libc++" and "libstdc++"
-        lib = f'-stdlib={libcxx}'
+        lib = f"-stdlib={libcxx}"
     elif compiler in ("clang", "emcc"):
         if libcxx == "libc++":
             lib = "-stdlib=libc++"
@@ -118,9 +118,9 @@ def libcxx_flags(recipe: RecipeBase):
             "libCstd": "-library=Cstd", "libstdcxx": "-library=stdcxx4", "libstlport": "-library=stlport4", "libstdc++": "-library=stdcpp",
         }.get(libcxx)
     elif compiler == "qcc":
-        lib = f'-Y _{libcxx}'
+        lib = f"-Y _{libcxx}"
 
-    if compiler in ['clang', 'apple-clang', 'gcc', 'emcc']:
+    if compiler in ["clang", "apple-clang", "gcc", "emcc"]:
         if libcxx == "libstdc++":
             stdlib11 = "_GLIBCXX_USE_CXX11_ABI=0"
         elif libcxx == "libstdc++11" and recipe.conf.get(
@@ -285,7 +285,7 @@ def cppstd_msvc_flag(visual_version, cppstd):
 
 def _cppstd_msvc(visual_version, cppstd):
     flag = cppstd_msvc_flag(visual_version, cppstd)
-    return f'/std:{flag}' if flag else None
+    return f"/std:{flag}" if flag else None
 
 
 def _cppstd_apple_clang(clang_version, cppstd):
@@ -339,7 +339,7 @@ def _cppstd_apple_clang(clang_version, cppstd):
         "98": v98, "gnu98": vgnu98, "11": v11, "gnu11": vgnu11, "14": v14, "gnu14": vgnu14, "17": v17, "gnu17": vgnu17, "20": v20, "gnu20": vgnu20, "23": v23, "gnu23": vgnu23, "26": v26, "gnu26": vgnu26,
     }.get(cppstd)
 
-    return f'-std={flag}' if flag else None
+    return f"-std={flag}" if flag else None
 
 
 def _cppstd_clang(clang_version, cppstd):
@@ -398,7 +398,7 @@ def _cppstd_clang(clang_version, cppstd):
     flag = {
         "98": v98, "gnu98": vgnu98, "11": v11, "gnu11": vgnu11, "14": v14, "gnu14": vgnu14, "17": v17, "gnu17": vgnu17, "20": v20, "gnu20": vgnu20, "23": v23, "gnu23": vgnu23, "26": v26, "gnu26": vgnu26,
     }.get(cppstd)
-    return f'-std={flag}' if flag else None
+    return f"-std={flag}" if flag else None
 
 
 def _cppstd_gcc(gcc_version, cppstd):
@@ -451,7 +451,7 @@ def _cppstd_gcc(gcc_version, cppstd):
     flag = {
         "98": v98, "gnu98": vgnu98, "11": v11, "gnu11": vgnu11, "14": v14, "gnu14": vgnu14, "17": v17, "gnu17": vgnu17, "20": v20, "gnu20": vgnu20, "23": v23, "gnu23": vgnu23, "26": v26, "gnu26": vgnu26,
     }.get(cppstd)
-    return f'-std={flag}' if flag else None
+    return f"-std={flag}" if flag else None
 
 
 def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
@@ -475,7 +475,7 @@ def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
     flag = {
         "98": "c++98", "gnu98": "gnu++98", "03": "c++03", "gnu03": "gnu++03", "11": v11, "gnu11": vgnu11, "14": v14, "gnu14": vgnu14, "17": v17, "gnu17": vgnu17, "20": v20, "gnu20": vgnu20,
     }.get(cppstd)
-    return f'-std={flag}' if flag else None
+    return f"-std={flag}" if flag else None
 
 
 def cstd_flag(recipe: RecipeBase) -> str:
@@ -516,7 +516,7 @@ def _cstd_gcc(gcc_version, cstd):
     flag = {
         "99": "c99", "11": "c11", "17": "c17", "23": "c23",
     }.get(cstd, cstd)
-    return f'-std={flag}' if flag else None
+    return f"-std={flag}" if flag else None
 
 
 def _cstd_clang(gcc_version, cstd):
@@ -524,7 +524,7 @@ def _cstd_clang(gcc_version, cstd):
     flag = {
         "99": "c99", "11": "c11", "17": "c17", "23": "c23",
     }.get(cstd, cstd)
-    return f'-std={flag}' if flag else None
+    return f"-std={flag}" if flag else None
 
 
 def _cstd_apple_clang(gcc_version, cstd):
@@ -532,7 +532,7 @@ def _cstd_apple_clang(gcc_version, cstd):
     flag = {
         "99": "c99", "11": "c11", "17": "c17", "23": "c23",
     }.get(cstd, cstd)
-    return f'-std={flag}' if flag else None
+    return f"-std={flag}" if flag else None
 
 
 def cstd_msvc_flag(visual_version, cstd):
@@ -547,4 +547,4 @@ def cstd_msvc_flag(visual_version, cstd):
 
 def _cstd_msvc(visual_version, cstd):
     flag = cstd_msvc_flag(visual_version, cstd)
-    return f'/std:{flag}' if flag else None
+    return f"/std:{flag}" if flag else None

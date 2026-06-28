@@ -16,8 +16,8 @@ def cross_building(recipe: RecipeBase | None = None, skip_x64_x86: bool = False)
     if cross_build is not None:
         return cross_build
 
-    build_os = recipe.settings_build.get_safe('os')
-    build_arch = recipe.settings_build.get_safe('arch')
+    build_os = recipe.settings_build.get_safe("os")
+    build_arch = recipe.settings_build.get_safe("arch")
     host_os = recipe.settings.get_safe("os")
     host_arch = recipe.settings.get_safe("arch")
 

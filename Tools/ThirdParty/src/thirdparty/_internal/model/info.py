@@ -224,7 +224,7 @@ class _Component:
         if not bindirs or len(bindirs) != 1:
             raise RecipeException(
                 f"The bindir property is undefined because bindirs "
-                f"{'is empty' if not bindirs else 'has more than one element'}."
+                f"{"is empty" if not bindirs else "has more than one element"}."
                 f" Consider using the bindirs property.")
         return bindirs[0]
 
@@ -234,7 +234,7 @@ class _Component:
         if not libdirs or len(libdirs) != 1:
             raise RecipeException(
                 f"The libdir property is undefined because libdirs "
-                f"{'is empty' if not libdirs else 'has more than one element'}."
+                f"{"is empty" if not libdirs else "has more than one element"}."
                 f" Consider using the libdirs property.")
         return libdirs[0]
 
@@ -244,7 +244,7 @@ class _Component:
         if not includedirs or len(includedirs) != 1:
             raise RecipeException(
                 f"The includedir property is undefined because includedirs "
-                f"{'is empty' if not includedirs else 'has more than one element'}."
+                f"{"is empty" if not includedirs else "has more than one element"}."
                 f" Consider using the includedirs property.")
         return includedirs[0]
 
@@ -636,7 +636,7 @@ class _Component:
         self._type = deduced_type
 
     def deduce_locations(self, recipe: RecipeBase, component_name: str = ""):
-        name = f'{recipe} info.components["{component_name}"]' if component_name else f'{recipe} info'
+        name = f'{recipe} info.components["{component_name}"]' if component_name else f"{recipe} info"
         # executable
         if self._exe:  # exe is a new field, it should have the correct location
             if self._type is None:

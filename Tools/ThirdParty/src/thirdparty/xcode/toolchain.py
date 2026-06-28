@@ -66,18 +66,18 @@ class XcodeToolchain:
     @property
     def _apple_deployment_target(self):
         deployment_target_key = xcodebuild_deployment_target_key(self._recipe.settings.get_safe("os"))
-        return '{}{}={}'.format(
+        return "{}{}={}".format(
             deployment_target_key, _xcconfig_conditional(self._recipe.settings, self.configuration), self.os_version) if deployment_target_key and self.os_version else ""
 
     @property
     def _clang_cxx_library(self):
-        return 'CLANG_CXX_LIBRARY{}={}'.format(
+        return "CLANG_CXX_LIBRARY{}={}".format(
             _xcconfig_conditional(
                 self._recipe.settings, self.configuration), self.libcxx) if self.libcxx else ""
 
     @property
     def _clang_cxx_language_standard(self):
-        return 'CLANG_CXX_LANGUAGE_STANDARD{}={}'.format(
+        return "CLANG_CXX_LANGUAGE_STANDARD{}={}".format(
             _xcconfig_conditional(self._recipe.settings, self.configuration), self._cppstd) if self._cppstd else ""
 
     @property
@@ -116,10 +116,10 @@ class XcodeToolchain:
 
     @property
     def _flags_xcconfig_content(self):
-        defines = f"GCC_PREPROCESSOR_DEFINITIONS = $(inherited) {' '.join(self._global_defines)}" if self._global_defines else ""
-        cflags = f"OTHER_CFLAGS = $(inherited) {' '.join(self._global_cflags)}" if self._global_cflags else ""
-        cppflags = f"OTHER_CPLUSPLUSFLAGS = $(inherited) {' '.join(self._global_cxxflags)}" if self._global_cxxflags else ""
-        ldflags = f"OTHER_LDFLAGS = $(inherited) {' '.join(self._global_ldflags)}" if self._global_ldflags else ""
+        defines = f"GCC_PREPROCESSOR_DEFINITIONS = $(inherited) {" ".join(self._global_defines)}" if self._global_defines else ""
+        cflags = f"OTHER_CFLAGS = $(inherited) {" ".join(self._global_cflags)}" if self._global_cflags else ""
+        cppflags = f"OTHER_CPLUSPLUSFLAGS = $(inherited) {" ".join(self._global_cxxflags)}" if self._global_cxxflags else ""
+        ldflags = f"OTHER_LDFLAGS = $(inherited) {" ".join(self._global_ldflags)}" if self._global_ldflags else ""
         ret = self._flags_xconfig.format(defines=defines, cflags=cflags, cppflags=cppflags, ldflags=ldflags)
         return ret
 

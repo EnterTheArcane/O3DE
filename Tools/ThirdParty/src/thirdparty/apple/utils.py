@@ -11,13 +11,13 @@ from thirdparty.recipe import RecipeBase
 def is_apple_os(recipe: RecipeBase, build_context: bool = False) -> bool:
     """returns True if OS is Apple one (Mac, iOS, tvOS or visionOS)"""
     settings = recipe.settings_build if build_context else recipe.settings
-    return str(settings.get_safe("os")) in ['Mac', 'iOS', 'tvOS', 'visionOS']
+    return str(settings.get_safe("os")) in ["Mac", "iOS", "tvOS", "visionOS"]
 
 
 def _to_apple_arch(arch: str | None, default: Any = None) -> str | None:
     """converts recipe-style architecture into Apple-style arch"""
     return {
-        'X64': 'x86_64', 'ARM': 'arm64',
+        "X64": "x86_64", "ARM": "arm64",
     }.get(str(arch), default)
 
 
@@ -46,9 +46,9 @@ def get_apple_sdk_fullname(recipe: RecipeBase) -> str | None:
 
     Note: In case of MacOS it'll be the same for all the architectures.
     """
-    os_ = recipe.settings.get_safe('os')
-    os_sdk = recipe.settings.get_safe('os.sdk')
-    os_sdk_version = recipe.settings.get_safe('os.sdk_version') or ""
+    os_ = recipe.settings.get_safe("os")
+    os_sdk = recipe.settings.get_safe("os.sdk")
+    os_sdk_version = recipe.settings.get_safe("os.sdk_version") or ""
     if os_sdk:
         return f"{os_sdk}{os_sdk_version}"
     elif os_ == "Mac":  # it has only a single value for all the architectures
@@ -59,14 +59,14 @@ def get_apple_sdk_fullname(recipe: RecipeBase) -> str | None:
 
 def apple_min_version_flag(recipe: RecipeBase) -> str:
     """compiler flag name which controls deployment target"""
-    os_ = recipe.settings.get_safe('os')
-    os_sdk = recipe.settings.get_safe('os.sdk')
+    os_ = recipe.settings.get_safe("os")
+    os_sdk = recipe.settings.get_safe("os.sdk")
     os_sdk = os_sdk or ("macosx" if os_ == "Mac" else None)
     os_version = recipe.settings.get_safe("os.version")
     if not os_sdk or not os_version:
         # Legacy behavior
         return ""
-    if recipe.settings.get_safe("os.subsystem") == 'catalyst':
+    if recipe.settings.get_safe("os.subsystem") == "catalyst":
         os_sdk = "iphoneos"
     return {
         "macosx": f"-mmacosx-version-min={os_version}",
@@ -130,16 +130,16 @@ class XCRun:
         settings = recipe.settings
 
         if sdk is None and settings:
-            sdk = settings.get_safe('os.sdk')
+            sdk = settings.get_safe("os.sdk")
 
         self._recipe = recipe
         self.settings = settings
         self.sdk = sdk
 
     def _invoke(self, args: list[str]) -> str:
-        command = ['xcrun']
+        command = ["xcrun"]
         if self.sdk:
-            command.extend(['-sdk', self.sdk])
+            command.extend(["-sdk", self.sdk])
         command.extend(args)
         output = StringIO()
         cmd_str = cmd_args_to_string(command)
@@ -148,67 +148,67 @@ class XCRun:
 
     def find(self, tool: str) -> str:
         """find SDK tools (e.g. clang, ar, ranlib, lipo, codesign, etc.)"""
-        return self._invoke(['--find', tool])
+        return self._invoke(["--find", tool])
 
     @property
     def sdk_path(self) -> str:
         """obtain sdk path (aka apple sysroot or -isysroot"""
-        return self._invoke(['--show-sdk-path'])
+        return self._invoke(["--show-sdk-path"])
 
     @property
     def sdk_version(self) -> str:
         """obtain sdk version"""
-        return self._invoke(['--show-sdk-version'])
+        return self._invoke(["--show-sdk-version"])
 
     @property
     def sdk_platform_path(self) -> str:
         """obtain sdk platform path"""
-        return self._invoke(['--show-sdk-platform-path'])
+        return self._invoke(["--show-sdk-platform-path"])
 
     @property
     def sdk_platform_version(self) -> str:
         """obtain sdk platform version"""
-        return self._invoke(['--show-sdk-platform-version'])
+        return self._invoke(["--show-sdk-platform-version"])
 
     @property
     def cc(self) -> str:
         """path to C compiler (CC)"""
-        return self.find('clang')
+        return self.find("clang")
 
     @property
     def cxx(self) -> str:
         """path to C++ compiler (CXX)"""
-        return self.find('clang++')
+        return self.find("clang++")
 
     @property
     def ar(self) -> str:
         """path to archiver (AR)"""
-        return self.find('ar')
+        return self.find("ar")
 
     @property
     def ranlib(self) -> str:
         """path to archive indexer (RANLIB)"""
-        return self.find('ranlib')
+        return self.find("ranlib")
 
     @property
     def strip(self) -> str:
         """path to symbol removal utility (STRIP)"""
-        return self.find('strip')
+        return self.find("strip")
 
     @property
     def libtool(self) -> str:
         """path to libtool"""
-        return self.find('libtool')
+        return self.find("libtool")
 
     @property
     def otool(self) -> str:
         """path to otool"""
-        return self.find('otool')
+        return self.find("otool")
 
     @property
     def install_name_tool(self) -> str:
         """path to install_name_tool"""
-        return self.find('install_name_tool')
+        return self.find("install_name_tool")
 
 
 def _get_dylib_install_name(otool: str, path_to_dylib: str) -> str:
@@ -313,7 +313,7 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
                 deps = _get_shared_dependencies(executable)
                 for dep in deps:
                     dep_base = os.path.join(
-                        os.path.dirname(dep), os.path.basename(dep).split('.')[0])
+                        os.path.dirname(dep), os.path.basename(dep).split(".")[0])
                     match = [k for k in substitutions.keys() if k.startswith(dep_base)]
                     if match:
                         _fix_dep_name(executable, dep, substitutions[match[0]])
@@ -342,7 +342,7 @@ def apple_extra_flags(recipe: RecipeBase) -> list[str]:
         return []
     enable_bitcode = recipe.conf.get("tools.apple:enable_bitcode", check_type=bool)
     enable_visibility = recipe.conf.get("tools.apple:enable_visibility", check_type=bool)
-    is_debug = recipe.settings.get_safe('build_type') == "Debug"
+    is_debug = recipe.settings.get_safe("build_type") == "Debug"
     flags: list[str] = []
     if enable_bitcode:
         if is_debug:

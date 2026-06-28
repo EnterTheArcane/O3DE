@@ -25,7 +25,7 @@ def response_to_str(response):
             #  {"errors" : [ {"status" : 400, "message" : "Bla bla bla"}]}
             try:
                 data = json.loads(content)["errors"][0]
-                content = f'{data["status"]}: {data["message"]}'
+                content = f"{data["status"]}: {data["message"]}"
             except Exception:
                 pass
         elif "text/html" in content_type:
@@ -153,7 +153,7 @@ class FileDownloader:
                         "Incorrect Content-Range header %s" % (url, content_range))
                 return int(match.group(3))
             else:
-                total_size = response.headers.get('Content-Length') or len(response.content)
+                total_size = response.headers.get("Content-Length") or len(response.content)
                 return int(total_size)
 
         try:

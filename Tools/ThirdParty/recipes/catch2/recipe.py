@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
     fPIC: bool = True
     with_prefix: bool = False
     default_reporter: str | None = None
-    console_width: str = '80'
+    console_width: str = "80"
     no_posix_signals: bool = False
 
 

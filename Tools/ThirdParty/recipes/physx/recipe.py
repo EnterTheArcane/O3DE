@@ -12,7 +12,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    release_build_type: Literal['profile', 'release'] = 'release'
+    release_build_type: Literal["profile", "release"] = "release"
     enable_simd: bool = True
     enable_float_point_precise_math: bool = False
 
@@ -246,7 +246,7 @@ class Recipe(RecipeBase[_Options]):
             package_dst_bin_dir = self.folders.package / "bin"
 
             for dll_info in dll_info_list:
-                dll_subdir = f"win.{physx_arch}.{dll_info.get('vc_ver')}.mt"
+                dll_subdir = f"win.{physx_arch}.{dll_info.get("vc_ver")}.mt"
                 dll_dir = external_bin_dir / dll_subdir / physx_build_type
                 copy(self, pattern=dll_info["pattern"] or "", dst=package_dst_bin_dir, src=dll_dir, keep_path=False)
 

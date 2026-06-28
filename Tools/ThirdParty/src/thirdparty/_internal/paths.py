@@ -10,7 +10,7 @@ if platform.system() == "Windows":
         verbatim %USERPROFILE% when some other app (git for windows) sets HOME envvar
         """
         path = str(path)
-        if path[0] != '~':
+        if path[0] != "~":
             return path
         # In win these variables should exist and point to user directory, which
         # must exist.
@@ -54,7 +54,7 @@ def get_recipe_user_home():
             rc_path = find_file_walk_up(os.getcwd(), ".thirdpartyrc")
 
             with open(rc_path) as rc_file:
-                values = {k: str(v) for k, v in (line.split('=') for line in rc_file.read().splitlines() if not line.startswith("#"))}
+                values = {k: str(v) for k, v in (line.split("=") for line in rc_file.read().splitlines() if not line.startswith("#"))}
 
             recipe_home = values["recipe_home"]
             # check if it's a local folder

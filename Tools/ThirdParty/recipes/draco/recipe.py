@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    target: Literal['draco', 'encode_and_decode', 'encode_only', 'decode_only'] = 'draco'
+    target: Literal["draco", "encode_and_decode", "encode_only", "decode_only"] = "draco"
     enable_point_cloud_compression: bool = True
     enable_mesh_compression: bool = True
     enable_standard_edgebreaker: bool = True

@@ -115,12 +115,11 @@ class MSBuildToolchain:
 
     @property
     def context_config_toolchain(self):
-        def format_macro(key, value):
-            return '%s=%s' % (key, value) if value is not None else key
+        def format_macro(key: str, value: str | None) -> str:
+            return "%s=%s" % (key, value) if value is not None else key
 
         cxxflags, cflags, defines, sharedlinkflags, exelinkflags, rcflags = self._get_extra_flags()
-        preprocessor_definitions = "".join(
-            ["%s;" % format_macro(k, v) for k, v in self.preprocessor_definitions.items()])
+        preprocessor_definitions = "".join(["%s;" % format_macro(k, v) for k, v in self.preprocessor_definitions.items()])
         defines = preprocessor_definitions + "".join("%s;" % d for d in defines)
         self.cxxflags.extend(cxxflags)
         self.cflags.extend(cflags)
@@ -148,10 +147,10 @@ class MSBuildToolchain:
         winsdk_version = winsdk_version or self._recipe.settings.get_safe("os.version")
 
         return {
-            'defines': defines,
-            'compiler_flags': " ".join(self.cxxflags + self.cflags),
-            'linker_flags': " ".join(self.ldflags),
-            'rc_flags': " ".join(self.rcflags),
+            "defines": defines,
+            "compiler_flags": " ".join(self.cxxflags + self.cflags),
+            "linker_flags": " ".join(self.ldflags),
+            "rc_flags": " ".join(self.rcflags),
             "cppstd": cppstd,
             "cstd": cstd,
             "runtime_library": runtime_library,
@@ -195,7 +194,7 @@ class MSBuildToolchain:
 
         dom = minidom.parseString(content)
         try:
-            import_group = dom.getElementsByTagName('ImportGroup')[0]
+            import_group = dom.getElementsByTagName("ImportGroup")[0]
         except Exception:
             raise RecipeException(f"Broken {self.filename}. Remove the file and try again")
         children = import_group.getElementsByTagName("Import")
@@ -203,9 +202,9 @@ class MSBuildToolchain:
             if (config_filename == node.getAttribute("Project") and condition == node.getAttribute("Condition")):
                 break  # the import statement already exists
         else:  # create a new import statement
-            import_node = dom.createElement('Import')
-            import_node.setAttribute('Condition', condition)
-            import_node.setAttribute('Project', config_filename)
+            import_node = dom.createElement("Import")
+            import_node.setAttribute("Condition", condition)
+            import_node.setAttribute("Project", config_filename)
             import_group.appendChild(import_node)
 
         recipe_toolchain = dom.toprettyxml()

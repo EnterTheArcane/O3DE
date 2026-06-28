@@ -156,7 +156,7 @@ def _check_cppstd(
     if not compare(current_cppstd, cppstd, comparator):
         raise RecipeInvalidConfiguration(
             f"Current cppstd ({current_cppstd}) is "
-            f"{'higher' if comparator == operator.gt else 'lower'} "
+            f"{"higher" if comparator == operator.gt else "lower"} "
             f"than the required C++ standard ({cppstd}).")
 
 

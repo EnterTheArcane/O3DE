@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _is_clang_cl(self):
-        return self.settings.os == 'Windows' and self.settings.compiler == 'clang'
+        return self.settings.os == "Windows" and self.settings.compiler == "clang"
 
     def requirements(self):
         self.requires_tool("meson")

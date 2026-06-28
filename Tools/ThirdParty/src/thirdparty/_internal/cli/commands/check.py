@@ -179,7 +179,7 @@ def check(args: argparse.Namespace) -> None:
             ok = False
             bad(f"{len(dups)} class name(s) defined in multiple files:")
             for cls_name, files in sorted(dups.items()):
-                print(f"        {cls_name}: {', '.join(files)}")
+                print(f"        {cls_name}: {", ".join(files)}")
 
     print()
     if ok:

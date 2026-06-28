@@ -5,12 +5,12 @@ from thirdparty.recipe import RecipeBase
 
 # https://mesonbuild.com/Reference-tables.html#operating-system-names
 _meson_system_map = {
-    'Android': 'android', 'Mac': 'darwin', 'iOS': 'darwin', 'tvOS': 'darwin', 'visionOS': 'darwin', 'Emscripten': 'emscripten', 'Linux': 'linux', 'SunOS': 'sunos', 'Windows': 'windows', 'WindowsCE': 'windows', 'WindowsStore': 'windows',
+    "Android": "android", "Mac": "darwin", "iOS": "darwin", "tvOS": "darwin", "visionOS": "darwin", "Emscripten": "emscripten", "Linux": "linux", "SunOS": "sunos", "Windows": "windows", "WindowsCE": "windows", "WindowsStore": "windows",
 }
 
 # https://mesonbuild.com/Reference-tables.html#cpu-families
 _meson_cpu_family_map = {
-    'X64': ('x86_64', 'x86_64', 'little'), 'ARM': ('aarch64', 'aarch64', 'little'),
+    "X64": ("x86_64", "x86_64", "little"), "ARM": ("aarch64", "aarch64", "little"),
 }
 
 
@@ -28,11 +28,11 @@ def to_meson_machine(machine_os, machine_arch):
     :return: ``dict`` Meson machine context.
     """
     system = _meson_system_map.get(machine_os, machine_os.lower())
-    default_cpu_tuple = (machine_arch.lower(), machine_arch.lower(), 'little')
+    default_cpu_tuple = (machine_arch.lower(), machine_arch.lower(), "little")
     cpu_tuple = _meson_cpu_family_map.get(machine_arch, default_cpu_tuple)
     cpu_family, cpu, endian = cpu_tuple[0], cpu_tuple[1], cpu_tuple[2]
     context = {
-        'system': system, 'cpu_family': cpu_family, 'cpu': cpu, 'endian': endian,
+        "system": system, "cpu_family": cpu_family, "cpu": cpu, "endian": endian,
     }
     return context
 
@@ -48,9 +48,9 @@ def to_meson_value(value):
     if isinstance(value, str):
         return f"'{value}'"
     elif isinstance(value, bool):
-        return 'true' if value else 'false'
+        return "true" if value else "false"
     elif isinstance(value, list):
-        return f'[{", ".join([str(to_meson_value(val)) for val in value])}]'
+        return f"[{", ".join([str(to_meson_value(val)) for val in value])}]"
     elif isinstance(value, _PackageOption):
         Output().warning(
             f"Please, do not use a Recipe option value directly. "
@@ -80,7 +80,7 @@ def to_cppstd_flag(
         # Presumably the intent is 'vc++X' is permissive and 'c++X' is not,
         # but '/permissive-' is the default since 16.8.
         flag = cppstd_msvc_flag(compiler_version, cppstd)
-        return 'v%s' % flag if flag else None
+        return "v%s" % flag if flag else None
     else:
         return f"gnu++{cppstd[3:]}" if cppstd.startswith("gnu") else f"c++{cppstd}"
 

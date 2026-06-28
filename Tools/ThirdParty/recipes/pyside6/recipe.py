@@ -128,18 +128,18 @@ class Recipe(RecipeBase[_Options]):
         tc.generate()
 
         fix_script_content = (
-            'get_property(_bst DIRECTORY . PROPERTY BUILDSYSTEM_TARGETS)\n'
-            'foreach(_t IN LISTS _bst)\n'
-            '    if(TARGET ${_t})\n'
-            '        get_target_property(_type ${_t} TYPE)\n'
+            "get_property(_bst DIRECTORY . PROPERTY BUILDSYSTEM_TARGETS)\n"
+            "foreach(_t IN LISTS _bst)\n"
+            "    if(TARGET ${_t})\n"
+            "        get_target_property(_type ${_t} TYPE)\n"
             '        if(NOT _type STREQUAL "INTERFACE_LIBRARY")\n'
             '            set_property(TARGET ${_t} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")\n'
-            '        endif()\n'
-            '    endif()\n'
-            'endforeach()\n'
-            'unset(_bst)\n'
-            'unset(_t)\n'
-            'unset(_type)\n'
+            "        endif()\n"
+            "    endif()\n"
+            "endforeach()\n"
+            "unset(_bst)\n"
+            "unset(_t)\n"
+            "unset(_type)\n"
         )
         fix_script_path = self.folders.generators / "fix_msvc_runtime.cmake"
         fix_script_fwd = fix_script_path.as_posix()
@@ -147,7 +147,7 @@ class Recipe(RecipeBase[_Options]):
             f.write(fix_script_content)
 
         helper_content = (
-            'if(MSVC)\n'
+            "if(MSVC)\n"
             '    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")\n'
             '    string(REGEX REPLACE "/M[TtDd]+" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")\n'
             '    string(STRIP "${CMAKE_CXX_FLAGS_RELEASE}" CMAKE_CXX_FLAGS_RELEASE)\n'
@@ -157,20 +157,20 @@ class Recipe(RecipeBase[_Options]):
             '    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MD")\n'
             f'    cmake_language(DEFER DIRECTORY "${{CMAKE_CURRENT_SOURCE_DIR}}" CALL\n'
             f'        include "{fix_script_fwd}")\n'
-            'endif()\n'
+            "endif()\n"
             # NOTE: do not pre-define Qt6::PlatformCommonInternal here. Qt 6.11.1 exports it
             # as part of its platform target export set; defining it before find_package(Qt6)
             # makes Qt's _qt_internal_check_multiple_inclusion fail ("some but not all targets
             # already defined"). Let Qt's own config create it (with the right MSVC flags).
-            '# Stub target for WrapOpenSSL so Qt6NetworkTargets generate step succeeds\n'
-            '# when Qt6Network is transitively found but OpenSSL find modules are not loaded.\n'
-            'if(NOT TARGET WrapOpenSSL::WrapOpenSSL)\n'
-            '    add_library(WrapOpenSSL::WrapOpenSSL INTERFACE IMPORTED)\n'
-            '    find_package(OpenSSL QUIET)\n'
-            '    if(TARGET OpenSSL::SSL)\n'
-            '        target_link_libraries(WrapOpenSSL::WrapOpenSSL INTERFACE OpenSSL::SSL OpenSSL::Crypto)\n'
-            '    endif()\n'
-            'endif()\n'
+            "# Stub target for WrapOpenSSL so Qt6NetworkTargets generate step succeeds\n"
+            "# when Qt6Network is transitively found but OpenSSL find modules are not loaded.\n"
+            "if(NOT TARGET WrapOpenSSL::WrapOpenSSL)\n"
+            "    add_library(WrapOpenSSL::WrapOpenSSL INTERFACE IMPORTED)\n"
+            "    find_package(OpenSSL QUIET)\n"
+            "    if(TARGET OpenSSL::SSL)\n"
+            "        target_link_libraries(WrapOpenSSL::WrapOpenSSL INTERFACE OpenSSL::SSL OpenSSL::Crypto)\n"
+            "    endif()\n"
+            "endif()\n"
         )
         helper_path = self.folders.generators / "qt_pyside6_internal_targets.cmake"
         with open(helper_path, "w") as f:

@@ -85,7 +85,7 @@ class Recipe(RecipeBase[_Options]):
             if cmake_function_name == "add_library":
                 cmake_imported_target_type = cmake_function_args[1]
                 if cmake_imported_target_type in ["STATIC", "SHARED"]:
-                    components[potential_lib_name]["libs"] = [potential_lib_name] if cmake_target_nonamespace != "abseil_dll" else ['abseil_dll']
+                    components[potential_lib_name]["libs"] = [potential_lib_name] if cmake_target_nonamespace != "abseil_dll" else ["abseil_dll"]
             elif cmake_function_name == "set_target_properties":
                 target_properties = re.findall(r"(?P<property>INTERFACE_COMPILE_DEFINITIONS|INTERFACE_INCLUDE_DIRECTORIES|INTERFACE_LINK_LIBRARIES)[\n|\s]+(?P<values>.+)", cmake_function_args[2])
                 for target_property in target_properties:

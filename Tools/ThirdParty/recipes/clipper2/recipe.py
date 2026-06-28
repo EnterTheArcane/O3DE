@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    usingz: Literal['ON', 'OFF', 'ONLY'] = 'ON'
+    usingz: Literal["ON", "OFF", "ONLY"] = "ON"
     with_max_precision: int = 8
     with_hi_precision: bool = False
 

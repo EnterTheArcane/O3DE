@@ -58,7 +58,7 @@ def copy(
     copied_files = _copy_files(files_to_copy, src, dst, keep_path, overwrite_equal)
     copied_files.extend(_copy_files_symlinked_to_folders(files_symlinked_to_folders, src, dst))
     if recipe:  # Some usages still pass None
-        copied = '\n    '.join(files_to_copy)
+        copied = "\n    ".join(files_to_copy)
         recipe.output.debug(
             f"copy(pattern={pattern}) copied {len(copied_files)} files\n"
             f"  from {src}\n"

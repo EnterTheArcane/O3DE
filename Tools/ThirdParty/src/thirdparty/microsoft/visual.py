@@ -56,8 +56,8 @@ def msvc_version_to_vs_ide_version(version: str) -> str:
     :return: VS IDE version
     """
     _visuals = {
-        '170': '11', '180': '12', '190': '14', '191': '15', '192': '16', '193': '17', '194': '17',  # Note both 193 and 194 belong to VS 17 2022
-        '195': '18',
+        "170": "11", "180": "12", "190": "14", "191": "15", "192": "16", "193": "17", "194": "17",  # Note both 193 and 194 belong to VS 17 2022
+        "195": "18",
     }
     return _visuals[str(version)]
 
@@ -70,7 +70,7 @@ def msvc_version_to_toolset_version(version: str) -> str:
     :return: VS IDE toolset version
     """
     toolsets = {
-        '170': 'v110', '180': 'v120', '190': 'v140', '191': 'v141', '192': 'v142', "193": 'v143', "194": 'v143', "195": 'v145',
+        "170": "v110", "180": "v120", "190": "v140", "191": "v141", "192": "v142", "193": "v143", "194": "v143", "195": "v145",
     }
     return toolsets.get(str(version))
 
@@ -321,17 +321,17 @@ def _vcvars_arch(recipe: RecipeBase) -> str:
     arch_build = str(settings_build.arch)
 
     arch = None
-    if arch_build == 'X64':
+    if arch_build == "X64":
         arch = {
-            'X64': 'amd64', 'ARM': 'amd64_arm64',
+            "X64": "amd64", "ARM": "amd64_arm64",
         }.get(arch_host)
-    elif arch_build == 'ARM':
+    elif arch_build == "ARM":
         arch = {
-            'X64': 'arm64_x64', 'ARM': 'arm64',
+            "X64": "arm64_x64", "ARM": "arm64",
         }.get(arch_host)
 
     if not arch:
-        raise RecipeException('vcvars unsupported architectures %s-%s' % (arch_build, arch_host))
+        raise RecipeException("vcvars unsupported architectures %s-%s" % (arch_build, arch_host))
 
     return arch
 

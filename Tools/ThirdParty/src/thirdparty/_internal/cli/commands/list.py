@@ -93,8 +93,8 @@ def list_recipes(args: argparse.Namespace) -> None:
 
     name_w = max(len("recipe"), max(len(r[0]) for r in rows))
     ver_w = max(len("version"), max(len(r[1]) for r in rows))
-    print(f"{'recipe':<{name_w}}  {'version':<{ver_w}}  status")
-    print(f"{'-' * name_w}  {'-' * ver_w}  ------")
+    print(f"{"recipe":<{name_w}}  {"version":<{ver_w}}  status")
+    print(f"{"-" * name_w}  {"-" * ver_w}  ------")
     for name, version, built, incompatible, host_deps, tool_deps in rows:
         if incompatible:
             status = f"{Fore.YELLOW}incompatible{Style.RESET_ALL}"
@@ -105,9 +105,9 @@ def list_recipes(args: argparse.Namespace) -> None:
         print(f"{name:<{name_w}}  {version:<{ver_w}}  {status}")
         if args.deps:
             if host_deps:
-                print(f"{'':<{name_w}}    requires: {', '.join(host_deps)}")
+                print(f"{"":<{name_w}}    requires: {", ".join(host_deps)}")
             if tool_deps:
-                print(f"{'':<{name_w}}    tools:    {', '.join(tool_deps)}")
+                print(f"{"":<{name_w}}    tools:    {", ".join(tool_deps)}")
 
     print()
     pending_count = len(rows) - built_count - incompatible_count

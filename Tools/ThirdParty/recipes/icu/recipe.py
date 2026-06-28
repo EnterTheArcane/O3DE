@@ -16,7 +16,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = True
     fPIC: bool = True
-    data_packaging: Literal['files', 'archive', 'library', 'static'] = 'archive'
+    data_packaging: Literal["files", "archive", "library", "static"] = "archive"
     with_dyload: bool = True
     dat_package_file: str | None = None
     with_icuio: bool = True
@@ -73,8 +73,8 @@ class Recipe(RecipeBase[_Options]):
         tc.configure_args.extend(
             [
                 "--datarootdir=${prefix}/lib",  # do not use share
-                f"--enable-release={yes_no(self.settings.build_type != 'Debug')}",
-                f"--enable-debug={yes_no(self.settings.build_type == 'Debug')}",
+                f"--enable-release={yes_no(self.settings.build_type != "Debug")}",
+                f"--enable-debug={yes_no(self.settings.build_type == "Debug")}",
                 f"--enable-dyload={yes_no(self.options.with_dyload)}",
                 f"--enable-extras={yes_no(self.options.with_extras)}",
                 f"--enable-icuio={yes_no(self.options.with_icuio)}",

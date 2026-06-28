@@ -226,10 +226,10 @@ def _load_python_file(recipe_path: Any):
     except RecipeException:
         raise
     except Exception:
-        trace = traceback.format_exc().split('\n')
+        trace = traceback.format_exc().split("\n")
         raise RecipeException(
             "Unable to load recipe in %s\n%s" % (
-                recipe_path, '\n'.join(trace[3:]),
+                recipe_path, "\n".join(trace[3:]),
             ))
     finally:
         sys.path.pop(0)

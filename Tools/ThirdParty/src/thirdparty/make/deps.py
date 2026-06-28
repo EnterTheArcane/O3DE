@@ -67,7 +67,7 @@ def _makefy(name: str) -> str:
     :param name: The name to be converted
     :return: Safe makefile variable, not including bad characters that are not parsed correctly
     """
-    return re.sub(r'[^0-9A-Z_]', '_', name.upper())
+    return re.sub(r"[^0-9A-Z_]", "_", name.upper())
 
 
 def _makefy_properties(properties: Optional[dict]) -> dict[str, Any]:
@@ -590,7 +590,7 @@ class DepGenerator:
         for var, prefix in _common_cppinfo_dirs().items():
             cppinfo_value = getattr(dependency.info, var)
             if not cppinfo_value:  # The root value is not defined, there might be components
-                cppinfo_value = [f"$(RECIPE_{var.replace('dirs', '_dirs').upper()}_{_makefy(dependency.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
+                cppinfo_value = [f"$(RECIPE_{var.replace("dirs", "_dirs").upper()}_{_makefy(dependency.name)}_{_makefy(name)})" for name, obj in dependency.info.components.items() if getattr(obj, var.lower())]
                 prefix = ""
             formatted_dirs = _get_formatted_dirs(cppinfo_value, root, _makefy(dependency.name))
             if formatted_dirs:

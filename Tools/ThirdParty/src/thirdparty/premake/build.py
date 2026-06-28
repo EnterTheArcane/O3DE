@@ -13,8 +13,8 @@ from thirdparty.recipe import RecipeBase
 
 # Source: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 PREMAKE_VS_VERSION = {
-    '190': '2015', '191': '2017', '192': '2019', '193': '2022', '194': '2022',  # still 2022
-    '195': '2026',
+    "190": "2015", "191": "2017", "192": "2019", "193": "2022", "194": "2022",  # still 2022
+    "195": "2026",
 }
 
 
@@ -53,7 +53,7 @@ class Premake:
 
         if "msvc" in self._recipe.settings.compiler:
             msvc_version = PREMAKE_VS_VERSION.get(str(self._recipe.settings.compiler.version))
-            self.action = f'vs{msvc_version}'
+            self.action = f"vs{msvc_version}"
         else:
             self.action = "gmake"  # New generator (old gmakelegacy is deprecated)
 
@@ -61,7 +61,7 @@ class Premake:
 
     @staticmethod
     def _expand_args(args: dict[str, Any]) -> str:
-        return ' '.join([f'--{key}={value}' for key, value in args.items()])
+        return " ".join([f"--{key}={value}" for key, value in args.items()])
 
     def configure(self):
         """

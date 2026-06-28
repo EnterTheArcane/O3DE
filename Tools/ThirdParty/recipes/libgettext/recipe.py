@@ -18,7 +18,7 @@ class _Options(RecipeOptions):
     threads: str
 
 
-_Options.__possible_values__ = {"threads": ['posix', 'solaris', 'pth', 'windows', 'disabled']}
+_Options.__possible_values__ = {"threads": ["posix", "solaris", "pth", "windows", "disabled"]}
 
 
 class Recipe(RecipeBase[_Options]):
@@ -86,7 +86,7 @@ class Recipe(RecipeBase[_Options]):
             "--disable-libasprintf",
             "--disable-curses",
             "--disable-threads" if self.options.threads == "disabled" else ("--enable-threads=" + str(self.options.threads)),
-            f"--with-libiconv-prefix={unix_path(self, self.dependencies['libiconv'].folders.package)}",
+            f"--with-libiconv-prefix={unix_path(self, self.dependencies["libiconv"].folders.package)}",
         ]
 
         if is_apple_os(self):
@@ -114,10 +114,10 @@ class Recipe(RecipeBase[_Options]):
                         "gl_cv_func_frexpl_works=yes",
                         "gl_cv_func_mbrtowc_empty_input=no",
                         "gl_cv_func_snprintf_truncation_c99=yes",
-                        'gl_cv_func_printf_flag_zero=yes',
-                        'gl_cv_func_printf_precision=yes',
-                        'gl_cv_func_swprintf_works=yes',
-                        'gl_cv_func_swprintf_C_locale_sans_EILSEQ=yes',
+                        "gl_cv_func_printf_flag_zero=yes",
+                        "gl_cv_func_printf_precision=yes",
+                        "gl_cv_func_swprintf_works=yes",
+                        "gl_cv_func_swprintf_C_locale_sans_EILSEQ=yes",
                     ])
 
             if self.settings.build_type == "Debug":
@@ -127,7 +127,7 @@ class Recipe(RecipeBase[_Options]):
                 # See https://github.com/recipe-io/recipe-center-index/issues/23698
                 tc.configure_args.extend(
                     [
-                        'gl_cv_func_printf_directive_n=no',
+                        "gl_cv_func_printf_directive_n=no",
                     ])
         tc.make_args += ["-C", "intl"]
         env = tc.environment()

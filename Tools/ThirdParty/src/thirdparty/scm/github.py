@@ -13,7 +13,7 @@ from thirdparty.recipe import RecipeBase
 def _tag_version(tag: str) -> Version | None:
     # Strip a leading identifier+separator prefix: "vulkan-sdk-", "nasm-", "m4-",
     # "bzip2-", "VER-", etc.  The pattern allows digits inside the word (like m4).
-    stripped = re.sub(r'^(?:[A-Za-z][A-Za-z0-9]*[-_])+', '', tag)
+    stripped = re.sub(r"^(?:[A-Za-z][A-Za-z0-9]*[-_])+", "", tag)
     if not stripped or not stripped[0].isdigit():
         # Fall back to a bare single-letter prefix: v1.2, V3.4, n8.1
         if len(tag) >= 2 and tag[0].isalpha() and tag[1].isdigit():
@@ -24,7 +24,7 @@ def _tag_version(tag: str) -> Version | None:
     candidate = stripped.replace("_", ".").replace("-", ".")
     if not candidate or not candidate[0].isdigit():
         return None
-    if not re.match(r'^\d+(?:\.\d+)*$', candidate):
+    if not re.match(r"^\d+(?:\.\d+)*$", candidate):
         return None
     try:
         v = Version(candidate)

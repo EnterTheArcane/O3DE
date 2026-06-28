@@ -102,7 +102,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.arch == "x86":
             windres_options_path = self.folders.source / "windows" / "windres-options"
             self.output.info(f"Applying {self.settings.arch} resource patch: {windres_options_path}")
-            replace_in_file(self, windres_options_path, '#   PACKAGE_VERSION_SUBMINOR', '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)
+            replace_in_file(self, windres_options_path, "#   PACKAGE_VERSION_SUBMINOR", '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)
 
     def build(self):
         apply_patches(self)

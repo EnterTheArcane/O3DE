@@ -89,9 +89,9 @@ def build(args: argparse.Namespace) -> None:
     all_names = sorted(d.name for d in recipes_root.iterdir() if d.is_dir() and (d / "recipe.py").exists())
     all_names_set = set(all_names)
     names: list[str] = []
-    is_multi = len(patterns) > 1 or any(c in pat for pat in patterns for c in ('*', '?', '['))
+    is_multi = len(patterns) > 1 or any(c in pat for pat in patterns for c in ("*", "?", "["))
     for pat in patterns:
-        if any(c in pat for c in ('*', '?', '[')):
+        if any(c in pat for c in ("*", "?", "[")):
             matched = fnmatch.filter(all_names, pat)
             if not matched:
                 print(f"[thirdparty] warn: no recipes match '{pat}'")
@@ -466,9 +466,9 @@ def _build_ordered(
     ok = [(n, v, t) for n, v, t, e in results if e is None]
     fail = [(n, v, e) for n, v, t, e in results if e is not None]
 
-    print(f"\n{'=' * 70}")
+    print(f"\n{"=" * 70}")
     print(f"=== Summary: {len(ok)} built, {len(fail)} failed, {len(skipped)} skipped ===")
-    print(f"{'=' * 70}")
+    print(f"{"=" * 70}")
     if ok:
         print(f"\nBuilt ({len(ok)}):")
         for n, v, t in ok:

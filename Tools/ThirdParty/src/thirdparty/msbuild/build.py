@@ -16,7 +16,7 @@ def msbuild_verbosity_cmd_line_arg(recipe: RecipeBase) -> str:
         verbosity = {
             "quiet": "Quiet", "verbose": "Detailed",
         }.get(verbosity)
-        return f'-verbosity:{verbosity}'
+        return f"-verbosity:{verbosity}"
     return ""
 
 

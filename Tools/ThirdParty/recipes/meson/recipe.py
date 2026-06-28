@@ -37,10 +37,10 @@ class Recipe(RecipeBase):
             copy(self, "meson.pyz", src=self.folders.build, dst=dst)
             save(
                 self, dst / "meson.py",
-                'import sys, os\n'
+                "import sys, os\n"
                 'sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "meson.pyz"))\n'
-                'from mesonbuild import mesonmain\n'
-                'sys.exit(mesonmain.main())\n')
+                "from mesonbuild import mesonmain\n"
+                "sys.exit(mesonmain.main())\n")
             save(
                 self, dst / "meson.cmd",
                 '@python "%~dp0meson.py" %*\n')

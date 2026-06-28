@@ -73,18 +73,18 @@ class Recipe(RecipeBase[_Options]):
             tc = AutotoolsToolchain(self)
             tc.configure_args.append("--enable-threads")
             tc.configure_args.append(
-                f"--enable-symbols={yes_no(self.settings.build_type == 'Debug')}"
+                f"--enable-symbols={yes_no(self.settings.build_type == "Debug")}"
             )
             tc.configure_args.append(
-                f"--enable-64bit={yes_no(self.settings.arch == 'X64')}"
+                f"--enable-64bit={yes_no(self.settings.arch == "X64")}"
             )
             tc.configure_args.append(f"--enable-aqua={yes_no(is_apple_os(self))}")
             tc.configure_args.append(
-                f"--with-tcl={self.dependencies['tcl'].folders.package / 'lib'}"
+                f"--with-tcl={self.dependencies["tcl"].folders.package / "lib"}"
             )
-            tc.configure_args.append(f"--with-x={yes_no(self.settings.os == 'Linux')}")
+            tc.configure_args.append(f"--with-x={yes_no(self.settings.os == "Linux")}")
             tc.make_args.append(
-                f"TCL_GENERIC_DIR={self.dependencies['tcl'].folders.package / 'include'}"
+                f"TCL_GENERIC_DIR={self.dependencies["tcl"].folders.package / "include"}"
             )
             if self.settings.os == "Windows":
                 tc.extra_defines.extend(
@@ -160,7 +160,7 @@ class Recipe(RecipeBase[_Options]):
         config_dir = self._get_configure_folder("win")
         with chdir(self, config_dir):
             self.run(
-                f"""nmake -nologo -f makefile.vc {' '.join([f'{k}="{v}"' for k, v in flags.items()])} {target}""",
+                f"""nmake -nologo -f makefile.vc {" ".join([f'{k}="{v}"' for k, v in flags.items()])} {target}""",
                 env="env_build",
             )
 

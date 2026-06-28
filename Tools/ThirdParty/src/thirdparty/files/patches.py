@@ -45,13 +45,13 @@ def patch(
     :param kwargs: Extra parameters that can be added and will contribute to output information
     """
 
-    patch_type = kwargs.get('patch_type') or ("file" if patch_file else "string")
-    patch_description = kwargs.get('patch_description')
+    patch_type = kwargs.get("patch_type") or ("file" if patch_file else "string")
+    patch_description = kwargs.get("patch_description")
 
     if patch_type or patch_description:
-        patch_type_str = f' ({patch_type})' if patch_type else ''
-        patch_description_str = f': {patch_description}' if patch_description else ''
-        recipe.output.info(f'Apply patch{patch_type_str}{patch_description_str}')
+        patch_type_str = f" ({patch_type})" if patch_type else ""
+        patch_description_str = f": {patch_description}" if patch_description else ""
+        recipe.output.info(f"Apply patch{patch_type_str}{patch_description_str}")
 
     patchlog = logging.getLogger("patch_ng")
     patchlog.handlers = []

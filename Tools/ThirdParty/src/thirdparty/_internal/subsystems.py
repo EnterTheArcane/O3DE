@@ -26,10 +26,10 @@ from thirdparty.errors import RecipeException
 from thirdparty.recipe import RecipeBase
 
 WINDOWS = "windows"
-MSYS2 = 'msys2'
-MSYS = 'msys'
-CYGWIN = 'cygwin'
-WSL = 'wsl'  # Windows Subsystem for Linux
+MSYS2 = "msys2"
+MSYS = "msys"
+CYGWIN = "cygwin"
+WSL = "wsl"  # Windows Subsystem for Linux
 
 
 def command_env_wrapper(
@@ -102,7 +102,7 @@ def _windows_bash_wrapper(
     wrapped_user_cmd = _escape_windows_cmd(wrapped_user_cmd)
     # according to https://www.msys2.org/wiki/Launchers/, it is necessary to use --login shell
     # running without it is discouraged
-    final_command = f'{wrapped_shell} --login -c {wrapped_user_cmd}'
+    final_command = f"{wrapped_shell} --login -c {wrapped_user_cmd}"
     return final_command
 
 
@@ -167,20 +167,20 @@ def subsystem_path(subsystem: str | None, path: str | os.PathLike[str]) -> str |
         # if the path doesn't exist (and abs) we cannot guess the casing
         path = get_cased_path(path)
 
-    if path.startswith('\\\\?\\'):
+    if path.startswith("\\\\?\\"):
         path = path[4:]
     path = path.replace(":/", ":\\")
-    append_prefix = re.match(r'[a-z]:\\', path, re.IGNORECASE)
-    pattern = re.compile(r'([a-z]):\\', re.IGNORECASE)
-    path = pattern.sub('/\\1/', path).replace('\\', '/')
+    append_prefix = re.match(r"[a-z]:\\", path, re.IGNORECASE)
+    pattern = re.compile(r"([a-z]):\\", re.IGNORECASE)
+    path = pattern.sub("/\\1/", path).replace("\\", "/")
 
     if append_prefix:
         if subsystem in (MSYS, MSYS2):
             return path.lower()
         elif subsystem == CYGWIN:
-            return '/cygdrive' + path.lower()
+            return "/cygdrive" + path.lower()
         elif subsystem == WSL:
-            return '/mnt' + path[0:2].lower() + path[2:]
+            return "/mnt" + path[0:2].lower() + path[2:]
     else:
         return path if subsystem == WSL else path.lower()
     return None

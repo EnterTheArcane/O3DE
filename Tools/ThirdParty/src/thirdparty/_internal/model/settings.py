@@ -371,7 +371,7 @@ class Settings:
             # that doesn't change the final sha
             if value is not None:
                 result.append("%s=%s" % (name, value))
-        return '\n'.join(result)
+        return "\n".join(result)
 
     def possible_values(self) -> Any:
         """Check the range of values of the definition of a setting

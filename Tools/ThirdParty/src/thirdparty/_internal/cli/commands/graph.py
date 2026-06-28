@@ -111,7 +111,7 @@ def _print_dot(g: Graph, tools: bool) -> None:
         print(f'  "{name}" [label="{name}{ver}"];')
     for name in sorted(g.nodes):
         for dep, is_tool in _deps_of(g, name, tools):
-            style = ' [style=dashed]' if is_tool else ""
+            style = " [style=dashed]" if is_tool else ""
             print(f'  "{name}" -> "{dep}"{style};')
     print("}")
 

@@ -22,7 +22,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _is_clang_cl(self):
-        return str(self.settings.compiler) in ["clang"] and str(self.settings.os) in ['Windows']
+        return str(self.settings.compiler) in ["clang"] and str(self.settings.os) in ["Windows"]
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")

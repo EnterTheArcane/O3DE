@@ -84,7 +84,7 @@ class AutotoolsToolchain:
         # Defines
         self.ndebug = None
         build_type = self._recipe.settings.get_safe("build_type")
-        if build_type in ['Release', 'RelWithDebInfo', 'MinSizeRel']:
+        if build_type in ["Release", "RelWithDebInfo", "MinSizeRel"]:
             self.ndebug = "NDEBUG"
 
         # TODO: This is also covering compilers like Visual Studio, necessary to test it (&remove?)
@@ -123,8 +123,8 @@ class AutotoolsToolchain:
                 self._host = _get_gnu_triplet(os_host, arch_host, compiler=compiler)["triplet"]
             # Build triplet
             if not self._build:
-                os_build = recipe.settings_build.get_safe('os')
-                arch_build = recipe.settings_build.get_safe('arch')
+                os_build = recipe.settings_build.get_safe("os")
+                arch_build = recipe.settings_build.get_safe("arch")
                 self._build = _get_gnu_triplet(os_build, arch_build, compiler=compiler)["triplet"]
 
         sysroot = self._recipe.conf.get("tools.build:sysroot")
@@ -142,7 +142,7 @@ class AutotoolsToolchain:
         self.autoreconf_args = self._default_autoreconf_flags()
         self.make_args = []
         # Apple stuff
-        is_cross_building_osx = (self._is_cross_building and recipe.settings_build.get_safe('os') == "Mac" and is_apple_os(recipe))
+        is_cross_building_osx = (self._is_cross_building and recipe.settings_build.get_safe("os") == "Mac" and is_apple_os(recipe))
 
         min_flag, arch_flags, isysroot_flag = (resolve_apple_flags(
             recipe, is_cross_building=is_cross_building_osx))
@@ -179,7 +179,7 @@ class AutotoolsToolchain:
         # Setting host if it was not already defined yet
         arch = self._recipe.settings.get_safe("arch")
         android_target = {
-            'ARM': 'aarch64-linux-android', 'X64': 'x86_64-linux-android',
+            "ARM": "aarch64-linux-android", "X64": "x86_64-linux-android",
         }.get(arch)
         self._host = self._host or android_target
         # Automatic guessing made by Recipe (need the NDK path variable defined)
@@ -192,7 +192,7 @@ class AutotoolsToolchain:
                     " when tools.android:ndk_path is defined too.")
             os_build = self._recipe.settings_build.get_safe("os")
             ndk_os_folder = {
-                'Mac': 'darwin', 'iOS': 'darwin', 'tvOS': 'darwin', 'visionOS': 'darwin', 'Linux': 'linux', 'Windows': 'windows', 'WindowsCE': 'windows', 'WindowsStore': 'windows',
+                "Mac": "darwin", "iOS": "darwin", "tvOS": "darwin", "visionOS": "darwin", "Linux": "linux", "Windows": "windows", "WindowsCE": "windows", "WindowsStore": "windows",
             }.get(os_build, "linux")
             ext = ".cmd" if os_build == "Windows" else ""
             ndk_bin = os.path.join(
@@ -310,8 +310,8 @@ class AutotoolsToolchain:
         if enable_arc is False:
             fobj_arc = "-fno-objc-arc"
         if fobj_arc:
-            env.append('OBJCFLAGS', [fobj_arc])
-            env.append('OBJCXXFLAGS', [fobj_arc])
+            env.append("OBJCFLAGS", [fobj_arc])
+            env.append("OBJCXXFLAGS", [fobj_arc])
 
     def environment(self) -> Environment:
         env = Environment()
@@ -417,7 +417,7 @@ class AutotoolsToolchain:
                 ("--host=", self._host), ("--build=", self._build), ("--target=", self._target),
         ):
             if value:
-                triplets.append(f'{flag}{value}')
+                triplets.append(f"{flag}{value}")
         return triplets
 
     def update_configure_args(self, updated_flags: dict[str, Any]):

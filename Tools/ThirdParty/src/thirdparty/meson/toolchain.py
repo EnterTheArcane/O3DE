@@ -141,7 +141,7 @@ class MesonToolchain:
         # only converted to Meson file syntax for rendering
         # priority: first user conf, then recipe, last one is default "ninja"
         #: Backend to use. Defined by the conf ``tools.meson.toolchain:backend``. By default, ``ninja``.
-        self.backend = backend or 'ninja'
+        self.backend = backend or "ninja"
         build_type = self._recipe.settings.get_safe("build_type")
         #: Build type to use.
         self.buildtype = {
@@ -227,8 +227,8 @@ class MesonToolchain:
         if native is False and is_cross_building:
             os_host = recipe.settings.get_safe("os")
             arch_host = recipe.settings.get_safe("arch")
-            os_build = recipe.settings_build.get_safe('os')
-            arch_build = recipe.settings_build.get_safe('arch')
+            os_build = recipe.settings_build.get_safe("os")
+            arch_build = recipe.settings_build.get_safe("arch")
             self.cross_build["build"] = to_meson_machine(os_build, arch_build)
             self.cross_build["host"] = to_meson_machine(os_host, arch_host)
             # Check subsystem if it's Apple cross-building only. It requires Meson >= 1.2.0,
@@ -355,12 +355,12 @@ class MesonToolchain:
         if bindir:
             ret.update(
                 {
-                    'bindir': bindir, 'sbindir': bindir, 'libexecdir': bindir,
+                    "bindir": bindir, "sbindir": bindir, "libexecdir": bindir,
                 })
         if datadir:
             ret.update(
                 {
-                    'datadir': datadir, 'localedir': datadir, 'mandir': datadir, 'infodir': datadir,
+                    "datadir": datadir, "localedir": datadir, "mandir": datadir, "infodir": datadir,
                 })
         if includedir:
             ret["includedir"] = includedir
@@ -385,10 +385,10 @@ class MesonToolchain:
             fobj_arc = "-fobjc-arc"
         if enable_arc is False:
             fobj_arc = "-fno-objc-arc"
-        self.objc_args = self._get_env_list(build_env.get('OBJCFLAGS', [])) + [fobj_arc]
-        self.objc_link_args = self._get_env_list(build_env.get('LDFLAGS', []))
-        self.objcpp_args = self._get_env_list(build_env.get('OBJCXXFLAGS', [])) + [fobj_arc]
-        self.objcpp_link_args = self._get_env_list(build_env.get('LDFLAGS', []))
+        self.objc_args = self._get_env_list(build_env.get("OBJCFLAGS", [])) + [fobj_arc]
+        self.objc_link_args = self._get_env_list(build_env.get("LDFLAGS", []))
+        self.objcpp_args = self._get_env_list(build_env.get("OBJCXXFLAGS", [])) + [fobj_arc]
+        self.objcpp_link_args = self._get_env_list(build_env.get("LDFLAGS", []))
 
     def _resolve_android_cross_compilation(self):
         if not self.cross_build or not self.cross_build["host"]["system"] == "android":
@@ -406,9 +406,9 @@ class MesonToolchain:
             ndk_path, "toolchains", "llvm", "prebuilt", f"{os_build}-x86_64", "bin")
         android_api_level = self._recipe.settings.get_safe("os.api_level")
         android_target = {
-            'ARM': 'aarch64-linux-android', 'X64': 'x86_64-linux-android',
+            "ARM": "aarch64-linux-android", "X64": "x86_64-linux-android",
         }.get(arch)
-        os_build = self._recipe.settings_build.get_safe('os')
+        os_build = self._recipe.settings_build.get_safe("os")
         compile_ext = ".cmd" if os_build == "Windows" else ""
         # User has more prio than Recipe
         self.c = os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang{compile_ext}")
@@ -437,7 +437,7 @@ class MesonToolchain:
             "tools.build:exelinkflags", default=[], check_type=list)
         linker_scripts = self._recipe_conf.get(
             "tools.build:linker_scripts", default=[], check_type=list)
-        linker_script_flags = ['-T' + linker_script for linker_script in linker_scripts]
+        linker_script_flags = ["-T" + linker_script for linker_script in linker_scripts]
         defines = self._recipe_conf.get("tools.build:defines", default=[], check_type=list)
         sys_root = [f"--sysroot={self._sys_root}"] if self._sys_root else [""]
         ld = (sharedlinkflags + exelinkflags + linker_script_flags + sys_root + self.extra_ldflags + self.threads_flags)

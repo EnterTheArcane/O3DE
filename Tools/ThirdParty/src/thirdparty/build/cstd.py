@@ -165,7 +165,7 @@ def _check_cstd(
     if not compare(current_cstd, cstd, comparator):
         raise RecipeInvalidConfiguration(
             f"Current cstd ({current_cstd}) is "
-            f"{'higher' if comparator == operator.gt else 'lower'} "
+            f"{"higher" if comparator == operator.gt else "lower"} "
             f"than the required C standard ({cstd}).")
 
 

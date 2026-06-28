@@ -69,8 +69,8 @@ class Git:
             # --full-history is needed to not avoid wrong commits:
             # upstream issue 10971
             # https://git-scm.com/docs/git-rev-list#Documentation/git-rev-list.txt-Defaultmode
-            path = '' if repository else '-- "."'
-            commit = self.run(f'rev-list HEAD -n 1 --full-history {path}')
+            path = "" if repository else '-- "."'
+            commit = self.run(f"rev-list HEAD -n 1 --full-history {path}")
             return commit
         except Exception as e:
             raise RecipeException("Unable to get git commit in '%s': %s" % (self.folder, str(e)))
@@ -146,7 +146,7 @@ class Git:
                      it will check the root repository folder instead, not the current one.
         :return: True, if the current folder is dirty. Otherwise, False.
         """
-        path = '' if repository else '.'
+        path = "" if repository else "."
         status = self.run(f"status {path} --short --no-branch --untracked-files").strip()
         self._recipe.output.debug(f"Git status:\n{status}")
         if not self._excluded:
@@ -262,10 +262,10 @@ class Git:
             url = url.replace("\\", "/")  # Windows local directory
         mkdir(self.folder)
         self._recipe.output.info("Shallow fetch of git repo")
-        self.run('init')
+        self.run("init")
         self.run(f'remote add origin "{url}"', hidden_output=url if hide_url else None)
-        self.run(f'fetch --depth 1 origin {commit}')
-        self.run('checkout FETCH_HEAD')
+        self.run(f"fetch --depth 1 origin {commit}")
+        self.run("checkout FETCH_HEAD")
 
     def checkout(self, commit):
         """
@@ -274,7 +274,7 @@ class Git:
         :param commit: Commit to checkout.
         """
         self._recipe.output.info(f"Checkout: {commit}")
-        self.run(f'checkout {commit}')
+        self.run(f"checkout {commit}")
 
     def included_files(self):
         """

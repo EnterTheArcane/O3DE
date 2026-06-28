@@ -58,7 +58,7 @@ class NMakeDeps:
 
             def format_lib(lib):
                 ext = os.path.splitext(lib)[1]
-                return lib if ext in (".so", ".lib", ".a", ".dylib", ".bc") else '%s.lib' % lib
+                return lib if ext in (".so", ".lib", ".a", ".dylib", ".bc") else "%s.lib" % lib
 
             ret = []
             ret.extend(info.exelinkflags or [])

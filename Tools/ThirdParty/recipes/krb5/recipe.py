@@ -15,7 +15,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     use_thread: bool = True
     use_dns_realms: bool = False
-    with_tls: Literal[False, 'openssl'] = 'openssl'
+    with_tls: Literal[False, "openssl"] = "openssl"
     with_keyutils: bool = True
 
 
@@ -69,11 +69,11 @@ class Recipe(RecipeBase[_Options]):
         tls_impl = "openssl" if self.options.with_tls == "openssl" else "no"
         tc = AutotoolsToolchain(self)
         tc.configure_args.extend([
-            f"--enable-thread-support={tc.yes_no('use_thread')}",
-            f"--enable-dns-for-realm={tc.yes_no('use_dns_realms')}",
-            f"--enable-pkinit={tc.yes_no('with_tls')}",
+            f"--enable-thread-support={tc.yes_no("use_thread")}",
+            f"--enable-dns-for-realm={tc.yes_no("use_dns_realms")}",
+            f"--enable-pkinit={tc.yes_no("with_tls")}",
             "--with-crypto-impl=openssl" if self.options.with_tls == "openssl" else "--with-crypto-impl=builtin",
-            f"--with-spake-openssl={tc.yes_no('with_tls')}",
+            f"--with-spake-openssl={tc.yes_no("with_tls")}",
             f"--with-tls-impl={tls_impl}",
             "--disable-nls",
             "--disable-rpath",

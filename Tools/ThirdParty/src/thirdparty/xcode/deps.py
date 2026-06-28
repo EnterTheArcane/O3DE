@@ -20,7 +20,7 @@ GLOBAL_XCCONFIG_FILENAME = "recipe_config.xcconfig"
 
 
 def _format_name(name: str) -> str:
-    return re.sub(r'[^A-Za-z0-9_]', '_', name).lower()
+    return re.sub(r"[^A-Za-z0-9_]", "_", name).lower()
 
 
 def _xcconfig_settings_filename(settings: Any, configuration: Any) -> str:
@@ -142,21 +142,21 @@ class XcodeDeps:
 
         # TODO: Investigate if paths can be made relative to "root" folder
         fields = {
-            'pkg_name': pkg_name,
-            'comp_name': comp_name,
-            'root': package_folder,
-            'include_dirs': " ".join(f'"{p}"' for p in _merged_vars("includedirs")),
-            'lib_dirs': " ".join(f'"{p}"' for p in _merged_vars("libdirs")),
-            'libs': " ".join(f"-l{lib}" for lib in _merged_vars("libs")),
-            'system_libs': " ".join(f"-l{sys_lib}" for sys_lib in _merged_vars("system_libs")),
-            'frameworkdirs': " ".join(f'"{p}"' for p in _merged_vars("frameworkdirs")),
-            'frameworks': " ".join(f"-framework {framework}" for framework in _merged_vars("frameworks")),
-            'definitions': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("defines")),
-            'c_compiler_flags': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("cflags")),
-            'cxx_compiler_flags': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("cxxflags")),
-            'linker_flags': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("sharedlinkflags")),
-            'exe_flags': " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("exelinkflags")),
-            'condition': _xcconfig_conditional(self._recipe.settings, self.configuration),
+            "pkg_name": pkg_name,
+            "comp_name": comp_name,
+            "root": package_folder,
+            "include_dirs": " ".join(f'"{p}"' for p in _merged_vars("includedirs")),
+            "lib_dirs": " ".join(f'"{p}"' for p in _merged_vars("libdirs")),
+            "libs": " ".join(f"-l{lib}" for lib in _merged_vars("libs")),
+            "system_libs": " ".join(f"-l{sys_lib}" for sys_lib in _merged_vars("system_libs")),
+            "frameworkdirs": " ".join(f'"{p}"' for p in _merged_vars("frameworkdirs")),
+            "frameworks": " ".join(f"-framework {framework}" for framework in _merged_vars("frameworks")),
+            "definitions": " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("defines")),
+            "c_compiler_flags": " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("cflags")),
+            "cxx_compiler_flags": " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("cxxflags")),
+            "linker_flags": " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("sharedlinkflags")),
+            "exe_flags": " ".join('"{}"'.format(p.replace('"', '\\"')) for p in _merged_vars("exelinkflags")),
+            "condition": _xcconfig_conditional(self._recipe.settings, self.configuration),
         }
 
         if not require.headers:
@@ -217,7 +217,7 @@ class XcodeDeps:
         content_multi = content or self._all_xconfig
 
         for dep in deps.values():
-            include_file = f'recipe_{_format_name(dep.name)}.xcconfig'
+            include_file = f"recipe_{_format_name(dep.name)}.xcconfig"
             if include_file not in content_multi:
                 content_multi = content_multi + f'\n#include "{include_file}"\n'
         return content_multi

@@ -9,22 +9,22 @@ from typing import IO, Any
 from thirdparty._internal.util.files import load
 from thirdparty.errors import RecipeException
 
-if getattr(sys, 'frozen', False) and 'LD_LIBRARY_PATH' in os.environ:
+if getattr(sys, "frozen", False) and "LD_LIBRARY_PATH" in os.environ:
 
     # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html#ld-library-path-libpath-considerations
-    pyinstaller_bundle_dir = os.environ['LD_LIBRARY_PATH'].replace(
-        os.environ.get('LD_LIBRARY_PATH_ORIG', ''), '').strip(';:')
+    pyinstaller_bundle_dir = os.environ["LD_LIBRARY_PATH"].replace(
+        os.environ.get("LD_LIBRARY_PATH_ORIG", ""), "").strip(";:")
 
 
     @contextmanager
     def pyinstaller_bundle_env_cleaned():
         """Removes the pyinstaller bundle directory from LD_LIBRARY_PATH
         """
-        ld_library_path = os.environ['LD_LIBRARY_PATH']
-        os.environ['LD_LIBRARY_PATH'] = ld_library_path.replace(
-            pyinstaller_bundle_dir, '').strip(';:')
+        ld_library_path = os.environ["LD_LIBRARY_PATH"]
+        os.environ["LD_LIBRARY_PATH"] = ld_library_path.replace(
+            pyinstaller_bundle_dir, "").strip(";:")
         yield
-        os.environ['LD_LIBRARY_PATH'] = ld_library_path
+        os.environ["LD_LIBRARY_PATH"] = ld_library_path
 
 else:
     @contextmanager

@@ -115,14 +115,14 @@ class Recipe(RecipeBase[_Options]):
             "--with-system-expat",
             f"--enable-optimizations={yes_no(self.options.optimizations)}",
             f"--with-lto={yes_no(self.options.lto)}",
-            f"--with-pydebug={yes_no(self.settings.build_type == 'Debug')}",
+            f"--with-pydebug={yes_no(self.settings.build_type == "Debug")}",
             "--with-system-libmpdec",
-            f"--with-openssl={self.dependencies['openssl'].folders.package}",
+            f"--with-openssl={self.dependencies["openssl"].folders.package}",
         ]
         tc.configure_args.append("--disable-test-modules")
         if self.options.with_sqlite3:
             tc.configure_args.append(
-                f"--enable-loadable-sqlite-extensions={yes_no(not self.dependencies['sqlite3'].options.omit_load_extension)}"
+                f"--enable-loadable-sqlite-extensions={yes_no(not self.dependencies["sqlite3"].options.omit_load_extension)}"
             )
         if self._supports_modules and "mpdecimal" in self.dependencies:
             # mpdecimal >= 4.0 renamed CONFIG_64/CONFIG_32 → MPD_CONFIG_64/MPD_CONFIG_32.
@@ -135,7 +135,7 @@ class Recipe(RecipeBase[_Options]):
                     tc.extra_defines.append("CONFIG_32")
 
         if not is_apple_os(self):
-            tc.extra_ldflags.append('-Wl,--as-needed')
+            tc.extra_ldflags.append("-Wl,--as-needed")
         else:
             # On macOS, some deps (tcl, tk, gdbm, libxcrypt) use @rpath-based dylib
             # install names. Without explicit -rpath entries, configure test programs

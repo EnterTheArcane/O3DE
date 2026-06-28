@@ -19,9 +19,9 @@ class _Options(RecipeOptions):
     with_extended_colors: bool = True
     with_cxx: bool = True
     with_progs: bool = True
-    with_ticlib: Literal['auto', True, False] = 'auto'
+    with_ticlib: Literal["auto", True, False] = "auto"
     with_reentrant: bool = False
-    with_tinfo: Literal['auto', True, False] = 'auto'
+    with_tinfo: Literal["auto", True, False] = "auto"
     with_pcre2: bool = False
 
 

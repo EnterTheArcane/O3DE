@@ -415,7 +415,7 @@ def unzip(
         target_dir = os.path.dirname(target_name)
         if target_dir:
             os.makedirs(target_dir, exist_ok=True)
-        with gzip.open(filename, 'rb') as fin:
+        with gzip.open(filename, "rb") as fin:
             with open(target_name, "wb") as fout:
                 shutil.copyfileobj(fin, fout)
         return
@@ -484,7 +484,7 @@ def untargz(
     excludes: Any = None):
     # NOT EXPOSED at `thirdparty.tools.files` but used in tests
     import tarfile
-    with tarfile.TarFile.open(filename, mode='r:*') as tarredgzippedFile:
+    with tarfile.TarFile.open(filename, mode="r:*") as tarredgzippedFile:
         f = getattr(tarfile, f"{extract_filter}_filter", None) if extract_filter else None
         tarredgzippedFile.extraction_filter = f or (lambda member_, _: member_)
         # https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry

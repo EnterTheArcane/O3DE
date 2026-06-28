@@ -138,7 +138,7 @@ class Autotools:
             self._recipe.run(command)
 
     def _use_win_mingw(self) -> bool:
-        os_build = self._recipe.settings_build.get_safe('os')
+        os_build = self._recipe.settings_build.get_safe("os")
 
         if os_build == "Windows":
             compiler = self._recipe.settings.get_safe("compiler")

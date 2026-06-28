@@ -202,7 +202,7 @@ class Output:
         if self._output_level > LEVEL_NOTICE:
             return self
         if self._color and (fg or bg):
-            data = "%s%s%s%s" % (fg or '', bg or '', data, Style.RESET_ALL)
+            data = "%s%s%s%s" % (fg or "", bg or "", data, Style.RESET_ALL)
 
         if newline:
             data = "%s\n" % data
@@ -217,7 +217,7 @@ class Output:
         """ Draw a box around the message, useful for important messages"""
         color = Color.BRIGHT_GREEN
         self.writeln("\n**************************************************", fg=color)
-        self.writeln(f'*{msg: ^48}*', fg=color)
+        self.writeln(f"*{msg: ^48}*", fg=color)
         self.writeln(f"**************************************************\n", fg=color)
         return self
 
@@ -239,17 +239,17 @@ class Output:
                 self.writeln(f"{self._scope}:", fg=Color.BRIGHT_BLUE)
                 Output._last_scope_header = self._scope
             if self._color:
-                ret = f"  {fg or ''}{bg or ''}{msg}{Style.RESET_ALL}"
+                ret = f"  {fg or ""}{bg or ""}{msg}{Style.RESET_ALL}"
             else:
                 ret = f"  {msg}"
         elif self._scope:
             if self._color:
-                ret = f"{fg or ''}{bg or ''}{self._scope}: {msg}{Style.RESET_ALL}"
+                ret = f"{fg or ""}{bg or ""}{self._scope}: {msg}{Style.RESET_ALL}"
             else:
                 ret = f"{self._scope}: {msg}"
         else:
             if self._color:
-                ret = f"{fg or ''}{bg or ''}{msg}{Style.RESET_ALL}"
+                ret = f"{fg or ""}{bg or ""}{msg}{Style.RESET_ALL}"
             else:
                 ret = msg
 
@@ -406,10 +406,10 @@ def cli_out_write(
     Output to be used by formatters to dump information to stdout
     """
     if (fg or bg) and _color_enabled(sys.stdout):  # need color
-        data = f"{' ' * indentation}{fg or ''}{bg or ''}{data}{Style.RESET_ALL}{endline}"
+        data = f"{" " * indentation}{fg or ""}{bg or ""}{data}{Style.RESET_ALL}{endline}"
         sys.stdout.write(data)
     else:
-        data = f"{' ' * indentation}{data}{endline}"
+        data = f"{" " * indentation}{data}{endline}"
         if sys.stdout.isatty():
             # upstream issue 17245 avoid colorama crash and overhead
             # skip deinit/reinit if stdout is not a TTY to preserve redirected output to file

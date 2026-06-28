@@ -33,7 +33,7 @@ def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]
             # -verbosity -> /verbosity
             # https://github.com/PowerShell/PowerShell/issues/17399
             if recipe.conf.get("tools.env.virtualenv:powershell"):
-                verbosity = verbosity.replace('-', '/', 1)
+                verbosity = verbosity.replace("-", "/", 1)
             args.append(verbosity)
 
     return args
@@ -203,7 +203,7 @@ class CMake:
         args.extend(self._compilation_verbosity_arg)
 
         if cmd_line_args:
-            args += ['--'] + cmd_line_args
+            args += ["--"] + cmd_line_args
 
         arg_list = [f'"{bf}"', build_config, cmd_args_to_string(args)]
         arg_list = " ".join(filter(None, arg_list))

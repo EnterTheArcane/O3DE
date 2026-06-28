@@ -11,11 +11,11 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    neon: Literal[True, 'check', False] = True
+    neon: Literal[True, "check", False] = True
     msa: bool = True
     sse: bool = True
     vsx: bool = True
-    api_prefix: str = ''
+    api_prefix: str = ""
 
 
 class Recipe(RecipeBase[_Options]):

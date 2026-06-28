@@ -71,7 +71,7 @@ def _detect_musl_libc(ldd: str = "/usr/bin/ldd"):
     d = tempfile.mkdtemp()
     tmp_file = os.path.join(d, "err")
     try:
-        with open(tmp_file, 'w') as stderr:
+        with open(tmp_file, "w") as stderr:
             check_output_runner(f"{ldd}", stderr=stderr, ignore_error=True)
         ldd_output = load(tmp_file)
         version = _parse_musl_libc(ldd_output)
@@ -354,7 +354,7 @@ def _detect_vs_ide_version():
     from thirdparty._internal.util.detect_vs import vs_installation_path
     msvc_versions = "18", "17", "16", "15"
     for version in msvc_versions:
-        vs_path = os.getenv('vs%s0comntools' % version)
+        vs_path = os.getenv("vs%s0comntools" % version)
         path = vs_path or vs_installation_path(version)
         if path:
             Output(scope="detect_api").info("Found msvc %s" % version)
@@ -449,7 +449,7 @@ def detect_msvc_compiler():
         if update and int(update) >= 10:
             version = "194"
     if version:
-        return 'msvc', Version(version), None
+        return "msvc", Version(version), None
     return None, None, None
 
 
@@ -471,7 +471,7 @@ def detect_cl_compiler(compiler_exe: str = "cl"):
         if not version_regex:
             return None, None, None
         # 19.36.32535 -> 193
-        version = f"{version_regex.group('major')}{version_regex.group('minor')[0]}"
+        version = f"{version_regex.group("major")}{version_regex.group("minor")[0]}"
         return compiler, Version(version), compiler_exe
     except (Exception,):  # to disable broad-except
         return None, None, None
@@ -526,7 +526,7 @@ def default_compiler_version(compiler: str, version: Any):
 def detect_sdk_version(sdk: Any):
     if platform.system() != "Darwin":
         return
-    cmd = f'xcrun -sdk {sdk} --show-sdk-version'
+    cmd = f"xcrun -sdk {sdk} --show-sdk-version"
     _, result = detect_runner(cmd)
     result = result.strip()
     return result

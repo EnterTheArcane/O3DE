@@ -92,7 +92,7 @@ class CMakeDeps:
                     target_name = self.get_property("cmake_target_name", dep)
                     link_targets.append(target_name or f"{dep.name}::{dep.name}")
             if link_targets:
-                msg.append(f"    target_link_libraries(... {' '.join(link_targets)})")
+                msg.append(f"    target_link_libraries(... {" ".join(link_targets)})")
             self._recipe.output.info("\n".join(msg), fg=Color.CYAN)
 
     def set_property(
@@ -167,7 +167,7 @@ class CMakeDeps:
 
 # TODO: Repeated from CMakeToolchain blocks
 def _join_paths(recipe: RecipeBase, paths: Any) -> str:
-    paths = [p.replace('\\', '/').replace('$', '\\$').replace('"', '\\"') for p in paths]
+    paths = [p.replace("\\", "/").replace("$", "\\$").replace('"', '\\"') for p in paths]
     paths = [relativize_path(p, recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in paths]
     return " ".join([f'"{p}"' for p in paths])
 
@@ -375,4 +375,4 @@ class _PathGenerator:
                 if d not in existing:
                     existing.append(d)
 
-        return ' '.join(f'"$<$<CONFIG:{c}>:{i}>"' for c, v in host_runtime_dirs.items() for i in v)
+        return " ".join(f'"$<$<CONFIG:{c}>:{i}>"' for c, v in host_runtime_dirs.items() for i in v)

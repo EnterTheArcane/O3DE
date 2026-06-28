@@ -91,7 +91,7 @@ def sha256sum(file_path: str) -> str:
 
 
 def _generic_algorithm_sum(file_path: str, algorithm_name: str) -> str:
-    with open(file_path, 'rb') as fh:
+    with open(file_path, "rb") as fh:
         try:
             m = hashlib.new(algorithm_name)
         except ValueError:  # FIPS error upstream issue 7800
@@ -138,7 +138,7 @@ def save_files(path: str, files: Any, encoding: str = "utf-8"):
 
 def load(path: str, encoding: str = "utf-8") -> str:
     """ Loads a file content """
-    with open(path, 'r', encoding=encoding, newline="") as handle:
+    with open(path, "r", encoding=encoding, newline="") as handle:
         tmp = handle.read()
     return tmp
 
@@ -160,7 +160,7 @@ def load_user_encoded(path: str) -> str:
      - recipe.txt
      - profile files
      """
-    with open(path, 'rb') as handle:
+    with open(path, "rb") as handle:
         text = handle.read()
 
     import codecs
@@ -170,11 +170,11 @@ def load_user_encoded(path: str) -> str:
         codecs.BOM_UTF32_LE: "utf_32_le",
         codecs.BOM_UTF16_BE: "utf_16_be",
         codecs.BOM_UTF16_LE: "utf_16_le",
-        b'\x2b\x2f\x76\x38': "utf_7",
-        b'\x2b\x2f\x76\x39': "utf_7",
-        b'\x2b\x2f\x76\x2b': "utf_7",
-        b'\x2b\x2f\x76\x2f': "utf_7",
-        b'\x2b\x2f\x76\x38\x2d': "utf_7",
+        b"\x2b\x2f\x76\x38": "utf_7",
+        b"\x2b\x2f\x76\x39": "utf_7",
+        b"\x2b\x2f\x76\x2b": "utf_7",
+        b"\x2b\x2f\x76\x2f": "utf_7",
+        b"\x2b\x2f\x76\x38\x2d": "utf_7",
     }
     for bom, encoding in encodings.items():
         if text.startswith(bom):
@@ -318,7 +318,7 @@ def human_size(size_bytes: int) -> str:
     greater precision.  e.g. 43 B, 443 KB, 4.3 MB, 4.43 GB, etc
     """
     unit_size = 1000.0
-    suffixes_table = [('B', 0), ('KB', 1), ('MB', 1), ('GB', 2), ('TB', 2), ('PB', 2)]
+    suffixes_table = [("B", 0), ("KB", 1), ("MB", 1), ("GB", 2), ("TB", 2), ("PB", 2)]
 
     num = float(size_bytes)
     the_precision = None

@@ -44,7 +44,7 @@ class OpLock:
 
 
 class _Options(RecipeOptions):
-    exclude_files: str = '*/link.exe'
+    exclude_files: str = "*/link.exe"
     packages: Any
     additional_packages: str | None = None
     no_kill: bool = False
@@ -97,14 +97,14 @@ class Recipe(RecipeBase[_Options]):
         if self.options.no_kill:
             return
         if (self.settings.os == "Windows"):
-            taskkill_exe: str = os.path.join(os.environ.get('SystemRoot', ''), 'system32', 'taskkill.exe')
+            taskkill_exe: str = os.path.join(os.environ.get("SystemRoot", ""), "system32", "taskkill.exe")
 
             log_out = True
             if log_out:
                 out = subprocess.PIPE
                 err = subprocess.STDOUT
             else:
-                out = open(os.devnull, 'w', encoding='UTF-8')
+                out = open(os.devnull, "w", encoding="UTF-8")
                 err = subprocess.PIPE
 
             if os.path.exists(taskkill_exe):
@@ -143,7 +143,7 @@ class Recipe(RecipeBase[_Options]):
         with chdir(self, self._msys_dir / "usr" / "bin"):
             for package in packages:
                 self.run(f'bash -l -c "pacman -S {package} --noconfirm"')
-            for package in ['pkgconf']:
+            for package in ["pkgconf"]:
                 if self.run(f'bash -l -c "pacman -Qq {package}"', ignore_errors=True, quiet=True) == 0:
                     self.run(f'bash -l -c "pacman -Rs -d -d {package} --noconfirm"')
             self.run(f'bash -l -c "pacman -Scc --noconfirm"')
@@ -152,11 +152,11 @@ class Recipe(RecipeBase[_Options]):
 
         # create /tmp dir in order to avoid
         # bash.exe: warning: could not find /tmp, please create!
-        tmp_dir = self._msys_dir / 'tmp'
+        tmp_dir = self._msys_dir / "tmp"
         if not os.path.isdir(tmp_dir):
             os.makedirs(tmp_dir)
-        tmp_name = tmp_dir / 'dummy'
-        with open(tmp_name, 'a', encoding='UTF-8'):
+        tmp_name = tmp_dir / "dummy"
+        with open(tmp_name, "a", encoding="UTF-8"):
             os.utime(tmp_name, None)
 
         # Prepend the PKG_CONFIG_PATH environment variable with an eventual PKG_CONFIG_PATH environment variable

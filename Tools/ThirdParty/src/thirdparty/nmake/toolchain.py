@@ -35,7 +35,7 @@ class NMakeToolchain:
 
     @staticmethod
     def _format_options(options: list[str]) -> list[str]:
-        return [f"{opt[0].replace('-', '/')}{opt[1:]}" for opt in options if len(opt) > 1]
+        return [f"{opt[0].replace("-", "/")}{opt[1:]}" for opt in options if len(opt) > 1]
 
     @property
     def _cl(self):

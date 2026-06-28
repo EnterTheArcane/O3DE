@@ -134,7 +134,7 @@ class _Options(RecipeOptions):
     with_mysql: bool = False
     with_odbc: bool = False
     with_openal: bool = True
-    with_opengl: Literal['no', 'desktop', 'dynamic'] = 'no'
+    with_opengl: Literal["no", "desktop", "dynamic"] = "no"
     with_openssl: bool = True
     with_pcre2: bool = True
     with_pq: bool = False
@@ -149,7 +149,7 @@ class _Options(RecipeOptions):
     device: str | None = None
     cross_compile: str | None = None
     sysroot: str | None = None
-    disabled_features: str | None = ''
+    disabled_features: str | None = ""
 
     qt3d: bool = False
     qt5compat: bool = True
@@ -346,7 +346,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("pulseaudio")
         if self.options.with_dbus:
             self.requires("dbus")
-        if self.settings.os in ['Linux', 'FreeBSD'] and self.options.with_gssapi:
+        if self.settings.os in ["Linux", "FreeBSD"] and self.options.with_gssapi:
             self.requires("krb5")
         if self.options.with_md4c:
             self.requires("md4c")  # stable API since 0.3x as per md4c wiki
@@ -660,7 +660,7 @@ class Recipe(RecipeBase[_Options]):
                 endfunction()"""))
 
         # workaround QTBUG-94356
-        replace_in_file(self, self.folders.source / "qtbase" / "cmake" / "FindWrapSystemZLIB.cmake", '"-lz"', 'ZLIB::ZLIB')
+        replace_in_file(self, self.folders.source / "qtbase" / "cmake" / "FindWrapSystemZLIB.cmake", '"-lz"', "ZLIB::ZLIB")
         replace_in_file(
             self, self.folders.source / "qtbase" / "configure.cmake",
             "set_property(TARGET ZLIB::ZLIB PROPERTY IMPORTED_GLOBAL TRUE)",
@@ -916,7 +916,7 @@ class Recipe(RecipeBase[_Options]):
         save(self, self.folders.package / self._cmake_executables_file, filecontents)
 
         def _create_private_module(module: str, dependencies: list[str]):
-            dependencies_string = ';'.join(f"Qt6::{dependency}" for dependency in dependencies)
+            dependencies_string = ";".join(f"Qt6::{dependency}" for dependency in dependencies)
             contents = textwrap.dedent(
                 f"""
                 if(NOT TARGET Qt6::{module}Private)
@@ -1108,7 +1108,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["qtCore"].set_property("pkg_config_custom_content", "\n".join(pkg_config_vars))
 
         if self.settings.build_type != "Debug":
-            self.info.components['qtCore'].defines.append('QT_NO_DEBUG')
+            self.info.components["qtCore"].defines.append("QT_NO_DEBUG")
         if self.settings.os == "Windows":
             self.info.components["qtCore"].system_libs.append("authz")
         if is_msvc(self):
@@ -1254,7 +1254,7 @@ class Recipe(RecipeBase[_Options]):
             networkReqs.append("openssl::openssl")
         if self.options.with_brotli:
             networkReqs.append("brotli::brotli")
-        if self.settings.os in ['Linux', 'FreeBSD'] and self.options.with_gssapi:
+        if self.settings.os in ["Linux", "FreeBSD"] and self.options.with_gssapi:
             networkReqs.append("krb5::krb5-gssapi")
         _create_module("Network", networkReqs)
         _create_module("Sql", [])

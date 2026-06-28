@@ -22,7 +22,7 @@ class _Options(RecipeOptions):
     reflect: bool = True
     c_api: bool = True
     util: bool = True
-    namespace: str = 'spirv_cross'
+    namespace: str = "spirv_cross"
 
 
 class Recipe(RecipeBase[_Options]):

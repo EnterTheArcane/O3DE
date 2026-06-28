@@ -54,7 +54,7 @@ class Recipe(RecipeBase[_Options]):
         tc = AutotoolsToolchain(self)
         tc.configure_args.extend(
             [
-                f"--enable-debug={yes_no(self.settings.build_type == 'Debug')}",
+                f"--enable-debug={yes_no(self.settings.build_type == "Debug")}",
                 "--enable-builddir=no",
                 "--enable-docs=no",
                 "--enable-shared" if self.options.shared else "--disable-shared",

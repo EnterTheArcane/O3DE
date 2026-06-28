@@ -62,10 +62,10 @@ def environment_wrap_command(
             cmd = cmd.replace('"', r'\"')
             return f'{launchers} && {ps1_launchers} ; cmd /c "{cmd}"'
         else:
-            return f'{launchers} && {cmd}'
+            return f"{launchers} && {cmd}"
     elif shs:
         launchers = " && ".join(f'. "{f}"' for f in shs)
-        return f'{launchers} && {cmd}'
+        return f"{launchers} && {cmd}"
     elif ps1s:
         ps1_launchers = f'{powershell} -Command "' + " ; ".join(f"&'{f}'" for f in ps1s) + '"'
         cmd = cmd.replace('"', r'\"')
@@ -544,7 +544,7 @@ class EnvVars:
             if generate_deactivate and self._deactivation_mode == "function":
                 # Check environment variable existence before saving value
                 result.append(
-                    f'if ($env:{varname}) {{ $env:{_old_env_prefix(filename)}_{varname} = $env:{varname} }}')
+                    f"if ($env:{varname}) {{ $env:{_old_env_prefix(filename)}_{varname} = $env:{varname} }}")
             if varvalues:
                 value = value.replace('"', '`"')  # escape quotes
                 no_value = no_value.replace('"', '`"')  # escape quotes
@@ -562,7 +562,7 @@ class EnvVars:
                     set_value = f'$env:{varname}="{value}"'
                 result.append(set_value)
             else:
-                result.append(f'if (Test-Path env:{varname}) {{ Remove-Item env:{varname} }}')
+                result.append(f"if (Test-Path env:{varname}) {{ Remove-Item env:{varname} }}")
 
         content = "\n".join(result)
         # It is very important to save it correctly with utf-16, the Recipe util save() is broken
@@ -592,11 +592,11 @@ class EnvVars:
                 result.append(
                     f'if [ -n "${{{varname}+x}}" ]; then '
                     f'export {_old_env_prefix(filename)}_{varname}="${{{varname}}}"; '
-                    f'fi;')
+                    f"fi;")
             if varvalues:
                 result.append(f'export {varname}="{value}"')
             else:
-                result.append(f'unset {varname}')
+                result.append(f"unset {varname}")
 
         content = "\n".join(result)
         content = f'script_folder="{os.path.abspath(filepath)}"\n' + content
@@ -848,7 +848,7 @@ def generate_aggregated_env(recipe: RecipeBase):
                     f = [f for f in files if f != f"%~dp0/{RECIPE_VCVARS}.bat"]
                     deactivate_filenames = [f.replace("%~dp0\\", "") for f in deactivates(f)]
 
-                    content += [f'set PATH=%{deactivates_var}%;%PATH%']
+                    content += [f"set PATH=%{deactivates_var}%;%PATH%"]
                     content += [f'echo @echo off > "%{deactivates_var}%\\{deactivate_filename}"']
                     content += [f'echo call "{b}" >> "%{deactivates_var}%\\{deactivate_filename}"' for b in deactivate_filenames]
                     # See https://ss64.com/nt/syntax-replace.html for the syntax below to remove

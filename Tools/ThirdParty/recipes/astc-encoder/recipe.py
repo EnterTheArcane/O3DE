@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
-    isa: Literal['avx2', 'sse4.1', 'sse2', 'neon', 'none', 'native'] = 'native'
+    isa: Literal["avx2", "sse4.1", "sse2", "neon", "none", "native"] = "native"
 
 
 class Recipe(RecipeBase[_Options]):

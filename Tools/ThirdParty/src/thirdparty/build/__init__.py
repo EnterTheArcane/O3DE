@@ -20,7 +20,7 @@ RECIPE_TOOLCHAIN_ARGS_SECTION = "toolchain"
 
 
 def use_win_mingw(recipe: RecipeBase) -> bool:
-    os_build = recipe.settings_build.get_safe('os')
+    os_build = recipe.settings_build.get_safe("os")
     if os_build == "Windows":
         compiler_ = recipe.settings.get_safe("compiler")
         sub = recipe.settings.get_safe("os.subsystem")
@@ -34,7 +34,7 @@ def use_win_mingw(recipe: RecipeBase) -> bool:
 def cmd_args_to_string(args: Iterable[str] | None) -> str:
     if not args:
         return ""
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         return _windows_cmd_args_to_string(args)
     else:
         return _unix_cmd_args_to_string(args)
@@ -42,7 +42,7 @@ def cmd_args_to_string(args: Iterable[str] | None) -> str:
 
 def _unix_cmd_args_to_string(args: Iterable[str]) -> str:
     """Return a shell-escaped string from *split_command*."""
-    return ' '.join(quote(arg) for arg in args)
+    return " ".join(quote(arg) for arg in args)
 
 
 def _windows_cmd_args_to_string(args: Iterable[str]) -> str:
@@ -51,14 +51,14 @@ def _windows_cmd_args_to_string(args: Iterable[str]) -> str:
     for arg in args:
         # escaped quotes have to escape the \ and then the ". Replace with <QUOTE> so next
         # replace doesn't interfere
-        arg = arg.replace(r'\"', r'\\\<QUOTE>')
+        arg = arg.replace(r'\"', r"\\\<QUOTE>")
         # quotes have to be escaped
         arg = arg.replace(r'"', r'\"')
 
         # restore the quotes
         arg = arg.replace("<QUOTE>", '"')
         # if argument have spaces, quote it
-        if ' ' in arg or '\t' in arg:
+        if " " in arg or "\t" in arg:
             ret.append(f'"{arg}"')
         else:
             ret.append(arg)

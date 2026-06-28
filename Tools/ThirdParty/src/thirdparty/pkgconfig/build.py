@@ -35,7 +35,7 @@ class PkgConfig:
 
     def _parse_output(self, option: str) -> str:
         executable = self._recipe.conf.get("tools.gnu:pkg_config", default="pkg-config")
-        command = cmd_args_to_string([executable, '--' + option, self._library, '--print-errors'])
+        command = cmd_args_to_string([executable, "--" + option, self._library, "--print-errors"])
 
         env = Environment()
         if self._pkg_config_path:
@@ -48,8 +48,8 @@ class PkgConfig:
             if ret != 0:
                 raise RecipeException(
                     f"PkgConfig failed. Command: {command}\n"
-                    f"    stdout:\n{textwrap.indent(output.getvalue(), '    ')}\n"
-                    f"    stderr:\n{textwrap.indent(err.getvalue(), '    ')}\n")
+                    f"    stdout:\n{textwrap.indent(output.getvalue(), "    ")}\n"
+                    f"    stderr:\n{textwrap.indent(err.getvalue(), "    ")}\n")
         value = output.getvalue().strip()
         return value
 
@@ -60,43 +60,43 @@ class PkgConfig:
 
     @property
     def includedirs(self) -> list[str]:
-        return [include[2:] for include in self._get_option('cflags-only-I').split()]
+        return [include[2:] for include in self._get_option("cflags-only-I").split()]
 
     @property
     def cflags(self) -> list[str]:
-        return [flag for flag in self._get_option('cflags-only-other').split() if not flag.startswith("-D")]
+        return [flag for flag in self._get_option("cflags-only-other").split() if not flag.startswith("-D")]
 
     @property
     def defines(self) -> list[str]:
-        return [flag[2:] for flag in self._get_option('cflags-only-other').split() if flag.startswith("-D")]
+        return [flag[2:] for flag in self._get_option("cflags-only-other").split() if flag.startswith("-D")]
 
     @property
     def libdirs(self) -> list[str]:
-        return [lib[2:] for lib in self._get_option('libs-only-L').split()]
+        return [lib[2:] for lib in self._get_option("libs-only-L").split()]
 
     @property
     def libs(self) -> list[str]:
-        return [lib[2:] for lib in self._get_option('libs-only-l').split()]
+        return [lib[2:] for lib in self._get_option("libs-only-l").split()]
 
     @property
     def linkflags(self) -> list[str]:
-        return self._get_option('libs-only-other').split()
+        return self._get_option("libs-only-other").split()
 
     @property
     def provides(self) -> str:
-        return self._get_option('print-provides')
+        return self._get_option("print-provides")
 
     @property
     def version(self) -> str:
-        return self._get_option('modversion')
+        return self._get_option("modversion")
 
     @property
     def variables(self) -> dict[str, str]:
         if self._variables is None:
-            variable_names = self._parse_output('print-variables').split()
+            variable_names = self._parse_output("print-variables").split()
             self._variables = {}
             for name in variable_names:
-                self._variables[name] = self._parse_output('variable=%s' % name)
+                self._variables[name] = self._parse_output("variable=%s" % name)
         return self._variables
 
     def fill_cpp_info(

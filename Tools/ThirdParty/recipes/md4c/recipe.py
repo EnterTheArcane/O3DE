@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
     md2html: bool
-    encoding: Literal['utf-8', 'utf-16', 'ascii'] = 'utf-8'
+    encoding: Literal["utf-8", "utf-16", "ascii"] = "utf-8"
 
 
 class Recipe(RecipeBase[_Options]):

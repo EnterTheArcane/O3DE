@@ -226,29 +226,29 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["gresource"].requires.append("elfutils::libelf")  # this is actually an executable
 
         pkgconfig_variables = {
-            'datadir': '${prefix}/res',
-            'schemasdir': '${datadir}/glib-2.0/schemas',
-            'bindir': '${prefix}/bin',
+            "datadir": "${prefix}/res",
+            "schemasdir": "${datadir}/glib-2.0/schemas",
+            "bindir": "${prefix}/bin",
             # Can't use libdir here as it is libdir1 when using the PkgConfigDeps generator.
-            'giomoduledir': '${prefix}/lib/gio/modules',
-            'gio': '${bindir}/gio',
-            'gio_querymodules': '${bindir}/gio-querymodules',
-            'glib_compile_schemas': '${bindir}/glib-compile-schemas',
-            'glib_compile_resources': '${bindir}/glib-compile-resources',
-            'gdbus': '${bindir}/gdbus',
-            'gdbus_codegen': '${bindir}/gdbus-codegen',
-            'gresource': '${bindir}/gresource',
-            'gsettings': '${bindir}/gsettings',
+            "giomoduledir": "${prefix}/lib/gio/modules",
+            "gio": "${bindir}/gio",
+            "gio_querymodules": "${bindir}/gio-querymodules",
+            "glib_compile_schemas": "${bindir}/glib-compile-schemas",
+            "glib_compile_resources": "${bindir}/glib-compile-resources",
+            "gdbus": "${bindir}/gdbus",
+            "gdbus_codegen": "${bindir}/gdbus-codegen",
+            "gresource": "${bindir}/gresource",
+            "gsettings": "${bindir}/gsettings",
         }
         self.info.components["gio-2.0"].set_property(
             "pkg_config_custom_content",
             "\n".join(f"{key}={value}" for key, value in pkgconfig_variables.items()))
 
         pkgconfig_variables = {
-            'bindir': '${prefix}/bin',
-            'glib_genmarshal': '${bindir}/glib-genmarshal',
-            'gobject_query': '${bindir}/gobject-query',
-            'glib_mkenums': '${bindir}/glib-mkenums',
+            "bindir": "${prefix}/bin",
+            "glib_genmarshal": "${bindir}/glib-genmarshal",
+            "gobject_query": "${bindir}/gobject-query",
+            "glib_mkenums": "${bindir}/glib-mkenums",
         }
         self.info.components["glib-2.0"].set_property(
             "pkg_config_custom_content",

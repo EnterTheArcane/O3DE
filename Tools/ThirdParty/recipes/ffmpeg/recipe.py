@@ -54,7 +54,7 @@ class _Options(RecipeOptions):
     with_libmp3lame: bool = True
     with_libfdk_aac: bool = True
     with_libwebp: bool = True
-    with_ssl: Literal[False, 'openssl', 'securetransport'] = 'openssl'
+    with_ssl: Literal[False, "openssl", "securetransport"] = "openssl"
     with_libalsa: bool = True
     with_pulse: bool = True
     with_vaapi: bool = True
@@ -594,9 +594,9 @@ class Recipe(RecipeBase[_Options]):
                 args.append("--disable-outdev=audiotoolbox")
 
         if tc.cflags:
-            args.append(f"--extra-cflags={' '.join(tc.cflags)}")
+            args.append(f"--extra-cflags={" ".join(tc.cflags)}")
         if tc.ldflags:
-            args.append(f"--extra-ldflags={' '.join(tc.ldflags)}")
+            args.append(f"--extra-ldflags={" ".join(tc.ldflags)}")
         tc.configure_args.extend(args)
         tc.generate()
 
@@ -706,7 +706,7 @@ class Recipe(RecipeBase[_Options]):
                         if match:
                             version[match[1]] = match[2]
         if "MAJOR" in version and "MINOR" in version and "MICRO" in version:
-            return f"{version['MAJOR']}.{version['MINOR']}.{version['MICRO']}"
+            return f"{version["MAJOR"]}.{version["MINOR"]}.{version["MICRO"]}"
         return None
 
     def _set_component_version(self, component_name: str):

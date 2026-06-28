@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
     shared: bool = False
     fPIC: bool = True
     build_executable: bool = False
-    with_ssl: Literal[False, 'openssl', 'wolfssl', 'schannel', 'mbedtls', 'libressl'] = 'openssl'
+    with_ssl: Literal[False, "openssl", "wolfssl", "schannel", "mbedtls", "libressl"] = "openssl"
     with_file: bool = True
     with_ftp: bool = True
     with_http: bool = True
@@ -51,8 +51,8 @@ class _Options(RecipeOptions):
     with_symbol_hiding: bool = False
     with_unix_sockets: bool = True
     with_verbose_strings: bool = True
-    with_ca_bundle: Literal[False, 'auto'] | str = 'auto'
-    with_ca_path: Literal[False, 'auto'] | str = 'auto'
+    with_ca_bundle: Literal[False, "auto"] | str = "auto"
+    with_ca_path: Literal[False, "auto"] | str = "auto"
     with_ca_fallback: bool = False
     with_form_api: bool = True
     with_websockets: bool = True

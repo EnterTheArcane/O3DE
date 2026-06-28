@@ -66,7 +66,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _lz4_target(self):
-        return f"LZ4::{'lz4_shared' if self.options.shared else 'lz4_static'}"
+        return f"LZ4::{"lz4_shared" if self.options.shared else "lz4_static"}"
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "lz4")

@@ -121,8 +121,8 @@ def _print_missing(rows: list[tuple[str, str]]) -> None:
         return
     name_w = max(len("recipe"), max(len(r[0]) for r in rows))
     ver_w = max(len("version"), max(len(r[1]) for r in rows))
-    print(f"{'recipe':<{name_w}}  {'version':<{ver_w}}")
-    print(f"{'-' * name_w}  {'-' * ver_w}")
+    print(f"{"recipe":<{name_w}}  {"version":<{ver_w}}")
+    print(f"{"-" * name_w}  {"-" * ver_w}")
     for name, version in rows:
         print(f"{name:<{name_w}}  {version:<{ver_w}}")
 
@@ -135,8 +135,8 @@ def _print_table(rows: list[tuple[str, str, str, str, str | None]]) -> None:
     cur_w = max(len("current"), max(len(r[1]) for r in rows))
     lat_w = max(len("latest"), max(len(r[2]) for r in rows))
 
-    print(f"{'recipe':<{name_w}}  {'current':<{cur_w}}  {'latest':<{lat_w}}  status")
-    print(f"{'-' * name_w}  {'-' * cur_w}  {'-' * lat_w}  ------")
+    print(f"{"recipe":<{name_w}}  {"current":<{cur_w}}  {"latest":<{lat_w}}  status")
+    print(f"{"-" * name_w}  {"-" * cur_w}  {"-" * lat_w}  ------")
 
     for name, current, latest, status, bump in rows:
         latest_padded = f"{latest:<{lat_w}}"
