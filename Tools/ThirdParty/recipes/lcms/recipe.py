@@ -34,10 +34,8 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
-        tc = MesonToolchain(self)
-        tc.generate()
-        env = VirtualBuildEnv(self)
-        env.generate()
+        MesonToolchain(self).generate()
+        VirtualBuildEnv(self).generate()
 
     def build(self):
         meson = Meson(self)

@@ -40,8 +40,7 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(self, self.folders.source / "CMakeLists.txt", "cmake_policy(SET CMP0091 OLD)", "")
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         tc = CMakeToolchain(self)
         tc.cache_variables["LIBSAMPLERATE_EXAMPLES"] = False
         tc.cache_variables["LIBSAMPLERATE_INSTALL"] = True

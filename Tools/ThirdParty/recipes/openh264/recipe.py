@@ -48,8 +48,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         tc = MesonToolchain(self)
         tc.project_options["tests"] = "disabled"
         tc.generate()

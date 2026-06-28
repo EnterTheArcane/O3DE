@@ -78,8 +78,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
         tc = CMakeToolchain(self)
         tc.variables["ENABLE_STATIC"] = not self.options.shared

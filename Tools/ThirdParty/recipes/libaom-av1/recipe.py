@@ -45,8 +45,7 @@ class Recipe(RecipeBase[_Options]):
         apply_patches(self)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         tc = CMakeToolchain(self)
         tc.variables["ENABLE_EXAMPLES"] = False
         tc.variables["ENABLE_TESTS"] = False

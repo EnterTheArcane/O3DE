@@ -54,13 +54,11 @@ class Recipe(RecipeBase[_Options]):
             tc.generate()
         else:
             # inject requires_tool env vars in build scope (not needed if there is no requires_tool)
-            env = VirtualBuildEnv(self)
-            env.generate()
+            VirtualBuildEnv(self).generate()
             # inject requires env vars in build scope
             # it's required in case of native build when there is AutotoolsDeps & at least one dependency which might be shared, because configure tries to run a test executable
             if not cross_building(self):
-                env = VirtualRunEnv(self)
-                env.generate(scope="build")
+                VirtualRunEnv(self).generate(scope="build")
 
             tc = AutotoolsToolchain(self)
             tc.configure_args.append("--enable-cxx" if self.options.cxx else "--disable-cxx")

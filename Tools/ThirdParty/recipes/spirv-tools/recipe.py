@@ -34,8 +34,7 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(self, self.folders.source / "CMakeLists.txt", "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
         tc = CMakeToolchain(self)
 

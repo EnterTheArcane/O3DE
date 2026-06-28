@@ -158,8 +158,7 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(self, macros_cmake, "find_package(${_find_name} MODULE REQUIRED)", "find_package(${_find_name} CONFIG REQUIRED)")
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         if self._is_win_x_android:
             tc = CMakeToolchain(self, generator="Ninja")
         else:

@@ -58,11 +58,9 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
-        virtual_build_env = VirtualBuildEnv(self)
-        virtual_build_env.generate()
+        VirtualBuildEnv(self).generate()
         if not cross_building(self):
-            virtual_run_env = VirtualRunEnv(self)
-            virtual_run_env.generate(scope="build")
+            VirtualRunEnv(self).generate(scope="build")
         tc = AutotoolsToolchain(self)
         yes_no = lambda v: "yes" if v else "no"
         enable_debug = self.settings.build_type in ["Debug", "RelWithDebInfo"]

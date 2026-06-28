@@ -47,8 +47,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
-        virtual_build_env = VirtualBuildEnv(self)
-        virtual_build_env.generate()
+        VirtualBuildEnv(self).generate()
 
         yes_no = lambda v: "yes" if v else "no"
         tc = AutotoolsToolchain(self)

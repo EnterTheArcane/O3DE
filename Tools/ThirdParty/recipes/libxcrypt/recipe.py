@@ -45,8 +45,7 @@ class Recipe(RecipeBase[_Options]):
             "\nlibcrypt_la_LDFLAGS = -no-undefined ")
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         tc = AutotoolsToolchain(self)
         tc.configure_args.append("--disable-werror")
         tc.generate()

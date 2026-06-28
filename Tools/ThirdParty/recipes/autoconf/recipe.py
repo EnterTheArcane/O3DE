@@ -34,8 +34,7 @@ class Recipe(RecipeBase):
         apply_patches(self)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
         tc = AutotoolsToolchain(self)
         tc.configure_args.extend(

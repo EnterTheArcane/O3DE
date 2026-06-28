@@ -29,8 +29,7 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
         tc = AutotoolsToolchain(self)
         tcenv = tc.environment()

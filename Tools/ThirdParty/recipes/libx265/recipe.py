@@ -53,8 +53,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         tc = CMakeToolchain(self)
         tc.variables["ENABLE_PIC"] = self.options.get_safe("fPIC", True)
         tc.variables["ENABLE_SHARED"] = self.options.shared

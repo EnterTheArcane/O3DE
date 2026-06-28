@@ -52,22 +52,17 @@ class Recipe(RecipeBase[_Options]):
         apply_patches(self)
 
     def generate(self):
-        buildenv = VirtualBuildEnv(self)
-        buildenv.generate()
+        VirtualBuildEnv(self).generate()
 
         if is_msvc(self):
-            tc = NMakeToolchain(self)
-            tc.generate()
-
-            deps = NMakeDeps(self)
-            deps.generate()
+            NMakeToolchain(self).generate()
+            NMakeDeps(self).generate()
         else:
             # Inject runenv variables into buildenv
             # This is required because tcl needs to be available when configure tries to
             # run a test executable
             if not cross_building(self):
-                runenv = VirtualRunEnv(self)
-                runenv.generate(scope="build")
+                VirtualRunEnv(self).generate(scope="build")
 
             yes_no = lambda v: "yes" if v else "no"
             tc = AutotoolsToolchain(self)

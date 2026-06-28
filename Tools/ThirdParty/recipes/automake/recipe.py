@@ -38,11 +38,8 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
-
-        tc = AutotoolsToolchain(self)
-        tc.generate()
+        VirtualBuildEnv(self).generate()
+        AutotoolsToolchain(self).generate()
 
     def _patch_sources(self):
         apply_patches(self)

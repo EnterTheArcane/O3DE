@@ -72,8 +72,7 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
         tc = AutotoolsToolchain(self)
         if check_min_vs(self, "180", raise_invalid=False):

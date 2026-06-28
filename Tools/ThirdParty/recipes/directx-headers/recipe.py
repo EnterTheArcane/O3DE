@@ -29,8 +29,7 @@ class Recipe(RecipeBase):
         tc = MesonToolchain(self)
         tc.project_options["build-test"] = False
         tc.generate()
-        virtual_build_env = VirtualBuildEnv(self)
-        virtual_build_env.generate()
+        VirtualBuildEnv(self).generate()
 
     def build(self):
         meson = Meson(self)

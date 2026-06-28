@@ -48,11 +48,9 @@ class Recipe(RecipeBase[_Options]):
 
     def generate(self):
         if is_msvc(self) or self._is_clang_cl:
-            tc = NMakeToolchain(self)
-            tc.generate()
+            NMakeToolchain(self).generate()
         else:
-            env = VirtualBuildEnv(self)
-            env.generate()
+            VirtualBuildEnv(self).generate()
             tc = AutotoolsToolchain(self)
             tc.configure_args.append("--disable-frontend")
             if self.settings.compiler == "clang" and self.settings.arch in ["X64"]:

@@ -365,11 +365,9 @@ class Recipe(RecipeBase[_Options]):
         return tc
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         if not cross_building(self):
-            env = VirtualRunEnv(self)
-            env.generate(scope="build")
+            env = VirtualRunEnv(self).generate(scope="build")
 
         def opt_enable_disable(what, v):
             return "--{}-{}".format("enable" if v else "disable", what)

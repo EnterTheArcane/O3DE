@@ -34,8 +34,7 @@ class Recipe(RecipeBase):
         tc.project_options["datadir"] = "res"
         tc.project_options["tests"] = "false"
         tc.generate()
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
     def build(self):
         meson = Meson(self)

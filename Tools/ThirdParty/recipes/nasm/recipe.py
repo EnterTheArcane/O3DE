@@ -55,16 +55,12 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         if is_msvc(self):
-            tc = NMakeToolchain(self)
-            tc.generate()
+            NMakeToolchain(self).generate()
         else:
             tc = AutotoolsToolchain(self)
-            if self.settings.arch == "x86":
-                tc.extra_cflags.append("-m32")
-            elif self.settings.arch == "X64":
+            if self.settings.arch == "X64":
                 tc.extra_cflags.append("-m64")
             tc.generate()
 

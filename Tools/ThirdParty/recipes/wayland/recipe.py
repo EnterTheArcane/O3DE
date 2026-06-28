@@ -58,11 +58,9 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(self, self.folders.source / "meson.build", "subdir('tests')", "#subdir('tests')")
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         if can_run(self):
-            env = VirtualRunEnv(self)
-            env.generate(scope="build")
+            VirtualRunEnv(self).generate(scope="build")
 
         deps = PkgConfigDeps(self)
         if not can_run(self):

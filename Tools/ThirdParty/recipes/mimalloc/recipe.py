@@ -77,8 +77,8 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["MI_INSTALL_TOPLEVEL"] = "ON"
         tc.variables["MI_GUARDED"] = self.options.guarded
         tc.generate()
-        venv = VirtualBuildEnv(self)
-        venv.generate(scope="build")
+
+        VirtualBuildEnv(self).generate(scope="build")
 
         if is_msvc(self):
             vcvars = VCVars(self)

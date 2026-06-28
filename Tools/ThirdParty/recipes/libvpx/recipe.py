@@ -113,8 +113,7 @@ class Recipe(RecipeBase[_Options]):
         return f"{arch}-{os_name}-{compiler}"
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
         tc = AutotoolsToolchain(self)
 
         if is_apple_os(self) and self.settings.get_safe("compiler.libcxx") == "libc++":

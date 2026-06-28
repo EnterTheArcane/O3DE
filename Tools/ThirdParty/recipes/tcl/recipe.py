@@ -54,11 +54,9 @@ class Recipe(RecipeBase[_Options]):
             deps = NMakeDeps(self)
             deps.generate()
         else:
-            env = VirtualBuildEnv(self)
-            env.generate()
+            VirtualBuildEnv(self).generate()
             if not cross_building(self):
-                env = VirtualRunEnv(self)
-                env.generate(scope="build")
+                VirtualRunEnv(self).generate(scope="build")
 
             tc = AutotoolsToolchain(self)
 

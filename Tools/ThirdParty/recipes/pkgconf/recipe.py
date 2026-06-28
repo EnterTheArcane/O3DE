@@ -56,12 +56,10 @@ class Recipe(RecipeBase[_Options]):
                 "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
         tc = MesonToolchain(self)
         tc.project_options["tests"] = "disabled"
-
         if not self.options.enable_lib:
             tc.project_options["default_library"] = "static"
         tc.generate()

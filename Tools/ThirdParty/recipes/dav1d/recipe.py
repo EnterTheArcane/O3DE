@@ -54,8 +54,7 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(self, self.folders.source / "meson.build", "subdir('doc')", "")
 
     def generate(self):
-        env = VirtualBuildEnv(self)
-        env.generate()
+        VirtualBuildEnv(self).generate()
 
         tc = MesonToolchain(self)
         tc.project_options["enable_tests"] = False

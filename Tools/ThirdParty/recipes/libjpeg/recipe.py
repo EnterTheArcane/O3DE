@@ -49,8 +49,7 @@ class Recipe(RecipeBase[_Options]):
                 tc.cflags.append(" -DLIBJPEG_STATIC")
             tc.generate()
         else:
-            env = VirtualBuildEnv(self)
-            env.generate()
+            VirtualBuildEnv(self).generate()
             tc = AutotoolsToolchain(self)
             tc.extra_defines.append("LIBJPEG_BUILDING")
             tc.generate()
