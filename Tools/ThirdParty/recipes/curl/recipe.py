@@ -60,7 +60,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "libcurl"
+    name = "curl"
     version = "8.20.0"
     license = "curl"
 
@@ -140,8 +140,8 @@ class Recipe(RecipeBase[_Options]):
             sha256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896",
             destination=self.folders.source,
             strip_root=True)
-        cert_url = self.conf.get("user.libcurl.cert:url", check_type=str) or "https://curl.se/ca/cacert-2025-11-04.pem"
-        cert_sha256 = self.conf.get("user.libcurl.cert:sha256", check_type=str) or "8ac40bdd3d3e151a6b4078d2b2029796e8f843e3f86fbf2adbc4dd9f05e79def"
+        cert_url = self.conf.get("user.curl.cert:url", check_type=str) or "https://curl.se/ca/cacert-2025-11-04.pem"
+        cert_sha256 = self.conf.get("user.curl.cert:sha256", check_type=str) or "8ac40bdd3d3e151a6b4078d2b2029796e8f843e3f86fbf2adbc4dd9f05e79def"
         download(
             self,
             cert_url,
