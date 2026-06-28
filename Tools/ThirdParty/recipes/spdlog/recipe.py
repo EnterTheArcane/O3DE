@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     wchar_support: bool = False
     wchar_filenames: bool = False
     wchar_console: bool = False

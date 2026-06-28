@@ -139,7 +139,7 @@ class CMakeToolchain:
                 ("compilers", CompilersBlock),
                 ("android_system", AndroidSystemBlock),
                 ("apple_system", AppleSystemBlock),
-                ("fpic", FPicBlock),
+                ("pic", FPicBlock),
                 ("arch_flags", ArchitectureBlock),
                 ("linker_scripts", LinkerScriptsBlock),
                 ("rpath_link_flags", RpathLinkFlagsBlock),

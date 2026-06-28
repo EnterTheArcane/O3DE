@@ -13,7 +13,7 @@ from thirdparty.scm import Version
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     libgdbm_compat: bool = False
     gdbmtool_debug: bool = True
     with_libiconv: bool = False
@@ -75,7 +75,7 @@ class Recipe(RecipeBase[_Options]):
                 f"--enable-gdbmtool-debug={yes_no(self.options.gdbmtool_debug)}",
                 f"--enable-nls={yes_no(self.options.with_nls)}",
                 f"--with-readline={yes_no(self.options.with_readline)}",
-                f"--with-pic={yes_no(self.options.fPIC)}",
+                f"--with-pic={yes_no(self.options.pic)}",
             ])
         if self.options.gdbmtool_debug:
             tc.extra_defines.append("YYDEBUG=1")

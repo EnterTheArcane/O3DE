@@ -15,7 +15,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = True
-    fPIC: bool = True
+    pic: bool = True
     data_packaging: Literal["files", "archive", "library", "static"] = "archive"
     with_dyload: bool = True
     dat_package_file: str | None = None

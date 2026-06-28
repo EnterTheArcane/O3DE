@@ -17,7 +17,7 @@ from thirdparty.scm import Version
 
 class _Options(RecipeOptions):
     shared: bool = True
-    fPIC: bool = True
+    pic: bool = True
     optimizations: bool = False
     lto: bool = False
     docstrings: bool = True

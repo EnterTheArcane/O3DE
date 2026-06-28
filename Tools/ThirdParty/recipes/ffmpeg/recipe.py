@@ -22,7 +22,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     avdevice: bool = True
     avcodec: bool = True
     avformat: bool = True
@@ -271,7 +271,7 @@ class Recipe(RecipeBase[_Options]):
             # Libraries
             opt_enable_disable("shared", self.options.shared),
             opt_enable_disable("static", not self.options.shared),
-            opt_enable_disable("pic", self.options.fPIC),
+            opt_enable_disable("pic", self.options.pic),
             # Components
             opt_enable_disable("avdevice", self.options.avdevice),
             opt_enable_disable("avcodec", self.options.avcodec),
@@ -609,7 +609,7 @@ class Recipe(RecipeBase[_Options]):
 
         if self.settings.os in ("FreeBSD", "Linux"):
             avutil.system_libs.extend(["pthread", "dl"])
-            if self.options.fPIC and self.options.avcodec and self.settings.compiler in ("gcc", "clang"):
+            if self.options.pic and self.options.avcodec and self.settings.compiler in ("gcc", "clang"):
                 # https://trac.ffmpeg.org/ticket/1713
                 # https://ffmpeg.org/platform.html#Advanced-linking-configuration
                 # https://ffmpeg.org/pipermail/libav-user/2014-December/007719.html

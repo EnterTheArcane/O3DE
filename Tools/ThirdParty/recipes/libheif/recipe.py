@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_libde265: bool = True
     with_x265: bool = True
     with_x264: bool = True

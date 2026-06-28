@@ -11,7 +11,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     release_build_type: Literal["profile", "release"] = "release"
     enable_simd: bool = True
     enable_float_point_precise_math: bool = False
@@ -48,7 +48,7 @@ class Recipe(RecipeBase[_Options]):
         tc = CMakeToolchain(self)
 
         # Needed. See https://github.com/recipe-io/recipe-center-index/pull/16583#discussion_r1188548265 for details
-        tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.fPIC
+        tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.pic
 
         # Options defined in physx/compiler/public/CMakeLists.txt
         tc.cache_variables["TARGET_BUILD_PLATFORM"] = self._get_target_build_platform()

@@ -6,7 +6,7 @@ from thirdparty.scm.github import GithubRepository
 
 
 class _Options(RecipeOptions):
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):

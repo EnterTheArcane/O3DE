@@ -101,6 +101,9 @@ def _check_recipe(name: str, cls: type) -> tuple[str, str, str, str, str | None]
     except Exception as exc:
         return (name, str(current), "?", f"error: {exc}", None)
 
+    if latest is None:
+        return (name, str(current), "?", "unknown", None)
+
     try:
         cur_v = Version(str(current))
         lat_v = latest if isinstance(latest, Version) else Version(str(latest))

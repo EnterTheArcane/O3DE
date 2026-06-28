@@ -178,7 +178,7 @@ class _PackageOptions:
         assert field[0] != "_", "ERROR %s" % field
         # It is always possible to remove an option, even if it is frozen (freeze=True),
         # and it got a value, because it is the only way an option could be removed
-        # conditionally to other option value (like fPIC if shared)
+        # conditionally to other option value (like pic if shared)
         self._ensure_exists(field)
         del self._data[field]
 

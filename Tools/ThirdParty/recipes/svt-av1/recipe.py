@@ -7,7 +7,7 @@ from thirdparty.scm.gitlab import GitlabRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     minimal_build: bool = False
     with_neon: bool = True
     with_arm_crc32: bool = True

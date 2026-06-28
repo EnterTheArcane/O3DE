@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     neon: Literal[True, "check", False] = True
     msa: bool = True
     sse: bool = True

@@ -8,7 +8,7 @@ from thirdparty.files import get, load, save, apply_patches, collect_libs
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     compile_as_cpp: bool = False
     with_tools: bool = False
     with_readline: bool = False

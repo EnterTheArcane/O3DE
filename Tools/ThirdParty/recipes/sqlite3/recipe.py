@@ -9,7 +9,7 @@ from thirdparty.files import get, load, save
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     threadsafe: Literal[0, 1, 2] = 1
     enable_column_metadata: bool = True
     enable_dbstat_vtab: bool = False

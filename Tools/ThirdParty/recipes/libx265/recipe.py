@@ -11,7 +11,7 @@ from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     assembly: bool = True
     bit_depth: Literal[8, 10, 12] = 8
     HDR10: bool = False
@@ -56,7 +56,7 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         VirtualBuildEnv(self).generate()
         tc = CMakeToolchain(self)
-        tc.variables["ENABLE_PIC"] = self.options.fPIC
+        tc.variables["ENABLE_PIC"] = self.options.pic
         tc.variables["ENABLE_SHARED"] = self.options.shared
         tc.variables["ENABLE_ASSEMBLY"] = self.options.assembly
         tc.variables["ENABLE_LIBNUMA"] = self.options.with_numa

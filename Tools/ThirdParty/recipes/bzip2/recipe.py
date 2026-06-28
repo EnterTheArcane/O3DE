@@ -11,7 +11,7 @@ from thirdparty.scm.gitlab import GitlabRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     build_executable: bool = True
 
 

@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     build_pcre2_8: bool = True
     build_pcre2_16: bool = True
     build_pcre2_32: bool = True

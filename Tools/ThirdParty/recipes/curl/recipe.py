@@ -12,7 +12,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     build_executable: bool = False
     with_ssl: Literal[False, "openssl", "wolfssl", "schannel", "mbedtls", "libressl"] = "openssl"
     with_file: bool = True

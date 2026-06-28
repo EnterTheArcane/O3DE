@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     md2html: bool
     encoding: Literal["utf-8", "utf-16", "ascii"] = "utf-8"
 

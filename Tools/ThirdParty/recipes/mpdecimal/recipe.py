@@ -10,7 +10,7 @@ from thirdparty.microsoft import VCVars, is_msvc
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     cxx: bool = False
 
 

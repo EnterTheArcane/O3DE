@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):
@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_DISABLE_TESTING"] = True
-        tc.variables["ZIP_STATIC_PIC"] = self.options.fPIC
+        tc.variables["ZIP_STATIC_PIC"] = self.options.pic
         tc.variables["ZIP_BUILD_DOCS"] = False
         tc.generate()
 

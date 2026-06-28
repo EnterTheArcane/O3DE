@@ -12,7 +12,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     double_precision: bool = False
     with_3d: bool = True
     with_3ds: bool = True

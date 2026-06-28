@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):
@@ -75,7 +75,7 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(
             self, self.folders.source / "cmake" / "FindAtomics.cmake",
             "unset(CMAKE_CXX_STANDARD)", "")
-        # Honor fPIC option
+        # Honor pic option
         cmakelists = self.folders.source / "CMakeLists.txt"
         replace_in_file(self, cmakelists, "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
         replace_in_file(

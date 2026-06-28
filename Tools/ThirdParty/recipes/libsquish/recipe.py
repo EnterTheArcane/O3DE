@@ -5,7 +5,7 @@ from thirdparty.files import apply_patches, copy, get
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     openmp: bool = False
     sse2_intrinsics: bool = False
     altivec_intrinsics: bool = False

@@ -6,7 +6,7 @@ from thirdparty.microsoft import is_msvc
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):
@@ -51,7 +51,7 @@ class Recipe(RecipeBase[_Options]):
         # clog (always static)
         tc.cache_variables["CLOG_RUNTIME_TYPE"] = "default"
         tc.variables["CLOG_BUILD_TESTS"] = False
-        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.fPIC
+        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.pic
         tc.generate()
 
     def build(self):

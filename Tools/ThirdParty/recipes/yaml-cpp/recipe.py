@@ -8,7 +8,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):
@@ -42,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self):
             tc.variables["YAML_MSVC_SHARED_RT"] = not is_msvc_static_runtime(self)
             tc.preprocessor_definitions["_NOEXCEPT"] = "noexcept"
-        tc.cache_variables["YAML_ENABLE_PIC"] = self.options.fPIC if self.settings.os != "Windows" and not self.options.shared else "OFF"
+        tc.cache_variables["YAML_ENABLE_PIC"] = self.options.pic if self.settings.os != "Windows" and not self.options.shared else "OFF"
         tc.generate()
 
     def build(self):

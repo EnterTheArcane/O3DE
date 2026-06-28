@@ -8,7 +8,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     mz_compatibility: bool = False
     with_zlib: bool = True
     with_bzip2: bool = True

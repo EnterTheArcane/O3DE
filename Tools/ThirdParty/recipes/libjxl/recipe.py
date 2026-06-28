@@ -12,7 +12,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     avx512: bool = False
     avx512_spr: bool = False
     avx512_zen4: bool = False
@@ -180,9 +180,9 @@ class Recipe(RecipeBase[_Options]):
         # FindAtomics.cmake values are set by CMakeToolchain instead
         save(self, self.folders.source / "cmake" / "FindAtomics.cmake", "")
 
-        # Allow fPIC to be set by Recipe (top-level set() was removed in 0.11.2; individual targets handle it)
+        # Allow pic to be set by Recipe (top-level set() was removed in 0.11.2; individual targets handle it)
         for cmake_file in ["jxl.cmake", "jxl_threads.cmake", "jxl_cms.cmake", "jpegli.cmake"]:
             path = self.folders.source / "lib" / cmake_file
             if os.path.exists(path):
-                fpic = "ON" if self.options.fPIC else "OFF"
-                replace_in_file(self, path, "POSITION_INDEPENDENT_CODE ON", f"POSITION_INDEPENDENT_CODE {fpic}")
+                pic = "ON" if self.options.pic else "OFF"
+                replace_in_file(self, path, "POSITION_INDEPENDENT_CODE ON", f"POSITION_INDEPENDENT_CODE {pic}")

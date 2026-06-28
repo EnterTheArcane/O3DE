@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_openmp: bool = False
     with_skia: bool = False
     utility: bool = True

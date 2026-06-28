@@ -34,7 +34,7 @@ class AutotoolsToolchain:
     threads_flags: list[str]
     libcxx: str | None
     gcc_cxx11_abi: str | None
-    fpic: bool | None
+    pic: bool | None
     msvc_runtime_flag: str | None
     msvc_extra_flags: list[str]
     msvc_runtime_link_flags: list[str]
@@ -97,7 +97,7 @@ class AutotoolsToolchain:
         self.arch_ld_flag = architecture_link_flag(self._recipe)
         self.threads_flags = threads_flags(self._recipe)
         self.libcxx, self.gcc_cxx11_abi = libcxx_flags(self._recipe)
-        self.fpic = self._recipe.options.get_safe("fPIC")
+        self.pic = self._recipe.options.get_safe("pic")
         self.msvc_runtime_flag = self._get_msvc_runtime_flag()
         self.msvc_extra_flags = self._msvc_extra_flags()
         self.msvc_runtime_link_flags = []
@@ -252,9 +252,9 @@ class AutotoolsToolchain:
 
     @property
     def cxxflags(self) -> list[str]:
-        fpic = "-fPIC" if self.fpic else None
+        pic = "-fPIC" if self.pic else None
         ret = [
-                  self.libcxx, self.cppstd, self.arch_flag, fpic, self.msvc_runtime_flag, self.sysroot_flag,
+                  self.libcxx, self.cppstd, self.arch_flag, pic, self.msvc_runtime_flag, self.sysroot_flag,
               ] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
         apple_flags += self.apple_extra_flags
@@ -265,8 +265,8 @@ class AutotoolsToolchain:
 
     @property
     def cflags(self) -> list[str]:
-        fpic = "-fPIC" if self.fpic else None
-        ret = [self.cstd, self.arch_flag, fpic, self.msvc_runtime_flag, self.sysroot_flag] + self.threads_flags
+        pic = "-fPIC" if self.pic else None
+        ret = [self.cstd, self.arch_flag, pic, self.msvc_runtime_flag, self.sysroot_flag] + self.threads_flags
         apple_flags = [self.apple_isysroot_flag, self.apple_arch_flag, self.apple_min_version_flag]
         apple_flags += self.apple_extra_flags
         conf_flags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)

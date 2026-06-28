@@ -15,7 +15,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_glib: bool = False
     with_gdi: bool = True
     with_uniscribe: bool = True

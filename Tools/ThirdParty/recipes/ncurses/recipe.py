@@ -14,7 +14,7 @@ from thirdparty.scm import Version
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_widec: bool = True
     with_extended_colors: bool = True
     with_cxx: bool = True

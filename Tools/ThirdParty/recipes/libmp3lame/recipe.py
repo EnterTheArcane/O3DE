@@ -12,7 +12,7 @@ from thirdparty.microsoft import is_msvc
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):

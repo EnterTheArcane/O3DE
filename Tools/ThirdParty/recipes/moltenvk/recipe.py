@@ -11,7 +11,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = True
-    fPIC: bool = True
+    pic: bool = True
     hide_vulkan_symbols: bool = False
     tools: bool = True
 

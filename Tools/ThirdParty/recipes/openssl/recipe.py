@@ -18,7 +18,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     enable_weak_ssl_ciphers: bool = False
     capieng_dialog: bool = False
     enable_capieng: bool = False
@@ -419,7 +419,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.capieng_dialog:
                 args.append("-DOPENSSL_CAPIENG_DIALOG=1")
         else:
-            args.append("-fPIC" if self.options.fPIC else "no-pic")
+            args.append("-fPIC" if self.options.pic else "no-pic")
 
         args.append("no-fips" if self.options.no_fips else "enable-fips")
         args.append("no-md2" if self.options.no_md2 else "enable-md2")
@@ -461,7 +461,7 @@ class Recipe(RecipeBase[_Options]):
                 ])
 
         for option_name, _ in self.options.items():
-            if self.options.get_safe(option_name, False) and option_name not in ("shared", "fPIC", "openssldir", "tls_security_level", "capieng_dialog", "enable_capieng", "zlib", "no_fips", "no_md2"):
+            if self.options.get_safe(option_name, False) and option_name not in ("shared", "pic", "openssldir", "tls_security_level", "capieng_dialog", "enable_capieng", "zlib", "no_fips", "no_md2"):
                 self.output.info(f"Activated option: {option_name}")
                 args.append(option_name.replace("_", "-"))
         return args
@@ -508,7 +508,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.shared:
                 shared_extension = r'shared_extension => ".so.\$(SHLIB_VERSION_NUMBER)",'
                 shared_target = 'shared_target  => "gnu-shared",'
-            if self.options.fPIC:
+            if self.options.pic:
                 shared_cflag = 'shared_cflag => "-fPIC",'
 
         if self.settings.os in ["iOS", "tvOS", "watchOS"] and self.conf.get("tools.apple:enable_bitcode", check_type=bool):

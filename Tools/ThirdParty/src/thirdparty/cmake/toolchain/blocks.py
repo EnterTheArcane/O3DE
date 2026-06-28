@@ -182,21 +182,21 @@ class FPicBlock(Block):
         """
         # Defining CMAKE_POSITION_INDEPENDENT_CODE for static libraries when necessary
 
-        {% if fpic %}
-        message(STATUS "Recipe toolchain: Setting CMAKE_POSITION_INDEPENDENT_CODE={{ fpic }} (options.fPIC)")
-        set(CMAKE_POSITION_INDEPENDENT_CODE {{ fpic }} CACHE BOOL "Position independent code")
+        {% if pic %}
+        message(STATUS "Recipe toolchain: Setting CMAKE_POSITION_INDEPENDENT_CODE={{ pic }} (options.pic)")
+        set(CMAKE_POSITION_INDEPENDENT_CODE {{ pic }} CACHE BOOL "Position independent code")
         {% endif %}
         """)
 
     def context(self) -> dict[str, Any] | None:
-        fpic = self._recipe.options.get_safe("fPIC")
-        if fpic is None:
+        pic = self._recipe.options.get_safe("pic")
+        if pic is None:
             return None
         os_ = self._recipe.settings.get_safe("os")
         if os_ and "Windows" in os_:
-            self._recipe.output.warning("Toolchain: Ignoring fPIC option defined for Windows")
+            self._recipe.output.warning("Toolchain: Ignoring pic option defined for Windows")
             return None
-        return {"fpic": "ON" if fpic else "OFF"}
+        return {"pic": "ON" if pic else "OFF"}
 
 
 class GLibCXXBlock(Block):

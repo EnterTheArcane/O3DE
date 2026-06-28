@@ -12,7 +12,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     build_executable: bool = True
     exceptions: bool = True
     glsl: bool = True
@@ -66,7 +66,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["SPIRV_CROSS_ENABLE_C_API"] = self.options.c_api
         tc.variables["SPIRV_CROSS_ENABLE_UTIL"] = self.options.util or self.options.build_executable
         tc.variables["SPIRV_CROSS_SKIP_INSTALL"] = False
-        tc.variables["SPIRV_CROSS_FORCE_PIC"] = self.options.fPIC
+        tc.variables["SPIRV_CROSS_FORCE_PIC"] = self.options.pic
         tc.variables["SPIRV_CROSS_NAMESPACE_OVERRIDE"] = self.options.namespace
         tc.generate()
 

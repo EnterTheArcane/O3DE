@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     build_gen_msl: bool = True
     with_openimageio: bool = False
 

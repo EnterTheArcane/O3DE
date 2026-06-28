@@ -9,7 +9,7 @@ from thirdparty.autotools import Autotools, AutotoolsToolchain, AutotoolsDeps
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_python_bindings: bool = False
 
 

@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_default_callbacks: bool = True
     with_tab_tokens: bool = False
     with_default_callback_uses_exceptions: bool = False

@@ -137,9 +137,9 @@ class PremakeToolchain:
                 -- SharedLib) in `project` block.
                 kind "{{ "SharedLib" if shared else "StaticLib" }}"
                 {% endif %}
-                {% if fpic != None %}
+                {% if pic != None %}
                 -- Enable position independent code
-                pic "{{ "On" if fpic else "Off" }}"
+                pic "{{ "On" if pic else "Off" }}"
                 {% endif %}
                 filter { "architecture: not wasm64" }
                     -- TODO: There is an issue with premake and "wasm64" when system is declared "emscripten"
@@ -242,7 +242,7 @@ class PremakeToolchain:
             cppstd=cppstd,
             cstd=self._recipe.settings.get_safe("compiler.cstd"),
             shared=self._recipe.options.get_safe("shared"),
-            fpic=self._recipe.options.get_safe("fPIC"),
+            pic=self._recipe.options.get_safe("pic"),
             target_build_os=self._target_build_os(),
             macho_to_amd64=macho_to_amd64,
             projects=self._projects,

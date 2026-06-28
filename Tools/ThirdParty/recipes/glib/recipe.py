@@ -14,7 +14,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_elf: bool = True
     with_selinux: bool = True
     with_mount: bool = True

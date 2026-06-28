@@ -8,7 +8,7 @@ from thirdparty.scm.google import GoogleSourceRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     assembly: bool = False
 
 

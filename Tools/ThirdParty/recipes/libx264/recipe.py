@@ -10,7 +10,7 @@ from thirdparty.microsoft import is_msvc, unix_path
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):
@@ -57,7 +57,7 @@ class Recipe(RecipeBase[_Options]):
             args["--enable-shared"] = ""
         else:
             args["--enable-static"] = ""
-        if self.options.fPIC and self.settings.os != "Windows":
+        if self.options.pic and self.settings.os != "Windows":
             args["--enable-pic"] = ""
         if self.settings.build_type == "Debug":
             args["--enable-debug"] = ""

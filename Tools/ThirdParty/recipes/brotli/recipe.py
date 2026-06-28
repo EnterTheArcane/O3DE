@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     target_bits: Literal[64, 32, None] = None
     endianness: Literal["big", "little", "neutral", None] = None
     enable_portable: bool = False

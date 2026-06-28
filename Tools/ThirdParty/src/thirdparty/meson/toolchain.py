@@ -148,11 +148,11 @@ class MesonToolchain:
         self.b_ndebug = "true" if self.buildtype != "debug" else "false"
 
         # https://mesonbuild.com/Builtin-options.html#base-options
-        fpic = self._recipe.options.get_safe("fPIC")
+        pic = self._recipe.options.get_safe("pic")
         shared = self._recipe.options.get_safe("shared") is True
         static = self._recipe.options.get_safe("shared") is False
-        #: Build static libraries as position independent. By default, ``self.options.get_safe("fPIC")``
-        self.b_staticpic = fpic if (static and fpic is not None) else None
+        #: Build static libraries as position independent. By default, ``self.options.get_safe("pic")``
+        self.b_staticpic = pic if (static and pic is not None) else None
         # https://mesonbuild.com/Builtin-options.html#core-options
         # Do not adjust "debug" if already adjusted "buildtype"
         #: Default library type, e.g., "shared.

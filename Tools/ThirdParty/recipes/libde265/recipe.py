@@ -8,7 +8,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     sse: bool = True
 
 
@@ -39,7 +39,7 @@ class Recipe(RecipeBase[_Options]):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.fPIC
+        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.pic
         tc.variables["ENABLE_SDL"] = False
         tc.variables["DISABLE_SSE"] = not self.options.sse
         tc.generate()

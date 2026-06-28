@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     header_only: bool = False
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_fmt_alias: bool = False
     with_os_api: bool = True
 

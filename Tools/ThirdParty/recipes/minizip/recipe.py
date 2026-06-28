@@ -7,7 +7,7 @@ from thirdparty.files import apply_patches, get, load, save
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
 
 
 class Recipe(RecipeBase[_Options]):

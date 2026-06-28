@@ -14,7 +14,7 @@ from thirdparty.scm import Version
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     threads: str
 
 

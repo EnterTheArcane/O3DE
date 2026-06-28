@@ -8,7 +8,7 @@ from thirdparty.scm.github import GithubRepository
 
 class _Options(RecipeOptions):
     shared: bool = False
-    fPIC: bool = True
+    pic: bool = True
     with_opengl: bool = False
     with_omp: bool = False
     with_cuda: bool = False
