@@ -36,7 +36,7 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")
         return Version(repo.latest_tag("v").removeprefix("v"))
 
-    def config_options(self):
+    def configure(self):
         del self.options.with_opencolorio
 
     def requirements(self):

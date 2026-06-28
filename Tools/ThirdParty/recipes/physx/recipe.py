@@ -26,7 +26,7 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "NVIDIA-Omniverse/PhysX")
         return Version(repo.latest_release)
 
-    def config_options(self):
+    def configure(self):
         if self.settings.build_type != "Release":
             del self.options.release_build_type
         if self.settings.os != "Windows":

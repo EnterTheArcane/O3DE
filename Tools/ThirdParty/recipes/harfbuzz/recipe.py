@@ -33,17 +33,14 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "harfbuzz/harfbuzz")
         return Version(repo.latest_release)
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-        else:
+    def configure(self):
+        if self.settings.os != "Windows":
             del self.options.with_gdi
             del self.options.with_uniscribe
             del self.options.with_directwrite
         if not is_apple_os(self):
             del self.options.with_coretext
 
-    def configure(self):
         if self.options.shared and self.options.with_glib:
             self.options["glib"].shared = True
 

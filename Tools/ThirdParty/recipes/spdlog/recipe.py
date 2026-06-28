@@ -22,10 +22,8 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "gabime/spdlog")
         return Version(repo.latest_release.removeprefix("v"))
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-        else:
+    def configure(self):
+        if self.settings.os != "Windows":
             del self.options.wchar_support
             del self.options.wchar_filenames
             del self.options.wchar_console

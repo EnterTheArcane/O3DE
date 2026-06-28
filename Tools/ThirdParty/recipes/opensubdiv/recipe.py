@@ -33,10 +33,8 @@ class Recipe(RecipeBase[_Options]):
             return "14"
         return "11"
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-        else:
+    def configure(self):
+        if self.settings.os != "Windows":
             del self.options.with_dx
         if self.settings.os != "Mac":
             del self.options.with_metal

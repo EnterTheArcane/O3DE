@@ -36,16 +36,13 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "webmproject/libvpx")
         return Version(repo.latest_release.removeprefix("v"))
 
-    def config_options(self):
+    def configure(self):
         if str(self.settings.arch) not in ["X64"]:
             for name in self._arch_options:
                 delattr(self.options, name)
 
-    def configure(self):
         if self.settings.os == "Windows":
             del self.options.shared
-        if self.options.get_safe("shared"):
-            del self.options.fPIC
         if self.settings.os == "Android":
             del self.options.shared
 

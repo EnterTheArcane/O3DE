@@ -24,7 +24,7 @@ class Recipe(RecipeBase[_Options]):
     def _altivec_compliant_archs(self):
         return ["ppc32be", "ppc32", "ppc64le", "ppc64"]
 
-    def config_options(self):
+    def configure(self):
         if self.settings.arch not in self._sse2_compliant_archs:
             del self.options.sse2_intrinsics
         if self.settings.arch not in self._altivec_compliant_archs:

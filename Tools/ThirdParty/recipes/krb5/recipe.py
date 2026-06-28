@@ -32,11 +32,10 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os not in ("Linux", "Mac"):
             raise RecipeInvalidConfiguration(f"{self.name} is only supported on Linux and Mac")
 
-    def config_options(self):
+    def configure(self):
         if self.settings.os != "Linux":
             del self.options.with_keyutils
 
-    def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

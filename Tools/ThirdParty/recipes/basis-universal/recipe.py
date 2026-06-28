@@ -24,7 +24,7 @@ class Recipe(RecipeBase[_Options]):
     def _has_sse(self):
         return self.settings.arch in ["X64"]
 
-    def config_options(self):
+    def configure(self):
         if not self._has_sse:
             del self.options.with_sse
 

@@ -24,6 +24,9 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def configure(self):
+        # enable libraries by defualt only on Linux, Android
+        self.options.enable_libraries = self.settings.os in ("Linux", "Android")
+
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
@@ -31,10 +34,6 @@ class Recipe(RecipeBase[_Options]):
         from thirdparty.errors import RecipeInvalidConfiguration
         if self.settings.os == "Windows":
             raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
-
-    def config_options(self):
-        # enable libraries by defualt only on Linux, Android
-        self.options.enable_libraries = self.settings.os in ("Linux", "Android")
 
     def requirements(self):
         if self.options.enable_libraries:

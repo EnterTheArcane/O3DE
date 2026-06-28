@@ -22,7 +22,7 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "ARM-software/astc-encoder")
         return Version(repo.latest_release)
 
-    def config_options(self):
+    def configure(self):
         if self.settings.arch in ["ARM"]:
             self.options.isa = "neon"
 

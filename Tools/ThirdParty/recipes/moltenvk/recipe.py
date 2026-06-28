@@ -31,9 +31,7 @@ class Recipe(RecipeBase[_Options]):
                 f"{self.name} is only supported on Apple platforms (Mac, iOS, tvOS)")
 
     def configure(self):
-        if self.options.shared:
-            del self.options.fPIC
-        else:
+        if not self.options.shared:
             del self.options.hide_vulkan_symbols
 
     def requirements(self):

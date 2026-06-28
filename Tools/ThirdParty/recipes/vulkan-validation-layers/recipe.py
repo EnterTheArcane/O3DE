@@ -33,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.get_safe("with_wsi_xlib") or \
             self.options.get_safe("with_wsi_wayland")
 
-    def config_options(self):
+    def configure(self):
         if not self._has_wsi_options:
             del self.options.with_wsi_xcb
             del self.options.with_wsi_xlib

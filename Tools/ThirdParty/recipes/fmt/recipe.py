@@ -23,17 +23,12 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "fmtlib/fmt")
         return Version(repo.latest_release)
 
-    def config_options(self):
+    def configure(self):
         if str(self.settings.os) == "baremetal":
             self.options.with_os_api = False
 
-    def configure(self):
         if self.options.header_only:
-            del self.options.fPIC
-            del self.options.shared
             del self.options.with_os_api
-        elif self.options.shared:
-            del self.options.fPIC
 
     def source(self):
         get(

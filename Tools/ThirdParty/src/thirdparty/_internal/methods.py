@@ -6,9 +6,6 @@ from thirdparty.recipe import RecipeBase
 def run_configure_method(recipe: RecipeBase):
     initial_requires_count = len(recipe._requires)
 
-    with recipe_exception_formatter(recipe, "config_options"):
-        recipe.config_options()
-
     # default implementation removes compiler.cstd
     recipe.settings.rm_safe("compiler.cstd")
 
@@ -31,7 +28,7 @@ def run_configure_method(recipe: RecipeBase):
     if initial_requires_count != len(recipe._requires):
         recipe.output.warning(
             "Requirements should only be added in the requirements() method, "
-            "not configure()/config_options().", warn_tag="deprecated")
+            "not configure().", warn_tag="deprecated")
 
     with recipe_exception_formatter(recipe, "requirements"):
         recipe.requirements()

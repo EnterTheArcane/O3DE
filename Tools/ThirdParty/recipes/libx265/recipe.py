@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     # https://bitbucket.org/multicoreware/x265/src/default/COPYING
     license = "GPL-2.0-only", "commercial"
 
-    def config_options(self):
+    def configure(self):
         if self.settings.os != "Linux":
             del self.options.with_numa
         # FIXME: Disable assembly by default if host is arm and compiler apple-clang for the moment.

@@ -164,9 +164,11 @@ class Recipe(RecipeBase[_Options]):
             "with_whisper": ["avfilter"],
         }
 
-    def config_options(self):
+    def configure(self):
+        self.settings.rm_safe("compiler.cppstd")
+        self.settings.rm_safe("compiler.libcxx")
+
         if self.settings.os == "Windows":
-            del self.options.fPIC
             if is_msvc(self) and self.settings.arch == "ARM":
                 self.options.with_libsvtav1 = False
 
@@ -194,10 +196,6 @@ class Recipe(RecipeBase[_Options]):
             del self.options.with_mediacodec
         if self.settings.os == "Android":
             del self.options.with_libfdk_aac
-
-    def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
         if self.options.with_zlib:

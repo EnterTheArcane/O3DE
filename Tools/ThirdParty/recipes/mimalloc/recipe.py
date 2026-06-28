@@ -29,10 +29,8 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "microsoft/mimalloc")
         return Version(repo.latest_release.removeprefix("v"))
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-        else:
+    def configure(self):
+        if self.settings.os != "Windows":
             del self.options.win_redirect
 
         # single_object and inject are options
@@ -41,9 +39,7 @@ class Recipe(RecipeBase[_Options]):
             del self.options.single_object
             del self.options.inject
 
-    def configure(self):
         if self.options.shared:
-            self.options.rm_safe("fPIC")
             # single_object is valid only for static override:
             self.options.rm_safe("single_object")
 

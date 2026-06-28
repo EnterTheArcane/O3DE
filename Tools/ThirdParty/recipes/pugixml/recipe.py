@@ -22,12 +22,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "zeux/pugixml")
         return Version(repo.latest_release.removeprefix("v"))
 
-    def configure(self):
-        if self.options.shared or self.options.header_only:
-            del self.options.fPIC
-        if self.options.header_only:
-            del self.options.shared
-
     def source(self):
         get(
             self,

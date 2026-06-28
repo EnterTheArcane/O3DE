@@ -187,7 +187,7 @@ class Recipe(RecipeBase[_Options]):
     def export(self):
         copy(self, f"qtmodules{self.version}.conf", self.recipe_folder or "", self.folders.export)
 
-    def config_options(self):
+    def configure(self):
         if self.settings.os not in ["Linux", "FreeBSD"]:
             del self.options.with_icu
             del self.options.with_fontconfig
@@ -206,7 +206,6 @@ class Recipe(RecipeBase[_Options]):
                 self.output.debug(f"Qt6: Removing {submodule} option as it is not in the module tree for this version, or is marked as obsolete or ignore")
                 delattr(self.options, submodule)
 
-    def configure(self):
         if not self.options.gui:
             del self.options.opengl
             del self.options.with_vulkan

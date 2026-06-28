@@ -33,10 +33,6 @@ class Recipe(RecipeBase[_Options]):
     def _zlib_compat_version(self):
         return "1.3.1"
 
-    def config_options(self):
-        if self._is_windows:
-            del self.options.fPIC
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")

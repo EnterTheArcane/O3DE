@@ -26,7 +26,7 @@ class Recipe(RecipeBase[_Options]):
         repo = GitlabRepository(self, "AOMediaCodec/SVT-AV1")
         return Version(repo.latest_release.removeprefix("v"))
 
-    def config_options(self):
+    def configure(self):
         if self.settings.arch != "ARM":
             del self.options.with_neon
             del self.options.with_arm_crc32

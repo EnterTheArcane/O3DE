@@ -30,11 +30,10 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "libjpeg-turbo/libjpeg-turbo")
         return Version(repo.latest_release)
 
-    def config_options(self):
+    def configure(self):
         del self.options.enable12bit
         del self.options.mem_src_dst
 
-    def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

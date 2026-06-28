@@ -107,14 +107,11 @@ class Recipe(RecipeBase[_Options]):
     def _use_nmake(self):
         return self._is_clang_cl or is_msvc(self)
 
-    def config_options(self):
+    def configure(self):
         if self.settings.os != "Windows":
             del self.options.capieng_dialog
             del self.options.enable_capieng
-        else:
-            del self.options.fPIC
 
-    def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

@@ -23,10 +23,6 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def configure(self):
-        if self.options.header_only or self.options.shared:
-            del self.options.fPIC
-        if self.options.header_only:
-            del self.options.shared
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

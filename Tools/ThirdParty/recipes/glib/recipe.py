@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "GNOME/glib")
         return Version(repo.latest_release)
 
-    def config_options(self):
+    def configure(self):
         if self.settings.os != "Linux":
             del self.options.with_mount
             del self.options.with_selinux
@@ -40,7 +40,6 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Neutrino":
             del self.options.with_elf
 
-    def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

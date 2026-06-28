@@ -47,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
         joiner = "" if is_msvc(self) else "."
         return f"{v.major}{joiner}{v.minor}"
 
-    def config_options(self):
+    def configure(self):
         if is_msvc(self):
             del self.options.lto
             del self.options.docstrings
@@ -59,7 +59,6 @@ class Recipe(RecipeBase[_Options]):
         self.settings.compiler.rm_safe("libcxx")
         self.settings.compiler.rm_safe("cppstd")
 
-    def configure(self):
         if not self._supports_modules:
             del self.options.with_bz2
             del self.options.with_sqlite3

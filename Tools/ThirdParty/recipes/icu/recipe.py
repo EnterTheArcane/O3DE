@@ -26,7 +26,7 @@ class _Options(RecipeOptions):
 class Recipe(RecipeBase[_Options]):
     name = "icu"
     version = "78.3"
-    license = "ICU"
+    license = "Unicode-3.0"
 
     def latest_version(self):
         repo = GithubRepository(self, "unicode-org/icu")
@@ -36,13 +36,9 @@ class Recipe(RecipeBase[_Options]):
     def _enable_icu_tools(self):
         return self.settings.os not in ["iOS", "tvOS", "watchOS", "Emscripten"]
 
-    def config_options(self):
-        if self.settings.os == "Windows":
-            del self.options.fPIC
-            del self.options.data_packaging
-
     def configure(self):
-        self.license = "Unicode-3.0"
+        if self.settings.os == "Windows":
+            del self.options.data_packaging
 
     def requirements(self):
         if self.settings.os == "Windows":

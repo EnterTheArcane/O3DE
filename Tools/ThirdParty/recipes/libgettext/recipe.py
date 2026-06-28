@@ -44,10 +44,9 @@ class Recipe(RecipeBase[_Options]):
     def _gettext_folder(self):
         return "gettext-tools"
 
-    def config_options(self):
+    def configure(self):
         self.options.threads = {"Solaris": "solaris", "Windows": "windows"}.get(str(self.settings.os), "posix")
 
-    def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

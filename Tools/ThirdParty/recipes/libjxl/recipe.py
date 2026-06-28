@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "libjxl/libjxl")
         return Version(repo.latest_release.removeprefix("v"))
 
-    def config_options(self):
+    def configure(self):
         if self.settings.arch not in ["X64"]:
             del self.options.avx512
             del self.options.avx512_spr

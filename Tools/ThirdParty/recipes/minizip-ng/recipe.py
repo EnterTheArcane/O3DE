@@ -29,15 +29,13 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "zlib-ng/minizip-ng")
         return Version(repo.latest_release)
 
-    def config_options(self):
+    def configure(self):
         if self.settings.os == "Windows":
-            del self.options.fPIC
             del self.options.with_iconv
             del self.options.with_libbsd
         if not is_apple_os(self):
             del self.options.with_libcomp
 
-    def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
         if self.options.get_safe("with_libcomp"):

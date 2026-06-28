@@ -28,8 +28,6 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.enable_lib:
             del self.options.fPIC
             del self.options.shared
-        elif self.options.shared:
-            del self.options.fPIC
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")

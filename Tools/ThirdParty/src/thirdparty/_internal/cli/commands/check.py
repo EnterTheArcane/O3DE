@@ -20,7 +20,7 @@ from thirdparty.errors import RecipeInvalidConfiguration
 # names (settings.yml defines arch as just ARM/X64; OS names use Mac, not Macos) — tools that
 # need the longer forms (x86_64, darwin, ...) map them at their own boundary.  The compiler is
 # always detected from the build machine; only the target os/arch vary, which is what surfaces
-# platform-specific config_options()/configure()/requirements() bugs.
+# platform-specific configure()/requirements() bugs.
 _PLATFORMS = [
     ("Android", "ARM"), ("Android", "X64"), ("iOS", "ARM"), ("Linux", "ARM"), ("Linux", "X64"), ("Mac", "ARM"), ("Mac", "X64"), ("Windows", "ARM"), ("Windows", "X64"),
 ]
@@ -60,7 +60,7 @@ def _check_imports() -> tuple[bool, int, list[tuple[str, str]]]:
 
 def _check_recipes(
     recipes_root: Path, names: list[str], build_type: str, ) -> tuple[bool, int, int, int, list[tuple[str, str, str]]]:
-    """Load each recipe and drive config_options/configure/requirements on every target
+    """Load each recipe and drive configure/requirements on every target
     platform.  Returns (ok, n_recipes, n_configs_ok, n_skipped, failures)."""
     failures: list[tuple[str, str, str]] = []
     n_recipes = 0

@@ -24,13 +24,12 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "mity/md4c")
         return Version(repo.latest_release.removeprefix("release-"))
 
-    def config_options(self):
+    def configure(self):
         # Set it to false for iOS, tvOS, watchOS, visionOS
         # to prevent cmake from creating a bundle for the md2html executable
         is_ios_variant = is_apple_os(self) and not self.settings.os == "Mac"
         self.options.md2html = not is_ios_variant
 
-    def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

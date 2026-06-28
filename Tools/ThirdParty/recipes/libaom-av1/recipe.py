@@ -21,11 +21,10 @@ class Recipe(RecipeBase[_Options]):
         repo = GoogleSourceRepository(self, "https://aomedia.googlesource.com/aom")
         return Version(repo.latest_release.removeprefix("v"))
 
-    def config_options(self):
+    def configure(self):
         if self.settings.arch not in ("X64",):
             del self.options.assembly
 
-    def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

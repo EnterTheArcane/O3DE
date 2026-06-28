@@ -31,12 +31,11 @@ def _is_incompatible(recipes_root: Path, node: Node, build_type: str) -> bool:
         probe = make_probe_recipe(node.recipe_cls, recipes_root, node.name, node.version, build_type)
     except Exception:
         return False
-    for method in ("config_options", "configure"):
-        if hasattr(probe, method):
-            try:
-                getattr(probe, method)()
-            except Exception:
-                pass
+    if hasattr(probe, "configure"):
+        try:
+            probe.configure()
+        except Exception:
+            pass
     if not hasattr(probe, "validate"):
         return False
     try:

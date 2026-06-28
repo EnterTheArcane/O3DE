@@ -27,12 +27,11 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "videolan/dav1d")
         return Version(repo.latest_release)
 
-    def config_options(self):
+    def configure(self):
         if is_msvc(self) and self.settings.build_type == "Debug":
             # debug builds with assembly often causes linker hangs or LNK1000
             self.options.assembly = False
 
-    def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

@@ -136,7 +136,7 @@ class RecipeRuntime:
 def make_probe_recipe(
     recipe_cls: type[RecipeBase], recipes_root: Path, name: str, version: str, build_type: str, jobs: int | None = None, target_os: str | None = None, target_arch: str | None = None, ) -> RecipeBase:
     """Instantiate a recipe with just enough state (settings, conf, requires shim) to
-    drive ``config_options()``/``configure()``/``requirements()``.
+    drive ``configure()``/``requirements()``.
 
     ``target_os``/``target_arch`` select the HOST/target platform (default: build machine).
     ``settings`` is the target platform; ``settings_build`` is always the build machine.

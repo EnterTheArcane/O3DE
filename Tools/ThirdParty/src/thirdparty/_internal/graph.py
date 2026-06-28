@@ -74,7 +74,7 @@ def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
     host_dep_names — regular library dependencies (build=False)
     tool_dep_names — requires_tool (build=True)
 
-    The whole config phase (config_options/configure + default auto-fPIC handling +
+    The whole config phase (configure + default auto-fPIC handling +
     requirements) is delegated to ``run_configure_method``.  Errors are
     swallowed — dependency discovery is best-effort and must not abort graph resolution.
     """

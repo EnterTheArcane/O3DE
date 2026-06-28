@@ -82,12 +82,11 @@ class Recipe(RecipeBase[_Options]):
         # build path was not ported, so the CMake branch always applies.
         return True
 
-    def config_options(self):
+    def configure(self):
         del self.options.with_libgsasl
         if not is_apple_os(self):
             del self.options.with_apple_sectrust
 
-    def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 

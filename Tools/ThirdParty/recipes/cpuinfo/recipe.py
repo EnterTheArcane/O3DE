@@ -19,8 +19,6 @@ class Recipe(RecipeBase[_Options]):
             # Only static for msvc
             # Injecting CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS is not sufficient since there are global symbols
             del self.options.shared
-        if self.options.get_safe("shared"):
-            del self.options.fPIC
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 

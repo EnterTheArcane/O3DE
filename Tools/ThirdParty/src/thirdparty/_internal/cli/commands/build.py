@@ -260,7 +260,7 @@ def _build_dep_graph(
             context=_CONTEXT_BUILD if is_build else _CONTEXT_HOST,
             recipe_state=_RECIPE_INCACHE)
 
-        # Full config phase (config_options/configure + auto-fPIC + package-type +
+        # Full config phase (configure + auto-fPIC + package-type +
         # requirements); populates dep.requires for the sub-graph below.
         try:
             _run_configure_method(dep)
@@ -593,7 +593,7 @@ def _build_recipe(
         # package directory so we start clean.
         _wipe(pkg_dir)
 
-    # Drive the recipe's full config phase (config_options/configure + default auto-fPIC +
+    # Drive the recipe's full config phase (configure + default auto-fPIC +
     # requirements) then validate(), before creating any directories so
     # that packages unsupported on this platform (RecipeInvalidConfiguration) don't leave
     # empty build trees behind.
