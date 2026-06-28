@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "kuba-zip"
-    version = "0.3.8"
+    version = "0.3.14"
     license = "Unlicense"
 
     def latest_version(self):
@@ -29,8 +29,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/kuba--/zip/archive/v0.3.8.tar.gz",
-            sha256="944656c33aa776dc2c882991d1a6a86c8408fec8b8a19bc5305bf7eabdd4d908",
+            url="https://github.com/kuba--/zip/archive/v0.3.14.tar.gz",
+            sha256="72d05d00de7bb2f0811d237b30d16de42f1e1dfbb2c33fb41191e3cf27fc7958",
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(self, self.folders.source / "CMakeLists.txt", "-Werror", "")

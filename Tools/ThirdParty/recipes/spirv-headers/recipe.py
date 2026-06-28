@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "spirv-headers"
-    version = "1.4.352.0"
+    version = "1.4.350.1"
     license = "MIT-KhronosGroup"
 
     def latest_version(self):
@@ -20,8 +20,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/SPIRV-Headers/archive/fe44b2002bf7871e2e92fc001bc9f6e09f92194f.tar.gz",
-            sha256="78a19a22810130602110761b7eaa47e49b778ea61bc7b05377c9794f54d2a426",
+            url="https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
+            sha256="9e6d5c78878172d2b810e97f3a74ecbbb14b4ad52b07384ce915fbbeb226d610",
             destination=self.folders.source,
             strip_root=True)
 

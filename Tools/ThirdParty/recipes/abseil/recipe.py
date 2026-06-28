@@ -19,7 +19,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "abseil"
-    version = "20260107.1"
+    version = "20260526.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -32,8 +32,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/abseil/abseil-cpp/archive/20260107.1.tar.gz",
-            sha256="4314e2a7cbac89cac25a2f2322870f343d81579756ceff7f431803c2c9090195",
+            url="https://github.com/abseil/abseil-cpp/archive/20260526.0.tar.gz",
+            sha256="6e1aee535473414164bf83e4ebc40240dec71a4701f8a642d906e95bea1aea0c",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

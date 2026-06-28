@@ -17,7 +17,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "fontconfig"
-    version = "2.18.0"
+    version = "2.18.1"
     license = "MIT"
 
     def latest_version(self):
@@ -39,8 +39,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.18.0/fontconfig-2.18.0.tar.xz",
-            sha256="e7064a4725431ddba06ff8b971ec5a4b422e23b0169ce215747beedcb30e9073",
+            url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.18.1/fontconfig-2.18.1.tar.xz",
+            sha256="f5b9e4bd612983d3b7081413e7b5a31a6800a326e4e08b6f69ac78e7c1e5d37d",
             destination=self.folders.source,
             strip_root=True)
 

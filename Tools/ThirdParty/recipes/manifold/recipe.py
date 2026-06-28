@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "manifold"
-    version = "3.5.0"
+    version = "3.5.2"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -27,8 +27,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/elalish/manifold/archive/refs/tags/v3.5.0.tar.gz",
-            sha256="7002091f992c80bec49b69e49c85769d862bb97169781e23b9909a4b72b6a618",
+            url="https://github.com/elalish/manifold/archive/refs/tags/v3.5.2.tar.gz",
+            sha256="35cb5e0d78882f461ec39b17d8f09c2aceca761356f3ce948e3f3908289b8f2e",
             destination=self.folders.source,
             strip_root=True)
 

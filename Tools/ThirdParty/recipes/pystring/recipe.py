@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "pystring"
-    version = "1.1.5"
+    version = "1.2.0"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -27,8 +27,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/imageworks/pystring/archive/refs/tags/v1.1.5.tar.gz",
-            sha256="63c30c251b8017c897bd923826f400aee1d6e4f1c22ffbbd2104f150522a2040",
+            url="https://github.com/imageworks/pystring/archive/refs/tags/v1.2.0.tar.gz",
+            sha256="020a603a757ba1e429f4b1ea6feb3afbe0fb34bcafa355032e1f1b8a0019d198",
             destination=self.folders.source,
             strip_root=True)
 

@@ -21,7 +21,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.lstrip("v").replace("_", "."))
 
     def configure(self):
-        if not self._has_sse:
+        if self.settings.arch != "X64":
             self.options.with_sse = False
 
     def requirements(self):
@@ -65,7 +65,3 @@ class Recipe(RecipeBase[_Options]):
             self.info.defines = ["BASISU_NO_ITERATOR_DEBUG_LEVEL"]
         elif self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs = ["m", "pthread"]
-
-    @property
-    def _has_sse(self):
-        return self.settings.arch in ["X64"]

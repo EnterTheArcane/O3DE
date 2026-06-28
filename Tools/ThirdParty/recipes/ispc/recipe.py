@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "ispc"
-    version = "1.30.0"
+    version = "1.31.0"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -16,18 +16,18 @@ class Recipe(RecipeBase):
 
     def build(self):
         if self.settings.os == "Windows":
-            url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-windows.zip"
-            sha256 = "e126a78fd15f12475bac6204f2536b3986e07973127e4f8e7336c3d304c4a69f"
+            url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-windows.zip"
+            sha256 = "9a18793800b91d5be7b851513672cd9a81a985a5a5dfec5611c2318e8ad4140a"
         elif self.settings.os == "Linux":
             if self.settings.arch == "ARM":
-                url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-linux.aarch64.tar.gz"
-                sha256 = "509399c399ec162d746889458a10cc13797a1aed1c0164b2bd3faddf7d023f13"
+                url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-linux.aarch64.tar.gz"
+                sha256 = "660ccac47ff7e0980b89b00a3ebd70201acf55f9e816c127fc28e868ab456193"
             else:
-                url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-linux.tar.gz"
-                sha256 = "63e7d61037849fa1ed644f0398d21740ee9f880b9bf81f017c65eebe1d42c02b"
+                url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-linux.tar.gz"
+                sha256 = "d74089c835e10fd7e2c4b9225ced38b87d1fb53d35c7ceabd48cdf035da11b11"
         elif self.settings.os == "Mac":
-            url = "https://github.com/ispc/ispc/releases/download/v1.30.0/ispc-v1.30.0-macOS.universal.tar.gz"
-            sha256 = "4a45b95d9cd590acbdcd158d287f9398d4a1961461e9456bda09181e7b34912e"
+            url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-macOS.universal.tar.gz"
+            sha256 = "98c47aa9543f9f99f2c6778181d5c2f247c01c82653dd62f0c83e1fba923800e"
         else:
             raise RecipeInvalidConfiguration("Unsupported platform")
         get(self, url=url, sha256=sha256, destination=self.folders.build, strip_root=True)

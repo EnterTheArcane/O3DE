@@ -15,6 +15,9 @@ class Recipe(RecipeBase):
         repo = GithubRepository(self, "mesonbuild/meson")
         return Version(repo.latest_release)
 
+    def requirements(self):
+        self.requires_tool("ninja")
+
     def build(self):
         download(
             self,

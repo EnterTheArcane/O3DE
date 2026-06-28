@@ -16,7 +16,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "vulkan-validation-layers"
-    version = "1.4.352"
+    version = "1.4.355"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -47,8 +47,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/v1.4.352.tar.gz",
-            sha256="126d6e5ad7becf0e4fd40e757709cfabe3bc61104cc1fc95595b510bef3f37eb",
+            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/v1.4.355.tar.gz",
+            sha256="1c6e33f60bb0cfed62cdb02a82845a7cf2681f92e07c5255eacd4b418db0def5",
             destination=self.folders.source,
             strip_root=True)
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)"]:

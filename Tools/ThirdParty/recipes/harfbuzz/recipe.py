@@ -26,7 +26,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "harfbuzz"
-    version = "14.2.0"
+    version = "14.2.1"
     license = "MIT"
 
     def latest_version(self):
@@ -62,8 +62,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/harfbuzz/harfbuzz/releases/download/14.2.0/harfbuzz-14.2.0.tar.xz",
-            sha256="94017020f96d025bb66ae91574e4cf334bcad23e8175a8a40565b3721bc2eaff",
+            url="https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz",
+            sha256="a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e",
             destination=self.folders.source,
             strip_root=True)
 

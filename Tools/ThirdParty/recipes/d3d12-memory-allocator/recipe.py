@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "d3d12-memory-allocator"
-    version = "3.1.0"
+    version = "3.2.0"
     license = "MIT"
 
     def latest_version(self):
@@ -29,8 +29,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/refs/tags/v3.1.0.tar.gz",
-            sha256="629aa00919f2f0f8cdfcdc485db5077f456e939e418cee148e17458efa055f63",
+            url="https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/refs/tags/v3.2.0.tar.gz",
+            sha256="71d740ecb2d6cdf93b273ae571eb80097a530443993b0a5cb2bdb3cacc1548db",
             destination=self.folders.source,
             strip_root=True)
 

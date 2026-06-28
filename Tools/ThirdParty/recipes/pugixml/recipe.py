@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "pugixml"
-    version = "1.15"
+    version = "1.16"
     license = "MIT"
 
     def latest_version(self):
@@ -29,8 +29,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/zeux/pugixml/releases/download/v1.15/pugixml-1.15.tar.gz",
-            sha256="655ade57fa703fb421c2eb9a0113b5064bddb145d415dd1f88c79353d90d511a",
+            url="https://github.com/zeux/pugixml/releases/download/v1.16/pugixml-1.16.tar.gz",
+            sha256="4cee1ca4aad395170f4c7a07824f3bdd41f28316c6e1e1090a1425b278ec0b4b",
             destination=self.folders.source,
             strip_root=True)
 

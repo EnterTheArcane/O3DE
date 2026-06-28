@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "spirv-tools"
-    version = "1.4.352.0"
+    version = "1.4.350.1"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -28,8 +28,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/SPIRV-Tools/archive/18b08af19b08515d5a1749adbdb05bc4369a57ed.tar.gz",
-            sha256="3445457d807912b879f526eade9e191235e1bd272ff8e70e7fd8b7e5435e2397",
+            url="https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
+            sha256="6f7b9b9eed9a7aa485918466ea604b4edc7969d94e96c0c13ae266f4ec120f31",
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(self, self.folders.source / "CMakeLists.txt", "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")

@@ -6,7 +6,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "vulkan-memory-allocator"
-    version = "3.3.0"
+    version = "3.4.0"
     license = "MIT"
 
     def latest_version(self):
@@ -19,8 +19,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.3.0.tar.gz",
-            sha256="c4f6bbe6b5a45c2eb610ca9d231158e313086d5b1a40c9922cb42b597419b14e",
+            url="https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.4.0.tar.gz",
+            sha256="822aa850c6ce77346ae96a8a1d351d52e77e85929f35363849a0a4e638e0a2a1",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "c4core"
-    version = "0.3.0"
+    version = "0.4.0"
     license = "MIT",
 
     def latest_version(self):
@@ -26,8 +26,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/biojppm/c4core/releases/download/v0.3.0/c4core-0.3.0-src.tgz",
-            sha256="47a5634c785f84a6bef07c04c3cc3c063ff61c5c7554b95c35298712e2f306fd",
+            url="https://github.com/biojppm/c4core/releases/download/v0.4.0/c4core-0.4.0-src.tgz",
+            sha256="6703768e6ae3f623296d3fb5cff0fc74c08bfe45dc800234e0e42ba508e230a0",
             destination=self.folders.source,
             strip_root=True)
 

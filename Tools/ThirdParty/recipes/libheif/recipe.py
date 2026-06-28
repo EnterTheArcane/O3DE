@@ -23,7 +23,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libheif"
-    version = "1.22.0"
+    version = "1.23.1"
     license = "LGPL-3.0-only", "GPL-3.0-or-later", "MIT"
 
     def latest_version(self):
@@ -54,8 +54,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/strukturag/libheif/releases/download/v1.22.0/libheif-1.22.0.tar.gz",
-            sha256="8bd20cfa3201997b8f63266cddfabea2e1481467d7f992e6a2595e0bec691fc2",
+            url="https://github.com/strukturag/libheif/releases/download/v1.23.1/libheif-1.23.1.tar.gz",
+            sha256="0de0327f60fcd47de90d5654c6fe152232738d60d84fe084ec3e0f35e03b166a",
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(

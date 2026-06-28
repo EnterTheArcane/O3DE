@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "directxshadercompiler"
-    version = "1.9.2602"
+    version = "1.10.2605.24"
     license = "NCSA"
 
     def latest_version(self):
@@ -22,11 +22,11 @@ class Recipe(RecipeBase):
 
     def build(self):
         if self.settings.os == "Windows":
-            url = "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/dxc_2026_02_20.zip"
-            sha256 = "a1e89031421cf3c1fca6627766ab3020ca4f962ac7e2caa7fab2b33a8436151e"
+            url = "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.10.2605.24/dxc_preview_2026_05_22.zip"
+            sha256 = "045e2cfd900135f640954553038febbc98692599c5606376726d00541dae69b6"
         elif self.settings.os == "Linux":
-            url = "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/linux_dxc_2026_02_20.x86_64.tar.gz"
-            sha256 = "a1d3e3b5e1c5685b3eb27d5e8890e41d87df45def05112a2d6f1a63a931f7d60"
+            url = "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.10.2605.24/linux_dxc_preview_2026_05_22.x86_64.tar.gz"
+            sha256 = "6119f59c4f758973cadc170607ba83e657dd2c6fb7ca3dfb7362717a4ece8d9e"
         else:
             raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
         get(self, url=url, sha256=sha256, destination=self.folders.build)

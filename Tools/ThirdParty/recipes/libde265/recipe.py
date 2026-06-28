@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libde265"
-    version = "1.0.19"
+    version = "1.1.1"
     license = "LGPL-3.0-or-later"
 
     def latest_version(self):
@@ -31,8 +31,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/strukturag/libde265/releases/download/v1.0.19/libde265-1.0.19.tar.gz",
-            sha256="bb19a0b485d2643e0eeb7e91f3ab32d1ad617e7c487dbedc91214ca3dbd8d7eb",
+            url="https://github.com/strukturag/libde265/releases/download/v1.1.1/libde265-1.1.1.tar.gz",
+            sha256="fd48a927e94ed74fc7ce8829d222b9d8599fcbfe8b6448ba66705babc56ab219",
             destination=self.folders.source,
             strip_root=True)
         self._patch_sources()

@@ -6,7 +6,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "fast-float"
-    version = "8.2.5"
+    version = "8.2.10"
     license = "Apache-2.0", "MIT", "BSL-1.0"
 
     def latest_version(self):
@@ -16,8 +16,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/fastfloat/fast_float/archive/refs/tags/v8.2.5.tar.gz",
-            sha256="17c7fb14499fcf42c3f5d143df0fbe22172e92749ec5f75ef13224005421a654",
+            url="https://github.com/fastfloat/fast_float/archive/refs/tags/v8.2.10.tar.gz",
+            sha256="76f958dd97b1cf4d8862d1f0986a47d4bdfa8845252bae15ef0f40de3b95961f",
             destination=self.folders.source,
             strip_root=True)
 

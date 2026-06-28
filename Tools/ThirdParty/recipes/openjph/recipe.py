@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "openjph"
-    version = "0.27.3"
+    version = "0.30.1"
     license = "BSD-2-Clause"
 
     def latest_version(self):
@@ -27,8 +27,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/aous72/OpenJPH/archive/0.27.3.tar.gz",
-            sha256="f96808ef72cf3acca73a52123bda3e680f6550dfb4774ad7de57eb3ce26de57a",
+            url="https://github.com/aous72/OpenJPH/archive/0.30.1.tar.gz",
+            sha256="fb3ccf71af838ed2a42c6ea669308a2adaba115ae9d5862dfb1e2865b43eb5b8",
             destination=self.folders.source,
             strip_root=True)
 

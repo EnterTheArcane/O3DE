@@ -61,7 +61,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "curl"
-    version = "8.20.0"
+    version = "8.21.0"
     license = "curl"
 
     def latest_version(self):
@@ -121,8 +121,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://curl.se/download/curl-8.20.0.tar.xz",
-            sha256="63fe2dc148ba0ceae89922ef838f7e5c946272c2e78b7c59fab4b79d3ce2b896",
+            url="https://curl.se/download/curl-8.21.0.tar.xz",
+            sha256="aa1b66a70eace83dc624508745646c08ae561de512ab403adffb93ac87fc72e6",
             destination=self.folders.source,
             strip_root=True)
         cert_url = self.conf.get("user.curl.cert:url", check_type=str) or "https://curl.se/ca/cacert-2025-11-04.pem"

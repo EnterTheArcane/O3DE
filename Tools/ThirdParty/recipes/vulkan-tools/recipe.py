@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "vulkan-tools"
-    version = "1.4.350.0"
+    version = "1.4.354"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -28,8 +28,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-Tools/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
-            sha256="3079796d51b29ce49dc7b7c7e243df93b343d54c3be9d4a8292c3231b9698deb",
+            url="https://github.com/KhronosGroup/Vulkan-Tools/archive/refs/tags/v1.4.354.tar.gz",
+            sha256="f10eb09b46c1bd35afd3c8b0c5946fa0d619534dde215389b036a84a95eee508",
             destination=self.folders.source,
             strip_root=True)
 

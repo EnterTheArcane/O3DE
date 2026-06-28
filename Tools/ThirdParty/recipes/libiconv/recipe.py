@@ -26,7 +26,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libiconv"
-    version = "1.18"
+    version = "1.19"
     license = "LGPL-2.1-or-later"
 
     def latest_version(self):
@@ -46,8 +46,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://ftpmirror.gnu.org/gnu/libiconv/libiconv-1.18.tar.gz",
-            sha256="3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8",
+            url="https://ftpmirror.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz",
+            sha256="88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
             destination=self.folders.source,
             strip_root=True)
 

@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "openexr"
-    version = "3.4.12"
+    version = "3.4.13"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -33,8 +33,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.12/openexr-3.4.12.tar.gz",
-            sha256="2d45db1d4bb78a5b263cd21cefa93119e1fcd37a13fa446c74663b6b8ec02d00",
+            url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.13/openexr-3.4.13.tar.gz",
+            sha256="fe99c9cf06e41803db75ae4f5c9bb9955b7033ff47f05b02bc60bc5dba391996",
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(

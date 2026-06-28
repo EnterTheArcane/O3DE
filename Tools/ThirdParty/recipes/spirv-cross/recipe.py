@@ -27,7 +27,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "spirv-cross"
-    version = "1.4.350.0"
+    version = "1.4.350.1"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -45,8 +45,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
-            sha256="fbf9bee521545557357679173d39787a954bd8187e4b2fcaa09044c70201b434",
+            url="https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
+            sha256="21057934ede32fe90a63dc304fdce0f2a6cb4f0ca685a72ed36a73aac6f72ad5",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

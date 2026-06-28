@@ -9,7 +9,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "vulkan-headers"
-    version = "1.4.352"
+    version = "1.4.355"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -22,8 +22,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.352.tar.gz",
-            sha256="4850909d22a8a9767c27daea2b972e49d7c298560573d5b6221ee50db9bf49db",
+            url="https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.355.tar.gz",
+            sha256="0820d86608b1f94bb84f8f7b39c6e190c4397d5cd967d60c10fb7df8351ba475",
             destination=self.folders.source,
             strip_root=True)
 

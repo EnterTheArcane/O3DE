@@ -11,7 +11,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "spirv-reflect"
-    version = "1.4.350.0"
+    version = "1.4.350.1"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -25,8 +25,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-1.4.350.0.tar.gz",
-            sha256="c81ea49449d77189574ce0ff1374350533c283f41a9dd1b59f351c26961302b9",
+            url="https://github.com/KhronosGroup/SPIRV-Reflect/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
+            sha256="e045cdd7598211cdbaf39791151bc526a9844401d615579e4959966d2317bdd7",
             destination=self.folders.source,
             strip_root=True)
 

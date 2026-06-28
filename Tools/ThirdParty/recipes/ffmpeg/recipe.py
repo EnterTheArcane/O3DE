@@ -115,7 +115,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "ffmpeg"
-    version = "8.1.1"
+    version = "8.1.2"
     license = "LGPL-2.1-or-later", "GPL-2.0-or-later"
 
     def latest_version(self):
@@ -244,8 +244,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz",
-            sha256="b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3",
+            url="https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz",
+            sha256="464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c",
             destination=self.folders.source,
             strip_root=True)
 

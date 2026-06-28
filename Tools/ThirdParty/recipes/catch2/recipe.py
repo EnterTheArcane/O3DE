@@ -18,7 +18,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "catch2"
-    version = "3.15.0"
+    version = "3.15.1"
     license = "BSL-1.0"
 
     def latest_version(self):
@@ -31,8 +31,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/catchorg/Catch2/archive/v3.15.0.tar.gz",
-            sha256="9650c55e497759cc39b977e45524bc8acb15256061c112080916ab6cb0b1ea66",
+            url="https://github.com/catchorg/Catch2/archive/v3.15.1.tar.gz",
+            sha256="be23a52b85cf04cd9587612147a10b023d59ed9757fa1843cc99e615d6c0893c",
             destination=self.folders.source,
             strip_root=True)
 

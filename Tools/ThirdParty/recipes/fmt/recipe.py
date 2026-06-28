@@ -16,7 +16,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "fmt"
-    version = "12.1.0"
+    version = "12.2.0"
     license = "MIT"
 
     def latest_version(self):
@@ -34,8 +34,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/fmtlib/fmt/releases/download/12.1.0/fmt-12.1.0.zip",
-            sha256="695fd197fa5aff8fc67b5f2bbc110490a875cdf7a41686ac8512fb480fa8ada7",
+            url="https://github.com/fmtlib/fmt/releases/download/12.2.0/fmt-12.2.0.zip",
+            sha256="a2f4a8d51178f954e4c339007f77edd76ba0cb2e36f87a48e5a5403d9be5878f",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
