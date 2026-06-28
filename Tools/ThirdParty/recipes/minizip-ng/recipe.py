@@ -117,7 +117,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["minizip"].defines.append("HAVE_BZIP2")
 
         minizip_dir = "minizip" if self.options.mz_compatibility else "minizip-ng"
-        self.info.components["minizip"].includedirs.append(self.folders.package / "include" / minizip_dir)
+        self.info.components["minizip"].includedirs.append(str(self.folders.package / "include" / minizip_dir))
 
         self.info.components["minizip"].set_property("cmake_target_name", "MINIZIP::minizip")
         self.info.components["minizip"].set_property("pkg_config_name", "minizip")

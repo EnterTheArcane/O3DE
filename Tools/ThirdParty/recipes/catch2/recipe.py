@@ -88,7 +88,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.components["catch2_with_main"].system_libs.append("m")
 
-        defines = []
+        defines: list[str] = []
         if self.options.with_prefix:
             defines.append("CATCH_CONFIG_PREFIX_ALL")
         if self.options.default_reporter:

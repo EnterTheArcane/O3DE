@@ -52,7 +52,7 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.info.set_property("cmake_file_name", "TBB")
 
-        def lib_name(name):
+        def lib_name(name: str) -> str:
             if self.settings.build_type == "Debug":
                 return name + "_debug"
             return name

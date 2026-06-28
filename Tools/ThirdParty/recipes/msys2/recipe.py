@@ -11,28 +11,34 @@ from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.files import chdir, get, replace_in_file, copy
 
 
+# ``ctypes.windll`` / ``ctypes.WinError`` only exist on Windows; OpLock is Windows-only and the
+# cross-platform stubs don't expose them, so reach them dynamically as ``Any``.
+_windll: Any = getattr(ctypes, "windll", None)
+_win_error: Any = getattr(ctypes, "WinError", None)
+
+
 class OpLock:
     def __init__(self):
-        self.handle = ctypes.windll.kernel32.CreateMutexA(None, 0, "Global\\RecipeMSYS2".encode())
+        self.handle = _windll.kernel32.CreateMutexA(None, 0, "Global\\RecipeMSYS2".encode())
         if not self.handle:
-            raise ctypes.WinError()
+            raise _win_error()
 
     def __enter__(self):
-        status = ctypes.windll.kernel32.WaitForSingleObject(self.handle, 0xFFFFFFFF)
+        status = _windll.kernel32.WaitForSingleObject(self.handle, 0xFFFFFFFF)
         if status not in [0, 0x80]:
-            raise ctypes.WinError()
+            raise _win_error()
 
     def __exit__(
         self,
-        exc_type,
-        exc_val,
-        exc_tb):
-        status = ctypes.windll.kernel32.ReleaseMutex(self.handle)
+        exc_type: object,
+        exc_val: object,
+        exc_tb: object):
+        status = _windll.kernel32.ReleaseMutex(self.handle)
         if not status:
-            raise ctypes.WinError()
+            raise _win_error()
 
     def close(self):
-        ctypes.windll.kernel32.CloseHandle(self.handle)
+        _windll.kernel32.CloseHandle(self.handle)
 
     __del__ = close
 
@@ -94,7 +100,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.no_kill:
             return
         if (self.settings.os == "Windows"):
-            taskkill_exe: str = os.path.join(os.environ.get('SystemRoot'), 'system32', 'taskkill.exe')
+            taskkill_exe: str = os.path.join(os.environ.get('SystemRoot', ''), 'system32', 'taskkill.exe')
 
             log_out = True
             if log_out:
@@ -166,7 +172,7 @@ class Recipe(RecipeBase[_Options]):
         excludes = None
         if self.options.exclude_files:
             excludes = tuple(str(self.options.exclude_files).split(","))
-        for exclude in excludes:
+        for exclude in (excludes or ()):
             for root, _, filenames in os.walk(self._msys_dir):
                 for filename in filenames:
                     fullname = os.path.join(root, filename)

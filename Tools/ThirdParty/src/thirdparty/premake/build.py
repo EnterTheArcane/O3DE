@@ -100,10 +100,10 @@ class Premake:
 
     def build(
         self,
-        workspace,
-        targets=None,
-        configuration=None,
-        msbuild_platform=None):
+        workspace: str,
+        targets: list[str] | None = None,
+        configuration: str | None = None,
+        msbuild_platform: str | None = None):
         """
         Depending on the action, this method will run either ``msbuild`` or ``make`` with ``N_JOBS``.
         You can specify ``N_JOBS`` through the configuration line ``tools.build:jobs=N_JOBS``

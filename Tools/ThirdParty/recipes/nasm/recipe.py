@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
@@ -30,7 +31,7 @@ class Recipe(RecipeBase):
         suffix = "w.exe" if is_msvc(self) else ""
         return self.folders.package / "bin" / f"ndisasm{suffix}"
 
-    def _chmod_plus_x(self, filename):
+    def _chmod_plus_x(self, filename: Path):
         if os.name == "posix":
             os.chmod(filename, os.stat(filename).st_mode | 0o111)
 

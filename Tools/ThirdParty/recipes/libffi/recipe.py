@@ -1,4 +1,3 @@
-import glob
 import os
 import shutil
 
@@ -49,7 +48,9 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         VirtualBuildEnv(self).generate()
 
-        yes_no = lambda v: "yes" if v else "no"
+        def yes_no(v: bool) -> str:
+            return "yes" if v else "no"
+
         tc = AutotoolsToolchain(self)
         tc.configure_args.extend(
             [
@@ -104,8 +105,8 @@ class Recipe(RecipeBase[_Options]):
             env.define("STRIP", ":")
             env.define("CXXCPP", "cl -nologo -EP")
             env.define("CPP", "cl -nologo -EP")
-            env.define("LIBTOOL", unix_path(self, self.folders.source / "ltmain.sh"))
-            env.define("INSTALL", unix_path(self, self.folders.source / "install-sh"))
+            env.define("LIBTOOL", unix_path(self, self.folders.source / "ltmain.sh") or "")
+            env.define("INSTALL", unix_path(self, self.folders.source / "install-sh") or "")
         tc.generate(env=env)
 
     def build(self):

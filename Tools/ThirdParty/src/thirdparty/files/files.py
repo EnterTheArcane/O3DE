@@ -186,7 +186,7 @@ def get(
 def download(
     recipe: RecipeBase,
     url: Any,
-    filename: str,
+    filename: str | os.PathLike[str],
     verify: bool = True,
     retry: int | None = None,
     retry_wait: int | None = None,
@@ -374,7 +374,7 @@ def chmod(
 
 def unzip(
     recipe: RecipeBase,
-    filename: str,
+    filename: str | os.PathLike[str],
     destination: Path = Path("."),
     keep_permissions: bool = False,
     pattern: Any = None,
@@ -403,6 +403,7 @@ def unzip(
            see fnmatch documentation for more details.
     """
 
+    filename = os.fspath(filename)
     output = recipe.output
     extract_filter = recipe.conf.get("tools.files.unzip:filter") or extract_filter
     output.info(f"Uncompressing {filename} to {destination}")

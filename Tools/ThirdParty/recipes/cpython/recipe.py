@@ -1,6 +1,7 @@
 import os
 import re
 import textwrap
+from pathlib import Path
 from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -171,23 +172,23 @@ class Recipe(RecipeBase[_Options]):
         else:
             self._generate_autotools()
 
-    def _msvc_project_path(self, name):
+    def _msvc_project_path(self, name: str) -> Path:
         return self.folders.source / "PCbuild" / f"{name}.vcxproj"
 
     def _regex_replace_in_file(
         self,
-        filename,
-        pattern,
-        replacement):
+        filename: Path,
+        pattern: str,
+        replacement: str):
         content = load(self, filename)
         content = re.sub(pattern, replacement, content)
         save(self, filename, content)
 
     def _inject_recipe_props_file(
         self,
-        project_basename,
-        dep_name,
-        condition=True):
+        project_basename: str,
+        dep_name: str,
+        condition: bool = True):
         if condition:
             search = '<Import Project="python.props" />'
             replace_in_file(
@@ -375,7 +376,7 @@ class Recipe(RecipeBase[_Options]):
             solution_path = self.folders.source / "PCbuild" / "pcbuild.sln"
             projects = set(m.group(1) for m in re.finditer('"([^"]+)\\.vcxproj"', open(solution_path).read()))
 
-            def project_build(name):
+            def project_build(name: str) -> bool:
                 if os.path.basename(name) in self._msvc_discarded_projects:
                     return False
                 if "test" in name:
@@ -528,14 +529,17 @@ class Recipe(RecipeBase[_Options]):
             dst=self.folders.package / self._msvc_install_subprefix / "Lib")
         rmdir(self, self.folders.package / self._msvc_install_subprefix / "Lib" / "test")
 
-        packages = {}
-        get_name_version = lambda fn: fn.split(".", 2)[:2]
+        packages: dict[str, str] = {}
+
+        def get_name_version(fn: str) -> list[str]:
+            return fn.split(".", 2)[:2]
+
         whldir = self.folders.source / "Lib" / "ensurepip" / "_bundled"
         for fn in filter(lambda n: n.endswith(".whl"), os.listdir(whldir)):
             name, version = get_name_version(fn)
             add = True
             if name in packages:
-                pname, pversion = get_name_version(packages[name])
+                _, pversion = get_name_version(packages[name])
                 add = Version(version) > Version(pversion)
             if add:
                 packages[name] = fn
@@ -670,7 +674,7 @@ class Recipe(RecipeBase[_Options]):
     def _cpython_symlink(self):
         symlink = self.folders.package / "bin" / "python"
         if self.settings.os == "Windows":
-            symlink += ".exe"
+            symlink = symlink.parent / f"{symlink.name}.exe"
         return symlink
 
     @property

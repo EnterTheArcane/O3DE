@@ -135,22 +135,23 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os in ["Linux", "Android", "FreeBSD", "SunOS", "AIX"]:
             self.info.system_libs.append("m")
 
-        self.info.requires = []
+        requires: list[str] = []
         if self.options.zlib:
-            self.info.requires.append("zlib::zlib")
+            requires.append("zlib::zlib")
         if self.options.libdeflate:
-            self.info.requires.append("libdeflate::libdeflate")
+            requires.append("libdeflate::libdeflate")
         if self.options.lzma:
-            self.info.requires.append("xz_utils::xz_utils")
+            requires.append("xz_utils::xz_utils")
         if self.options.jpeg == "libjpeg":
-            self.info.requires.append("libjpeg::libjpeg")
+            requires.append("libjpeg::libjpeg")
         elif self.options.jpeg == "libjpeg-turbo":
-            self.info.requires.append("libjpeg-turbo::jpeg")
+            requires.append("libjpeg-turbo::jpeg")
         elif self.options.jpeg == "mozjpeg":
-            self.info.requires.append("mozjpeg::libjpeg")
+            requires.append("mozjpeg::libjpeg")
         if self.options.jbig:
-            self.info.requires.append("jbig::jbig")
+            requires.append("jbig::jbig")
         if self.options.zstd:
-            self.info.requires.append("zstd::zstd")
+            requires.append("zstd::zstd")
         if self.options.webp:
-            self.info.requires.append("libwebp::webp")
+            requires.append("libwebp::webp")
+        self.info.requires = requires

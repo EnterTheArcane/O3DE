@@ -1,5 +1,6 @@
 import os
 import textwrap
+from pathlib import Path
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
@@ -67,7 +68,7 @@ class Recipe(RecipeBase[_Options]):
             self.folders.package / self._module_file_rel_path
         )
 
-    def _create_cmake_module_variables(self, module_file):
+    def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             f"""
             set(OPENAL_FOUND TRUE)

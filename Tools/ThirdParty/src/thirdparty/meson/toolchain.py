@@ -223,7 +223,7 @@ class MesonToolchain:
         self.build_pkg_config_path = None
         self.libcxx, self.gcc_cxx11_abi = libcxx_flags(self._recipe)
         #: Dict-like object with the build, host, and target as the Meson machine context
-        self.cross_build = {}
+        self.cross_build: dict[str, dict[str, Any]] = {}
         default_comp = ""
         default_comp_cpp = ""
         if native is False and is_cross_building:
@@ -379,7 +379,7 @@ class MesonToolchain:
         if not self._is_apple_system:
             return
         # Calculating the main Apple flags
-        min_flag, arch_flag, isysroot_flag = (resolve_apple_flags(self._recipe, is_cross_building=self.cross_build))
+        min_flag, arch_flag, isysroot_flag = (resolve_apple_flags(self._recipe, is_cross_building=bool(self.cross_build)))
         self.apple_arch_flag = arch_flag.split() if arch_flag else []
         self.apple_isysroot_flag = isysroot_flag.split() if isysroot_flag else []
         self.apple_min_version_flag = [apple_min_version_flag(self._recipe)]

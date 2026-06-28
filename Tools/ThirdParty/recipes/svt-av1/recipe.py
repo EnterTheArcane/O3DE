@@ -68,10 +68,10 @@ class Recipe(RecipeBase[_Options]):
             tc.cache_variables["ENABLE_NEON_DOTPROD"] = self.options.with_neon_dotprod
         if "with_neon_i8mm" in self.options:
             tc.cache_variables["ENABLE_NEON_i8MM"] = self.options.with_neon_i8mm
-        if "with_sve" in self.options:
-            tc.cache_variables["ENABLE_SVE"] = self.options.with_sve
-        if "with_sve2" in self.options:
-            tc.cache_variables["ENABLE_SVE2"] = self.options.with_sve2
+        if "with_neon_sve" in self.options:
+            tc.cache_variables["ENABLE_SVE"] = self.options.with_neon_sve
+        if "with_neon_sve2" in self.options:
+            tc.cache_variables["ENABLE_SVE2"] = self.options.with_neon_sve2
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

@@ -1,6 +1,7 @@
 import jinja2
 import os
 import textwrap
+from typing import Any
 from xml.dom import minidom
 
 from thirdparty._internal.util.detect_vs import vs_installation_path
@@ -63,13 +64,13 @@ class MSBuildToolchain:
         #: Dict with compile options that will be added as <key>value</key> in the ClCompile section
         self.compile_options = {}
         #: List of all the CXX flags
-        self.cxxflags = []
+        self.cxxflags: list[str] = []
         #: List of all the C flags
-        self.cflags = []
+        self.cflags: list[str] = []
         #: List of all the LD linker flags
-        self.ldflags = []
+        self.ldflags: list[str] = []
         #: List of all the RC (resource compiler) flags
-        self.rcflags = []
+        self.rcflags: list[str] = []
         #: The build type. By default, the ``recipe.settings.build_type`` value
         self.configuration = recipe.settings.build_type
         #: The runtime flag. By default, it'll be based on the `compiler.runtime` setting.
@@ -80,7 +81,7 @@ class MSBuildToolchain:
         #: VS IDE Toolset, e.g., ``"v140"``. If ``compiler=msvc``, you can use ``compiler.toolset``
         #: setting, else, it'll be based on ``msvc`` version.
         self.toolset = msvs_toolset(recipe)
-        self.properties = {}
+        self.properties: dict[str, Any] = {}
         self.toolset_version_full_path = _get_toolset_props(recipe)
 
     def _name_condition(self, settings):

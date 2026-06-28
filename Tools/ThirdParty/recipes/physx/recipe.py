@@ -250,7 +250,7 @@ class Recipe(RecipeBase[_Options]):
             for dll_info in dll_info_list:
                 dll_subdir = f"win.{physx_arch}.{dll_info.get('vc_ver')}.mt"
                 dll_dir = external_bin_dir / dll_subdir / physx_build_type
-                copy(self, pattern=dll_info.get("pattern"), dst=package_dst_bin_dir, src=dll_dir, keep_path=False)
+                copy(self, pattern=dll_info["pattern"] or "", dst=package_dst_bin_dir, src=dll_dir, keep_path=False)
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "PhysX")

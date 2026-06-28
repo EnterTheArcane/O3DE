@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-from typing import Literal
+from typing import Any, Literal
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
@@ -334,7 +334,7 @@ class Recipe(RecipeBase[_Options]):
             # replace_in_file(self, self.folders.source / "configure", "echo libx264.lib", "echo x264.lib")
 
     @property
-    def _default_compilers(self):
+    def _default_compilers(self) -> dict[str, str]:
         if self.settings.compiler == "gcc":
             return {"cc": "gcc", "cxx": "g++"}
         elif self.settings.compiler in ["clang", "apple-clang"]:
@@ -370,10 +370,10 @@ class Recipe(RecipeBase[_Options]):
         if not cross_building(self):
             env = VirtualRunEnv(self).generate(scope="build")
 
-        def opt_enable_disable(what, v):
+        def opt_enable_disable(what: str, v: Any) -> str:
             return "--{}-{}".format("enable" if v else "disable", what)
 
-        def opt_append_disable_if_set(args, what, v):
+        def opt_append_disable_if_set(args: list[str], what: str, v: Any):
             if v:
                 args.append(f"--disable-{what}")
 
@@ -608,13 +608,13 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self):
             # Custom AutotoolsDeps for cl like compilers
             # workaround for upstream issue 12784
-            includedirs = []
-            defines = []
-            libs = []
-            libdirs = []
-            linkflags = []
-            cxxflags = []
-            cflags = []
+            includedirs: list[str] = []
+            defines: list[str] = []
+            libs: list[str] = []
+            libdirs: list[str] = []
+            linkflags: list[str] = []
+            cxxflags: list[str] = []
+            cflags: list[str] = []
             for dependency in self.dependencies.values():
                 deps_cpp_info = dependency.info.aggregated_components()
                 includedirs.extend(deps_cpp_info.includedirs)
@@ -652,14 +652,14 @@ class Recipe(RecipeBase[_Options]):
             openssl_libs = " ".join([f"-l{lib}" for lib in openssl_cpp.libs] + [f"-l{lib}" for lib in openssl_cpp.system_libs])
             save(self, self.folders.build / "openssl_libs.list", openssl_libs)
 
-    def _split_and_format_options_string(self, flag_name, options_list):
+    def _split_and_format_options_string(self, flag_name: str, options_list: Any) -> list[str]:
         if not options_list:
             return []
 
-        def _format_options_list_item(flag_name, options_item):
+        def _format_options_list_item(flag_name: str, options_item: str) -> str:
             return f"--{flag_name}={options_item}"
 
-        def _split_options_string(options_string):
+        def _split_options_string(options_string: str) -> list[str]:
             return list(filter(None, "".join(options_string.split()).split(",")))
 
         options_string = str(options_list)
@@ -702,7 +702,7 @@ class Recipe(RecipeBase[_Options]):
         version_file_name = component_folder / "version.h"
         version_major_file_name = component_folder / "version_major.h"
         pattern = f"define LIB{component_name.upper()}_VERSION_(MAJOR|MINOR|MICRO)[ \t]+(\\d+)"
-        version = dict()
+        version: dict[str, str] = {}
         for file in (version_file_name, version_major_file_name):
             if os.path.isfile(file):
                 with open(file, "r", encoding="utf-8") as f:
@@ -728,7 +728,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_sdl:
                 self.info.components["programs"].requires = ["sdl::libsdl2"]
 
-        def _add_component(name: str, dependencies):
+        def _add_component(name: str, dependencies: list[str]):
             component = self.info.components[name]
             component.set_property("pkg_config_name", f"lib{name}")
             self._set_component_version(name)
@@ -742,6 +742,12 @@ class Recipe(RecipeBase[_Options]):
                 component.system_libs.append("m")
             return component
 
+        # These components are created and consumed under matching ``self.options.<name>`` guards;
+        # initialize them so the (separate) consumer guards don't read a possibly-unbound name.
+        avdevice: Any = None
+        avfilter: Any = None
+        avformat: Any = None
+        avcodec: Any = None
         avutil = _add_component("avutil", [])
         if self.options.avdevice:
             avdevice = _add_component("avdevice", ["avfilter", "swscale", "avformat", "avcodec", "swresample", "postproc"])

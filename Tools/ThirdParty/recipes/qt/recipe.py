@@ -4,13 +4,14 @@ import os
 from pathlib import Path
 import platform
 import textwrap
-from typing import Literal
+from typing import Any, Literal
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building, default_cppstd
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import Environment, VirtualBuildEnv, VirtualRunEnv
+from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.files import copy, get, replace_in_file, apply_patches, save, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
@@ -166,15 +167,15 @@ class Recipe(RecipeBase[_Options]):
     # essential_modules, addon_modules, deprecated_modules, preview_modules:
     #    these are only provided for convenience, set to False by default
 
-    _submodules_tree = None
+    _submodules_tree: dict[str, dict[str, Any]] | None = None
 
     @property
-    def _get_module_tree(self):
+    def _get_module_tree(self) -> dict[str, dict[str, Any]]:
         if self._submodules_tree:
             return self._submodules_tree
         config = configparser.ConfigParser()
         # the reference https://code.qt.io/cgit/qt/qt5.git/tree/.gitmodules?h={self.version}
-        config.read(os.path.join(self.recipe_folder, f"qtmodules{self.version}.conf"))
+        config.read(os.path.join(self.recipe_folder or "", f"qtmodules{self.version}.conf"))
         self._submodules_tree = {}
         assert config.sections(), f"no qtmodules.conf file for version {self.version}"
         for s in config.sections():
@@ -199,7 +200,7 @@ class Recipe(RecipeBase[_Options]):
         return self._submodules_tree
 
     def export(self):
-        copy(self, f"qtmodules{self.version}.conf", self.recipe_folder, self.folders.export)
+        copy(self, f"qtmodules{self.version}.conf", self.recipe_folder or "", self.folders.export)
 
     def config_options(self):
         if self.settings.os not in ["Linux", "FreeBSD"]:
@@ -255,7 +256,7 @@ class Recipe(RecipeBase[_Options]):
 
         self.output.debug(f"qt6: requested modules {list(requested_modules)}")
 
-        required_modules = {}
+        required_modules: dict[str, list[str]] = {}
         for module in requested_modules:
             deps = self._get_module_tree[module]["depends"]
             for dep in deps:
@@ -265,7 +266,7 @@ class Recipe(RecipeBase[_Options]):
         if required_modules:
             self.output.debug(f"qt6: required_modules modules {list(required_modules.keys())}")
         if required_but_disabled:
-            required_by = set()
+            required_by: set[str] = set()
             for m in required_but_disabled:
                 required_by.update(required_modules[m])
             raise RecipeInvalidConfiguration(
@@ -443,6 +444,7 @@ class Recipe(RecipeBase[_Options]):
 
         vbe = VirtualBuildEnv(self)
         vbe.generate()
+        vre: VirtualRunEnv | None = None
         if not cross_building(self):
             vre = VirtualRunEnv(self)
             vre.generate(scope="build")
@@ -459,7 +461,7 @@ class Recipe(RecipeBase[_Options]):
             dyld_library_path_build = vbe.vars().get("DYLD_LIBRARY_PATH")
             if dyld_library_path_build:
                 dyld_library_path = f"{dyld_library_path_build}:{dyld_library_path}"
-            if not cross_building(self):
+            if not cross_building(self) and vre is not None:
                 dyld_library_path_host = vre.vars().get("DYLD_LIBRARY_PATH")
                 if dyld_library_path_host:
                     dyld_library_path = f"{dyld_library_path_host}:{dyld_library_path}"
@@ -644,7 +646,7 @@ class Recipe(RecipeBase[_Options]):
         destination = self.folders.source
         if platform.system() == "Windows":
             # Don't use os.path.join, or it removes the \\?\ prefix, which enables long paths
-            destination = rf"\\?\{self.folders.source}"
+            destination = Path(rf"\\?\{self.folders.source}")
         get(
             self,
             url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
@@ -687,7 +689,7 @@ class Recipe(RecipeBase[_Options]):
                          " target_include_directories(WrapVulkanHeaders::WrapVulkanHeaders INTERFACE ${moltenvk_INCLUDE_DIR})"
             )
 
-    def _xplatform(self):
+    def _xplatform(self) -> str | None:
         if self.settings.os == "Linux":
             if self.settings.compiler == "gcc":
                 return {"ARM": "linux-aarch64-gnu-g++"}.get(str(self.settings.arch), "linux-g++")
@@ -731,7 +733,7 @@ class Recipe(RecipeBase[_Options]):
                         "190": "14",
                         "191": "15",
                         "192": "16",
-                    }.get(str(self.settings.compiler.version))
+                    }.get(str(self.settings.compiler.version), "")
                 return {
                     "14": {
                         "armv7": "winrt-arm-msvc2015",
@@ -748,7 +750,7 @@ class Recipe(RecipeBase[_Options]):
                         "x86": "winrt-x86-msvc2019",
                         "x86_64": "winrt-x64-msvc2019",
                     },
-                }.get(msvc_version).get(str(self.settings.arch))
+                }.get(msvc_version, {}).get(str(self.settings.arch))
 
         elif self.settings.os == "FreeBSD":
             return {
@@ -803,7 +805,7 @@ class Recipe(RecipeBase[_Options]):
     def _cmake_platform_target_setup_file(self):
         return os.path.join("lib", "cmake", "Qt6", "recipe_qt_platform_target_setup.cmake")
 
-    def _cmake_qt6_private_file(self, module):
+    def _cmake_qt6_private_file(self, module: str):
         return os.path.join("lib", "cmake", f"Qt6{module}", f"recipe_qt_qt6_{module.lower()}private.cmake")
 
     def package(self):
@@ -918,7 +920,7 @@ class Recipe(RecipeBase[_Options]):
         filecontents += 'set(CMAKE_AUTOMOC_MACRO_NAMES "Q_OBJECT" "Q_GADGET" "Q_GADGET_EXPORT" "Q_NAMESPACE" "Q_NAMESPACE_EXPORT")\n'
         save(self, self.folders.package / self._cmake_executables_file, filecontents)
 
-        def _create_private_module(module, dependencies):
+        def _create_private_module(module: str, dependencies: list[str]):
             dependencies_string = ';'.join(f"Qt6::{dependency}" for dependency in dependencies)
             contents = textwrap.dedent(
                 f"""
@@ -1011,14 +1013,14 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("pkg_config_name", "qt6")
 
         # consumers will need the QT_PLUGIN_PATH defined in runenv
-        self.runenv_info.define("QT_PLUGIN_PATH", self.folders.package / "plugins")
-        self.buildenv_info.define("QT_PLUGIN_PATH", self.folders.package / "plugins")
+        self.runenv_info.define("QT_PLUGIN_PATH", str(self.folders.package / "plugins"))
+        self.buildenv_info.define("QT_PLUGIN_PATH", str(self.folders.package / "plugins"))
 
-        self.buildenv_info.define("QT_HOST_PATH", self.folders.package)
+        self.buildenv_info.define("QT_HOST_PATH", str(self.folders.package))
 
-        build_modules = {}
+        build_modules: dict[str, list[str | Path]] = {}
 
-        def _add_build_module(component, module):
+        def _add_build_module(component: str, module: str | Path):
             if component not in build_modules:
                 build_modules[component] = []
             build_modules[component].append(module)
@@ -1030,8 +1032,8 @@ class Recipe(RecipeBase[_Options]):
             if is_apple_os(self):
                 libsuffix = "_debug"
 
-        def _get_corrected_reqs(requires):
-            reqs = []
+        def _get_corrected_reqs(requires: list[str]) -> list[str]:
+            reqs: list[str] = []
             for r in requires:
                 if "::" in r:
                     corrected_req = r
@@ -1041,7 +1043,7 @@ class Recipe(RecipeBase[_Options]):
                 reqs.append(corrected_req)
             return reqs
 
-        def _create_module(module, requires, has_include_dir=True):
+        def _create_module(module: str, requires: list[str], has_include_dir: bool = True):
             componentname = f"qt{module}"
             assert componentname not in self.info.components, f"Module {module} already present in self.info.components"
             self.info.components[componentname].set_property("cmake_target_name", f"Qt6::{module}")
@@ -1060,10 +1062,10 @@ class Recipe(RecipeBase[_Options]):
             self.info.components[componentname].requires = _get_corrected_reqs(requires)
 
         def _create_plugin(
-            pluginname,
-            libname,
-            plugintype,
-            requires):
+            pluginname: str,
+            libname: str,
+            plugintype: str,
+            requires: list[str]):
             componentname = f"qt{pluginname}"
             assert componentname not in self.info.components, f"Plugin {pluginname} already present in self.info.components"
             self.info.components[componentname].set_property("cmake_target_name", f"Qt6::{pluginname}")
@@ -1079,7 +1081,7 @@ class Recipe(RecipeBase[_Options]):
         # https://github.com/qt/qtbase/blob/v6.7.3/cmake/QtPlatformTargetHelpers.cmake
         self.info.components["qtPlatform"].set_property("cmake_target_name", "Qt6::Platform")
         self.info.components["qtPlatform"].set_property("cmake_target_aliases", ["Qt::Platform"])
-        self.info.components["qtPlatform"].includedirs = [os.path.join("mkspecs", self._xplatform())]
+        self.info.components["qtPlatform"].includedirs = [os.path.join("mkspecs", self._xplatform() or "")]
         if self.settings.os == "Android":
             self.info.components["qtPlatform"].system_libs.append("log")
         if self.settings.os in ["Linux", "FreeBSD"]:
@@ -1126,7 +1128,7 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["qtDBus"].system_libs.append("user32")
                 self.info.components["qtDBus"].system_libs.append("ws2_32")
         if self.options.gui:
-            gui_reqs = []
+            gui_reqs: list[str] = []
             if self.options.with_dbus:
                 gui_reqs.append("DBus")
             if self.options.with_freetype:
@@ -1256,7 +1258,7 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["qtQODBCDriverPlugin"].requires.append("odbc::odbc")
             else:
                 self.info.components["qtQODBCDriverPlugin"].system_libs.append("odbc32")
-        networkReqs = []
+        networkReqs: list[str] = []
         if self.options.openssl:
             networkReqs.append("openssl::openssl")
         if self.options.with_brotli:
@@ -1653,7 +1655,7 @@ class Recipe(RecipeBase[_Options]):
                     self.info.components[component].exelinkflags.extend(obj_files)
                     self.info.components[component].sharedlinkflags.extend(obj_files)
 
-        build_modules_list: list[Path] = []
+        build_modules_list: list[str | Path] = []
 
         if self.options.qtdeclarative:
             build_modules_list.append(self.folders.package / "lib" / "cmake" / "Qt6Qml" / "recipe_qt_qt6_policies.cmake")

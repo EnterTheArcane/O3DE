@@ -73,8 +73,8 @@ class Recipe(RecipeBase[_Options]):
             self.info.defines = ["XML_STATIC"]
         if self.options.char_type in ("wchar_t", "ushort"):
             self.info.defines.append("XML_UNICODE")
-        elif self.options.char_type == "wchar_t":
-            self.info.defines.append("XML_UNICODE_WCHAR_T")
+            if self.options.char_type == "wchar_t":
+                self.info.defines.append("XML_UNICODE_WCHAR_T")
         if self.options.large_size:
             self.info.defines.append("XML_LARGE_SIZE")
 

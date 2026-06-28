@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rm, rmdir

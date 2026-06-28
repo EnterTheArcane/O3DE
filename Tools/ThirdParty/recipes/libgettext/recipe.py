@@ -1,4 +1,3 @@
-import glob
 import os
 from pathlib import Path
 
@@ -134,7 +133,7 @@ class Recipe(RecipeBase[_Options]):
         tc.make_args += ["-C", "intl"]
         env = tc.environment()
         if is_msvc(self) or self._is_clang_cl:
-            def programs():
+            def programs() -> tuple[str, str, str, str | None]:
                 rc = None
                 if self.settings.arch == "X64":
                     rc = "windres --target=pe-x86-64"
@@ -142,8 +141,7 @@ class Recipe(RecipeBase[_Options]):
                     rc = "windres --target=pe-i386"
                 if self._is_clang_cl:
                     return os.environ.get("CC", "clang-cl"), os.environ.get("AR", "llvm-lib"), os.environ.get("LD", "lld-link"), rc
-                if is_msvc(self):
-                    return "cl -nologo", "lib", "link", rc
+                return "cl -nologo", "lib", "link", rc
 
             compile_wrapper = unix_path(self, self.conf.get("user.automake:compile-wrapper", check_type=str))
             ar_wrapper = unix_path(self, self.conf.get("user.automake:lib-wrapper", check_type=str))
@@ -163,13 +161,13 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self) or self._is_clang_cl:
             # Custom AutotoolsDeps for cl like compilers
             # workaround for upstream issue 12784
-            includedirs = []
-            defines = []
-            libs = []
-            libdirs = []
-            linkflags = []
-            cxxflags = []
-            cflags = []
+            includedirs: list[str] = []
+            defines: list[str] = []
+            libs: list[str] = []
+            libdirs: list[str] = []
+            linkflags: list[str] = []
+            cxxflags: list[str] = []
+            cflags: list[str] = []
             for dependency in self.dependencies.values():
                 deps_cpp_info = dependency.info.aggregated_components()
                 includedirs.extend(deps_cpp_info.includedirs)
@@ -219,7 +217,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.frameworks.append("CoreFoundation")
 
 
-def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix=True):
+def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     if not recipe.settings.get_safe("compiler.runtime"):
         return
@@ -231,7 +229,7 @@ def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix=True):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]
-                dst = os.path.join(os.path.dirname(filepath), f"{libname}.lib")
+                dst = filepath.parent / f"{libname}.lib"
                 if os.path.isfile(dst):
                     os.remove(dst)
                 rename(recipe, filepath, dst)

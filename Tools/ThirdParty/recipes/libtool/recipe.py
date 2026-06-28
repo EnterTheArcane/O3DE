@@ -119,7 +119,7 @@ class Recipe(RecipeBase[_Options]):
         else:
             return "a"
 
-    def _rm_binlib_files_containing(self, ext_inclusive, ext_exclusive=None):
+    def _rm_binlib_files_containing(self, ext_inclusive: str, ext_exclusive: str | None = None):
         regex_in = re.compile(r".*\.({})($|\..*)".format(ext_inclusive))
         if ext_exclusive:
             regex_out = re.compile(r".*\.({})($|\..*)".format(ext_exclusive))

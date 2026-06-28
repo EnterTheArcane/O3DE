@@ -84,7 +84,8 @@ class Recipe(RecipeBase[_Options]):
         if self._with_nasm:
             env = Environment()
             nasm_exe: str = "nasm{}".format(".exe" if self.settings.os == "Windows" else "")
-            env.define("AS", unix_path(self, self.dependencies.build["nasm"].folders.package / "bin" / nasm_exe))
+            as_path = unix_path(self, self.dependencies.build["nasm"].folders.package / "bin" / nasm_exe)
+            env.define("AS", as_path or "")
             env.vars(self).save_script("buildenv_nasm")
 
         if is_msvc(self):

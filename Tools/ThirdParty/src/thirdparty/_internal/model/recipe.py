@@ -15,6 +15,7 @@ from thirdparty._internal.model.layout import Folders
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
+from thirdparty._internal.model.settings import Settings
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
@@ -34,6 +35,19 @@ class RecipeOptions:
     __possible_values__: ClassVar[dict[str, list[Any]]]
 
     def get_safe(self, field: str, default: Any = None) -> Any:
+        ...
+
+    def rm_safe(self, field: str) -> None:
+        ...
+
+    def items(self) -> list[Any]:
+        ...
+
+    def __contains__(self, option: object) -> bool:
+        ...
+
+    def __getitem__(self, item: str) -> Any:
+        # Access the options of a dependency, e.g. ``self.options["glib"].shared``.
         ...
 
 
@@ -115,11 +129,12 @@ class RecipeBase(ABC, Generic[TOptions]):
     license: str | tuple[str, ...]
 
     # Binary model: Settings and Options
-    # ``settings`` is intentionally ``Any`` because the build driver assigns the settings model.
+    # The build driver assigns the real settings models. ``settings``/``settings_build`` are always
+    # present for a recipe being built; ``settings_target`` is only set for tool recipes.
     # ``options`` is generic for recipe author typing, but still holds the runtime Options proxy.
-    settings: Any = None  # set to a Settings object by the build driver (host/target)
-    settings_build: Any = None  # Settings for the build machine (tools)
-    settings_target: Any = None  # Settings of what a requires_tool will build for
+    settings: Settings = None  # type: ignore[assignment]  # set to a Settings object by the build driver (host)
+    settings_build: Settings = None  # type: ignore[assignment]  # Settings for the build machine (tools)
+    settings_target: Settings | None = None  # Settings of what a requires_tool will build for
 
     options: TOptions
     default_options: dict[str, Any] | None = None

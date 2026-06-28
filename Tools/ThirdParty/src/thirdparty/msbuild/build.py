@@ -1,3 +1,4 @@
+import os
 
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
@@ -45,7 +46,7 @@ class MSBuild:
         #: Defines the platform name, e.g., ``ARM`` if ``settings.arch == "armv7"``.
         self.platform = msvc_platform
 
-    def command(self, sln: str, targets: list[str] | None = None) -> str:
+    def command(self, sln: str | os.PathLike[str], targets: list[str] | None = None) -> str:
         """
         Gets the ``msbuild`` command line. For instance,
         :command:`msbuild.exe "MyProject.sln" -p:Configuration=<conf> -p:Platform=<platform>`.
@@ -73,7 +74,7 @@ class MSBuild:
 
         return cmd
 
-    def build(self, sln: str, targets: list[str] | None = None):
+    def build(self, sln: str | os.PathLike[str], targets: list[str] | None = None):
         """
         Runs the ``msbuild`` command line obtained from ``self.command(sln)``.
 

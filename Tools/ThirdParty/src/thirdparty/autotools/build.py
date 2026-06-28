@@ -42,8 +42,8 @@ class Autotools:
         self._autoreconf_args = toolchain_file_content.get("autoreconf_args")
 
     def configure(
-            self, 
-            build_script_folder: Path | None = None,
+            self,
+            build_script_folder: str | Path | None = None,
             args: list[str] | None = None):
         """
         Call the configure script.

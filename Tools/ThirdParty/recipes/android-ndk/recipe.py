@@ -78,6 +78,7 @@ class Recipe(RecipeBase):
 
     @property
     def _android_abi(self):
+        assert self.settings_target is not None
         return {
             "ARM": "arm64-v8a",
             "X64": "x86_64",
@@ -85,6 +86,7 @@ class Recipe(RecipeBase):
 
     @property
     def _llvm_triplet(self):
+        assert self.settings_target is not None
         arch = {
             "ARM": "aarch64",
             "X64": "x86_64",
@@ -93,6 +95,7 @@ class Recipe(RecipeBase):
 
     @property
     def _clang_triplet(self):
+        assert self.settings_target is not None
         arch = {
             "ARM": "aarch64",
             "X64": "x86_64",
@@ -105,6 +108,7 @@ class Recipe(RecipeBase):
         return f"{tool}{suffix}"
 
     def _tool_name(self, tool: str, bare: bool = False):
+        assert self.settings_target is not None
         if "clang" in tool:
             suffix = ".cmd" if self.settings.os == "Windows" else ""
             prefix = "llvm" if bare else f"{self._clang_triplet}{self.settings_target.os.api_level}"
@@ -245,6 +249,6 @@ class Recipe(RecipeBase):
 
         self.buildenv_info.define("ANDROID_PLATFORM", f"android-{self.settings_target.os.api_level}")
         self.buildenv_info.define("ANDROID_TOOLCHAIN", "clang")
-        self.buildenv_info.define("ANDROID_ABI", self._android_abi)
+        self.buildenv_info.define("ANDROID_ABI", self._android_abi or "")
         libcxx_str = str(self.settings_target.compiler.libcxx)
         self.buildenv_info.define("ANDROID_STL", libcxx_str if libcxx_str.startswith("c++_") else "c++_shared")
