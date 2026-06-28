@@ -56,4 +56,4 @@ jobs:
         timeout-minutes: 330
         run: >-
           thirdparty build
-          --target-arch "${{ inputs.arch }}"
+          --target-arch ${{ inputs.arch }}
