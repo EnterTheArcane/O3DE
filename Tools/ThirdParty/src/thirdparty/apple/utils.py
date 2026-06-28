@@ -121,18 +121,13 @@ class XCRun:
     def __init__(
         self,
         recipe: RecipeBase,
-        sdk: str | None = None,
-        use_settings_target: bool = False):
+        sdk: str | None = None):
         """
         :param recipe: Recipefile instance.
         :param sdk: Will skip the flag when ``False`` is passed and will try to adjust the
             sdk it automatically if ``None`` is passed.
-        :param use_settings_target: Try to use ``settings_target`` in case they exist
-                                    (``False`` by default)
         """
         settings = recipe.settings
-        if use_settings_target and recipe.settings_target is not None:
-            settings = recipe.settings_target
 
         if sdk is None and settings:
             sdk = settings.get_safe('os.sdk')

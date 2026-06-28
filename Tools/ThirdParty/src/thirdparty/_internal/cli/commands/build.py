@@ -247,7 +247,6 @@ def _build_dep_graph(
             dep.settings_build = dep.settings
         else:
             dep.settings_build = detect_settings(build_type)
-        dep.settings_target = None
         conf = make_conf(jobs=jobs)
         dep.conf = conf
         dep._recipe_runtime = _RecipeRuntime(conf)

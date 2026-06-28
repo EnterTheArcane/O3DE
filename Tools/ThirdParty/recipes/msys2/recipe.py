@@ -195,11 +195,3 @@ class Recipe(RecipeBase[_Options]):
 
         self.conf_info.define("tools.microsoft.bash:subsystem", "msys2")
         self.conf_info.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
-
-        if self.settings_target is not None and \
-                self.settings_target.os == "Windows" and \
-                self.settings_target.arch == "ARM":
-            # Expose /opt/bin to PATH, so that aarch64-w64-mingw32- prefixed tools can be found
-            # Define autotools host/build triplet so that the right tools are used
-            self.info.bindirs.insert(0, msys_root / "opt" / "bin")
-            self.conf_info.define("tools.gnu:host_triplet", "aarch64-w64-mingw32")

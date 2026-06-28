@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import re
 import zipfile
 
 from thirdparty import RecipeBase
@@ -40,102 +39,27 @@ class Recipe(RecipeBase):
         return Version(repo.latest_release)
 
     @property
-    def _ndk_major_minor(self):
-        match = re.search(r"r(\d+)(\w?)", self.version)
-        assert match
-        major, minor = match.groups()
-        return int(major), minor if minor else "a"
-
-    @property
-    def _ndk_version_major(self):
-        return self._ndk_major_minor[0]
-
-    @property
-    def _platform(self):
-        return {
-            "Linux": "linux",
-            "Mac": "darwin",
-            "Windows": "windows",
-        }.get(str(self.settings.os))
-
-    @property
     def _arch(self):
         if self.settings.os == "Mac":
             return "X64"
         return str(self.settings.arch)
 
     @property
-    def _host(self):
-        return f"{self._platform}-{self._arch}"
+    def _host_tag(self):
+        host_os = {
+            "Linux": "linux",
+            "Mac": "darwin",
+            "Windows": "windows",
+        }.get(str(self.settings.os))
+        return f"{host_os}-x86_64"
 
     @property
-    def _ndk_root_rel_path(self):
-        return os.path.join("bin", "toolchains", "llvm", "prebuilt", self._host)
+    def _toolchain_bin(self):
+        return self.folders.package / "bin" / "toolchains" / "llvm" / "prebuilt" / self._host_tag / "bin"
 
-    @property
-    def _ndk_root(self):
-        return self.folders.package / self._ndk_root_rel_path
-
-    @property
-    def _android_abi(self):
-        assert self.settings_target is not None
-        return {
-            "ARM": "arm64-v8a",
-            "X64": "x86_64",
-        }.get(str(self.settings_target.arch))
-
-    @property
-    def _llvm_triplet(self):
-        assert self.settings_target is not None
-        arch = {
-            "ARM": "aarch64",
-            "X64": "x86_64",
-        }.get(str(self.settings_target.arch))
-        return f"{arch}-linux-android"
-
-    @property
-    def _clang_triplet(self):
-        assert self.settings_target is not None
-        arch = {
-            "ARM": "aarch64",
-            "X64": "x86_64",
-        }.get(str(self.settings_target.arch))
-        abi = "android"
-        return f"{arch}-linux-{abi}"
-
-    def _wrap_executable(self, tool: str):
+    def _tool_exe(self, name: str):
         suffix = ".exe" if self.settings.os == "Windows" else ""
-        return f"{tool}{suffix}"
-
-    def _tool_name(self, tool: str, bare: bool = False):
-        assert self.settings_target is not None
-        if "clang" in tool:
-            suffix = ".cmd" if self.settings.os == "Windows" else ""
-            prefix = "llvm" if bare else f"{self._clang_triplet}{self.settings_target.os.api_level}"
-            return f"{prefix}-{tool}{suffix}"
-        else:
-            prefix = "llvm" if bare else f"{self._llvm_triplet}"
-            return self._wrap_executable(f"{prefix}-{tool}")
-
-    def _define_tool_var(
-        self,
-        name: str,
-        value: str,
-        bare: bool = False):
-        ndk_bin = self._ndk_root / "bin"
-        path = ndk_bin / self._tool_name(value, bare)
-        if not os.path.isfile(path):
-            self.output.error(f"Environment variable {name} could not be set: '{path}' not found")
-            return "UNKNOWN"
-        return path
-
-    def _define_tool_var_naked(self, name: str, value: str):
-        ndk_bin = self._ndk_root / "bin"
-        path = ndk_bin / self._wrap_executable(value)
-        if not os.path.isfile(path):
-            self.output.error(f"Environment variable {name} could not be set: '{path}' not found")
-            return "UNKNOWN"
-        return path
+        return self._toolchain_bin / f"{name}{suffix}"
 
     def _fix_permissions(self):
         if os.name != "posix":
@@ -206,47 +130,21 @@ class Recipe(RecipeBase):
         self.info.includedirs = []
         self.info.libdirs = []
 
-        self.buildenv_info.define_path("ANDROID_NDK_ROOT", self.folders.package / "bin")
-        self.buildenv_info.define_path("ANDROID_NDK_HOME", self.folders.package / "bin")
+        ndk_root = self.folders.package / "bin"
+        self.buildenv_info.define_path("ANDROID_NDK_ROOT", ndk_root)
+        self.buildenv_info.define_path("ANDROID_NDK_HOME", ndk_root)
+        self.buildenv_info.define_path("NDK_ROOT", ndk_root)
+        self.conf_info.define("tools.android:ndk_path", ndk_root)
+        self.buildenv_info.define_path("AR", self._tool_exe("llvm-ar"))
+        self.buildenv_info.define_path("RANLIB", self._tool_exe("llvm-ranlib"))
+        self.buildenv_info.define_path("STRIP", self._tool_exe("llvm-strip"))
+        self.buildenv_info.define_path("ADDR2LINE", self._tool_exe("llvm-addr2line"))
+        self.buildenv_info.define_path("NM", self._tool_exe("llvm-nm"))
+        self.buildenv_info.define_path("OBJCOPY", self._tool_exe("llvm-objcopy"))
+        self.buildenv_info.define_path("OBJDUMP", self._tool_exe("llvm-objdump"))
+        self.buildenv_info.define_path("READELF", self._tool_exe("llvm-readelf"))
+        self.buildenv_info.define_path("ELFEDIT", self._tool_exe("llvm-elfedit"))
 
-        if not hasattr(self, "settings_target") or self.settings_target is None:
-            return
-        if self.settings_target.os != "Android":
-            return
-
-        self.info.bindirs.append(os.path.join(self._ndk_root_rel_path, "bin"))
-        self.buildenv_info.define_path("NDK_ROOT", self._ndk_root)
-        self.buildenv_info.define("CHOST", self._llvm_triplet)
-
-        ndk_sysroot = self._ndk_root / "sysroot"
-        self.conf_info.define("tools.build:sysroot", ndk_sysroot)
-        self.buildenv_info.define_path("SYSROOT", ndk_sysroot)
-        self.buildenv_info.define("ANDROID_NATIVE_API_LEVEL", str(self.settings_target.os.api_level))
-        self.conf_info.define("tools.android:ndk_path", self.folders.package / "bin")
-
-        compiler_executables = {
-            "c": self._define_tool_var("CC", "clang"),
-            "cpp": self._define_tool_var("CXX", "clang++"),
-        }
-        self.conf_info.update("tools.build:compiler_executables", compiler_executables)
-        self.buildenv_info.define_path("CC", compiler_executables["c"])
-        self.buildenv_info.define_path("CXX", compiler_executables["cpp"])
-
-        bare = self._ndk_version_major >= 23
-        self.buildenv_info.define_path("AR", self._define_tool_var("AR", "ar", bare))
-        self.buildenv_info.define_path("RANLIB", self._define_tool_var("RANLIB", "ranlib", bare))
-        self.buildenv_info.define_path("STRIP", self._define_tool_var("STRIP", "strip", bare))
-        self.buildenv_info.define_path("ADDR2LINE", self._define_tool_var("ADDR2LINE", "addr2line", bare))
-        self.buildenv_info.define_path("NM", self._define_tool_var("NM", "nm", bare))
-        self.buildenv_info.define_path("OBJCOPY", self._define_tool_var("OBJCOPY", "objcopy", bare))
-        self.buildenv_info.define_path("OBJDUMP", self._define_tool_var("OBJDUMP", "objdump", bare))
-        self.buildenv_info.define_path("READELF", self._define_tool_var("READELF", "readelf", bare))
-
-        self.buildenv_info.define("ANDROID_PLATFORM", f"android-{self.settings_target.os.api_level}")
-        self.buildenv_info.define("ANDROID_TOOLCHAIN", "clang")
-        self.buildenv_info.define("ANDROID_ABI", self._android_abi or "")
-        libcxx_str = str(self.settings_target.compiler.libcxx)
-        self.buildenv_info.define("ANDROID_STL", libcxx_str if libcxx_str.startswith("c++_") else "c++_shared")
 
 def _chmod_plus_x(filename: str):
     if os.name == "posix":

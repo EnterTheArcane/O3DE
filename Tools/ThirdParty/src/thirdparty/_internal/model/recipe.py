@@ -129,12 +129,11 @@ class RecipeBase(ABC, Generic[TOptions]):
     license: str | tuple[str, ...]
 
     # Binary model: Settings and Options
-    # The build driver assigns the real settings models. ``settings``/``settings_build`` are always
-    # present for a recipe being built; ``settings_target`` is only set for tool recipes.
+    # The build driver assigns the real settings models. ``settings`` describes the host
+    # platform where this package runs; ``settings_build`` describes the build machine.
     # ``options`` is generic for recipe author typing, but still holds the runtime Options proxy.
     settings: Settings = None  # type: ignore[assignment]  # set to a Settings object by the build driver (host)
     settings_build: Settings = None  # type: ignore[assignment]  # Settings for the build machine (tools)
-    settings_target: Settings | None = None  # Settings of what a requires_tool will build for
 
     options: TOptions
     default_options: dict[str, Any] | None = None

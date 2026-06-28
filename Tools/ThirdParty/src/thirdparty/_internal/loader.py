@@ -152,7 +152,6 @@ def make_probe_recipe(
         recipe.settings_build = recipe.settings
     else:
         recipe.settings_build = detect_settings(build_type)
-    recipe.settings_target = None
     conf = make_conf(jobs=jobs)
     recipe.conf = conf
     recipe._recipe_runtime = RecipeRuntime(conf)

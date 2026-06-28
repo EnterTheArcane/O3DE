@@ -24,9 +24,6 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def configure(self):
-        if str(self.settings.os) == "baremetal":
-            self.options.with_os_api = False
-
         if self.options.header_only:
             self.options.with_os_api = False
 

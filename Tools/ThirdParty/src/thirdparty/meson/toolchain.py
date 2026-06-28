@@ -242,11 +242,6 @@ class MesonToolchain:
                 self.cross_build["build"]["subsystem"] = get_apple_subsystem(sdk_build)
             # Issue: upstream issue 19217
             self.properties["needs_exe_wrapper"] = not can_run(self._recipe)
-            if hasattr(recipe, 'settings_target') and recipe.settings_target:
-                settings_target = recipe.settings_target
-                os_target = settings_target.get_safe("os")
-                arch_target = settings_target.get_safe("arch")
-                self.cross_build["target"] = to_meson_machine(os_target, arch_target)
             if is_apple_os(self._recipe):  # default cross-compiler in Apple is common
                 default_comp = "clang"
                 default_comp_cpp = "clang++"
