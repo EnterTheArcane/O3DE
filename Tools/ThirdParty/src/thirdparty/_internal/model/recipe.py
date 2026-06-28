@@ -140,7 +140,6 @@ class RecipeBase(ABC, Generic[TOptions]):
     default_options: dict[str, Any] | None = None
 
     win_bash: bool | None = None
-    win_bash_run: bool | None = None  # For run scope
 
     recipe_folder: str | None = None
 

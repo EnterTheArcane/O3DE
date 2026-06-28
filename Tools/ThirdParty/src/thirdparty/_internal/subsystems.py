@@ -7,9 +7,6 @@ Potential scenarios:
     - Need to build in bash (tools.microsoft.bash:subsystem=xxx,
                              tools.microsoft.bash:path=<path>,
                              recipe.win_bash)
-    - Need to run (tests) in bash (tools.microsoft.bash:subsystem=xxx,
-                                   tools.microsoft.bash:path=<path>,
-                                   recipe.win_bash_run)
   - Targeting Subsystem (os.subsystem = msys2/cygwin)
     - Always builds and runs in bash (tools.microsoft.bash:path)
 
@@ -46,11 +43,9 @@ def command_env_wrapper(
 
     active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
     subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
-    if platform.system() == "Windows" and ((recipe.win_bash and scope == "build") or (recipe.win_bash_run and scope == "run")):
+    if platform.system() == "Windows" and ((recipe.win_bash and scope == "build")):
         if subsystem is None:
-            raise RecipeException(
-                "win_bash/win_bash_run defined but no "
-                "tools.microsoft.bash:subsystem")
+            raise RecipeException("win_bash defined but no tools.microsoft.bash:subsystem")
         if active:
             wrapped_cmd = environment_wrap_command(recipe, envfiles, envfiles_folder, command)
         else:
@@ -148,20 +143,13 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
             raise RecipeException(
                 "win_bash=True but tools.microsoft.bash:subsystem "
                 "configuration not defined")
-        if recipe.win_bash_run:
-            raise RecipeException(
-                "win_bash_run=True but tools.microsoft.bash:subsystem "
-                "configuration not defined")
         return WINDOWS
     active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
     if active:
         return subsystem
 
-    if scope.startswith("build"):  # "run" scope do not follow win_bash
+    if scope.startswith("build") or scope.startswith("run"): 
         if recipe.win_bash:
-            return subsystem
-    elif scope.startswith("run"):
-        if recipe.win_bash_run:
             return subsystem
 
     return WINDOWS
