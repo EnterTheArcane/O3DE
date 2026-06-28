@@ -119,17 +119,17 @@ class Recipe(RecipeBase[_Options]):
         autotools.install(args=[f"DESTDIR={unix_path(self, self.folders.package)}"])  # Need to specify the `DESTDIR` as a Unix path, aware of the subsystem
         fix_apple_shared_install_name(self)
         mkdir(self, self.folders.package / "bin")
-        for dll in glob.glob(self.folders.package / "lib" / "*.dll"):
+        for dll in (self.folders.package / "lib").glob("*.dll"):
             shutil.move(dll, self.folders.package / "bin")
         if is_msvc(self) and self.options.shared:
-            for lib_path in glob.glob(self.folders.package / "lib" / "*.dll.lib"):
+            for lib_path in (self.folders.package / "lib").glob("*.dll.lib"):
                 libname = os.path.basename(lib_path)[:-len(".dll.lib")]
                 dst = self.folders.package / "lib" / f"{libname}.lib"
                 if os.path.isfile(dst):
                     os.remove(dst)
                 shutil.move(lib_path, dst)
         elif is_msvc(self) and not self.options.shared:
-            for a_path in glob.glob(self.folders.package / "lib" / "*.a"):
+            for a_path in (self.folders.package / "lib").glob("*.a"):
                 libname = os.path.basename(a_path)[:-2]  # strip .a
                 dst = self.folders.package / "lib" / f"{libname}.lib"
                 if os.path.isfile(dst):

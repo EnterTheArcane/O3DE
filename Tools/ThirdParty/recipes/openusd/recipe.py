@@ -83,11 +83,17 @@ class Recipe(RecipeBase[_Options]):
         deps = CMakeDeps(self)
         deps.set_property("onetbb", "cmake_file_name", "TBB")
         deps.set_property("onetbb", "cmake_target_name", "TBB::tbb")
-        # Don't generate CMake files for cpython - use FindPython3 directly via Python3_ROOT_DIR
+        # Don't generate CMake files for cpython - use FindPython3 directly via Python3_ROOT_DIR.
+        # cpython is required in both the host and build (tool) contexts, and the build context
+        # must be suppressed too; otherwise CMakeDeps still emits Python3Config.cmake for the
+        # tool-context cpython, whose target file calls find_dependency(Curses) for its transitive
+        # ncurses - which fails because no CursesConfig.cmake is generated.
         deps.set_property("cpython", "cmake_find_mode", "none")
+        deps.set_property("cpython", "cmake_find_mode", "none", build_context=True)
         # Don't generate CMake files for transitive deps that OpenUSD finds via FindPython3
         # ncurses is a transitive dep of cpython
         deps.set_property("ncurses", "cmake_find_mode", "none")
+        deps.set_property("ncurses", "cmake_find_mode", "none", build_context=True)
         deps.generate()
 
     def build(self):

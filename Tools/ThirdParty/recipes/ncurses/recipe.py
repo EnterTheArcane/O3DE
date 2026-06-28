@@ -285,6 +285,6 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_build_modules", [module_rel_path])
 
         terminfo = self.folders.package / "res" / "terminfo"
-        self.buildenv_info.define_path("TERMINFO", terminfo)
-        self.runenv_info.define_path("TERMINFO", terminfo)
+        self.buildenv_info.define_path("TERMINFO", terminfo.as_posix())
+        self.runenv_info.define_path("TERMINFO", terminfo.as_posix())
         self.conf_info.define("user.ncurses:lib_suffix", self._lib_suffix)

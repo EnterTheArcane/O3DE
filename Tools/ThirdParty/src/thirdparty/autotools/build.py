@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import re
 from collections.abc import Iterable
 
@@ -40,7 +41,10 @@ class Autotools:
         self._make_args = toolchain_file_content.get("make_args")
         self._autoreconf_args = toolchain_file_content.get("autoreconf_args")
 
-    def configure(self, build_script_folder: str | None = None, args: list[str] | None = None):
+    def configure(
+            self, 
+            build_script_folder: Path | None = None,
+            args: list[str] | None = None):
         """
         Call the configure script.
 
@@ -50,14 +54,14 @@ class Autotools:
         """
         # http://jingfenghanmax.blogspot.com.es/2010/09/configure-with-host-target-and-build.html
         # https://gcc.gnu.org/onlinedocs/gccint/Configure-Terms.html
-        script_folder = os.path.join(self._recipe.folders.source, build_script_folder) if build_script_folder else self._recipe.folders.source
+        script_folder = self._recipe.folders.source / build_script_folder if build_script_folder else self._recipe.folders.source
 
-        configure_args = []
+        configure_args: list[str] = []
         configure_args.extend(args or [])
 
         self._configure_args = f"{self._configure_args} {cmd_args_to_string(configure_args)}"
 
-        configure_cmd = f"{script_folder}/configure"
+        configure_cmd = script_folder / "configure"
         subsystem = deduce_subsystem(self._recipe, scope="build")
         configure_cmd = subsystem_path(subsystem, configure_cmd)
         cmd = f'"{configure_cmd}" {self._configure_args}'

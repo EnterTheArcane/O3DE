@@ -127,7 +127,7 @@ class RecipeRuntime:
     def __init__(self, conf: Any):
         # Lazy import: rest.http_requester imports loader.load_python_file, so a module-level
         # import here would be circular.
-        from thirdparty._internal.rest.http_requester import HttpRequester
+        from thirdparty._internal.util.http_requester import HttpRequester
         self.global_conf = conf
         self.requester = HttpRequester(conf)
         self.home_folder = None

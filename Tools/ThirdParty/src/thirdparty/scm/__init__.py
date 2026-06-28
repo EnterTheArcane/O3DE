@@ -5,3 +5,5 @@ from thirdparty.scm.github import GithubRepository
 from thirdparty.scm.gitlab import GitlabRepository
 from thirdparty.scm.gnuftp import GnuFtp
 from thirdparty.scm.google import GoogleSourceRepository
+
+__all__ = ["Version", "BitbucketRepository", "Git", "GithubRepository", "GitlabRepository", "GnuFtp", "GoogleSourceRepository"]

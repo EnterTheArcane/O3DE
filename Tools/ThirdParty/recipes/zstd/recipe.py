@@ -65,8 +65,8 @@ class Recipe(RecipeBase[_Options]):
             # If we build programs we have to build static libs (see logic in generate()),
             # but if shared is True, we only want shared lib in package folder.
             rm(self, "*_static.*", self.folders.package / "lib")
-            for lib in glob.glob(self.folders.package / "lib" / "*.a"):
-                if not lib.endswith(".dll.a"):
+            for lib in (self.folders.package / "lib").glob("*.a"):
+                if not str(lib).endswith(".dll.a"):
                     os.remove(lib)
 
     def package_info(self):

@@ -1,5 +1,6 @@
 import glob
 import os
+from pathlib import Path
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
@@ -218,15 +219,15 @@ class Recipe(RecipeBase[_Options]):
             self.info.frameworks.append("CoreFoundation")
 
 
-def fix_msvc_libname(recipe, remove_lib_prefix=True):
+def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix=True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     if not recipe.settings.get_safe("compiler.runtime"):
         return
     libdirs = recipe.info.libdirs
     for libdir in libdirs:
         for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = recipe.folders.package / libdir
-            for filepath in glob.glob(full_folder / f"*{ext}"):
+            full_folder: Path = recipe.folders.package / libdir
+            for filepath in full_folder.glob(f"*{ext}"):
                 libname = os.path.basename(filepath)[0:-len(ext)]
                 if remove_lib_prefix and libname[0:3] == "lib":
                     libname = libname[3:]

@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import time
@@ -6,9 +7,34 @@ from typing import Any
 from thirdparty._internal.errors import (
     ConnectionErrorException, RequestErrorException, AuthenticationException, ForbiddenException, NotFoundException, )
 from thirdparty._internal.output import Output, TimedOutput
-from thirdparty._internal.rest import response_to_str
 from thirdparty._internal.util.files import human_size, check_with_algorithm_sum
 from thirdparty.errors import RecipeException
+
+
+def response_to_str(response):
+    content = response.content
+    try:
+        # A bytes message, decode it as str
+        if isinstance(content, bytes):
+            content = content.decode()
+
+        content_type = response.headers.get("content-type")
+
+        if content_type == "application/json":
+            # Errors from Artifactory looks like:
+            #  {"errors" : [ {"status" : 400, "message" : "Bla bla bla"}]}
+            try:
+                data = json.loads(content)["errors"][0]
+                content = f'{data["status"]}: {data["message"]}'
+            except Exception:
+                pass
+        elif "text/html" in content_type:
+            content = f"{response.status_code}: {response.reason}"
+
+        return content
+
+    except Exception:
+        return response.content
 
 
 class FileDownloader:

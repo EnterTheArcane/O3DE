@@ -1,44 +1,35 @@
 import copy
 import fnmatch
-import hashlib
 import numbers
 import os
-import platform
 import re
-import textwrap
 from typing import Any
-
 
 from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.model.settings import SettingsItem
-from thirdparty._internal.util import detect_api
-from thirdparty._internal.util.files import load, save
-from thirdparty._internal.util.home_paths import HomePaths
 from thirdparty.errors import RecipeException
 
 BUILT_IN_CONFS = {
     "core:non_interactive": "Disable interactive user input, raises error if input necessary",
-    "core:warnings_as_errors": "Treat warnings matching any of the patterns in this list as errors and then raise an exception. "
-                               "Current warning tags are 'network', 'deprecated'",
-    "core:skip_warnings": "Do not show warnings matching any of the patterns in this list. "
-                          "Current warning tags are 'network', 'deprecated', 'experimental'",
+    "core:warnings_as_errors": "Treat warnings matching any of the patterns in this list as errors and then raise an exception. Current warning tags are 'network', 'deprecated'",
+    "core:skip_warnings": "Do not show warnings matching any of the patterns in this list. Current warning tags are 'network', 'deprecated', 'experimental'",
     "core:default_profile": "Defines the default host profile ('default' by default)",
     "core:default_build_profile": "Defines the default build profile ('default' by default)",
     "core:allow_uppercase_pkg_names": "Temporarily (will be removed in 2.X) allow uppercase names",
     "core.version_ranges:resolve_prereleases": "Whether version ranges can resolve to pre-releases or not",
     "core.download:download_cache": "Define path to a source file download cache",
-    "core.cache:storage_path": "Absolute path where the packages and database are stored", # Sources backup
+    "core.cache:storage_path": "Absolute path where the packages and database are stored",  # Sources backup
     "core.sources:download_cache": "Folder to store the sources backup",
     "core.sources:download_urls": "List of URLs to download backup sources from",
     "core.sources:upload_url": "Remote URL to upload backup sources to",
     "core.sources:exclude_urls": "URLs which will not be backed up",
-    "core.sources.patch:extra_path": "Extra path to search for patch files for recipe create", # Package ID
+    "core.sources.patch:extra_path": "Extra path to search for patch files for recipe create",  # Package ID
     "core.package_id:default_unknown_mode": "By default, 'semver_mode'",
     "core.package_id:default_non_embed_mode": "By default, 'minor_mode'",
     "core.package_id:default_embed_mode": "By default, 'full_mode'",
     "core.package_id:default_python_mode": "By default, 'minor_mode'",
     "core.package_id:default_build_mode": "By default, 'None'",
-    "core.package_id:config_mode": "How the 'config_version' affects binaries. By default 'None'", # General HTTP(python-requests) configuration
+    "core.package_id:config_mode": "How the 'config_version' affects binaries. By default 'None'",  # General HTTP(python-requests) configuration
     "core.net.http:max_retries": "Maximum number of connection retries (requests library)",
     "core.net.http:timeout": "Number of seconds without response to timeout (requests library)",
     "core.net.http:no_proxy_match": "List of urls to skip from proxies configuration",
@@ -47,9 +38,9 @@ BUILT_IN_CONFS = {
     "core.net.http:client_cert": "Path or tuple of files containing a client cert (and key)",
     "core.net.http:clean_system_proxy": "If defined, the proxies system env-vars will be discarded",
     "core.gzip:compresslevel": "The Gzip compression level for Recipe artifacts (default=9)",
-    "core:compresslevel": "The compression level for Recipe artifacts (default zstd=3, gz=9)", # Excluded from revision_mode = "scm" dirty and Git().is_dirty() checks
+    "core:compresslevel": "The compression level for Recipe artifacts (default zstd=3, gz=9)",  # Excluded from revision_mode = "scm" dirty and Git().is_dirty() checks
     "core.scm:excluded": "List of excluded patterns for builtin git dirty checks",
-    "core.scm:local_url": "By default allows to store local folders as remote url, but not upload them. Use 'allow' for allowing upload and 'block' to completely forbid it", # Tools
+    "core.scm:local_url": "By default allows to store local folders as remote url, but not upload them. Use 'allow' for allowing upload and 'block' to completely forbid it",  # Tools
     "tools.android:ndk_path": "Argument for the CMAKE_ANDROID_NDK",
     "tools.android:cmake_legacy_toolchain": "Define to explicitly pass ANDROID_USE_LEGACY_TOOLCHAIN_FILE in CMake toolchain",
     "tools.build:skip_test": "Do not execute CMake.test() and Meson.test() when enabled",
@@ -117,7 +108,7 @@ BUILT_IN_CONFS = {
     "tools.apple:enable_visibility": "(boolean) Enable/Disable Visibility Apple Clang flags",
     "tools.env.virtualenv:powershell": "If specified, it generates PowerShell launchers (.ps1). Use this configuration setting the PowerShell executable you want to use (e.g., 'powershell.exe' or 'pwsh')",
     "tools.env:dotenv": "(Experimental) Generate dotenv environment files",
-    "tools.env:deactivation_mode": "(Experimental) If 'function', generate a deactivate function instead of a script to unset the environment variables", # Compilers/Flags configurations
+    "tools.env:deactivation_mode": "(Experimental) If 'function', generate a deactivate function instead of a script to unset the environment variables",  # Compilers/Flags configurations
     "tools.build:compiler_executables": "Defines a Python dict-like with the compilers path to be used. Allowed keys {'c', 'cpp', 'cuda', 'objc', 'objcxx', 'rc', 'fortran', 'asm', 'hip', 'ispc'}",
     "tools.build:cxxflags": "List of extra CXX flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:cflags": "List of extra C flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
@@ -125,9 +116,8 @@ BUILT_IN_CONFS = {
     "tools.build:sharedlinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:exelinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:rcflags": "List of extra RC (resource compiler) flags used by different toolchains like CMakeToolchain, MSBuildToolchain and MesonToolchain",
-    "tools.build:linker_scripts": "List of linker script files to pass to the linker used by different toolchains like CMakeToolchain, AutotoolsToolchain, and MesonToolchain", # Toolchain installation
-    "tools.build:install_strip": "(boolean or list) True/False to strip on install for every CMake, Meson and Autotools "
-                                 "integration, or a list of 'cmake', 'meson', 'autotools' to strip only for those.", # Package ID composition
+    "tools.build:linker_scripts": "List of linker script files to pass to the linker used by different toolchains like CMakeToolchain, AutotoolsToolchain, and MesonToolchain",  # Toolchain installation
+    "tools.build:install_strip": "(boolean or list) True/False to strip on install for every CMake, Meson and Autotools integration, or a list of 'cmake', 'meson', 'autotools' to strip only for those.",  # Package ID composition
     "tools.info.package_id:confs": "List of existing configuration to be part of the package ID",
 }
 

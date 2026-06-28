@@ -170,7 +170,7 @@ class Recipe(RecipeBase[_Options]):
         self._patch_sources()
 
         if self.options.dat_package_file:
-            dat_package_file = glob.glob(self.folders.source / "source" / "data" / "in" / "*.dat")
+            dat_package_file = list((self.folders.source / "source" / "data" / "in").glob("*.dat"))
             if dat_package_file:
                 shutil.copy(str(self.options.dat_package_file), dat_package_file[0])
 
@@ -203,7 +203,7 @@ class Recipe(RecipeBase[_Options]):
         autotools = Autotools(self)
         autotools.install()
 
-        dll_files = glob.glob(self.folders.package / "lib" / "*.dll")
+        dll_files = (self.folders.package / "lib").glob("*.dll")
         if dll_files:
             bin_dir = self.folders.package / "bin"
             mkdir(self, bin_dir)
