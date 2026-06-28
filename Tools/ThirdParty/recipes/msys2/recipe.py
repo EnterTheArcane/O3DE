@@ -8,7 +8,7 @@ from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
-from thirdparty.files import chdir, get, replace_in_file, copy
+from thirdparty.files import chdir, get, replace_in_file, copy, rm
 
 
 # ``ctypes.windll`` / ``ctypes.WinError`` only exist on Windows; OpLock is Windows-only and the
@@ -172,6 +172,7 @@ class Recipe(RecipeBase[_Options]):
         excludes = None
         if self.options.exclude_files:
             excludes = tuple(str(self.options.exclude_files).split(","))
+        rm(self, "mtab", self.folders.source, recursive=True)
         for exclude in (excludes or ()):
             for root, _, filenames in os.walk(self._msys_dir):
                 for filename in filenames:
