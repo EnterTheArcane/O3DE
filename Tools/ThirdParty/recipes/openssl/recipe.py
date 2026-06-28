@@ -345,11 +345,11 @@ class Recipe(RecipeBase[_Options]):
             if self._use_nmake:
                 # notes: consider where this should be "if on windows"
                 #        zlib1 is assumed to be the name of the zlib1.dll for all windows configurations
-                lib_path = self._adjust_path(zlib_cpp_info.libdirs[0] / f"{zlib_cpp_info.libs[0]}.lib")
+                lib_path = self._adjust_path(Path(zlib_cpp_info.libdirs[0]) / f"{zlib_cpp_info.libs[0]}.lib")
                 zlib_lib_flag = "zlib1" if is_shared_zlib else lib_path
             else:
                 # Just path, GNU like compilers will find the right file
-                zlib_lib_flag = self._adjust_path(zlib_cpp_info.libdirs[0])
+                zlib_lib_flag = self._adjust_path(Path(zlib_cpp_info.libdirs[0]))
 
             zlib_configure_arg = "zlib-dynamic" if is_shared_zlib else "zlib"
             args.append(zlib_configure_arg)

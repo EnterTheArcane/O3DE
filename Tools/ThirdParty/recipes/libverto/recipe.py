@@ -2,6 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.env import VirtualBuildEnv
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
@@ -22,6 +23,10 @@ class Recipe(RecipeBase[_Options]):
     def latest_version(self):
         repo = GithubRepository(self, "latchset/libverto")
         return Version(repo.latest_release)
+
+    def validate(self):
+        if self.settings.os == "Windows":
+            raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
