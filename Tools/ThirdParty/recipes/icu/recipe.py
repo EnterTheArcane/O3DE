@@ -36,10 +36,6 @@ class Recipe(RecipeBase[_Options]):
     def _enable_icu_tools(self):
         return self.settings.os not in ["iOS", "tvOS", "watchOS", "Emscripten"]
 
-    def configure(self):
-        if self.settings.os == "Windows":
-            del self.options.data_packaging
-
     def requirements(self):
         if self.settings.os == "Windows":
             self.win_bash = True

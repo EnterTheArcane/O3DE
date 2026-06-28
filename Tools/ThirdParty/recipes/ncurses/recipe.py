@@ -43,7 +43,7 @@ class Recipe(RecipeBase[_Options]):
             self.settings.rm_safe("compiler.libcxx")
             self.settings.rm_safe("compiler.cppstd")
         if not self.options.with_widec:
-            del self.options.with_extended_colors
+            self.options.with_extended_colors = False
 
     def requirements(self):
         if self.options.with_pcre2:
@@ -51,7 +51,7 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self):
             self.requires("getopt-for-visual-studio")
             self.requires("dirent")
-            if self.options.get_safe("with_extended_colors"):
+            if self.options.with_extended_colors:
                 self.requires("naive-tsearch")
         if self.settings_build.os == "Windows":
             self.win_bash = True
@@ -81,7 +81,7 @@ class Recipe(RecipeBase[_Options]):
             f"--with-cxx-shared={yes_no(self.options.shared)}",
             f"--with-normal={yes_no(not self.options.shared)}",
             f"--enable-widec={yes_no(self.options.with_widec)}",
-            f"--enable-ext-colors={yes_no(self.options.get_safe('with_extended_colors'))}",
+            f"--enable-ext-colors={yes_no(self.options.with_extended_colors)}",
             f"--enable-reentrant={yes_no(self.options.with_reentrant)}",
             f"--with-pcre2={yes_no(self.options.with_pcre2)}",
             f"--with-cxx-binding={yes_no(self.options.with_cxx)}",
@@ -125,7 +125,7 @@ class Recipe(RecipeBase[_Options]):
             tc.extra_cflags.append("-FS")
             tc.extra_cxxflags.append("-FS")
             tc.extra_cxxflags.append("-EHsc")
-            if self.options.get_safe("with_extended_colors"):
+            if self.options.with_extended_colors:
                 tc.extra_cflags.append(" ".join(f"-I{dir}" for dir in self.dependencies["naive-tsearch"].info.includedirs))
                 tc.extra_ldflags.append(" ".join(f"-l{lib}" for lib in self.dependencies["naive-tsearch"].info.libs))
         if self._is_mingw:
@@ -270,7 +270,7 @@ class Recipe(RecipeBase[_Options]):
                 "getopt-for-visual-studio::getopt-for-visual-studio",
                 "dirent::dirent",
             ]
-            if self.options.get_safe("with_extended_colors"):
+            if self.options.with_extended_colors:
                 self.info.components["libcurses"].requires += [
                     "naive-tsearch::naive-tsearch",
                 ]

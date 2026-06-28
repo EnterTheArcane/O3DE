@@ -23,7 +23,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.arch not in ["X64"]:
-            del self.options.sse
+            self.options.sse = False
 
     def source(self):
         get(
@@ -36,9 +36,9 @@ class Recipe(RecipeBase[_Options]):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.get_safe("fPIC", True)
+        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.fPIC
         tc.variables["ENABLE_SDL"] = False
-        tc.variables["DISABLE_SSE"] = not self.options.get_safe("sse", False)
+        tc.variables["DISABLE_SSE"] = not self.options.sse
         tc.generate()
 
     def _patch_sources(self):

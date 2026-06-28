@@ -31,14 +31,14 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os != "Linux":
-            del self.options.with_mount
-            del self.options.with_selinux
+            self.options.with_mount = False
+            self.options.with_selinux = False
         self.options.with_elf = self.settings.os == "Linux"
         if is_msvc(self):
-            del self.options.with_elf
+            self.options.with_elf = False
 
         if self.settings.os == "Neutrino":
-            del self.options.with_elf
+            self.options.with_elf = False
 
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -47,11 +47,11 @@ class Recipe(RecipeBase[_Options]):
         self.requires("zlib")
         self.requires("libffi")
         self.requires("pcre2")
-        if self.options.get_safe("with_elf"):
+        if self.options.with_elf:
             self.requires("elfutils")
-        if self.options.get_safe("with_mount"):
+        if self.options.with_mount:
             self.requires("libmount")
-        if self.options.get_safe("with_selinux"):
+        if self.options.with_selinux:
             self.requires("libselinux")
         if self.settings.os != "Linux":
             # for Linux, gettext is provided by libc
@@ -76,12 +76,12 @@ class Recipe(RecipeBase[_Options]):
         PkgConfigDeps(self).generate()
         tc = MesonToolchain(self)
 
-        tc.project_options["selinux"] = "enabled" if self.options.get_safe("with_selinux") else "disabled"
-        tc.project_options["libmount"] = "enabled" if self.options.get_safe("with_mount") else "disabled"
+        tc.project_options["selinux"] = "enabled" if self.options.with_selinux else "disabled"
+        tc.project_options["libmount"] = "enabled" if self.options.with_mount else "disabled"
         if self.settings.os == "FreeBSD" or self.settings.os == "Neutrino":
             tc.project_options["xattr"] = "false"
         tc.project_options["tests"] = "false"
-        tc.project_options["libelf"] = "enabled" if self.options.get_safe("with_elf") else "disabled"
+        tc.project_options["libelf"] = "enabled" if self.options.with_elf else "disabled"
 
         if self.settings.os == "Neutrino":
             tc.cross_build["host"]["system"] = "qnx"
@@ -216,13 +216,13 @@ class Recipe(RecipeBase[_Options]):
         else:
             self.info.components["glib-2.0"].requires.append("libgettext::libgettext")
 
-        if self.options.get_safe("with_mount"):
+        if self.options.with_mount:
             self.info.components["gio-2.0"].requires.append("libmount::libmount")
 
-        if self.options.get_safe("with_selinux"):
+        if self.options.with_selinux:
             self.info.components["gio-2.0"].requires.append("libselinux::libselinux")
 
-        if self.options.get_safe("with_elf"):
+        if self.options.with_elf:
             self.info.components["gresource"].requires.append("elfutils::libelf")  # this is actually an executable
 
         pkgconfig_variables = {

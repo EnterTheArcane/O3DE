@@ -24,7 +24,6 @@ class _Options(RecipeOptions):
     pymalloc: bool = True
     with_bz2: bool = True
     with_gdbm: bool = True
-    with_nis: bool = False
     with_sqlite3: bool = True
     with_tkinter: bool = True
     with_curses: bool = True
@@ -49,21 +48,20 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if is_msvc(self):
-            del self.options.lto
-            del self.options.docstrings
-            del self.options.pymalloc
-            del self.options.with_curses
-            del self.options.with_gdbm
-            del self.options.with_nis
+            self.options.lto = False
+            self.options.docstrings = False
+            self.options.pymalloc = False
+            self.options.with_curses = False
+            self.options.with_gdbm = False
 
         self.settings.compiler.rm_safe("libcxx")
         self.settings.compiler.rm_safe("cppstd")
 
         if not self._supports_modules:
-            del self.options.with_bz2
-            del self.options.with_sqlite3
-            del self.options.with_tkinter
-            del self.options.with_lzma
+            self.options.with_bz2 = False
+            self.options.with_sqlite3 = False
+            self.options.with_tkinter = False
+            self.options.with_lzma = False
 
     def requirements(self):
         self.requires("zlib")
@@ -76,21 +74,19 @@ class Recipe(RecipeBase[_Options]):
             if not is_apple_os(self):
                 self.requires("util-linux-libuuid")
             self.requires("libxcrypt")
-        if self.options.get_safe("with_bz2"):
+        if self.options.with_bz2:
             self.requires("bzip2")
-        if self.options.get_safe("with_gdbm", False):
+        if self.options.with_gdbm:
             self.requires("gdbm")
-        if self.options.get_safe("with_nis", False):
-            raise RuntimeError("nis is not available")
-        if self.options.get_safe("with_sqlite3"):
+        if self.options.with_sqlite3:
             self.requires("sqlite3")
-        if self.options.get_safe("with_tkinter"):
+        if self.options.with_tkinter:
             self.requires("tk")
-        if self.options.get_safe("with_curses", False):
+        if self.options.with_curses:
             # Used in a public header
             # https://github.com/python/cpython/blob/v3.10.13/Include/py_curses.h#L34
             self.requires("ncurses")
-        if self.options.get_safe("with_lzma", False):
+        if self.options.with_lzma:
             self.requires("xz")
         if not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
@@ -107,10 +103,10 @@ class Recipe(RecipeBase[_Options]):
         tc = AutotoolsToolchain(self, prefix=self.folders.package)
         # Not necessary, just cleans up the output
         tc.update_configure_args({"--enable-static": None, "--disable-static": None})
-        
+
         def yes_no(v: Any) -> str:
             return "yes" if v else "no"
-        
+
         tc.configure_args += [
             "--enable-shared" if self.options.shared else "--disable-shared",
             f"--with-doc-strings={yes_no(self.options.docstrings)}",
@@ -123,7 +119,7 @@ class Recipe(RecipeBase[_Options]):
             f"--with-openssl={self.dependencies['openssl'].folders.package}",
         ]
         tc.configure_args.append("--disable-test-modules")
-        if self.options.get_safe("with_sqlite3"):
+        if self.options.with_sqlite3:
             tc.configure_args.append(
                 f"--enable-loadable-sqlite-extensions={yes_no(not self.dependencies['sqlite3'].options.omit_load_extension)}"
             )
@@ -280,20 +276,20 @@ class Recipe(RecipeBase[_Options]):
             r'<ClCompile Include="$(opensslIncludeDir)\applink.c">',
             r'<ClCompile Include="$(opensslIncludeDir)\applink.c" Condition="False">')
 
-        self._inject_recipe_props_file("_bz2", "bzip2", self.options.get_safe("with_bz2"))
+        self._inject_recipe_props_file("_bz2", "bzip2", self.options.with_bz2)
         self._inject_recipe_props_file("_elementtree", "expat", self._supports_modules)
         self._inject_recipe_props_file("pyexpat", "expat", self._supports_modules)
         self._inject_recipe_props_file("_hashlib", "openssl", self._supports_modules)
         self._inject_recipe_props_file("_ssl", "openssl", self._supports_modules)
-        self._inject_recipe_props_file("_sqlite3", "sqlite3", self.options.get_safe("with_sqlite3"))
-        self._inject_recipe_props_file("_tkinter", "tk", self.options.get_safe("with_tkinter"))
+        self._inject_recipe_props_file("_sqlite3", "sqlite3", self.options.with_sqlite3)
+        self._inject_recipe_props_file("_tkinter", "tk", self.options.with_tkinter)
         self._inject_recipe_props_file("pythoncore", "zlib")
         self._inject_recipe_props_file("python", "zlib")
         self._inject_recipe_props_file("pythonw", "zlib")
         self._inject_recipe_props_file("_ctypes", "libffi", self._supports_modules)
         self._inject_recipe_props_file("_decimal", "mpdecimal", self._supports_modules)
-        self._inject_recipe_props_file("_lzma", "xz", self.options.get_safe("with_lzma"))
-        self._inject_recipe_props_file("_bsddb", "libdb", self.options.get_safe("with_bsddb", False))
+        self._inject_recipe_props_file("_lzma", "xz", self.options.with_lzma)
+        self._inject_recipe_props_file("_bsddb", "libdb", self.options.with_bsddb)
 
     def _patch_sources(self):
         apply_patches(self)
@@ -774,15 +770,15 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["_hidden"].requires.append("libxcrypt::libxcrypt")
             if self.options.with_bz2:
                 self.info.components["_hidden"].requires.append("bzip2::bzip2")
-            if self.options.get_safe("with_gdbm", False):
+            if self.options.with_gdbm:
                 self.info.components["_hidden"].requires.append("gdbm::gdbm")
             if self.options.with_sqlite3:
                 self.info.components["_hidden"].requires.append("sqlite3::sqlite3")
-            if self.options.get_safe("with_curses", False):
+            if self.options.with_curses:
                 self.info.components["_hidden"].requires.append("ncurses::ncurses")
-            if self.options.get_safe("with_lzma"):
+            if self.options.with_lzma:
                 self.info.components["_hidden"].requires.append("xz::xz")
-            if self.options.get_safe("with_tkinter"):
+            if self.options.with_tkinter:
                 self.info.components["_hidden"].requires.append("tk::tk")
             self.info.components["_hidden"].includedirs = []
             self.info.components["_hidden"].libdirs = []
@@ -815,25 +811,9 @@ class Recipe(RecipeBase[_Options]):
         pythonhome_required = is_msvc(self) or is_apple_os(self)
         self.conf_info.define("user.cpython:module_requires_pythonhome", pythonhome_required)
 
-        if is_msvc(self):
-            if self.options.env_vars:
-                # FIXME: On Windows, defining this breaks the packaged Python executable, but fixes
-                # separately built executables with an embedded interpreter trying to run standard Python
-                # modules. However, NOT defining this reverses the situation, normal Python executables
-                # work, but embedded interpreters break.
-                # The docs at https://python.readthedocs.io/en/latest/using/cmdline.html#envvar-PYTHONHOME
-                # seem to not be accurate to Windows (https://discuss.python.org/t/the-document-on-pythonhome-might-be-wrong/19614/5)
-                # self.runenv_info.append_path("PYTHONHOME", pythonhome)
-                # self.buildenv_info.append_path("PYTHONHOME", pythonhome)
-
-                # TODO remove once Recipe 1.x is no longer supported
-                self.output.info(f"Setting PYTHONHOME environment variable: {pythonhome}")
-
         python_root = self.folders.package
         if self.options.env_vars:
             self.runenv_info.append_path("PYTHON_ROOT", python_root)
             self.buildenv_info.append_path("PYTHON_ROOT", python_root)
 
-            # TODO remove once Recipe 1.x is no longer supported
-            self.output.info(f"Setting PYTHON_ROOT environment variable: {python_root}")
         self.conf_info.define("user.cpython:python_root", python_root)

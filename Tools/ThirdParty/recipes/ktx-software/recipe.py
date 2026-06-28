@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self._has_sse_support:
-            del self.options.sse
+            self.options.sse = False
 
     def requirements(self):
         self.requires("zstd")
@@ -56,7 +56,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["KTX_FEATURE_DOC"] = False
         tc.variables["KTX_FEATURE_LOADTEST_APPS"] = False
         tc.variables["KTX_FEATURE_TESTS"] = False
-        tc.variables["BASISU_SUPPORT_SSE"] = self.options.get_safe("sse", False)
+        tc.variables["BASISU_SUPPORT_SSE"] = self.options.sse
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

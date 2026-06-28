@@ -68,53 +68,56 @@ SUBMODULES = [
 
 class _Options(RecipeOptions):
     shared: bool = False
+
     opengl: Literal['no', 'desktop', 'dynamic'] = 'no'
-    with_vulkan: bool = True
     openssl: bool = True
-    with_pcre2: bool = True
-    with_glib: bool = False
-    with_doubleconversion: bool = True
-    with_freetype: bool = True
-    with_fontconfig: bool = True
-    with_icu: bool = True
-    with_harfbuzz: bool = True
-    with_libjpeg: Literal['libjpeg-turbo', False] = False
-    with_libpng: bool = True
-    with_sqlite3: bool = True
-    with_mysql: bool = False
-    with_pq: bool = False
-    with_odbc: bool = False
-    with_zstd: bool = True
+
     with_brotli: bool = True
     with_dbus: bool = True
-    with_libalsa: bool = True
-    with_openal: bool = True
-    with_gstreamer: bool = True
-    with_pulseaudio: bool = True
-    with_gssapi: bool = True
-    with_md4c: bool = True
-    with_x11: bool = True
+    with_doubleconversion: bool = True
     with_egl: bool = False
+    with_fontconfig: bool = True
+    with_freetype: bool = True
+    with_glib: bool = False
+    with_gssapi: bool = True
+    with_gstreamer: bool = True
+    with_harfbuzz: bool = True
+    with_icu: bool = True
+    with_libalsa: bool = True
+    with_libjpeg: bool = True
+    with_libpng: bool = True
+    with_md4c: bool = True
+    with_mysql: bool = False
+    with_odbc: bool = False
+    with_openal: bool = True
+    with_pcre2: bool = True
+    with_pq: bool = False
+    with_pulseaudio: bool = True
+    with_sqlite3: bool = True
+    with_vulkan: bool = True
+    with_x11: bool = True
+    with_zstd: bool = True
+
     gui: bool = True
     widgets: bool = True
     device: str | None = None
     cross_compile: str | None = None
     sysroot: str | None = None
-    multiconfiguration: bool = False
     disabled_features: str | None = ''
+
     qt3d: bool = False
-    qt5compat: bool = False
+    qt5compat: bool = True
     qtactiveqt: bool = False
     qtcanvaspainter: bool = False
     qtcharts: bool = False
     qtcoap: bool = False
     qtconnectivity: bool = False
     qtdatavis3d: bool = False
-    qtdeclarative: bool = False
+    qtdeclarative: bool = True
     qtdoc: bool = False
     qtgraphs: bool = False
-    qtgrpc: bool = False
-    qthttpserver: bool = False
+    qtgrpc: bool = True
+    qthttpserver: bool = True
     qtimageformats: bool = True
     qtlanguageserver: bool = False
     qtlocation: bool = False
@@ -189,37 +192,34 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os not in ["Linux", "FreeBSD"]:
-            del self.options.with_icu
-            del self.options.with_fontconfig
+            self.options.with_icu = False
+            self.options.with_fontconfig = False
             self.options.with_glib = False
-            del self.options.with_libalsa
-            del self.options.with_x11
-            del self.options.with_egl
+            self.options.with_libalsa = False
+            self.options.with_x11 = False
+            self.options.with_egl = False
 
         if self.settings.os == "Windows":
-            del self.options.with_gssapi
+            self.options.with_gssapi = False
         if self.settings.os != "Linux":
             self.options.qtwayland = False
 
         for submodule in SUBMODULES:
             if submodule not in self._get_module_tree:
                 self.output.debug(f"Qt6: Removing {submodule} option as it is not in the module tree for this version, or is marked as obsolete or ignore")
-                delattr(self.options, submodule)
+                setattr(self.options, submodule, False)
 
         if not self.options.gui:
-            del self.options.opengl
-            del self.options.with_vulkan
-            del self.options.with_freetype
-            del self.options.with_fontconfig
-            del self.options.with_harfbuzz
-            del self.options.with_libjpeg
-            del self.options.with_libpng
-            del self.options.with_md4c
-            del self.options.with_x11
-            del self.options.with_egl
-
-        if self.options.multiconfiguration:
-            del self.settings.build_type
+            self.options.opengl = "no"
+            self.options.with_vulkan = False
+            self.options.with_freetype = False
+            self.options.with_fontconfig = False
+            self.options.with_harfbuzz = False
+            self.options.with_libjpeg = False
+            self.options.with_libpng = False
+            self.options.with_md4c = False
+            self.options.with_x11 = False
+            self.options.with_egl = False
 
         # Requested modules:
         # - any module for non-removed options that have 'True' value
@@ -267,14 +267,14 @@ class Recipe(RecipeBase[_Options]):
             if module in self.options and not self.options.get_safe(module):
                 setattr(self.options, module, False)
 
-        if not self.options.get_safe("qtmultimedia"):
-            self.options.rm_safe("with_libalsa")
-            del self.options.with_openal
-            del self.options.with_gstreamer
-            del self.options.with_pulseaudio
+        if not self.options.qtmultimedia:
+            self.options.with_libalsa = False
+            self.options.with_openal = False
+            self.options.with_gstreamer = False
+            self.options.with_pulseaudio = False
 
         if self.settings.os in ("FreeBSD", "Linux"):
-            if self.options.get_safe("qtwebengine"):
+            if self.options.qtwebengine:
                 self.options.with_fontconfig = True
 
         for option in self.options.items():
@@ -286,47 +286,47 @@ class Recipe(RecipeBase[_Options]):
             self.requires("openssl")
         if self.options.with_pcre2:
             self.requires("pcre2")
-        if self.options.get_safe("with_vulkan"):
+        if self.options.with_vulkan:
             self.requires("vulkan-loader")
             self.requires("vulkan-headers")
             if is_apple_os(self):
                 self.requires("moltenvk")
         if self.options.with_glib:
             self.requires("glib")
-        if self.options.with_doubleconversion and not self.options.multiconfiguration:
+        if self.options.with_doubleconversion:
             self.requires("double-conversion")
-        if self.options.get_safe("with_freetype", False) and not self.options.multiconfiguration:
+        if self.options.with_freetype:
             self.requires("freetype")
-        if self.options.get_safe("with_fontconfig", False):
+        if self.options.with_fontconfig:
             self.requires("fontconfig")
-        if self.options.get_safe("with_icu", False):
+        if self.options.with_icu:
             self.requires("icu")
-        if self.options.get_safe("with_harfbuzz", False) and not self.options.multiconfiguration:
+        if self.options.with_harfbuzz:
             self.requires("harfbuzz")
-        if self.options.get_safe("with_libjpeg", False) and not self.options.multiconfiguration:
+        if self.options.with_libjpeg:
             self.requires("libjpeg-turbo")
-        if self.options.get_safe("with_libpng", False) and not self.options.multiconfiguration:
+        if self.options.with_libpng:
             self.requires("libpng")
-        if self.options.with_sqlite3 and not self.options.multiconfiguration:
+        if self.options.with_sqlite3:
             self.requires("sqlite3")
-        if self.options.get_safe("with_mysql", False):
+        if self.options.with_mysql:
             self.requires("libmysqlclient")
         if self.options.with_pq:
             self.requires("libpq")
         if self.options.with_odbc:
             if self.settings.os != "Windows":
                 self.requires("odbc")
-        if self.options.get_safe("with_openal", False):
+        if self.options.with_openal:
             self.requires("openal-soft")
-        if self.options.get_safe("with_libalsa", False):
+        if self.options.with_libalsa:
             self.requires("libalsa")
-        if self.options.get_safe("with_x11") or self.options.qtwayland:
+        if self.options.with_x11 or self.options.qtwayland:
             self.requires("xkbcommon")
-        if self.options.get_safe("with_x11", False):
+        if self.options.with_x11:
             self.requires("xorg")
-        if self.options.get_safe("with_egl"):
+        if self.options.with_egl:
             self.requires("egl")
-        if self.settings.os != "Windows" and self.options.get_safe("opengl", "no") != "no":
+        if self.settings.os != "Windows" and self.options.opengl != "no":
             self.requires("opengl")
         if self.options.with_zstd:
             self.requires("zstd")
@@ -334,30 +334,30 @@ class Recipe(RecipeBase[_Options]):
             self.requires("wayland")
         if self.options.with_brotli:
             self.requires("brotli")
-        if self.options.get_safe("qtwebengine") and self.settings.os == "Linux":
+        if self.options.qtwebengine and self.settings.os == "Linux":
             self.requires("expat")
             self.requires("opus")
             self.requires("xorg-proto")
             self.requires("libxshmfence")
             self.requires("nss")
             self.requires("libdrm")
-        if self.options.get_safe("with_gstreamer", False):
+        if self.options.with_gstreamer:
             self.requires("gstreamer")
             self.requires("gst-plugins-base")
-        if self.options.get_safe("with_pulseaudio", False):
+        if self.options.with_pulseaudio:
             self.requires("pulseaudio")
         if self.options.with_dbus:
             self.requires("dbus")
         if self.settings.os in ['Linux', 'FreeBSD'] and self.options.with_gssapi:
             self.requires("krb5")
-        if self.options.get_safe("with_md4c", False):
+        if self.options.with_md4c:
             self.requires("md4c")  # stable API since 0.3x as per md4c wiki
         self.requires_tool("cmake")
         self.requires_tool("ninja")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
 
-        if self.options.get_safe("qtwebengine"):
+        if self.options.qtwebengine:
             self.requires_tool("nodejs")
             self.requires_tool("gperf")
             # gperf, bison, flex, python >= 2.7.5 & < 3
@@ -395,7 +395,7 @@ class Recipe(RecipeBase[_Options]):
         # detection via CMAKE_PREFIX_PATH (same intent as the previous gstreamer_recipe hack).
         deps.set_property("gstreamer", "cmake_find_mode", "none")
 
-        if self.options.get_safe("with_libjpeg") == "libjpeg-turbo":
+        if self.options.with_libjpeg:
             # Present libjpeg-turbo as libjpeg so Qt's find_package(JPEG) resolves
             deps.set_property("libjpeg-turbo", "cmake_file_name", "JPEG")
             deps.set_property("libjpeg-turbo", "cmake_target_name", "JPEG::JPEG")
@@ -448,18 +448,16 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self) and "MT" in msvc_runtime_flag(self):
             tc.variables["FEATURE_static_runtime"] = "ON"
 
-        if self.options.multiconfiguration:
-            tc.variables["CMAKE_CONFIGURATION_TYPES"] = "Release;Debug"
         tc.variables["FEATURE_optimize_size"] = ("ON" if self.settings.get_safe("build_type") == "MinSizeRel" else "OFF")
 
         for module in self._get_module_tree:
-            tc.variables[f"BUILD_{module}"] = ("ON" if getattr(self.options, module) else "OFF")
+            tc.variables[f"BUILD_{module}"] = ("ON" if self.options.get_safe(module) else "OFF")
         tc.variables["BUILD_qtqa"] = "OFF"
         tc.variables["BUILD_qtrepotools"] = "OFF"
 
         tc.variables["FEATURE_system_zlib"] = "ON"
 
-        tc.variables["INPUT_opengl"] = self.options.get_safe("opengl", "no")
+        tc.variables["INPUT_opengl"] = self.options.opengl
 
         # openSSL
         if not self.options.openssl:
@@ -486,7 +484,7 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.with_zstd:
             tc.variables["CMAKE_DISABLE_FIND_PACKAGE_WrapZSTD"] = "ON"
 
-        if not self.options.get_safe("with_vulkan"):
+        if not self.options.with_vulkan:
             tc.variables["CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders"] = "ON"
 
         # Prevent finding LibClang from the system
@@ -510,7 +508,7 @@ class Recipe(RecipeBase[_Options]):
             ("with_egl", "egl"),
             ("with_gstreamer", "gstreamer"),
         ]:
-            tc.variables[f"FEATURE_{conf_arg}"] = ("ON" if self.options.get_safe(opt, False) else "OFF")
+            tc.variables[f"FEATURE_{conf_arg}"] = ("ON" if getattr(self.options, opt, False) else "OFF")
 
         for opt, conf_arg in [
             ("with_doubleconversion", "doubleconversion"),
@@ -521,11 +519,8 @@ class Recipe(RecipeBase[_Options]):
             ("with_sqlite3", "sqlite"),
             ("with_pcre2", "pcre2"),
         ]:
-            if self.options.get_safe(opt, False):
-                if self.options.multiconfiguration:
-                    tc.variables[f"FEATURE_{conf_arg}"] = "ON"
-                else:
-                    tc.variables[f"FEATURE_system_{conf_arg}"] = "ON"
+            if getattr(self.options, opt, False):
+                tc.variables[f"FEATURE_system_{conf_arg}"] = "ON"
             else:
                 tc.variables[f"FEATURE_{conf_arg}"] = "OFF"
                 tc.variables[f"FEATURE_system_{conf_arg}"] = "OFF"
@@ -539,11 +534,8 @@ class Recipe(RecipeBase[_Options]):
             ("with_md4c", "libmd4c"),
             ("with_pcre2", "pcre"),
         ]:
-            if self.options.get_safe(opt, False):
-                if self.options.multiconfiguration:
-                    tc.variables[f"INPUT_{conf_arg}"] = "qt"
-                else:
-                    tc.variables[f"INPUT_{conf_arg}"] = "system"
+            if getattr(self.options, opt, False):
+                tc.variables[f"INPUT_{conf_arg}"] = "system"
             else:
                 tc.variables[f"INPUT_{conf_arg}"] = "no"
 
@@ -603,11 +595,11 @@ class Recipe(RecipeBase[_Options]):
 
         tc.cache_variables["QT_USE_VCPKG"] = False
 
-        with_wayland = self.options.get_safe("qtwayland", False)
+        with_wayland = self.options.qtwayland
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_Wayland"] = not with_wayland
         tc.variables["FEATURE_wayland"] = with_wayland
 
-        with_egl = self.options.get_safe("with_egl", False)
+        with_egl = self.options.with_egl
         tc.variables["CMAKE_DISABLE_FIND_PACKAGE_EGL"] = not with_egl
 
         tc.generate()
@@ -636,7 +628,7 @@ class Recipe(RecipeBase[_Options]):
             excludes=self._excluded_module_patterns())
 
         apply_patches(self)
-        if self.options.get_safe("qtwebengine"):
+        if self.options.qtwebengine:
             for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
                 replace_in_file(
                     self, self.folders.source / "qtwebengine" / "src" / "3rdparty" / "chromium" / "third_party" / "blink" / f / "BUILD.gn",
@@ -817,10 +809,13 @@ class Recipe(RecipeBase[_Options]):
         cmake = CMake(self)
         cmake.install()
         copy(
-            self, "*LICENSE*", self.folders.source, self.folders.package / "licenses",
+            self,
+            "*LICENSE*",
+            self.folders.source,
+            self.folders.package / "licenses",
             excludes="qtbase/examples/*")
         for module in self._get_module_tree:
-            if not getattr(self.options, module):
+            if not self.options.get_safe(module):
                 rmdir(self, self.folders.package / "licenses" / module)
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         for mask in ["Find*.cmake", "*Config.cmake", "*-config.cmake"]:
@@ -873,7 +868,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.qttools:
             if "qtattributionsscanner" not in disabled_features:
                 targets.extend(["qtattributionsscanner"])
-            if (not any(item in disabled_features for item in ["assistant", "toolbutton", "pushbutton"])) and self.options.widgets and self.options.get_safe("with_libpng"):
+            if (not any(item in disabled_features for item in ["assistant", "toolbutton", "pushbutton"])) and self.options.widgets and self.options.with_libpng:
                 # https://github.com/qt/qttools/blob/d5f3f624717092dde55a93e1212c5b7c63d360b8/configure.cmake#L102-L108
                 # and `qhelpgenerator` is a subdirectory of assistant in qttools
                 targets.extend(["qhelpgenerator"])
@@ -888,9 +883,9 @@ class Recipe(RecipeBase[_Options]):
             targets.extend(["qmlaotstats"])
 
             # Note: consider "qmltestrunner", see https://github.com/recipe-io/recipe-center-index/issues/24276
-        if self.options.get_safe("qtremoteobjects"):
+        if self.options.qtremoteobjects:
             targets.append("repc")
-        if self.options.get_safe("qtscxml"):
+        if self.options.qtscxml:
             targets.append("qscxmlc")
         for target in targets:
             exe_path = None
@@ -1098,7 +1093,7 @@ class Recipe(RecipeBase[_Options]):
             core_reqs.append("pcre2::pcre2")
         if self.options.with_doubleconversion:
             core_reqs.append("double-conversion::double-conversion")
-        if self.options.get_safe("with_icu", False):
+        if self.options.with_icu:
             core_reqs.append("icu::icu")
         if self.options.with_zstd:
             core_reqs.append("zstd::zstd")
@@ -1138,18 +1133,18 @@ class Recipe(RecipeBase[_Options]):
                 gui_reqs.append("freetype::freetype")
             if self.options.with_libpng:
                 gui_reqs.append("libpng::libpng")
-            if self.options.get_safe("with_fontconfig", False):
+            if self.options.with_fontconfig:
                 gui_reqs.append("fontconfig::fontconfig")
             if self.settings.os in ["Linux", "FreeBSD"]:
-                if self.options.qtwayland or self.options.get_safe("with_x11", False):
+                if self.options.qtwayland or self.options.with_x11:
                     gui_reqs.append("xkbcommon::xkbcommon")
-                if self.options.get_safe("with_x11", False):
+                if self.options.with_x11:
                     gui_reqs.append("xorg::xorg")
-                if self.options.get_safe("with_egl"):
+                if self.options.with_egl:
                     gui_reqs.append("egl::egl")
-            if self.settings.os != "Windows" and self.options.get_safe("opengl", "no") != "no":
+            if self.settings.os != "Windows" and self.options.opengl != "no":
                 gui_reqs.append("opengl::opengl")
-            if self.options.get_safe("with_vulkan", False):
+            if self.options.with_vulkan:
                 gui_reqs.append("vulkan-loader::vulkan-loader")
                 gui_reqs.append("vulkan-headers::vulkan-headers")
                 if is_apple_os(self):
@@ -1235,13 +1230,13 @@ class Recipe(RecipeBase[_Options]):
                     _create_plugin("QMinimalIntegrationPlugin", "qminimal", "platforms", [])
             elif self.settings.os == "Emscripten":
                 _create_plugin("QWasmIntegrationPlugin", "qwasm", "platforms", ["Core", "Gui"])
-            elif self.options.get_safe("with_x11", False):
+            elif self.options.with_x11:
                 _create_module("XcbQpaPrivate", ["xkbcommon::libxkbcommon-x11", "xorg::xorg"], has_include_dir=False)
                 _create_plugin("QXcbIntegrationPlugin", "qxcb", "platforms", ["Core", "Gui", "XcbQpaPrivate"])
 
             _create_plugin("QGifPlugin", "qgif", "imageformats", ["Gui"])
             _create_plugin("QIcoPlugin", "qico", "imageformats", ["Gui"])
-            if self.options.get_safe("with_libjpeg"):
+            if self.options.with_libjpeg:
                 jpeg_reqs = ["Gui", "libjpeg-turbo::jpeg"]
                 _create_plugin("QJpegPlugin", "qjpeg", "imageformats", jpeg_reqs)
 
@@ -1277,9 +1272,9 @@ class Recipe(RecipeBase[_Options]):
                 ]
         if self.options.gui and self.options.widgets:
             _create_module("PrintSupport", ["Gui", "Widgets"])
-        if self.options.get_safe("opengl", "no") != "no" and self.options.gui:
+        if self.options.opengl != "no" and self.options.gui:
             _create_module("OpenGL", ["Gui"])
-        if self.options.widgets and self.options.get_safe("opengl", "no") != "no":
+        if self.options.widgets and self.options.opengl != "no":
             _create_module("OpenGLWidgets", ["OpenGL", "Widgets"])
         _create_module("Concurrent", [])
         _create_module("Xml", [])
@@ -1327,7 +1322,7 @@ class Recipe(RecipeBase[_Options]):
             _create_module("Quick3DRuntimeRender", ["Gui", "Quick", "Quick3DAssetImport", "Quick3DUtils", "ShaderTools"])
             _create_module("Quick3D", ["Gui", "Qml", "Quick", "Quick3DRuntimeRender"])
 
-        if (self.options.get_safe("qtquickcontrols2") or self.options.qtdeclarative) and qt_quick_enabled:
+        if (self.options.qtquickcontrols2 or self.options.qtdeclarative) and qt_quick_enabled:
             _create_module("QuickControls2", ["Gui", "Quick"])
             _create_module("QuickTemplates2", ["Gui", "Quick"])
 
@@ -1342,35 +1337,35 @@ class Recipe(RecipeBase[_Options]):
             _create_module("WaylandClient", ["Gui", "wayland::wayland-client"])
             _create_module("WaylandCompositor", ["Gui", "wayland::wayland-server"])
 
-        if self.options.get_safe("qtactiveqt") and self.settings.os == "Windows":
+        if self.options.qtactiveqt and self.settings.os == "Windows":
             _create_module("AxBase", ["Gui", "Widgets"])
             _create_module("AxServer", ["AxBase"])
             self.info.components["qtAxServer"].system_libs.append("shell32")
             self.info.components["qtAxServer"].defines.append("QAXSERVER")
             _create_module("AxContainer", ["AxBase"])
 
-        if self.options.get_safe("qtcharts"):
+        if self.options.qtcharts:
             _create_module("Charts", ["Gui", "Widgets"])
-        if self.options.get_safe("qtgraphs"):
+        if self.options.qtgraphs:
             _create_module("Graphs", ["Gui", "Widgets", "Quick", "Quick3D"])
 
-        if self.options.get_safe("qtdatavis3d") and qt_quick_enabled:
+        if self.options.qtdatavis3d and qt_quick_enabled:
             _create_module("DataVisualization", ["Gui", "OpenGL", "Qml", "Quick"])
-        if self.options.get_safe("qtlottie"):
+        if self.options.qtlottie:
             _create_module("Bodymovin", ["Gui"])
-        if self.options.get_safe("qtscxml"):
+        if self.options.qtscxml:
             _create_module("StateMachine", [])
             _create_module("StateMachineQml", ["StateMachine", "Qml"])
             _create_module("Scxml", [])
             _create_plugin("QScxmlEcmaScriptDataModelPlugin", "qscxmlecmascriptdatamodel", "scxmldatamodel", ["Scxml", "Qml"])
             _create_module("ScxmlQml", ["Scxml", "Qml"])
-        if self.options.get_safe("qtvirtualkeyboard") and qt_quick_enabled:
+        if self.options.qtvirtualkeyboard and qt_quick_enabled:
             _create_module("VirtualKeyboard", ["Gui", "Qml", "Quick"])
             _create_plugin("QVirtualKeyboardPlugin", "qtvirtualkeyboardplugin", "platforminputcontexts", ["Gui", "Qml", "VirtualKeyboard"])
             _create_plugin("QtVirtualKeyboardHangulPlugin", "qtvirtualkeyboard_hangul", "virtualkeyboard", ["Gui", "Qml", "VirtualKeyboard"])
             _create_plugin("QtVirtualKeyboardMyScriptPlugin", "qtvirtualkeyboard_myscript", "virtualkeyboard", ["Gui", "Qml", "VirtualKeyboard"])
             _create_plugin("QtVirtualKeyboardThaiPlugin", "qtvirtualkeyboard_thai", "virtualkeyboard", ["Gui", "Qml", "VirtualKeyboard"])
-        if self.options.get_safe("qt3d"):
+        if self.options.qt3d:
             _create_module("3DCore", ["Gui", "Network"])
             _create_module("3DRender", ["3DCore", "OpenGL"])
             _create_module("3DAnimation", ["3DCore", "3DRender", "Gui"])
@@ -1386,7 +1381,7 @@ class Recipe(RecipeBase[_Options]):
                 _create_module("3DQuickInput", ["3DCore", "3DInput", "3DQuick", "Gui", "Qml"])
                 _create_module("3DQuickRender", ["3DCore", "3DQuick", "3DRender", "Gui", "Qml"])
                 _create_module("3DQuickScene2D", ["3DCore", "3DQuick", "3DRender", "Gui", "Qml"])
-        if self.options.get_safe("qtimageformats"):
+        if self.options.qtimageformats:
             _create_plugin("ICNSPlugin", "qicns", "imageformats", ["Gui"])
             _create_plugin("QJp2Plugin", "qjp2", "imageformats", ["Gui"])
             _create_plugin("QMacHeifPlugin", "qmacheif", "imageformats", ["Gui"])
@@ -1396,24 +1391,24 @@ class Recipe(RecipeBase[_Options]):
             _create_plugin("QTiffPlugin", "qtiff", "imageformats", ["Gui"])
             _create_plugin("QWbmpPlugin", "qwbmp", "imageformats", ["Gui"])
             _create_plugin("QWebpPlugin", "qwebp", "imageformats", ["Gui"])
-        if self.options.get_safe("qtnetworkauth"):
+        if self.options.qtnetworkauth:
             _create_module("NetworkAuth", ["Network"])
-        if self.options.get_safe("qtcoap"):
+        if self.options.qtcoap:
             _create_module("Coap", ["Network"])
-        if self.options.get_safe("qtmqtt"):
+        if self.options.qtmqtt:
             _create_module("Mqtt", ["Network"])
-        if self.options.get_safe("qtopcua"):
+        if self.options.qtopcua:
             _create_module("OpcUa", ["Network"])
             _create_plugin("QOpen62541Plugin", "open62541_backend", "opcua", ["Network", "OpcUa"])
             _create_plugin("QUACppPlugin", "uacpp_backend", "opcua", ["Network", "OpcUa"])
 
-        if self.options.get_safe("qtmultimedia"):
+        if self.options.qtmultimedia:
             multimedia_reqs = ["Network", "Gui"]
-            if self.options.get_safe("with_libalsa", False):
+            if self.options.with_libalsa:
                 multimedia_reqs.append("libalsa::libalsa")
             if self.options.with_openal:
                 multimedia_reqs.append("openal-soft::openal-soft")
-            if self.options.get_safe("with_pulseaudio", False):
+            if self.options.with_pulseaudio:
                 multimedia_reqs.append("pulseaudio::pulse")
             _create_module("Multimedia", multimedia_reqs)
             _create_module("MultimediaWidgets", ["Multimedia", "Widgets", "Gui"])
@@ -1426,12 +1421,12 @@ class Recipe(RecipeBase[_Options]):
                         "gst-plugins-base::gst-plugins-base",
                     ])
 
-        if self.options.get_safe("qtpositioning"):
+        if self.options.qtpositioning:
             _create_module("Positioning", [])
             _create_plugin("QGeoPositionInfoSourceFactoryGeoclue2", "qtposition_geoclue2", "position", [])
             _create_plugin("QGeoPositionInfoSourceFactoryPoll", "qtposition_positionpoll", "position", [])
 
-        if self.options.get_safe("qtsensors"):
+        if self.options.qtsensors:
             _create_module("Sensors", [])
             _create_plugin("genericSensorPlugin", "qtsensors_generic", "sensors", [])
             _create_plugin("IIOSensorProxySensorPlugin", "qtsensors_iio-sensor-proxy", "sensors", [])
@@ -1440,30 +1435,30 @@ class Recipe(RecipeBase[_Options]):
             _create_plugin("QtSensorGesturePlugin", "qtsensorgestures_plugin", "sensorgestures", [])
             _create_plugin("QShakeSensorGesturePlugin", "qtsensorgestures_shakeplugin", "sensorgestures", [])
 
-        if self.options.get_safe("qtconnectivity"):
+        if self.options.qtconnectivity:
             _create_module("Bluetooth", ["Network"])
             _create_module("Nfc", [])
 
-        if self.options.get_safe("qtserialport"):
+        if self.options.qtserialport:
             _create_module("SerialPort", [])
 
-        if self.options.get_safe("qtserialbus"):
-            _create_module("SerialBus", ["SerialPort"] if self.options.get_safe("qtserialport") else [])
+        if self.options.qtserialbus:
+            _create_module("SerialBus", ["SerialPort"] if self.options.qtserialport else [])
             _create_plugin("PassThruCanBusPlugin", "qtpassthrucanbus", "canbus", [])
             _create_plugin("PeakCanBusPlugin", "qtpeakcanbus", "canbus", [])
             _create_plugin("SocketCanBusPlugin", "qtsocketcanbus", "canbus", [])
             _create_plugin("TinyCanBusPlugin", "qttinycanbus", "canbus", [])
             _create_plugin("VirtualCanBusPlugin", "qtvirtualcanbus", "canbus", [])
 
-        if self.options.get_safe("qtwebsockets"):
+        if self.options.qtwebsockets:
             _create_module("WebSockets", ["Network"])
 
-        if self.options.get_safe("qtwebchannel"):
+        if self.options.qtwebchannel:
             _create_module("WebChannel", ["Qml"])
 
-        if self.options.get_safe("qtwebengine") and qt_quick_enabled:
+        if self.options.qtwebengine and qt_quick_enabled:
             webenginereqs = ["Gui", "Quick", "WebChannel"]
-            if self.options.get_safe("qtpositioning"):
+            if self.options.qtpositioning:
                 webenginereqs.append("Positioning")
             if self.settings.os == "Linux":
                 webenginereqs.extend(
@@ -1475,31 +1470,31 @@ class Recipe(RecipeBase[_Options]):
             _create_module("WebEngineQuick", ["WebEngineCore"])
             _create_module("WebEngineWidgets", ["WebEngineCore", "Quick", "PrintSupport", "Widgets", "Gui", "Network"])
 
-        if self.options.get_safe("qtremoteobjects"):
+        if self.options.qtremoteobjects:
             _create_module("RemoteObjects", [])
 
-        if self.options.get_safe("qtwebview"):
+        if self.options.qtwebview:
             _create_module("WebView", ["Core", "Gui"])
 
-        if self.options.get_safe("qtspeech"):
+        if self.options.qtspeech:
             _create_module("TextToSpeech", [])
 
-        if self.options.get_safe("qthttpserver"):
+        if self.options.qthttpserver:
             http_server_deps = ["Core", "Network"]
-            if self.options.get_safe("qtwebsockets"):
+            if self.options.qtwebsockets:
                 http_server_deps.append("WebSockets")
             _create_module("HttpServer", http_server_deps)
 
-        if self.options.get_safe("qtgrpc"):
+        if self.options.qtgrpc:
             _create_module("Protobuf", [])
             _create_module("Grpc", ["Core", "Protobuf", "Network"])
 
-        if self.options.get_safe("qttasktree"):
+        if self.options.qttasktree:
             _create_module("TaskTree", [])
 
-        if self.options.get_safe("qtcanvaspainter") and self.options.gui:
+        if self.options.qtcanvaspainter and self.options.gui:
             canvas_reqs = ["Gui"]
-            if self.options.get_safe("qtdeclarative") and qt_quick_enabled:
+            if self.options.qtdeclarative and qt_quick_enabled:
                 canvas_reqs.append("Quick")
             if self.options.widgets:
                 canvas_reqs.append("Widgets")

@@ -36,9 +36,8 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.options.shared:
-            # these options don't contribute to shared binary
-            del self.options.c_api
-            del self.options.util
+            # util does not contribute to the shared binary
+            self.options.util = False
 
     def source(self):
         get(
@@ -61,10 +60,10 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["SPIRV_CROSS_ENABLE_MSL"] = self.options.msl
         tc.variables["SPIRV_CROSS_ENABLE_CPP"] = self.options.cpp
         tc.variables["SPIRV_CROSS_ENABLE_REFLECT"] = self.options.reflect
-        tc.variables["SPIRV_CROSS_ENABLE_C_API"] = self.options.get_safe("c_api", True)
-        tc.variables["SPIRV_CROSS_ENABLE_UTIL"] = self.options.get_safe("util", False) or self.options.build_executable
+        tc.variables["SPIRV_CROSS_ENABLE_C_API"] = self.options.c_api
+        tc.variables["SPIRV_CROSS_ENABLE_UTIL"] = self.options.util or self.options.build_executable
         tc.variables["SPIRV_CROSS_SKIP_INSTALL"] = False
-        tc.variables["SPIRV_CROSS_FORCE_PIC"] = self.options.get_safe("fPIC", True)
+        tc.variables["SPIRV_CROSS_FORCE_PIC"] = self.options.fPIC
         tc.variables["SPIRV_CROSS_NAMESPACE_OVERRIDE"] = self.options.namespace
         tc.generate()
 

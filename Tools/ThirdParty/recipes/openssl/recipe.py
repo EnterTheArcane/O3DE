@@ -109,8 +109,8 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os != "Windows":
-            del self.options.capieng_dialog
-            del self.options.enable_capieng
+            self.options.capieng_dialog = False
+            self.options.enable_capieng = False
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -319,7 +319,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.capieng_dialog:
                 args.append("-DOPENSSL_CAPIENG_DIALOG=1")
         else:
-            args.append("-fPIC" if self.options.get_safe("fPIC", True) else "no-pic")
+            args.append("-fPIC" if self.options.fPIC else "no-pic")
 
         args.append("no-fips" if self.options.no_fips else "enable-fips")
         args.append("no-md2" if self.options.no_md2 else "enable-md2")
@@ -430,7 +430,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.shared:
                 shared_extension = r'shared_extension => ".so.\$(SHLIB_VERSION_NUMBER)",'
                 shared_target = 'shared_target  => "gnu-shared",'
-            if self.options.get_safe("fPIC", True):
+            if self.options.fPIC:
                 shared_cflag = 'shared_cflag => "-fPIC",'
 
         if self.settings.os in ["iOS", "tvOS", "watchOS"] and self.conf.get("tools.apple:enable_bitcode", check_type=bool):

@@ -31,25 +31,25 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def configure(self):
-        del self.options.enable12bit
-        del self.options.mem_src_dst
+        self.options.enable12bit = False
+        self.options.mem_src_dst = False
 
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
-        if self.options.get_safe("enable12bit"):
-            del self.options.java
-            del self.options.turbojpeg
-        if self.options.get_safe("enable12bit") or self.settings.os == "Emscripten":
-            del self.options.SIMD
-        if self.options.get_safe("enable12bit") or self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility:
-            del self.options.arithmetic_encoder
-            del self.options.arithmetic_decoder
+        if self.options.enable12bit:
+            self.options.java = False
+            self.options.turbojpeg = False
+        if self.options.enable12bit or self.settings.os == "Emscripten":
+            self.options.SIMD = False
+        if self.options.enable12bit or self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility:
+            self.options.arithmetic_encoder = False
+            self.options.arithmetic_decoder = False
         if self.options.libjpeg8_compatibility:
-            self.options.rm_safe("mem_src_dst")
+            self.options.mem_src_dst = False
 
     def requirements(self):
-        if self.options.get_safe("SIMD") and self.settings.arch in ["X64"]:
+        if self.options.SIMD and self.settings.arch in ["X64"]:
             self.requires_tool("nasm")
 
     def source(self):
@@ -68,12 +68,12 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _is_arithmetic_encoding_enabled(self):
-        return self.options.get_safe("arithmetic_encoder", False) or \
+        return self.options.arithmetic_encoder or \
             self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
 
     @property
     def _is_arithmetic_decoding_enabled(self):
-        return self.options.get_safe("arithmetic_decoder", False) or \
+        return self.options.arithmetic_decoder or \
             self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
 
     def generate(self):
@@ -82,17 +82,17 @@ class Recipe(RecipeBase[_Options]):
         tc = CMakeToolchain(self)
         tc.variables["ENABLE_STATIC"] = not self.options.shared
         tc.variables["ENABLE_SHARED"] = self.options.shared
-        tc.variables["WITH_SIMD"] = self.options.get_safe("SIMD", False)
+        tc.variables["WITH_SIMD"] = self.options.SIMD
         tc.variables["WITH_ARITH_ENC"] = self._is_arithmetic_encoding_enabled
         tc.variables["WITH_ARITH_DEC"] = self._is_arithmetic_decoding_enabled
         tc.variables["WITH_JPEG7"] = self.options.libjpeg7_compatibility
         tc.variables["WITH_JPEG8"] = self.options.libjpeg8_compatibility
-        tc.variables["WITH_TURBOJPEG"] = self.options.get_safe("turbojpeg", False)
-        tc.variables["WITH_JAVA"] = self.options.get_safe("java", False)
+        tc.variables["WITH_TURBOJPEG"] = self.options.turbojpeg
+        tc.variables["WITH_JAVA"] = self.options.java
         tc.cache_variables["WITH_TOOLS"] = False
         if is_msvc(self):
             tc.variables["WITH_CRT_DLL"] = True  # avoid replacing /MD by /MT in compiler flags
-        if self.options.get_safe("java", False):
+        if self.options.java:
             tc.cache_variables["CMAKE_INSTALL_JAVADIR"] = (self.folders.package / "lib" / "java").as_posix()
         tc.generate()
 
@@ -125,7 +125,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["jpeg"].set_property("pkg_config_name", "libjpeg")
         self.info.components["jpeg"].libs = [f"jpeg{lib_suffix}"]
 
-        if self.options.get_safe("turbojpeg"):
+        if self.options.turbojpeg:
             self.info.components["turbojpeg"].set_property("cmake_target_name", f"libjpeg-turbo::turbojpeg{cmake_target_suffix}")
             self.info.components["turbojpeg"].set_property("pkg_config_name", "libturbojpeg")
             self.info.components["turbojpeg"].libs = [f"turbojpeg{lib_suffix}"]

@@ -28,8 +28,8 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self.options.enable_mesh_compression:
-            del self.options.enable_standard_edgebreaker
-            del self.options.enable_predictive_edgebreaker
+            self.options.enable_standard_edgebreaker = False
+            self.options.enable_predictive_edgebreaker = False
 
     def source(self):
         get(

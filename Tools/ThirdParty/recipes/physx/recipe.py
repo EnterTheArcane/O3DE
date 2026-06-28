@@ -27,12 +27,10 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def configure(self):
-        if self.settings.build_type != "Release":
-            del self.options.release_build_type
         if self.settings.os != "Windows":
-            del self.options.enable_float_point_precise_math
+            self.options.enable_float_point_precise_math = False
         if self.settings.os not in ["Windows", "Android"]:
-            del self.options.enable_simd
+            self.options.enable_simd = False
 
     def source(self):
         get(
@@ -47,7 +45,7 @@ class Recipe(RecipeBase[_Options]):
         tc = CMakeToolchain(self)
 
         # Needed. See https://github.com/recipe-io/recipe-center-index/pull/16583#discussion_r1188548265 for details
-        tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.get_safe("fPIC", True)
+        tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.fPIC
 
         # Options defined in physx/compiler/public/CMakeLists.txt
         tc.cache_variables["TARGET_BUILD_PLATFORM"] = self._get_target_build_platform()

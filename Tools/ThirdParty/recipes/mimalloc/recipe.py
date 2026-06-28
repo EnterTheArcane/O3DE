@@ -31,27 +31,27 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os != "Windows":
-            del self.options.win_redirect
+            self.options.win_redirect = False
 
         # single_object and inject are options
         # only when overriding on Unix-like platforms:
         if is_msvc(self):
-            del self.options.single_object
-            del self.options.inject
+            self.options.single_object = False
+            self.options.inject = False
 
         if self.options.shared:
             # single_object is valid only for static override:
-            self.options.rm_safe("single_object")
+            self.options.single_object = False
 
         # inject is valid only for Unix-like dynamic override:
         if not self.options.shared:
-            self.options.rm_safe("inject")
+            self.options.inject = False
 
         # single_object and inject are valid only when
         # overriding on Unix-like platforms:
         if not self.options.override:
-            self.options.rm_safe("single_object")
-            self.options.rm_safe("inject")
+            self.options.single_object = False
+            self.options.inject = False
 
     def source(self):
         get(
@@ -66,10 +66,10 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["MI_BUILD_TESTS"] = "OFF"
         tc.variables["MI_BUILD_SHARED"] = self.options.shared
         tc.variables["MI_BUILD_STATIC"] = not self.options.shared
-        tc.variables["MI_BUILD_OBJECT"] = self.options.get_safe("single_object", False)
+        tc.variables["MI_BUILD_OBJECT"] = self.options.single_object
         tc.variables["MI_OVERRIDE"] = "ON" if self.options.override else "OFF"
         tc.variables["MI_SECURE"] = "ON" if self.options.secure else "OFF"
-        tc.variables["MI_WIN_REDIRECT"] = "ON" if self.options.get_safe("win_redirect") else "OFF"
+        tc.variables["MI_WIN_REDIRECT"] = "ON" if self.options.win_redirect else "OFF"
         tc.variables["MI_INSTALL_TOPLEVEL"] = "ON"
         tc.variables["MI_GUARDED"] = self.options.guarded
         tc.generate()
@@ -102,7 +102,7 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "cmake")
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
-        if self.options.get_safe("single_object"):
+        if self.options.single_object:
             rm(self, "*.a", self.folders.package / "lib")
             shutil.copy(
                 self.folders.package / "lib" / (self._obj_name + ".o"),
@@ -155,13 +155,13 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_file_name", "mimalloc")
         self.info.set_property("cmake_target_name", "mimalloc" if self.options.shared else "mimalloc-static")
 
-        if self.options.get_safe("inject"):
+        if self.options.inject:
             self.info.includedirs = []
             self.info.libdirs = []
             self.info.resdirs = []
             return
 
-        if self.options.get_safe("single_object"):
+        if self.options.single_object:
             obj_ext = "o"
             obj_file = f"{self._obj_name}.{obj_ext}"
             obj_path = self.folders.package / "lib" / obj_file

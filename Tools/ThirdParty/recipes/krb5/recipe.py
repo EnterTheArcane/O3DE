@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os != "Linux":
-            del self.options.with_keyutils
+            self.options.with_keyutils = False
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -81,7 +81,7 @@ class Recipe(RecipeBase[_Options]):
             "--without-readline",
             "--with-system-verto",
             f"--with-keyutils={self.folders.package}"
-            if self.options.get_safe("with_keyutils")
+            if self.options.with_keyutils
             else "--without-keyutils",
         ])
         if is_apple_os(self):

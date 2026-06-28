@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
         if not self.options.with_nls:
-            del self.options.with_libiconv
+            self.options.with_libiconv = False
 
     def validate(self):
         from thirdparty.errors import RecipeInvalidConfiguration
@@ -42,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
             raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def requirements(self):
-        if self.options.get_safe("with_libiconv"):
+        if self.options.with_libiconv:
             self.requires("libiconv")
         if self.options.with_readline:
             self.requires("readline")
@@ -75,11 +75,11 @@ class Recipe(RecipeBase[_Options]):
                 f"--enable-gdbmtool-debug={yes_no(self.options.gdbmtool_debug)}",
                 f"--enable-nls={yes_no(self.options.with_nls)}",
                 f"--with-readline={yes_no(self.options.with_readline)}",
-                f"--with-pic={yes_no(self.options.get_safe('fPIC', True))}",
+                f"--with-pic={yes_no(self.options.fPIC)}",
             ])
         if self.options.gdbmtool_debug:
             tc.extra_defines.append("YYDEBUG=1")
-        if self.options.get_safe("with_libiconv"):
+        if self.options.with_libiconv:
             libiconv_package_folder = self.dependencies.direct_host["libiconv"].folders.package
             tc.configure_args.extend(
                 [

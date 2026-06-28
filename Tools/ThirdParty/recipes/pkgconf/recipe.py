@@ -26,8 +26,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self.options.enable_lib:
-            del self.options.fPIC
-            del self.options.shared
+            self.options.shared = False
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -43,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
     def _patch_sources(self):
         apply_patches(self)
 
-        if not self.options.get_safe("shared", False):
+        if not self.options.shared:
             replace_in_file(
                 self, self.folders.source / "meson.build",
                 "'-DLIBPKGCONF_EXPORT'",

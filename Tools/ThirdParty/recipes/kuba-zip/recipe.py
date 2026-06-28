@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["CMAKE_DISABLE_TESTING"] = True
-        tc.variables["ZIP_STATIC_PIC"] = self.options.get_safe("fPIC", True)
+        tc.variables["ZIP_STATIC_PIC"] = self.options.fPIC
         tc.variables["ZIP_BUILD_DOCS"] = False
         tc.generate()
 

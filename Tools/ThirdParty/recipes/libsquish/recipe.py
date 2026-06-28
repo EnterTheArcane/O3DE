@@ -26,9 +26,9 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.arch not in self._sse2_compliant_archs:
-            del self.options.sse2_intrinsics
+            self.options.sse2_intrinsics = False
         if self.settings.arch not in self._altivec_compliant_archs:
-            del self.options.altivec_intrinsics
+            self.options.altivec_intrinsics = False
 
     def source(self):
         get(
@@ -41,8 +41,8 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_SQUISH_WITH_OPENMP"] = self.options.openmp
-        tc.variables["BUILD_SQUISH_WITH_SSE2"] = self.options.get_safe("sse2_intrinsics") or False
-        tc.variables["BUILD_SQUISH_WITH_ALTIVEC"] = self.options.get_safe("altivec_intrinsics") or False
+        tc.variables["BUILD_SQUISH_WITH_SSE2"] = self.options.sse2_intrinsics or False
+        tc.variables["BUILD_SQUISH_WITH_ALTIVEC"] = self.options.altivec_intrinsics or False
         tc.variables["BUILD_SQUISH_EXTRA"] = False
         tc.generate()
 

@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.with_os_api = False
 
         if self.options.header_only:
-            del self.options.with_os_api
+            self.options.with_os_api = False
 
     def source(self):
         get(

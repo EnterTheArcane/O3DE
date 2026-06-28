@@ -58,13 +58,13 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self._has_neon_support:
-            del self.options.neon
+            self.options.neon = False
         if not self._has_msa_support:
-            del self.options.msa
+            self.options.msa = False
         if not self._has_sse_support:
-            del self.options.sse
+            self.options.sse = False
         if not self._has_vsx_support:
-            del self.options.vsx
+            self.options.vsx = False
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")

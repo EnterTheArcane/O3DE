@@ -31,18 +31,18 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os == "Windows":
-            del self.options.with_iconv
-            del self.options.with_libbsd
+            self.options.with_iconv = False
+            self.options.with_libbsd = False
         if not is_apple_os(self):
-            del self.options.with_libcomp
+            self.options.with_libcomp = False
 
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
-        if self.options.get_safe("with_libcomp"):
-            del self.options.with_zlib
+        if self.options.with_libcomp:
+            self.options.with_zlib = False
 
     def requirements(self):
-        if self.options.get_safe("with_zlib"):
+        if self.options.with_zlib:
             self.requires("zlib")
         if self.options.with_bzip2:
             self.requires("bzip2")
@@ -53,7 +53,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_openssl:
             self.requires("openssl")
         if self.settings.os != "Windows":
-            if self.options.get_safe("with_iconv"):
+            if self.options.with_iconv:
                 self.requires("libiconv")
 
     def source(self):
@@ -68,14 +68,14 @@ class Recipe(RecipeBase[_Options]):
         tc = CMakeToolchain(self)
         tc.cache_variables["MZ_FETCH_LIBS"] = False
         tc.cache_variables["MZ_COMPAT"] = self.options.mz_compatibility
-        tc.cache_variables["MZ_ZLIB"] = self.options.get_safe("with_zlib", False)
+        tc.cache_variables["MZ_ZLIB"] = self.options.with_zlib
         tc.cache_variables["MZ_ZLIB_FLAVOR"] = "zlib"
         tc.cache_variables["MZ_BZIP2"] = self.options.with_bzip2
         tc.cache_variables["MZ_PPMD"] = False
         tc.cache_variables["MZ_LZMA"] = self.options.with_lzma
         tc.cache_variables["MZ_ZSTD"] = self.options.with_zstd
         tc.cache_variables["MZ_OPENSSL"] = self.options.with_openssl
-        tc.cache_variables["MZ_LIBCOMP"] = self.options.get_safe("with_libcomp", False)
+        tc.cache_variables["MZ_LIBCOMP"] = self.options.with_libcomp
         if self.settings.os != "Windows":
             tc.cache_variables["MZ_ICONV"] = self.options.with_iconv
             tc.cache_variables["MZ_LIBBSD"] = self.options.with_libbsd
@@ -108,7 +108,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["minizip"].libs = [f"minizip{suffix}"]
         if self.options.with_lzma:
             self.info.components["minizip"].defines.append("HAVE_LZMA")
-        if is_apple_os(self) and self.options.get_safe("with_libcomp"):
+        if is_apple_os(self) and self.options.with_libcomp:
             self.info.components["minizip"].defines.append("HAVE_LIBCOMP")
             self.info.components["minizip"].system_libs.append("compression")
         if self.options.with_bzip2:
@@ -119,7 +119,7 @@ class Recipe(RecipeBase[_Options]):
 
         self.info.components["minizip"].set_property("cmake_target_name", "MINIZIP::minizip")
         self.info.components["minizip"].set_property("pkg_config_name", "minizip")
-        if self.options.get_safe("with_zlib"):
+        if self.options.with_zlib:
             self.info.components["minizip"].requires.append("zlib::zlib")
         if self.options.with_bzip2:
             self.info.components["minizip"].requires.append("bzip2::bzip2")

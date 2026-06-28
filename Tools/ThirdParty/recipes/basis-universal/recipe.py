@@ -26,7 +26,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self._has_sse:
-            del self.options.with_sse
+            self.options.with_sse = False
 
     def source(self):
         get(
@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["BASISU_SSE"] = self.options.get_safe("with_sse", False)
+        tc.variables["BASISU_SSE"] = self.options.with_sse
         tc.variables["BASISU_ZSTD"] = True
         tc.variables["BASISU_EXAMPLES"] = False
         tc.variables["BASISU_OPENCL"] = False

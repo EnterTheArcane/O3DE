@@ -24,9 +24,9 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os != "Windows":
-            del self.options.wchar_support
-            del self.options.wchar_filenames
-            del self.options.wchar_console
+            self.options.wchar_support = False
+            self.options.wchar_filenames = False
+            self.options.wchar_console = False
 
     def requirements(self):
         self.requires("fmt")
@@ -51,9 +51,9 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["SPDLOG_FMT_EXTERNAL"] = not fmt.options.header_only
         tc.cache_variables["SPDLOG_FMT_EXTERNAL_HO"] = fmt.options.header_only
         tc.cache_variables["SPDLOG_BUILD_SHARED"] = self.options.shared
-        tc.cache_variables["SPDLOG_WCHAR_SUPPORT"] = self.options.get_safe("wchar_support", False)
-        tc.cache_variables["SPDLOG_WCHAR_FILENAMES"] = self.options.get_safe("wchar_filenames", False)
-        tc.cache_variables["SPDLOG_WCHAR_CONSOLE"] = self.options.get_safe("wchar_console", False)
+        tc.cache_variables["SPDLOG_WCHAR_SUPPORT"] = self.options.wchar_support
+        tc.cache_variables["SPDLOG_WCHAR_FILENAMES"] = self.options.wchar_filenames
+        tc.cache_variables["SPDLOG_WCHAR_CONSOLE"] = self.options.wchar_console
         tc.cache_variables["SPDLOG_INSTALL"] = True
         tc.cache_variables["SPDLOG_NO_EXCEPTIONS"] = True
         tc.cache_variables["SPDLOG_USE_STD_FORMAT"] = False
@@ -87,11 +87,11 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["libspdlog"].libs = [f"spdlog{suffix}"]
         self.info.components["libspdlog"].defines.append("SPDLOG_COMPILED_LIB")
 
-        if self.options.get_safe("wchar_support"):
+        if self.options.wchar_support:
             self.info.components["libspdlog"].defines.append("SPDLOG_WCHAR_TO_UTF8_SUPPORT")
-        if self.options.get_safe("wchar_filenames"):
+        if self.options.wchar_filenames:
             self.info.components["libspdlog"].defines.append("SPDLOG_WCHAR_FILENAMES")
-        if self.options.get_safe("wchar_console"):
+        if self.options.wchar_console:
             self.info.components["libspdlog"].defines.append("SPDLOG_UTF8_TO_WCHAR_CONSOLE")
         self.info.components["libspdlog"].defines.append("SPDLOG_NO_EXCEPTIONS")
         if self.settings.os in ["Linux", "FreeBSD"]:

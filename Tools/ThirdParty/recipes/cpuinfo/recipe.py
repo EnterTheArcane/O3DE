@@ -18,7 +18,7 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self):
             # Only static for msvc
             # Injecting CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS is not sufficient since there are global symbols
-            del self.options.shared
+            self.options.shared = False
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
@@ -48,7 +48,7 @@ class Recipe(RecipeBase[_Options]):
         # clog (always static)
         tc.cache_variables["CLOG_RUNTIME_TYPE"] = "default"
         tc.variables["CLOG_BUILD_TESTS"] = False
-        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.get_safe("fPIC", True)
+        tc.variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.fPIC
         tc.generate()
 
     def build(self):

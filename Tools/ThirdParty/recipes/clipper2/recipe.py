@@ -41,10 +41,8 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["CLIPPER2_EXAMPLES"] = False
         tc.variables["CLIPPER2_TESTS"] = False
         tc.variables["CLIPPER2_USINGZ"] = self.options.usingz
-        if "with_hi_precision" in self.options:
-            tc.variables["CLIPPER2_HI_PRECISION"] = self.options.with_hi_precision
-        if "with_max_precision" in self.options:
-            tc.variables["CLIPPER2_MAX_PRECISION"] = self.options.with_max_precision
+        tc.variables["CLIPPER2_HI_PRECISION"] = self.options.with_hi_precision
+        tc.variables["CLIPPER2_MAX_PRECISION"] = self.options.with_max_precision
         tc.generate()
 
     def build(self):

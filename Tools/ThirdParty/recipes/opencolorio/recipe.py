@@ -24,7 +24,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.arch not in ["X64"]:
-            del self.options.use_sse
+            self.options.use_sse = False
 
     def requirements(self):
         self.requires("expat")
@@ -54,7 +54,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["CMAKE_VERBOSE_MAKEFILE"] = True
         tc.variables["OCIO_BUILD_PYTHON"] = False
 
-        tc.variables["OCIO_USE_SSE"] = self.options.get_safe("use_sse", False)
+        tc.variables["OCIO_USE_SSE"] = self.options.use_sse
 
         # openexr 2.x provides Half library
         tc.variables["OCIO_USE_OPENEXR_HALF"] = True

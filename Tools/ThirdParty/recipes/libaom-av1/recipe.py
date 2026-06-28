@@ -23,13 +23,13 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.arch not in ("X64",):
-            del self.options.assembly
+            self.options.assembly = False
 
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
 
     def requirements(self):
-        if self.options.get_safe("assembly", False):
+        if self.options.assembly:
             self.requires_tool("nasm")
         if self.settings.os == "Windows":
             self.requires_tool("strawberryperl")
@@ -50,7 +50,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["ENABLE_TESTS"] = False
         tc.variables["ENABLE_DOCS"] = False
         tc.variables["ENABLE_TOOLS"] = False
-        if not self.options.get_safe("assembly", False):
+        if not self.options.assembly:
             # make non-assembly build
             tc.variables["AOM_TARGET_CPU"] = "generic"
         # libyuv is used for examples, tests and non-essential 'dump_obu' tool so it is disabled

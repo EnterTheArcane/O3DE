@@ -30,9 +30,9 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.arch not in ["X64"]:
-            del self.options.avx512
-            del self.options.avx512_spr
-            del self.options.avx512_zen4
+            self.options.avx512 = False
+            self.options.avx512_spr = False
+            self.options.avx512_zen4 = False
 
     def requirements(self):
         self.requires("brotli")
@@ -77,9 +77,9 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["JPEGXL_FORCE_SYSTEM_LCMS2"] = True
         tc.variables["JPEGXL_WARNINGS_AS_ERRORS"] = False
         tc.variables["JPEGXL_FORCE_NEON"] = False
-        tc.variables["JPEGXL_ENABLE_AVX512"] = self.options.get_safe("avx512", False)
-        tc.variables["JPEGXL_ENABLE_AVX512_SPR"] = self.options.get_safe("avx512_spr", False)
-        tc.variables["JPEGXL_ENABLE_AVX512_ZEN4"] = self.options.get_safe("avx512_zen4", False)
+        tc.variables["JPEGXL_ENABLE_AVX512"] = self.options.avx512
+        tc.variables["JPEGXL_ENABLE_AVX512_SPR"] = self.options.avx512_spr
+        tc.variables["JPEGXL_ENABLE_AVX512_ZEN4"] = self.options.avx512_zen4
         if cross_building(self):
             tc.variables["CMAKE_SYSTEM_PROCESSOR"] = str(self.settings.arch)
         # Allow non-cache_variables to be used
@@ -132,7 +132,7 @@ class Recipe(RecipeBase[_Options]):
         for cmake_file in ["jxl.cmake", "jxl_threads.cmake", "jxl_cms.cmake", "jpegli.cmake"]:
             path = self.folders.source / "lib" / cmake_file
             if os.path.exists(path):
-                fpic = "ON" if self.options.get_safe("fPIC", True) else "OFF"
+                fpic = "ON" if self.options.fPIC else "OFF"
                 replace_in_file(self, path, "POSITION_INDEPENDENT_CODE ON", f"POSITION_INDEPENDENT_CODE {fpic}")
 
     def build(self):

@@ -172,30 +172,30 @@ class Recipe(RecipeBase[_Options]):
             if is_msvc(self) and self.settings.arch == "ARM":
                 self.options.with_libsvtav1 = False
 
-        del self.options.postproc
+        self.options.postproc = False
 
         if self.settings.os not in ["Linux", "FreeBSD"]:
-            del self.options.with_vaapi
-            del self.options.with_vdpau
-            del self.options.with_vulkan
-            del self.options.with_xcb
-            del self.options.with_libalsa
-            del self.options.with_pulse
-            del self.options.with_xlib
-            del self.options.with_libdrm
+            self.options.with_vaapi = False
+            self.options.with_vdpau = False
+            self.options.with_vulkan = False
+            self.options.with_xcb = False
+            self.options.with_libalsa = False
+            self.options.with_pulse = False
+            self.options.with_xlib = False
+            self.options.with_libdrm = False
         if self.settings.os != "Mac":
-            del self.options.with_appkit
+            self.options.with_appkit = False
         if self.settings.os not in ["Mac", "iOS", "tvOS"]:
-            del self.options.with_coreimage
-            del self.options.with_audiotoolbox
-            del self.options.with_videotoolbox
+            self.options.with_coreimage = False
+            self.options.with_audiotoolbox = False
+            self.options.with_videotoolbox = False
         if not is_apple_os(self):
-            del self.options.with_avfoundation
+            self.options.with_avfoundation = False
         if not self.settings.os == "Android":
-            del self.options.with_jni
-            del self.options.with_mediacodec
+            self.options.with_jni = False
+            self.options.with_mediacodec = False
         if self.settings.os == "Android":
-            del self.options.with_libfdk_aac
+            self.options.with_libfdk_aac = False
 
     def requirements(self):
         if self.options.with_zlib:
@@ -238,25 +238,25 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libvpx")
         if self.options.with_libmp3lame:
             self.requires("libmp3lame")
-        if self.options.get_safe("with_libfdk_aac"):
+        if self.options.with_libfdk_aac:
             self.requires("fdk-aac")
         if self.options.with_libwebp:
             self.requires("libwebp")
         if self.options.with_ssl == "openssl":
             self.requires("openssl")
-        if self.options.get_safe("with_libalsa"):
+        if self.options.with_libalsa:
             self.requires("libalsa")
-        if self.options.get_safe("with_xcb") or self.options.get_safe("with_xlib"):
+        if self.options.with_xcb or self.options.with_xlib:
             self.requires("xorg")
         if self.options.with_soxr:
             self.requires("soxr")
-        if self.options.get_safe("with_pulse"):
+        if self.options.with_pulse:
             self.requires("pulseaudio")
-        if self.options.get_safe("with_vaapi"):
+        if self.options.with_vaapi:
             self.requires("vaapi")
-        if self.options.get_safe("with_vdpau"):
+        if self.options.with_vdpau:
             self.requires("vdpau")
-        if self.options.get_safe("with_vulkan"):
+        if self.options.with_vulkan:
             self.requires("vulkan-loader")
         if self.options.with_libsvtav1:
             self.requires("svt-av1")
@@ -264,7 +264,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libaom-av1")
         if self.options.with_libdav1d:
             self.requires("dav1d")
-        if self.options.get_safe("with_libdrm"):
+        if self.options.with_libdrm:
             self.requires("libdrm")
         if self.options.with_whisper:
             self.requires("whisper-cpp")
@@ -385,7 +385,7 @@ class Recipe(RecipeBase[_Options]):
             # Libraries
             opt_enable_disable("shared", self.options.shared),
             opt_enable_disable("static", not self.options.shared),
-            opt_enable_disable("pic", self.options.get_safe("fPIC", True)),
+            opt_enable_disable("pic", self.options.fPIC),
             # Components
             opt_enable_disable("avdevice", self.options.avdevice),
             opt_enable_disable("avcodec", self.options.avcodec),
@@ -413,38 +413,38 @@ class Recipe(RecipeBase[_Options]):
             opt_enable_disable("libx265", self.options.with_libx265),
             opt_enable_disable("libvpx", self.options.with_libvpx),
             opt_enable_disable("libmp3lame", self.options.with_libmp3lame),
-            opt_enable_disable("libfdk-aac", self.options.get_safe("with_libfdk_aac")),
+            opt_enable_disable("libfdk-aac", self.options.with_libfdk_aac),
             opt_enable_disable("libwebp", self.options.with_libwebp),
             opt_enable_disable("libaom", self.options.with_libaom),
             opt_enable_disable("openssl", self.options.with_ssl == "openssl"),
-            opt_enable_disable("alsa", self.options.get_safe("with_libalsa")),
-            opt_enable_disable("libpulse", self.options.get_safe("with_pulse")),
-            opt_enable_disable("vaapi", self.options.get_safe("with_vaapi")),
-            opt_enable_disable("libdrm", self.options.get_safe("with_libdrm")),
-            opt_enable_disable("vdpau", self.options.get_safe("with_vdpau")),
-            opt_enable_disable("libxcb", self.options.get_safe("with_xcb")),
-            opt_enable_disable("libxcb-shm", self.options.get_safe("with_xcb")),
-            opt_enable_disable("libxcb-shape", self.options.get_safe("with_xcb")),
-            opt_enable_disable("libxcb-xfixes", self.options.get_safe("with_xcb")),
+            opt_enable_disable("alsa", self.options.with_libalsa),
+            opt_enable_disable("libpulse", self.options.with_pulse),
+            opt_enable_disable("vaapi", self.options.with_vaapi),
+            opt_enable_disable("libdrm", self.options.with_libdrm),
+            opt_enable_disable("vdpau", self.options.with_vdpau),
+            opt_enable_disable("libxcb", self.options.with_xcb),
+            opt_enable_disable("libxcb-shm", self.options.with_xcb),
+            opt_enable_disable("libxcb-shape", self.options.with_xcb),
+            opt_enable_disable("libxcb-xfixes", self.options.with_xcb),
             opt_enable_disable("libsoxr", self.options.with_soxr),
-            opt_enable_disable("appkit", self.options.get_safe("with_appkit")),
-            opt_enable_disable("avfoundation", self.options.get_safe("with_avfoundation")),
-            opt_enable_disable("coreimage", self.options.get_safe("with_coreimage")),
-            opt_enable_disable("audiotoolbox", self.options.get_safe("with_audiotoolbox")),
-            opt_enable_disable("videotoolbox", self.options.get_safe("with_videotoolbox")),
+            opt_enable_disable("appkit", self.options.with_appkit),
+            opt_enable_disable("avfoundation", self.options.with_avfoundation),
+            opt_enable_disable("coreimage", self.options.with_coreimage),
+            opt_enable_disable("audiotoolbox", self.options.with_audiotoolbox),
+            opt_enable_disable("videotoolbox", self.options.with_videotoolbox),
             opt_enable_disable("securetransport", self.options.with_ssl == "securetransport"),
-            opt_enable_disable("vulkan", self.options.get_safe("with_vulkan")),
+            opt_enable_disable("vulkan", self.options.with_vulkan),
             opt_enable_disable("libdav1d", self.options.with_libdav1d),
-            opt_enable_disable("jni", self.options.get_safe("with_jni")),
-            opt_enable_disable("mediacodec", self.options.get_safe("with_mediacodec")),
-            opt_enable_disable("xlib", self.options.get_safe("with_xlib")),
+            opt_enable_disable("jni", self.options.with_jni),
+            opt_enable_disable("mediacodec", self.options.with_mediacodec),
+            opt_enable_disable("xlib", self.options.with_xlib),
             "--disable-cuda",  # FIXME: CUDA support
             "--disable-cuvid",  # FIXME: CUVID support
             # Licenses
             opt_enable_disable(
-                "nonfree", self.options.get_safe("with_libfdk_aac") or (self.options.with_ssl and (
-                        self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc")))),
-            opt_enable_disable("gpl", self.options.with_libx264 or self.options.with_libx265 or self.options.get_safe("postproc")),
+                "nonfree", self.options.with_libfdk_aac or (self.options.with_ssl and (
+                        self.options.with_libx264 or self.options.with_libx265 or self.options.postproc))),
+            opt_enable_disable("gpl", self.options.with_libx264 or self.options.with_libx265 or self.options.postproc),
         ]
 
         # Individual Component Options
@@ -529,12 +529,9 @@ class Recipe(RecipeBase[_Options]):
             self._split_and_format_options_string(
                 "disable-filter", self.options.disable_filters))
 
-        if "with_libjxl" in self.options:
-            args.append(opt_enable_disable("libjxl", self.options.with_libjxl))
-        if "with_whisper" in self.options:
-            args.append(opt_enable_disable("whisper", self.options.with_whisper))
-        if "with_openapv" in self.options:
-            args.append(opt_enable_disable("liboapv", self.options.with_openapv))
+        args.append(opt_enable_disable("libjxl", self.options.with_libjxl))
+        args.append(opt_enable_disable("whisper", self.options.with_whisper))
+        args.append(opt_enable_disable("liboapv", self.options.with_openapv))
 
         args.append(opt_enable_disable("libsvtav1", self.options.with_libsvtav1))
         args.append(opt_enable_disable("libharfbuzz", self.options.with_harfbuzz))
@@ -761,12 +758,12 @@ class Recipe(RecipeBase[_Options]):
             swresample = _add_component("swresample", [])
             if self.options.with_soxr:
                 swresample.requires.append("soxr::soxr")
-        if self.options.get_safe("postproc"):
+        if self.options.postproc:
             _add_component("postproc", [])
 
         if self.settings.os in ("FreeBSD", "Linux"):
             avutil.system_libs.extend(["pthread", "dl"])
-            if self.options.get_safe("fPIC") and self.options.avcodec and self.settings.compiler in ("gcc", "clang"):
+            if self.options.fPIC and self.options.avcodec and self.settings.compiler in ("gcc", "clang"):
                 # https://trac.ffmpeg.org/ticket/1713
                 # https://ffmpeg.org/platform.html#Advanced-linking-configuration
                 # https://ffmpeg.org/pipermail/libav-user/2014-December/007719.html
@@ -796,19 +793,19 @@ class Recipe(RecipeBase[_Options]):
                     avfilter.frameworks.append("OpenGL")
 
         if self.options.avdevice:
-            if self.options.get_safe("with_libalsa"):
+            if self.options.with_libalsa:
                 avdevice.requires.append("libalsa::libalsa")
-            if self.options.get_safe("with_xcb"):
+            if self.options.with_xcb:
                 avdevice.requires.extend(["xorg::xcb", "xorg::xcb-shm", "xorg::xcb-xfixes", "xorg::xcb-shape", "xorg::xv", "xorg::xext"])
-            if self.options.get_safe("with_xlib"):
+            if self.options.with_xlib:
                 avdevice.requires.extend(["xorg::x11", "xorg::xext", "xorg::xv"])
-            if self.options.get_safe("with_pulse"):
+            if self.options.with_pulse:
                 avdevice.requires.append("pulseaudio::pulseaudio")
-            if self.options.get_safe("with_appkit"):
+            if self.options.with_appkit:
                 avdevice.frameworks.append("AppKit")
-            if self.options.get_safe("with_avfoundation"):
+            if self.options.with_avfoundation:
                 avdevice.frameworks.append("AVFoundation")
-            if self.options.get_safe("with_audiotoolbox"):
+            if self.options.with_audiotoolbox:
                 avdevice.frameworks.append("CoreAudio")
             if self.settings.os == "Android" and not self.options.shared:
                 avdevice.system_libs.extend(["android", "camera2ndk", "mediandk"])
@@ -838,13 +835,13 @@ class Recipe(RecipeBase[_Options]):
                 avcodec.requires.append("libvpx::libvpx")
             if self.options.with_libmp3lame:
                 avcodec.requires.append("libmp3lame::libmp3lame")
-            if self.options.get_safe("with_libfdk_aac"):
+            if self.options.with_libfdk_aac:
                 avcodec.requires.append("fdk-aac::fdk-aac")
             if self.options.with_libwebp:
                 avcodec.requires.append("libwebp::libwebp")
-            if self.options.get_safe("with_audiotoolbox"):
+            if self.options.with_audiotoolbox:
                 avcodec.frameworks.append("AudioToolbox")
-            if self.options.get_safe("with_videotoolbox"):
+            if self.options.with_videotoolbox:
                 avcodec.frameworks.append("VideoToolbox")
             if self.options.with_libsvtav1:
                 avcodec.requires.append("svt-av1::encoder")
@@ -878,27 +875,27 @@ class Recipe(RecipeBase[_Options]):
                 avfilter.requires.append("harfbuzz::harfbuzz")
             if self.options.with_zeromq:
                 avfilter.requires.append("zeromq::libzmq")
-            if self.options.get_safe("with_appkit"):
+            if self.options.with_appkit:
                 avfilter.frameworks.append("AppKit")
-            if self.options.get_safe("with_coreimage"):
+            if self.options.with_coreimage:
                 avfilter.frameworks.append("CoreImage")
             if is_apple_os(self):
                 avfilter.frameworks.append("Metal")
             if self.options.with_whisper:
                 avfilter.requires.append("whisper-cpp::whisper-cpp")
 
-        if self.options.get_safe("with_libdrm"):
+        if self.options.with_libdrm:
             avutil.requires.append("libdrm::libdrm_libdrm")
-        if self.options.get_safe("with_vaapi"):
+        if self.options.with_vaapi:
             avutil.requires.append("vaapi::vaapi")
-        if self.options.get_safe("with_xcb"):
+        if self.options.with_xcb:
             avutil.requires.append("xorg::x11")
 
-        if self.options.get_safe("with_vdpau"):
+        if self.options.with_vdpau:
             avutil.requires.append("vdpau::vdpau")
 
         if self.options.with_ssl == "openssl":
             avutil.requires.append("openssl::ssl")
 
-        if self.options.get_safe("with_vulkan"):
+        if self.options.with_vulkan:
             avutil.requires.append("vulkan-loader::vulkan-loader")

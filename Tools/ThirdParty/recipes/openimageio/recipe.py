@@ -36,9 +36,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "AcademySoftwareFoundation/OpenImageIO")
         return Version(repo.latest_tag("v").removeprefix("v"))
 
-    def configure(self):
-        del self.options.with_opencolorio
-
     def requirements(self):
         # Required libraries
         self.requires("zlib")
@@ -58,7 +55,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libpng")
         if self.options.with_freetype:
             self.requires("freetype")
-        if self.options.get_safe("with_opencolorio", True):
+        if self.options.with_opencolorio:
             self.requires("opencolorio")
         if self.options.with_opencv:
             self.requires("opencv")
@@ -125,7 +122,7 @@ class Recipe(RecipeBase[_Options]):
             "USE_JPEG"
         ] = True  # Needed for jpeg.imageio plugin, libjpeg/libjpeg-turbo selection still works
         tc.cache_variables["USE_JXL"] = self.options.with_libjxl
-        tc.variables["USE_OPENCOLORIO"] = self.options.get_safe("with_opencolorio", True)
+        tc.variables["USE_OPENCOLORIO"] = self.options.with_opencolorio
         tc.variables["USE_OPENCV"] = self.options.with_opencv
         tc.variables["USE_TBB"] = self.options.with_tbb
         tc.variables["USE_DCMTK"] = self.options.with_dicom
@@ -159,7 +156,7 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["OPENEXR_INCLUDES"] = self.dependencies["openexr"].info.includedirs[0].replace("\\", "/")
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_PNG"] = self.options.with_libpng
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Freetype"] = self.options.with_freetype
-        tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_OpenColorIO"] = self.options.get_safe("with_opencolorio", True)
+        tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_OpenColorIO"] = self.options.with_opencolorio
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_OpenCV"] = self.options.with_opencv
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_TBB"] = self.options.with_tbb
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_DCMTK"] = self.options.with_dicom
@@ -260,7 +257,7 @@ class Recipe(RecipeBase[_Options]):
             open_image_io.requires.append("libpng::libpng")
         if self.options.with_freetype:
             open_image_io.requires.append("freetype::freetype")
-        if self.options.get_safe("with_opencolorio", True):
+        if self.options.with_opencolorio:
             open_image_io.requires.append("opencolorio::opencolorio")
         if self.options.with_opencv:
             open_image_io.requires.append("opencv::opencv")

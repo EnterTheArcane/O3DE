@@ -56,10 +56,7 @@ class Recipe(RecipeBase[_Options]):
     license = "MSYS license"
 
     def configure(self):
-        default_packages = "base-devel,binutils,gcc"
-        if self.settings_target is not None and self.settings_target.arch == "ARM":
-            # The mingw-w64-cross-mingwarm64-gcc contains tools required to target arm64
-            default_packages += ",mingw-w64-cross-mingwarm64-gcc"
+        default_packages = "base-devel,binutils,gcc,mingw-w64-cross-mingwarm64-gcc"
         self.options.packages = default_packages
 
     def validate(self):

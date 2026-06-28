@@ -29,15 +29,15 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _needs_pkg_config(self):
-        return self.options.get_safe("with_wsi_xcb") or \
-            self.options.get_safe("with_wsi_xlib") or \
-            self.options.get_safe("with_wsi_wayland")
+        return self.options.with_wsi_xcb or \
+            self.options.with_wsi_xlib or \
+            self.options.with_wsi_wayland
 
     def configure(self):
         if not self._has_wsi_options:
-            del self.options.with_wsi_xcb
-            del self.options.with_wsi_xlib
-            del self.options.with_wsi_wayland
+            self.options.with_wsi_xcb = False
+            self.options.with_wsi_xlib = False
+            self.options.with_wsi_wayland = False
 
     def requirements(self):
         self.requires("robin-hood-hashing")
@@ -46,9 +46,9 @@ class Recipe(RecipeBase[_Options]):
         self.requires("vulkan-headers")
         self.requires("vulkan-utility-libraries")
 
-        if self.options.get_safe("with_wsi_xcb") or self.options.get_safe("with_wsi_xlib"):
+        if self.options.with_wsi_xcb or self.options.with_wsi_xlib:
             self.requires("xorg")
-        if self.options.get_safe("with_wsi_wayland"):
+        if self.options.with_wsi_wayland:
             self.requires("wayland")
         if self._needs_pkg_config and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
@@ -67,9 +67,9 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         tc = CMakeToolchain(self)
         if self._has_wsi_options:
-            tc.cache_variables["BUILD_WSI_XCB_SUPPORT"] = self.options.get_safe("with_wsi_xcb")
-            tc.cache_variables["BUILD_WSI_XLIB_SUPPORT"] = self.options.get_safe("with_wsi_xlib")
-            tc.cache_variables["BUILD_WSI_WAYLAND_SUPPORT"] = self.options.get_safe("with_wsi_wayland")
+            tc.cache_variables["BUILD_WSI_XCB_SUPPORT"] = self.options.with_wsi_xcb
+            tc.cache_variables["BUILD_WSI_XLIB_SUPPORT"] = self.options.with_wsi_xlib
+            tc.cache_variables["BUILD_WSI_WAYLAND_SUPPORT"] = self.options.with_wsi_wayland
         tc.cache_variables["BUILD_WERROR"] = False
         tc.cache_variables["BUILD_TESTS"] = False
         tc.cache_variables["UPDATE_DEPS"] = False

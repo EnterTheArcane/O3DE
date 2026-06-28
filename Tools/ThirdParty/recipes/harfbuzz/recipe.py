@@ -35,11 +35,11 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os != "Windows":
-            del self.options.with_gdi
-            del self.options.with_uniscribe
-            del self.options.with_directwrite
+            self.options.with_gdi = False
+            self.options.with_uniscribe = False
+            self.options.with_directwrite = False
         if not is_apple_os(self):
-            del self.options.with_coretext
+            self.options.with_coretext = False
 
         if self.options.shared and self.options.with_glib:
             self.options["glib"].shared = True
@@ -100,9 +100,9 @@ class Recipe(RecipeBase[_Options]):
                 "glib": is_enabled(self.options.with_glib),
                 "icu": is_enabled(True),
                 "freetype": is_enabled(True),
-                "gdi": is_enabled(self.options.get_safe("with_gdi")),
-                "coretext": is_enabled(self.options.get_safe("with_coretext")),
-                "directwrite": is_enabled(self.options.get_safe("with_directwrite")),
+                "gdi": is_enabled(self.options.with_gdi),
+                "coretext": is_enabled(self.options.with_coretext),
+                "directwrite": is_enabled(self.options.with_directwrite),
                 "gobject": is_enabled(self.options.with_glib),
                 "introspection": is_enabled(False),
                 "tests": "disabled",
@@ -155,7 +155,7 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["core"].system_libs.append("usp10")
             if self.options.with_directwrite:
                 self.info.components["core"].system_libs.append("dwrite")
-        if is_apple_os(self) and self.options.get_safe("with_coretext", False):
+        if is_apple_os(self) and self.options.with_coretext:
             if self.settings.os == "Mac":
                 self.info.components["core"].frameworks.append("ApplicationServices")
             else:

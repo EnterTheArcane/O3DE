@@ -83,9 +83,9 @@ class Recipe(RecipeBase[_Options]):
         return True
 
     def configure(self):
-        del self.options.with_libgsasl
+        self.options.with_libgsasl = False
         if not is_apple_os(self):
-            del self.options.with_apple_sectrust
+            self.options.with_apple_sectrust = False
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -195,10 +195,8 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["CURL_DISABLE_VERBOSE_STRINGS"] = not self.options.with_verbose_strings
         if self.options.with_ssl == "libressl":
             tc.variables["CURL_DISABLE_SRP"] = True
-        if "with_form_api" in self.options:
-            tc.variables["CURL_DISABLE_FORM_API"] = not self.options.with_form_api
-        if "with_websockets" in self.options:
-            tc.variables["CURL_DISABLE_WEBSOCKETS"] = not self.options.with_websockets
+        tc.variables["CURL_DISABLE_FORM_API"] = not self.options.with_form_api
+        tc.variables["CURL_DISABLE_WEBSOCKETS"] = not self.options.with_websockets
 
         # Also disables NTLM_WB if set to false
         tc.variables["CURL_ENABLE_NTLM"] = self.options.with_ntlm
@@ -323,7 +321,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["curl"].frameworks.append("CoreFoundation")
             self.info.components["curl"].frameworks.append("CoreServices")
             self.info.components["curl"].frameworks.append("SystemConfiguration")
-            if self.options.get_safe("with_apple_sectrust"):
+            if self.options.with_apple_sectrust:
                 self.info.components["curl"].frameworks.append("Security")
             if self.options.with_ldap:
                 self.info.components["curl"].system_libs.append("ldap")

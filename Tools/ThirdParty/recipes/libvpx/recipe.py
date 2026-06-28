@@ -39,12 +39,12 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         if str(self.settings.arch) not in ["X64"]:
             for name in self._arch_options:
-                delattr(self.options, name)
+                setattr(self.options, name, False)
 
         if self.settings.os == "Windows":
-            del self.options.shared
+            self.options.shared = False
         if self.settings.os == "Android":
-            del self.options.shared
+            self.options.shared = False
 
     def requirements(self):
         if self.settings.arch in ["X64"]:
@@ -139,7 +139,7 @@ class Recipe(RecipeBase[_Options]):
             tc.configure_args.append("--enable-static-msvcrt")
         if str(self.settings.arch) in ["X64"]:
             for name in self._arch_options:
-                if not self.options.get_safe(name):
+                if not getattr(self.options, name):
                     tc.configure_args.append(f"--disable-{name}")
 
         tc.update_configure_args(
@@ -247,7 +247,7 @@ class Recipe(RecipeBase[_Options]):
     def package_info(self):
         self.info.set_property("pkg_config_name", "vpx")
         self.info.libs = [self._lib_name]
-        if not self.options.get_safe("shared"):
+        if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
                 self.info.system_libs.append(libcxx)

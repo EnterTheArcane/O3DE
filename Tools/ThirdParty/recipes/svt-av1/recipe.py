@@ -28,12 +28,12 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.arch != "ARM":
-            del self.options.with_neon
-            del self.options.with_arm_crc32
-            del self.options.with_neon_dotprod
-            del self.options.with_neon_i8mm
-            del self.options.with_neon_sve
-            del self.options.with_neon_sve2
+            self.options.with_neon = False
+            self.options.with_arm_crc32 = False
+            self.options.with_neon_dotprod = False
+            self.options.with_neon_i8mm = False
+            self.options.with_neon_sve = False
+            self.options.with_neon_sve2 = False
 
     def requirements(self):
         self.requires_tool("cmake")
@@ -52,17 +52,12 @@ class Recipe(RecipeBase[_Options]):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_APPS"] = False
         tc.cache_variables["MINIMAL_BUILD"] = self.options.minimal_build
-        if "with_neon" in self.options:
+        if self.settings.arch == "ARM":
             tc.cache_variables["ENABLE_NEON"] = self.options.with_neon
-        if "with_arm_crc32" in self.options:
             tc.cache_variables["ENABLE_ARM_CRC32"] = self.options.with_arm_crc32
-        if "with_neon_dotprod" in self.options:
             tc.cache_variables["ENABLE_NEON_DOTPROD"] = self.options.with_neon_dotprod
-        if "with_neon_i8mm" in self.options:
             tc.cache_variables["ENABLE_NEON_I8MM"] = self.options.with_neon_i8mm
-        if "with_neon_sve" in self.options:
             tc.cache_variables["ENABLE_SVE"] = self.options.with_neon_sve
-        if "with_neon_sve2" in self.options:
             tc.cache_variables["ENABLE_SVE2"] = self.options.with_neon_sve2
         tc.generate()
         deps = CMakeDeps(self)

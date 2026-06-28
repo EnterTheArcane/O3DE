@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         # with_default_callback_uses_exceptions should only be valid if with_default_callbacks is true
         if not self.options.with_default_callbacks:
-            del self.options.with_default_callback_uses_exceptions
+            self.options.with_default_callback_uses_exceptions = False
 
     def requirements(self):
         self.requires("c4core")

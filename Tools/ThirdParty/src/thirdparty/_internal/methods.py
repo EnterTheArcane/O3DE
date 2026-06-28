@@ -12,19 +12,6 @@ def run_configure_method(recipe: RecipeBase):
     with recipe_exception_formatter(recipe, "configure"):
         recipe.configure()
 
-    # Default option handling injected by run_configure: drop fPIC where it does not apply (Windows, or shared/header-only builds) and drop shared for header-only packages.
-    # This lets recipes omit manual del self.options.fPIC boilerplate.
-    if recipe.settings.get_safe("os") == "Windows" and "fPIC" in recipe.options:
-        del recipe.options.fPIC
-    if recipe.options.get_safe("header_only"):
-        if "fPIC" in recipe.options:
-            del recipe.options.fPIC
-        if "shared" in recipe.options:
-            del recipe.options.shared
-    elif recipe.options.get_safe("shared"):
-        if "fPIC" in recipe.options:
-            del recipe.options.fPIC
-
     if initial_requires_count != len(recipe._requires):
         recipe.output.warning(
             "Requirements should only be added in the requirements() method, "

@@ -35,14 +35,14 @@ class Recipe(RecipeBase[_Options]):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
         if not self.options.build_pcre2grep:
-            del self.options.with_zlib
-            del self.options.with_bzip2
-            del self.options.grep_support_callout_fork
+            self.options.with_zlib = False
+            self.options.with_bzip2 = False
+            self.options.grep_support_callout_fork = False
 
     def requirements(self):
-        if self.options.get_safe("with_zlib"):
+        if self.options.with_zlib:
             self.requires("zlib")
-        if self.options.get_safe("with_bzip2"):
+        if self.options.with_bzip2:
             self.requires("bzip2")
 
     def source(self):
@@ -60,8 +60,8 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
         tc.variables["BUILD_STATIC_LIBS"] = not self.options.shared
         tc.variables["PCRE2_BUILD_PCRE2GREP"] = self.options.build_pcre2grep
-        tc.variables["PCRE2_SUPPORT_LIBZ"] = self.options.get_safe("with_zlib", False)
-        tc.variables["PCRE2_SUPPORT_LIBBZ2"] = self.options.get_safe("with_bzip2", False)
+        tc.variables["PCRE2_SUPPORT_LIBZ"] = self.options.with_zlib
+        tc.variables["PCRE2_SUPPORT_LIBBZ2"] = self.options.with_bzip2
         tc.variables["PCRE2_BUILD_TESTS"] = False
         if is_msvc(self):
             tc.variables["PCRE2_STATIC_RUNTIME"] = is_msvc_static_runtime(self)
@@ -71,7 +71,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["PCRE2_BUILD_PCRE2_32"] = self.options.build_pcre2_32
         tc.variables["PCRE2_SUPPORT_JIT"] = self.options.support_jit
         tc.variables["PCRE2_LINK_SIZE"] = self.options.link_size
-        tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.get_safe("grep_support_callout_fork", False)
+        tc.variables["PCRE2GREP_SUPPORT_CALLOUT_FORK"] = self.options.grep_support_callout_fork
         # 10.47 accidentally dropped the list(APPEND CMAKE_MODULE_PATH cmake/) call;
         # inject it via the toolchain so cmake/ modules (PCRE2CheckVscript etc.) can be found
         tc.variables["CMAKE_MODULE_PATH"] = (self.folders.source / "cmake").as_posix()

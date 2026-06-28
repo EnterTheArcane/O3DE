@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self.options.shared:
-            del self.options.hide_vulkan_symbols
+            self.options.hide_vulkan_symbols = False
 
     def requirements(self):
         self.requires("cereal")

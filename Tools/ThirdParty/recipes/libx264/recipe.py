@@ -61,7 +61,7 @@ class Recipe(RecipeBase[_Options]):
             args["--enable-shared"] = ""
         else:
             args["--enable-static"] = ""
-        if self.options.get_safe("fPIC", self.settings.os != "Windows"):
+        if self.options.fPIC and self.settings.os != "Windows":
             args["--enable-pic"] = ""
         if self.settings.build_type == "Debug":
             args["--enable-debug"] = ""

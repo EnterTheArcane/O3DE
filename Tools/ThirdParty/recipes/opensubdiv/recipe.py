@@ -29,15 +29,15 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _min_cppstd(self):
-        if self.options.get_safe("with_metal"):
+        if self.options.with_metal:
             return "14"
         return "11"
 
     def configure(self):
         if self.settings.os != "Windows":
-            del self.options.with_dx
+            self.options.with_dx = False
         if self.settings.os != "Mac":
-            del self.options.with_metal
+            self.options.with_metal = False
         self.license = "DocumentRef-LICENSE.txt:LicenseRef-Tomorrow-Open-Source-Technology"
 
     def requirements(self):
@@ -45,7 +45,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_opengl:
             self.requires("opengl")
             self.requires("glfw")
-        if self.options.get_safe("with_metal"):
+        if self.options.with_metal:
             self.requires("metal-cpp")
 
     def source(self):
@@ -63,8 +63,8 @@ class Recipe(RecipeBase[_Options]):
                 self.options.with_opengl,
                 self.options.with_opencl,
                 self.options.with_cuda,
-                self.options.get_safe("with_dx"),
-                self.options.get_safe("with_metal"),
+                self.options.with_dx,
+                self.options.with_metal,
             ])
 
     def generate(self):
@@ -73,11 +73,11 @@ class Recipe(RecipeBase[_Options]):
             tc.variables["CMAKE_CXX_STANDARD"] = self._min_cppstd
         tc.variables["NO_TBB"] = False
         tc.variables["NO_OPENGL"] = not self.options.with_opengl
-        tc.variables["BUILD_SHARED_LIBS"] = self.options.get_safe("shared")
+        tc.variables["BUILD_SHARED_LIBS"] = self.options.shared
         tc.variables["NO_OMP"] = not self.options.with_omp
         tc.variables["NO_CUDA"] = not self.options.with_cuda
-        tc.variables["NO_DX"] = not self.options.get_safe("with_dx")
-        tc.variables["NO_METAL"] = not self.options.get_safe("with_metal")
+        tc.variables["NO_DX"] = not self.options.with_dx
+        tc.variables["NO_METAL"] = not self.options.with_metal
         tc.variables["NO_CLEW"] = not self.options.with_clew
         tc.variables["NO_OPENCL"] = not self.options.with_opencl
         tc.variables["NO_PTEX"] = True  # Note: PTEX is for examples only, but we skip them..
@@ -129,7 +129,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["osdgpu"].requires = ["osdcpu"]
             if self.options.with_opengl:
                 self.info.components["osdgpu"].requires.extend(["opengl::opengl", "glfw::glfw"])
-            if self.options.get_safe("with_metal"):
+            if self.options.with_metal:
                 self.info.components["osdgpu"].requires.append("metal-cpp::metal-cpp")
             dl_required = self.options.with_opengl or self.options.with_opencl
             if self.settings.os in ["Linux", "FreeBSD"] and dl_required:

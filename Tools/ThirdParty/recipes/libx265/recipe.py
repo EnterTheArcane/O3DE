@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if self.settings.os != "Linux":
-            del self.options.with_numa
+            self.options.with_numa = False
         # FIXME: Disable assembly by default if host is arm and compiler apple-clang for the moment.
         # Indeed, apple-clang is not able to understand some asm instructions of libx265
         # FIXME: Disable assembly by default if host is Android for the moment. It fails to build
@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.assembly = False
 
     def requirements(self):
-        if self.options.get_safe("with_numa", False):
+        if self.options.with_numa:
             self.requires("libnuma")
         if self.options.assembly:
             if self.settings.arch in ["X64"]:
@@ -55,10 +55,10 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         VirtualBuildEnv(self).generate()
         tc = CMakeToolchain(self)
-        tc.variables["ENABLE_PIC"] = self.options.get_safe("fPIC", True)
+        tc.variables["ENABLE_PIC"] = self.options.fPIC
         tc.variables["ENABLE_SHARED"] = self.options.shared
         tc.variables["ENABLE_ASSEMBLY"] = self.options.assembly
-        tc.variables["ENABLE_LIBNUMA"] = self.options.get_safe("with_numa", False)
+        tc.variables["ENABLE_LIBNUMA"] = self.options.with_numa
         if self.settings.os == "Mac":
             tc.variables["CMAKE_SHARED_LINKER_FLAGS"] = "-Wl,-read_only_relocs,suppress"
         tc.variables["HIGH_BIT_DEPTH"] = self.options.bit_depth != 8
