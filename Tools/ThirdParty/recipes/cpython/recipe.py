@@ -22,12 +22,13 @@ class _Options(RecipeOptions):
     lto: bool = False
     docstrings: bool = True
     pymalloc: bool = True
+    with_bsddb: bool = False
     with_bz2: bool = True
+    with_curses: bool = True
     with_gdbm: bool = True
+    with_lzma: bool = True
     with_sqlite3: bool = True
     with_tkinter: bool = True
-    with_curses: bool = True
-    with_lzma: bool = True
     env_vars: bool = True
 
 

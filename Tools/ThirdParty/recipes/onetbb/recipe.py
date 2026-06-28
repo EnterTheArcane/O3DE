@@ -51,6 +51,12 @@ class Recipe(RecipeBase):
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "TBB")
+        # oneTBB switched to a year-based versioning scheme (2021+), but consumers like
+        # OpenImageIO still request legacy versions, e.g. find_package(TBB 2017). Upstream
+        # oneTBB ships its TBBConfigVersion.cmake with AnyNewerVersion compatibility so those
+        # requests succeed; the default SameMajorVersion would reject 2023 against a 2017
+        # request and break the build.
+        self.info.set_property("cmake_config_version_compat", "AnyNewerVersion")
 
         def lib_name(name: str) -> str:
             if self.settings.build_type == "Debug":
