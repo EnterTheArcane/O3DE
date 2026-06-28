@@ -78,7 +78,7 @@ _MODULE_DEPENDS: dict[str, list[str]] = {
     "qtdoc": ["qtdeclarative", "qttools"],
     "qtgraphs": ["qtbase", "qtdeclarative", "qtquick3d"],
     "qtgrpc": ["qtbase"],
-    "qthttpserver": ["qtbase"],
+    "qthttpserver": ["qtbase", "qtwebsockets"],
     "qtimageformats": ["qtbase"],
     "qtlanguageserver": ["qtbase"],
     "qtlocation": ["qtbase", "qtpositioning"],
@@ -194,7 +194,7 @@ class _Options(RecipeOptions):
     qtwayland: bool = True
     qtwebchannel: bool = False
     qtwebengine: bool = False
-    qtwebsockets: bool = False
+    qtwebsockets: bool = True
     qtwebview: bool = False
 
 

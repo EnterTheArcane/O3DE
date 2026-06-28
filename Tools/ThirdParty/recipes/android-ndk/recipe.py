@@ -119,8 +119,6 @@ class Recipe(RecipeBase):
         copy(self, "*", src=self.folders.source, dst=self.folders.package / "bin")
         copy(self, "*NOTICE", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(self, "*NOTICE.toolchain", src=self.folders.source, dst=self.folders.package / "licenses")
-        copy(self, "cmake-wrapper.cmd", src=self.folders.source / os.pardir, dst=self.folders.package / "bin")
-        copy(self, "cmake-wrapper", src=self.folders.source / os.pardir, dst=self.folders.package / "bin")
         self._fix_permissions()
         rm(self, "*Config.cmake", self.folders.package / "bin", recursive=True)
         rm(self, "*-config.cmake", self.folders.package / "bin", recursive=True)
