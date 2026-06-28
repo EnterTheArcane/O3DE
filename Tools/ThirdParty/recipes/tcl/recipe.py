@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
@@ -60,7 +62,7 @@ class Recipe(RecipeBase[_Options]):
 
             tc = AutotoolsToolchain(self)
 
-            def yes_no(v):
+            def yes_no(v: Any) -> str:
                 return "yes" if v else "no"
 
             tc.configure_args.extend(
@@ -127,8 +129,8 @@ class Recipe(RecipeBase[_Options]):
             "OPTIMIZATIONS  = $(OPTIMIZATIONS) -GL",
             "")
 
-    def _build_nmake(self, targets):
-        opts = []
+    def _build_nmake(self, targets: list[str]):
+        opts: list[str] = []
         # https://core.tcl.tk/tips/doc/trunk/tip/477.md
         if not self.options.shared:
             opts.append("static")
@@ -151,13 +153,13 @@ class Recipe(RecipeBase[_Options]):
                     targets=" ".join(targets),
                 ))
 
-    def _get_configure_subdir(self):
-        return {
+    def _get_configure_subdir(self) -> Path:
+        return Path({
             "Mac": "macosx",
             "Linux": "unix",
             "FreeBSD": "unix",
             "Windows": "win",
-        }[str(self.settings.os)]
+        }[str(self.settings.os)])
 
     def build(self):
         self._patch_sources()
@@ -211,7 +213,7 @@ class Recipe(RecipeBase[_Options]):
 
         # There are other libs in subfolders, but they are only used
         # for TCL extensions and should not be linked against.
-        self.info.libs = collect_libs(self, self.folders.package / "lib")
+        self.info.libs = collect_libs(self, (self.folders.package / "lib").as_posix())
 
         if self.settings.os == "Windows":
             self.info.system_libs.extend(["ws2_32", "netapi32", "userenv"])

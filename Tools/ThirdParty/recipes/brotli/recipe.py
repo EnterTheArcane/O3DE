@@ -94,5 +94,5 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.components["brotlienc"].system_libs = ["m"]
 
-    def _get_decorated_lib(self, name):
+    def _get_decorated_lib(self, name: str) -> str:
         return name

@@ -1,5 +1,6 @@
 import fnmatch
 import os
+from pathlib import Path
 import textwrap
 from typing import Literal
 
@@ -7,6 +8,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os, XCRun
 from thirdparty.build import build_jobs
 from thirdparty.env import VirtualBuildEnv
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import chdir, copy, get, replace_in_file, rm, rmdir, save
 from thirdparty.autotools import AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, msvc_runtime_flag, unix_path
@@ -94,9 +96,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("openssl-"))
 
     @property
-    def _is_clang_cl(self):
-        return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
-            self.settings.compiler.get_safe("runtime")
+    def _is_clang_cl(self) -> bool:
+        return self.settings.os == "Windows" and self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime") # type: ignore
 
     @property
     def _is_mingw(self):
@@ -283,11 +284,7 @@ class Recipe(RecipeBase[_Options]):
         query = f"{self.settings.os}-{self.settings.arch}-{compiler}"
         ancestor = next((self._targets[i] for i in self._targets if fnmatch.fnmatch(query, i)), None)
         if not ancestor:
-            raise RecipeInvalidConfiguration(
-                f"Unsupported configuration ({self.settings.os}/{self.settings.arch}/{self.settings.compiler}).\n"
-                f"Please open an issue at {self.url}.\n"
-                f"Alternatively, set the RECIPE_OPENSSL_CONFIGURATION environment variable into your recipe profile."
-            )
+            raise RecipeInvalidConfiguration(f"Unsupported configuration ({self.settings.os}/{self.settings.arch}/{self.settings.compiler}).")
         return ancestor
 
     def _get_default_openssl_dir(self):
@@ -295,14 +292,14 @@ class Recipe(RecipeBase[_Options]):
             return "/etc/ssl"
         return self.folders.package / "res"
 
-    def _adjust_path(self, path):
+    def _adjust_path(self, path: Path):
         if self._use_nmake:
             return os.fspath(path).replace("\\", "/")
         return unix_path(self, path)
 
     @property
     def _configure_args(self):
-        openssldir = self.options.openssldir or self._get_default_openssl_dir()
+        openssldir = Path(self.options.openssldir or self._get_default_openssl_dir())
         openssldir = unix_path(self, openssldir) if self.win_bash else openssldir
         args = [
             f'"{self._target}"',
@@ -351,7 +348,7 @@ class Recipe(RecipeBase[_Options]):
             if self._use_nmake:
                 # notes: consider where this should be "if on windows"
                 #        zlib1 is assumed to be the name of the zlib1.dll for all windows configurations
-                lib_path = self._adjust_path(os.path.join(zlib_cpp_info.libdirs[0], f"{zlib_cpp_info.libs[0]}.lib"))
+                lib_path = self._adjust_path(zlib_cpp_info.libdirs[0] / f"{zlib_cpp_info.libs[0]}.lib")
                 zlib_lib_flag = "zlib1" if is_shared_zlib else lib_path
             else:
                 # Just path, GNU like compilers will find the right file
@@ -396,10 +393,10 @@ class Recipe(RecipeBase[_Options]):
 
     def _create_targets(
         self,
-        cflags,
-        cxxflags,
-        defines,
-        ldflags):
+        cflags: list[str],
+        cxxflags: list[str],
+        defs: list[str],
+        ldflags: list[str]):
         config_template = textwrap.dedent(
             """
             {targets} = (
@@ -407,7 +404,7 @@ class Recipe(RecipeBase[_Options]):
                     inherit_from => {ancestor},
                     cflags => add("{cflags}"),
                     cxxflags => add("{cxxflags}"),
-                    {defines}
+                    {defs}
                     lflags => add("{lflags}"),
                     {shared_target}
                     {shared_cflag}
@@ -421,7 +418,7 @@ class Recipe(RecipeBase[_Options]):
         if self._perlasm_scheme:
             perlasm_scheme = f'perlasm_scheme => "{self._perlasm_scheme}",'
 
-        defines = '", "'.join(defines)
+        defines: str = '", "'.join(defs)
         defines = 'defines => add("%s"),' % defines if defines else ""
         targets = "my %targets"
 
@@ -463,9 +460,9 @@ class Recipe(RecipeBase[_Options]):
 
     def _run_make(
         self,
-        targets=None,
-        parallel=True,
-        install=False):
+        targets: list[str] | None = None,
+        parallel: bool = True,
+        install: bool = False):
         command = [self._make_program]
         if install:
             command.append(f"DESTDIR={self._adjust_path(self.folders.package)}")
@@ -486,7 +483,7 @@ class Recipe(RecipeBase[_Options]):
             args = " ".join(self._configure_args)
 
             if self._use_nmake:
-                self._replace_runtime_in_file(os.path.join("Configurations", "10-main.conf"))
+                self._replace_runtime_in_file(Path("Configurations") / "10-main.conf")
 
             self.run(f"{self._perl} ./Configure {args}", env="env_build")
             if self._use_nmake:
@@ -516,7 +513,7 @@ class Recipe(RecipeBase[_Options]):
         else:
             return "make"
 
-    def _replace_runtime_in_file(self, filename):
+    def _replace_runtime_in_file(self, filename: Path):
         runtime = msvc_runtime_flag(self)
         for e in ["MDd", "MD", "MT"]:
             replace_in_file(self, filename, f"/{e} ", f"/{runtime} ", strict=False)
@@ -528,7 +525,7 @@ class Recipe(RecipeBase[_Options]):
         if is_apple_os(self):
             fix_apple_shared_install_name(self)
 
-        rm(self, "*.pdb", self.folders.package, "lib")
+        rm(self, "*.pdb", self.folders.package / "lib")
         if self.options.shared:
             libdir = self.folders.package / "lib"
             for file in os.listdir(libdir):
@@ -550,11 +547,9 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         rmdir(self, self.folders.package / "lib" / "cmake")
 
-        self._create_cmake_module_variables(
-            self.folders.package / self._module_file_rel_path
-        )
+        self._create_cmake_module_variables(self.folders.package / self._module_file_rel_path)
 
-    def _create_cmake_module_variables(self, module_file):
+    def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             """
             set(OPENSSL_FOUND TRUE)
@@ -563,29 +558,17 @@ class Recipe(RecipeBase[_Options]):
             endif()
             if(DEFINED OpenSSL_Crypto_LIBS)
                 set(OPENSSL_CRYPTO_LIBRARY ${OpenSSL_Crypto_LIBS})
-                set(OPENSSL_CRYPTO_LIBRARIES ${OpenSSL_Crypto_LIBS}
-                                                ${OpenSSL_Crypto_DEPENDENCIES}
-                                                ${OpenSSL_Crypto_FRAMEWORKS}
-                                                ${OpenSSL_Crypto_SYSTEM_LIBS})
+                set(OPENSSL_CRYPTO_LIBRARIES ${OpenSSL_Crypto_LIBS} ${OpenSSL_Crypto_DEPENDENCIES} ${OpenSSL_Crypto_FRAMEWORKS} ${OpenSSL_Crypto_SYSTEM_LIBS})
             elseif(DEFINED openssl_OpenSSL_Crypto_LIBS_%(config)s)
                 set(OPENSSL_CRYPTO_LIBRARY ${openssl_OpenSSL_Crypto_LIBS_%(config)s})
-                set(OPENSSL_CRYPTO_LIBRARIES ${openssl_OpenSSL_Crypto_LIBS_%(config)s}
-                                                ${openssl_OpenSSL_Crypto_DEPENDENCIES_%(config)s}
-                                                ${openssl_OpenSSL_Crypto_FRAMEWORKS_%(config)s}
-                                                ${openssl_OpenSSL_Crypto_SYSTEM_LIBS_%(config)s})
+                set(OPENSSL_CRYPTO_LIBRARIES ${openssl_OpenSSL_Crypto_LIBS_%(config)s} ${openssl_OpenSSL_Crypto_DEPENDENCIES_%(config)s} ${openssl_OpenSSL_Crypto_FRAMEWORKS_%(config)s} ${openssl_OpenSSL_Crypto_SYSTEM_LIBS_%(config)s})
             endif()
             if(DEFINED OpenSSL_SSL_LIBS)
                 set(OPENSSL_SSL_LIBRARY ${OpenSSL_SSL_LIBS})
-                set(OPENSSL_SSL_LIBRARIES ${OpenSSL_SSL_LIBS}
-                                            ${OpenSSL_SSL_DEPENDENCIES}
-                                            ${OpenSSL_SSL_FRAMEWORKS}
-                                            ${OpenSSL_SSL_SYSTEM_LIBS})
+                set(OPENSSL_SSL_LIBRARIES ${OpenSSL_SSL_LIBS} ${OpenSSL_SSL_DEPENDENCIES} ${OpenSSL_SSL_FRAMEWORKS} ${OpenSSL_SSL_SYSTEM_LIBS})
             elseif(DEFINED openssl_OpenSSL_SSL_LIBS_%(config)s)
                 set(OPENSSL_SSL_LIBRARY ${openssl_OpenSSL_SSL_LIBS_%(config)s})
-                set(OPENSSL_SSL_LIBRARIES ${openssl_OpenSSL_SSL_LIBS_%(config)s}
-                                            ${openssl_OpenSSL_SSL_DEPENDENCIES_%(config)s}
-                                            ${openssl_OpenSSL_SSL_FRAMEWORKS_%(config)s}
-                                            ${openssl_OpenSSL_SSL_SYSTEM_LIBS_%(config)s})
+                set(OPENSSL_SSL_LIBRARIES ${openssl_OpenSSL_SSL_LIBS_%(config)s} ${openssl_OpenSSL_SSL_DEPENDENCIES_%(config)s} ${openssl_OpenSSL_SSL_FRAMEWORKS_%(config)s} ${openssl_OpenSSL_SSL_SYSTEM_LIBS_%(config)s})
             endif()
             if(DEFINED OpenSSL_LIBRARIES)
                 set(OPENSSL_LIBRARIES ${OpenSSL_LIBRARIES})

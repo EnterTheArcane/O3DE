@@ -7,7 +7,7 @@ from thirdparty.files import copy, get, apply_patches
 class Recipe(RecipeBase):
     name = "rapidxml"
     version = "1.13"
-    license = ["BSL-1.0", "MIT"]
+    license = "BSL-1.0", "MIT"
 
     def source(self):
         get(

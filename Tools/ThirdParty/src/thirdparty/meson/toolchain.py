@@ -112,6 +112,8 @@ class MesonToolchain:
         endian = '{{values["endian"]}}'
         {% endfor %}
         """)
+    
+    project_options: dict[str, Any]
 
     def __init__(
         self,

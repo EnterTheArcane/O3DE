@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import textwrap
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -92,7 +93,7 @@ class Recipe(RecipeBase[_Options]):
             {target: f"spirv-cross::{target}" for target in self._spirv_cross_components.keys()},
         )
 
-    def _create_cmake_module_alias_targets(self, module_file, targets):
+    def _create_cmake_module_alias_targets(self, module_file: Path, targets: dict[str, str]):
         content = ""
         for alias, aliased in targets.items():
             content += textwrap.dedent(
@@ -109,8 +110,8 @@ class Recipe(RecipeBase[_Options]):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-targets.cmake")
 
     @property
-    def _spirv_cross_components(self):
-        components = {}
+    def _spirv_cross_components(self) -> dict[str, list[str]]:
+        components: dict[str, list[str]] = {}
         if self.options.shared:
             components.update({"spirv-cross-c-shared": []})
         else:
@@ -126,7 +127,7 @@ class Recipe(RecipeBase[_Options]):
                 if self.options.reflect:
                     components.update({"spirv-cross-reflect": []})
             if self.options.c_api:
-                c_api_requires = []
+                c_api_requires: list[str] = []
                 if self.options.glsl:
                     c_api_requires.append("spirv-cross-glsl")
                     if self.options.hlsl:
@@ -144,7 +145,7 @@ class Recipe(RecipeBase[_Options]):
 
     def package_info(self):
         # FIXME: we should provide one CMake config file per target (waiting for an implementation of upstream issue 9000)
-        def _register_component(target_lib, requires):
+        def _register_component(target_lib: str, requires: list[str]):
             self.info.components[target_lib].set_property("cmake_target_name", target_lib)
             if self.options.shared:
                 self.info.components[target_lib].set_property("pkg_config_name", target_lib)

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Any
 
 from thirdparty._internal.internal_tools import is_universal_arch
@@ -16,8 +17,9 @@ from thirdparty.recipe import RecipeBase
 class AutotoolsToolchain:
     _recipe: RecipeBase
     _namespace: str | None
-    _prefix: str
-    
+    _prefix: Path
+
+    extra_asflags: list[str]
     extra_cxxflags: list[str]
     extra_cflags: list[str]
     extra_ldflags: list[str]
@@ -61,7 +63,7 @@ class AutotoolsToolchain:
         self,
         recipe: RecipeBase,
         namespace: str | None = None,
-        prefix: str = "/"):
+        prefix: Path = Path("/")):
         """
         :param recipe: The current recipe object. Always use ``self``.
         :param namespace: This argument avoids collisions when you have multiple toolchain calls in

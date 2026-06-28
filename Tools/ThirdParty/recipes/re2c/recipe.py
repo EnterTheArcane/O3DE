@@ -65,4 +65,4 @@ class Recipe(RecipeBase):
         self.info.includedirs = []
 
         include_dir = self.folders.package / "include"
-        self.buildenv_info.define("RE2C_STDLIB_DIR", include_dir)
+        self.buildenv_info.define("RE2C_STDLIB_DIR", include_dir.as_posix())

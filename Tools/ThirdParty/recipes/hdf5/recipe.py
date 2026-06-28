@@ -99,7 +99,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_file_name", "HDF5")
         self.info.set_property("cmake_target_name", "HDF5::HDF5")
 
-        def _lib_name(lib):
+        def _lib_name(lib: str) -> str:
             if self.settings.os == "Windows" and self.settings.compiler != "gcc" and not self.options.shared:
                 lib = "lib" + lib
             if self.settings.build_type == "Debug":

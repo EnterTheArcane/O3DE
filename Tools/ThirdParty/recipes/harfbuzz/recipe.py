@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
@@ -70,10 +71,10 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True)
 
     def generate(self):
-        def is_enabled(value):
+        def is_enabled(value: Any):
             return "enabled" if value else "disabled"
 
-        def meson_backend_and_flags():
+        def meson_backend_and_flags() -> tuple[str, list[str]]:
             def is_vs_2017():
                 version = Version(self.settings.compiler.version)
                 return version == "15" or version == "191"
@@ -185,7 +186,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["gobject"].requires = ["core", "glib::glib"]
 
 
-def fix_msvc_libname(recipe, remove_lib_prefix=True):
+def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
     if not recipe.settings.get_safe("compiler.runtime"):

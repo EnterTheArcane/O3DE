@@ -46,7 +46,6 @@ class Recipe(RecipeBase):
 
         rmdir(self, self.folders.package / "share")
 
-        checked_target = "pybind11"
         replace_in_file(
             self, self.folders.package / "lib" / "cmake" / "pybind11" / "pybind11Common.cmake",
             "add_library(",

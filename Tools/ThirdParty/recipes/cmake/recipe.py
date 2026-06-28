@@ -1,6 +1,7 @@
 import os
 
 from thirdparty import RecipeBase
+from thirdparty.errors import RecipeException
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository

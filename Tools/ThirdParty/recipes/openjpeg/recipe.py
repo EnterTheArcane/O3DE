@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import textwrap
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -64,15 +65,13 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / self._openjpeg_subdir)
         rmdir(self, self.folders.package / "lib" / "cmake" / self._openjpeg_subdir)
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
-        self._create_cmake_module_variables(
-            self.folders.package / self._module_vars_rel_path
-        )
+        self._create_cmake_module_variables(self.folders.package / self._module_vars_rel_path)
         self._create_cmake_module_alias_targets(
             self.folders.package / self._module_target_rel_path,
             {"openjp2": "OpenJPEG::OpenJPEG"}
         )
 
-    def _create_cmake_module_variables(self, module_file):
+    def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             f"""
             set(OPENJPEG_FOUND TRUE)
@@ -89,7 +88,7 @@ class Recipe(RecipeBase[_Options]):
             """)
         save(self, module_file, content)
 
-    def _create_cmake_module_alias_targets(self, module_file, targets):
+    def _create_cmake_module_alias_targets(self, module_file: Path, targets: dict[str, str]):
         content = ""
         for alias, aliased in targets.items():
             content += textwrap.dedent(

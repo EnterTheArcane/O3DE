@@ -47,9 +47,9 @@ class Recipe(RecipeBase[_Options]):
 
         tc = AutotoolsToolchain(self)
 
-        extra_asflags = []
-        extra_cflags = []
-        extra_ldflags = []
+        extra_asflags: list[str] = []
+        extra_cflags: list[str] = []
+        extra_ldflags: list[str] = []
         args = {
             "--bit-depth": "all",
             "--disable-cli": "",
@@ -83,7 +83,7 @@ class Recipe(RecipeBase[_Options]):
 
         if self._with_nasm:
             env = Environment()
-            nasm_exe = "nasm{}".format(".exe" if self.settings.os == "Windows" else "")
+            nasm_exe: str = "nasm{}".format(".exe" if self.settings.os == "Windows" else "")
             env.define("AS", unix_path(self, self.dependencies.build["nasm"].folders.package / "bin" / nasm_exe))
             env.vars(self).save_script("buildenv_nasm")
 

@@ -3,6 +3,7 @@ import re
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.errors import RecipeException
 from thirdparty.files import copy, get, rmdir, load
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version

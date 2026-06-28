@@ -1,5 +1,6 @@
 import glob
 import os
+from pathlib import Path
 import re
 import shutil
 from typing import Literal
@@ -693,9 +694,9 @@ class Recipe(RecipeBase[_Options]):
                 # ffmpeg produces `.a` files that are actually `.lib` files
                 with chdir(self, self.folders.package / "lib"):
                     for lib in glob.glob("*.a"):
-                        rename(self, lib, lib[3:-2] + ".lib")
+                        rename(self, Path(lib), Path(lib[3:-2] + ".lib"))
 
-    def _read_component_version(self, component_name):
+    def _read_component_version(self, component_name: str):
         # since 5.1, major version may be defined in version_major.h instead of version.h
         component_folder = self.folders.package / "include" / f"lib{component_name}"
         version_file_name = component_folder / "version.h"
@@ -713,7 +714,7 @@ class Recipe(RecipeBase[_Options]):
             return f"{version['MAJOR']}.{version['MINOR']}.{version['MICRO']}"
         return None
 
-    def _set_component_version(self, component_name):
+    def _set_component_version(self, component_name: str):
         version = self._read_component_version(component_name)
         if version is not None:
             self.info.components[component_name].set_property("component_version", version)
@@ -727,7 +728,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_sdl:
                 self.info.components["programs"].requires = ["sdl::libsdl2"]
 
-        def _add_component(name, dependencies):
+        def _add_component(name: str, dependencies):
             component = self.info.components[name]
             component.set_property("pkg_config_name", f"lib{name}")
             self._set_component_version(name)

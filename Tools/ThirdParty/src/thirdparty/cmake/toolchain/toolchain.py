@@ -120,6 +120,7 @@ class CMakeToolchain:
     user_presets_path: str
     presets_prefix: str
     absolute_paths: bool
+    configure_args: list[str]
 
     def __init__(self, recipe: RecipeBase, generator: str | None = None):
         self._recipe = recipe

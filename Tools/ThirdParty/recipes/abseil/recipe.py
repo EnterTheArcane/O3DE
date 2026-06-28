@@ -1,5 +1,7 @@
 import json
+from pathlib import Path
 import re
+from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
@@ -62,8 +64,8 @@ class Recipe(RecipeBase[_Options]):
         # Create a json helper file in order to populate package_info() at consume time
         self._create_components_file(self._components_helper_filepath, components)
 
-    def _load_components_from_cmake_target_file(self, absl_target_file_path):
-        components = {}
+    def _load_components_from_cmake_target_file(self, absl_target_file_path: Path):
+        components: dict[str, dict[str, Any]] = {}
 
         abs_target_content = load(self, absl_target_file_path)
 
@@ -120,7 +122,7 @@ class Recipe(RecipeBase[_Options]):
 
         return components
 
-    def _create_components_file(self, output_file, components):
+    def _create_components_file(self, output_file: Path, components: dict[str, dict[str, Any]]):
         content = json.dumps(components, indent=4)
         save(self, output_file, content)
 

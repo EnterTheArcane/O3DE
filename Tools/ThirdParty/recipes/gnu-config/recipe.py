@@ -1,4 +1,5 @@
 from thirdparty import RecipeBase
+from thirdparty.errors import RecipeException
 from thirdparty.files import copy, get, load, save, apply_patches
 
 

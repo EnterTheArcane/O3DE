@@ -37,10 +37,7 @@ class Recipe(RecipeBase):
         VirtualBuildEnv(self).generate()
 
         tc = AutotoolsToolchain(self)
-        tc.configure_args.extend(
-            [
-                "--datarootdir=${prefix}/res",
-            ])
+        tc.configure_args.append("--datarootdir=${prefix}/res")
 
         if self.settings.os == "Windows":
             if is_msvc(self):

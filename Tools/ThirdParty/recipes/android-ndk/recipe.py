@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import re
 import zipfile
 
@@ -99,11 +100,11 @@ class Recipe(RecipeBase):
         abi = "android"
         return f"{arch}-linux-{abi}"
 
-    def _wrap_executable(self, tool):
+    def _wrap_executable(self, tool: str):
         suffix = ".exe" if self.settings.os == "Windows" else ""
         return f"{tool}{suffix}"
 
-    def _tool_name(self, tool, bare=False):
+    def _tool_name(self, tool: str, bare: bool = False):
         if "clang" in tool:
             suffix = ".cmd" if self.settings.os == "Windows" else ""
             prefix = "llvm" if bare else f"{self._clang_triplet}{self.settings_target.os.api_level}"
@@ -114,9 +115,9 @@ class Recipe(RecipeBase):
 
     def _define_tool_var(
         self,
-        name,
-        value,
-        bare=False):
+        name: str,
+        value: str,
+        bare: bool = False):
         ndk_bin = self._ndk_root / "bin"
         path = ndk_bin / self._tool_name(value, bare)
         if not os.path.isfile(path):
@@ -124,7 +125,7 @@ class Recipe(RecipeBase):
             return "UNKNOWN"
         return path
 
-    def _define_tool_var_naked(self, name, value):
+    def _define_tool_var_naked(self, name: str, value: str):
         ndk_bin = self._ndk_root / "bin"
         path = ndk_bin / self._wrap_executable(value)
         if not os.path.isfile(path):
@@ -133,7 +134,7 @@ class Recipe(RecipeBase):
         return path
 
     @staticmethod
-    def _chmod_plus_x(filename):
+    def _chmod_plus_x(filename: str):
         if os.name == "posix":
             os.chmod(filename, os.stat(filename).st_mode | 0o111)
 
@@ -158,14 +159,14 @@ class Recipe(RecipeBase):
 
     def _unzip_fix_symlinks(
         self,
-        url,
-        target_folder,
-        sha256):
+        url: str,
+        target_folder: Path,
+        sha256: str):
         filename = "android_sdk.zip"
         download(self, url, filename, sha256=sha256)
         unzip(self, filename, destination=target_folder, strip_root=True)
 
-        def _is_symlink_zipinfo(zi):
+        def _is_symlink_zipinfo(zi: zipfile.ZipInfo) -> bool:
             return (zi.external_attr >> 28) == 0xA
 
         with zipfile.ZipFile(filename, "r") as z:

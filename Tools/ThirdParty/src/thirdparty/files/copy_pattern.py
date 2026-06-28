@@ -14,8 +14,8 @@ from thirdparty.recipe import RecipeBase
 def copy(
     recipe: RecipeBase,
     pattern: str,
-    src: Path,
-    dst: Path,
+    src: str | os.PathLike[str],
+    dst: str | os.PathLike[str],
     keep_path: bool = True,
     excludes: Any = None,
     ignore_case: bool = True,

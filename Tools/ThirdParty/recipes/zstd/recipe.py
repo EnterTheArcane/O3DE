@@ -1,4 +1,3 @@
-import glob
 import os
 
 from thirdparty import RecipeBase, RecipeOptions

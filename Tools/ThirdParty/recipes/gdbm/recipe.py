@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
@@ -62,7 +63,10 @@ class Recipe(RecipeBase[_Options]):
         if not cross_building(self):
             VirtualRunEnv(self).generate(scope="build")
         tc = AutotoolsToolchain(self)
-        yes_no = lambda v: "yes" if v else "no"
+        
+        def yes_no(v: Any) -> str:
+            return "yes" if v else "no"
+        
         enable_debug = self.settings.build_type in ["Debug", "RelWithDebInfo"]
         tc.configure_args.extend(
             [

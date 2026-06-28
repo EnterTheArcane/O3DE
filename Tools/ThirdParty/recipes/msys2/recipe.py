@@ -94,7 +94,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.no_kill:
             return
         if (self.settings.os == "Windows"):
-            taskkill_exe = os.path.join(os.environ.get('SystemRoot'), 'system32', 'taskkill.exe')
+            taskkill_exe: str = os.path.join(os.environ.get('SystemRoot'), 'system32', 'taskkill.exe')
 
             log_out = True
             if log_out:
@@ -129,7 +129,7 @@ class Recipe(RecipeBase[_Options]):
             self._do_build()
 
     def _do_build(self):
-        packages = []
+        packages: list[str] = []
         if self.options.packages:
             packages.extend(str(self.options.packages).split(","))
         if self.options.additional_packages:

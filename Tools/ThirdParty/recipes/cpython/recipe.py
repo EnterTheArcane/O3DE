@@ -1,6 +1,7 @@
 import os
 import re
 import textwrap
+from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
@@ -106,7 +107,10 @@ class Recipe(RecipeBase[_Options]):
         tc = AutotoolsToolchain(self, prefix=self.folders.package)
         # Not necessary, just cleans up the output
         tc.update_configure_args({"--enable-static": None, "--disable-static": None})
-        yes_no = lambda v: "yes" if v else "no"
+        
+        def yes_no(v: Any) -> str:
+            return "yes" if v else "no"
+        
         tc.configure_args += [
             "--enable-shared" if self.options.shared else "--disable-shared",
             f"--with-doc-strings={yes_no(self.options.docstrings)}",

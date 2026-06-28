@@ -1,9 +1,12 @@
 import os
+from pathlib import Path
+from typing import Any
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
+from thirdparty.errors import RecipeException
 from thirdparty.files import apply_patches, chdir, copy, get, replace_in_file, rmdir
 from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.nmake import NMakeDeps, NMakeToolchain
@@ -63,8 +66,10 @@ class Recipe(RecipeBase[_Options]):
             # run a test executable
             if not cross_building(self):
                 VirtualRunEnv(self).generate(scope="build")
+                
+            def yes_no(v: Any) -> str:
+                return "yes" if v else "no"
 
-            yes_no = lambda v: "yes" if v else "no"
             tc = AutotoolsToolchain(self)
             tc.configure_args.append("--enable-threads")
             tc.configure_args.append(
@@ -107,16 +112,16 @@ class Recipe(RecipeBase[_Options]):
         else:
             raise ValueError("tk recipe does not recognize os")
 
-    def _get_configure_folder(self, build_system=None):
+    def _get_configure_folder(self, build_system: str | None = None) -> Path:
         if build_system is None:
             build_system = self._get_default_build_system()
         if build_system not in ["win", "unix", "macosx"]:
             raise RecipeException(f"Invalid build system: {build_system}")
         return self.folders.source / build_system
 
-    def _build_nmake(self, target="release"):
+    def _build_nmake(self, target: str = "release"):
         # https://core.tcl.tk/tips/doc/trunk/tip/477.md
-        opts = []
+        opts: list[str] = []
         if not self.options.shared:
             opts.append("static")
         if self.settings.build_type == "Debug":
@@ -129,7 +134,7 @@ class Recipe(RecipeBase[_Options]):
             opts.append("unchecked")
         # https://core.tcl.tk/tk/tktview?name=3d34589aa0
         # https://wiki.tcl-lang.org/page/Building+with+Visual+Studio+2017
-        tcl_lib_path = self.dependencies["tcl"].folders.package / "lib"
+        tcl_lib_path: Path = self.dependencies["tcl"].folders.package / "lib"
         tclimplib, tclstublib = None, None
         for lib in os.listdir(tcl_lib_path):
             if not lib.endswith(".lib"):

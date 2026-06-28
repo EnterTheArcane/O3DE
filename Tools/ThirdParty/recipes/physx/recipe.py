@@ -173,7 +173,7 @@ class Recipe(RecipeBase[_Options]):
                 neon_content = neon_content.replace("if(index < 2)", "if constexpr(index < 2)")
                 save(self, neon_file, neon_content)
 
-    def _get_physx_build_type(self):
+    def _get_physx_build_type(self) -> str:
         if self.settings.build_type == "Debug":
             return "debug"
         elif self.settings.build_type == "RelWithDebInfo":
@@ -183,6 +183,7 @@ class Recipe(RecipeBase[_Options]):
                 return "profile"
             else:
                 return "release"
+        return ""
 
     def _get_target_build_platform(self):
         return {

@@ -1653,12 +1653,12 @@ class Recipe(RecipeBase[_Options]):
                     self.info.components[component].exelinkflags.extend(obj_files)
                     self.info.components[component].sharedlinkflags.extend(obj_files)
 
-        build_modules_list = []
+        build_modules_list: list[Path] = []
 
         if self.options.qtdeclarative:
             build_modules_list.append(self.folders.package / "lib" / "cmake" / "Qt6Qml" / "recipe_qt_qt6_policies.cmake")
 
-        def _add_build_modules_for_component(component):
+        def _add_build_modules_for_component(component: str):
             for req in self.info.components[component].requires:
                 if "::" in req:  # not a qt component
                     continue

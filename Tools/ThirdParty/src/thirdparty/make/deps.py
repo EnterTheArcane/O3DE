@@ -38,14 +38,14 @@ from thirdparty.recipe import RecipeBase
 RECIPE_MAKEFILE_FILENAME = "recipe_deps.mk"
 
 
-def _get_formatted_dirs(folders: list[Any], prefix_path_: str, name: str) -> list[Any]:
+def _get_formatted_dirs(folders: list[str], prefix_path_: str, name: str) -> list[str]:
     """ Format the directories to be used in the makefile, adding the prefix path if needed
     :param folders: list of directories
     :param prefix_path_: prefix path
     :param name: component name
     :return: list of formatted directories
     """
-    ret = []
+    ret: list[str] = []
     for directory in folders:
         if directory.startswith("$(RECIPE"):  # already a variable
             ret.append(directory)
@@ -79,7 +79,7 @@ def _makefy_properties(properties: Optional[dict]) -> dict[str, Any]:
     return {_makefy(name): value for name, value in properties.items()} if properties else {}
 
 
-def _check_property_value(name, value, output) -> bool:
+def _check_property_value(name: str, value: str, output: Output) -> bool:
     if "\n" in value:
         output.warning(f"Skipping propery '{name}' because it contains newline")
         return False
@@ -296,7 +296,7 @@ class GlobalGenerator:
         """
         List regular directories from info and format them to be used in the makefile
         """
-        dirs = {}
+        dirs: dict[str, Any] = {}
         for var in _common_cppinfo_dirs():
             key = var.replace("dirs", "_dirs")
             dirs[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})" for makeinfo in self._make_infos if var in makeinfo.dirs]
@@ -306,7 +306,7 @@ class GlobalGenerator:
         """
         List common variables from info and format them to be used in the makefile
         """
-        flags = {}
+        flags: dict[str, Any] = {}
         for var in _common_cppinfo_variables():
             key = var.replace("dirs", "_dirs")
             flags[key] = [f"$(RECIPE_{key.upper()}_{_makefy(makeinfo.name)})" for makeinfo in self._make_infos if var in makeinfo.flags]

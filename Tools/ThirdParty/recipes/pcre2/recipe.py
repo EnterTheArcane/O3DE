@@ -152,7 +152,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_bzip2:
                 self.info.components["pcre2-8"].requires.append("bzip2::bzip2")
 
-    def _lib_name(self, name):
+    def _lib_name(self, name: str) -> str:
         libname = name
         if is_msvc(self) and not self.options.shared:
             libname += "-static"

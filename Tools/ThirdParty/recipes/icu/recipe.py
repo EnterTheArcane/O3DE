@@ -1,8 +1,7 @@
-import glob
 import hashlib
 import os
 import shutil
-from typing import Literal
+from typing import Any, Literal
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
@@ -47,7 +46,7 @@ class Recipe(RecipeBase[_Options]):
         self.license = "Unicode-3.0"
 
     @staticmethod
-    def _sha256sum(file_path):
+    def _sha256sum(file_path: str | os.PathLike[str]):
         m = hashlib.sha256()
         with open(file_path, "rb") as fh:
             for data in iter(lambda: fh.read(8192), b""):
@@ -84,7 +83,10 @@ class Recipe(RecipeBase[_Options]):
             tc.extra_defines.append("U_STATIC_IMPLEMENTATION")
         if is_apple_os(self):
             tc.extra_defines.append("_DARWIN_C_SOURCE")
-        yes_no = lambda v: "yes" if v else "no"
+            
+        def yes_no(v: Any) -> str:
+            return "yes" if v else "no"
+            
         tc.configure_args.extend(
             [
                 "--datarootdir=${prefix}/lib",  # do not use share

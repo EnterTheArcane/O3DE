@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import textwrap
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -95,7 +96,7 @@ class Recipe(RecipeBase[_Options]):
             self.folders.package / self._module_file_rel_path
         )
 
-    def _create_cmake_module_variables(self, module_file):
+    def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             f"""
             set(LibXml2_FOUND TRUE)

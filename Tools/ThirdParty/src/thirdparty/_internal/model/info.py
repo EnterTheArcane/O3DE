@@ -65,6 +65,9 @@ class _Component:
     _type: PackageType | None
     _location: str | None
     _link_location: str | None
+    
+    # TODO: ??? 
+    version: Any
 
     def __init__(self, set_defaults: bool = False):
         # ###### PROPERTIES

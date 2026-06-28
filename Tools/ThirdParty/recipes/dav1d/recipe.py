@@ -88,7 +88,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.system_libs.extend(["dl", "pthread"])
 
 
-def fix_msvc_libname(recipe, remove_lib_prefix=True):
+def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
     if not recipe.settings.get_safe("compiler.runtime"):

@@ -250,7 +250,7 @@ class Environment:
         """
         self._values[name] = _EnvValue(name, value, separator, path=False)
 
-    def define_path(self, name: str, value: str):
+    def define_path(self, name: str, value: str | os.PathLike[str] | None):
         self._values[name] = _EnvValue(name, value, path=True)
 
     def unset(self, name: str):
@@ -275,7 +275,7 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder)).append(value, separator)
 
-    def append_path(self, name: str, value: str):
+    def append_path(self, name: str, value: str | os.PathLike[str]):
         """
         Similar to "append" method but indicating that the variable is a filesystem path. It will automatically handle the path separators depending on the operating system.
 
@@ -298,7 +298,7 @@ class Environment:
         """
         self._values.setdefault(name, _EnvValue(name, _EnvVarPlaceHolder)).prepend(value, separator)
 
-    def prepend_path(self, name: str, value: str):
+    def prepend_path(self, name: str, value: str | os.PathLike[str]):
         """
         Similar to "prepend" method but indicating that the variable is a filesystem path. It will automatically handle the path separators depending on the operating system.
 

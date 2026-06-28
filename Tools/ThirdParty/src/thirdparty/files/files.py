@@ -235,8 +235,8 @@ def download(
 
 def rename(
     recipe: RecipeBase,
-    src: str,
-    dst: str):
+    src: Path,
+    dst: Path):
     """
     Utility functions to rename a file or folder src to dst with retrying. ``os.rename()``
     frequently raises “Access is denied” exception on Windows.
@@ -573,7 +573,7 @@ def check_sha256(
 
 def replace_in_file(
         recipe: RecipeBase, 
-        file_path: Path, 
+        file_path: str | os.PathLike[str], 
         search: str, 
         replace: str, 
         strict: bool = True, 

@@ -256,7 +256,7 @@ class Recipe(RecipeBase[_Options]):
             "\n".join(f"{key}={value}" for key, value in pkgconfig_variables.items()))
 
 
-def fix_msvc_libname(recipe, remove_lib_prefix=True):
+def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
     if not recipe.settings.get_safe("compiler.runtime"):

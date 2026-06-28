@@ -68,10 +68,10 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "cmake")
 
     @staticmethod
-    def _recipe_comp(name):
+    def _recipe_comp(name: str):
         return f"openexr_{name.lower()}"
 
-    def _add_component(self, name):
+    def _add_component(self, name: str):
         component = self.info.components[self._recipe_comp(name)]
         component.set_property("cmake_target_name", f"OpenEXR::{name}")
         return component

@@ -1,5 +1,5 @@
 import os
-from typing import Literal
+from typing import Any, Literal
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
@@ -73,7 +73,10 @@ class Recipe(RecipeBase[_Options]):
         VirtualBuildEnv(self).generate()
 
         tc = AutotoolsToolchain(self)
-        yes_no = lambda v: "yes" if v else "no"
+        
+        def yes_no(v: Any) -> str:
+            return "yes" if v else "no"
+        
         tc.configure_args += [
             f"--with-shared={yes_no(self.options.shared)}",
             f"--with-cxx-shared={yes_no(self.options.shared)}",
@@ -158,13 +161,13 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self):
             # Custom AutotoolsDeps for cl like compilers
             # workaround for upstream issue 12784
-            includedirs = []
-            defines = []
-            libs = []
-            libdirs = []
-            linkflags = []
-            cxxflags = []
-            cflags = []
+            includedirs: list[str] = []
+            defines: list[str] = []
+            libs: list[str] = []
+            libdirs: list[str] = []
+            linkflags: list[str] = []
+            cxxflags: list[str] = []
+            cflags: list[str] = []
             for dependency in self.dependencies.values():
                 deps_cpp_info = dependency.info.aggregated_components()
                 includedirs.extend(deps_cpp_info.includedirs)
@@ -236,7 +239,7 @@ class Recipe(RecipeBase[_Options]):
         # https://gitlab.kitware.com/cmake/cmake/-/issues/23051
         self.info.set_property("cmake_target_name", "Curses::Curses")
 
-        def _add_component(name, lib_name=None, requires=None):
+        def _add_component(name: str, lib_name: str | None = None, requires: list[str] | None = None):
             lib_name = lib_name or name
             self.info.components[name].libs = [lib_name + self._lib_suffix]
             self.info.components[name].set_property("pkg_config_name", lib_name + self._lib_suffix)

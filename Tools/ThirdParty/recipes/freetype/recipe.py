@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import re
 import textwrap
 
@@ -95,7 +96,7 @@ class Recipe(RecipeBase[_Options]):
         cmake.configure()
         cmake.build()
 
-    def _make_freetype_config(self, version):
+    def _make_freetype_config(self, version: str):
         freetype_config_in = self.folders.source / "builds" / "unix" / "freetype-config.in"
         if not os.path.isdir(self.folders.package / "bin"):
             os.makedirs(self.folders.package / "bin")
@@ -156,7 +157,7 @@ class Recipe(RecipeBase[_Options]):
             {"freetype": "Freetype::Freetype"}
         )
 
-    def _create_cmake_module_variables(self, module_file):
+    def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             f"""
             set(FREETYPE_FOUND TRUE)
@@ -170,7 +171,7 @@ class Recipe(RecipeBase[_Options]):
             """)
         save(self, module_file, content)
 
-    def _create_cmake_module_alias_targets(self, module_file, targets):
+    def _create_cmake_module_alias_targets(self, module_file: Path, targets: dict[str, str]):
         content = ""
         for alias, aliased in targets.items():
             content += textwrap.dedent(
@@ -191,7 +192,7 @@ class Recipe(RecipeBase[_Options]):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-targets.cmake")
 
     @staticmethod
-    def _chmod_plus_x(filename):
+    def _chmod_plus_x(filename: Path):
         if os.name == "posix" and (os.stat(filename).st_mode & 0o111) != 0o111:
             os.chmod(filename, os.stat(filename).st_mode | 0o111)
 
