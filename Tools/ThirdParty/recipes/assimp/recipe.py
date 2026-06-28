@@ -155,9 +155,11 @@ class Recipe(RecipeBase[_Options]):
         "with_m3d_exporter": "ASSIMP_BUILD_M3D_EXPORTER",
         "with_iqm": "ASSIMP_BUILD_IQM_IMPORTER",
     }
+    
     def latest_version(self):
         repo = GithubRepository(self, "assimp/assimp")
         return Version(repo.latest_release.removeprefix("v"))
+    
     @property
     def _depends_on_kuba_zip(self):
         return self.options.with_3mf_exporter
@@ -216,7 +218,78 @@ class Recipe(RecipeBase[_Options]):
             sha256="edf3749559c2b7d1f758ffb66fc5bec62186221e623b7f2e8969f17ee46ecb6f",
             destination=self.folders.source,
             strip_root=True)
-        self._patch_sources()
+
+        # Don't force several compiler and linker flags
+        for pattern in [
+            "-fPIC",
+            "-g ",
+            "SET(CMAKE_POSITION_INDEPENDENT_CODE ON)",
+            'SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_DEBUG /Zi /Od")',
+            'SET(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG:FULL /PDBALTPATH:%_PDB% /OPT:REF /OPT:ICF")',
+        ]:
+            replace_in_file(self, self.folders.source / "CMakeLists.txt", pattern, "")
+
+        for pattern in ["-Werror", "/WX"]:
+            replace_in_file(self, self.folders.source / "CMakeLists.txt", pattern, "")
+            replace_in_file(self, self.folders.source / "code" / "CMakeLists.txt", pattern, "")
+
+        # Make sure vendored libs are not used by accident by removing their subdirs
+        allow_vendored = ["Open3DGC", "earcut-hpp"]
+        for contrib_dir in Path(self.folders.source).joinpath("contrib").iterdir():
+            if contrib_dir.is_dir() and contrib_dir.name not in allow_vendored:
+                rmdir(self, contrib_dir)
+
+        # Do not include add vendored library sources to the build
+        # https://github.com/assimp/assimp/blob/v5.3.1/code/CMakeLists.txt#L1151-L1159
+        code_cmakelists = Path(self.folders.source).joinpath("code", "CMakeLists.txt")
+        content = code_cmakelists.read_text(encoding="utf-8")
+        for vendored_lib in [
+            "unzip_compile",
+            "Poly2Tri",
+            "Clipper",
+            "openddl_parser",
+            # "open3dgc",
+            "ziplib",
+            "Pugixml",
+            "stb",
+        ]:
+            content = content.replace("${%s_SRCS}" % vendored_lib, "")
+        # Link recipe-provided targets in non-hunter mode so their include dirs propagate
+        content = content.replace(
+            "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\nENDIF()",
+            "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\n"
+            "  foreach(_recipe_target rapidjson::rapidjson utf8cpp::utf8cpp stb::stb openddlparser::openddlparser minizip::minizip poly2tri::poly2tri clipper::clipper zip::zip)\n"
+            "    if(TARGET ${_recipe_target})\n"
+            "      target_link_libraries(assimp ${_recipe_target})\n"
+            "    endif()\n"
+            "  endforeach()\n"
+            "ENDIF()"
+        )
+        code_cmakelists.write_text(content, encoding="utf-8")
+
+        # Make vendored headers redirect to external ones.
+        for contrib_header, include in [
+            (os.path.join("clipper", "clipper.hpp"), "polyclipping/clipper.hpp"),
+            (os.path.join("poly2tri", "poly2tri", "poly2tri.h"), "poly2tri/poly2tri.h"),
+            (os.path.join("stb", "stb_image.h"), "stb_image.h"),
+            (os.path.join("utf8cpp", "source", "utf8.h"), "utf8.h"),
+            (os.path.join("zip", "src", "zip.h"), "zip/zip.h"),
+        ]:
+            save(self, self.folders.source / "contrib" / contrib_header, f"#include <{include}>\n")
+
+        rmdir(self, self.folders.source / "contrib" / "utf8cpp")
+
+        # minizip is provided via recipe_deps.cmake, no need to use pkgconfig
+        replace_in_file(
+            self,
+            self.folders.source / "CMakeLists.txt",
+            "use_pkgconfig(UNZIP minizip)",
+            "set(UNZIP_FOUND TRUE)")
+
+        # ZLIB is unvendored, no need to install it
+        # https://github.com/assimp/assimp/blob/v5.3.1/CMakeLists.txt#L483-L487
+        # https://github.com/assimp/assimp/blob/v5.1.6/CMakeLists.txt#L463-L466
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "INSTALL( TARGETS zlib", "set(_ #")
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -276,80 +349,6 @@ class Recipe(RecipeBase[_Options]):
                      "poly2tri", "RapidJSON", "draco", "clipper", "stb", "openddlparser"]
         save(self, self.folders.generators / "recipe_deps.cmake",
              "".join(f"find_package({p})\n" for p in _agg_pkgs))
-
-    def _patch_sources(self):
-        # Don't force several compiler and linker flags
-        for pattern in [
-            "-fPIC",
-            "-g ",
-            "SET(CMAKE_POSITION_INDEPENDENT_CODE ON)",
-            'SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_DEBUG /Zi /Od")',
-            'SET(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG:FULL /PDBALTPATH:%_PDB% /OPT:REF /OPT:ICF")',
-        ]:
-            replace_in_file(self, self.folders.source / "CMakeLists.txt", pattern, "")
-
-        for pattern in ["-Werror", "/WX"]:
-            replace_in_file(self, self.folders.source / "CMakeLists.txt", pattern, "")
-            replace_in_file(self, self.folders.source / "code" / "CMakeLists.txt", pattern, "")
-
-        # Make sure vendored libs are not used by accident by removing their subdirs
-        allow_vendored = ["Open3DGC", "earcut-hpp"]
-        for contrib_dir in Path(self.folders.source).joinpath("contrib").iterdir():
-            if contrib_dir.is_dir() and contrib_dir.name not in allow_vendored:
-                rmdir(self, contrib_dir)
-
-        # Do not include add vendored library sources to the build
-        # https://github.com/assimp/assimp/blob/v5.3.1/code/CMakeLists.txt#L1151-L1159
-        code_cmakelists = Path(self.folders.source).joinpath("code", "CMakeLists.txt")
-        content = code_cmakelists.read_text(encoding="utf-8")
-        for vendored_lib in [
-            "unzip_compile",
-            "Poly2Tri",
-            "Clipper",
-            "openddl_parser",
-            # "open3dgc",
-            "ziplib",
-            "Pugixml",
-            "stb",
-        ]:
-            content = content.replace("${%s_SRCS}" % vendored_lib, "")
-        # Link recipe-provided targets in non-hunter mode so their include dirs propagate
-        content = content.replace(
-            "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\nENDIF()",
-            "  if(TARGET pugixml::pugixml)\n    target_link_libraries(assimp pugixml::pugixml)\n  endif()\n"
-            "  foreach(_recipe_target rapidjson::rapidjson utf8cpp::utf8cpp stb::stb openddlparser::openddlparser minizip::minizip poly2tri::poly2tri clipper::clipper zip::zip)\n"
-            "    if(TARGET ${_recipe_target})\n"
-            "      target_link_libraries(assimp ${_recipe_target})\n"
-            "    endif()\n"
-            "  endforeach()\n"
-            "ENDIF()"
-        )
-        code_cmakelists.write_text(content, encoding="utf-8")
-
-        # Make vendored headers redirect to external ones.
-        for contrib_header, include in [
-            (os.path.join("clipper", "clipper.hpp"), "polyclipping/clipper.hpp"),
-            (os.path.join("poly2tri", "poly2tri", "poly2tri.h"), "poly2tri/poly2tri.h"),
-            (os.path.join("stb", "stb_image.h"), "stb_image.h"),
-            (os.path.join("utf8cpp", "source", "utf8.h"), "utf8.h"),
-            (os.path.join("zip", "src", "zip.h"), "zip/zip.h"),
-        ]:
-            save(
-                self, self.folders.source / "contrib" / contrib_header,
-                f"#include <{include}>\n")
-        rmdir(self, self.folders.source / "contrib" / "utf8cpp")
-
-        # minizip is provided via recipe_deps.cmake, no need to use pkgconfig
-        replace_in_file(
-            self,
-            self.folders.source / "CMakeLists.txt",
-            "use_pkgconfig(UNZIP minizip)",
-            "set(UNZIP_FOUND TRUE)")
-
-        # ZLIB is unvendored, no need to install it
-        # https://github.com/assimp/assimp/blob/v5.3.1/CMakeLists.txt#L483-L487
-        # https://github.com/assimp/assimp/blob/v5.1.6/CMakeLists.txt#L463-L466
-        replace_in_file(self, self.folders.source / "CMakeLists.txt", "INSTALL( TARGETS zlib", "set(_ #")
 
     def build(self):
         cmake = CMake(self)
