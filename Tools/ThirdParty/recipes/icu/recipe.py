@@ -1,4 +1,3 @@
-import hashlib
 import os
 import shutil
 from typing import Any, Literal
@@ -44,14 +43,6 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         self.license = "Unicode-3.0"
-
-    @staticmethod
-    def _sha256sum(file_path: str | os.PathLike[str]):
-        m = hashlib.sha256()
-        with open(file_path, "rb") as fh:
-            for data in iter(lambda: fh.read(8192), b""):
-                m.update(data)
-        return m.hexdigest()
 
     def requirements(self):
         if self.settings.os == "Windows":

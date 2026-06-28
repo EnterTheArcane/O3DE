@@ -137,11 +137,6 @@ class Recipe(RecipeBase):
             return "UNKNOWN"
         return path
 
-    @staticmethod
-    def _chmod_plus_x(filename: str):
-        if os.name == "posix":
-            os.chmod(filename, os.stat(filename).st_mode | 0o111)
-
     def _fix_permissions(self):
         if os.name != "posix":
             return
@@ -151,15 +146,15 @@ class Recipe(RecipeBase):
                 with open(filepath, "rb") as f:
                     sig = list(f.read(4))
                 if len(sig) > 2 and sig[0] == 0x23 and sig[1] == 0x21:
-                    self._chmod_plus_x(filepath)
+                    _chmod_plus_x(filepath)
                 elif sig == [0x7F, 0x45, 0x4C, 0x46]:
-                    self._chmod_plus_x(filepath)
+                    _chmod_plus_x(filepath)
                 elif sig[:4] in (
                         [0xCA, 0xFE, 0xBA, 0xBE], [0xBE, 0xBA, 0xFE, 0xCA],
                         [0xFE, 0xED, 0xFA, 0xCF], [0xCF, 0xFA, 0xED, 0xFE],
                         [0xFE, 0xEF, 0xFA, 0xCE], [0xCE, 0xFA, 0xED, 0xFE],
                 ):
-                    self._chmod_plus_x(filepath)
+                    _chmod_plus_x(filepath)
 
     def _unzip_fix_symlinks(
         self,
@@ -252,3 +247,7 @@ class Recipe(RecipeBase):
         self.buildenv_info.define("ANDROID_ABI", self._android_abi or "")
         libcxx_str = str(self.settings_target.compiler.libcxx)
         self.buildenv_info.define("ANDROID_STL", libcxx_str if libcxx_str.startswith("c++_") else "c++_shared")
+
+def _chmod_plus_x(filename: str):
+    if os.name == "posix":
+        os.chmod(filename, os.stat(filename).st_mode | 0o111)

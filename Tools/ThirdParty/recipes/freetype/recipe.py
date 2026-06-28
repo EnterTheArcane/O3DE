@@ -191,11 +191,6 @@ class Recipe(RecipeBase[_Options]):
     def _module_target_rel_path(self):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-targets.cmake")
 
-    @staticmethod
-    def _chmod_plus_x(filename: Path):
-        if os.name == "posix" and (os.stat(filename).st_mode & 0o111) != 0o111:
-            os.chmod(filename, os.stat(filename).st_mode | 0o111)
-
     def package_info(self):
         # Use config mode with the canonical "Freetype" name. The CMakeDeps generator
         # does not emit Find modules, so a split "both"/module setup would let consumers'
@@ -219,4 +214,8 @@ class Recipe(RecipeBase[_Options]):
 
         self.info.set_property("component_version", libtool_version)
         freetype_config = self.folders.package / "bin" / "freetype-config"
-        self._chmod_plus_x(freetype_config)
+        _chmod_plus_x(freetype_config)
+
+def _chmod_plus_x(filename: Path):
+    if os.name == "posix" and (os.stat(filename).st_mode & 0o111) != 0o111:
+        os.chmod(filename, os.stat(filename).st_mode | 0o111)

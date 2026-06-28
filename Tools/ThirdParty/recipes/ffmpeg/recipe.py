@@ -36,11 +36,11 @@ class _Options(RecipeOptions):
     with_lzma: bool = True
     with_libiconv: bool = True
     with_freetype: bool = True
-    with_libxml2: bool = False
-    with_fontconfig: bool = False
+    with_libxml2: bool = True
+    with_fontconfig: bool = True
     with_fribidi: bool = False
-    with_harfbuzz: bool = False
-    with_libjxl: bool = False
+    with_harfbuzz: bool = True
+    with_libjxl: bool = True
     with_openapv: bool = False
     with_openjpeg: bool = True
     with_openh264: bool = True
@@ -841,7 +841,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_libmp3lame:
                 avcodec.requires.append("libmp3lame::libmp3lame")
             if self.options.get_safe("with_libfdk_aac"):
-                avcodec.requires.append("libfdk_aac::libfdk_aac")
+                avcodec.requires.append("fdk-aac::fdk-aac")
             if self.options.with_libwebp:
                 avcodec.requires.append("libwebp::libwebp")
             if self.options.get_safe("with_audiotoolbox"):
@@ -849,7 +849,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.get_safe("with_videotoolbox"):
                 avcodec.frameworks.append("VideoToolbox")
             if self.options.with_libsvtav1:
-                avcodec.requires.extend(["libsvtav1::decoder", "libsvtav1::encoder"])
+                avcodec.requires.append("svt-av1::encoder")
             if self.options.with_libaom:
                 avcodec.requires.append("libaom-av1::libaom-av1")
             if self.options.with_libdav1d:

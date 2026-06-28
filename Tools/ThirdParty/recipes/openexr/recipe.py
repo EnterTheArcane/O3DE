@@ -67,12 +67,8 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         rmdir(self, self.folders.package / "lib" / "cmake")
 
-    @staticmethod
-    def _recipe_comp(name: str):
-        return f"openexr_{name.lower()}"
-
     def _add_component(self, name: str):
-        component = self.info.components[self._recipe_comp(name)]
+        component = self.info.components[_recipe_comp(name)]
         component.set_property("cmake_target_name", f"OpenEXR::{name}")
         return component
 
@@ -102,7 +98,7 @@ class Recipe(RecipeBase[_Options]):
         # OpenEXR::Iex
         Iex = self._add_component("Iex")
         Iex.libs = [f"Iex{lib_suffix}"]
-        Iex.requires = [self._recipe_comp("IexConfig")]
+        Iex.requires = [_recipe_comp("IexConfig")]
         if self.settings.os in ["Linux", "FreeBSD"]:
             Iex.system_libs = ["m"]
 
@@ -110,7 +106,7 @@ class Recipe(RecipeBase[_Options]):
         IlmThread = self._add_component("IlmThread")
         IlmThread.libs = [f"IlmThread{lib_suffix}"]
         IlmThread.requires = [
-            self._recipe_comp("IlmThreadConfig"), self._recipe_comp("Iex"),
+            _recipe_comp("IlmThreadConfig"), _recipe_comp("Iex"),
         ]
         if self.settings.os in ["Linux", "FreeBSD"]:
             IlmThread.system_libs = ["pthread", "m"]
@@ -118,7 +114,7 @@ class Recipe(RecipeBase[_Options]):
         # OpenEXR::OpenEXRCore
         OpenEXRCore = self._add_component("OpenEXRCore")
         OpenEXRCore.libs = [f"OpenEXRCore{lib_suffix}"]
-        OpenEXRCore.requires = [self._recipe_comp("OpenEXRConfig"), "zlib::zlib"]
+        OpenEXRCore.requires = [_recipe_comp("OpenEXRConfig"), "zlib::zlib"]
         OpenEXRCore.requires.append("libdeflate::libdeflate")
         OpenEXRCore.requires.append("openjph::openjph")
         if self.settings.os in ["Linux", "FreeBSD"]:
@@ -128,8 +124,8 @@ class Recipe(RecipeBase[_Options]):
         OpenEXR = self._add_component("OpenEXR")
         OpenEXR.libs = [f"OpenEXR{lib_suffix}"]
         OpenEXR.requires = [
-            self._recipe_comp("OpenEXRCore"), self._recipe_comp("IlmThread"),
-            self._recipe_comp("Iex"), "imath::imath",
+            _recipe_comp("OpenEXRCore"), _recipe_comp("IlmThread"),
+            _recipe_comp("Iex"), "imath::imath",
         ]
         if self.settings.os in ["Linux", "FreeBSD"]:
             OpenEXR.system_libs = ["m"]
@@ -137,8 +133,12 @@ class Recipe(RecipeBase[_Options]):
         # OpenEXR::OpenEXRUtil
         OpenEXRUtil = self._add_component("OpenEXRUtil")
         OpenEXRUtil.libs = [f"OpenEXRUtil{lib_suffix}"]
-        OpenEXRUtil.requires = [self._recipe_comp("OpenEXR")]
+        OpenEXRUtil.requires = [_recipe_comp("OpenEXR")]
         if self.settings.os in ["Linux", "FreeBSD"]:
             OpenEXRUtil.system_libs = ["m"]
 
         # TODO: Add tools directory to PATH
+
+@staticmethod
+def _recipe_comp(name: str):
+    return f"openexr_{name.lower()}"

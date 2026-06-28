@@ -13,9 +13,9 @@ class _Options(RecipeOptions):
     with_freetype: bool = True
     with_opencolorio: bool = True
     with_opencv: bool = False
-    with_tbb: bool = False
+    with_tbb: bool = True
     with_dicom: bool = False
-    with_ffmpeg: bool = False
+    with_ffmpeg: bool = True
     with_giflib: bool = True
     with_libheif: bool = True
     with_raw: bool = False
@@ -217,12 +217,8 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         rmdir(self, self.folders.package / "lib" / "cmake")
 
-    @staticmethod
-    def _recipe_comp(name: str):
-        return f"openimageio_{name.lower()}"
-
     def _add_component(self, name: str):
-        component = self.info.components[self._recipe_comp(name)]
+        component = self.info.components[_recipe_comp(name)]
         component.set_property("cmake_target_name", f"OpenImageIO::{name}")
         return component
 
@@ -296,3 +292,6 @@ class Recipe(RecipeBase[_Options]):
             open_image_io.system_libs.extend(["dl", "m", "pthread"])
         if not self.options.shared:
             open_image_io.defines.append("OIIO_STATIC_DEFINE")
+
+def _recipe_comp(name: str):
+    return f"openimageio_{name.lower()}"
