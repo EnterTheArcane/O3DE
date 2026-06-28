@@ -25,10 +25,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "cisco/openh264")
         return Version(repo.latest_release.removeprefix("v"))
 
-    @property
-    def _is_clang_cl(self):
-        return self.settings.os == "Windows" and self.settings.compiler == "clang"
-
     def requirements(self):
         self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
@@ -93,3 +89,7 @@ class Recipe(RecipeBase[_Options]):
                     # >>> referenced by welsEncoderExt.cpp
                     self.info.system_libs.append("c++abi")
                 self.info.system_libs.append(libcxx)
+
+    @property
+    def _is_clang_cl(self):
+        return self.settings.os == "Windows" and self.settings.compiler == "clang"

@@ -110,11 +110,6 @@ class Recipe(RecipeBase[_Options]):
         cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
-    def _extract_license(self):
-        header = load(self, self.folders.source / "sqlite3.h")
-        license_content = header[3:header.find("***", 1)]
-        return license_content
-
     def package(self):
         save(self, self.folders.package / "licenses" / "LICENSE", self._extract_license())
         cmake = CMake(self)
@@ -143,3 +138,8 @@ class Recipe(RecipeBase[_Options]):
 
         self.info.components["sqlite"].set_property("cmake_target_name", "SQLite::SQLite3")
         self.info.components["sqlite"].set_property("pkg_config_name", "sqlite3")
+
+    def _extract_license(self):
+        header = load(self, self.folders.source / "sqlite3.h")
+        license_content = header[3:header.find("***", 1)]
+        return license_content

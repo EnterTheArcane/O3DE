@@ -32,10 +32,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "unicode-org/icu")
         return Version(repo.latest_release.removeprefix("release-"))
 
-    @property
-    def _enable_icu_tools(self):
-        return self.settings.os not in ["iOS", "tvOS", "watchOS", "Emscripten"]
-
     def requirements(self):
         if self.settings.os == "Windows":
             self.win_bash = True
@@ -117,39 +113,6 @@ class Recipe(RecipeBase[_Options]):
                 env.define("icu_cv_host_frag", "mh-msys-msvc")
             env.vars(self).save_script("buildenv_icu_msvc")
 
-    def _patch_sources(self):
-        replace_in_file(
-            self,
-            self.folders.source / "source" / "configure",
-            "if test -z \"$PYTHON\"",
-            "if true",
-            strict=False)
-
-        if self.settings.os == "Windows":
-            # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545
-            makeconv_cpp = self.folders.source / "source" / "tools" / "makeconv" / "makeconv.cpp"
-            replace_in_file(
-                self,
-                makeconv_cpp,
-                "pathBuf.appendPathPart(arg, localError);",
-                "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);",
-                strict=False)
-
-        # relocatable shared libs on macOS
-        mh_darwin = self.folders.source / "source" / "config" / "mh-darwin"
-        replace_in_file(self, mh_darwin, "-install_name $(libdir)/$(notdir", "-install_name @rpath/$(notdir")
-        replace_in_file(
-            self,
-            mh_darwin,
-            "-install_name $(notdir $(MIDDLE_SO_TARGET)) $(PKGDATA_TRAILING_SPACE)",
-            "-install_name @rpath/$(notdir $(MIDDLE_SO_TARGET))")
-
-        # workaround for https://unicode-org.atlassian.net/browse/ICU-20531
-        mkdir(self, self.folders.build / "data" / "out" / "tmp")
-
-        # workaround for "No rule to make target 'out/tmp/dirs.timestamp'"
-        save(self, self.folders.build / "data" / "out" / "tmp" / "dirs.timestamp", "")
-
     def build(self):
         self._patch_sources()
 
@@ -161,26 +124,6 @@ class Recipe(RecipeBase[_Options]):
         autotools = Autotools(self)
         autotools.configure(build_script_folder=self.folders.source / "source")
         autotools.make()
-
-    @property
-    def _data_filename(self):
-        vtag = Version(self.version).major
-        arch = self.settings.get_safe("arch")
-        suffix = "b" if arch in {
-            "ppc32", "ppc64",
-            "sparc", "sparcv9",
-            "s390", "s390x",
-            "mips", "mips64",
-        } else "l"
-        return f"icudt{vtag}{suffix}.dat"
-
-    @property
-    def _data_path(self):
-        data_dir_name = "icu"
-        if self.settings.os == "Windows" and self.settings.build_type == "Debug":
-            data_dir_name += "d"
-        data_dir = self.folders.package / "lib" / data_dir_name / str(self.version)
-        return data_dir / self._data_filename
 
     def package(self):
         copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
@@ -282,3 +225,60 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["icu-test"].set_property("cmake_target_name", "ICU::test")
             self.info.components["icu-test"].libs = [f"{prefix}icutest{suffix}"]
             self.info.components["icu-test"].requires = ["icu-tu", "icu-uc"]
+
+    @property
+    def _enable_icu_tools(self):
+        return self.settings.os not in ["iOS", "tvOS", "watchOS", "Emscripten"]
+
+    def _patch_sources(self):
+        replace_in_file(
+            self,
+            self.folders.source / "source" / "configure",
+            "if test -z \"$PYTHON\"",
+            "if true",
+            strict=False)
+
+        if self.settings.os == "Windows":
+            # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545
+            makeconv_cpp = self.folders.source / "source" / "tools" / "makeconv" / "makeconv.cpp"
+            replace_in_file(
+                self,
+                makeconv_cpp,
+                "pathBuf.appendPathPart(arg, localError);",
+                "pathBuf.append(\"/\", localError); pathBuf.append(arg, localError);",
+                strict=False)
+
+        # relocatable shared libs on macOS
+        mh_darwin = self.folders.source / "source" / "config" / "mh-darwin"
+        replace_in_file(self, mh_darwin, "-install_name $(libdir)/$(notdir", "-install_name @rpath/$(notdir")
+        replace_in_file(
+            self,
+            mh_darwin,
+            "-install_name $(notdir $(MIDDLE_SO_TARGET)) $(PKGDATA_TRAILING_SPACE)",
+            "-install_name @rpath/$(notdir $(MIDDLE_SO_TARGET))")
+
+        # workaround for https://unicode-org.atlassian.net/browse/ICU-20531
+        mkdir(self, self.folders.build / "data" / "out" / "tmp")
+
+        # workaround for "No rule to make target 'out/tmp/dirs.timestamp'"
+        save(self, self.folders.build / "data" / "out" / "tmp" / "dirs.timestamp", "")
+
+    @property
+    def _data_filename(self):
+        vtag = Version(self.version).major
+        arch = self.settings.get_safe("arch")
+        suffix = "b" if arch in {
+            "ppc32", "ppc64",
+            "sparc", "sparcv9",
+            "s390", "s390x",
+            "mips", "mips64",
+        } else "l"
+        return f"icudt{vtag}{suffix}.dat"
+
+    @property
+    def _data_path(self):
+        data_dir_name = "icu"
+        if self.settings.os == "Windows" and self.settings.build_type == "Debug":
+            data_dir_name += "d"
+        data_dir = self.folders.package / "lib" / data_dir_name / str(self.version)
+        return data_dir / self._data_filename

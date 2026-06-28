@@ -62,53 +62,6 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
 
-    @property
-    def _install_tmp_folder(self):
-        return "tmp_install"
-
-    @property
-    def _target_name(self):
-        arch = {
-            "X64": "x86_64",
-            "ARM": "arm64",
-        }.get(str(self.settings.arch))
-        if arch is None:
-            # Fallback for unknown architectures. This is supported by upstream to be used
-            # when no specific target set is provided by the configure script.
-            return "generic-gnu"
-
-        compiler = str(self.settings.compiler)
-        os_name = str(self.settings.os)
-        if str(self.settings.compiler) == "Visual Studio":
-            vc_version = self.settings.compiler.version
-            compiler = f"vs{vc_version}"
-        elif is_msvc(self):
-            vc_version = str(self.settings.compiler.version)
-            vc_version = {"170": "11", "180": "12", "190": "14", "191": "15", "192": "16", "193": "17", "194": "17", "195": "18"}[vc_version]
-            compiler = f"vs{vc_version}"
-        elif self.settings.compiler in ["gcc", "clang", "apple-clang"]:
-            compiler = "gcc"
-        host_os = str(self.settings.os)
-        if host_os == "Windows":
-            os_name = "win64"
-        elif is_apple_os(self):
-            if self.settings.arch in ["X64"]:
-                if self.settings.os == "Mac":
-                    os_name = f"darwin11"
-                else:
-                    os_name = "iphonesimulator"
-            elif self.settings.arch == "ARM":
-                os_name = "darwin21"
-            else:
-                os_name = "darwin"
-        elif host_os == "Linux":
-            os_name = "linux"
-        elif host_os == "Solaris":
-            os_name = "solaris"
-        elif host_os == "Android":
-            os_name = "android"
-        return f"{arch}-{os_name}-{compiler}"
-
     def generate(self):
         VirtualBuildEnv(self).generate()
         tc = AutotoolsToolchain(self)
@@ -168,51 +121,11 @@ class Recipe(RecipeBase[_Options]):
             env = tc.environment()
         tc.generate(env)
 
-    def _patch_sources(self):
-        apply_patches(self)
-
-        # Disable LTO for Visual Studio when CFLAGS doesn't contain -GL
-        if is_msvc(self):
-            cflags = " ".join(self.conf.get("tools.build:cflags", default=[], check_type=list))
-            lto = any(re.finditer("(^| )[/-]GL($| )", cflags))
-            if not lto:
-                self.output.info("Disabling LTO")
-                replace_in_file(
-                    self,
-                    self.folders.source / "build" / "make" / "gen_msvs_vcxproj.sh",
-                    "tag_content WholeProgramOptimization true",
-                    "tag_content WholeProgramOptimization false",
-                    strict=False)
-            else:
-                self.output.info("Enabling LTO")
-
-        # The compile script wants to use CC for some of the platforms (Linux, etc),
-        # but incorrectly assumes gcc is the compiler for those platforms.
-        # This can fail some of the configure tests, and -lpthread isn't added to the link command.
-        replace_in_file(
-            self,
-            self.folders.source / "build" / "make" / "configure.sh",
-            "  LD=${LD:-${CROSS}${link_with_cc:-ld}}",
-            """
-  LD=${LD:-${CROSS}${link_with_cc:-ld}}
-  if [ "${link_with_cc}" = "gcc" ]
-  then
-   echo "using compiler as linker"
-   LD=${CC}
-  fi
-"""
-            )
-
     def build(self):
         self._patch_sources()
         autotools = Autotools(self)
         autotools.configure()
         autotools.make()
-
-    @property
-    def _lib_name(self):
-        suffix = msvc_runtime_flag(self).lower() if is_msvc(self) else ""
-        return f"vpx{suffix}"
 
     def package(self):
         copy(self, pattern="LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
@@ -253,3 +166,90 @@ class Recipe(RecipeBase[_Options]):
                 self.info.system_libs.append(libcxx)
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs.extend(["m", "pthread"])
+
+    @property
+    def _install_tmp_folder(self):
+        return "tmp_install"
+
+    @property
+    def _target_name(self):
+        arch = {
+            "X64": "x86_64",
+            "ARM": "arm64",
+        }.get(str(self.settings.arch))
+        if arch is None:
+            # Fallback for unknown architectures. This is supported by upstream to be used
+            # when no specific target set is provided by the configure script.
+            return "generic-gnu"
+
+        compiler = str(self.settings.compiler)
+        os_name = str(self.settings.os)
+        if str(self.settings.compiler) == "Visual Studio":
+            vc_version = self.settings.compiler.version
+            compiler = f"vs{vc_version}"
+        elif is_msvc(self):
+            vc_version = str(self.settings.compiler.version)
+            vc_version = {"170": "11", "180": "12", "190": "14", "191": "15", "192": "16", "193": "17", "194": "17", "195": "18"}[vc_version]
+            compiler = f"vs{vc_version}"
+        elif self.settings.compiler in ["gcc", "clang", "apple-clang"]:
+            compiler = "gcc"
+        host_os = str(self.settings.os)
+        if host_os == "Windows":
+            os_name = "win64"
+        elif is_apple_os(self):
+            if self.settings.arch in ["X64"]:
+                if self.settings.os == "Mac":
+                    os_name = f"darwin11"
+                else:
+                    os_name = "iphonesimulator"
+            elif self.settings.arch == "ARM":
+                os_name = "darwin21"
+            else:
+                os_name = "darwin"
+        elif host_os == "Linux":
+            os_name = "linux"
+        elif host_os == "Solaris":
+            os_name = "solaris"
+        elif host_os == "Android":
+            os_name = "android"
+        return f"{arch}-{os_name}-{compiler}"
+
+    def _patch_sources(self):
+        apply_patches(self)
+
+        # Disable LTO for Visual Studio when CFLAGS doesn't contain -GL
+        if is_msvc(self):
+            cflags = " ".join(self.conf.get("tools.build:cflags", default=[], check_type=list))
+            lto = any(re.finditer("(^| )[/-]GL($| )", cflags))
+            if not lto:
+                self.output.info("Disabling LTO")
+                replace_in_file(
+                    self,
+                    self.folders.source / "build" / "make" / "gen_msvs_vcxproj.sh",
+                    "tag_content WholeProgramOptimization true",
+                    "tag_content WholeProgramOptimization false",
+                    strict=False)
+            else:
+                self.output.info("Enabling LTO")
+
+        # The compile script wants to use CC for some of the platforms (Linux, etc),
+        # but incorrectly assumes gcc is the compiler for those platforms.
+        # This can fail some of the configure tests, and -lpthread isn't added to the link command.
+        replace_in_file(
+            self,
+            self.folders.source / "build" / "make" / "configure.sh",
+            "  LD=${LD:-${CROSS}${link_with_cc:-ld}}",
+            """
+  LD=${LD:-${CROSS}${link_with_cc:-ld}}
+  if [ "${link_with_cc}" = "gcc" ]
+  then
+   echo "using compiler as linker"
+   LD=${CC}
+  fi
+"""
+            )
+
+    @property
+    def _lib_name(self):
+        suffix = msvc_runtime_flag(self).lower() if is_msvc(self) else ""
+        return f"vpx{suffix}"

@@ -22,10 +22,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "KhronosGroup/KTX-Software")
         return Version(repo.latest_release.lstrip("v"))
 
-    @property
-    def _has_sse_support(self):
-        return self.settings.arch in ["X64"]
-
     def configure(self):
         if not self._has_sse_support:
             self.options.sse = False
@@ -94,3 +90,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["libktx"].requires = ["zstd::zstd"]
         if self.options.tools:
             self.info.components["libktx"].requires.append("fmt::fmt")
+
+    @property
+    def _has_sse_support(self):
+        return self.settings.arch in ["X64"]

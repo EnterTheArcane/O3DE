@@ -81,22 +81,6 @@ class Recipe(RecipeBase[_Options]):
         deps = CMakeDeps(self)
         deps.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        cmakelists = self.folders.source / "CMakeLists.txt"
-        # Avoid CMP0006 error (macos bundle)
-        if self.settings.os == "Mac":
-            replace_in_file(
-                self, cmakelists,
-                "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}",
-                "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}")
-        # pcre2-config does not correctly include '-static' in static library names
-        if is_msvc(self):
-            postfix = "-static" if not self.options.shared else ""
-            if self.settings.build_type == "Debug":
-                postfix += "d"
-            replace_in_file(self, cmakelists, "configure_file(pcre2-config.in", f'set(LIB_POSTFIX "{postfix}")\nconfigure_file(pcre2-config.in')
-
     def build(self):
         self._patch_sources()
         cmake = CMake(self)
@@ -152,6 +136,22 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["pcre2-8"].requires.append("zlib::zlib")
             if self.options.with_bzip2:
                 self.info.components["pcre2-8"].requires.append("bzip2::bzip2")
+
+    def _patch_sources(self):
+        apply_patches(self)
+        cmakelists = self.folders.source / "CMakeLists.txt"
+        # Avoid CMP0006 error (macos bundle)
+        if self.settings.os == "Mac":
+            replace_in_file(
+                self, cmakelists,
+                "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}",
+                "RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}")
+        # pcre2-config does not correctly include '-static' in static library names
+        if is_msvc(self):
+            postfix = "-static" if not self.options.shared else ""
+            if self.settings.build_type == "Debug":
+                postfix += "d"
+            replace_in_file(self, cmakelists, "configure_file(pcre2-config.in", f'set(LIB_POSTFIX "{postfix}")\nconfigure_file(pcre2-config.in')
 
     def _lib_name(self, name: str) -> str:
         libname = name

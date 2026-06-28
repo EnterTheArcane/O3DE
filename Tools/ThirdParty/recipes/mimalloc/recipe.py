@@ -133,27 +133,6 @@ class Recipe(RecipeBase[_Options]):
 
         rmdir(self, self.folders.package / "share")
 
-    @property
-    def _obj_name(self):
-        name = "mimalloc"
-        if self.options.secure:
-            name += "-secure"
-        if self.settings.build_type not in ("Release", "RelWithDebInfo", "MinSizeRel"):
-            name += f"-{str(self.settings.build_type).lower()}"
-        return name
-
-    @property
-    def _lib_name(self):
-        name = "mimalloc" if self.settings.os == "Windows" else "libmimalloc"
-
-        if self.settings.os == "Windows" and not self.options.shared:
-            name += "-static"
-        if self.options.secure:
-            name += "-secure"
-        if self.settings.build_type not in ("Release", "RelWithDebInfo", "MinSizeRel"):
-            name += f"-{str(self.settings.build_type).lower()}"
-        return name
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "mimalloc")
         self.info.set_property("cmake_target_name", "mimalloc" if self.options.shared else "mimalloc-static")
@@ -182,3 +161,24 @@ class Recipe(RecipeBase[_Options]):
                 self.info.system_libs.extend(["psapi", "shell32", "user32", "bcrypt"])
             elif self.settings.os == "Linux":
                 self.info.system_libs.append("rt")
+
+    @property
+    def _obj_name(self):
+        name = "mimalloc"
+        if self.options.secure:
+            name += "-secure"
+        if self.settings.build_type not in ("Release", "RelWithDebInfo", "MinSizeRel"):
+            name += f"-{str(self.settings.build_type).lower()}"
+        return name
+
+    @property
+    def _lib_name(self):
+        name = "mimalloc" if self.settings.os == "Windows" else "libmimalloc"
+
+        if self.settings.os == "Windows" and not self.options.shared:
+            name += "-static"
+        if self.options.secure:
+            name += "-secure"
+        if self.settings.build_type not in ("Release", "RelWithDebInfo", "MinSizeRel"):
+            name += f"-{str(self.settings.build_type).lower()}"
+        return name

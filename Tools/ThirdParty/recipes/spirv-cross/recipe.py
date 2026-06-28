@@ -95,6 +95,27 @@ class Recipe(RecipeBase[_Options]):
             {target: f"spirv-cross::{target}" for target in self._spirv_cross_components.keys()},
         )
 
+    def package_info(self):
+        # FIXME: we should provide one CMake config file per target (waiting for an implementation of upstream issue 9000)
+        def _register_component(target_lib: str, requires: list[str]):
+            self.info.components[target_lib].set_property("cmake_target_name", target_lib)
+            if self.options.shared:
+                self.info.components[target_lib].set_property("pkg_config_name", target_lib)
+            prefix = "d" if self.settings.os == "Windows" and self.settings.build_type == "Debug" else ""
+            self.info.components[target_lib].libs = [f"{target_lib}{prefix}"]
+            self.info.components[target_lib].includedirs.append(os.path.join("include", "spirv_cross"))
+            self.info.components[target_lib].defines.append(f"SPIRV_CROSS_NAMESPACE_OVERRIDE={self.options.namespace}")
+            self.info.components[target_lib].requires = requires
+            if self.settings.os in ["Linux", "FreeBSD"] and self.options.glsl:
+                self.info.components[target_lib].system_libs.append("m")
+            if not self.options.shared and self.options.c_api:
+                libcxx = stdcpp_library(self)
+                if libcxx:
+                    self.info.components[target_lib].system_libs.append(libcxx)
+
+        for target_lib, requires in self._spirv_cross_components.items():
+            _register_component(target_lib, requires)
+
     def _create_cmake_module_alias_targets(self, module_file: Path, targets: dict[str, str]):
         content = ""
         for alias, aliased in targets.items():
@@ -144,24 +165,3 @@ class Recipe(RecipeBase[_Options]):
             if self.options.util:
                 components.update({"spirv-cross-util": ["spirv-cross-core"]})
         return components
-
-    def package_info(self):
-        # FIXME: we should provide one CMake config file per target (waiting for an implementation of upstream issue 9000)
-        def _register_component(target_lib: str, requires: list[str]):
-            self.info.components[target_lib].set_property("cmake_target_name", target_lib)
-            if self.options.shared:
-                self.info.components[target_lib].set_property("pkg_config_name", target_lib)
-            prefix = "d" if self.settings.os == "Windows" and self.settings.build_type == "Debug" else ""
-            self.info.components[target_lib].libs = [f"{target_lib}{prefix}"]
-            self.info.components[target_lib].includedirs.append(os.path.join("include", "spirv_cross"))
-            self.info.components[target_lib].defines.append(f"SPIRV_CROSS_NAMESPACE_OVERRIDE={self.options.namespace}")
-            self.info.components[target_lib].requires = requires
-            if self.settings.os in ["Linux", "FreeBSD"] and self.options.glsl:
-                self.info.components[target_lib].system_libs.append("m")
-            if not self.options.shared and self.options.c_api:
-                libcxx = stdcpp_library(self)
-                if libcxx:
-                    self.info.components[target_lib].system_libs.append(libcxx)
-
-        for target_lib, requires in self._spirv_cross_components.items():
-            _register_component(target_lib, requires)

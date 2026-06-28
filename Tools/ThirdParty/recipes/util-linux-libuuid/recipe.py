@@ -18,10 +18,6 @@ class Recipe(RecipeBase[_Options]):
     version = "2.41.2"
     license = "BSD-3-Clause"
 
-    @property
-    def _has_sys_file_header(self):
-        return self.settings.os in ["Linux", "Mac"]
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -106,3 +102,7 @@ class Recipe(RecipeBase[_Options]):
 
         if self.settings.os == "Linux":
             self.info.system_libs.extend(["pthread"])
+
+    @property
+    def _has_sys_file_header(self):
+        return self.settings.os in ["Linux", "Mac"]

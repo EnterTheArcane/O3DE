@@ -80,6 +80,81 @@ class Recipe(RecipeBase[_Options]):
             deps = AutotoolsDeps(self)
             deps.generate()
 
+    def build(self):
+        self._patch_sources()
+        if is_msvc(self):
+            self._build_nmake(["release"])
+        else:
+            autotools = Autotools(self)
+            autotools.configure(build_script_folder=self._get_configure_subdir())
+            # https://core.tcl.tk/tcl/tktview/840660e5a1
+            for root, _, list_of_files in os.walk(self.folders.build):
+                if "Makefile" in list_of_files:
+                    replace_in_file(self, os.path.join(root, "Makefile"), "-Dstrtod=fixstrtod", "", strict=False)
+            # For some reason this target "binaries" may not be built before others
+            # on Windows while it's a dependency of many other targets
+            autotools.make(target="binaries")
+            autotools.make()
+
+    def package(self):
+        copy(self, "license.terms", src=self.folders.source, dst=self.folders.package / "licenses")
+        if is_msvc(self):
+            self._build_nmake(["install-binaries", "install-libraries"])
+        else:
+            autotools = Autotools(self)
+            autotools.install()
+            autotools.install(target="install-private-headers")
+
+            rmdir(self, self.folders.package / "lib" / "pkgconfig")
+            rmdir(self, self.folders.package / "man")
+            rmdir(self, self.folders.package / "share")
+            fix_apple_shared_install_name(self)
+
+        # Relocatable tclConfig.sh
+        tclConfigShPath = self.folders.package / "lib" / "tclConfig.sh"
+        ## Comment out references to build folder
+        replace_in_file(self, tclConfigShPath, "\nTCL_BUILD_", "\n#TCL_BUILD_")
+        replace_in_file(self, tclConfigShPath, "\nTCL_SRC_DIR", "\n#TCL_SRC_DIR")
+        ## Replace references to package folder by TCL_ROOT env var supposed to be defined by VirtualRunEnv
+        if is_msvc(self):
+            replace_in_file(self, tclConfigShPath, os.fspath(self.folders.package), "${TCL_ROOT}")
+        else:
+            replace_in_file(self, tclConfigShPath, "TCL_PREFIX='/'", "TCL_PREFIX='${TCL_ROOT}'")
+            replace_in_file(self, tclConfigShPath, "TCL_EXEC_PREFIX='/'", "TCL_EXEC_PREFIX='${TCL_ROOT}'")
+            for to_replace in ["//", "/"]:
+                replace_in_file(self, tclConfigShPath, f"-L{to_replace}lib", "-L${TCL_ROOT}/lib", strict=False)
+                replace_in_file(self, tclConfigShPath, f"{{{to_replace}lib}}", "{${TCL_ROOT}/lib}", strict=False)
+                replace_in_file(self, tclConfigShPath, f"='{to_replace}lib", "='${TCL_ROOT}/lib", strict=False)
+                replace_in_file(self, tclConfigShPath, f"-I{to_replace}include", "-I${TCL_ROOT}/include", strict=False)
+
+    def package_info(self):
+        self.info.set_property("cmake_file_name", "TCL")
+
+        # There are other libs in subfolders, but they are only used
+        # for TCL extensions and should not be linked against.
+        self.info.libs = collect_libs(self, (self.folders.package / "lib").as_posix())
+
+        if self.settings.os == "Windows":
+            self.info.system_libs.extend(["ws2_32", "netapi32", "userenv"])
+        elif self.settings.os in ("FreeBSD", "Linux"):
+            self.info.system_libs.extend(["dl", "m", "pthread"])
+        elif is_apple_os(self):
+            self.info.frameworks.append("CoreFoundation")
+
+        if is_msvc(self) and not self.options.shared:
+            self.info.defines.append("STATIC_BUILD")
+
+        tcl_version = Version(self.version)
+        tcl_library = self.folders.package / "lib" / f"tcl{tcl_version.major}.{tcl_version.minor}"
+        self.runenv_info.define_path("TCL_LIBRARY", tcl_library)
+
+        tcl_root = self.folders.package
+        self.runenv_info.define_path("TCL_ROOT", tcl_root)
+
+        tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(self.folders.package / "bin")))
+        tclsh = self.folders.package / "bin" / tclsh_list[0]
+        self.runenv_info.define_path("TCLSH", tclsh)
+
     def _patch_sources(self):
         apply_patches(self)
 
@@ -160,78 +235,3 @@ class Recipe(RecipeBase[_Options]):
             "FreeBSD": "unix",
             "Windows": "win",
         }[str(self.settings.os)])
-
-    def build(self):
-        self._patch_sources()
-        if is_msvc(self):
-            self._build_nmake(["release"])
-        else:
-            autotools = Autotools(self)
-            autotools.configure(build_script_folder=self._get_configure_subdir())
-            # https://core.tcl.tk/tcl/tktview/840660e5a1
-            for root, _, list_of_files in os.walk(self.folders.build):
-                if "Makefile" in list_of_files:
-                    replace_in_file(self, os.path.join(root, "Makefile"), "-Dstrtod=fixstrtod", "", strict=False)
-            # For some reason this target "binaries" may not be built before others
-            # on Windows while it's a dependency of many other targets
-            autotools.make(target="binaries")
-            autotools.make()
-
-    def package(self):
-        copy(self, "license.terms", src=self.folders.source, dst=self.folders.package / "licenses")
-        if is_msvc(self):
-            self._build_nmake(["install-binaries", "install-libraries"])
-        else:
-            autotools = Autotools(self)
-            autotools.install()
-            autotools.install(target="install-private-headers")
-
-            rmdir(self, self.folders.package / "lib" / "pkgconfig")
-            rmdir(self, self.folders.package / "man")
-            rmdir(self, self.folders.package / "share")
-            fix_apple_shared_install_name(self)
-
-        # Relocatable tclConfig.sh
-        tclConfigShPath = self.folders.package / "lib" / "tclConfig.sh"
-        ## Comment out references to build folder
-        replace_in_file(self, tclConfigShPath, "\nTCL_BUILD_", "\n#TCL_BUILD_")
-        replace_in_file(self, tclConfigShPath, "\nTCL_SRC_DIR", "\n#TCL_SRC_DIR")
-        ## Replace references to package folder by TCL_ROOT env var supposed to be defined by VirtualRunEnv
-        if is_msvc(self):
-            replace_in_file(self, tclConfigShPath, os.fspath(self.folders.package), "${TCL_ROOT}")
-        else:
-            replace_in_file(self, tclConfigShPath, "TCL_PREFIX='/'", "TCL_PREFIX='${TCL_ROOT}'")
-            replace_in_file(self, tclConfigShPath, "TCL_EXEC_PREFIX='/'", "TCL_EXEC_PREFIX='${TCL_ROOT}'")
-            for to_replace in ["//", "/"]:
-                replace_in_file(self, tclConfigShPath, f"-L{to_replace}lib", "-L${TCL_ROOT}/lib", strict=False)
-                replace_in_file(self, tclConfigShPath, f"{{{to_replace}lib}}", "{${TCL_ROOT}/lib}", strict=False)
-                replace_in_file(self, tclConfigShPath, f"='{to_replace}lib", "='${TCL_ROOT}/lib", strict=False)
-                replace_in_file(self, tclConfigShPath, f"-I{to_replace}include", "-I${TCL_ROOT}/include", strict=False)
-
-    def package_info(self):
-        self.info.set_property("cmake_file_name", "TCL")
-
-        # There are other libs in subfolders, but they are only used
-        # for TCL extensions and should not be linked against.
-        self.info.libs = collect_libs(self, (self.folders.package / "lib").as_posix())
-
-        if self.settings.os == "Windows":
-            self.info.system_libs.extend(["ws2_32", "netapi32", "userenv"])
-        elif self.settings.os in ("FreeBSD", "Linux"):
-            self.info.system_libs.extend(["dl", "m", "pthread"])
-        elif is_apple_os(self):
-            self.info.frameworks.append("CoreFoundation")
-
-        if is_msvc(self) and not self.options.shared:
-            self.info.defines.append("STATIC_BUILD")
-
-        tcl_version = Version(self.version)
-        tcl_library = self.folders.package / "lib" / f"tcl{tcl_version.major}.{tcl_version.minor}"
-        self.runenv_info.define_path("TCL_LIBRARY", tcl_library)
-
-        tcl_root = self.folders.package
-        self.runenv_info.define_path("TCL_ROOT", tcl_root)
-
-        tclsh_list = list(filter(lambda fn: fn.startswith("tclsh"), os.listdir(self.folders.package / "bin")))
-        tclsh = self.folders.package / "bin" / tclsh_list[0]
-        self.runenv_info.define_path("TCLSH", tclsh)

@@ -214,11 +214,6 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         rmdir(self, self.folders.package / "lib" / "cmake")
 
-    def _add_component(self, name: str):
-        component = self.info.components[_recipe_comp(name)]
-        component.set_property("cmake_target_name", f"OpenImageIO::{name}")
-        return component
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "OpenImageIO")
         self.info.set_property("pkg_config_name", "OpenImageIO")
@@ -289,6 +284,11 @@ class Recipe(RecipeBase[_Options]):
             open_image_io.system_libs.extend(["dl", "m", "pthread"])
         if not self.options.shared:
             open_image_io.defines.append("OIIO_STATIC_DEFINE")
+
+    def _add_component(self, name: str):
+        component = self.info.components[_recipe_comp(name)]
+        component.set_property("cmake_target_name", f"OpenImageIO::{name}")
+        return component
 
 def _recipe_comp(name: str):
     return f"openimageio_{name.lower()}"

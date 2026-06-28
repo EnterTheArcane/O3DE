@@ -23,16 +23,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-ValidationLayers")
         return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
 
-    @property
-    def _has_wsi_options(self):
-        return self.settings.os in ["Linux", "FreeBSD"]
-
-    @property
-    def _needs_pkg_config(self):
-        return self.options.with_wsi_xcb or \
-            self.options.with_wsi_xlib or \
-            self.options.with_wsi_wayland
-
     def configure(self):
         if not self._has_wsi_options:
             self.options.with_wsi_xcb = False
@@ -117,3 +107,13 @@ class Recipe(RecipeBase[_Options]):
 
         if self.settings.os == "Android":
             self.info.system_libs.extend(["android", "log"])
+
+    @property
+    def _has_wsi_options(self):
+        return self.settings.os in ["Linux", "FreeBSD"]
+
+    @property
+    def _needs_pkg_config(self):
+        return self.options.with_wsi_xcb or \
+            self.options.with_wsi_xlib or \
+            self.options.with_wsi_wayland

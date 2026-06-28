@@ -16,14 +16,6 @@ class Recipe(RecipeBase[_Options]):
     version = "1.15"
     license = "MIT"
 
-    @property
-    def _sse2_compliant_archs(self):
-        return ["X64"]
-
-    @property
-    def _altivec_compliant_archs(self):
-        return ["ppc32be", "ppc32", "ppc64le", "ppc64"]
-
     def configure(self):
         if self.settings.arch not in self._sse2_compliant_archs:
             self.options.sse2_intrinsics = False
@@ -63,3 +55,11 @@ class Recipe(RecipeBase[_Options]):
         self.info.libs = ["squishd" if self.settings.build_type == "Debug" else "squish"]
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs.append("m")
+
+    @property
+    def _sse2_compliant_archs(self):
+        return ["X64"]
+
+    @property
+    def _altivec_compliant_archs(self):
+        return ["ppc32be", "ppc32", "ppc64le", "ppc64"]

@@ -38,22 +38,6 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["HWY_ENABLE_TESTS"] = False
         tc.generate()
 
-    def _patch_sources(self):
-        # No hardcoded CMAKE_CXX_STANDARD
-        replace_in_file(
-            self, self.folders.source / "cmake" / "FindAtomics.cmake",
-            "set(CMAKE_CXX_STANDARD 11)", "")
-        replace_in_file(
-            self, self.folders.source / "cmake" / "FindAtomics.cmake",
-            "unset(CMAKE_CXX_STANDARD)", "")
-        # Honor fPIC option
-        cmakelists = self.folders.source / "CMakeLists.txt"
-        replace_in_file(self, cmakelists, "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
-        replace_in_file(
-            self, cmakelists,
-            "set_property(TARGET hwy PROPERTY POSITION_INDEPENDENT_CODE ON)",
-            "")
-
     def build(self):
         cmake = CMake(self)
         cmake.configure()
@@ -82,3 +66,19 @@ class Recipe(RecipeBase[_Options]):
 
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs.append("m")
+
+    def _patch_sources(self):
+        # No hardcoded CMAKE_CXX_STANDARD
+        replace_in_file(
+            self, self.folders.source / "cmake" / "FindAtomics.cmake",
+            "set(CMAKE_CXX_STANDARD 11)", "")
+        replace_in_file(
+            self, self.folders.source / "cmake" / "FindAtomics.cmake",
+            "unset(CMAKE_CXX_STANDARD)", "")
+        # Honor fPIC option
+        cmakelists = self.folders.source / "CMakeLists.txt"
+        replace_in_file(self, cmakelists, "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
+        replace_in_file(
+            self, cmakelists,
+            "set_property(TARGET hwy PROPERTY POSITION_INDEPENDENT_CODE ON)",
+            "")

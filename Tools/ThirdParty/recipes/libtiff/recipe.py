@@ -102,20 +102,6 @@ class Recipe(RecipeBase[_Options]):
             deps.set_property("libjpeg-turbo", "cmake_target_name", "JPEG::JPEG")
         deps.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-
-        # remove FindXXXX for recipe dependencies
-        for module in ["Deflate", "JBIG", "JPEG", "LERC", "WebP", "ZSTD", "liblzma", "LibLZMA"]:
-            rm(self, f"Find{module}.cmake", self.folders.source / "cmake")
-
-        # Export symbols of tiffxx for msvc shared
-        replace_in_file(
-            self,
-            self.folders.source / "libtiff" / "CMakeLists.txt",
-            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
-            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")
-
     def build(self):
         cmake = CMake(self)
         cmake.configure()
@@ -157,3 +143,17 @@ class Recipe(RecipeBase[_Options]):
         if self.options.webp:
             requires.append("libwebp::webp")
         self.info.requires = requires
+
+    def _patch_sources(self):
+        apply_patches(self)
+
+        # remove FindXXXX for recipe dependencies
+        for module in ["Deflate", "JBIG", "JPEG", "LERC", "WebP", "ZSTD", "liblzma", "LibLZMA"]:
+            rm(self, f"Find{module}.cmake", self.folders.source / "cmake")
+
+        # Export symbols of tiffxx for msvc shared
+        replace_in_file(
+            self,
+            self.folders.source / "libtiff" / "CMakeLists.txt",
+            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION})",
+            "set_target_properties(tiffxx PROPERTIES SOVERSION ${SO_COMPATVERSION} WINDOWS_EXPORT_ALL_SYMBOLS ON)")

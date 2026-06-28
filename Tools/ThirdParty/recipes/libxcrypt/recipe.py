@@ -17,13 +17,13 @@ class Recipe(RecipeBase[_Options]):
     version = "4.4.36"
     license = "LGPL-2.1-or-later"
 
-    def validate(self):
-        if self.settings.os == "Windows":
-            raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
-
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
+
+    def validate(self):
+        if self.settings.os == "Windows":
+            raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def requirements(self):
         self.requires_tool("autoconf")

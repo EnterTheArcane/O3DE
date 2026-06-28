@@ -44,12 +44,6 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["DISABLE_SSE"] = not self.options.sse
         tc.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        replace_in_file(
-            self, self.folders.source / "CMakeLists.txt",
-            "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")
-
     def build(self):
         cmake = CMake(self)
         cmake.configure()
@@ -77,3 +71,9 @@ class Recipe(RecipeBase[_Options]):
             libcxx = stdcpp_library(self)
             if libcxx:
                 self.info.system_libs.append(libcxx)
+
+    def _patch_sources(self):
+        apply_patches(self)
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            "set(CMAKE_POSITION_INDEPENDENT_CODE ON)", "")

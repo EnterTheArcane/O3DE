@@ -49,11 +49,6 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0077"] = "NEW"
         tc.generate()
 
-    @property
-    def _cmakelists_folder(self):
-        subfolder = os.path.join("build", "cmake")
-        return self.folders.source / subfolder
-
     def build(self):
         cmake = CMake(self)
         cmake.configure(build_script_folder=self._cmakelists_folder)
@@ -67,10 +62,6 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         rmdir(self, self.folders.package / "share")
 
-    @property
-    def _lz4_target(self):
-        return f"LZ4::{"lz4_shared" if self.options.shared else "lz4_static"}"
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "lz4")
         self.info.set_property("cmake_target_name", self._lz4_target)
@@ -79,3 +70,12 @@ class Recipe(RecipeBase[_Options]):
         self.info.libs = ["lz4"]
         if is_msvc(self) and self.options.shared:
             self.info.defines.append("LZ4_DLL_IMPORT=1")
+
+    @property
+    def _cmakelists_folder(self):
+        subfolder = os.path.join("build", "cmake")
+        return self.folders.source / subfolder
+
+    @property
+    def _lz4_target(self):
+        return f"LZ4::{"lz4_shared" if self.options.shared else "lz4_static"}"

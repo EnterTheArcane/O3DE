@@ -95,18 +95,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "openssl/openssl")
         return Version(repo.latest_release.removeprefix("openssl-"))
 
-    @property
-    def _is_clang_cl(self) -> bool:
-        return self.settings.os == "Windows" and self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime") # type: ignore
-
-    @property
-    def _is_mingw(self):
-        return self.settings.os == "Windows" and self.settings.compiler == "gcc"
-
-    @property
-    def _use_nmake(self):
-        return self._is_clang_cl or is_msvc(self)
-
     def configure(self):
         if self.settings.os != "Windows":
             self.options.capieng_dialog = False
@@ -137,6 +125,118 @@ class Recipe(RecipeBase[_Options]):
             sha256="aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
             destination=self.folders.source,
             strip_root=True)
+
+    def generate(self):
+        VirtualBuildEnv(self).generate()
+        tc = AutotoolsToolchain(self)
+        env = tc.environment()
+        if self._use_nmake:
+            env.define("CC", "cl")
+            env.define("CXX", "cl")
+            env.define("LD", "link")
+        env.define_path("PERL", self._perl)
+        if self.settings.compiler == "apple-clang":
+            xcrun = XCRun(self)
+            env.define_path("CROSS_SDK", os.path.basename(xcrun.sdk_path))
+            env.define_path("CROSS_TOP", os.path.dirname(os.path.dirname(xcrun.sdk_path)))
+
+        if is_apple_os(self) and self.options.shared:
+            # Inject -headerpad_max_install_names for shared library, otherwise fix_apple_shared_install_name() may fail.
+            # See https://github.com/recipe-io/recipe-center-index/issues/27424
+            tc.extra_ldflags.append("-headerpad_max_install_names")
+
+        self._create_targets(tc.cflags, tc.cxxflags, tc.defines, tc.ldflags)
+        tc.generate(env)
+
+    def build(self):
+        self._make()
+        configdata_pm = self._adjust_path(self.folders.source / "configdata.pm")
+        self.run(f"{self._perl} {configdata_pm} --dump")
+
+    def package(self):
+        copy(self, "*LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
+        self._make_install()
+        if is_apple_os(self):
+            fix_apple_shared_install_name(self)
+
+        rm(self, "*.pdb", self.folders.package / "lib")
+        if self.options.shared:
+            libdir = self.folders.package / "lib"
+            for file in os.listdir(libdir):
+                if self._is_mingw and file.endswith(".dll.a"):
+                    continue
+                if file.endswith(".a"):
+                    os.unlink(libdir / file)
+
+        if not self.options.no_fips:
+            provdir = self.folders.source / "providers"
+            modules_dir = self.folders.package / "lib" / "ossl-modules"
+            if self.settings.os == "Mac":
+                copy(self, "fips.dylib", src=provdir, dst=modules_dir)
+            elif self.settings.os == "Windows":
+                copy(self, "fips.dll", src=provdir, dst=modules_dir)
+            else:
+                copy(self, "fips.so", src=provdir, dst=modules_dir)
+
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        rmdir(self, self.folders.package / "lib" / "cmake")
+
+        self._create_cmake_module_variables(self.folders.package / self._module_file_rel_path)
+
+    def package_info(self):
+        self.info.set_property("cmake_file_name", "OpenSSL")
+        self.info.set_property("pkg_config_name", "openssl")
+        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.components["ssl"].builddirs.append(self._module_subfolder)
+        self.info.components["ssl"].set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.components["crypto"].builddirs.append(self._module_subfolder)
+        self.info.components["crypto"].set_property("cmake_build_modules", [self._module_file_rel_path])
+
+        if self._use_nmake:
+            self.info.components["ssl"].libs = ["libssl"]
+            self.info.components["crypto"].libs = ["libcrypto"]
+        else:
+            self.info.components["ssl"].libs = ["ssl"]
+            self.info.components["crypto"].libs = ["crypto"]
+
+        self.info.components["ssl"].requires = ["crypto"]
+
+        if not self.options.no_zlib:
+            self.info.components["crypto"].requires.append("zlib::zlib")
+
+        if self.settings.os == "Windows":
+            self.info.components["crypto"].system_libs.extend(["crypt32", "ws2_32", "advapi32", "user32", "bcrypt"])
+        elif self.settings.os == "Linux":
+            self.info.components["crypto"].system_libs.extend(["dl", "rt"])
+            self.info.components["ssl"].system_libs.append("dl")
+            if not self.options.no_threads:
+                self.info.components["crypto"].system_libs.append("pthread")
+                self.info.components["ssl"].system_libs.append("pthread")
+        elif self.settings.os == "Neutrino":
+            self.info.components["crypto"].system_libs.append("atomic")
+            self.info.components["ssl"].system_libs.append("atomic")
+            self.info.components["crypto"].system_libs.append("socket")
+            self.info.components["ssl"].system_libs.append("socket")
+
+        self.info.components["crypto"].set_property("cmake_target_name", "OpenSSL::Crypto")
+        self.info.components["crypto"].set_property("pkg_config_name", "libcrypto")
+        self.info.components["ssl"].set_property("cmake_target_name", "OpenSSL::SSL")
+        self.info.components["ssl"].set_property("pkg_config_name", "libssl")
+
+        openssl_modules_dir = self.folders.package / "lib" / "ossl-modules"
+        self.runenv_info.define_path("OPENSSL_MODULES", openssl_modules_dir)
+
+    @property
+    def _is_clang_cl(self) -> bool:
+        return self.settings.os == "Windows" and self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime") # type: ignore
+
+    @property
+    def _is_mingw(self):
+        return self.settings.os == "Windows" and self.settings.compiler == "gcc"
+
+    @property
+    def _use_nmake(self):
+        return self._is_clang_cl or is_msvc(self)
 
     @property
     def _target(self):
@@ -366,28 +466,6 @@ class Recipe(RecipeBase[_Options]):
                 args.append(option_name.replace("_", "-"))
         return args
 
-    def generate(self):
-        VirtualBuildEnv(self).generate()
-        tc = AutotoolsToolchain(self)
-        env = tc.environment()
-        if self._use_nmake:
-            env.define("CC", "cl")
-            env.define("CXX", "cl")
-            env.define("LD", "link")
-        env.define_path("PERL", self._perl)
-        if self.settings.compiler == "apple-clang":
-            xcrun = XCRun(self)
-            env.define_path("CROSS_SDK", os.path.basename(xcrun.sdk_path))
-            env.define_path("CROSS_TOP", os.path.dirname(os.path.dirname(xcrun.sdk_path)))
-
-        if is_apple_os(self) and self.options.shared:
-            # Inject -headerpad_max_install_names for shared library, otherwise fix_apple_shared_install_name() may fail.
-            # See https://github.com/recipe-io/recipe-center-index/issues/27424
-            tc.extra_ldflags.append("-headerpad_max_install_names")
-
-        self._create_targets(tc.cflags, tc.cxxflags, tc.defines, tc.ldflags)
-        tc.generate(env)
-
     def _create_targets(
         self,
         cflags: list[str],
@@ -497,11 +575,6 @@ class Recipe(RecipeBase[_Options]):
         with chdir(self, self.folders.source):
             self._run_make(targets=["install_sw"], parallel=False, install=True)
 
-    def build(self):
-        self._make()
-        configdata_pm = self._adjust_path(self.folders.source / "configdata.pm")
-        self.run(f"{self._perl} {configdata_pm} --dump")
-
     @property
     def _make_program(self):
         use_jom = self._use_nmake and self.conf.get("user.openssl:windows_use_jom", False)
@@ -515,36 +588,6 @@ class Recipe(RecipeBase[_Options]):
         for e in ["MDd", "MD", "MT"]:
             replace_in_file(self, filename, f"/{e} ", f"/{runtime} ", strict=False)
             replace_in_file(self, filename, f"/{e}\"", f"/{runtime}\"", strict=False)
-
-    def package(self):
-        copy(self, "*LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
-        self._make_install()
-        if is_apple_os(self):
-            fix_apple_shared_install_name(self)
-
-        rm(self, "*.pdb", self.folders.package / "lib")
-        if self.options.shared:
-            libdir = self.folders.package / "lib"
-            for file in os.listdir(libdir):
-                if self._is_mingw and file.endswith(".dll.a"):
-                    continue
-                if file.endswith(".a"):
-                    os.unlink(libdir / file)
-
-        if not self.options.no_fips:
-            provdir = self.folders.source / "providers"
-            modules_dir = self.folders.package / "lib" / "ossl-modules"
-            if self.settings.os == "Mac":
-                copy(self, "fips.dylib", src=provdir, dst=modules_dir)
-            elif self.settings.os == "Windows":
-                copy(self, "fips.dll", src=provdir, dst=modules_dir)
-            else:
-                copy(self, "fips.so", src=provdir, dst=modules_dir)
-
-        rmdir(self, self.folders.package / "lib" / "pkgconfig")
-        rmdir(self, self.folders.package / "lib" / "cmake")
-
-        self._create_cmake_module_variables(self.folders.package / self._module_file_rel_path)
 
     def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
@@ -585,46 +628,3 @@ class Recipe(RecipeBase[_Options]):
         return os.path.join(
             self._module_subfolder,
             f"recipe-official-{self.name}-variables.cmake")
-
-    def package_info(self):
-        self.info.set_property("cmake_file_name", "OpenSSL")
-        self.info.set_property("pkg_config_name", "openssl")
-        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.info.components["ssl"].builddirs.append(self._module_subfolder)
-        self.info.components["ssl"].set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.info.components["crypto"].builddirs.append(self._module_subfolder)
-        self.info.components["crypto"].set_property("cmake_build_modules", [self._module_file_rel_path])
-
-        if self._use_nmake:
-            self.info.components["ssl"].libs = ["libssl"]
-            self.info.components["crypto"].libs = ["libcrypto"]
-        else:
-            self.info.components["ssl"].libs = ["ssl"]
-            self.info.components["crypto"].libs = ["crypto"]
-
-        self.info.components["ssl"].requires = ["crypto"]
-
-        if not self.options.no_zlib:
-            self.info.components["crypto"].requires.append("zlib::zlib")
-
-        if self.settings.os == "Windows":
-            self.info.components["crypto"].system_libs.extend(["crypt32", "ws2_32", "advapi32", "user32", "bcrypt"])
-        elif self.settings.os == "Linux":
-            self.info.components["crypto"].system_libs.extend(["dl", "rt"])
-            self.info.components["ssl"].system_libs.append("dl")
-            if not self.options.no_threads:
-                self.info.components["crypto"].system_libs.append("pthread")
-                self.info.components["ssl"].system_libs.append("pthread")
-        elif self.settings.os == "Neutrino":
-            self.info.components["crypto"].system_libs.append("atomic")
-            self.info.components["ssl"].system_libs.append("atomic")
-            self.info.components["crypto"].system_libs.append("socket")
-            self.info.components["ssl"].system_libs.append("socket")
-
-        self.info.components["crypto"].set_property("cmake_target_name", "OpenSSL::Crypto")
-        self.info.components["crypto"].set_property("pkg_config_name", "libcrypto")
-        self.info.components["ssl"].set_property("cmake_target_name", "OpenSSL::SSL")
-        self.info.components["ssl"].set_property("pkg_config_name", "libssl")
-
-        openssl_modules_dir = self.folders.package / "lib" / "ossl-modules"
-        self.runenv_info.define_path("OPENSSL_MODULES", openssl_modules_dir)

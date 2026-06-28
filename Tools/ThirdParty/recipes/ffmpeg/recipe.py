@@ -122,48 +122,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "FFmpeg/FFmpeg")
         return Version(repo.latest_release.removeprefix("n"))
 
-    @property
-    def _dependencies(self):
-        return {
-            "avformat": ["avcodec"],
-            "avdevice": ["avcodec", "avformat"],
-            "avfilter": ["avformat"],
-            "with_bzip2": ["avformat"],
-            "with_ssl": ["avformat"],
-            "with_zlib": ["avcodec"],
-            "with_lzma": ["avcodec"],
-            "with_libiconv": ["avcodec"],
-            "with_libxml2": ["avcodec"],
-            "with_libjxl": ["avcodec"],
-            "with_openapv": ["avcodec"],
-            "with_openjpeg": ["avcodec"],
-            "with_openh264": ["avcodec"],
-            "with_vorbis": ["avcodec"],
-            "with_opus": ["avcodec"],
-            "with_libx264": ["avcodec"],
-            "with_libx265": ["avcodec"],
-            "with_libvpx": ["avcodec"],
-            "with_libmp3lame": ["avcodec"],
-            "with_libfdk_aac": ["avcodec"],
-            "with_libwebp": ["avcodec"],
-            "with_freetype": ["avfilter"],
-            "with_fontconfig": ["avfilter"],
-            "with_fribidi": ["avfilter"],
-            "with_harfbuzz": ["avfilter"],
-            "with_zeromq": ["avfilter", "avformat"],
-            "with_libalsa": ["avdevice"],
-            "with_xcb": ["avdevice"],
-            "with_soxr": ["swresample"],
-            "with_pulse": ["avdevice"],
-            "with_sdl": ["with_programs"],
-            "with_libsvtav1": ["avcodec"],
-            "with_libaom": ["avcodec"],
-            "with_libdav1d": ["avcodec"],
-            "with_mediacodec": ["with_jni"],
-            "with_xlib": ["avdevice"],
-            "with_whisper": ["avfilter"],
-        }
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -290,78 +248,6 @@ class Recipe(RecipeBase[_Options]):
             sha256="b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3",
             destination=self.folders.source,
             strip_root=True)
-
-    @property
-    def _target_arch(self):
-        # Taken from acceptable values https://github.com/FFmpeg/FFmpeg/blob/0684e58886881a998f1a7b510d73600ff1df2b90/configure#L5010
-        if self.settings.arch == "ARM":
-            return "aarch64"
-        elif self.settings.arch == "X64":
-            return "x86_64"
-        return str(self.settings.arch)
-
-    @property
-    def _target_os(self):
-        if self.settings.os == "Windows":
-            return "mingw32" if self.settings.compiler == "gcc" else "win32"
-        elif is_apple_os(self):
-            return "darwin"
-
-        # Taken from https://github.com/FFmpeg/FFmpeg/blob/0684e58886881a998f1a7b510d73600ff1df2b90/configure#L5485
-        # This is the map of Recipe OS settings to FFmpeg acceptable values
-        return {
-            "AIX": "aix",
-            "Android": "android",
-            "FreeBSD": "freebsd",
-            "Linux": "linux",
-            "Neutrino": "qnx",
-            "SunOS": "sunos",
-        }.get(str(self.settings.os), "none")
-
-    def _patch_sources(self):
-        if self.options.with_ssl == "openssl":
-            # https://trac.ffmpeg.org/ticket/5675
-            openssl_libs = load(self, self.folders.build / "openssl_libs.list")
-            replace_in_file(
-                self,
-                self.folders.source / "configure",
-                "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto ||",
-                f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} ||",
-                strict=False)
-
-            # replace_in_file(self, self.folders.source / "configure", "echo libx264.lib", "echo x264.lib")
-
-    @property
-    def _default_compilers(self) -> dict[str, str]:
-        if self.settings.compiler == "gcc":
-            return {"cc": "gcc", "cxx": "g++"}
-        elif self.settings.compiler in ["clang", "apple-clang"]:
-            return {"cc": "clang", "cxx": "clang++"}
-        elif is_msvc(self):
-            return {"cc": "cl.exe", "cxx": "cl.exe"}
-        return {}
-
-    def _create_toolchain(self):
-        tc = AutotoolsToolchain(self)
-        # Custom configure script of ffmpeg understands:
-        # --prefix, --bindir, --datadir, --docdir, --incdir, --libdir, --mandir
-        # Options --datadir, --docdir, --incdir, and --mandir are not injected by AutotoolsToolchain  but their default value
-        # in ffmpeg script matches expected recipe install layout.
-        # Several options injected by AutotoolsToolchain are unknown from this configure script and must be pruned.
-        # This must be done before modifying tc.configure_args, because update_configre_args currently removes
-        # duplicate configuration keys, even when they have different values, such as list of encoder flags.
-        # See https://github.com/recipe-io/recipe-center-index/issues/17140 for further information.
-        tc.update_configure_args(
-            {
-                "--sbindir": None,
-                "--includedir": None,
-                "--oldincludedir": None,
-                "--datarootdir": None,
-                "--build": None,
-                "--host": None,
-                "--target": None,
-            })
-        return tc
 
     def generate(self):
         VirtualBuildEnv(self).generate()
@@ -647,19 +533,6 @@ class Recipe(RecipeBase[_Options]):
             openssl_libs = " ".join([f"-l{lib}" for lib in openssl_cpp.libs] + [f"-l{lib}" for lib in openssl_cpp.system_libs])
             save(self, self.folders.build / "openssl_libs.list", openssl_libs)
 
-    def _split_and_format_options_string(self, flag_name: str, options_list: Any) -> list[str]:
-        if not options_list:
-            return []
-
-        def _format_options_list_item(flag_name: str, options_item: str) -> str:
-            return f"--{flag_name}={options_item}"
-
-        def _split_options_string(options_string: str) -> list[str]:
-            return list(filter(None, "".join(options_string.split()).split(",")))
-
-        options_string = str(options_list)
-        return [_format_options_list_item(flag_name, item) for item in _split_options_string(options_string)]
-
     def build(self):
         self._patch_sources()
         if self.options.with_libx264:
@@ -690,33 +563,6 @@ class Recipe(RecipeBase[_Options]):
                 with chdir(self, self.folders.package / "lib"):
                     for lib in glob.glob("*.a"):
                         rename(self, Path(lib), Path(lib[3:-2] + ".lib"))
-
-    def _read_component_version(self, component_name: str):
-        # since 5.1, major version may be defined in version_major.h instead of version.h
-        component_folder = self.folders.package / "include" / f"lib{component_name}"
-        version_file_name = component_folder / "version.h"
-        version_major_file_name = component_folder / "version_major.h"
-        pattern = f"define LIB{component_name.upper()}_VERSION_(MAJOR|MINOR|MICRO)[ \t]+(\\d+)"
-        version: dict[str, str] = {}
-        for file in (version_file_name, version_major_file_name):
-            if os.path.isfile(file):
-                with open(file, "r", encoding="utf-8") as f:
-                    for line in f:
-                        match = re.search(pattern, line)
-                        if match:
-                            version[match[1]] = match[2]
-        if "MAJOR" in version and "MINOR" in version and "MICRO" in version:
-            return f"{version["MAJOR"]}.{version["MINOR"]}.{version["MICRO"]}"
-        return None
-
-    def _set_component_version(self, component_name: str):
-        version = self._read_component_version(component_name)
-        if version is not None:
-            self.info.components[component_name].set_property("component_version", version)
-            # TODO: to remove once support of recipe v1 dropped
-            self.info.components[component_name].version = version
-        else:
-            self.output.warning(f"cannot determine version of lib{component_name} packaged with ffmpeg!")
 
     def package_info(self):
         if self.options.with_programs:
@@ -899,3 +745,157 @@ class Recipe(RecipeBase[_Options]):
 
         if self.options.with_vulkan:
             avutil.requires.append("vulkan-loader::vulkan-loader")
+
+    @property
+    def _dependencies(self):
+        return {
+            "avformat": ["avcodec"],
+            "avdevice": ["avcodec", "avformat"],
+            "avfilter": ["avformat"],
+            "with_bzip2": ["avformat"],
+            "with_ssl": ["avformat"],
+            "with_zlib": ["avcodec"],
+            "with_lzma": ["avcodec"],
+            "with_libiconv": ["avcodec"],
+            "with_libxml2": ["avcodec"],
+            "with_libjxl": ["avcodec"],
+            "with_openapv": ["avcodec"],
+            "with_openjpeg": ["avcodec"],
+            "with_openh264": ["avcodec"],
+            "with_vorbis": ["avcodec"],
+            "with_opus": ["avcodec"],
+            "with_libx264": ["avcodec"],
+            "with_libx265": ["avcodec"],
+            "with_libvpx": ["avcodec"],
+            "with_libmp3lame": ["avcodec"],
+            "with_libfdk_aac": ["avcodec"],
+            "with_libwebp": ["avcodec"],
+            "with_freetype": ["avfilter"],
+            "with_fontconfig": ["avfilter"],
+            "with_fribidi": ["avfilter"],
+            "with_harfbuzz": ["avfilter"],
+            "with_zeromq": ["avfilter", "avformat"],
+            "with_libalsa": ["avdevice"],
+            "with_xcb": ["avdevice"],
+            "with_soxr": ["swresample"],
+            "with_pulse": ["avdevice"],
+            "with_sdl": ["with_programs"],
+            "with_libsvtav1": ["avcodec"],
+            "with_libaom": ["avcodec"],
+            "with_libdav1d": ["avcodec"],
+            "with_mediacodec": ["with_jni"],
+            "with_xlib": ["avdevice"],
+            "with_whisper": ["avfilter"],
+        }
+
+    @property
+    def _target_arch(self):
+        # Taken from acceptable values https://github.com/FFmpeg/FFmpeg/blob/0684e58886881a998f1a7b510d73600ff1df2b90/configure#L5010
+        if self.settings.arch == "ARM":
+            return "aarch64"
+        elif self.settings.arch == "X64":
+            return "x86_64"
+        return str(self.settings.arch)
+
+    @property
+    def _target_os(self):
+        if self.settings.os == "Windows":
+            return "mingw32" if self.settings.compiler == "gcc" else "win32"
+        elif is_apple_os(self):
+            return "darwin"
+
+        # Taken from https://github.com/FFmpeg/FFmpeg/blob/0684e58886881a998f1a7b510d73600ff1df2b90/configure#L5485
+        # This is the map of Recipe OS settings to FFmpeg acceptable values
+        return {
+            "AIX": "aix",
+            "Android": "android",
+            "FreeBSD": "freebsd",
+            "Linux": "linux",
+            "Neutrino": "qnx",
+            "SunOS": "sunos",
+        }.get(str(self.settings.os), "none")
+
+    def _patch_sources(self):
+        if self.options.with_ssl == "openssl":
+            # https://trac.ffmpeg.org/ticket/5675
+            openssl_libs = load(self, self.folders.build / "openssl_libs.list")
+            replace_in_file(
+                self,
+                self.folders.source / "configure",
+                "check_lib openssl openssl/ssl.h DTLS_get_data_mtu -lssl -lcrypto ||",
+                f"check_lib openssl openssl/ssl.h DTLS_get_data_mtu {openssl_libs} ||",
+                strict=False)
+
+            # replace_in_file(self, self.folders.source / "configure", "echo libx264.lib", "echo x264.lib")
+
+    @property
+    def _default_compilers(self) -> dict[str, str]:
+        if self.settings.compiler == "gcc":
+            return {"cc": "gcc", "cxx": "g++"}
+        elif self.settings.compiler in ["clang", "apple-clang"]:
+            return {"cc": "clang", "cxx": "clang++"}
+        elif is_msvc(self):
+            return {"cc": "cl.exe", "cxx": "cl.exe"}
+        return {}
+
+    def _create_toolchain(self):
+        tc = AutotoolsToolchain(self)
+        # Custom configure script of ffmpeg understands:
+        # --prefix, --bindir, --datadir, --docdir, --incdir, --libdir, --mandir
+        # Options --datadir, --docdir, --incdir, and --mandir are not injected by AutotoolsToolchain  but their default value
+        # in ffmpeg script matches expected recipe install layout.
+        # Several options injected by AutotoolsToolchain are unknown from this configure script and must be pruned.
+        # This must be done before modifying tc.configure_args, because update_configre_args currently removes
+        # duplicate configuration keys, even when they have different values, such as list of encoder flags.
+        # See https://github.com/recipe-io/recipe-center-index/issues/17140 for further information.
+        tc.update_configure_args(
+            {
+                "--sbindir": None,
+                "--includedir": None,
+                "--oldincludedir": None,
+                "--datarootdir": None,
+                "--build": None,
+                "--host": None,
+                "--target": None,
+            })
+        return tc
+
+    def _split_and_format_options_string(self, flag_name: str, options_list: Any) -> list[str]:
+        if not options_list:
+            return []
+
+        def _format_options_list_item(flag_name: str, options_item: str) -> str:
+            return f"--{flag_name}={options_item}"
+
+        def _split_options_string(options_string: str) -> list[str]:
+            return list(filter(None, "".join(options_string.split()).split(",")))
+
+        options_string = str(options_list)
+        return [_format_options_list_item(flag_name, item) for item in _split_options_string(options_string)]
+
+    def _read_component_version(self, component_name: str):
+        # since 5.1, major version may be defined in version_major.h instead of version.h
+        component_folder = self.folders.package / "include" / f"lib{component_name}"
+        version_file_name = component_folder / "version.h"
+        version_major_file_name = component_folder / "version_major.h"
+        pattern = f"define LIB{component_name.upper()}_VERSION_(MAJOR|MINOR|MICRO)[ \t]+(\\d+)"
+        version: dict[str, str] = {}
+        for file in (version_file_name, version_major_file_name):
+            if os.path.isfile(file):
+                with open(file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        match = re.search(pattern, line)
+                        if match:
+                            version[match[1]] = match[2]
+        if "MAJOR" in version and "MINOR" in version and "MICRO" in version:
+            return f"{version["MAJOR"]}.{version["MINOR"]}.{version["MICRO"]}"
+        return None
+
+    def _set_component_version(self, component_name: str):
+        version = self._read_component_version(component_name)
+        if version is not None:
+            self.info.components[component_name].set_property("component_version", version)
+            # TODO: to remove once support of recipe v1 dropped
+            self.info.components[component_name].version = version
+        else:
+            self.output.warning(f"cannot determine version of lib{component_name} packaged with ffmpeg!")

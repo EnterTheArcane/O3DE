@@ -102,68 +102,6 @@ class Recipe(RecipeBase[_Options]):
                 deps = AutotoolsDeps(self)
                 deps.generate()
 
-    def _get_default_build_system(self):
-        if is_apple_os(self):
-            return "macosx"
-        elif self.settings.os in ("Linux", "FreeBSD"):
-            return "unix"
-        elif self.settings.os == "Windows":
-            return "win"
-        else:
-            raise ValueError("tk recipe does not recognize os")
-
-    def _get_configure_folder(self, build_system: str | None = None) -> Path:
-        if build_system is None:
-            build_system = self._get_default_build_system()
-        if build_system not in ["win", "unix", "macosx"]:
-            raise RecipeException(f"Invalid build system: {build_system}")
-        return self.folders.source / build_system
-
-    def _build_nmake(self, target: str = "release"):
-        # https://core.tcl.tk/tips/doc/trunk/tip/477.md
-        opts: list[str] = []
-        if not self.options.shared:
-            opts.append("static")
-        if self.settings.build_type == "Debug":
-            opts.append("symbols")
-        if "dynamic" in str(self.settings.compiler.runtime) or "MD" in str(self.settings.compiler.runtime):
-            opts.append("msvcrt")
-        else:
-            opts.append("nomsvcrt")
-        if "d" not in str(self.settings.compiler.runtime):
-            opts.append("unchecked")
-        # https://core.tcl.tk/tk/tktview?name=3d34589aa0
-        # https://wiki.tcl-lang.org/page/Building+with+Visual+Studio+2017
-        tcl_lib_path: Path = self.dependencies["tcl"].folders.package / "lib"
-        tclimplib, tclstublib = None, None
-        for lib in os.listdir(tcl_lib_path):
-            if not lib.endswith(".lib"):
-                continue
-            if lib.startswith("tcl{}".format("".join(self.version.split(".")[:2]))):
-                tclimplib = tcl_lib_path / lib
-            elif lib.startswith(
-                    "tclstub{}".format("".join(self.version.split(".")[:2]))
-            ):
-                tclstublib = tcl_lib_path / lib
-
-        if tclimplib is None or tclstublib is None:
-            raise RecipeException("tcl dependency misses tcl and/or tclstub library")
-
-        flags = {
-            "INSTALLDIR": self.folders.package,
-            "OPTS": ",".join(opts),
-            "TCLDIR": self.dependencies["tcl"].folders.package,
-            "TCL_LIBRARY": self.dependencies["tcl"].runenv_info.vars(self).get("TCL_LIBRARY"),
-            "TCLIMPLIB": tclimplib,
-            "TCLSTUBLIB": tclstublib,
-        }
-        config_dir = self._get_configure_folder("win")
-        with chdir(self, config_dir):
-            self.run(
-                f"""nmake -nologo -f makefile.vc {" ".join([f'{k}="{v}"' for k, v in flags.items()])} {target}""",
-                env="env_build",
-            )
-
     def build(self):
         if is_msvc(self):
             self._build_nmake()
@@ -250,3 +188,65 @@ class Recipe(RecipeBase[_Options]):
 
         tk_root = self.folders.package.as_posix()
         self.runenv_info.define("TK_ROOT", tk_root)
+
+    def _get_default_build_system(self):
+        if is_apple_os(self):
+            return "macosx"
+        elif self.settings.os in ("Linux", "FreeBSD"):
+            return "unix"
+        elif self.settings.os == "Windows":
+            return "win"
+        else:
+            raise ValueError("tk recipe does not recognize os")
+
+    def _get_configure_folder(self, build_system: str | None = None) -> Path:
+        if build_system is None:
+            build_system = self._get_default_build_system()
+        if build_system not in ["win", "unix", "macosx"]:
+            raise RecipeException(f"Invalid build system: {build_system}")
+        return self.folders.source / build_system
+
+    def _build_nmake(self, target: str = "release"):
+        # https://core.tcl.tk/tips/doc/trunk/tip/477.md
+        opts: list[str] = []
+        if not self.options.shared:
+            opts.append("static")
+        if self.settings.build_type == "Debug":
+            opts.append("symbols")
+        if "dynamic" in str(self.settings.compiler.runtime) or "MD" in str(self.settings.compiler.runtime):
+            opts.append("msvcrt")
+        else:
+            opts.append("nomsvcrt")
+        if "d" not in str(self.settings.compiler.runtime):
+            opts.append("unchecked")
+        # https://core.tcl.tk/tk/tktview?name=3d34589aa0
+        # https://wiki.tcl-lang.org/page/Building+with+Visual+Studio+2017
+        tcl_lib_path: Path = self.dependencies["tcl"].folders.package / "lib"
+        tclimplib, tclstublib = None, None
+        for lib in os.listdir(tcl_lib_path):
+            if not lib.endswith(".lib"):
+                continue
+            if lib.startswith("tcl{}".format("".join(self.version.split(".")[:2]))):
+                tclimplib = tcl_lib_path / lib
+            elif lib.startswith(
+                    "tclstub{}".format("".join(self.version.split(".")[:2]))
+            ):
+                tclstublib = tcl_lib_path / lib
+
+        if tclimplib is None or tclstublib is None:
+            raise RecipeException("tcl dependency misses tcl and/or tclstub library")
+
+        flags = {
+            "INSTALLDIR": self.folders.package,
+            "OPTS": ",".join(opts),
+            "TCLDIR": self.dependencies["tcl"].folders.package,
+            "TCL_LIBRARY": self.dependencies["tcl"].runenv_info.vars(self).get("TCL_LIBRARY"),
+            "TCLIMPLIB": tclimplib,
+            "TCLSTUBLIB": tclstublib,
+        }
+        config_dir = self._get_configure_folder("win")
+        with chdir(self, config_dir):
+            self.run(
+                f"""nmake -nologo -f makefile.vc {" ".join([f'{k}="{v}"' for k, v in flags.items()])} {target}""",
+                env="env_build",
+            )

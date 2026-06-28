@@ -159,35 +159,6 @@ class Recipe(RecipeBase[_Options]):
     def latest_version(self):
         repo = GithubRepository(self, "assimp/assimp")
         return Version(repo.latest_release.removeprefix("v"))
-    
-    @property
-    def _depends_on_kuba_zip(self):
-        return self.options.with_3mf_exporter
-
-    @property
-    def _depends_on_poly2tri(self):
-        return self.options.with_blend or self.options.with_ifc
-
-    @property
-    def _depends_on_rapidjson(self):
-        return self.options.with_gltf or self.options.with_gltf_exporter
-
-    @property
-    def _depends_on_draco(self):
-        return self.options.with_gltf or self.options.with_gltf_exporter
-
-    @property
-    def _depends_on_clipper(self):
-        return self.options.with_ifc
-
-    @property
-    def _depends_on_stb(self):
-        return self.options.with_m3d or self.options.with_m3d_exporter or \
-            self.options.with_pbrt_exporter
-
-    @property
-    def _depends_on_openddlparser(self):
-        return self.options.with_opengex
 
     def requirements(self):
         # TODO: unvendor others libs:
@@ -381,3 +352,32 @@ class Recipe(RecipeBase[_Options]):
             libcxx = stdcpp_library(self)
             if libcxx:
                 self.info.system_libs.append(libcxx)
+    
+    @property
+    def _depends_on_kuba_zip(self):
+        return self.options.with_3mf_exporter
+
+    @property
+    def _depends_on_poly2tri(self):
+        return self.options.with_blend or self.options.with_ifc
+
+    @property
+    def _depends_on_rapidjson(self):
+        return self.options.with_gltf or self.options.with_gltf_exporter
+
+    @property
+    def _depends_on_draco(self):
+        return self.options.with_gltf or self.options.with_gltf_exporter
+
+    @property
+    def _depends_on_clipper(self):
+        return self.options.with_ifc
+
+    @property
+    def _depends_on_stb(self):
+        return self.options.with_m3d or self.options.with_m3d_exporter or \
+            self.options.with_pbrt_exporter
+
+    @property
+    def _depends_on_openddlparser(self):
+        return self.options.with_opengex

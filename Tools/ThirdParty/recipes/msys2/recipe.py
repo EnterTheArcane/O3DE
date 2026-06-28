@@ -63,11 +63,6 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Windows":
             raise RecipeInvalidConfiguration("msys2 is only supported on Windows")
 
-    def compatibility(self):
-        if self.settings.arch == "ARM":
-            # Fallback on x86_64 package when natively on Windows arm64
-            return [{"settings": [("arch", "X64")]}]
-
     def source(self):
         get(
             self,
@@ -75,6 +70,46 @@ class Recipe(RecipeBase[_Options]):
             sha256="999f63c2fc7525af5cd41b55e9ea704471a4f9d0278a257fff3b0d1183c441b9",
             destination=self.folders.source,
             strip_root=False)  # Preserve tarball root dir (msys64/)
+
+    def build(self):
+        with OpLock():
+            self._do_build()
+
+    def package(self):
+        excludes = None
+        if self.options.exclude_files:
+            excludes = tuple(str(self.options.exclude_files).split(","))
+        rm(self, "mtab", self.folders.source, recursive=True)
+        for exclude in (excludes or ()):
+            for root, _, filenames in os.walk(self._msys_dir):
+                for filename in filenames:
+                    fullname = os.path.join(root, filename)
+                    if fnmatch.fnmatch(fullname, exclude):
+                        os.unlink(fullname)
+        # See https://github.com/recipe-io/recipe-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
+        copy(self, "*", dst=self.folders.package / "bin" / "msys64", src=self._msys_dir, excludes=excludes)
+        shutil.copytree(
+            self._msys_dir / "usr" / "share" / "licenses",
+            self.folders.package / "licenses")
+
+    def package_info(self):
+        self.info.libdirs = []
+        self.info.includedirs = []
+
+        msys_root = self.folders.package / "bin" / "msys64"
+        msys_bin = msys_root / "usr" / "bin"
+        self.info.bindirs.append(msys_bin)
+
+        self.buildenv_info.define_path("MSYS_ROOT", msys_root)
+        self.buildenv_info.define_path("MSYS_BIN", msys_bin)
+
+        self.conf_info.define("tools.microsoft.bash:subsystem", "msys2")
+        self.conf_info.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
+
+    def compatibility(self):
+        if self.settings.arch == "ARM":
+            # Fallback on x86_64 package when natively on Windows arm64
+            return [{"settings": [("arch", "X64")]}]
 
     def _update_pacman(self):
         with chdir(self, self._msys_dir / "usr" / "bin"):
@@ -127,10 +162,6 @@ class Recipe(RecipeBase[_Options]):
         subdir = "msys64"  # top-level directoy in tarball
         return self.folders.source / subdir
 
-    def build(self):
-        with OpLock():
-            self._do_build()
-
     def _do_build(self):
         packages: list[str] = []
         if self.options.packages:
@@ -164,34 +195,3 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(
             self, self._msys_dir / "etc" / "profile",
             'PKG_CONFIG_PATH="', 'PKG_CONFIG_PATH="${PKG_CONFIG_PATH:+${PKG_CONFIG_PATH}:}')
-
-    def package(self):
-        excludes = None
-        if self.options.exclude_files:
-            excludes = tuple(str(self.options.exclude_files).split(","))
-        rm(self, "mtab", self.folders.source, recursive=True)
-        for exclude in (excludes or ()):
-            for root, _, filenames in os.walk(self._msys_dir):
-                for filename in filenames:
-                    fullname = os.path.join(root, filename)
-                    if fnmatch.fnmatch(fullname, exclude):
-                        os.unlink(fullname)
-        # See https://github.com/recipe-io/recipe-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
-        copy(self, "*", dst=self.folders.package / "bin" / "msys64", src=self._msys_dir, excludes=excludes)
-        shutil.copytree(
-            self._msys_dir / "usr" / "share" / "licenses",
-            self.folders.package / "licenses")
-
-    def package_info(self):
-        self.info.libdirs = []
-        self.info.includedirs = []
-
-        msys_root = self.folders.package / "bin" / "msys64"
-        msys_bin = msys_root / "usr" / "bin"
-        self.info.bindirs.append(msys_bin)
-
-        self.buildenv_info.define_path("MSYS_ROOT", msys_root)
-        self.buildenv_info.define_path("MSYS_BIN", msys_bin)
-
-        self.conf_info.define("tools.microsoft.bash:subsystem", "msys2")
-        self.conf_info.define("tools.microsoft.bash:path", msys_bin / "bash.exe")

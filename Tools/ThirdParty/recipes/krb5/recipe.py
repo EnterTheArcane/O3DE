@@ -28,16 +28,16 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "krb5/krb5")
         return Version(repo.latest_tag("krb5-").removeprefix("krb5-").replace("-final", ""))
 
-    def validate(self):
-        if self.settings.os not in ("Linux", "Mac"):
-            raise RecipeInvalidConfiguration(f"{self.name} is only supported on Linux and Mac")
-
     def configure(self):
         if self.settings.os != "Linux":
             self.options.with_keyutils = False
 
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
+
+    def validate(self):
+        if self.settings.os not in ("Linux", "Mac"):
+            raise RecipeInvalidConfiguration(f"{self.name} is only supported on Linux and Mac")
 
     def requirements(self):
         self.requires("libverto")

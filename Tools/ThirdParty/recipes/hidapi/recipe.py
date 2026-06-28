@@ -21,10 +21,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "libusb/hidapi")
         return Version(repo.latest_release.removeprefix("hidapi-"))
 
-    @property
-    def _msbuild_configuration(self):
-        return "Debug" if self.settings.build_type == "Debug" else "Release"
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -86,3 +82,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.libs = ["hidapi"]
             if is_apple_os(self):
                 self.info.frameworks.extend(["IOKit", "CoreFoundation", "AppKit"])
+
+    @property
+    def _msbuild_configuration(self):
+        return "Debug" if self.settings.build_type == "Debug" else "Release"

@@ -86,15 +86,6 @@ class Recipe(RecipeBase):
             env.define("STRIP", ":")
         tc.generate(env)
 
-    def _patch_sources(self):
-        apply_patches(self)
-        if shutil.which("help2man") == None:
-            # dummy file for configure
-            help2man = self.folders.source / "help2man"
-            save(self, help2man, "#!/usr/bin/env bash\n:")
-            if os.name == "posix":
-                os.chmod(help2man, os.stat(help2man).st_mode | 0o111)
-
     def build(self):
         self._patch_sources()
         autotools = Autotools(self)
@@ -116,3 +107,12 @@ class Recipe(RecipeBase):
         m4_bin = (self.folders.package / "bin" / f"m4{bin_ext}").as_posix()
         self.runenv_info.define_path("M4", m4_bin)
         self.buildenv_info.define_path("M4", m4_bin)
+
+    def _patch_sources(self):
+        apply_patches(self)
+        if shutil.which("help2man") == None:
+            # dummy file for configure
+            help2man = self.folders.source / "help2man"
+            save(self, help2man, "#!/usr/bin/env bash\n:")
+            if os.name == "posix":
+                os.chmod(help2man, os.stat(help2man).st_mode | 0o111)

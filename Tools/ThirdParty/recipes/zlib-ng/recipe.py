@@ -25,14 +25,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "zlib-ng/zlib-ng")
         return Version(repo.latest_release)
 
-    @property
-    def _is_windows(self):
-        return self.settings.os in ["Windows", "WindowsStore"]
-
-    @property
-    def _zlib_compat_version(self):
-        return "1.3.1"
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -60,11 +52,6 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["WITH_REDUCED_MEM"] = False
         tc.variables["WITH_RUNTIME_CPU_DETECTION"] = True
         tc.generate()
-
-    def _get_zlib_header_version(self):
-        zlib_h = load(self, self.folders.source / "zlib.h.in")
-        match = re.search(r'#define\s+ZLIB_VERSION\s+"([0-9]+\.[0-9]+\.[0-9]+)\.zlib-ng"', zlib_h)
-        return match.group(1) if match and match.group(1) else None
 
     def build(self):
         header_version = self._get_zlib_header_version()
@@ -106,3 +93,16 @@ class Recipe(RecipeBase[_Options]):
             self.info.set_property("cmake_target_name", "ZLIB::ZLIB")
             self.info.set_property("system_package_version", self._zlib_compat_version)
         self.info.defines.append("WITH_GZFILEOP")
+
+    @property
+    def _is_windows(self):
+        return self.settings.os in ["Windows", "WindowsStore"]
+
+    @property
+    def _zlib_compat_version(self):
+        return "1.3.1"
+
+    def _get_zlib_header_version(self):
+        zlib_h = load(self, self.folders.source / "zlib.h.in")
+        match = re.search(r'#define\s+ZLIB_VERSION\s+"([0-9]+\.[0-9]+\.[0-9]+)\.zlib-ng"', zlib_h)
+        return match.group(1) if match and match.group(1) else None

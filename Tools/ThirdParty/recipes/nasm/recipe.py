@@ -21,20 +21,6 @@ class Recipe(RecipeBase):
         repo = GithubRepository(self, "netwide-assembler/nasm")
         return Version(repo.latest_release.removeprefix("nasm-"))
 
-    @property
-    def _nasm(self):
-        suffix = "w.exe" if is_msvc(self) else ""
-        return self.folders.package / "bin" / f"nasm{suffix}"
-
-    @property
-    def _ndisasm(self):
-        suffix = "w.exe" if is_msvc(self) else ""
-        return self.folders.package / "bin" / f"ndisasm{suffix}"
-
-    def _chmod_plus_x(self, filename: Path):
-        if os.name == "posix":
-            os.chmod(filename, os.stat(filename).st_mode | 0o111)
-
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -103,3 +89,17 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("NASM", self._nasm)
         self.buildenv_info.define_path("NDISASM", self._ndisasm)
         self.buildenv_info.define_path("AS", self._nasm)
+
+    @property
+    def _nasm(self):
+        suffix = "w.exe" if is_msvc(self) else ""
+        return self.folders.package / "bin" / f"nasm{suffix}"
+
+    @property
+    def _ndisasm(self):
+        suffix = "w.exe" if is_msvc(self) else ""
+        return self.folders.package / "bin" / f"ndisasm{suffix}"
+
+    def _chmod_plus_x(self, filename: Path):
+        if os.name == "posix":
+            os.chmod(filename, os.stat(filename).st_mode | 0o111)

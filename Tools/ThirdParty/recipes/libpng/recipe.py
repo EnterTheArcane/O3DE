@@ -27,35 +27,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "pnggroup/libpng")
         return Version(repo.latest_release.removeprefix("v"))
 
-    @property
-    def _is_clang_cl(self):
-        return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
-            self.settings.compiler.get_safe("runtime")
-
-    @property
-    def _has_neon_support(self):
-        return "arm" in self.settings.arch
-
-    @property
-    def _has_msa_support(self):
-        return "mips" in self.settings.arch
-
-    @property
-    def _has_sse_support(self):
-        return self.settings.arch in ["X64"]
-
-    @property
-    def _has_vsx_support(self):
-        return "ppc" in self.settings.arch
-
-    @property
-    def _neon_msa_sse_vsx_mapping(self):
-        return {
-            "True": "on",
-            "False": "off",
-            "check": "check",
-        }
-
     def configure(self):
         if not self._has_neon_support:
             self.options.neon = False
@@ -138,3 +109,32 @@ class Recipe(RecipeBase[_Options]):
         self.info.libs = [f"{prefix}png{suffix}"]
         if self.settings.os in ["Linux", "Android", "FreeBSD", "SunOS", "AIX"]:
             self.info.system_libs.append("m")
+
+    @property
+    def _is_clang_cl(self):
+        return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
+            self.settings.compiler.get_safe("runtime")
+
+    @property
+    def _has_neon_support(self):
+        return "arm" in self.settings.arch
+
+    @property
+    def _has_msa_support(self):
+        return "mips" in self.settings.arch
+
+    @property
+    def _has_sse_support(self):
+        return self.settings.arch in ["X64"]
+
+    @property
+    def _has_vsx_support(self):
+        return "ppc" in self.settings.arch
+
+    @property
+    def _neon_msa_sse_vsx_mapping(self):
+        return {
+            "True": "on",
+            "False": "off",
+            "check": "check",
+        }

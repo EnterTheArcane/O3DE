@@ -69,24 +69,6 @@ class Recipe(RecipeBase[_Options]):
             self.folders.package / self._module_file_rel_path
         )
 
-    def _create_cmake_module_variables(self, module_file: Path):
-        content = textwrap.dedent(
-            f"""
-            set(OPENAL_FOUND TRUE)
-            if(DEFINED OpenAL_INCLUDE_DIR)
-                set(OPENAL_INCLUDE_DIR ${{OpenAL_INCLUDE_DIR}})
-            endif()
-            if(DEFINED OpenAL_LIBRARIES)
-                set(OPENAL_LIBRARY ${{OpenAL_LIBRARIES}})
-            endif()
-            set(OPENAL_VERSION_STRING {self.version})
-            """)
-        save(self, module_file, content)
-
-    @property
-    def _module_file_rel_path(self):
-        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "OpenAL")
         self.info.set_property("cmake_target_name", "OpenAL::OpenAL")
@@ -111,3 +93,21 @@ class Recipe(RecipeBase[_Options]):
             self.info.defines.append("AL_LIBTYPE_STATIC")
         if self.settings.get_safe("compiler.libcxx") in ["libstdc++", "libstdc++11"]:
             self.info.system_libs.append("atomic")
+
+    def _create_cmake_module_variables(self, module_file: Path):
+        content = textwrap.dedent(
+            f"""
+            set(OPENAL_FOUND TRUE)
+            if(DEFINED OpenAL_INCLUDE_DIR)
+                set(OPENAL_INCLUDE_DIR ${{OpenAL_INCLUDE_DIR}})
+            endif()
+            if(DEFINED OpenAL_LIBRARIES)
+                set(OPENAL_LIBRARY ${{OpenAL_LIBRARIES}})
+            endif()
+            set(OPENAL_VERSION_STRING {self.version})
+            """)
+        save(self, module_file, content)
+
+    @property
+    def _module_file_rel_path(self):
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")

@@ -100,15 +100,6 @@ class Recipe(RecipeBase[_Options]):
         deps = AutotoolsDeps(self)
         deps.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        for gnu_config in [
-            self.conf.get("user.gnu-config:config_guess", check_type=str),
-            self.conf.get("user.gnu-config:config_sub", check_type=str),
-        ]:
-            if gnu_config:
-                copy(self, os.path.basename(gnu_config), os.path.dirname(gnu_config), self.folders.source / "build-aux")
-
     def build(self):
         self._patch_sources()
         autotools = Autotools(self)
@@ -131,3 +122,12 @@ class Recipe(RecipeBase[_Options]):
 
         bin_path = self.folders.package / "bin"
         self.output.info(f"Appending PATH environment variable: {bin_path}")
+
+    def _patch_sources(self):
+        apply_patches(self)
+        for gnu_config in [
+            self.conf.get("user.gnu-config:config_guess", check_type=str),
+            self.conf.get("user.gnu-config:config_sub", check_type=str),
+        ]:
+            if gnu_config:
+                copy(self, os.path.basename(gnu_config), os.path.dirname(gnu_config), self.folders.source / "build-aux")

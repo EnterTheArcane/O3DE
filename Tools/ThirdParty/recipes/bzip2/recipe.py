@@ -59,6 +59,12 @@ class Recipe(RecipeBase[_Options]):
         cmake.install()
         self._create_cmake_module_variables(self.folders.package / self._module_file_rel_path)
 
+    def package_info(self):
+        self.info.set_property("cmake_file_name", "BZip2")
+        self.info.set_property("cmake_target_name", "BZip2::BZip2")
+        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.libs = ["bz2"]
+
     def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             f"""
@@ -80,9 +86,3 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _module_file_rel_path(self):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
-
-    def package_info(self):
-        self.info.set_property("cmake_file_name", "BZip2")
-        self.info.set_property("cmake_target_name", "BZip2::BZip2")
-        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.info.libs = ["bz2"]

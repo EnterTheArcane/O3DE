@@ -66,73 +66,6 @@ class Recipe(RecipeBase[_Options]):
             tc_env.append("LDXXFLAGS", ["$LDFLAGS"])
             tc.generate(tc_env)
 
-    @property
-    def _dist_folder(self):
-        arch_ext = "32" if self.settings.arch == "x86" else "64"
-        return self.folders.build / "vcbuild" / f"dist{arch_ext}"
-
-    def _build_msvc(self):
-        source_dir = self.folders.source
-        build_dir = self.folders.build
-        libmpdec_folder = source_dir / "libmpdec"
-        libmpdecpp_folder = source_dir / "libmpdec++"
-
-        copy(self, "Makefile.vc", libmpdec_folder, build_dir)
-        rename(self, build_dir / "Makefile.vc", libmpdec_folder / "Makefile")
-
-        mpdec_target = "libmpdec-{}.{}".format(self.version, "dll" if self.options.shared else "lib")
-        mpdecpp_target = "libmpdec++-{}.{}".format(self.version, "dll" if self.options.shared else "lib")
-
-        builds = [[libmpdec_folder, mpdec_target]]
-        if self.options.cxx:
-            builds.append([libmpdecpp_folder, mpdecpp_target])
-
-        for build_dir, target in builds:
-            with chdir(self, build_dir):
-                self.run(
-                    """nmake -f Makefile.vc {target} MACHINE={machine} DEBUG={debug} DLL={dll}""".format(
-                        target=target,
-                        machine={"X64": "x64"}[str(self.settings.arch)],
-                        # FIXME: else, use ansi32 and ansi64
-                        debug="1" if self.settings.build_type == "Debug" else "0",
-                        dll="1" if self.options.shared else "0",
-                    ))
-
-        dist_folder = self._dist_folder
-        mkdir(self, dist_folder)
-        copy(self, "mpdecimal.h", libmpdec_folder, dist_folder)
-        if self.options.shared:
-            copy(self, f"libmpdec-{self.version}.dll", libmpdec_folder, dist_folder)
-            copy(self, f"libmpdec-{self.version}.dll.lib", libmpdec_folder, dist_folder)
-        else:
-            copy(self, f"libmpdec-{self.version}.lib", libmpdec_folder, dist_folder)
-        if self.options.cxx:
-            if self.options.shared:
-                copy(self, f"libmpdec++-{self.version}.dll", libmpdecpp_folder, dist_folder)
-                copy(self, f"libmpdec++-{self.version}.dll.lib", libmpdecpp_folder, dist_folder)
-            else:
-                copy(self, f"libmpdec++-{self.version}.lib", libmpdecpp_folder, dist_folder)
-            copy(self, "decimal.hh", libmpdecpp_folder, dist_folder)
-
-    @property
-    def _shared_suffix(self):
-        if is_apple_os(self):
-            return ".dylib"
-        return {
-            "Windows": ".dll",
-        }.get(str(self.settings.os), ".so")
-
-    @property
-    def _target_names(self):
-        libsuffix = self._shared_suffix if self.options.shared else ".a"
-        versionsuffix = f".{self.version}" if self.options.shared else ""
-        suffix = (
-            f"{versionsuffix}{libsuffix}"
-            if is_apple_os(self) or self.settings.os == "Windows"
-            else f"{libsuffix}{versionsuffix}"
-        )
-        return f"libmpdec{suffix}", f"libmpdec++{suffix}"
-
     def build(self):
         apply_patches(self)
         if is_msvc(self):
@@ -207,3 +140,70 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["libmpdecimal++"].system_libs = ["pthread"]
             if self.options.shared:
                 self.info.components["libmpdecimal++"].defines = ["MPDECIMALXX_DLL"]
+
+    @property
+    def _dist_folder(self):
+        arch_ext = "32" if self.settings.arch == "x86" else "64"
+        return self.folders.build / "vcbuild" / f"dist{arch_ext}"
+
+    def _build_msvc(self):
+        source_dir = self.folders.source
+        build_dir = self.folders.build
+        libmpdec_folder = source_dir / "libmpdec"
+        libmpdecpp_folder = source_dir / "libmpdec++"
+
+        copy(self, "Makefile.vc", libmpdec_folder, build_dir)
+        rename(self, build_dir / "Makefile.vc", libmpdec_folder / "Makefile")
+
+        mpdec_target = "libmpdec-{}.{}".format(self.version, "dll" if self.options.shared else "lib")
+        mpdecpp_target = "libmpdec++-{}.{}".format(self.version, "dll" if self.options.shared else "lib")
+
+        builds = [[libmpdec_folder, mpdec_target]]
+        if self.options.cxx:
+            builds.append([libmpdecpp_folder, mpdecpp_target])
+
+        for build_dir, target in builds:
+            with chdir(self, build_dir):
+                self.run(
+                    """nmake -f Makefile.vc {target} MACHINE={machine} DEBUG={debug} DLL={dll}""".format(
+                        target=target,
+                        machine={"X64": "x64"}[str(self.settings.arch)],
+                        # FIXME: else, use ansi32 and ansi64
+                        debug="1" if self.settings.build_type == "Debug" else "0",
+                        dll="1" if self.options.shared else "0",
+                    ))
+
+        dist_folder = self._dist_folder
+        mkdir(self, dist_folder)
+        copy(self, "mpdecimal.h", libmpdec_folder, dist_folder)
+        if self.options.shared:
+            copy(self, f"libmpdec-{self.version}.dll", libmpdec_folder, dist_folder)
+            copy(self, f"libmpdec-{self.version}.dll.lib", libmpdec_folder, dist_folder)
+        else:
+            copy(self, f"libmpdec-{self.version}.lib", libmpdec_folder, dist_folder)
+        if self.options.cxx:
+            if self.options.shared:
+                copy(self, f"libmpdec++-{self.version}.dll", libmpdecpp_folder, dist_folder)
+                copy(self, f"libmpdec++-{self.version}.dll.lib", libmpdecpp_folder, dist_folder)
+            else:
+                copy(self, f"libmpdec++-{self.version}.lib", libmpdecpp_folder, dist_folder)
+            copy(self, "decimal.hh", libmpdecpp_folder, dist_folder)
+
+    @property
+    def _shared_suffix(self):
+        if is_apple_os(self):
+            return ".dylib"
+        return {
+            "Windows": ".dll",
+        }.get(str(self.settings.os), ".so")
+
+    @property
+    def _target_names(self):
+        libsuffix = self._shared_suffix if self.options.shared else ".a"
+        versionsuffix = f".{self.version}" if self.options.shared else ""
+        suffix = (
+            f"{versionsuffix}{libsuffix}"
+            if is_apple_os(self) or self.settings.os == "Windows"
+            else f"{libsuffix}{versionsuffix}"
+        )
+        return f"libmpdec{suffix}", f"libmpdec++{suffix}"

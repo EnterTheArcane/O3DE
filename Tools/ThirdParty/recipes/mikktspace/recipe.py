@@ -44,12 +44,6 @@ class Recipe(RecipeBase[_Options]):
         cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
-    @property
-    def _extracted_license(self):
-        with open(self.folders.source / "mikktspace.h") as f:
-            lines = f.readlines()
-        return "".join(line[4:] for line in lines[4:21])
-
     def package(self):
         save(self, self.folders.package / "licenses" / "LICENSE", self._extracted_license)
         cmake = CMake(self)
@@ -59,3 +53,9 @@ class Recipe(RecipeBase[_Options]):
         self.info.libs = ["mikktspace"]
         if not self.options.shared and self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs = ["m"]
+
+    @property
+    def _extracted_license(self):
+        with open(self.folders.source / "mikktspace.h") as f:
+            lines = f.readlines()
+        return "".join(line[4:] for line in lines[4:21])

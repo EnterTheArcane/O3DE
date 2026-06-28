@@ -25,10 +25,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "catchorg/Catch2")
         return Version(repo.latest_release.removeprefix("v"))
 
-    @property
-    def _default_reporter_str(self):
-        return str(self.options.default_reporter).strip('"')
-
     def requirements(self):
         self.requires_tool("cmake")
 
@@ -97,3 +93,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.default_reporter:
             defines.append(f"CATCH_CONFIG_DEFAULT_REPORTER={self._default_reporter_str}")
         self.info.components["catch2_with_main"].defines = defines
+
+    @property
+    def _default_reporter_str(self):
+        return str(self.options.default_reporter).strip('"')

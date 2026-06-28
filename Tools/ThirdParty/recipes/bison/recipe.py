@@ -43,12 +43,6 @@ class Recipe(RecipeBase):
         ])
         tc.generate()
 
-    def _patch_sources(self):
-        # Make the installed ``yacc`` wrapper relocatable.
-        yacc = self.folders.source / "src" / "yacc.in"
-        replace_in_file(self, yacc, "@prefix@", "$CONAN_BISON_ROOT")
-        replace_in_file(self, yacc, "@bindir@", "$CONAN_BISON_ROOT/bin")
-
     def build(self):
         self._patch_sources()
         autotools = Autotools(self)
@@ -68,3 +62,9 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("CONAN_BISON_ROOT", self.folders.package.as_posix())
         self.buildenv_info.define_path(
             "BISON_PKGDATADIR", self.folders.package / "res" / "bison")
+
+    def _patch_sources(self):
+        # Make the installed ``yacc`` wrapper relocatable.
+        yacc = self.folders.source / "src" / "yacc.in"
+        replace_in_file(self, yacc, "@prefix@", "$CONAN_BISON_ROOT")
+        replace_in_file(self, yacc, "@bindir@", "$CONAN_BISON_ROOT/bin")

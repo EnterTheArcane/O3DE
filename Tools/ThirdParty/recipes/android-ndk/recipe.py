@@ -38,6 +38,44 @@ class Recipe(RecipeBase):
         repo = GithubRepository(self, "android/ndk")
         return Version(repo.latest_release)
 
+    def source(self):
+        pass
+
+    def build(self):
+        data = _SOURCES[str(self.settings.os)][self._arch]
+        self._unzip_fix_symlinks(
+            url=data["url"],
+            target_folder=self.folders.source,
+            sha256=data["sha256"])
+
+    def package(self):
+        copy(self, "*", src=self.folders.source, dst=self.folders.package / "bin")
+        copy(self, "*NOTICE", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "*NOTICE.toolchain", src=self.folders.source, dst=self.folders.package / "licenses")
+        self._fix_permissions()
+        rm(self, "*Config.cmake", self.folders.package / "bin", recursive=True)
+        rm(self, "*-config.cmake", self.folders.package / "bin", recursive=True)
+        rm(self, "Find*.cmake", self.folders.package / "bin", recursive=True)
+
+    def package_info(self):
+        self.info.includedirs = []
+        self.info.libdirs = []
+
+        ndk_root = self.folders.package / "bin"
+        self.buildenv_info.define_path("ANDROID_NDK_ROOT", ndk_root)
+        self.buildenv_info.define_path("ANDROID_NDK_HOME", ndk_root)
+        self.buildenv_info.define_path("NDK_ROOT", ndk_root)
+        self.conf_info.define("tools.android:ndk_path", ndk_root)
+        self.buildenv_info.define_path("AR", self._tool_exe("llvm-ar"))
+        self.buildenv_info.define_path("RANLIB", self._tool_exe("llvm-ranlib"))
+        self.buildenv_info.define_path("STRIP", self._tool_exe("llvm-strip"))
+        self.buildenv_info.define_path("ADDR2LINE", self._tool_exe("llvm-addr2line"))
+        self.buildenv_info.define_path("NM", self._tool_exe("llvm-nm"))
+        self.buildenv_info.define_path("OBJCOPY", self._tool_exe("llvm-objcopy"))
+        self.buildenv_info.define_path("OBJDUMP", self._tool_exe("llvm-objdump"))
+        self.buildenv_info.define_path("READELF", self._tool_exe("llvm-readelf"))
+        self.buildenv_info.define_path("ELFEDIT", self._tool_exe("llvm-elfedit"))
+
     @property
     def _arch(self):
         if self.settings.os == "Mac":
@@ -104,44 +142,6 @@ class Recipe(RecipeBase):
                 link_path = os.path.normpath(os.path.join(target_folder, rel_name))
                 os.remove(link_path)
                 os.symlink(link_target, link_path)
-
-    def source(self):
-        pass
-
-    def build(self):
-        data = _SOURCES[str(self.settings.os)][self._arch]
-        self._unzip_fix_symlinks(
-            url=data["url"],
-            target_folder=self.folders.source,
-            sha256=data["sha256"])
-
-    def package(self):
-        copy(self, "*", src=self.folders.source, dst=self.folders.package / "bin")
-        copy(self, "*NOTICE", src=self.folders.source, dst=self.folders.package / "licenses")
-        copy(self, "*NOTICE.toolchain", src=self.folders.source, dst=self.folders.package / "licenses")
-        self._fix_permissions()
-        rm(self, "*Config.cmake", self.folders.package / "bin", recursive=True)
-        rm(self, "*-config.cmake", self.folders.package / "bin", recursive=True)
-        rm(self, "Find*.cmake", self.folders.package / "bin", recursive=True)
-
-    def package_info(self):
-        self.info.includedirs = []
-        self.info.libdirs = []
-
-        ndk_root = self.folders.package / "bin"
-        self.buildenv_info.define_path("ANDROID_NDK_ROOT", ndk_root)
-        self.buildenv_info.define_path("ANDROID_NDK_HOME", ndk_root)
-        self.buildenv_info.define_path("NDK_ROOT", ndk_root)
-        self.conf_info.define("tools.android:ndk_path", ndk_root)
-        self.buildenv_info.define_path("AR", self._tool_exe("llvm-ar"))
-        self.buildenv_info.define_path("RANLIB", self._tool_exe("llvm-ranlib"))
-        self.buildenv_info.define_path("STRIP", self._tool_exe("llvm-strip"))
-        self.buildenv_info.define_path("ADDR2LINE", self._tool_exe("llvm-addr2line"))
-        self.buildenv_info.define_path("NM", self._tool_exe("llvm-nm"))
-        self.buildenv_info.define_path("OBJCOPY", self._tool_exe("llvm-objcopy"))
-        self.buildenv_info.define_path("OBJDUMP", self._tool_exe("llvm-objdump"))
-        self.buildenv_info.define_path("READELF", self._tool_exe("llvm-readelf"))
-        self.buildenv_info.define_path("ELFEDIT", self._tool_exe("llvm-elfedit"))
 
 
 def _chmod_plus_x(filename: str):

@@ -23,6 +23,9 @@ class Recipe(RecipeBase[_Options]):
     version = "2.4.7"
     license = "GPL-2.0-or-later", "GPL-3.0-or-later"
 
+    _SOURCE_URL = "https://ftpmirror.gnu.org/libtool/libtool-2.4.7.tar.gz"
+    _SOURCE_SHA256 = "04e96c2404ea70c590c546eba4202a4e12722c640016c12b9b2f1ce3d481e9a8"
+
     def latest_version(self):
         repo = GnuFtp(self, "libtool")
         return Version(repo.latest_release)
@@ -37,9 +40,6 @@ class Recipe(RecipeBase[_Options]):
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.requires_tool("msys2")
 
-    _SOURCE_URL = "https://ftpmirror.gnu.org/libtool/libtool-2.4.7.tar.gz"
-    _SOURCE_SHA256 = "04e96c2404ea70c590c546eba4202a4e12722c640016c12b9b2f1ce3d481e9a8"
-
     def source(self):
         get(
             self,
@@ -47,10 +47,6 @@ class Recipe(RecipeBase[_Options]):
             sha256=self._SOURCE_SHA256,
             destination=self.folders.source,
             strip_root=True)
-
-    @property
-    def _datarootdir(self):
-        return self.folders.package / "res"
 
     def generate(self):
         VirtualBuildEnv(self).generate()
@@ -90,48 +86,11 @@ class Recipe(RecipeBase[_Options]):
             env.define("FC", "no")
         tc.generate(env)
 
-    def _patch_sources(self):
-        apply_patches(self)
-        config_guess = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
-        config_sub = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_sub")
-        shutil.copy(config_sub, self.folders.source / "build-aux" / "config.sub")
-        shutil.copy(config_guess, self.folders.source / "build-aux" / "config.guess")
-
     def build(self):
         self._patch_sources()
         autotools = Autotools(self)
         autotools.configure()
         autotools.make()
-
-    @property
-    def _shared_ext(self):
-        if self.settings.os == "Windows":
-            return "dll"
-        elif is_apple_os(self):
-            return "dylib"
-        else:
-            return "so"
-
-    @property
-    def _static_ext(self):
-        if is_msvc(self):
-            return "lib"
-        else:
-            return "a"
-
-    def _rm_binlib_files_containing(self, ext_inclusive: str, ext_exclusive: str | None = None):
-        regex_in = re.compile(r".*\.({})($|\..*)".format(ext_inclusive))
-        if ext_exclusive:
-            regex_out = re.compile(r".*\.({})($|\..*)".format(ext_exclusive))
-        else:
-            regex_out = re.compile("^$")
-        for directory in (
-                self.folders.package / "bin",
-                self.folders.package / "lib",
-        ):
-            for file in os.listdir(directory):
-                if regex_in.match(file) and not regex_out.match(file):
-                    os.unlink(os.path.join(directory, file))
 
     def package(self):
         copy(self, "COPYING*", src=self.folders.source, dst=self.folders.package / "licenses")
@@ -210,3 +169,44 @@ class Recipe(RecipeBase[_Options]):
         self.buildenv_info.append_path("AUTOMAKE_RECIPE_INCLUDES", libtool_aclocal_dir)
         self.runenv_info.append_path("ACLOCAL_PATH", libtool_aclocal_dir)
         self.runenv_info.append_path("AUTOMAKE_RECIPE_INCLUDES", libtool_aclocal_dir)
+
+    @property
+    def _datarootdir(self):
+        return self.folders.package / "res"
+
+    def _patch_sources(self):
+        apply_patches(self)
+        config_guess = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_guess")
+        config_sub = self.dependencies.build["gnu-config"].conf_info.get("user.gnu-config:config_sub")
+        shutil.copy(config_sub, self.folders.source / "build-aux" / "config.sub")
+        shutil.copy(config_guess, self.folders.source / "build-aux" / "config.guess")
+
+    @property
+    def _shared_ext(self):
+        if self.settings.os == "Windows":
+            return "dll"
+        elif is_apple_os(self):
+            return "dylib"
+        else:
+            return "so"
+
+    @property
+    def _static_ext(self):
+        if is_msvc(self):
+            return "lib"
+        else:
+            return "a"
+
+    def _rm_binlib_files_containing(self, ext_inclusive: str, ext_exclusive: str | None = None):
+        regex_in = re.compile(r".*\.({})($|\..*)".format(ext_inclusive))
+        if ext_exclusive:
+            regex_out = re.compile(r".*\.({})($|\..*)".format(ext_exclusive))
+        else:
+            regex_out = re.compile("^$")
+        for directory in (
+                self.folders.package / "bin",
+                self.folders.package / "lib",
+        ):
+            for file in os.listdir(directory):
+                if regex_in.match(file) and not regex_out.match(file):
+                    os.unlink(os.path.join(directory, file))

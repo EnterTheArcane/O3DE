@@ -132,21 +132,6 @@ class Recipe(RecipeBase):
             raise RecipeException("Could not find Rust stable version in channel manifest")
         return Version(match.group(1))
 
-    @property
-    def _target_triple(self):
-        os_name = str(self.settings.os)
-        arch = str(self.settings.arch)
-        try:
-            return _HOST_TRIPLES[os_name][arch]
-        except KeyError as exc:
-            raise RecipeInvalidConfiguration(
-                f"{self.name} has no prebuilt toolchain for {os_name}/{arch}"
-            ) from exc
-
-    @property
-    def _exe_suffix(self):
-        return ".exe" if self.settings.os == "Windows" else ""
-
     def validate(self):
         self._target_triple
 
@@ -198,3 +183,18 @@ class Recipe(RecipeBase):
         self.buildenv_info.define_path("CARGO", cargo)
         self.buildenv_info.define_path("RUSTC", rustc)
         self.conf_info.define("tools.rust:dir", self.folders.package)
+
+    @property
+    def _target_triple(self):
+        os_name = str(self.settings.os)
+        arch = str(self.settings.arch)
+        try:
+            return _HOST_TRIPLES[os_name][arch]
+        except KeyError as exc:
+            raise RecipeInvalidConfiguration(
+                f"{self.name} has no prebuilt toolchain for {os_name}/{arch}"
+            ) from exc
+
+    @property
+    def _exe_suffix(self):
+        return ".exe" if self.settings.os == "Windows" else ""

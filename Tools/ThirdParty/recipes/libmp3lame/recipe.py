@@ -20,10 +20,6 @@ class Recipe(RecipeBase[_Options]):
     version = "3.100"
     license = "LGPL-2.0"
 
-    @property
-    def _is_clang_cl(self):
-        return str(self.settings.compiler) in ["clang"] and str(self.settings.os) in ["Windows"]
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
@@ -56,6 +52,39 @@ class Recipe(RecipeBase[_Options]):
             if self.settings.compiler == "clang" and self.settings.arch in ["X64"]:
                 tc.extra_cxxflags.extend(["-mmmx", "-msse"])
             tc.generate()
+
+    def build(self):
+        if is_msvc(self) or self._is_clang_cl:
+            self._build_vs()
+        else:
+            self._build_autotools()
+
+    def package(self):
+        copy(self, pattern="LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
+        if is_msvc(self) or self._is_clang_cl:
+            copy(self, pattern="*.h", src=self.folders.source / "include", dst=self.folders.package / "include" / "lame")
+            name = "libmp3lame.lib" if self.options.shared else "libmp3lame-static.lib"
+            copy(self, name, src=self.folders.source / "output", dst=self.folders.package / "lib")
+            if self.options.shared:
+                copy(self, pattern="*.dll", src=self.folders.source / "output", dst=self.folders.package / "bin")
+            rename(
+                self, self.folders.package / "lib" / name,
+                self.folders.package / "lib" / "mp3lame.lib")
+        else:
+            autotools = Autotools(self)
+            autotools.install()
+            rmdir(self, self.folders.package / "share")
+            rm(self, "*.la", self.folders.package / "lib")
+            fix_apple_shared_install_name(self)
+
+    def package_info(self):
+        self.info.libs = ["mp3lame"]
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.info.system_libs = ["m"]
+
+    @property
+    def _is_clang_cl(self):
+        return str(self.settings.compiler) in ["clang"] and str(self.settings.os) in ["Windows"]
 
     def _build_vs(self):
         with chdir(self, self.folders.source):
@@ -99,32 +128,3 @@ class Recipe(RecipeBase[_Options]):
         autotools = Autotools(self)
         autotools.configure()
         autotools.make()
-
-    def build(self):
-        if is_msvc(self) or self._is_clang_cl:
-            self._build_vs()
-        else:
-            self._build_autotools()
-
-    def package(self):
-        copy(self, pattern="LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
-        if is_msvc(self) or self._is_clang_cl:
-            copy(self, pattern="*.h", src=self.folders.source / "include", dst=self.folders.package / "include" / "lame")
-            name = "libmp3lame.lib" if self.options.shared else "libmp3lame-static.lib"
-            copy(self, name, src=self.folders.source / "output", dst=self.folders.package / "lib")
-            if self.options.shared:
-                copy(self, pattern="*.dll", src=self.folders.source / "output", dst=self.folders.package / "bin")
-            rename(
-                self, self.folders.package / "lib" / name,
-                self.folders.package / "lib" / "mp3lame.lib")
-        else:
-            autotools = Autotools(self)
-            autotools.install()
-            rmdir(self, self.folders.package / "share")
-            rm(self, "*.la", self.folders.package / "lib")
-            fix_apple_shared_install_name(self)
-
-    def package_info(self):
-        self.info.libs = ["mp3lame"]
-        if self.settings.os in ["Linux", "FreeBSD"]:
-            self.info.system_libs = ["m"]

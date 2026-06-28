@@ -25,10 +25,6 @@ class Recipe(RecipeBase):
         if self.settings.os != "Windows":
             raise RecipeInvalidConfiguration("Strawberry Perl is only supported on Windows")
 
-    def compatibility(self):
-        if self.settings.arch == "ARM":
-            return [{"settings": [("arch", "X64")]}]
-
     def build(self):
         get(
             self,
@@ -50,3 +46,7 @@ class Recipe(RecipeBase):
 
         perl_path = (self.folders.package / "bin" / "perl.exe").as_posix()
         self.conf_info.define("user.strawberryperl:perl", perl_path)
+
+    def compatibility(self):
+        if self.settings.arch == "ARM":
+            return [{"settings": [("arch", "X64")]}]

@@ -24,13 +24,13 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "latchset/libverto")
         return Version(repo.latest_release)
 
-    def validate(self):
-        if self.settings.os == "Windows":
-            raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
-
     def configure(self):
         self.settings.rm_safe("compiler.cppstd")
         self.settings.rm_safe("compiler.libcxx")
+
+    def validate(self):
+        if self.settings.os == "Windows":
+            raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def requirements(self):
         self.requires("libevent")

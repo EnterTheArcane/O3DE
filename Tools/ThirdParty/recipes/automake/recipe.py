@@ -41,29 +41,6 @@ class Recipe(RecipeBase):
         VirtualBuildEnv(self).generate()
         AutotoolsToolchain(self).generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        if self.settings.os == "Windows":
-            # tracing using m4 on Windows returns Windows paths => use cygpath to convert to unix paths
-            ac_local_in = self.folders.source / "bin" / "aclocal.in"
-            with open(ac_local_in, encoding="utf-8") as _f:
-                _content = _f.read()
-            if "cygpath -u $file" not in _content:
-                replace_in_file(
-                    self,
-                    ac_local_in,
-                    "          $map_traced_defs{$arg1} = $file;",
-                    "          $file = `cygpath -u $file`;\n"
-                    "          $file =~ s/^\\s+|\\s+$//g;\n"
-                    "          $map_traced_defs{$arg1} = $file;")
-            # handle relative paths during aclocal.m4 creation
-            replace_in_file(
-                self,
-                ac_local_in,
-                "$map{$m} eq $map_traced_defs{$m}",
-                "abs_path($map{$m}) eq abs_path($map_traced_defs{$m})",
-                strict=False)
-
     def build(self):
         self._patch_sources()
         autotools = Autotools(self)
@@ -100,3 +77,26 @@ class Recipe(RecipeBase):
         lib_wrapper = automake_helper_scripts_dir / "ar-lib"
         self.conf_info.define("user.automake:compile-wrapper", compile_wrapper)
         self.conf_info.define("user.automake:lib-wrapper", lib_wrapper)
+
+    def _patch_sources(self):
+        apply_patches(self)
+        if self.settings.os == "Windows":
+            # tracing using m4 on Windows returns Windows paths => use cygpath to convert to unix paths
+            ac_local_in = self.folders.source / "bin" / "aclocal.in"
+            with open(ac_local_in, encoding="utf-8") as _f:
+                _content = _f.read()
+            if "cygpath -u $file" not in _content:
+                replace_in_file(
+                    self,
+                    ac_local_in,
+                    "          $map_traced_defs{$arg1} = $file;",
+                    "          $file = `cygpath -u $file`;\n"
+                    "          $file =~ s/^\\s+|\\s+$//g;\n"
+                    "          $map_traced_defs{$arg1} = $file;")
+            # handle relative paths during aclocal.m4 creation
+            replace_in_file(
+                self,
+                ac_local_in,
+                "$map{$m} eq $map_traced_defs{$m}",
+                "abs_path($map{$m}) eq abs_path($map_traced_defs{$m})",
+                strict=False)

@@ -90,30 +90,6 @@ class Recipe(RecipeBase[_Options]):
 
         tc.generate()
 
-    def _patch_sources(self):
-        apply_patches(self)
-        replace_in_file(
-            self,
-            self.folders.source / "meson.build",
-            "subdir('fuzzing')",
-            "#subdir('fuzzing')",
-            )  # https://gitlab.gnome.org/GNOME/glib/-/issues/2152
-        if self.settings.os != "Linux" and self.settings.os != "Neutrino":
-            # allow to find gettext
-            replace_in_file(
-                self,
-                self.folders.source / "meson.build",
-                "libintl = dependency('intl', required: false",
-                "libintl = dependency('libgettext', method : 'pkg-config', required : false",
-                strict=False)
-
-        replace_in_file(
-            self,
-            self.folders.source / "gio" / "gdbus-2.0" / "codegen" / "gdbus-codegen.in",
-            "'share'",
-            "'res'",
-            strict=False)
-
     def build(self):
         self._patch_sources()
         meson = Meson(self)
@@ -253,6 +229,30 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["glib-2.0"].set_property(
             "pkg_config_custom_content",
             "\n".join(f"{key}={value}" for key, value in pkgconfig_variables.items()))
+
+    def _patch_sources(self):
+        apply_patches(self)
+        replace_in_file(
+            self,
+            self.folders.source / "meson.build",
+            "subdir('fuzzing')",
+            "#subdir('fuzzing')",
+            )  # https://gitlab.gnome.org/GNOME/glib/-/issues/2152
+        if self.settings.os != "Linux" and self.settings.os != "Neutrino":
+            # allow to find gettext
+            replace_in_file(
+                self,
+                self.folders.source / "meson.build",
+                "libintl = dependency('intl', required: false",
+                "libintl = dependency('libgettext', method : 'pkg-config', required : false",
+                strict=False)
+
+        replace_in_file(
+            self,
+            self.folders.source / "gio" / "gdbus-2.0" / "codegen" / "gdbus-codegen.in",
+            "'share'",
+            "'res'",
+            strict=False)
 
 
 def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):

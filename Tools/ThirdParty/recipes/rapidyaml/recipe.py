@@ -22,10 +22,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "biojppm/rapidyaml")
         return Version(repo.latest_release.removeprefix("v"))
 
-    @property
-    def _minimum_cpp_standard(self):
-        return 11
-
     def configure(self):
         # with_default_callback_uses_exceptions should only be valid if with_default_callbacks is true
         if not self.options.with_default_callbacks:
@@ -71,3 +67,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_file_name", "ryml")
         self.info.set_property("cmake_target_name", "ryml::ryml")
         self.info.libs = ["ryml"]
+
+    @property
+    def _minimum_cpp_standard(self):
+        return 11

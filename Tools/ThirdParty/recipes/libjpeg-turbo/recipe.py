@@ -67,16 +67,6 @@ class Recipe(RecipeBase[_Options]):
             """string(REGEX REPLACE "/MT" "/MD" ${var} "${${var}}")""",
             "")
 
-    @property
-    def _is_arithmetic_encoding_enabled(self):
-        return self.options.arithmetic_encoder or \
-            self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
-
-    @property
-    def _is_arithmetic_decoding_enabled(self):
-        return self.options.arithmetic_decoder or \
-            self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
-
     def generate(self):
         VirtualBuildEnv(self).generate()
 
@@ -130,3 +120,13 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["turbojpeg"].set_property("cmake_target_name", f"libjpeg-turbo::turbojpeg{cmake_target_suffix}")
             self.info.components["turbojpeg"].set_property("pkg_config_name", "libturbojpeg")
             self.info.components["turbojpeg"].libs = [f"turbojpeg{lib_suffix}"]
+
+    @property
+    def _is_arithmetic_encoding_enabled(self):
+        return self.options.arithmetic_encoder or \
+            self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility
+
+    @property
+    def _is_arithmetic_decoding_enabled(self):
+        return self.options.arithmetic_decoder or \
+            self.options.libjpeg7_compatibility or self.options.libjpeg8_compatibility

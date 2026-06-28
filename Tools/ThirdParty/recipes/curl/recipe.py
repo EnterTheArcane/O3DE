@@ -68,20 +68,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "curl/curl")
         return Version(repo.latest_tag("curl-").removeprefix("curl-").replace("_", "."))
 
-    @property
-    def _is_mingw(self):
-        return self.settings.os == "Windows" and self.settings.compiler == "gcc"
-
-    @property
-    def _is_win_x_android(self):
-        return self.settings.os == "Android" and self.settings_build.os == "Windows"
-
-    @property
-    def _is_using_cmake_build(self):
-        # This recipe always builds with CMake (see generate()); upstream's autotools
-        # build path was not ported, so the CMake branch always applies.
-        return True
-
     def configure(self):
         self.options.with_libgsasl = False
         if not is_apple_os(self):
@@ -279,14 +265,6 @@ class Recipe(RecipeBase[_Options]):
         cmake.configure()
         cmake.build()
 
-    def _patch_sources(self):
-        if self.options.with_largemaxwritesize:
-            replace_in_file(
-                self,
-                self.folders.source / "include" / "curl" / "curl.h",
-                "define CURL_MAX_WRITE_SIZE 16384",
-                "define CURL_MAX_WRITE_SIZE 10485760")
-
     def package(self):
         copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(self, "cacert.pem", src=self.folders.source, dst=self.folders.package / "res")
@@ -364,3 +342,25 @@ class Recipe(RecipeBase[_Options]):
 
         self.info.components["curl"].set_property("cmake_target_name", "CURL::libcurl")
         self.info.components["curl"].set_property("pkg_config_name", "libcurl")
+
+    @property
+    def _is_mingw(self):
+        return self.settings.os == "Windows" and self.settings.compiler == "gcc"
+
+    @property
+    def _is_win_x_android(self):
+        return self.settings.os == "Android" and self.settings_build.os == "Windows"
+
+    @property
+    def _is_using_cmake_build(self):
+        # This recipe always builds with CMake (see generate()); upstream's autotools
+        # build path was not ported, so the CMake branch always applies.
+        return True
+
+    def _patch_sources(self):
+        if self.options.with_largemaxwritesize:
+            replace_in_file(
+                self,
+                self.folders.source / "include" / "curl" / "curl.h",
+                "define CURL_MAX_WRITE_SIZE 16384",
+                "define CURL_MAX_WRITE_SIZE 10485760")

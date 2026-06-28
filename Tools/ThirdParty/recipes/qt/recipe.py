@@ -370,6 +370,75 @@ class Recipe(RecipeBase[_Options]):
         if cross_building(self):
             self.requires_tool(f"qt")
 
+    def source(self):
+        destination = self.folders.source
+        if platform.system() == "Windows":
+            # Don't use os.path.join, or it removes the \\?\ prefix, which enables long paths
+            destination = Path(rf"\\?\{self.folders.source}")
+        get(
+            self,
+            url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
+            sha256="252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03",
+            strip_root=True,
+            destination=destination,
+            excludes=self._excluded_module_patterns())
+
+        apply_patches(self)
+        if self.options.qtwebengine:
+            for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
+                replace_in_file(
+                    self, self.folders.source / "qtwebengine" / "src" / "3rdparty" / "chromium" / "third_party" / "blink" / f / "BUILD.gn",
+                    "  if (enable_precompiled_headers) {\n    if (is_win) {",
+                    "  if (enable_precompiled_headers) {\n    if (false) {"
+                    )
+
+        for f in ["FindPostgreSQL.cmake"]:
+            file = self.folders.source / "qtbase" / "cmake" / f
+            if os.path.isfile(file):
+                os.remove(file)
+
+        # qt_internal_disable_find_package_global_promotion calls set_target_properties, which
+        # CMake forbids on ALIAS targets. zstd ships alias targets (e.g. zstd::libzstd ->
+        # zstd::libzstd_static), so guard with ALIASED_TARGET before setting properties.
+        replace_in_file(
+            self,
+            self.folders.source / "qtbase" / "cmake" / "QtPublicFindPackageHelpers.cmake",
+            textwrap.dedent(
+                """\
+                function(qt_internal_disable_find_package_global_promotion target)
+                    set_target_properties("${target}" PROPERTIES _qt_no_promote_global TRUE)
+                endfunction()"""),
+            textwrap.dedent(
+                """\
+                function(qt_internal_disable_find_package_global_promotion target)
+                    get_target_property(_aliased_target "${target}" ALIASED_TARGET)
+                    if(_aliased_target)
+                        return()
+                    endif()
+                    set_target_properties("${target}" PROPERTIES _qt_no_promote_global TRUE)
+                endfunction()"""))
+
+        # workaround QTBUG-94356
+        replace_in_file(self, self.folders.source / "qtbase" / "cmake" / "FindWrapSystemZLIB.cmake", '"-lz"', "ZLIB::ZLIB")
+        replace_in_file(
+            self, self.folders.source / "qtbase" / "configure.cmake",
+            "set_property(TARGET ZLIB::ZLIB PROPERTY IMPORTED_GLOBAL TRUE)",
+            "")
+
+        replace_in_file(
+            self,
+            self.folders.source / "qtbase" / "cmake" / "QtAutoDetectHelpers.cmake",
+            "qt_auto_detect_vcpkg()",
+            "# qt_auto_detect_vcpkg()")
+
+        # Handle locating moltenvk headers when vulkan is enabled on macOS
+        replace_in_file(
+            self, self.folders.source / "qtbase" / "cmake" / "FindWrapVulkanHeaders.cmake",
+            "if(APPLE)", "if(APPLE)\n"
+                         " find_package(moltenvk REQUIRED QUIET)\n"
+                         " target_include_directories(WrapVulkanHeaders::WrapVulkanHeaders INTERFACE ${moltenvk_INCLUDE_DIR})"
+            )
+
     def generate(self):
         ms = VirtualBuildEnv(self)
         ms.generate()
@@ -602,180 +671,6 @@ class Recipe(RecipeBase[_Options]):
 
         tc.generate()
 
-    def _excluded_module_patterns(self) -> list[str]:
-        root = f"qt-everywhere-src-{self.version}"
-        patterns: list[str] = []
-        for module in _MODULE_DEPENDS:
-            if not self.options.get_safe(module):
-                patterns.append(f"{root}/{module}")
-                patterns.append(f"{root}/{module}/*")
-        return patterns
-
-    def source(self):
-        destination = self.folders.source
-        if platform.system() == "Windows":
-            # Don't use os.path.join, or it removes the \\?\ prefix, which enables long paths
-            destination = Path(rf"\\?\{self.folders.source}")
-        get(
-            self,
-            url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
-            sha256="252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03",
-            strip_root=True,
-            destination=destination,
-            excludes=self._excluded_module_patterns())
-
-        apply_patches(self)
-        if self.options.qtwebengine:
-            for f in ["renderer", os.path.join("renderer", "core"), os.path.join("renderer", "platform")]:
-                replace_in_file(
-                    self, self.folders.source / "qtwebengine" / "src" / "3rdparty" / "chromium" / "third_party" / "blink" / f / "BUILD.gn",
-                    "  if (enable_precompiled_headers) {\n    if (is_win) {",
-                    "  if (enable_precompiled_headers) {\n    if (false) {"
-                    )
-
-        for f in ["FindPostgreSQL.cmake"]:
-            file = self.folders.source / "qtbase" / "cmake" / f
-            if os.path.isfile(file):
-                os.remove(file)
-
-        # qt_internal_disable_find_package_global_promotion calls set_target_properties, which
-        # CMake forbids on ALIAS targets. zstd ships alias targets (e.g. zstd::libzstd ->
-        # zstd::libzstd_static), so guard with ALIASED_TARGET before setting properties.
-        replace_in_file(
-            self,
-            self.folders.source / "qtbase" / "cmake" / "QtPublicFindPackageHelpers.cmake",
-            textwrap.dedent(
-                """\
-                function(qt_internal_disable_find_package_global_promotion target)
-                    set_target_properties("${target}" PROPERTIES _qt_no_promote_global TRUE)
-                endfunction()"""),
-            textwrap.dedent(
-                """\
-                function(qt_internal_disable_find_package_global_promotion target)
-                    get_target_property(_aliased_target "${target}" ALIASED_TARGET)
-                    if(_aliased_target)
-                        return()
-                    endif()
-                    set_target_properties("${target}" PROPERTIES _qt_no_promote_global TRUE)
-                endfunction()"""))
-
-        # workaround QTBUG-94356
-        replace_in_file(self, self.folders.source / "qtbase" / "cmake" / "FindWrapSystemZLIB.cmake", '"-lz"', "ZLIB::ZLIB")
-        replace_in_file(
-            self, self.folders.source / "qtbase" / "configure.cmake",
-            "set_property(TARGET ZLIB::ZLIB PROPERTY IMPORTED_GLOBAL TRUE)",
-            "")
-
-        replace_in_file(
-            self,
-            self.folders.source / "qtbase" / "cmake" / "QtAutoDetectHelpers.cmake",
-            "qt_auto_detect_vcpkg()",
-            "# qt_auto_detect_vcpkg()")
-
-        # Handle locating moltenvk headers when vulkan is enabled on macOS
-        replace_in_file(
-            self, self.folders.source / "qtbase" / "cmake" / "FindWrapVulkanHeaders.cmake",
-            "if(APPLE)", "if(APPLE)\n"
-                         " find_package(moltenvk REQUIRED QUIET)\n"
-                         " target_include_directories(WrapVulkanHeaders::WrapVulkanHeaders INTERFACE ${moltenvk_INCLUDE_DIR})"
-            )
-
-    def _xplatform(self) -> str | None:
-        if self.settings.os == "Linux":
-            if self.settings.compiler == "gcc":
-                return {"ARM": "linux-aarch64-gnu-g++"}.get(str(self.settings.arch), "linux-g++")
-            if self.settings.compiler == "clang":
-                if self.settings.arch == "X64":
-                    return "linux-clang-libc++" if self.settings.compiler.libcxx == "libc++" else "linux-clang"
-
-        elif self.settings.os == "Mac":
-            return {
-                "clang": "macx-clang",
-                "apple-clang": "macx-clang",
-                "gcc": "macx-g++",
-            }.get(str(self.settings.compiler))
-
-        elif self.settings.os == "iOS":
-            if self.settings.compiler == "apple-clang":
-                return "macx-ios-clang"
-
-        elif self.settings.os == "tvOS":
-            if self.settings.compiler == "apple-clang":
-                return "macx-tvos-clang"
-
-        elif self.settings.os == "Android":
-            if self.settings.compiler == "clang":
-                return "android-clang"
-
-        elif self.settings.os == "Windows":
-            return {
-                "Visual Studio": "win32-msvc",
-                "msvc": "win32-msvc",
-                "gcc": "win32-g++",
-                "clang": "win32-clang-g++",
-            }.get(str(self.settings.compiler))
-
-        elif self.settings.os == "WindowsStore":
-            if is_msvc(self):
-                if self.settings.compiler == "Visual Studio":
-                    msvc_version = str(self.settings.compiler.version)
-                else:
-                    msvc_version = {
-                        "190": "14",
-                        "191": "15",
-                        "192": "16",
-                    }.get(str(self.settings.compiler.version), "")
-                return {
-                    "14": {
-                        "armv7": "winrt-arm-msvc2015",
-                        "x86": "winrt-x86-msvc2015",
-                        "x86_64": "winrt-x64-msvc2015",
-                    },
-                    "15": {
-                        "armv7": "winrt-arm-msvc2017",
-                        "x86": "winrt-x86-msvc2017",
-                        "x86_64": "winrt-x64-msvc2017",
-                    },
-                    "16": {
-                        "armv7": "winrt-arm-msvc2019",
-                        "x86": "winrt-x86-msvc2019",
-                        "x86_64": "winrt-x64-msvc2019",
-                    },
-                }.get(msvc_version, {}).get(str(self.settings.arch))
-
-        elif self.settings.os == "FreeBSD":
-            return {
-                "clang": "freebsd-clang",
-                "gcc": "freebsd-g++",
-            }.get(str(self.settings.compiler))
-
-        elif self.settings.os == "SunOS":
-            if self.settings.compiler == "sun-cc":
-                if self.settings.arch == "sparc":
-                    return "solaris-cc-stlport" if self.settings.compiler.libcxx == "libstlport" else "solaris-cc"
-                if self.settings.arch == "sparcv9":
-                    return "solaris-cc64-stlport" if self.settings.compiler.libcxx == "libstlport" else "solaris-cc64"
-            elif self.settings.compiler == "gcc":
-                return {
-                    "sparc": "solaris-g++",
-                    "sparcv9": "solaris-g++-64",
-                }.get(str(self.settings.arch))
-        elif self.settings.os == "Neutrino" and self.settings.compiler == "qcc":
-            return {
-                "armv8": "qnx-aarch64le-qcc",
-                "armv8.3": "qnx-aarch64le-qcc",
-                "armv7": "qnx-armle-v7-qcc",
-                "armv7hf": "qnx-armle-v7-qcc",
-                "armv7s": "qnx-armle-v7-qcc",
-                "armv7k": "qnx-armle-v7-qcc",
-                "x86": "qnx-x86-qcc",
-                "x86_64": "qnx-x86-64-qcc",
-            }.get(str(self.settings.arch))
-        elif self.settings.os == "Emscripten" and self.settings.arch == "wasm":
-            return "wasm-emscripten"
-
-        return None
-
     def build(self):
         if self.settings.os == "Mac":
             save(self, ".qmake.stash", "")
@@ -783,21 +678,6 @@ class Recipe(RecipeBase[_Options]):
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
-
-    @property
-    def _cmake_executables_file(self):
-        return os.path.join("lib", "cmake", "Qt6Core", "recipe_qt_executables_variables.cmake")
-
-    @property
-    def _cmake_entry_point_file(self):
-        return os.path.join("lib", "cmake", "Qt6Core", "recipe_qt_entry_point.cmake")
-
-    @property
-    def _cmake_platform_target_setup_file(self):
-        return os.path.join("lib", "cmake", "Qt6", "recipe_qt_platform_target_setup.cmake")
-
-    def _cmake_qt6_private_file(self, module: str):
-        return os.path.join("lib", "cmake", f"Qt6{module}", f"recipe_qt_qt6_{module.lower()}private.cmake")
 
     def package(self):
         if self.settings.os == "Mac":
@@ -1664,3 +1544,123 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_build_modules", build_modules_list)
 
         self.conf_info.define("user.qt:tools_directory", self.folders.package / ("bin" if self.settings.os == "Windows" else "libexec"))
+
+    def _excluded_module_patterns(self) -> list[str]:
+        root = f"qt-everywhere-src-{self.version}"
+        patterns: list[str] = []
+        for module in _MODULE_DEPENDS:
+            if not self.options.get_safe(module):
+                patterns.append(f"{root}/{module}")
+                patterns.append(f"{root}/{module}/*")
+        return patterns
+
+    def _xplatform(self) -> str | None:
+        if self.settings.os == "Linux":
+            if self.settings.compiler == "gcc":
+                return {"ARM": "linux-aarch64-gnu-g++"}.get(str(self.settings.arch), "linux-g++")
+            if self.settings.compiler == "clang":
+                if self.settings.arch == "X64":
+                    return "linux-clang-libc++" if self.settings.compiler.libcxx == "libc++" else "linux-clang"
+
+        elif self.settings.os == "Mac":
+            return {
+                "clang": "macx-clang",
+                "apple-clang": "macx-clang",
+                "gcc": "macx-g++",
+            }.get(str(self.settings.compiler))
+
+        elif self.settings.os == "iOS":
+            if self.settings.compiler == "apple-clang":
+                return "macx-ios-clang"
+
+        elif self.settings.os == "tvOS":
+            if self.settings.compiler == "apple-clang":
+                return "macx-tvos-clang"
+
+        elif self.settings.os == "Android":
+            if self.settings.compiler == "clang":
+                return "android-clang"
+
+        elif self.settings.os == "Windows":
+            return {
+                "Visual Studio": "win32-msvc",
+                "msvc": "win32-msvc",
+                "gcc": "win32-g++",
+                "clang": "win32-clang-g++",
+            }.get(str(self.settings.compiler))
+
+        elif self.settings.os == "WindowsStore":
+            if is_msvc(self):
+                if self.settings.compiler == "Visual Studio":
+                    msvc_version = str(self.settings.compiler.version)
+                else:
+                    msvc_version = {
+                        "190": "14",
+                        "191": "15",
+                        "192": "16",
+                    }.get(str(self.settings.compiler.version), "")
+                return {
+                    "14": {
+                        "armv7": "winrt-arm-msvc2015",
+                        "x86": "winrt-x86-msvc2015",
+                        "x86_64": "winrt-x64-msvc2015",
+                    },
+                    "15": {
+                        "armv7": "winrt-arm-msvc2017",
+                        "x86": "winrt-x86-msvc2017",
+                        "x86_64": "winrt-x64-msvc2017",
+                    },
+                    "16": {
+                        "armv7": "winrt-arm-msvc2019",
+                        "x86": "winrt-x86-msvc2019",
+                        "x86_64": "winrt-x64-msvc2019",
+                    },
+                }.get(msvc_version, {}).get(str(self.settings.arch))
+
+        elif self.settings.os == "FreeBSD":
+            return {
+                "clang": "freebsd-clang",
+                "gcc": "freebsd-g++",
+            }.get(str(self.settings.compiler))
+
+        elif self.settings.os == "SunOS":
+            if self.settings.compiler == "sun-cc":
+                if self.settings.arch == "sparc":
+                    return "solaris-cc-stlport" if self.settings.compiler.libcxx == "libstlport" else "solaris-cc"
+                if self.settings.arch == "sparcv9":
+                    return "solaris-cc64-stlport" if self.settings.compiler.libcxx == "libstlport" else "solaris-cc64"
+            elif self.settings.compiler == "gcc":
+                return {
+                    "sparc": "solaris-g++",
+                    "sparcv9": "solaris-g++-64",
+                }.get(str(self.settings.arch))
+        elif self.settings.os == "Neutrino" and self.settings.compiler == "qcc":
+            return {
+                "armv8": "qnx-aarch64le-qcc",
+                "armv8.3": "qnx-aarch64le-qcc",
+                "armv7": "qnx-armle-v7-qcc",
+                "armv7hf": "qnx-armle-v7-qcc",
+                "armv7s": "qnx-armle-v7-qcc",
+                "armv7k": "qnx-armle-v7-qcc",
+                "x86": "qnx-x86-qcc",
+                "x86_64": "qnx-x86-64-qcc",
+            }.get(str(self.settings.arch))
+        elif self.settings.os == "Emscripten" and self.settings.arch == "wasm":
+            return "wasm-emscripten"
+
+        return None
+
+    @property
+    def _cmake_executables_file(self):
+        return os.path.join("lib", "cmake", "Qt6Core", "recipe_qt_executables_variables.cmake")
+
+    @property
+    def _cmake_entry_point_file(self):
+        return os.path.join("lib", "cmake", "Qt6Core", "recipe_qt_entry_point.cmake")
+
+    @property
+    def _cmake_platform_target_setup_file(self):
+        return os.path.join("lib", "cmake", "Qt6", "recipe_qt_platform_target_setup.cmake")
+
+    def _cmake_qt6_private_file(self, module: str):
+        return os.path.join("lib", "cmake", f"Qt6{module}", f"recipe_qt_qt6_{module.lower()}private.cmake")

@@ -33,17 +33,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GnuFtp(self, "libiconv")
         return Version(repo.latest_release)
 
-    @property
-    def _is_clang_cl(self):
-        return self.settings.compiler == "clang" and self.settings.os == "Windows" and \
-            self.settings.compiler.get_safe("runtime")
-
-    @property
-    def _msvc_tools(self):
-        compilers = self.conf.get("tools.build:compiler_executables", default={})
-        compiler = compilers.get("c") or compilers.get("cpp")
-        return (compiler or "clang-cl", "llvm-lib", "lld-link") if self._is_clang_cl else ("cl", "lib", "link")
-
     def configure(self):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
@@ -98,12 +87,6 @@ class Recipe(RecipeBase[_Options]):
             env.define("win32_target", "_WIN32_WINNT_VISTA")
         tc.generate(env)
 
-    def _apply_resource_patch(self):
-        if self.settings.arch == "x86":
-            windres_options_path = self.folders.source / "windows" / "windres-options"
-            self.output.info(f"Applying {self.settings.arch} resource patch: {windres_options_path}")
-            replace_in_file(self, windres_options_path, "#   PACKAGE_VERSION_SUBMINOR", '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)
-
     def build(self):
         apply_patches(self)
         self._apply_resource_patch()
@@ -131,3 +114,20 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_file_name", "Iconv")
         self.info.set_property("cmake_target_name", "Iconv::Iconv")
         self.info.libs = ["iconv", "charset"]
+
+    @property
+    def _is_clang_cl(self):
+        return self.settings.compiler == "clang" and self.settings.os == "Windows" and \
+            self.settings.compiler.get_safe("runtime")
+
+    @property
+    def _msvc_tools(self):
+        compilers = self.conf.get("tools.build:compiler_executables", default={})
+        compiler = compilers.get("c") or compilers.get("cpp")
+        return (compiler or "clang-cl", "llvm-lib", "lld-link") if self._is_clang_cl else ("cl", "lib", "link")
+
+    def _apply_resource_patch(self):
+        if self.settings.arch == "x86":
+            windres_options_path = self.folders.source / "windows" / "windres-options"
+            self.output.info(f"Applying {self.settings.arch} resource patch: {windres_options_path}")
+            replace_in_file(self, windres_options_path, "#   PACKAGE_VERSION_SUBMINOR", '#   PACKAGE_VERSION_SUBMINOR\necho "--target=pe-i386"', strict=True)

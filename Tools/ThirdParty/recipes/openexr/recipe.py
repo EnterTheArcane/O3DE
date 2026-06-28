@@ -68,11 +68,6 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         rmdir(self, self.folders.package / "lib" / "cmake")
 
-    def _add_component(self, name: str):
-        component = self.info.components[_recipe_comp(name)]
-        component.set_property("cmake_target_name", f"OpenEXR::{name}")
-        return component
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "OpenEXR")
         self.info.set_property("pkg_config_name", "OpenEXR")
@@ -139,6 +134,11 @@ class Recipe(RecipeBase[_Options]):
             OpenEXRUtil.system_libs = ["m"]
 
         # TODO: Add tools directory to PATH
+
+    def _add_component(self, name: str):
+        component = self.info.components[_recipe_comp(name)]
+        component.set_property("cmake_target_name", f"OpenEXR::{name}")
+        return component
 
 @staticmethod
 def _recipe_comp(name: str):

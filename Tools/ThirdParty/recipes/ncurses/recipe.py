@@ -30,10 +30,6 @@ class Recipe(RecipeBase[_Options]):
     version = "6.5"
     license = "X11"
 
-    @property
-    def _is_mingw(self):
-        return self.settings.os == "Windows" and self.settings.compiler == "gcc"
-
     def configure(self):
         # Set the default value based on OS
         self.options.with_ticlib = self.settings.os != "Windows"
@@ -203,33 +199,6 @@ class Recipe(RecipeBase[_Options]):
             dst=self.folders.package / self._module_subfolder)
         fix_apple_shared_install_name(self)
 
-    @property
-    def _suffix(self):
-        res = ""
-        # https://github.com/mirror/ncurses/blob/v6.4/configure.in#L1393
-        if self.options.with_reentrant:
-            res += "t"
-        # https://github.com/mirror/ncurses/blob/v6.4/configure.in#L959
-        if self.options.with_widec:
-            res += "w"
-        return res
-
-    @property
-    def _lib_suffix(self):
-        res = self._suffix
-        if self.options.shared:
-            if self.settings.os == "Windows":
-                res += ".dll"
-        return res
-
-    @property
-    def _module_subfolder(self):
-        return os.path.join("lib", "cmake")
-
-    @property
-    def _module_file(self):
-        return f"recipe-official-{self.name}-targets.cmake"
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "Curses")
 
@@ -290,3 +259,34 @@ class Recipe(RecipeBase[_Options]):
         self.buildenv_info.define_path("TERMINFO", terminfo.as_posix())
         self.runenv_info.define_path("TERMINFO", terminfo.as_posix())
         self.conf_info.define("user.ncurses:lib_suffix", self._lib_suffix)
+
+    @property
+    def _is_mingw(self):
+        return self.settings.os == "Windows" and self.settings.compiler == "gcc"
+
+    @property
+    def _suffix(self):
+        res = ""
+        # https://github.com/mirror/ncurses/blob/v6.4/configure.in#L1393
+        if self.options.with_reentrant:
+            res += "t"
+        # https://github.com/mirror/ncurses/blob/v6.4/configure.in#L959
+        if self.options.with_widec:
+            res += "w"
+        return res
+
+    @property
+    def _lib_suffix(self):
+        res = self._suffix
+        if self.options.shared:
+            if self.settings.os == "Windows":
+                res += ".dll"
+        return res
+
+    @property
+    def _module_subfolder(self):
+        return os.path.join("lib", "cmake")
+
+    @property
+    def _module_file(self):
+        return f"recipe-official-{self.name}-targets.cmake"

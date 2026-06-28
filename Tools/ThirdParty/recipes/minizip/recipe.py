@@ -50,10 +50,6 @@ class Recipe(RecipeBase[_Options]):
         cmake.configure(build_script_folder=self.folders.source / os.pardir)
         cmake.build()
 
-    def _extract_license(self):
-        zlib_h = load(self, self.folders.source / "zlib.h")
-        return zlib_h[2:zlib_h.find("*/", 1)]
-
     def package(self):
         save(self, self.folders.package / "licenses" / "LICENSE", self._extract_license())
         cmake = CMake(self)
@@ -63,3 +59,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.libs = ["minizip"]
         self.info.includedirs.append(os.path.join("include", "minizip"))
         self.info.defines.append("HAVE_BZIP2")
+
+    def _extract_license(self):
+        zlib_h = load(self, self.folders.source / "zlib.h")
+        return zlib_h[2:zlib_h.find("*/", 1)]

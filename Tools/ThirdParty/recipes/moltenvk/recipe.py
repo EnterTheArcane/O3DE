@@ -25,14 +25,14 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "KhronosGroup/MoltenVK")
         return Version(repo.latest_release.removeprefix("v"))
 
+    def configure(self):
+        if not self.options.shared:
+            self.options.hide_vulkan_symbols = False
+
     def validate(self):
         if not is_apple_os(self):
             raise RecipeInvalidConfiguration(
                 f"{self.name} is only supported on Apple platforms (Mac, iOS, tvOS)")
-
-    def configure(self):
-        if not self.options.shared:
-            self.options.hide_vulkan_symbols = False
 
     def requirements(self):
         self.requires_tool("cmake")

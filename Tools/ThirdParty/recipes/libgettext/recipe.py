@@ -34,16 +34,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GnuFtp(self, "gettext")
         return Version(repo.latest_release)
 
-    @property
-    def _is_clang_cl(self):
-        return self.settings.os == "Windows" \
-            and self.settings.compiler == "clang" \
-            and self.settings.compiler.get_safe("runtime")
-
-    @property
-    def _gettext_folder(self):
-        return "gettext-tools"
-
     def configure(self):
         self.options.threads = {"Solaris": "solaris", "Windows": "windows"}.get(str(self.settings.os), "posix")
 
@@ -214,6 +204,16 @@ class Recipe(RecipeBase[_Options]):
         self.info.libs = ["gnuintl"]
         if is_apple_os(self):
             self.info.frameworks.append("CoreFoundation")
+
+    @property
+    def _is_clang_cl(self):
+        return self.settings.os == "Windows" \
+            and self.settings.compiler == "clang" \
+            and self.settings.compiler.get_safe("runtime")
+
+    @property
+    def _gettext_folder(self):
+        return "gettext-tools"
 
 
 def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):

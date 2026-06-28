@@ -22,10 +22,6 @@ class Recipe(RecipeBase[_Options]):
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 
-    @property
-    def _with_nasm(self):
-        return self.settings.arch in ("X64",)
-
     def requirements(self):
         if self._with_nasm:
             self.requires_tool("nasm")
@@ -146,3 +142,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.system_libs.extend(["dl", "pthread", "m"])
         elif self.settings.os == "Android":
             self.info.system_libs.extend(["dl", "m"])
+
+    @property
+    def _with_nasm(self):
+        return self.settings.arch in ("X64",)

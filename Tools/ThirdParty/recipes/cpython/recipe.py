@@ -37,16 +37,6 @@ class Recipe(RecipeBase[_Options]):
     version = "3.12.7"
     license = "Python-2.0"
 
-    @property
-    def _supports_modules(self):
-        return not is_msvc(self) or self.options.shared
-
-    @property
-    def _version_suffix(self):
-        v = Version(self.version)
-        joiner = "" if is_msvc(self) else "."
-        return f"{v.major}{joiner}{v.minor}"
-
     def configure(self):
         if is_msvc(self):
             self.options.lto = False
@@ -100,6 +90,203 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
 
+    def generate(self):
+        VirtualBuildEnv(self).generate()
+        VirtualRunEnv(self).generate(scope="build")
+
+        if is_msvc(self):
+            # The msbuild generator only works with Visual Studio
+            deps = MSBuildDeps(self)
+            deps.generate()
+            # The toolchain.props is not injected yet, but it also generates VCVars
+            toolchain = MSBuildToolchain(self)
+            toolchain.properties["IncludeExternals"] = "true"
+            toolchain.generate()
+        else:
+            self._generate_autotools()
+
+    def build(self):
+        self._patch_sources()
+        if is_msvc(self):
+            self._msvc_build()
+        else:
+            autotools = Autotools(self)
+            autotools.configure()
+            autotools.make()
+
+    def package(self):
+        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
+        if is_msvc(self):
+            if self.options.shared:
+                self._msvc_package_layout()
+            else:
+                self._msvc_package_copy()
+            rm(self, "vcruntime*", self.folders.package / "bin", recursive=True)
+        else:
+            autotools = Autotools(self)
+            if is_apple_os(self):
+                # FIXME: See https://github.com/python/cpython/issues/109796, this workaround is mentioned there
+                autotools.make(target="sharedinstall", args=["DESTDIR="])
+            autotools.install(args=["DESTDIR="])
+            rmdir(self, self.folders.package / "lib" / "pkgconfig")
+            rmdir(self, self.folders.package / "share")
+
+            # Rewrite shebangs of python scripts
+            for filename in os.listdir(self.folders.package / "bin"):
+                filepath = self.folders.package / "bin" / filename
+                if not os.path.isfile(filepath):
+                    continue
+                if os.path.islink(filepath):
+                    continue
+                with open(filepath, "rb") as fn:
+                    firstline = fn.readline(1024)
+                    if not (firstline.startswith(b"#!") and b"/python" in firstline and b"/bin/sh" not in firstline):
+                        continue
+                    text = fn.read()
+                self.output.info(f"Rewriting shebang of {filename}")
+                with open(filepath, "wb") as fn:
+                    fn.write(
+                        textwrap.dedent(
+                            f"""
+                            #!/bin/sh
+                            ''':'
+                            __file__="$0"
+                            while [ -L "$__file__" ]; do
+                                __file__="$(dirname "$__file__")/$(readlink "$__file__")"
+                            done
+                            exec "$(dirname "$__file__")/python{self._version_suffix}" "$0" "$@"
+                            '''
+                            """).encode())
+                    fn.write(text)
+
+            if not os.path.exists(self._cpython_symlink):
+                os.symlink(f"python{self._version_suffix}", self._cpython_symlink)
+        fix_apple_shared_install_name(self)
+
+        self._write_cmake_findpython_wrapper_file()
+
+    def package_info(self):
+        py_version = Version(self.version)
+        # python component: "Build a C extension for Python"
+        if is_msvc(self):
+            self.info.components["python"].includedirs = [os.path.join(self._msvc_install_subprefix, "include")]
+            libdir = os.path.join(self._msvc_install_subprefix, "libs")
+        else:
+            self.info.components["python"].includedirs.append(
+                os.path.join("include", f"python{self._version_suffix}{self._abi_suffix}")
+            )
+            libdir = "lib"
+        if self.options.shared:
+            self.info.components["python"].defines.append("Py_ENABLE_SHARED")
+        else:
+            self.info.components["python"].defines.append("Py_NO_ENABLE_SHARED")
+            if self.settings.os in ["Linux", "FreeBSD"]:
+                self.info.components["python"].system_libs.extend(["dl", "m", "pthread", "util"])
+            elif self.settings.os == "Windows":
+                self.info.components["python"].system_libs.extend(
+                    ["pathcch", "shlwapi", "version", "ws2_32"]
+                )
+        self.info.components["python"].requires = ["zlib::zlib"]
+        if self.settings.os != "Windows":
+            self.info.components["python"].requires.append("libxcrypt::libxcrypt")
+        self.info.components["python"].set_property(
+            "pkg_config_name", f"python-{py_version.major}.{py_version.minor}"
+        )
+        self.info.components["python"].set_property(
+            "pkg_config_aliases", [f"python{py_version.major}"]
+        )
+        self.info.components["python"].libdirs = []
+
+        # embed component: "Embed Python into an application"
+        self.info.components["embed"].libs = [self._lib_name]
+        self.info.components["embed"].libdirs = [libdir]
+        self.info.components["embed"].includedirs = []
+        self.info.components["embed"].set_property(
+            "pkg_config_name", f"python-{py_version.major}.{py_version.minor}-embed"
+        )
+        self.info.components["embed"].set_property(
+            "pkg_config_aliases", [f"python{py_version.major}-embed"]
+        )
+        self.info.components["embed"].requires = ["python"]
+
+        # Transparent integration with CMake's FindPython(3)
+        self.info.set_property("cmake_file_name", "Python3")
+        self.info.set_property("cmake_build_modules", [os.path.join(self._cmake_module_path, "use_recipe_python.cmake")])
+        self.info.builddirs = [self._cmake_module_path]
+
+        if self._supports_modules:
+            # hidden components: the C extensions of python are built as dynamically loaded shared libraries.
+            # C extensions or applications with an embedded Python should not need to link to them..
+            self.info.components["_hidden"].requires = [
+                "openssl::openssl",
+                "expat::expat",
+                "mpdecimal::mpdecimal",
+                "libffi::libffi",
+            ]
+            if self.settings.os != "Windows":
+                if not is_apple_os(self):
+                    self.info.components["_hidden"].requires.append("util-linux-libuuid::util-linux-libuuid")
+                self.info.components["_hidden"].requires.append("libxcrypt::libxcrypt")
+            if self.options.with_bz2:
+                self.info.components["_hidden"].requires.append("bzip2::bzip2")
+            if self.options.with_gdbm:
+                self.info.components["_hidden"].requires.append("gdbm::gdbm")
+            if self.options.with_sqlite3:
+                self.info.components["_hidden"].requires.append("sqlite3::sqlite3")
+            if self.options.with_curses:
+                self.info.components["_hidden"].requires.append("ncurses::ncurses")
+            if self.options.with_lzma:
+                self.info.components["_hidden"].requires.append("xz::xz")
+            if self.options.with_tkinter:
+                self.info.components["_hidden"].requires.append("tk::tk")
+            self.info.components["_hidden"].includedirs = []
+            self.info.components["_hidden"].libdirs = []
+            if self.settings.os in ["Linux", "FreeBSD"]:
+                self.info.components["_hidden"].system_libs.append("nsl")
+
+        if self.options.env_vars:
+            bindir = self.folders.package / "bin"
+            self.runenv_info.append_path("PATH", bindir)
+            self.buildenv_info.append_path("PATH", bindir)
+
+            # TODO remove once Recipe 1.x is no longer supported
+            self.output.info(f"Appending PATH environment variable: {bindir}")
+
+        python = self._cpython_interpreter_path
+        self.conf_info.define("user.cpython:python", python)
+        if self.options.env_vars:
+            self.runenv_info.append_path("PYTHON", python)
+            self.buildenv_info.append_path("PYTHON", python)
+
+            # TODO remove once Recipe 1.x is no longer supported
+            self.output.info(f"Appending PYTHON environment variable: {python}")
+
+        if is_msvc(self):
+            pythonhome = self.folders.package / "bin"
+        else:
+            pythonhome = self.folders.package
+        self.conf_info.define("user.cpython:pythonhome", pythonhome)
+
+        pythonhome_required = is_msvc(self) or is_apple_os(self)
+        self.conf_info.define("user.cpython:module_requires_pythonhome", pythonhome_required)
+
+        python_root = self.folders.package
+        if self.options.env_vars:
+            self.runenv_info.append_path("PYTHON_ROOT", python_root)
+            self.buildenv_info.append_path("PYTHON_ROOT", python_root)
+
+        self.conf_info.define("user.cpython:python_root", python_root)
+
+    @property
+    def _supports_modules(self):
+        return not is_msvc(self) or self.options.shared
+
+    @property
+    def _version_suffix(self):
+        v = Version(self.version)
+        joiner = "" if is_msvc(self) else "."
+        return f"{v.major}{joiner}{v.minor}"
+
     def _generate_autotools(self):
         tc = AutotoolsToolchain(self, prefix=self.folders.package)
         # Not necessary, just cleans up the output
@@ -152,21 +339,6 @@ class Recipe(RecipeBase[_Options]):
         deps.generate()
         deps = PkgConfigDeps(self)
         deps.generate()
-
-    def generate(self):
-        VirtualBuildEnv(self).generate()
-        VirtualRunEnv(self).generate(scope="build")
-
-        if is_msvc(self):
-            # The msbuild generator only works with Visual Studio
-            deps = MSBuildDeps(self)
-            deps.generate()
-            # The toolchain.props is not injected yet, but it also generates VCVars
-            toolchain = MSBuildToolchain(self)
-            toolchain.properties["IncludeExternals"] = "true"
-            toolchain.generate()
-        else:
-            self._generate_autotools()
 
     def _msvc_project_path(self, name: str) -> Path:
         return self.folders.source / "PCbuild" / f"{name}.vcxproj"
@@ -426,15 +598,6 @@ class Recipe(RecipeBase[_Options]):
         cmd = msbuild.command(sln, targets=projects)
         self.run(f"{cmd} /p:PlatformToolset={msvs_toolset(self)} /p:SkipCopySSLDLL=true")
 
-    def build(self):
-        self._patch_sources()
-        if is_msvc(self):
-            self._msvc_build()
-        else:
-            autotools = Autotools(self)
-            autotools.configure()
-            autotools.make()
-
     @property
     def _msvc_artifacts_path(self):
         build_subdir_lut = {
@@ -615,57 +778,6 @@ class Recipe(RecipeBase[_Options]):
         content = template.replace("@PYTHON_EXECUTABLE@", python_exe).replace("@PYTHON_LIBRARY@", python_library)
         save(self, cmake_file, content)
 
-    def package(self):
-        copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
-        if is_msvc(self):
-            if self.options.shared:
-                self._msvc_package_layout()
-            else:
-                self._msvc_package_copy()
-            rm(self, "vcruntime*", self.folders.package / "bin", recursive=True)
-        else:
-            autotools = Autotools(self)
-            if is_apple_os(self):
-                # FIXME: See https://github.com/python/cpython/issues/109796, this workaround is mentioned there
-                autotools.make(target="sharedinstall", args=["DESTDIR="])
-            autotools.install(args=["DESTDIR="])
-            rmdir(self, self.folders.package / "lib" / "pkgconfig")
-            rmdir(self, self.folders.package / "share")
-
-            # Rewrite shebangs of python scripts
-            for filename in os.listdir(self.folders.package / "bin"):
-                filepath = self.folders.package / "bin" / filename
-                if not os.path.isfile(filepath):
-                    continue
-                if os.path.islink(filepath):
-                    continue
-                with open(filepath, "rb") as fn:
-                    firstline = fn.readline(1024)
-                    if not (firstline.startswith(b"#!") and b"/python" in firstline and b"/bin/sh" not in firstline):
-                        continue
-                    text = fn.read()
-                self.output.info(f"Rewriting shebang of {filename}")
-                with open(filepath, "wb") as fn:
-                    fn.write(
-                        textwrap.dedent(
-                            f"""
-                            #!/bin/sh
-                            ''':'
-                            __file__="$0"
-                            while [ -L "$__file__" ]; do
-                                __file__="$(dirname "$__file__")/$(readlink "$__file__")"
-                            done
-                            exec "$(dirname "$__file__")/python{self._version_suffix}" "$0" "$@"
-                            '''
-                            """).encode())
-                    fn.write(text)
-
-            if not os.path.exists(self._cpython_symlink):
-                os.symlink(f"python{self._version_suffix}", self._cpython_symlink)
-        fix_apple_shared_install_name(self)
-
-        self._write_cmake_findpython_wrapper_file()
-
     @property
     def _cpython_symlink(self):
         symlink = self.folders.package / "bin" / "python"
@@ -706,115 +818,3 @@ class Recipe(RecipeBase[_Options]):
         else:
             lib_ext = self._abi_suffix
         return f"python{self._version_suffix}{lib_ext}"
-
-    def package_info(self):
-        py_version = Version(self.version)
-        # python component: "Build a C extension for Python"
-        if is_msvc(self):
-            self.info.components["python"].includedirs = [os.path.join(self._msvc_install_subprefix, "include")]
-            libdir = os.path.join(self._msvc_install_subprefix, "libs")
-        else:
-            self.info.components["python"].includedirs.append(
-                os.path.join("include", f"python{self._version_suffix}{self._abi_suffix}")
-            )
-            libdir = "lib"
-        if self.options.shared:
-            self.info.components["python"].defines.append("Py_ENABLE_SHARED")
-        else:
-            self.info.components["python"].defines.append("Py_NO_ENABLE_SHARED")
-            if self.settings.os in ["Linux", "FreeBSD"]:
-                self.info.components["python"].system_libs.extend(["dl", "m", "pthread", "util"])
-            elif self.settings.os == "Windows":
-                self.info.components["python"].system_libs.extend(
-                    ["pathcch", "shlwapi", "version", "ws2_32"]
-                )
-        self.info.components["python"].requires = ["zlib::zlib"]
-        if self.settings.os != "Windows":
-            self.info.components["python"].requires.append("libxcrypt::libxcrypt")
-        self.info.components["python"].set_property(
-            "pkg_config_name", f"python-{py_version.major}.{py_version.minor}"
-        )
-        self.info.components["python"].set_property(
-            "pkg_config_aliases", [f"python{py_version.major}"]
-        )
-        self.info.components["python"].libdirs = []
-
-        # embed component: "Embed Python into an application"
-        self.info.components["embed"].libs = [self._lib_name]
-        self.info.components["embed"].libdirs = [libdir]
-        self.info.components["embed"].includedirs = []
-        self.info.components["embed"].set_property(
-            "pkg_config_name", f"python-{py_version.major}.{py_version.minor}-embed"
-        )
-        self.info.components["embed"].set_property(
-            "pkg_config_aliases", [f"python{py_version.major}-embed"]
-        )
-        self.info.components["embed"].requires = ["python"]
-
-        # Transparent integration with CMake's FindPython(3)
-        self.info.set_property("cmake_file_name", "Python3")
-        self.info.set_property("cmake_build_modules", [os.path.join(self._cmake_module_path, "use_recipe_python.cmake")])
-        self.info.builddirs = [self._cmake_module_path]
-
-        if self._supports_modules:
-            # hidden components: the C extensions of python are built as dynamically loaded shared libraries.
-            # C extensions or applications with an embedded Python should not need to link to them..
-            self.info.components["_hidden"].requires = [
-                "openssl::openssl",
-                "expat::expat",
-                "mpdecimal::mpdecimal",
-                "libffi::libffi",
-            ]
-            if self.settings.os != "Windows":
-                if not is_apple_os(self):
-                    self.info.components["_hidden"].requires.append("util-linux-libuuid::util-linux-libuuid")
-                self.info.components["_hidden"].requires.append("libxcrypt::libxcrypt")
-            if self.options.with_bz2:
-                self.info.components["_hidden"].requires.append("bzip2::bzip2")
-            if self.options.with_gdbm:
-                self.info.components["_hidden"].requires.append("gdbm::gdbm")
-            if self.options.with_sqlite3:
-                self.info.components["_hidden"].requires.append("sqlite3::sqlite3")
-            if self.options.with_curses:
-                self.info.components["_hidden"].requires.append("ncurses::ncurses")
-            if self.options.with_lzma:
-                self.info.components["_hidden"].requires.append("xz::xz")
-            if self.options.with_tkinter:
-                self.info.components["_hidden"].requires.append("tk::tk")
-            self.info.components["_hidden"].includedirs = []
-            self.info.components["_hidden"].libdirs = []
-            if self.settings.os in ["Linux", "FreeBSD"]:
-                self.info.components["_hidden"].system_libs.append("nsl")
-
-        if self.options.env_vars:
-            bindir = self.folders.package / "bin"
-            self.runenv_info.append_path("PATH", bindir)
-            self.buildenv_info.append_path("PATH", bindir)
-
-            # TODO remove once Recipe 1.x is no longer supported
-            self.output.info(f"Appending PATH environment variable: {bindir}")
-
-        python = self._cpython_interpreter_path
-        self.conf_info.define("user.cpython:python", python)
-        if self.options.env_vars:
-            self.runenv_info.append_path("PYTHON", python)
-            self.buildenv_info.append_path("PYTHON", python)
-
-            # TODO remove once Recipe 1.x is no longer supported
-            self.output.info(f"Appending PYTHON environment variable: {python}")
-
-        if is_msvc(self):
-            pythonhome = self.folders.package / "bin"
-        else:
-            pythonhome = self.folders.package
-        self.conf_info.define("user.cpython:pythonhome", pythonhome)
-
-        pythonhome_required = is_msvc(self) or is_apple_os(self)
-        self.conf_info.define("user.cpython:module_requires_pythonhome", pythonhome_required)
-
-        python_root = self.folders.package
-        if self.options.env_vars:
-            self.runenv_info.append_path("PYTHON_ROOT", python_root)
-            self.buildenv_info.append_path("PYTHON_ROOT", python_root)
-
-        self.conf_info.define("user.cpython:python_root", python_root)

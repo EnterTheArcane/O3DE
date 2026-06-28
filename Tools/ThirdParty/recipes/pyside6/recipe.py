@@ -206,6 +206,42 @@ class Recipe(RecipeBase[_Options]):
         self._stage_shiboken6_for_pyi()
         cmake.build()
 
+    def package(self):
+        copy(self, "LICENSE.FDL", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "LICENSE.GPL2", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "LICENSE.GPL3", src=self.folders.source, dst=self.folders.package / "licenses")
+        copy(self, "LICENSE.LGPL3", src=self.folders.source, dst=self.folders.package / "licenses")
+        cmake = CMake(self)
+        cmake.install()
+
+    def package_info(self):
+        self.info.set_property("cmake_find_mode", "none")
+        self.info.builddirs = [
+            os.path.join("lib", "cmake", "Shiboken6"),
+            os.path.join("lib", "cmake", "PySide6"),
+        ]
+
+        # Shiboken6 runtime library
+        shiboken = self.info.components["shiboken6"]
+        shiboken.set_property("cmake_file_name", "Shiboken6")
+        shiboken.set_property("cmake_target_name", "Shiboken6::libshiboken")
+        shiboken.libs = ["shiboken6"]
+        shiboken.includedirs = [os.path.join("include", "shiboken6")]
+        shiboken.requires = ["cpython::cpython"]
+        if self.settings.os in ("Linux", "FreeBSD"):
+            shiboken.system_libs = ["pthread", "dl"]
+
+        # Expose the shiboken6 generator location via conf
+        self.conf_info.define(
+            "user.pyside6:shiboken6_generator",
+            (self.folders.package / "bin" / "shiboken6").as_posix())
+        self.conf_info.define(
+            "user.pyside6:pyside6_dir",
+            self.folders.package.as_posix())
+
+        bin_dir = self.folders.package / "bin"
+        self.buildenv_info.prepend_path("PATH", bin_dir)
+
     def _patch_qtcore_cmake(self):
         """Force-load Darwin permission plugin archives and weak-link their frameworks.
 
@@ -379,39 +415,3 @@ class Recipe(RecipeBase[_Options]):
         config_src = src_dir / "shibokenmodule" / "_config.py"
         if os.path.exists(config_src):
             shutil.copy2(config_src, dst_dir / "_config.py")
-
-    def package(self):
-        copy(self, "LICENSE.FDL", src=self.folders.source, dst=self.folders.package / "licenses")
-        copy(self, "LICENSE.GPL2", src=self.folders.source, dst=self.folders.package / "licenses")
-        copy(self, "LICENSE.GPL3", src=self.folders.source, dst=self.folders.package / "licenses")
-        copy(self, "LICENSE.LGPL3", src=self.folders.source, dst=self.folders.package / "licenses")
-        cmake = CMake(self)
-        cmake.install()
-
-    def package_info(self):
-        self.info.set_property("cmake_find_mode", "none")
-        self.info.builddirs = [
-            os.path.join("lib", "cmake", "Shiboken6"),
-            os.path.join("lib", "cmake", "PySide6"),
-        ]
-
-        # Shiboken6 runtime library
-        shiboken = self.info.components["shiboken6"]
-        shiboken.set_property("cmake_file_name", "Shiboken6")
-        shiboken.set_property("cmake_target_name", "Shiboken6::libshiboken")
-        shiboken.libs = ["shiboken6"]
-        shiboken.includedirs = [os.path.join("include", "shiboken6")]
-        shiboken.requires = ["cpython::cpython"]
-        if self.settings.os in ("Linux", "FreeBSD"):
-            shiboken.system_libs = ["pthread", "dl"]
-
-        # Expose the shiboken6 generator location via conf
-        self.conf_info.define(
-            "user.pyside6:shiboken6_generator",
-            (self.folders.package / "bin" / "shiboken6").as_posix())
-        self.conf_info.define(
-            "user.pyside6:pyside6_dir",
-            self.folders.package.as_posix())
-
-        bin_dir = self.folders.package / "bin"
-        self.buildenv_info.prepend_path("PATH", bin_dir)

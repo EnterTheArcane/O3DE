@@ -42,19 +42,6 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
 
-    def _patch_sources(self):
-        apply_patches(self)
-
-        if not self.options.shared:
-            replace_in_file(
-                self, self.folders.source / "meson.build",
-                "'-DLIBPKGCONF_EXPORT'",
-                "'-DPKGCONFIG_IS_STATIC'", strict=False)
-            replace_in_file(
-                self, self.folders.source / "meson.build",
-                "project('pkgconf', 'c',",
-                "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)
-
     def generate(self):
         VirtualBuildEnv(self).generate()
 
@@ -116,3 +103,16 @@ class Recipe(RecipeBase[_Options]):
         self.buildenv_info.prepend_path("ACLOCAL_PATH", pkgconf_aclocal)
         # TODO: evaluate if `ACLOCAL_PATH` is enough and we can stop using `AUTOMAKE_RECIPE_INCLUDES`
         self.buildenv_info.prepend_path("AUTOMAKE_RECIPE_INCLUDES", pkgconf_aclocal)
+
+    def _patch_sources(self):
+        apply_patches(self)
+
+        if not self.options.shared:
+            replace_in_file(
+                self, self.folders.source / "meson.build",
+                "'-DLIBPKGCONF_EXPORT'",
+                "'-DPKGCONFIG_IS_STATIC'", strict=False)
+            replace_in_file(
+                self, self.folders.source / "meson.build",
+                "project('pkgconf', 'c',",
+                "project('pkgconf', 'c',\ndefault_options : ['c_std=gnu99'],", strict=False)

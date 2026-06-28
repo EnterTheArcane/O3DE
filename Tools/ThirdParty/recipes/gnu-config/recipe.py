@@ -20,6 +20,19 @@ class Recipe(RecipeBase):
     def build(self):
         pass
 
+    def package(self):
+        save(self, self.folders.package / "licenses" / "COPYING", self._extract_license())
+        copy(self, "config.guess", src=self.folders.source, dst=self.folders.package / "bin")
+        copy(self, "config.sub", src=self.folders.source, dst=self.folders.package / "bin")
+
+    def package_info(self):
+        self.info.includedirs = []
+        self.info.libdirs = []
+
+        bin_path = self.folders.package / "bin"
+        self.conf_info.define("user.gnu-config:config_guess", bin_path / "config.guess")
+        self.conf_info.define("user.gnu-config:config_sub", bin_path / "config.sub")
+
     def _extract_license(self):
         txt_lines = load(self, self.folders.source / "config.guess").splitlines()
         start_index = None
@@ -34,16 +47,3 @@ class Recipe(RecipeBase):
         if not all((start_index, end_index)):
             raise RecipeException("Failed to extract the license")
         return "\n".join(txt_lines[start_index:end_index])
-
-    def package(self):
-        save(self, self.folders.package / "licenses" / "COPYING", self._extract_license())
-        copy(self, "config.guess", src=self.folders.source, dst=self.folders.package / "bin")
-        copy(self, "config.sub", src=self.folders.source, dst=self.folders.package / "bin")
-
-    def package_info(self):
-        self.info.includedirs = []
-        self.info.libdirs = []
-
-        bin_path = self.folders.package / "bin"
-        self.conf_info.define("user.gnu-config:config_guess", bin_path / "config.guess")
-        self.conf_info.define("user.gnu-config:config_sub", bin_path / "config.sub")

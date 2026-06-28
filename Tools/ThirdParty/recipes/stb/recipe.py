@@ -7,10 +7,6 @@ class Recipe(RecipeBase):
     version = "20240531"
     license = "Unlicense", "MIT"
 
-    @property
-    def _version(self):
-        return str(self.version)[4:]
-
     def source(self):
         get(
             self,
@@ -34,3 +30,7 @@ class Recipe(RecipeBase):
         self.info.defines.append("STB_TEXTEDIT_KEYTYPE=unsigned")
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs.append("m")
+
+    @property
+    def _version(self):
+        return str(self.version)[4:]

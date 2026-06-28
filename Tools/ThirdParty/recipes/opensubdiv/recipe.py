@@ -27,12 +27,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "PixarAnimationStudios/OpenSubdiv")
         return Version(repo.latest_release.removeprefix("v").replace("_", "."))
 
-    @property
-    def _min_cppstd(self):
-        if self.options.with_metal:
-            return "14"
-        return "11"
-
     def configure(self):
         if self.settings.os != "Windows":
             self.options.with_dx = False
@@ -56,17 +50,6 @@ class Recipe(RecipeBase[_Options]):
             sha256="f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9",
             destination=self.folders.source,
             strip_root=True)
-
-    @property
-    def _osd_gpu_enabled(self):
-        return any(
-            [
-                self.options.with_opengl,
-                self.options.with_opencl,
-                self.options.with_cuda,
-                self.options.with_dx,
-                self.options.with_metal,
-            ])
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -93,14 +76,6 @@ class Recipe(RecipeBase[_Options]):
 
         deps = CMakeDeps(self)
         deps.generate()
-
-    def _patch_sources(self):
-        apply_patches(self)
-        if self.settings.os == "Mac" and not self._osd_gpu_enabled:
-            path = self.folders.source / "opensubdiv" / "CMakeLists.txt"
-            replace_in_file(self, path, "$<TARGET_OBJECTS:osd_gpu_obj>", "")
-        # No warnings as errors
-        replace_in_file(self, self.folders.source / "CMakeLists.txt", "/WX", "", strict=False)
 
     def build(self):
         self._patch_sources()
@@ -135,3 +110,28 @@ class Recipe(RecipeBase[_Options]):
             dl_required = self.options.with_opengl or self.options.with_opencl
             if self.settings.os in ["Linux", "FreeBSD"] and dl_required:
                 self.info.components["osdgpu"].system_libs = ["dl"]
+
+    @property
+    def _min_cppstd(self):
+        if self.options.with_metal:
+            return "14"
+        return "11"
+
+    @property
+    def _osd_gpu_enabled(self):
+        return any(
+            [
+                self.options.with_opengl,
+                self.options.with_opencl,
+                self.options.with_cuda,
+                self.options.with_dx,
+                self.options.with_metal,
+            ])
+
+    def _patch_sources(self):
+        apply_patches(self)
+        if self.settings.os == "Mac" and not self._osd_gpu_enabled:
+            path = self.folders.source / "opensubdiv" / "CMakeLists.txt"
+            replace_in_file(self, path, "$<TARGET_OBJECTS:osd_gpu_obj>", "")
+        # No warnings as errors
+        replace_in_file(self, self.folders.source / "CMakeLists.txt", "/WX", "", strict=False)

@@ -20,10 +20,6 @@ class Recipe(RecipeBase[_Options]):
         repo = GithubRepository(self, "BinomialLLC/basis_universal")
         return Version(repo.latest_release.lstrip("v").replace("_", "."))
 
-    @property
-    def _has_sse(self):
-        return self.settings.arch in ["X64"]
-
     def configure(self):
         if not self._has_sse:
             self.options.with_sse = False
@@ -69,3 +65,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.defines = ["BASISU_NO_ITERATOR_DEBUG_LEVEL"]
         elif self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs = ["m", "pthread"]
+
+    @property
+    def _has_sse(self):
+        return self.settings.arch in ["X64"]

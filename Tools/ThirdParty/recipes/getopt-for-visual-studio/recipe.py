@@ -16,11 +16,6 @@ class Recipe(RecipeBase):
             strip_root=True)
         apply_patches(self)
 
-    @property
-    def _license_text(self):
-        content = load(self, self.folders.source / "getopt.h")
-        return "\n".join(list(l.strip() for l in content[content.find("/**", 3):content.find("#pragma")].split("\n")))
-
     def package(self):
         save(self, self.folders.package / "licenses" / "LICENSE", self._license_text)
         copy(self, "getopt.h", src=self.folders.source, dst=self.folders.package / "include")
@@ -28,3 +23,8 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.info.bindirs = []
         self.info.libdirs = []
+
+    @property
+    def _license_text(self):
+        content = load(self, self.folders.source / "getopt.h")
+        return "\n".join(list(l.strip() for l in content[content.find("/**", 3):content.find("#pragma")].split("\n")))

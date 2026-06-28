@@ -97,6 +97,31 @@ class Recipe(RecipeBase[_Options]):
             self.folders.package / self._module_file_rel_path
         )
 
+    def package_info(self):
+        self.info.set_property("cmake_file_name", "libxml2")
+        self.info.set_property("cmake_target_name", "LibXml2::LibXml2")
+        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
+        self.info.set_property("pkg_config_name", "libxml-2.0")
+
+        prefix = "lib" if self.settings.os == "Windows" else ""
+        postfix = ""
+        if self.settings.os == "Windows":
+            if not self.options.shared:
+                postfix += "s"
+            if self.settings.build_type == "Debug":
+                postfix += "d"
+        self.info.libs = [f"{prefix}xml2{postfix}"]
+        self.info.includedirs.append(os.path.join("include", "libxml2"))
+        if not self.options.shared:
+            self.info.defines = ["LIBXML_STATIC"]
+
+        if self.settings.os in ["Linux", "FreeBSD", "Android"]:
+            self.info.system_libs += ["m", "dl"]
+            if self.settings.os in ["Linux", "FreeBSD"]:
+                self.info.system_libs.append("pthread")
+        elif self.settings.os == "Windows":
+            self.info.system_libs += ["ws2_32", "bcrypt"]
+
     def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             f"""
@@ -130,28 +155,3 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _module_file_rel_path(self):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
-
-    def package_info(self):
-        self.info.set_property("cmake_file_name", "libxml2")
-        self.info.set_property("cmake_target_name", "LibXml2::LibXml2")
-        self.info.set_property("cmake_build_modules", [self._module_file_rel_path])
-        self.info.set_property("pkg_config_name", "libxml-2.0")
-
-        prefix = "lib" if self.settings.os == "Windows" else ""
-        postfix = ""
-        if self.settings.os == "Windows":
-            if not self.options.shared:
-                postfix += "s"
-            if self.settings.build_type == "Debug":
-                postfix += "d"
-        self.info.libs = [f"{prefix}xml2{postfix}"]
-        self.info.includedirs.append(os.path.join("include", "libxml2"))
-        if not self.options.shared:
-            self.info.defines = ["LIBXML_STATIC"]
-
-        if self.settings.os in ["Linux", "FreeBSD", "Android"]:
-            self.info.system_libs += ["m", "dl"]
-            if self.settings.os in ["Linux", "FreeBSD"]:
-                self.info.system_libs.append("pthread")
-        elif self.settings.os == "Windows":
-            self.info.system_libs += ["ws2_32", "bcrypt"]

@@ -94,10 +94,6 @@ class Recipe(RecipeBase[_Options]):
         module_file = self.folders.package / self._module_file_rel_path
         save(self, module_file, content)
 
-    @property
-    def _module_file_rel_path(self):
-        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "LibLZMA")
         self.info.set_property("cmake_target_name", "LibLZMA::LibLZMA")
@@ -108,3 +104,7 @@ class Recipe(RecipeBase[_Options]):
             self.info.defines.append("LZMA_API_STATIC")
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs.append("pthread")
+
+    @property
+    def _module_file_rel_path(self):
+        return os.path.join("lib", "cmake", f"recipe-official-{self.name}-variables.cmake")

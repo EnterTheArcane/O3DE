@@ -72,6 +72,61 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["CMAKE_POLICY_DEFAULT_CMP0042"] = "NEW"
         tc.generate()
 
+    def build(self):
+        self._patch_sources()
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
+    def package(self):
+        cmake = CMake(self)
+        cmake.install()
+
+        libtool_version = self._extract_libtool_version()
+        save(self, self._libtool_version_txt, libtool_version)
+        self._make_freetype_config(libtool_version)
+
+        doc_folder = self.folders.source / "docs"
+        license_folder = self.folders.package / "licenses"
+        copy(self, "FTL.TXT", doc_folder, license_folder)
+        copy(self, "GPLv2.TXT", doc_folder, license_folder)
+        copy(self, "LICENSE.TXT", doc_folder, license_folder)
+
+        rmdir(self, self.folders.package / "lib" / "cmake")
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
+        self._create_cmake_module_variables(
+            self.folders.package / self._module_vars_rel_path
+        )
+        self._create_cmake_module_alias_targets(
+            self.folders.package / self._module_target_rel_path,
+            {"freetype": "Freetype::Freetype"}
+        )
+
+    def package_info(self):
+        # Use config mode with the canonical "Freetype" name. The CMakeDeps generator
+        # does not emit Find modules, so a split "both"/module setup would let consumers'
+        # find_package(Freetype) fall through to CMake's builtin FindFreetype, which links
+        # only freetype itself and drops freetype's private static deps (brotli, bzip2) —
+        # causing unresolved BrotliDecoderDecompress / BZ2_* symbols downstream.
+        self.info.set_property("cmake_find_mode", "config")
+        self.info.set_property("cmake_file_name", "Freetype")
+        self.info.set_property("cmake_target_name", "Freetype::Freetype")
+        self.info.set_property("cmake_target_aliases", ["freetype"])  # other possible target name in upstream config file
+        self.info.set_property("cmake_build_modules", [self._module_vars_rel_path])
+        self.info.set_property("pkg_config_name", "freetype2")
+        self.info.libs = collect_libs(self)
+        if self.settings.os in ["Linux", "FreeBSD"]:
+            self.info.system_libs.append("m")
+        self.info.includedirs.append(os.path.join("include", "freetype2"))
+
+        libtool_version = load(self, self._libtool_version_txt).strip()
+        self.conf_info.define("user.freetype:libtool_version", libtool_version)
+        self.info.set_property("system_package_version", libtool_version)
+
+        self.info.set_property("component_version", libtool_version)
+        freetype_config = self.folders.package / "bin" / "freetype-config"
+        _chmod_plus_x(freetype_config)
+
     def _patch_sources(self):
         # Do not accidentally enable dependencies we have disabled
         cmakelists = self.folders.source / "CMakeLists.txt"
@@ -90,12 +145,6 @@ class Recipe(RecipeBase[_Options]):
         config_h = self.folders.source / "include" / "freetype" / "config" / "ftoption.h"
         if self.options.subpixel:
             replace_in_file(self, config_h, "/* #define FT_CONFIG_OPTION_SUBPIXEL_RENDERING */", "#define FT_CONFIG_OPTION_SUBPIXEL_RENDERING", strict=False)
-
-    def build(self):
-        self._patch_sources()
-        cmake = CMake(self)
-        cmake.configure()
-        cmake.build()
 
     def _make_freetype_config(self, version: str):
         freetype_config_in = self.folders.source / "builds" / "unix" / "freetype-config.in"
@@ -134,30 +183,6 @@ class Recipe(RecipeBase[_Options]):
     def _libtool_version_txt(self):
         return self.folders.package / "res" / "freetype-libtool-version.txt"
 
-    def package(self):
-        cmake = CMake(self)
-        cmake.install()
-
-        libtool_version = self._extract_libtool_version()
-        save(self, self._libtool_version_txt, libtool_version)
-        self._make_freetype_config(libtool_version)
-
-        doc_folder = self.folders.source / "docs"
-        license_folder = self.folders.package / "licenses"
-        copy(self, "FTL.TXT", doc_folder, license_folder)
-        copy(self, "GPLv2.TXT", doc_folder, license_folder)
-        copy(self, "LICENSE.TXT", doc_folder, license_folder)
-
-        rmdir(self, self.folders.package / "lib" / "cmake")
-        rmdir(self, self.folders.package / "lib" / "pkgconfig")
-        self._create_cmake_module_variables(
-            self.folders.package / self._module_vars_rel_path
-        )
-        self._create_cmake_module_alias_targets(
-            self.folders.package / self._module_target_rel_path,
-            {"freetype": "Freetype::Freetype"}
-        )
-
     def _create_cmake_module_variables(self, module_file: Path):
         content = textwrap.dedent(
             f"""
@@ -191,31 +216,6 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _module_target_rel_path(self):
         return os.path.join("lib", "cmake", f"recipe-official-{self.name}-targets.cmake")
-
-    def package_info(self):
-        # Use config mode with the canonical "Freetype" name. The CMakeDeps generator
-        # does not emit Find modules, so a split "both"/module setup would let consumers'
-        # find_package(Freetype) fall through to CMake's builtin FindFreetype, which links
-        # only freetype itself and drops freetype's private static deps (brotli, bzip2) —
-        # causing unresolved BrotliDecoderDecompress / BZ2_* symbols downstream.
-        self.info.set_property("cmake_find_mode", "config")
-        self.info.set_property("cmake_file_name", "Freetype")
-        self.info.set_property("cmake_target_name", "Freetype::Freetype")
-        self.info.set_property("cmake_target_aliases", ["freetype"])  # other possible target name in upstream config file
-        self.info.set_property("cmake_build_modules", [self._module_vars_rel_path])
-        self.info.set_property("pkg_config_name", "freetype2")
-        self.info.libs = collect_libs(self)
-        if self.settings.os in ["Linux", "FreeBSD"]:
-            self.info.system_libs.append("m")
-        self.info.includedirs.append(os.path.join("include", "freetype2"))
-
-        libtool_version = load(self, self._libtool_version_txt).strip()
-        self.conf_info.define("user.freetype:libtool_version", libtool_version)
-        self.info.set_property("system_package_version", libtool_version)
-
-        self.info.set_property("component_version", libtool_version)
-        freetype_config = self.folders.package / "bin" / "freetype-config"
-        _chmod_plus_x(freetype_config)
 
 def _chmod_plus_x(filename: Path):
     if os.name == "posix" and (os.stat(filename).st_mode & 0o111) != 0o111:

@@ -68,6 +68,21 @@ class Recipe(RecipeBase[_Options]):
         # Create a json helper file in order to populate package_info() at consume time
         self._create_components_file(self._components_helper_filepath, components)
 
+    def package_info(self):
+        self.info.set_property("cmake_file_name", "absl")
+
+        components_json_file = load(self, self._components_helper_filepath)
+        abseil_components = json.loads(components_json_file)
+        for pkgconfig_name, values in abseil_components.items():
+            cmake_target = values["cmake_target"]
+            self.info.components[pkgconfig_name].set_property("cmake_target_name", f"absl::{cmake_target}")
+            self.info.components[pkgconfig_name].set_property("pkg_config_name", pkgconfig_name)
+            self.info.components[pkgconfig_name].libs = values.get("libs", [])
+            self.info.components[pkgconfig_name].defines = values.get("defines", [])
+            self.info.components[pkgconfig_name].system_libs = values.get("system_libs", [])
+            self.info.components[pkgconfig_name].frameworks = values.get("frameworks", [])
+            self.info.components[pkgconfig_name].requires = values.get("requires", [])
+
     def _load_components_from_cmake_target_file(self, absl_target_file_path: Path):
         components: dict[str, dict[str, Any]] = {}
 
@@ -133,18 +148,3 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _components_helper_filepath(self):
         return self.folders.package / "lib" / "components.json"
-
-    def package_info(self):
-        self.info.set_property("cmake_file_name", "absl")
-
-        components_json_file = load(self, self._components_helper_filepath)
-        abseil_components = json.loads(components_json_file)
-        for pkgconfig_name, values in abseil_components.items():
-            cmake_target = values["cmake_target"]
-            self.info.components[pkgconfig_name].set_property("cmake_target_name", f"absl::{cmake_target}")
-            self.info.components[pkgconfig_name].set_property("pkg_config_name", pkgconfig_name)
-            self.info.components[pkgconfig_name].libs = values.get("libs", [])
-            self.info.components[pkgconfig_name].defines = values.get("defines", [])
-            self.info.components[pkgconfig_name].system_libs = values.get("system_libs", [])
-            self.info.components[pkgconfig_name].frameworks = values.get("frameworks", [])
-            self.info.components[pkgconfig_name].requires = values.get("requires", [])

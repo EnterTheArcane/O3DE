@@ -54,21 +54,6 @@ class Recipe(RecipeBase):
             tc.extra_ldflags.append("-headerpad_max_install_names")
         tc.generate()
 
-    def _patch_sources(self):
-        # libtool's generated configure only enables -undefined dynamic_lookup for macOS 10.x.
-        # On newer Darwin (11+) the version case falls through and leaves the allow-undefined flag empty, breaking the link.
-        # Turn the "10.*" arm into a catch-all "*".
-        replace_in_file(self, self.folders.source / "configure", "10.*)", "*)")
-        # Refresh config.guess/config.sub so newer hosts (e.g. Apple Silicon) are recognised.
-        for gnu_config in (
-            self.conf.get("user.gnu-config:config_guess", check_type=str),
-            self.conf.get("user.gnu-config:config_sub", check_type=str),
-        ):
-            if gnu_config:
-                copy(self, os.path.basename(gnu_config),
-                     src=os.path.dirname(gnu_config),
-                     dst=self.folders.source / "build-aux")
-
     def build(self):
         self._patch_sources()
         autotools = Autotools(self)
@@ -91,3 +76,18 @@ class Recipe(RecipeBase):
         self.info.set_property("cmake_find_mode", "none")
         lex_path = (self.folders.package / "bin" / "flex").as_posix()
         self.buildenv_info.define("LEX", lex_path)
+
+    def _patch_sources(self):
+        # libtool's generated configure only enables -undefined dynamic_lookup for macOS 10.x.
+        # On newer Darwin (11+) the version case falls through and leaves the allow-undefined flag empty, breaking the link.
+        # Turn the "10.*" arm into a catch-all "*".
+        replace_in_file(self, self.folders.source / "configure", "10.*)", "*)")
+        # Refresh config.guess/config.sub so newer hosts (e.g. Apple Silicon) are recognised.
+        for gnu_config in (
+            self.conf.get("user.gnu-config:config_guess", check_type=str),
+            self.conf.get("user.gnu-config:config_sub", check_type=str),
+        ):
+            if gnu_config:
+                copy(self, os.path.basename(gnu_config),
+                     src=os.path.dirname(gnu_config),
+                     dst=self.folders.source / "build-aux")
