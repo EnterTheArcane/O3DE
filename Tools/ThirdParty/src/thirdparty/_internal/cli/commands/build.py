@@ -86,7 +86,7 @@ def build(args: argparse.Namespace) -> None:
         print(f"[thirdparty] error: no 'recipes/' directory in {cwd}", file=sys.stderr)
         sys.exit(1)
 
-    all_names = sorted(d.name for d in recipes_root.iterdir() if d.is_dir())
+    all_names = sorted(d.name for d in recipes_root.iterdir() if d.is_dir() and (d / "recipe.py").exists())
     all_names_set = set(all_names)
     names: list[str] = []
     is_multi = len(patterns) > 1 or any(c in pat for pat in patterns for c in ('*', '?', '['))
