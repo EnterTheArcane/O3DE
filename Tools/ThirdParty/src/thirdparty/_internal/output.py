@@ -366,9 +366,9 @@ class Output:
 
         Warnings signal abnormal situations that should be
         reviewed but don't necessarily cause an immediate halt in operations.
-        Notice that if the tag matches the pattern in the ``core:warnings_as_errors`` configuration,
-        and is not skipped, this will be upgraded to an error, and raise an exception
-        when the output is printed, so that the error does not pass unnoticed."""
+        Notice that if the tag matches the warning-as-error patterns, this will be upgraded
+        to an error and raise an exception when the output is printed, so that the error
+        does not pass unnoticed."""
         _treat_as_error = self._warn_tag_matches(warn_tag, self._warnings_as_errors)
         if (self._output_level <= LEVEL_WARNING or (_treat_as_error and self._output_level <= LEVEL_ERROR)):
             if self._warn_tag_matches(warn_tag, self._silent_warn_tags):
@@ -388,9 +388,8 @@ class Output:
 
         Typically, this represents a failure in the normal flow of execution,
         such as a service crash or a critical exception.
-        Notice that if the user has set the ``core:warnings_as_errors`` configuration,
-        this will raise an exception when the output is printed,
-        so that the error does not pass unnoticed."""
+        Notice that if warning-as-error patterns are set, this will raise an exception when
+        the output is printed, so that the error does not pass unnoticed."""
         if self._warnings_as_errors and error_type != "exception":
             raise RecipeException(msg)
         if self._output_level <= LEVEL_ERROR:

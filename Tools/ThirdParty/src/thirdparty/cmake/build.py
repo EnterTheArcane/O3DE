@@ -21,7 +21,7 @@ def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]
     if njobs and ("Makefiles" in generator or "Ninja" in generator) and "NMake" not in generator:
         args.append(f"-j{njobs}")
 
-    maxcpucount = recipe.conf.get("tools.microsoft.msbuild:max_cpu_count", check_type=int)
+    maxcpucount = recipe.conf.get("tools.msbuild:max_cpu_count", check_type=int)
     if maxcpucount is not None and "Visual Studio" in generator:
         args.append(f"/m:{maxcpucount}" if maxcpucount > 0 else "/m")
 

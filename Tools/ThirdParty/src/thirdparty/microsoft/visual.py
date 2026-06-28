@@ -117,7 +117,7 @@ class VCVars:
         if compiler not in ("msvc", "clang"):
             return
 
-        vs_install_path = recipe.conf.get("tools.microsoft.msbuild:installation_path")
+        vs_install_path = recipe.conf.get("tools.msbuild:installation_path")
         if vs_install_path == "":  # Empty string means "disable"
             return
 
@@ -186,7 +186,7 @@ def _create_deactivate_vcvars_file(recipe: RecipeBase, filename: str):
 def vs_ide_version(recipe: RecipeBase) -> str:
     """
     Gets the VS IDE version as string. It'll use the ``compiler.version`` (if exists) and/or the
-    ``tools.microsoft.msbuild:vs_version`` if ``compiler`` is ``msvc``.
+    ``tools.msbuild:vs_version`` if ``compiler`` is ``msvc``.
 
     :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
     :return: ``str`` Visual IDE version number.
@@ -194,7 +194,7 @@ def vs_ide_version(recipe: RecipeBase) -> str:
     compiler = recipe.settings.get_safe("compiler")
     compiler_version = recipe.settings.get_safe("compiler.version")
     if compiler == "msvc":
-        toolset_override = recipe.conf.get("tools.microsoft.msbuild:vs_version", check_type=str)
+        toolset_override = recipe.conf.get("tools.msbuild:vs_version", check_type=str)
         if toolset_override:
             visual_version = toolset_override
         else:
@@ -267,7 +267,7 @@ def _vcvars_path(version: str, vs_install_path: str | None) -> str:
         raise RecipeException(
             f"VS non-existing installation: Visual Studio {version}. "
             "If using a non-default toolset from a VS IDE version consider "
-            "specifying it with the 'tools.microsoft.msbuild:vs_version' conf")
+            "specifying it with the 'tools.msbuild:vs_version' conf")
 
     if int(version) > 14:
         vcpath = os.path.join(vs_path, "VC/Auxiliary/Build/vcvarsall.bat")

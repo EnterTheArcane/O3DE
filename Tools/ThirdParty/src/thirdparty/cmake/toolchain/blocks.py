@@ -687,7 +687,7 @@ class FindFiles(Block):
         # TODO: Change this for parameterized output location of CMakeDeps
         find_package_prefer_config = "ON"  # assume ON by default if not specified in conf
         prefer_config = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:find_package_prefer_config", check_type=bool)
+            "tools.cmake.toolchain:find_package_prefer_config", check_type=bool)
         if prefer_config is False:
             find_package_prefer_config = "OFF"
 
@@ -763,7 +763,7 @@ class PkgConfigBlock(Block):
 class UserToolchain(Block):
     template = textwrap.dedent(
         """
-        # Include one or more CMake user toolchain from tools.cmake.cmaketoolchain:user_toolchain
+        # Include one or more CMake user toolchain from tools.cmake.toolchain:user_toolchain
 
         {% for user_toolchain in paths %}
         message(STATUS "Recipe toolchain: Including user_toolchain: {{user_toolchain}}")
@@ -774,7 +774,7 @@ class UserToolchain(Block):
     def context(self) -> dict[str, Any] | None:
         # This is global [conf] injection of extra toolchain files
         user_toolchain = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:user_toolchain", default=[], check_type=list)
+            "tools.cmake.toolchain:user_toolchain", default=[], check_type=list)
         paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in user_toolchain]
         paths = [p.replace("\\", "/") for p in paths]
         return {"paths": paths}
@@ -1055,11 +1055,11 @@ class GenericSystemBlock(Block):
                     raise RecipeException(
                         "CMakeToolchain with compiler=clang and a CMake "
                         "'Visual Studio' generator requires VS16, VS17 or VS18")
-        toolset_arch = recipe.conf.get("tools.cmake.cmaketoolchain:toolset_arch")
+        toolset_arch = recipe.conf.get("tools.cmake.toolchain:toolset_arch")
         if toolset_arch is not None:
             toolset_arch = f"host={toolset_arch}"
             toolset = toolset_arch if toolset is None else f"{toolset},{toolset_arch}"
-        toolset_cuda = recipe.conf.get("tools.cmake.cmaketoolchain:toolset_cuda")
+        toolset_cuda = recipe.conf.get("tools.cmake.toolchain:toolset_cuda")
         if toolset_cuda is not None:
             toolset_cuda = relativize_path(toolset_cuda, recipe, "${CMAKE_CURRENT_LIST_DIR}")
             toolset_cuda = f"cuda={toolset_cuda}"
@@ -1129,9 +1129,9 @@ class GenericSystemBlock(Block):
         return version_mapping.get(os_name, {}).get(str(os_version))
 
     def _get_cross_build(self):
-        system_name = self._recipe.conf.get("tools.cmake.cmaketoolchain:system_name")
-        system_version = self._recipe.conf.get("tools.cmake.cmaketoolchain:system_version")
-        system_processor = self._recipe.conf.get("tools.cmake.cmaketoolchain:system_processor")
+        system_name = self._recipe.conf.get("tools.cmake.toolchain:system_name")
+        system_version = self._recipe.conf.get("tools.cmake.toolchain:system_version")
+        system_processor = self._recipe.conf.get("tools.cmake.toolchain:system_processor")
 
         # try to detect automatically
         if not is_universal_arch(
@@ -1226,7 +1226,7 @@ class GenericSystemBlock(Block):
 class ExtraVariablesBlock(Block):
     template = textwrap.dedent(
         """
-        # Definition of extra CMake variables from tools.cmake.cmaketoolchain:extra_variables
+        # Definition of extra CMake variables from tools.cmake.toolchain:extra_variables
 
         {% if extra_variables %}
         {% for key, value in extra_variables.items() %}
@@ -1237,9 +1237,9 @@ class ExtraVariablesBlock(Block):
 
     def context(self) -> dict[str, Any] | None:
         from thirdparty.cmake.utils import parse_extra_variable
-        # Reading configuration from "tools.cmake.cmaketoolchain:extra_variables"
+        # Reading configuration from "tools.cmake.toolchain:extra_variables"
         extra_variables = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:extra_variables", default={}, check_type=dict)
+            "tools.cmake.toolchain:extra_variables", default={}, check_type=dict)
         compilation_verbosity = self._recipe.conf.get(
             "tools.compilation:verbosity", choices=("quiet", "verbose"))
         build_verbosity = self._recipe.conf.get(
@@ -1262,7 +1262,7 @@ class ExtraVariablesBlock(Block):
         parsed_extra_variables = {}
         for key, value in extra_variables.items():
             parsed_extra_variables[key] = parse_extra_variable(
-                "tools.cmake.cmaketoolchain:extra_variables", key, value)
+                "tools.cmake.toolchain:extra_variables", key, value)
         return {"extra_variables": parsed_extra_variables}
 
 
@@ -1436,13 +1436,13 @@ class ToolchainBlocks:
 
     def process_blocks(self):
         blocks = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:enabled_blocks", check_type=list)
+            "tools.cmake.toolchain:enabled_blocks", check_type=list)
         if blocks is not None:
             try:
                 new_blocks = {b: self._blocks[b] for b in blocks}
             except KeyError as e:
                 raise RecipeException(
-                    f"Block {e} defined in tools.cmake.cmaketoolchain"
+                    f"Block {e} defined in tools.cmake.toolchain"
                     f":enabled_blocks doesn't exist in {list(self._blocks.keys())}")
             self._blocks = new_blocks
         result = []

@@ -132,7 +132,7 @@ class MSBuildToolchain:
         runtime_library = self.runtime_library
         toolset = self.toolset or ""
         conf_options = self._recipe.conf.get(
-            "tools.microsoft.msbuildtoolchain:compile_options", default={}, check_type=dict)
+            "tools.msbuildtoolchain:compile_options", default={}, check_type=dict)
         self.compile_options.update(conf_options)
         parallel = ""
         njobs = build_jobs(self._recipe)
@@ -235,7 +235,7 @@ def _get_toolset_props(recipe: RecipeBase):
     vs_version = vs_ide_version(recipe)
     if int(vs_version) <= 14:
         return
-    vs_install_path = recipe.conf.get("tools.microsoft.msbuild:installation_path")
+    vs_install_path = recipe.conf.get("tools.msbuild:installation_path")
     vs_path = vs_install_path or vs_installation_path(vs_version)
     if not vs_path or not os.path.isdir(vs_path):
         return

@@ -213,7 +213,7 @@ class CMakeToolchain:
         """
           This method will save the generated files to the recipe.folders.generators
         """
-        toolchain_file = self._recipe.conf.get("tools.cmake.cmaketoolchain:toolchain_file")
+        toolchain_file = self._recipe.conf.get("tools.cmake.toolchain:toolchain_file")
         if toolchain_file is None:  # The main toolchain file generated only if user dont define
             toolchain_file = self.filename
             save(os.path.join(self._recipe.folders.generators, toolchain_file), self.content)
@@ -239,7 +239,7 @@ class CMakeToolchain:
         buildenv, runenv, cmake_executable = None, None, None
 
         if self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:presets_environment", default="", check_type=str, choices=("disabled", "")) != "disabled":
+            "tools.cmake.toolchain:presets_environment", default="", check_type=str, choices=("disabled", "")) != "disabled":
             build_env = self.presets_build_environment.vars(self._recipe) if self.presets_build_environment else VirtualBuildEnv(self._recipe).vars()
             run_env = self.presets_run_environment.vars(self._recipe) if self.presets_run_environment else VirtualRunEnv(self._recipe).vars()
 
@@ -252,7 +252,7 @@ class CMakeToolchain:
         user_presets = self.user_presets_path
         if self._recipe.is_consumer:
             user_presets = self._recipe.conf.get(
-                "tools.cmake.cmaketoolchain:user_presets", default=self.user_presets_path)
+                "tools.cmake.toolchain:user_presets", default=self.user_presets_path)
 
         write_cmake_presets(
             self._recipe, toolchain_file, self.generator, cache_variables, user_presets, self.presets_prefix, buildenv, runenv, cmake_executable, self.absolute_paths)
@@ -262,7 +262,7 @@ class CMakeToolchain:
         recipe = self._recipe
 
         # Downstream consumer always higher priority
-        generator_conf = recipe.conf.get("tools.cmake.cmaketoolchain:generator")
+        generator_conf = recipe.conf.get("tools.cmake.toolchain:generator")
         if generator_conf:
             return generator_conf
 

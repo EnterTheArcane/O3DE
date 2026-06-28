@@ -138,7 +138,6 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     options: TOptions
     default_options: dict[str, Any] | None = None
-    default_build_options: dict[str, Any] | None = None
 
     win_bash: bool | None = None
     win_bash_run: bool | None = None  # For run scope

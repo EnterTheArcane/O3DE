@@ -73,7 +73,7 @@ class ConfigTemplate2:
         }
 
         conf_extra_variables = self._recipe.conf.get(
-            "tools.cmake.cmaketoolchain:extra_variables", default={}, check_type=dict)
+            "tools.cmake.toolchain:extra_variables", default={}, check_type=dict)
         dep_extra_variables = self._cmakedeps.get_property(
             "cmake_extra_variables", self._recipe, check_type=dict) or {}
         # The configuration variables have precedence over the dependency ones

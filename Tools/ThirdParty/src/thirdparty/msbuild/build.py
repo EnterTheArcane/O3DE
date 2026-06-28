@@ -63,7 +63,7 @@ class MSBuild:
             cmd += f" {verbosity}"
 
         maxcpucount = self._recipe.conf.get(
-            "tools.microsoft.msbuild:max_cpu_count", check_type=int)
+            "tools.msbuild:max_cpu_count", check_type=int)
         if maxcpucount is not None:
             cmd += f' -m:"{maxcpucount}"' if maxcpucount > 0 else " -m"
 

@@ -10,118 +10,84 @@ from thirdparty._internal.model.settings import SettingsItem
 from thirdparty.errors import RecipeException
 
 BUILT_IN_CONFS = {
-    "core:non_interactive": "Disable interactive user input, raises error if input necessary",
-    "core:warnings_as_errors": "Treat warnings matching any of the patterns in this list as errors and then raise an exception. Current warning tags are 'network', 'deprecated'",
-    "core:skip_warnings": "Do not show warnings matching any of the patterns in this list. Current warning tags are 'network', 'deprecated', 'experimental'",
-    "core:default_profile": "Defines the default host profile ('default' by default)",
-    "core:default_build_profile": "Defines the default build profile ('default' by default)",
-    "core:allow_uppercase_pkg_names": "Temporarily (will be removed in 2.X) allow uppercase names",
-    "core.version_ranges:resolve_prereleases": "Whether version ranges can resolve to pre-releases or not",
     "core.download:download_cache": "Define path to a source file download cache",
-    "core.cache:storage_path": "Absolute path where the packages and database are stored",  # Sources backup
-    "core.sources:download_cache": "Folder to store the sources backup",
-    "core.sources:download_urls": "List of URLs to download backup sources from",
-    "core.sources:upload_url": "Remote URL to upload backup sources to",
-    "core.sources:exclude_urls": "URLs which will not be backed up",
-    "core.sources.patch:extra_path": "Extra path to search for patch files for recipe create",  # Package ID
-    "core.package_id:default_unknown_mode": "By default, 'semver_mode'",
-    "core.package_id:default_non_embed_mode": "By default, 'minor_mode'",
-    "core.package_id:default_embed_mode": "By default, 'full_mode'",
-    "core.package_id:default_python_mode": "By default, 'minor_mode'",
-    "core.package_id:default_build_mode": "By default, 'None'",
-    "core.package_id:config_mode": "How the 'config_version' affects binaries. By default 'None'",  # General HTTP(python-requests) configuration
+    "core.net.http:cacert_path": "Path containing a custom Cacert file",
+    "core.net.http:clean_system_proxy": "If defined, the proxies system env-vars will be discarded",
+    "core.net.http:client_cert": "Path or tuple of files containing a client cert (and key)",
     "core.net.http:max_retries": "Maximum number of connection retries (requests library)",
-    "core.net.http:timeout": "Number of seconds without response to timeout (requests library)",
     "core.net.http:no_proxy_match": "List of urls to skip from proxies configuration",
     "core.net.http:proxies": "Dictionary containing the proxy configuration",
-    "core.net.http:cacert_path": "Path containing a custom Cacert file",
-    "core.net.http:client_cert": "Path or tuple of files containing a client cert (and key)",
-    "core.net.http:clean_system_proxy": "If defined, the proxies system env-vars will be discarded",
-    "core.gzip:compresslevel": "The Gzip compression level for Recipe artifacts (default=9)",
-    "core:compresslevel": "The compression level for Recipe artifacts (default zstd=3, gz=9)",  # Excluded from revision_mode = "scm" dirty and Git().is_dirty() checks
+    "core.net.http:timeout": "Number of seconds without response to timeout (requests library)",
     "core.scm:excluded": "List of excluded patterns for builtin git dirty checks",
     "core.scm:local_url": "By default allows to store local folders as remote url, but not upload them. Use 'allow' for allowing upload and 'block' to completely forbid it",  # Tools
-    "tools.android:ndk_path": "Argument for the CMAKE_ANDROID_NDK",
+    "core.sources:download_cache": "Folder to store the sources backup",
+    "core.sources:download_urls": "List of URLs to download backup sources from",
     "tools.android:cmake_legacy_toolchain": "Define to explicitly pass ANDROID_USE_LEGACY_TOOLCHAIN_FILE in CMake toolchain",
-    "tools.build:skip_test": "Do not execute CMake.test() and Meson.test() when enabled",
-    "tools.build:download_source": "Force download of sources for every package",
-    "tools.build:jobs": "Default compile jobs number -jX Ninja, Make, /MP VS (default: max CPUs)",
-    "tools.build:sysroot": "Pass the --sysroot=<tools.build:sysroot> flag if available. (None by default)",
-    "tools.build:add_rpath_link": "Add -Wl,-rpath-link flags pointing to all lib directories for host dependencies (CMake and Meson toolchains)",
-    "tools.build.cross_building:can_run": "(boolean) Indicates whether is possible to run a non-native app on the same architecture. It's used by 'can_run' tool",
-    "tools.build.cross_building:cross_build": "(boolean) Decides whether cross-building or not regardless of arch/OS settings. Used by 'cross_building' tool",
-    "tools.build:verbosity": "Verbosity of build systems if set. Possible values are 'quiet' and 'verbose'",
-    "tools.compilation:verbosity": "Verbosity of compilation tools if set. Possible values are 'quiet' and 'verbose'",
-    "tools.cmake.cmaketoolchain:generator": "User defined CMake generator to use instead of default",
-    "tools.cmake.cmaketoolchain:find_package_prefer_config": "Argument for the CMAKE_FIND_PACKAGE_PREFER_CONFIG",
-    "tools.cmake.cmaketoolchain:toolchain_file": "Use other existing file rather than recipe_toolchain.cmake one",
-    "tools.cmake.cmaketoolchain:user_toolchain": "Inject existing user toolchains at the beginning of recipe_toolchain.cmake",
-    "tools.cmake.cmaketoolchain:system_name": "Define CMAKE_SYSTEM_NAME in CMakeToolchain",
-    "tools.cmake.cmaketoolchain:system_version": "Define CMAKE_SYSTEM_VERSION in CMakeToolchain",
-    "tools.cmake.cmaketoolchain:system_processor": "Define CMAKE_SYSTEM_PROCESSOR in CMakeToolchain",
-    "tools.cmake.cmaketoolchain:toolset_arch": "Toolset architecture to be used as part of CMAKE_GENERATOR_TOOLSET in CMakeToolchain",
-    "tools.cmake.cmaketoolchain:toolset_cuda": "(Experimental) Path to a CUDA toolset to use, or version if installed at the system level",
-    "tools.cmake.cmaketoolchain:presets_environment": "String to define wether to add or not the environment section to the CMake presets. Empty by default, will generate the environment section in CMakePresets. Can take values: 'disabled'.",
-    "tools.cmake.cmaketoolchain:extra_variables": "Dictionary with variables to be injected in CMakeToolchain (potential override of CMakeToolchain defined variables)",
-    "tools.cmake.cmaketoolchain:enabled_blocks": "Select the specific blocks to use in the recipe_toolchain.cmake",
-    "tools.cmake.cmaketoolchain:user_presets": "(Experimental) Select a different name instead of CMakeUserPresets.json, empty to disable",
-    "tools.cmake:cmake_program": "Path to CMake executable",
-    "tools.cmake:ctest_args": "Add extra arguments to CMake.ctest() runner command line",
-    "tools.cmake:configure_args": "Add extra arguments to CMake.configure() command line",
-    "tools.deployer:symlinks": "Set to False to disable deployers copying symlinks",
-    "tools.files.download:retry": "(int, default: 2) Number of retries in case of failure when downloading",
-    "tools.files.download:retry_wait": "(int, default: 5s) Seconds to wait between download attempts",
-    "tools.files.download:verify": "If set, overrides recipes on whether to perform SSL verification for their downloaded files. Only recommended to be set while testing",
-    "tools.files.unzip:filter": "Define tar extraction filter: 'fully_trusted', 'tar', 'data'",
-    "tools.graph:vendor": "(Experimental) If 'build', enables the computation of dependencies of vendoring packages to build them",
-    "tools.graph:skip_binaries": "Allow the graph to skip binaries not needed in the current configuration (True by default)",
-    "tools.graph:skip_build": "(Experimental) Do not expand build/requires_tool",
-    "tools.gnu:make_program": "Indicate path to make program",
-    "tools.gnu:disable_flags": "Disable the automatic addition of flags to some build systems. List of possible values: ['arch', 'arch_link', 'libcxx', 'build_type', 'build_type_link', 'threads','cppstd', 'cstd']",
-    "tools.gnu:define_libcxx11_abi": "Force definition of GLIBCXX_USE_CXX11_ABI=1 for libstdc++11",
-    "tools.gnu:pkg_config": "Path to pkg-config executable used by PkgConfig build helper",
-    "tools.gnu:build_triplet": "Custom build triplet to pass to Autotools scripts",
-    "tools.gnu:host_triplet": "Custom host triplet to pass to Autotools scripts",
-    "tools.gnu:extra_configure_args": "List of extra arguments to pass to configure when using AutotoolsToolchain",
-    "tools.google.bazel:configs": "List of Bazel configurations to be used as 'bazel build --config=config1 ...'",
-    "tools.google.bazel:bazelrc_path": "List of paths to bazelrc files to be used as 'bazel --bazelrc=rcpath1 ... build'",
-    "tools.meson.mesontoolchain:backend": "Any Meson backend: ninja, vs, vs2010, vs2012, vs2013, vs2015, vs2017, vs2019, xcode",
-    "tools.meson.mesontoolchain:extra_machine_files": "List of paths for any additional native/cross file references to be appended to the existing Recipe ones",
-    "tools.microsoft:winsdk_version": "Use this winsdk_version in vcvars",
-    "tools.microsoft:msvc_update": "Force the specific update irrespective of compiler.update (CMakeToolchain and VCVars)",
-    "tools.microsoft.msbuild:vs_version": "Defines the IDE version (15, 16, 17) when using the msvc compiler. Necessary if compiler.version specifies a toolset that is not the IDE default",
-    "tools.microsoft.msbuild:max_cpu_count": "Argument for the /m when running msvc to build parallel projects",
-    "tools.microsoft.msbuild:installation_path": "VS install path, to avoid auto-detect via vswhere, like C:/Program Files (x86)/Microsoft Visual Studio/2019/Community. Use empty string to disable",
-    "tools.microsoft.msbuilddeps:exclude_code_analysis": "Suppress MSBuild code analysis for patterns",
-    "tools.microsoft.msbuildtoolchain:compile_options": "Dictionary with MSBuild compiler options",
-    "tools.microsoft.bash:subsystem": "The subsystem to be used when recipe.win_bash==True. Possible values: msys2, msys, cygwin, wsl, sfu",
-    "tools.microsoft.bash:path": "The path to the shell to run when recipe.win_bash==True",
-    "tools.microsoft.bash:active": "Set True only when Recipe runs in a POSIX Bash (MSYS2/Cygwin) where Python's subprocess (shell=True) uses a POSIX-compatible shell (e.g., /bin/sh). Do not set when using Recipe from cmd/PowerShell or with native Windows Python ('win32').",
-    "tools.system.package_manager:tool": "Default package manager tool: 'apk', 'apt-get', 'yum', 'dnf', 'brew', 'pacman', 'choco', 'zypper', 'pkg' or 'pkgutil'",
-    "tools.system.package_manager:mode": "Mode for package_manager tools: 'check', 'report', 'report-installed' or 'install'",
-    "tools.system.package_manager:sudo": "Use 'sudo' when invoking the package manager tools in Linux (False by default)",
-    "tools.system.package_manager:sudo_askpass": "Use the '-A' argument if using sudo in Linux to invoke the system package manager (False by default)",
-    "tools.system.pyenv:python_interpreter": "(Experimental) Path to the Python interpreter to be used to create the virtualenv",
-    "tools.apple:sdk_path": "Path to the SDK to be used",
-    "tools.apple:enable_bitcode": "(boolean) Enable/Disable Bitcode Apple Clang flags",
+    "tools.android:ndk_path": "Argument for the CMAKE_ANDROID_NDK",
     "tools.apple:enable_arc": "(boolean) Enable/Disable ARC Apple Clang flags",
+    "tools.apple:enable_bitcode": "(boolean) Enable/Disable Bitcode Apple Clang flags",
     "tools.apple:enable_visibility": "(boolean) Enable/Disable Visibility Apple Clang flags",
-    "tools.env.virtualenv:powershell": "If specified, it generates PowerShell launchers (.ps1). Use this configuration setting the PowerShell executable you want to use (e.g., 'powershell.exe' or 'pwsh')",
-    "tools.env:dotenv": "(Experimental) Generate dotenv environment files",
-    "tools.env:deactivation_mode": "(Experimental) If 'function', generate a deactivate function instead of a script to unset the environment variables",  # Compilers/Flags configurations
+    "tools.apple:sdk_path": "Path to the SDK to be used",
+    "tools.build:add_rpath_link": "Add -Wl,-rpath-link flags pointing to all lib directories for host dependencies (CMake and Meson toolchains)",
+    "tools.build:cflags": "List of extra C flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:compiler_executables": "Defines a Python dict-like with the compilers path to be used. Allowed keys {'c', 'cpp', 'cuda', 'objc', 'objcxx', 'rc', 'fortran', 'asm', 'hip', 'ispc'}",
     "tools.build:cxxflags": "List of extra CXX flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:cflags": "List of extra C flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:defines": "List of extra definition flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:sharedlinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
     "tools.build:exelinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:rcflags": "List of extra RC (resource compiler) flags used by different toolchains like CMakeToolchain, MSBuildToolchain and MesonToolchain",
+    "tools.build:install_strip": "(boolean or list) True/False to strip on install for every CMake, Meson and Autotools integration, or a list of 'cmake', 'meson', 'autotools' to strip only for those.",
+    "tools.build:jobs": "Default compile jobs number -jX Ninja, Make, /MP VS (default: max CPUs)",
     "tools.build:linker_scripts": "List of linker script files to pass to the linker used by different toolchains like CMakeToolchain, AutotoolsToolchain, and MesonToolchain",  # Toolchain installation
-    "tools.build:install_strip": "(boolean or list) True/False to strip on install for every CMake, Meson and Autotools integration, or a list of 'cmake', 'meson', 'autotools' to strip only for those.",  # Package ID composition
-    "tools.info.package_id:confs": "List of existing configuration to be part of the package ID",
+    "tools.build:rcflags": "List of extra RC (resource compiler) flags used by different toolchains like CMakeToolchain, MSBuildToolchain and MesonToolchain",
+    "tools.build:sharedlinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
+    "tools.build:skip_test": "Do not execute CMake.test() and Meson.test() when enabled",
+    "tools.build:sysroot": "Pass the --sysroot=<tools.build:sysroot> flag if available. (None by default)",
+    "tools.build:verbosity": "Verbosity of build systems if set. Possible values are 'quiet' and 'verbose'",
+    "tools.build.cross_building:can_run": "(boolean) Indicates whether is possible to run a non-native app on the same architecture. It's used by 'can_run' tool",
+    "tools.build.cross_building:cross_build": "(boolean) Decides whether cross-building or not regardless of arch/OS settings. Used by 'cross_building' tool",
+    "tools.cmake:cmake_program": "Path to CMake executable",
+    "tools.cmake:configure_args": "Add extra arguments to CMake.configure() command line",
+    "tools.cmake:ctest_args": "Add extra arguments to CMake.ctest() runner command line",
+    "tools.cmake.toolchain:enabled_blocks": "Select the specific blocks to use in the recipe_toolchain.cmake",
+    "tools.cmake.toolchain:extra_variables": "Dictionary with variables to be injected in CMakeToolchain (potential override of CMakeToolchain defined variables)",
+    "tools.cmake.toolchain:find_package_prefer_config": "Argument for the CMAKE_FIND_PACKAGE_PREFER_CONFIG",
+    "tools.cmake.toolchain:generator": "User defined CMake generator to use instead of default",
+    "tools.cmake.toolchain:presets_environment": "String to define wether to add or not the environment section to the CMake presets. Empty by default, will generate the environment section in CMakePresets. Can take values: 'disabled'.",
+    "tools.cmake.toolchain:system_name": "Define CMAKE_SYSTEM_NAME in CMakeToolchain",
+    "tools.cmake.toolchain:system_processor": "Define CMAKE_SYSTEM_PROCESSOR in CMakeToolchain",
+    "tools.cmake.toolchain:system_version": "Define CMAKE_SYSTEM_VERSION in CMakeToolchain",
+    "tools.cmake.toolchain:toolchain_file": "Use other existing file rather than recipe_toolchain.cmake one",
+    "tools.cmake.toolchain:toolset_arch": "Toolset architecture to be used as part of CMAKE_GENERATOR_TOOLSET in CMakeToolchain",
+    "tools.cmake.toolchain:toolset_cuda": "(Experimental) Path to a CUDA toolset to use, or version if installed at the system level",
+    "tools.cmake.toolchain:user_presets": "(Experimental) Select a different name instead of CMakeUserPresets.json, empty to disable",
+    "tools.cmake.toolchain:user_toolchain": "Inject existing user toolchains at the beginning of recipe_toolchain.cmake",
+    "tools.compilation:verbosity": "Verbosity of compilation tools if set. Possible values are 'quiet' and 'verbose'",
+    "tools.env:deactivation_mode": "(Experimental) If 'function', generate a deactivate function instead of a script to unset the environment variables",  # Compilers/Flags configurations
+    "tools.env:dotenv": "(Experimental) Generate dotenv environment files",
+    "tools.env.virtualenv:powershell": "If specified, it generates PowerShell launchers (.ps1). Use this configuration setting the PowerShell executable you want to use (e.g., 'powershell.exe' or 'pwsh')",
+    "tools.files.download:retry_wait": "(int, default: 5s) Seconds to wait between download attempts",
+    "tools.files.download:retry": "(int, default: 2) Number of retries in case of failure when downloading",
+    "tools.files.download:verify": "If set, overrides recipes on whether to perform SSL verification for their downloaded files. Only recommended to be set while testing",
+    "tools.files.unzip:filter": "Define tar extraction filter: 'fully_trusted', 'tar', 'data'",
+    "tools.gnu:build_triplet": "Custom build triplet to pass to Autotools scripts",
+    "tools.gnu:define_libcxx11_abi": "Force definition of GLIBCXX_USE_CXX11_ABI=1 for libstdc++11",
+    "tools.gnu:disable_flags": "Disable the automatic addition of flags to some build systems. List of possible values: ['arch', 'arch_link', 'libcxx', 'build_type', 'build_type_link', 'threads','cppstd', 'cstd']",
+    "tools.gnu:extra_configure_args": "List of extra arguments to pass to configure when using AutotoolsToolchain",
+    "tools.gnu:host_triplet": "Custom host triplet to pass to Autotools scripts",
+    "tools.gnu:make_program": "Indicate path to make program",
+    "tools.gnu:pkg_config": "Path to pkg-config executable used by PkgConfig build helper",
+    "tools.meson.toolchain:backend": "Any Meson backend: ninja, vs, vs2010, vs2012, vs2013, vs2015, vs2017, vs2019, xcode",
+    "tools.meson.toolchain:extra_machine_files": "List of paths for any additional native/cross file references to be appended to the existing Recipe ones",
+    "tools.microsoft:msvc_update": "Force the specific update irrespective of compiler.update (CMakeToolchain and VCVars)",
+    "tools.microsoft:winsdk_version": "Use this winsdk_version in vcvars",
+    "tools.microsoft.bash:active": "Set True only when Recipe runs in a POSIX Bash (MSYS2/Cygwin) where Python's subprocess (shell=True) uses a POSIX-compatible shell (e.g., /bin/sh). Do not set when using Recipe from cmd/PowerShell or with native Windows Python ('win32').",
+    "tools.microsoft.bash:path": "The path to the shell to run when recipe.win_bash==True",
+    "tools.microsoft.bash:subsystem": "The subsystem to be used when recipe.win_bash==True. Possible values: msys2, msys, cygwin, wsl, sfu",
+    "tools.msbuild:installation_path": "VS install path, to avoid auto-detect via vswhere, like C:/Program Files (x86)/Microsoft Visual Studio/2019/Community. Use empty string to disable",
+    "tools.msbuild:max_cpu_count": "Argument for the /m when running msvc to build parallel projects",
+    "tools.msbuild:vs_version": "Defines the IDE version (15, 16, 17) when using the msvc compiler. Necessary if compiler.version specifies a toolset that is not the IDE default",
+    "tools.msbuilddeps:exclude_code_analysis": "Suppress MSBuild code analysis for patterns",
+    "tools.msbuildtoolchain:compile_options": "Dictionary with MSBuild compiler options",
 }
-
-BUILT_IN_CONFS = {key: value for key, value in sorted(BUILT_IN_CONFS.items())}
 
 _BUILT_IN_CONFS_TYPES = {
     "tools.microsoft:msvc_update": str,
@@ -501,41 +467,6 @@ class Conf:
             else:
                 existing.compose_conf_value(v)
         return self
-
-    def copy_package_id_info_conf(self) -> Conf:
-        """
-        Get a new `Conf()` object with all the configurations required by the consumer
-        to be included in the final `PackageIdInfo().package_id()` computation. For instance, let's
-        suppose that we have this Recipe `profile`:
-
-        ```
-        ...
-        [conf]
-        tools.info.package_id:confs=["tools.build:cxxflags", "tools.build:cflags"]
-        tools.build:cxxflags=["flag1xx"]
-        tools.build:cflags=["flag1"]
-        tools.build:defines=["DEF1"]
-        ...
-
-        Then, the resulting `Conf()` will have only these configuration lines:
-
-        tools.build:cxxflags=["flag1xx"]
-        tools.build:cflags=["flag1"]
-        ```
-
-        :return: a new `< Conf object >` with the configuration selected by `tools.info.package_id:confs`.
-        """
-        result = Conf()
-        # Reading the list of all the configurations selected by the user to use for the package_id
-        package_id_confs = self.get("tools.info.package_id:confs", default=[], check_type=list)
-        for conf_name in package_id_confs:
-            matching_confs = [c for c in self._values if re.match(conf_name, c)]
-            for name in matching_confs:
-                value = self.get(name)
-                # Pruning any empty values, those should not affect package ID
-                if value:
-                    result.define(name, value)
-        return result
 
     def set_relative_base_folder(self, folder: str):
         for v in self._values.values():
