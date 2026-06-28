@@ -571,7 +571,7 @@ def _build_recipe(
     recipe._recipe_dependencies = dep_graph
 
     # Propagate conf_info from tool dependencies into recipe.conf so that, e.g.,
-    # msys2's conf_info (bash:subsystem, bash:path) is visible when generate()/build() run.
+    # msys2's conf_info (bash:path) is visible when generate()/build() run.
     for _req, _dep_iface in dep_graph._data.items():
         if _req.build:
             _dep_conf_info = _dep_iface.conf_info

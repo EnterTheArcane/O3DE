@@ -103,7 +103,6 @@ class Recipe(RecipeBase[_Options]):
         self.buildenv_info.define_path("MSYS_ROOT", msys_root)
         self.buildenv_info.define_path("MSYS_BIN", msys_bin)
 
-        self.conf_info.define("tools.microsoft.bash:subsystem", "msys2")
         self.conf_info.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
 
     def compatibility(self):

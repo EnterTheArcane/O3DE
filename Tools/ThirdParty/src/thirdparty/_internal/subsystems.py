@@ -4,14 +4,12 @@ Potential scenarios:
 - Running from a Windows native "cmd"
   - Targeting Windows native (os.subsystem = None)
     - No need of bash (no conf at all)
-    - Need to build in bash (tools.microsoft.bash:subsystem=xxx,
-                             tools.microsoft.bash:path=<path>,
-                             recipe.win_bash)
+    - Need to build in bash (tools.microsoft.bash:path=<path>, recipe.win_bash)
   - Targeting Subsystem (os.subsystem = msys2/cygwin)
     - Always builds and runs in bash (tools.microsoft.bash:path)
 
-- Running from a subsytem terminal (tools.microsoft.bash:subsystem=xxx,
-                                    tools.microsoft.bash:path=None) NO ERROR mode for not specifying it? =CURRENT?
+- Running from a subsytem terminal (tools.microsoft.bash:active=True,
+                                    tools.microsoft.bash:path=None)
   - Targeting Windows native (os.subsystem = None)
   - Targeting Subsystem (os.subsystem = msys2/cygwin)
 
@@ -42,10 +40,7 @@ def command_env_wrapper(
         return command
 
     active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
-    subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
     if platform.system() == "Windows" and ((recipe.win_bash and scope == "build")):
-        if subsystem is None:
-            raise RecipeException("win_bash defined but no tools.microsoft.bash:subsystem")
         if active:
             wrapped_cmd = environment_wrap_command(recipe, envfiles, envfiles_folder, command)
         else:
@@ -59,9 +54,9 @@ def _windows_bash_wrapper(
     recipe: RecipeBase, command: str, env: list[str], envfiles_folder: str) -> str:
     from thirdparty.env import Environment
     from thirdparty.env.environment import environment_wrap_command
-    """ Will wrap a unix command inside a bash terminal It requires to have MSYS2, CYGWIN, or WSL"""
+    """Will wrap a unix command inside an MSYS2 bash terminal."""
 
-    subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
+    subsystem = MSYS2
     if not platform.system() == "Windows":
         raise RecipeException("Command only for Windows operating system")
 
@@ -137,20 +132,13 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
     if not str(the_os).startswith("Windows"):
         return None
 
-    subsystem = recipe.conf.get("tools.microsoft.bash:subsystem")
-    if not subsystem:
-        if recipe.win_bash:
-            raise RecipeException(
-                "win_bash=True but tools.microsoft.bash:subsystem "
-                "configuration not defined")
-        return WINDOWS
     active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
     if active:
-        return subsystem
+        return MSYS2
 
-    if scope.startswith("build") or scope.startswith("run"): 
+    if scope.startswith("build") or scope.startswith("run"):
         if recipe.win_bash:
-            return subsystem
+            return MSYS2
 
     return WINDOWS
 

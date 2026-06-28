@@ -43,7 +43,7 @@ class Recipe(RecipeBase[_Options]):
             if (
                     self.settings.os == "Windows"
                     and not self.conf.get("tools.microsoft.bash:path")
-                    and not self.conf.get("tools.microsoft.bash:subsystem")
+                    and not self.conf.get("tools.microsoft.bash:active", default=False, check_type=bool)
             ):
                 self.requires_tool("msys2")
 

@@ -120,7 +120,7 @@ class CMakeToolchain:
 
     def __init__(self, recipe: RecipeBase, generator: str | None = None):
         self._recipe = recipe
-        self.generator = self._get_generator(generator)
+        self.generator = "Ninja"
         self.variables = Variables()
         # This doesn't support multi-config, they go to the same configPreset common in multi-config
         self.cache_variables = Variables()
@@ -247,40 +247,6 @@ class CMakeToolchain:
 
         user_presets = self.user_presets_path
         if self._recipe.is_consumer:
-            user_presets = self._recipe.conf.get(
-                "tools.cmake.toolchain:user_presets", default=self.user_presets_path)
+            user_presets = self._recipe.conf.get("tools.cmake.toolchain:user_presets", default=self.user_presets_path)
 
-        write_cmake_presets(
-            self._recipe, toolchain_file, self.generator, cache_variables, user_presets, self.presets_prefix, buildenv, runenv, cmake_executable, self.absolute_paths)
-
-    def _get_generator(self, recipe_generator):
-        # Returns the name of the generator to be used by CMake
-        recipe = self._recipe
-
-        # Downstream consumer always higher priority
-        generator_conf = recipe.conf.get("tools.cmake.toolchain:generator")
-        if generator_conf:
-            return generator_conf
-
-        # second priority: the recipe one:
-        if recipe_generator:
-            return recipe_generator
-
-        # if not defined, deduce automatically the default one
-        compiler = recipe.settings.get_safe("compiler")
-        compiler_version = recipe.settings.get_safe("compiler.version")
-
-        cmake_years = {
-            "8": "8 2005", "9": "9 2008", "10": "10 2010", "11": "11 2012", "12": "12 2013", "14": "14 2015", "15": "15 2017", "16": "16 2019", "17": "17 2022", "18": "18 2026",
-        }
-
-        if compiler == "msvc":
-            if compiler_version is None:
-                raise RecipeException("compiler.version must be defined")
-            vs_version = vs_ide_version(self._recipe)
-            return "Visual Studio %s" % cmake_years[vs_version]
-
-        if use_win_mingw(recipe):
-            return "MinGW Makefiles"
-
-        return "Unix Makefiles"
+        write_cmake_presets(self._recipe, toolchain_file, self.generator, cache_variables, user_presets, self.presets_prefix, buildenv, runenv, cmake_executable, self.absolute_paths)

@@ -136,7 +136,6 @@ class MesonToolchain:
         # Values are kept as Python built-ins so users can modify them more easily, and they are
         # only converted to Meson file syntax for rendering
         # priority: first user conf, then recipe, last one is default "ninja"
-        #: Backend to use. Defined by the conf ``tools.meson.toolchain:backend``. By default, ``ninja``.
         self.backend = backend or "ninja"
         build_type = self._recipe.settings.get_safe("build_type")
         #: Build type to use.
@@ -524,8 +523,7 @@ class MesonToolchain:
             "binaries": {k: to_meson_value(v) for k, v in self._get_binaries().items() if v is not None}, # https://mesonbuild.com/Builtin-options.html#core-options
             "buildtype": self.buildtype,
             "default_library": self.default_library,
-            "backend": self._recipe_conf.get(
-                "tools.meson.toolchain:backend", default=self.backend), # https://mesonbuild.com/Builtin-options.html#base-options
+            "backend": "ninja", # https://mesonbuild.com/Builtin-options.html#base-options
             "b_vscrt": self.b_vscrt,
             "b_staticpic": to_meson_value(self.b_staticpic),  # boolean
             "b_ndebug": to_meson_value(self.b_ndebug),  # boolean as string

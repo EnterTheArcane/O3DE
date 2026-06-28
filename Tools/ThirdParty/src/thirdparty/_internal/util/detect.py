@@ -213,8 +213,6 @@ def detect_platform_tag(target_os=None, target_arch=None) -> str:
 
 def make_conf(jobs=None) -> Conf:
     conf = Conf()
-    conf.define("tools.cmake.toolchain:generator", "Ninja")
-    conf.define("tools.meson.toolchain:backend", "ninja")
     conf.define("tools.build:jobs", jobs if jobs is not None else cpu_count())
     conf.define("tools.cmake:configure_args", ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"])
     conf.define("user.openssl:windows_use_jom", True)
