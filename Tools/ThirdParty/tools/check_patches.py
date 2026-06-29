@@ -9,7 +9,7 @@ names = [
     "luau", "manifold", "md4c", "meshoptimizer", "msdfgen", "ogg",
     "openal-soft", "openddl-parser", "openjph", "pcre2", "ptex",
     "pybind11", "pystring", "rapidyaml", "re2c", "strawberryperl",
-    "tsl-robin-map", "utfcpp",
+    "robin-map", "utfcpp",
 ]
 for name in names:
     p = recipes_dir / name / "patches"

@@ -22,7 +22,7 @@ _Options.__possible_values__ = {"threads": ["posix", "solaris", "pth", "windows"
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "libgettext"
+    name = "gettext"
     version = "0.26"
     # Some parts of the project are GPL-3.0-or-later and some are LGPL-2.1-or-later.
     # At this time, only libintl is packaged, which is licensed under the LGPL-2.1-or-later.
@@ -201,6 +201,8 @@ class Recipe(RecipeBase[_Options]):
     def package_info(self):
         self.info.set_property("cmake_file_name", "Intl")
         self.info.set_property("cmake_target_name", "Intl::Intl")
+        self.info.set_property("cmake_target_aliases", ["gettext::gettext"])
+        self.info.set_property("pkg_config_name", "gettext")
         self.info.libs = ["gnuintl"]
         if is_apple_os(self):
             self.info.frameworks.append("CoreFoundation")

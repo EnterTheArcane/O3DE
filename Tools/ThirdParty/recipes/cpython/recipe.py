@@ -58,12 +58,12 @@ class Recipe(RecipeBase[_Options]):
         self.requires("zlib")
         if self._supports_modules:
             self.requires("openssl")
-            self.requires("expat")
+            self.requires("libexpat")
             self.requires("libffi")
             self.requires("mpdecimal")
         if self.settings.os != "Windows":
             if not is_apple_os(self):
-                self.requires("util-linux-libuuid")
+                self.requires("util-linux")
             self.requires("libxcrypt")
         if self.options.with_bz2:
             self.requires("bzip2")
@@ -219,13 +219,13 @@ class Recipe(RecipeBase[_Options]):
             # C extensions or applications with an embedded Python should not need to link to them..
             self.info.components["_hidden"].requires = [
                 "openssl::openssl",
-                "expat::expat",
+                "libexpat::libexpat",
                 "mpdecimal::mpdecimal",
                 "libffi::libffi",
             ]
             if self.settings.os != "Windows":
                 if not is_apple_os(self):
-                    self.info.components["_hidden"].requires.append("util-linux-libuuid::util-linux-libuuid")
+                    self.info.components["_hidden"].requires.append("util-linux::util-linux")
                 self.info.components["_hidden"].requires.append("libxcrypt::libxcrypt")
             if self.options.with_bz2:
                 self.info.components["_hidden"].requires.append("bzip2::bzip2")
@@ -450,8 +450,8 @@ class Recipe(RecipeBase[_Options]):
             r'<ClCompile Include="$(opensslIncludeDir)\applink.c" Condition="False">')
 
         self._inject_recipe_props_file("_bz2", "bzip2", self.options.with_bz2)
-        self._inject_recipe_props_file("_elementtree", "expat", self._supports_modules)
-        self._inject_recipe_props_file("pyexpat", "expat", self._supports_modules)
+        self._inject_recipe_props_file("_elementtree", "libexpat", self._supports_modules)
+        self._inject_recipe_props_file("pyexpat", "libexpat", self._supports_modules)
         self._inject_recipe_props_file("_hashlib", "openssl", self._supports_modules)
         self._inject_recipe_props_file("_ssl", "openssl", self._supports_modules)
         self._inject_recipe_props_file("_sqlite3", "sqlite3", self.options.with_sqlite3)
@@ -617,7 +617,7 @@ class Recipe(RecipeBase[_Options]):
             dest_path = self.folders.build / self._msvc_artifacts_path
             for bin_path in self.dependencies["libffi"].info.bindirs:
                 copy(self, "*.dll", src=bin_path, dst=dest_path)
-            for bin_path in self.dependencies["expat"].info.bindirs:
+            for bin_path in self.dependencies["libexpat"].info.bindirs:
                 copy(self, "*.dll", src=bin_path, dst=dest_path)
             for bin_path in self.dependencies["zlib"].info.bindirs:
                 copy(self, "*.dll", src=bin_path, dst=dest_path)

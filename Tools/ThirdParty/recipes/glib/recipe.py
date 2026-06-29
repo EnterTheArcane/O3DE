@@ -55,7 +55,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libselinux")
         if self.settings.os != "Linux":
             # for Linux, gettext is provided by libc
-            self.requires("libgettext")
+            self.requires("gettext")
 
         if is_apple_os(self):
             self.requires("libiconv")
@@ -190,7 +190,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Linux":
             self.info.components["gio-2.0"].system_libs.append("resolv")
         else:
-            self.info.components["glib-2.0"].requires.append("libgettext::libgettext")
+            self.info.components["glib-2.0"].requires.append("gettext::gettext")
 
         if self.options.with_mount:
             self.info.components["gio-2.0"].requires.append("libmount::libmount")
@@ -244,7 +244,7 @@ class Recipe(RecipeBase[_Options]):
                 self,
                 self.folders.source / "meson.build",
                 "libintl = dependency('intl', required: false",
-                "libintl = dependency('libgettext', method : 'pkg-config', required : false",
+                "libintl = dependency('gettext', method : 'pkg-config', required : false",
                 strict=False)
 
         replace_in_file(

@@ -47,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libjxl")
         self.requires("pugixml")
         self.requires("libsquish")
-        self.requires("tsl-robin-map")
+        self.requires("robin-map")
         self.requires("fmt")
 
         # Optional libraries
@@ -151,7 +151,7 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_Robinmap"] = True
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_pugixml"] = True
         tc.cache_variables["OIIO_INTERNALIZE_FMT"] = False
-        tc.cache_variables["ROBINMAP_INCLUDES"] = self.dependencies["tsl-robin-map"].info.includedirs[0].replace("\\", "/")
+        tc.cache_variables["ROBINMAP_INCLUDES"] = self.dependencies["robin-map"].info.includedirs[0].replace("\\", "/")
         tc.cache_variables["IMATH_INCLUDES"] = self.dependencies["imath"].info.includedirs[0].replace("\\", "/")
         tc.cache_variables["OPENEXR_INCLUDES"] = self.dependencies["openexr"].info.includedirs[0].replace("\\", "/")
         tc.cache_variables["CMAKE_REQUIRE_FIND_PACKAGE_PNG"] = self.options.with_libpng
@@ -185,8 +185,8 @@ class Recipe(RecipeBase[_Options]):
         deps.set_property("ffmpeg", "cmake_additional_variables_prefixes", ["FFMPEG"])
         deps.set_property("ffmpeg", "cmake_file_name", "FFmpeg")
         deps.set_property("libheif", "cmake_additional_variables_prefixes", ["LIBHEIF"])
-        deps.set_property("tsl-robin-map", "cmake_file_name", "Robinmap")
-        deps.set_property("tsl-robin-map", "cmake_additional_variables_prefixes", ["ROBINMAP"])
+        deps.set_property("robin-map", "cmake_file_name", "Robinmap")
+        deps.set_property("robin-map", "cmake_additional_variables_prefixes", ["ROBINMAP"])
         deps.set_property("openexr", "cmake_target_name", "OpenEXR::OpenEXR")
         deps.set_property("libultrahdr", "cmake_file_name", "libuhdr")
         deps.set_property("libultrahdr", "cmake_target_name", "libuhdr::libuhdr")
@@ -240,7 +240,7 @@ class Recipe(RecipeBase[_Options]):
             "zlib::zlib",
             "libtiff::libtiff",
             "pugixml::pugixml",
-            "tsl-robin-map::tsl-robin-map",
+            "robin-map::robin-map",
             "libsquish::libsquish",
             "fmt::fmt",
             "imath::imath",

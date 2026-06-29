@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
         return Version(repo.latest_tag("runtime-v").removeprefix("runtime-v"))
 
     def requirements(self):
-        self.requires_tool("premake5")
+        self.requires_tool("premake")
 
     def source(self):
         get(

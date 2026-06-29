@@ -96,7 +96,7 @@ UPDATES: list[RecipeUpdate] = [
         "https://github.com/skvadrik/re2c/releases/download/4.5.1/re2c-4.5.1.tar.xz"),
     RecipeUpdate("strawberryperl",  "5.40.2.1","5.42.2.1",
         "https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54221_64bit/strawberry-perl-5.42.2.1-64bit-portable.zip"),
-    RecipeUpdate("tsl-robin-map",   "1.4.0",   "1.4.1",
+    RecipeUpdate("robin-map",       "1.4.0",   "1.4.1",
         "https://github.com/Tessil/robin-map/archive/v1.4.1.tar.gz"),
     RecipeUpdate("utfcpp",          "4.0.9",   "4.1.1",
         "https://github.com/nemtrif/utfcpp/archive/v4.1.1.tar.gz"),

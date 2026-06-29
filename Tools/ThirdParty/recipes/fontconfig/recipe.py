@@ -30,7 +30,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires("freetype")
-        self.requires("expat")
+        self.requires("libexpat")
         self.requires_tool("gperf")
         self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):

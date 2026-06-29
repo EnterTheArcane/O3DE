@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
-        self.requires("expat")
+        self.requires("libexpat")
         self.requires("openexr")
         self.requires("imath")
         self.requires("pystring")

@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_libde265:
             self.requires("libde265")
         if self.options.with_x265:
-            self.requires("libx265")
+            self.requires("x265")
         if self.options.with_libaomav1:
             self.requires("libaom-av1")
         if self.options.with_dav1d:
@@ -49,7 +49,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_openh264:
             self.requires("openh264")
         if self.options.with_x264:
-            self.requires("libx264")
+            self.requires("x264")
 
     def source(self):
         get(
@@ -133,7 +133,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_libde265:
             self.info.requires.append("libde265::libde265")
         if self.options.with_x265:
-            self.info.requires.append("libx265::libx265")
+            self.info.requires.append("x265::x265")
         if self.options.with_libaomav1:
             self.info.requires.append("libaom-av1::libaom-av1")
         if self.options.with_dav1d:
@@ -147,4 +147,4 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_openh264:
             self.info.requires.append("openh264::openh264")
         if self.options.with_x264:
-            self.info.requires.append("libx264::libx264")
+            self.info.requires.append("x264::x264")

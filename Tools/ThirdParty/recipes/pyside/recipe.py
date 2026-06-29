@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "pyside6"
+    name = "pyside"
     version = "6.11.1"
     license = "LGPL-3.0-only"
 
@@ -232,6 +232,12 @@ class Recipe(RecipeBase[_Options]):
             shiboken.system_libs = ["pthread", "dl"]
 
         # Expose the shiboken6 generator location via conf
+        self.info.conf.define(
+            "user.pyside:shiboken6_generator",
+            (self.folders.package / "bin" / "shiboken6").as_posix())
+        self.info.conf.define(
+            "user.pyside:pyside_dir",
+            self.folders.package.as_posix())
         self.info.conf.define(
             "user.pyside6:shiboken6_generator",
             (self.folders.package / "bin" / "shiboken6").as_posix())

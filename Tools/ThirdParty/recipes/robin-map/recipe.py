@@ -5,7 +5,7 @@ from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
-    name = "tsl-robin-map"
+    name = "robin-map"
     version = "1.4.1"
     license = "MIT"
 
@@ -26,11 +26,8 @@ class Recipe(RecipeBase):
         copy(self, "*.h", src=self.folders.source / "include", dst=self.folders.package / "include")
 
     def package_info(self):
-        self.info.set_property("cmake_file_name", "tsl-robin-map")
+        self.info.set_property("cmake_file_name", "Robinmap")
         self.info.set_property("cmake_target_name", "tsl::robin_map")
+        self.info.set_property("cmake_target_aliases", ["robin-map::robin-map"])
         self.info.bindirs = []
         self.info.libdirs = []
-
-        self.info.components["robin_map"].set_property("cmake_target_name", "tsl::robin_map")
-        self.info.components["robin_map"].bindirs = []
-        self.info.components["robin_map"].libdirs = []

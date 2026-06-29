@@ -20,7 +20,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "libx265"
+    name = "x265"
     version = "4.2"
     # https://bitbucket.org/multicoreware/x265/src/default/COPYING
     license = "GPL-2.0-only", "commercial"
@@ -108,6 +108,8 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
+        self.info.set_property("cmake_file_name", "x265")
+        self.info.set_property("cmake_target_name", "x265::x265")
         self.info.set_property("pkg_config_name", "x265")
         self.info.libs = ["x265"]
         if self.settings.os == "Windows":

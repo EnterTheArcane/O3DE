@@ -39,7 +39,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.enable_libraries:
             self.requires("libffi")
         self.requires("libxml2")
-        self.requires("expat")
+        self.requires("libexpat")
         self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.requires_tool("pkgconf")
@@ -64,7 +64,7 @@ class Recipe(RecipeBase[_Options]):
         deps = PkgConfigDeps(self)
         if not can_run(self):
             deps.build_context_activated = ["wayland"]
-        elif self.dependencies["expat"].is_build_context:  # wayland is being built as a tool
+        elif self.dependencies["libexpat"].is_build_context:  # wayland is being built as a tool
             # If wayland is a tool requirement, all its dependencies are in the build context
             deps.build_context_activated = [dep.name for _, dep in self.dependencies.host.items()]
         deps.generate()
@@ -97,7 +97,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.components["wayland-scanner"].includedirs = []
         self.info.components["wayland-scanner"].libdirs = []
         self.info.components["wayland-scanner"].set_property("component_version", self.version)
-        self.info.components["wayland-scanner"].requires = ["expat::expat"]
+        self.info.components["wayland-scanner"].requires = ["libexpat::libexpat"]
         self.info.components["wayland-scanner"].requires.append("libxml2::libxml2")
         pkgconfig_variables = {
             "datarootdir": "${prefix}/res",

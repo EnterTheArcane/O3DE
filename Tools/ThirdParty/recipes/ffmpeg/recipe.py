@@ -189,9 +189,9 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_sdl:
             self.requires("sdl")
         if self.options.with_libx264:
-            self.requires("libx264")
+            self.requires("x264")
         if self.options.with_libx265:
-            self.requires("libx265")
+            self.requires("x265")
         if self.options.with_libvpx:
             self.requires("libvpx")
         if self.options.with_libmp3lame:
@@ -674,9 +674,9 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_opus:
                 avcodec.requires.append("opus::opus")
             if self.options.with_libx264:
-                avcodec.requires.append("libx264::libx264")
+                avcodec.requires.append("x264::x264")
             if self.options.with_libx265:
-                avcodec.requires.append("libx265::libx265")
+                avcodec.requires.append("x265::x265")
             if self.options.with_libvpx:
                 avcodec.requires.append("libvpx::libvpx")
             if self.options.with_libmp3lame:

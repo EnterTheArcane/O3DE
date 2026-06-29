@@ -8,7 +8,7 @@ from thirdparty.scm.github import GithubRepository
 
 
 class Recipe(RecipeBase):
-    name = "premake5"
+    name = "premake"
     version = "5.0.0-beta8"
     license = "BSD-3-Clause"
 

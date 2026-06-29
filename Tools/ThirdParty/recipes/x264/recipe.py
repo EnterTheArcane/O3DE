@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "libx264"
+    name = "x264"
     version = "20250910"
     license = "GPL-2.0"
 
@@ -134,6 +134,8 @@ class Recipe(RecipeBase[_Options]):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
+        self.info.set_property("cmake_file_name", "x264")
+        self.info.set_property("cmake_target_name", "x264::x264")
         self.info.set_property("pkg_config_name", "x264")
         self.info.libs = ["x264"]
         if is_msvc(self) and self.options.shared:

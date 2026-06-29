@@ -27,7 +27,7 @@ $packages = @(
     "openssl",
 
     # --- strings / parsing / scripting ---
-    "abseil", "expat", "pcre2", "re2",
+    "abseil", "libexpat", "pcre2", "re2",
     "lua", "luau",
     "rapidyaml", "yaml-cpp",
     "jansson", "sqlite3",
@@ -60,7 +60,7 @@ $packages = @(
     "tinyxml2",
 
     # --- new standalone packages ---
-    "fmt", "pugixml", "tsl-robin-map",
+    "fmt", "pugixml", "robin-map",
 
     # --- high-level ---
     "opencolorio",

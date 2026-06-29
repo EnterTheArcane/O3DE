@@ -57,7 +57,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Mac":
             # Ensure that the gettext we use at build time is compatible
             # with the libiconv that is transitively exposed by glib
-            self.requires_tool("libgettext")
+            self.requires_tool("gettext")
 
     def source(self):
         get(

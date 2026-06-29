@@ -333,7 +333,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_brotli:
             self.requires("brotli")
         if self.options.qtwebengine and self.settings.os == "Linux":
-            self.requires("expat")
+            self.requires("libexpat")
             self.requires("opus")
             self.requires("xorg-proto")
             self.requires("libxshmfence")
@@ -1340,7 +1340,7 @@ class Recipe(RecipeBase[_Options]):
             if self.settings.os == "Linux":
                 webenginereqs.extend(
                     [
-                        "expat::expat", "opus::libopus", "xorg-proto::xorg-proto", "libxshmfence::libxshmfence", \
+                        "libexpat::libexpat", "opus::libopus", "xorg-proto::xorg-proto", "libxshmfence::libxshmfence", \
                         "nss::nss", "libdrm::libdrm",
                     ])
             _create_module("WebEngineCore", webenginereqs)

@@ -16,7 +16,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "expat"
+    name = "libexpat"
     version = "2.8.2"
     license = "MIT"
 
@@ -69,6 +69,7 @@ class Recipe(RecipeBase[_Options]):
     def package_info(self):
         self.info.set_property("cmake_file_name", "expat")
         self.info.set_property("cmake_target_name", "expat::expat")
+        self.info.set_property("cmake_target_aliases", ["libexpat::libexpat"])
         self.info.set_property("pkg_config_name", "expat")
 
         self.info.libs = collect_libs(self)

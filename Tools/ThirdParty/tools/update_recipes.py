@@ -227,7 +227,7 @@ UPDATES: list[RecipeUpdate] = [
         "", "32d83be90cf04b807cfb9477482bc36302cdee6f5b04cf57e81adecbd8f07898",
     ),
     RecipeUpdate(
-        "tsl-robin-map", "1.4.0", "1.4.1",
+        "robin-map", "1.4.0", "1.4.1",
         "https://github.com/Tessil/robin-map/archive/v1.4.0.tar.gz",
         "https://github.com/Tessil/robin-map/archive/v1.4.1.tar.gz",
         "", "0e3f53a377fdcdc5f9fed7a4c0d4f99e82bbb64175233bd13427fef9a771f4a1",

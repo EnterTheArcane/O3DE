@@ -121,7 +121,7 @@ TARGETS = [
     'assimp', 'autoconf', 'automake', 'clipper2', 'cpuinfo', 'dav1d',
     'glib', 'highway', 'icu', 'kuba-zip', 'libcurl', 'libde265',
     'libjpeg-turbo', 'libsamplerate', 'libtiff', 'libtool',
-    'libvpx', 'libx265', 'libxml2', 'openexr', 'openjpeg',
+    'libvpx', 'x265', 'libxml2', 'openexr', 'openjpeg',
     'opensubdiv', 'physx', 'pkgconf', 'rvo2', 'spirv-tools',
     'tcl', 'wayland-protocols', 'wayland',
     # Already fixed manually:
