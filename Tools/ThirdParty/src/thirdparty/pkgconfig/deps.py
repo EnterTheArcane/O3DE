@@ -2,7 +2,6 @@ import jinja2
 import os
 import re
 import textwrap
-from pathlib import Path
 from typing import Any
 
 from thirdparty._internal.model.dependencies import get_transitive_requires
@@ -145,7 +144,11 @@ class _PCFilesDeps:
                         pc_variables[key] = value
 
         # If editable, package_folder can be None
-        prefix_path = Path(dep.recipe_folder).as_posix() if dep.folders.package is None else dep.folders.package.as_posix()
+        prefix_path = (
+            dep.folders.package
+            if dep.folders.base_package is not None
+            else dep.folders.recipe
+        ).as_posix()
         pc_variables = {"prefix": prefix_path}
         # Already formatted directories
         pc_variables.update(self._get_formatted_dirs("libdir", info.libdirs, prefix_path))

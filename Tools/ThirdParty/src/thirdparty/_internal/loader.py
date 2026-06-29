@@ -138,7 +138,7 @@ def make_probe_recipe(
     """
     recipe = recipe_cls()
     recipe.version = version
-    recipe.recipe_folder = str(recipes_root / name)
+    recipe.folders.set_recipe(recipes_root / name)
 
     recipe.settings = detect_settings(build_type, target_os, target_arch)
     if target_os is None and target_arch is None:

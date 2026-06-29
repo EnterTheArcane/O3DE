@@ -204,7 +204,11 @@ class MSBuildDeps:
                 ret.append(full_path)
             return "".join(f"{e};" for e in ret)
 
-        root_folder = dep.recipe_folder if dep.folders.package is None else dep.folders.package
+        root_folder = (
+            dep.folders.package
+            if dep.folders.base_package is not None
+            else dep.folders.recipe
+        )
         root_folder = escape_path(root_folder)
         # Make the root_folder relative to the generated recipe_vars_xxx.props file
         relative_root_folder = relativize_path(

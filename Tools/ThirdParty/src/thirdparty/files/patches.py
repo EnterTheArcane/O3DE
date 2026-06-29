@@ -35,10 +35,10 @@ def patch(
     in the layout(self) method.
 
     :param recipe: the current recipe, always pass 'self'
-    :param base_path: The path is a relative path to recipe.folders.export_sources unless an
+    :param base_path: The path is a relative path to recipe.folders.source unless an
            absolute path is provided.
     :param patch_file: Patch file that should be applied. The path is relative to the
-           recipe.folders.source unless an absolute path is provided.
+           recipe.folders.recipe unless an absolute path is provided.
     :param patch_string: Patch string that should be applied.
     :param strip: Number of folders to be stripped from the path.
     :param fuzz: Should accept fuzzy patches.
@@ -60,7 +60,7 @@ def patch(
     if patch_file:
         # trick *1: patch_file path could be absolute (e.g. recipe.folders.build), in that case
         # the join does nothing and works.
-        patch_path = os.path.join(recipe.folders.export_sources, patch_file)
+        patch_path = os.path.join(recipe.folders.recipe, patch_file)
         patchset = patch_ng.fromfile(patch_path)
     else:
         patchset = patch_ng.fromstring(patch_string.encode())
@@ -76,7 +76,7 @@ def patch(
 
 def apply_patches(recipe: RecipeBase):
     """Apply all recipe-local ``patches/*.patch`` files in alphabetical order."""
-    patches_dir = os.path.join(recipe.recipe_folder, "patches")
+    patches_dir = os.path.join(recipe.folders.recipe, "patches")
     if not os.path.isdir(patches_dir):
         return
 

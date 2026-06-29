@@ -633,8 +633,12 @@ class DepGenerator:
         """
         Get the root folder of the dependency
         """
-        root = self._dep.recipe_folder if self._dep.folders.package is None else self._dep.folders.package
-        return root.replace("\\", "/")
+        root = (
+            self._dep.folders.package
+            if self._dep.folders.base_package is not None
+            else self._dep.folders.recipe
+        )
+        return root.as_posix()
 
     def generate(self) -> str:
         """

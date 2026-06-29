@@ -927,11 +927,11 @@ def generate_aggregated_env(recipe: RecipeBase):
 
 
 def _relativize_paths(recipe: RecipeBase, placeholder):
-    abs_base_path = recipe.folders._base_generators  # noqa
+    generators_folder = os.fspath(recipe.folders.generators)
+    abs_base_path = generators_folder
     if not abs_base_path or not os.path.isabs(abs_base_path):
         return None, None
     abs_base_path = os.path.join(abs_base_path, "")  # For the trailing / to dissambiguate matches
-    generators_folder = recipe.folders.generators
     try:
         rel_path = os.path.relpath(abs_base_path, generators_folder)
     except ValueError:  # In case the unit in Windows is different, path cannot be made relative

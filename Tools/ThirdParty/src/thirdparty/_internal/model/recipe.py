@@ -134,8 +134,6 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     win_bash: bool | None = None
 
-    recipe_folder: str | None = None
-
     folders: Folders
     info: Info
     conf: Conf

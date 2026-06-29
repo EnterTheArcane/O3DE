@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import copy, get
@@ -50,7 +48,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.header_only:
             return
         cmake = CMake(self)
-        cmake.configure(build_script_folder=self.folders.source / os.pardir)
+        cmake.configure(build_script_folder=self.folders.recipe)
         cmake.build()
 
     def package(self):

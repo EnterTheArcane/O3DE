@@ -47,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=self.folders.source / os.pardir)
+        cmake.configure(build_script_folder=self.folders.recipe)
         cmake.build()
 
     def package(self):

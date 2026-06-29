@@ -1,7 +1,6 @@
 import argparse
 import fnmatch
 import os
-import shutil
 import sys
 import time
 from collections import OrderedDict
@@ -159,9 +158,6 @@ def _instantiate(
     recipe.folders.set_base_build(build_dir)
     recipe.folders.set_base_package(pkg_dir)
     recipe.folders.set_base_generators(gen_dir)
-    # export_sources_folder = parent of source_dir; recipes place auxiliary files here
-    # (CMakeLists.txt, patches, etc.) via export_sources() in real Recipe
-    recipe.folders.set_base_export_sources(str(pkg_root))
 
     return recipe
 
@@ -239,7 +235,7 @@ def _build_dep_graph(
 
         dep = dep_cls()
         dep.version = dep_version
-        dep.recipe_folder = str(recipes_root / dep_name)
+        dep.folders.set_recipe(recipes_root / dep_name)
         dep.folders.set_base_package(pkg_dir)
 
         dep.settings = detect_settings(build_type, dep_os, dep_arch)
@@ -334,24 +330,6 @@ def _is_sourced(
     version: str,
     platform_tag: str) -> bool:
     return (build_root / name / version / platform_tag / "source" / _COMPLETE_MARKER).is_file()
-
-
-_RECIPE_SKIP_NAMES = {"recipe.py", "__pycache__"}
-
-
-def _copy_recipe_export_sources(recipe_dir: Path, export_dir: Path) -> None:
-    """Copy auxiliary files (CMakeLists.txt, patches/, etc.) from the recipe directory
-    to export_dir (the build-time export_sources_folder).  This mirrors what Recipe's
-    export_sources() / cache layer does before calling source() and build()."""
-    export_dir.mkdir(parents=True, exist_ok=True)
-    for item in recipe_dir.iterdir():
-        if item.name in _RECIPE_SKIP_NAMES or item.name.startswith("."):
-            continue
-        dst = export_dir / item.name
-        if item.is_file():
-            shutil.copy2(item, dst)
-        elif item.is_dir():
-            shutil.copytree(item, dst, dirs_exist_ok=True)
 
 
 def _build_only_tools(rgraph) -> set[str]:
@@ -625,14 +603,6 @@ def _build_recipe(
             print(f"[thirdparty] {name}/{version} not supported on this platform: {_cfg_exc} — skipping")
             return transitive
         raise
-
-    # Mirror what Recipe's export_sources phase does: copy auxiliary recipe files
-    # (CMakeLists.txt, patches/, etc.) to export_sources_folder so that:
-    #   - cmake.configure(build_script_folder=os.path.join(self.folders.source, os.pardir))
-    #     can find a CMakeLists.txt one level above source_folder
-    #   - apply_patches() / patch tools can locate patch files
-    Path(recipe.folders.export_sources).mkdir(parents=True, exist_ok=True)
-    _copy_recipe_export_sources(Path(recipe.recipe_folder), Path(recipe.folders.export_sources))
 
     if not generate_only and type(recipe).source is not RecipeBase.source:
         src_folder = Path(recipe.folders.source)

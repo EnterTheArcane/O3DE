@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.files import get, copy
@@ -40,7 +38,7 @@ class Recipe(RecipeBase):
 
     def build(self):
         cmake = CMake(self)
-        cmake.configure(build_script_folder=self.folders.source / os.pardir)
+        cmake.configure(build_script_folder=self.folders.recipe)
         cmake.build()
 
     def package(self):

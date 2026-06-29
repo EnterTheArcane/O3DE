@@ -195,7 +195,7 @@ class Recipe(RecipeBase[_Options]):
         os.unlink(self.folders.package / "bin" / f"ncurses{self._suffix}{Version(self.version).major}-config")
         copy(
             self, "*.cmake",
-            src=self.folders.export_sources / "cmake",
+            src=self.folders.recipe / "cmake",
             dst=self.folders.package / self._module_subfolder)
         fix_apple_shared_install_name(self)
 

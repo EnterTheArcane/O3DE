@@ -1,5 +1,3 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
@@ -65,7 +63,7 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         apply_patches(self)
         cmake = CMake(self)
-        cmake.configure(build_script_folder=self.folders.source / os.pardir)
+        cmake.configure(build_script_folder=self.folders.recipe)
         cmake.build()
 
     def package(self):
