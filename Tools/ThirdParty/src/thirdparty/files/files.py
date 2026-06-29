@@ -422,6 +422,9 @@ def unzip(
     if filename.endswith(".tar.xz") or filename.endswith(".txz"):
         return untargz(
             filename, destination, pattern, strip_root, extract_filter, excludes=excludes)
+    if filename.endswith(".7z"):
+        return un7zip(
+            filename, destination, pattern, strip_root, excludes=excludes)
 
     import zipfile
     full_path = os.path.normpath(os.path.join(os.getcwd(), destination))
@@ -525,6 +528,56 @@ def untargz(
                 # Let's gather each member
                 members.append(member)
             tarredgzippedFile.extractall(destination, members=members)
+
+
+def un7zip(
+    filename: str,
+    destination: Path = Path("."),
+    pattern: Any = None,
+    strip_root: bool = False,
+    excludes: Any = None):
+    # NOT EXPOSED at `thirdparty.files` but used through unzip()/get() for `.7z` archives
+    # (the format packman packages are distributed in). Uses pure-Python ``py7zr`` so no
+    # system ``7z`` binary is required on any build host.
+    import tempfile
+
+    import py7zr
+
+    full_path = os.path.normpath(os.path.join(os.getcwd(), destination))
+    os.makedirs(full_path, exist_ok=True)
+
+    # Fast path: extract everything as-is.
+    if not pattern and not excludes and not strip_root:
+        with py7zr.SevenZipFile(filename, mode="r") as archive:
+            archive.extractall(path=full_path)
+        return
+
+    # Filtered / strip_root path: extract to a staging dir, then relocate selected members.
+    with tempfile.TemporaryDirectory() as tmp:
+        with py7zr.SevenZipFile(filename, mode="r") as archive:
+            archive.extractall(path=tmp)
+
+        common_folder = None
+        if strip_root:
+            roots = [name for name in os.listdir(tmp)]
+            if len(roots) != 1 or not os.path.isdir(os.path.join(tmp, roots[0])):
+                raise RecipeException("The 7z file contains more than 1 folder in the root")
+            common_folder = roots[0]
+
+        source_base = os.path.join(tmp, common_folder) if common_folder else tmp
+        for root, _, files in os.walk(source_base):
+            for name in files:
+                abs_src = os.path.join(root, name)
+                rel = os.path.relpath(abs_src, source_base).replace("\\", "/")
+                # Match patterns against the original archive member name.
+                match_name = f"{common_folder}/{rel}" if common_folder else rel
+                if pattern and not fnmatch(match_name, pattern):
+                    continue
+                if excludes and any(fnmatch(match_name, pat) for pat in excludes):
+                    continue
+                dst = os.path.join(full_path, *rel.split("/"))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.move(abs_src, dst)
 
 
 def check_sha1(

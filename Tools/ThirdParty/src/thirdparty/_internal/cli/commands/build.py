@@ -47,7 +47,7 @@ def setup_parser(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--resume", metavar="NAME", default=None, help="Skip all recipes before NAME in build order (multi-recipe builds)")
     p.add_argument(
-        "--target-os", default=None, dest="target_os", metavar="<os>", help="Cross-compile target OS (e.g. Windows, Linux, Mac, Android); "
+        "--target-os", default=None, dest="target_os", metavar="<os>", help="Cross-compile target OS (e.g. Windows, Linux, Mac, Android, iOS, tvOS, visionOS); "
                                                                             "default: build machine")
     p.add_argument(
         "--target-arch", default=None, dest="target_arch", metavar="<arch>", help="Cross-compile target architecture (X64 or ARM); "

@@ -82,11 +82,20 @@ def _detect_linux_compiler():
 
 
 # Canonical platform names used by this system (deliberately simpler than Conan's full set).
-_OS_NAMES = ("Windows", "Linux", "Mac", "Android", "iOS", "tvOS")
+_OS_NAMES = ("Windows", "Linux", "Mac", "Android", "iOS", "tvOS", "visionOS")
 _ARCH_NAMES = ("X64", "ARM")
+_APPLE_DEVICE_OSES = {"iOS", "tvOS", "visionOS"}
+_APPLE_SDK_DEFAULTS = {
+    ("iOS", "ARM"): "iphoneos",
+    ("iOS", "X64"): "iphonesimulator",
+    ("tvOS", "ARM"): "appletvos",
+    ("tvOS", "X64"): "appletvsimulator",
+    ("visionOS", "ARM"): "xros",
+    ("visionOS", "X64"): "xrsimulator",
+}
 
 
-def normalize_os(name: str) -> str:
+def normalize_os(name: str | None) -> str | None:
     """Case-insensitively match *name* to a canonical OS name (e.g. ``mac`` -> ``Mac``).
 
     Unknown names are returned unchanged (settings validation handles the rest).
@@ -99,7 +108,7 @@ def normalize_os(name: str) -> str:
     return name
 
 
-def normalize_arch(name: str) -> str:
+def normalize_arch(name: str | None) -> str | None:
     """Case-insensitively match *name* to a canonical arch name (e.g. ``arm`` -> ``ARM``)."""
     if name is None:
         return None
@@ -119,6 +128,15 @@ def _machine_arch() -> str:
     return "ARM" if ("arm64" in machine or "aarch64" in machine) else "X64"
 
 
+def _default_target_arch(the_os: str, target_arch: str | None) -> str:
+    arch = normalize_arch(target_arch)
+    if arch:
+        return arch
+    if the_os in _APPLE_DEVICE_OSES:
+        return "ARM"
+    return _machine_arch()
+
+
 def detect_settings(build_type: str = "Release", target_os: str=None, target_arch: str=None) -> Settings:
     """Detect build settings for the *target* platform.
 
@@ -133,12 +151,16 @@ def detect_settings(build_type: str = "Release", target_os: str=None, target_arc
 
     machine_os = _machine_os()
     the_os = normalize_os(target_os) or machine_os
-    arch = normalize_arch(target_arch) or _machine_arch()
+    arch = _default_target_arch(the_os, target_arch)
 
     settings.update_values(
         [
             ("os", the_os), ("arch", arch), ("build_type", build_type),
         ], raise_undefined=False)
+
+    apple_sdk = _APPLE_SDK_DEFAULTS.get((the_os, arch))
+    if apple_sdk:
+        settings.update_values([("os.sdk", apple_sdk)], raise_undefined=False)
 
     # Compiler detection is keyed on the BUILD MACHINE os (the locally available toolchain).
     if machine_os == "Windows":
@@ -207,7 +229,7 @@ def detect_platform_tag(target_os=None, target_arch=None) -> str:
     to detect the compiler — cheap enough to call for status display and folder paths.
     """
     the_os = normalize_os(target_os) or _machine_os()
-    arch = normalize_arch(target_arch) or _machine_arch()
+    arch = _default_target_arch(the_os, target_arch)
     return f"{the_os}-{arch}".lower()
 
 
