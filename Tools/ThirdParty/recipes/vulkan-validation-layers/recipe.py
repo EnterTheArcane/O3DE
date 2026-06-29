@@ -54,6 +54,65 @@ class Recipe(RecipeBase[_Options]):
         for text in ["set(CMAKE_CXX_STANDARD 17)", "set(CMAKE_CXX_STANDARD_REQUIRED ON)"]:
             replace_in_file(self, self.folders.source / "CMakeLists.txt", text, "")
 
+        spirv_helper_h = self.folders.source / "layers" / "vulkan" / "generated" / "spirv_grammar_helper.h"
+        spirv_helper_cpp = self.folders.source / "layers" / "vulkan" / "generated" / "spirv_grammar_helper.cpp"
+        for helper_file in [spirv_helper_h, spirv_helper_cpp]:
+            replace_in_file(self, helper_file, "OpControlBarrierArriveEXT", "OpControlBarrierArriveINTEL")
+            replace_in_file(self, helper_file, "OpControlBarrierWaitEXT", "OpControlBarrierWaitINTEL")
+        replace_in_file(self, spirv_helper_cpp, "RayFlagsForceOpacityMicromap2StateKHRMask", "RayFlagsForceOpacityMicromap2StateEXTMask")
+
+        replace_in_file(self, spirv_helper_h, "        case spv::OpPredicatedLoadINTEL:\n", "")
+        replace_in_file(
+            self, spirv_helper_cpp,
+            '        case spv::OpPredicatedLoadINTEL:\n'
+            '            return "OpPredicatedLoadINTEL";\n'
+            '        case spv::OpPredicatedStoreINTEL:\n'
+            '            return "OpPredicatedStoreINTEL";\n',
+            "")
+        replace_in_file(
+            self, spirv_helper_cpp,
+            "        {spv::OpPredicatedLoadINTEL, {{OperandKind::Id, OperandKind::Id, OperandKind::Id, OperandKind::BitEnum}}},\n"
+            "        {spv::OpPredicatedStoreINTEL, {{OperandKind::Id, OperandKind::Id, OperandKind::Id, OperandKind::BitEnum}}},\n",
+            "")
+        replace_in_file(
+            self, spirv_helper_cpp,
+            '        case spv::ExecutionModeOpacityMicromapIdKHR:\n'
+            '            return "OpacityMicromapIdKHR";\n',
+            "")
+
+        spirv_validation_cpp = self.folders.source / "layers" / "vulkan" / "generated" / "spirv_validation_helper.cpp"
+        replace_in_file(self, spirv_validation_cpp, "CapabilityRayTracingOpacityMicromapKHR", "CapabilityRayTracingOpacityMicromapEXT")
+        replace_in_file(self, spirv_validation_cpp, "CapabilitySplitBarrierEXT", "CapabilitySplitBarrierINTEL")
+        replace_in_file(self, spirv_validation_cpp, "        {spv::CapabilityRayTracingOpacityMicromapExecutionModeKHR, {0, &DeviceFeatures::micromap, nullptr, \"\"}},\n", "")
+        replace_in_file(self, spirv_validation_cpp, "        {spv::CapabilityCooperativeMatrixDecodeVectorNV, {0, &DeviceFeatures::cooperativeMatrixDecodeVector, nullptr, \"\"}},\n", "")
+        replace_in_file(
+            self, spirv_validation_cpp,
+            '        case spv::CapabilityWeakLinkageAMD:\n'
+            '            return "WeakLinkageAMD";\n',
+            "")
+        replace_in_file(
+            self, spirv_validation_cpp,
+            '        case spv::CapabilityRayTracingOpacityMicromapExecutionModeKHR:\n'
+            '            return "RayTracingOpacityMicromapExecutionModeKHR";\n',
+            "")
+        replace_in_file(
+            self, spirv_validation_cpp,
+            '        case spv::CapabilityCooperativeMatrixDecodeVectorNV:\n'
+            '            return "CooperativeMatrixDecodeVectorNV";\n',
+            "")
+        replace_in_file(
+            self, spirv_validation_cpp,
+            '        case spv::CapabilityPredicatedIOINTEL:\n'
+            '            return "PredicatedIOINTEL";\n'
+            '        case spv::CapabilityRoundedDivideSqrtINTEL:\n'
+            '            return "RoundedDivideSqrtINTEL";\n',
+            "")
+        replace_in_file(self, spirv_validation_cpp, '    {spv::CapabilityRayTracingOpacityMicromapExecutionModeKHR, "VkPhysicalDeviceOpacityMicromapFeaturesKHR::micromap"},\n', "")
+        replace_in_file(
+            self, spirv_validation_cpp,
+            '    {spv::CapabilityCooperativeMatrixDecodeVectorNV, "VkPhysicalDeviceCooperativeMatrixDecodeVectorFeaturesNV::cooperativeMatrixDecodeVector"},\n',
+            "")
+
     def generate(self):
         tc = CMakeToolchain(self)
         if self._has_wsi_options:

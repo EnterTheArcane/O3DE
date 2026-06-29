@@ -40,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.18.1/fontconfig-2.18.1.tar.xz",
-            sha256="f5b9e4bd612983d3b7081413e7b5a31a6800a326e4e08b6f69ac78e7c1e5d37d",
+            sha256="2300f3dbfa7253b3a44f4feecdbc8dfa45dde5dc2cfb71fceaf31f394cb41031",
             destination=self.folders.source,
             strip_root=True)
 

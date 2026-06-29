@@ -139,7 +139,7 @@ class Recipe(RecipeBase[_Options]):
         # jxl
         self.info.components["jxl"].set_property("pkg_config_name", "libjxl")
         self.info.components["jxl"].libs = ["jxl"]
-        self.info.components["jxl"].requires = ["brotli::brotli", "highway::highway", "lcms::lcms"]
+        self.info.components["jxl"].requires = ["brotli::brotli", "highway::highway", "little-cms::little-cms"]
         if self.options.with_tcmalloc:
             self.info.components["jxl"].requires.append("gperftools::tcmalloc_minimal")
         if self._atomic_required:
@@ -152,7 +152,7 @@ class Recipe(RecipeBase[_Options]):
         # jxl_cms
         self.info.components["jxl_cms"].set_property("pkg_config_name", "libjxl_cms")
         self.info.components["jxl_cms"].libs = ["jxl_cms"]
-        self.info.components["jxl_cms"].requires = ["lcms::lcms", "highway::highway"]
+        self.info.components["jxl_cms"].requires = ["little-cms::little-cms", "highway::highway"]
         if not self.options.shared:
             self.info.components["jxl"].defines.append("JXL_CMS_STATIC_DEFINE")
             if libcxx:

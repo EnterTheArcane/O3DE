@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.files import copy, get, rm, rmdir
+from thirdparty.files import copy, get, replace_in_file, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -21,6 +21,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
+        self.requires("fast-float")
         self.requires("lz4")
         self.requires("lua")  # TODO
         self.requires("miniz")
@@ -48,6 +49,20 @@ class Recipe(RecipeBase[_Options]):
             sha256="1c51659bd47c34df1c8976f893adc43ba039a98f6eac4fa95d53d1e08ba6072a",
             destination=self.folders.source / "external" / "cmark",
             strip_root=True)
+        replace_in_file(
+            self,
+            self.folders.source / "external" / "CMakeLists.txt",
+            "# fast_float headers (header-only). Mark as a system include so the\n"
+            "# bundled headers don't trip Slang's extra warnings / -Werror.\n"
+            "add_library(fast_float INTERFACE)\n"
+            "target_include_directories(\n"
+            "    fast_float\n"
+            "    ${system}\n"
+            "    INTERFACE \"${CMAKE_CURRENT_LIST_DIR}/fast_float/include\"\n"
+            ")\n",
+            "find_package(FastFloat CONFIG REQUIRED)\n"
+            "add_library(fast_float INTERFACE)\n"
+            "target_link_libraries(fast_float INTERFACE FastFloat::fast_float)\n")
 
     def generate(self):
         tc = CMakeToolchain(self)

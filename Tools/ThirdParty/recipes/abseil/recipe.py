@@ -7,7 +7,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.common.platforms import Os
-from thirdparty.files import apply_patches, copy, get, load, rmdir, save
+from thirdparty.files import copy, get, load, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -36,7 +36,6 @@ class Recipe(RecipeBase[_Options]):
             sha256="6e1aee535473414164bf83e4ebc40240dec71a4701f8a642d906e95bea1aea0c",
             destination=self.folders.source,
             strip_root=True)
-        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -139,11 +138,27 @@ class Recipe(RecipeBase[_Options]):
                             else:
                                 components[potential_lib_name].setdefault("defines", []).append(definition)
 
+        self._normalize_components(components)
         return components
 
     def _create_components_file(self, output_file: Path, components: dict[str, dict[str, Any]]):
         content = json.dumps(components, indent=4)
         save(self, output_file, content)
+
+    def _normalize_components(self, components: dict[str, dict[str, Any]]):
+        for component_name, values in components.items():
+            requires = values.get("requires", [])
+            if requires:
+                values["requires"] = self._unique_preserve_order(
+                    dependency for dependency in requires if dependency != component_name)
+
+            for key in ["defines", "frameworks", "libs", "system_libs"]:
+                entries = values.get(key, [])
+                if entries:
+                    values[key] = self._unique_preserve_order(entries)
+
+    def _unique_preserve_order(self, values):
+        return list(dict.fromkeys(values))
 
     @property
     def _components_helper_filepath(self):

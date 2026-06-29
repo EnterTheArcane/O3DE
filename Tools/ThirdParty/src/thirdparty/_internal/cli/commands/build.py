@@ -385,7 +385,7 @@ def _build_ordered(
     fail_fast: bool = False,
     exact_set: set[str] | None = None, ) -> None:
     rgraph = _Graph.build(
-        recipes_root, names, build_type, jobs=jobs, target_os=target_os, target_arch=target_arch)
+        recipes_root, names, build_type, jobs=jobs, transitive=True, target_os=target_os, target_arch=target_arch)
     order = rgraph.topo_order()
 
     if resume:
@@ -428,13 +428,25 @@ def _build_ordered(
 
     visited: set = set()
     results: list[tuple[str, str, float, str | None]] = []
-    skipped: list[str] = []
+    skipped: list[tuple[str, str | None]] = []
+    unavailable: dict[str, str] = {}
+
+    def _skip(name: str, reason: str | None = None, *, blocks_dependants: bool = False) -> None:
+        skipped.append((name, reason))
+        if blocks_dependants:
+            unavailable[name] = reason or "skipped"
+
+    def _blocked_dependencies(name: str) -> list[str]:
+        node = rgraph[name]
+        return sorted(
+            dep for dep in node.all_deps
+            if dep in unavailable and not (dep == name and dep in node.tool_deps))
 
     for name in order:
         cls = _try_load_recipe_class(recipes_root, name)
         if cls is None:
             print(f"[thirdparty] SKIP {name} — cannot load recipe", file=sys.stderr)
-            skipped.append(name)
+            _skip(name, "cannot load recipe", blocks_dependants=True)
             continue
         version = _resolve_version(cls)
         n_to, n_ta = _node_target(name)
@@ -442,11 +454,17 @@ def _build_ordered(
         # --exact: only build the explicitly named recipes; the rest are graph context only
         # and must never be built, wiped, or touched here.
         if exact_set is not None and name not in exact_set:
-            skipped.append(name)
+            _skip(name, "ref-only")
             continue
         if not force and _is_built(build_root, name, version, n_plat):
-            skipped.append(name)
+            _skip(name, "already built")
             visited.add((name, n_to, n_ta))
+            continue
+        blocked_deps = _blocked_dependencies(name)
+        if blocked_deps:
+            reason = f"dependency failed/skipped: {', '.join(blocked_deps)}"
+            print(f"[thirdparty] SKIP {name}/{version} — {reason}")
+            _skip(name, reason, blocks_dependants=True)
             continue
         t0 = time.time()
         try:
@@ -457,6 +475,7 @@ def _build_ordered(
         except Exception as exc:
             elapsed = time.time() - t0
             results.append((name, version, elapsed, str(exc)))
+            unavailable[name] = "failed"
             print(f"[thirdparty] FAIL {name}/{version}: {exc}")
             if fail_fast:
                 import traceback
@@ -475,8 +494,9 @@ def _build_ordered(
             print(f"  OK   {n}/{v}  ({t:.1f}s)")
     if skipped:
         print(f"\nSkipped ({len(skipped)}):")
-        for n in skipped:
-            print(f"  SKIP {n}")
+        for n, reason in skipped:
+            suffix = f" ({reason})" if reason else ""
+            print(f"  SKIP {n}{suffix}")
     if fail:
         print(f"\nFailed ({len(fail)}):")
         for n, v, e in fail:

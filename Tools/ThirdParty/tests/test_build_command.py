@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from thirdparty._internal.cli.commands import build as build_command
+from thirdparty._internal.graph import Graph, Node
 
 
 def _args(*recipes: str) -> argparse.Namespace:
@@ -68,6 +70,52 @@ class BuildCommandTests(unittest.TestCase):
 
         self.assertEqual(exc.exception.code, 1)
         self.assertIn("recipe not found: leftover-empty-dir", stderr.getvalue())
+
+    def test_ordered_build_skips_dependant_when_dependency_fails(self):
+        graph = Graph({
+            "ffmpeg": Node("ffmpeg", "1"),
+            "openimageio": Node("openimageio", "1", host_deps=["ffmpeg"]),
+        })
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recipes_root = root / "recipes"
+            build_root = root / "build"
+            recipes_root.mkdir(parents=True)
+
+            def fail_ffmpeg(*args, **kwargs):
+                if args[2] == "ffmpeg":
+                    raise RuntimeError("boom")
+                raise AssertionError(f"unexpected build: {args[2]}")
+
+            stdout = io.StringIO()
+            with (
+                redirect_stdout(stdout),
+                patch.object(build_command._Graph, "build", return_value=graph),
+                patch.object(build_command, "_try_load_recipe_class", return_value=object),
+                patch.object(build_command, "_resolve_version", return_value="1"),
+                patch.object(build_command, "_is_built", return_value=False),
+                patch.object(build_command, "_build_recipe", side_effect=fail_ffmpeg) as build_recipe,
+                self.assertRaises(SystemExit) as exc,
+            ):
+                build_command._build_ordered(
+                    recipes_root,
+                    build_root,
+                    ["openimageio", "ffmpeg"],
+                    "Release",
+                    jobs=None,
+                    resume=None,
+                    dry_run=False,
+                    force=False,
+                    generate_only=False,
+                    target_os=None,
+                    target_arch=None,
+                )
+
+        self.assertEqual(exc.exception.code, 1)
+        self.assertEqual([call.args[2] for call in build_recipe.call_args_list], ["ffmpeg"])
+        self.assertIn("SKIP openimageio/1 — dependency failed/skipped: ffmpeg", stdout.getvalue())
+        self.assertIn("SKIP openimageio (dependency failed/skipped: ffmpeg)", stdout.getvalue())
 
 
 if __name__ == "__main__":

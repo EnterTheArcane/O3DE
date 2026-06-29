@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url="https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.49/downloads/wayland-protocols-1.49.tar.xz",
-            sha256="04af1d372970b0ce9330d3bb9a821e0ebf50a669c3e5e1181b2459dc6becbfd0",
+            sha256="ec4c8f74942d6dff7ace8b4ce4764f0ef9ff618a935d974ea77edee2ad240b14",
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(
