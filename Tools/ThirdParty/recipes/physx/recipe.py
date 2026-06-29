@@ -6,29 +6,11 @@ from thirdparty.files import load, save, get, copy, replace_in_file
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
 
 
-# Packages PhysX normally fetches via physx/dependencies.xml + packman. We download them
-# directly from the packman CDN (no packman scripts). Each entry is (archive, sha256).
-_PACKMAN_CDN = "https://d4i3qtqj3r0z5.cloudfront.net"
-
-_CMAKEMODULES = (
-    "CMakeModules@1.28.trunk.31965103.7z",
-    "0cbfc1fad314443140943264089e3e6fc28917bb6393960eb35a50716e8c472b",
-)
-
-# GPU runtime blobs are only built for / shipped on Win + Linux x64 and Linux arm64.
-_PHYSXGPU = (
-    "PhysXGpu@104.1-5.1.1253.32184287-public.zip",
-    "381b35750a0596d4a83f85eba5bb79edfdd63aae6865aabbf8e160b58422b0df",
-)
-
-_PHYSXDEVICE = (
-    "PhysXDevice@18.12.7.3.7z",
-    "c9137c1978daa2d5c62ca44dcd472fbc597e1717b3a0011fb849148790202c39",
-)
-
-# All PhysX 5 library targets (used for PIC patching and static-lib packaging).
+# Root PhysX library .cmake files (under physx/source/compiler/cmake). Used to strip PhysX's
+# hardcoded per-target PIC so the recipe toolchain controls CMAKE_POSITION_INDEPENDENT_CODE.
+# Note: PhysXVehicle.cmake builds the PhysXVehicle2 target, and FastXml only exists in the
+# per-platform subdirs (mac/ios/android), so neither "PhysXVehicle2" nor "FastXml" is a root file.
 _PHYSX_TARGETS = (
-    "FastXml",
     "LowLevel",
     "LowLevelAABB",
     "LowLevelDynamics",
@@ -41,18 +23,6 @@ _PHYSX_TARGETS = (
     "PhysXPvdSDK",
     "PhysXTask",
     "PhysXVehicle",
-    "PhysXVehicle2",
-    "SceneQuery",
-    "SimulationController",
-)
-# Internal helper static libs. On mac/linux/android/ios these are merged into the public
-# libraries, but on Windows they are emitted as separate archives that static consumers must
-# link (matching the legacy FindPhysX5.cmake EXTRA_STATIC_LIBS list).
-_PHYSX_INTERNAL_STATIC = (
-    "LowLevel",
-    "LowLevelAABB",
-    "LowLevelDynamics",
-    "PhysXTask",
     "SceneQuery",
     "SimulationController",
 )
@@ -68,7 +38,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "physx"
-    version = "5.1.1"
+    version = "5.6.1"
     license = "BSD-3-Clause"
 
     def configure(self):
@@ -89,23 +59,15 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/o3de/PhysX/archive/refs/heads/release/104.1.tar.gz",
-            sha256="e488ad0ae2447d2394ce95f96770cdb4ce49c07b4c3da903117a9fe2e08b2839",
+            url="https://github.com/o3de/PhysX/archive/0af1ce283240f8618a94456b6b819f97724cf6b7.tar.gz",
+            sha256="3c0c89f8cb6210f623b2ac46ae2ff95101817209511a3190581feb0b4499d809",
             destination=self.folders.source,
             strip_root=True)
 
-        # CMakeModules is the only mandatory build-time external (clangMetadata, vswhere,
-        # freeglut, opengl, rapidjson are for tooling/snippets/PVD/metadata-gen, all disabled).
-        get(self, url=f"{_PACKMAN_CDN}/{_CMAKEMODULES[0]}", sha256=_CMAKEMODULES[1],
-            destination=self.folders.source / "externals" / "CMakeModules")
-
-        # Prebuilt GPU runtime libs, shipped to match the legacy package.
-        if self._ships_physxgpu():
-            get(self, url=f"{_PACKMAN_CDN}/{_PHYSXGPU[0]}", sha256=_PHYSXGPU[1],
-                destination=self.folders.source / "externals" / "PhysXGpu")
-        if self._ships_physxdevice():
-            get(self, url=f"{_PACKMAN_CDN}/{_PHYSXDEVICE[0]}", sha256=_PHYSXDEVICE[1],
-                destination=self.folders.source / "externals" / "PhysXDevice")
+        # PhysX 5.6.1 embeds its CMake helper modules in-tree (physx/source/compiler/cmake/modules),
+        # so unlike 5.1.1 there are no packman/CDN externals to download. Everything else listed in
+        # physx/dependencies.xml (clangMetadata, freeglut, vswhere, opengl, rapidjson) is only used
+        # by metadata-generation / snippets / tooling, all of which are disabled in this build.
 
         self._patch_sources()
 
@@ -125,22 +87,20 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["PX_BUILDSNIPPETS"] = False
         tc.cache_variables["PX_BUILDPVDRUNTIME"] = False
         tc.cache_variables["PX_CMAKE_SUPPRESS_REGENERATION"] = False
+        # GPU acceleration is opt-in in 5.6.1; we keep it off on every platform (CPU-only, matching
+        # mac/android). With GPU projects disabled, windows/CMakeLists.txt auto-defines
+        # DISABLE_CUDA_PHYSX (PX_SUPPORT_GPU_PHYSX=0), so no prebuilt PhysXGpu/PhysXDevice blobs are
+        # needed and there is nothing to fetch from packman.
+        tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = False
 
-        # Point CMake at the directly-downloaded CMakeModules. CMAKEMODULES_VERSION must be set,
-        # otherwise public/CMakeLists.txt overwrites CMAKEMODULES_PATH with the (empty) packman
-        # PM_CMakeModules_PATH environment variable.
-        cmakemodules = self.folders.source / "externals" / "CMakeModules"
-        tc.cache_variables["CMAKEMODULES_PATH"] = cmakemodules.as_posix()
-        tc.cache_variables["CMAKEMODULES_NAME"] = "CMakeModules"
-        tc.cache_variables["CMAKEMODULES_VERSION"] = "1.28"
-
-        # GameWorks output layout: <PX_OUTPUT_LIB_DIR>/bin/<platform>/<config>/<libs>
+        # GameWorks output layout: <PX_OUTPUT_LIB_DIR>/bin/<platform>/<config>/<libs>. In 5.6.1 this
+        # is the default structure (no NV_USE_GAMEWORKS_OUTPUT_DIRS toggle); the base dirs are
+        # mandatory (NvidiaBuildOptions.cmake FATAL_ERRORs without them).
         px_output = (self.folders.build / "px_output").as_posix()
         tc.cache_variables["PX_OUTPUT_LIB_DIR"] = px_output
         tc.cache_variables["PX_OUTPUT_BIN_DIR"] = px_output
 
-        # externals/CMakeModules/NvidiaBuildOptions.cmake
-        tc.cache_variables["NV_USE_GAMEWORKS_OUTPUT_DIRS"] = True
+        # physx/source/compiler/cmake/modules/NvidiaBuildOptions.cmake
         tc.cache_variables["NV_APPEND_CONFIG_NAME"] = False
         tc.cache_variables["NV_FORCE_64BIT_SUFFIX"] = False
         tc.cache_variables["NV_FORCE_32BIT_SUFFIX"] = False
@@ -164,12 +124,8 @@ class Recipe(RecipeBase[_Options]):
             tc.cache_variables["ANDROID_USE_LEGACY_TOOLCHAIN_FILE"] = False
 
         if self.settings.os == "Windows":
-            # GPU projects are disabled; we ship the prebuilt PhysXGpu/PhysXDevice blobs instead.
-            tc.cache_variables["PX_COPY_EXTERNAL_DLL"] = False
             tc.cache_variables["PX_FLOAT_POINT_PRECISE_MATH"] = self.options.enable_float_point_precise_math
             tc.cache_variables["PX_USE_NVTX"] = False
-            tc.cache_variables["GPU_DLL_COPIED"] = True
-            tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = False
 
         tc.generate()
 
@@ -196,16 +152,20 @@ class Recipe(RecipeBase[_Options]):
             copy(self, pattern=pattern, src=lib_src, dst=lib_dst, keep_path=False)
         copy(self, pattern="*.dll", src=lib_src, dst=bin_dst, keep_path=False)
 
-        self._copy_gpu_libs()
-
     def package_info(self):
         self.info.set_property("cmake_file_name", "PhysX")
+
+        # The libraries are built CPU-only (GPU projects disabled), which compiles them with
+        # DISABLE_CUDA_PHYSX (PX_SUPPORT_GPU_PHYSX=0). On Win/Linux x64 the public headers would
+        # otherwise default that to 1, so propagate the define to consumers to keep the header/lib
+        # ABI consistent (mac/ios/android already define it by platform).
+        self.info.defines = ["DISABLE_CUDA_PHYSX"]
 
         # The static libraries are compiled with PX_PHYSX_STATIC_LIB, but PhysX only writes that
         # define into the public PxConfig.h on Windows. Expose it to consumers on every platform
         # so header linkage matches the libraries (matches the legacy FindPhysX5.cmake).
         if not self.options.shared:
-            self.info.defines = ["PX_PHYSX_STATIC_LIB"]
+            self.info.defines.append("PX_PHYSX_STATIC_LIB")
 
         def component(key, target, libs, requires=None, system_libs=None):
             comp = self.info.components[key]
@@ -242,22 +202,8 @@ class Recipe(RecipeBase[_Options]):
                   requires=["physxfoundation", "physxpvdsdk", "physxmain", "physxcommon"])
         component("physxcharacterkinematic", "PhysXCharacterKinematic", ["PhysXCharacterKinematic"],
                   requires=["physxfoundation", "physxcommon", "physxextensions"])
-        component("physxvehicle", "PhysXVehicle", ["PhysXVehicle"],
-                  requires=["physxfoundation", "physxpvdsdk", "physxextensions"])
         component("physxvehicle2", "PhysXVehicle2", ["PhysXVehicle2"],
                   requires=["physxfoundation", "physxpvdsdk", "physxextensions"])
-
-        # On Windows the internal helper libs are separate static archives that must also be
-        # linked (elsewhere they are merged into the public libraries). Attach them to the main
-        # PhysX component so consumers pick them up transitively.
-        if not self.options.shared and self.settings.os == "Windows":
-            for target in _PHYSX_INTERNAL_STATIC:
-                key = target.lower()
-                comp = self.info.components[key]
-                comp.set_property("cmake_target_name", f"PhysX::{target}")
-                comp.libs = [self._lib(target)]
-                comp.requires = ["physxfoundation"]
-                self.info.components["physxmain"].requires.append(key)
 
     # ----- helpers -------------------------------------------------------------------------
 
@@ -273,25 +219,27 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(self, cmake_dir / "CMakeLists.txt",
                         "SET(CMAKE_POSITION_INDEPENDENT_CODE ON)", "", strict=False)
         for target in _PHYSX_TARGETS:
+            # PhysXVehicle.cmake builds the PhysXVehicle2 target; otherwise file stem == target.
+            lib = "PhysXVehicle2" if target == "PhysXVehicle" else target
             replace_in_file(
                 self, cmake_dir / f"{target}.cmake",
-                f"SET_TARGET_PROPERTIES({target} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)",
+                f"SET_TARGET_PROPERTIES({lib} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)",
                 "", strict=False)
-
-        # Don't treat warnings as errors (modern toolchains emit far more warnings than PhysX's
-        # 2022-era flag lists suppress; mac/ios additionally use -Weverything).
-        replace_in_file(self, cmake_dir / "windows" / "CMakeLists.txt", "/WX ", "", strict=False)
 
         # The windows build copies PhysXDevice + freeglut DLLs from the packman-provided
         # PM_PhysXDevice_PATH / PM_freeglut_PATH env vars. public/CMakeLists.txt forces
-        # PUBLIC_RELEASE=1, so this copy fires regardless of our PX_COPY_EXTERNAL_DLL=False: the
-        # env vars are unset (we download PhysXDevice directly and never fetch freeglut), so the
-        # paths collapse to "/bin/x86/" and configure fails. Drop the PUBLIC_RELEASE force so the
-        # block honors PX_COPY_EXTERNAL_DLL; we ship PhysXDevice64.dll ourselves in package() and
-        # freeglut is only needed by the (disabled) snippets.
+        # PUBLIC_RELEASE=1, so this copy fires regardless of our PX_COPY_EXTERNAL_DLL default. The
+        # PhysXDevice copy is now guarded by IF(NOT PUBLIC_RELEASE) and skipped, but the freeglut
+        # copy still runs and PM_freeglut_PATH is unset (we don't build snippets), collapsing the
+        # path to "/bin//win64/freeglut.dll" and failing configure. Drop the PUBLIC_RELEASE force so
+        # the block honors PX_COPY_EXTERNAL_DLL (left at its default-off; freeglut isn't needed).
         replace_in_file(self, cmake_dir / "windows" / "CMakeLists.txt",
                         "IF(PX_COPY_EXTERNAL_DLL OR PUBLIC_RELEASE)",
                         "IF(PX_COPY_EXTERNAL_DLL)", strict=False)
+
+        # Don't treat warnings as errors (modern toolchains emit far more warnings than PhysX's
+        # flag lists suppress; mac/ios additionally use -Weverything).
+        replace_in_file(self, cmake_dir / "windows" / "CMakeLists.txt", "/WX ", "", strict=False)
         for cmake_os in ("linux", "mac", "android", "ios"):
             replace_in_file(self, cmake_dir / cmake_os / "CMakeLists.txt", "-Werror", "",
                             strict=False)
@@ -301,39 +249,6 @@ class Recipe(RecipeBase[_Options]):
             self, self.folders.source / "physx" / "include" / "foundation" / "PxPreprocessor.h",
             "#error Exactly one of NDEBUG and _DEBUG needs to be defined!",
             "// #error Exactly one of NDEBUG and _DEBUG needs to be defined!", strict=False)
-
-    def _copy_gpu_libs(self):
-        # PhysXGpu / PhysXDevice are prebuilt; their packman archives only ship checked/profile/
-        # release, so debug builds reuse the checked variant.
-        gpu_config = {"debug": "checked"}.get(self._physx_build_type(), self._physx_build_type())
-
-        if self._ships_physxgpu():
-            gpu_bin = (self.folders.source / "externals" / "PhysXGpu" / "bin"
-                       / self._gpu_platform_dir() / gpu_config)
-            if self.settings.os == "Windows":
-                copy(self, pattern="PhysXGpu*.dll", src=gpu_bin,
-                     dst=self.folders.package / "bin", keep_path=False)
-            else:
-                copy(self, pattern="*PhysXGpu*.so", src=gpu_bin,
-                     dst=self.folders.package / "lib", keep_path=False)
-
-        if self._ships_physxdevice():
-            device_bin = self.folders.source / "externals" / "PhysXDevice" / "bin" / "x86"
-            copy(self, pattern="PhysXDevice64.dll", src=device_bin,
-                 dst=self.folders.package / "bin", keep_path=False)
-
-    def _ships_physxgpu(self) -> bool:
-        if self.settings.os == "Linux":
-            return self.settings.arch in ("X64", "ARM")
-        return self.settings.os == "Windows" and self.settings.arch == "X64"
-
-    def _ships_physxdevice(self) -> bool:
-        return self.settings.os == "Windows" and self.settings.arch == "X64"
-
-    def _gpu_platform_dir(self) -> str:
-        if self.settings.os == "Windows":
-            return "win.x86_64.vc141.mt"
-        return "linux.aarch64" if self.settings.arch == "ARM" else "linux.clang"
 
     def _physx_build_type(self) -> str:
         if self.settings.build_type == "Debug":
