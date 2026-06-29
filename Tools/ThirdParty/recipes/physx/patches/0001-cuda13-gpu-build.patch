@@ -1,0 +1,306 @@
+Build PhysX 5.6.1 as a recipe-controlled, optionally GPU-accelerated package.
+
+This bundles every source adjustment the recipe needs into one patch, applied
+unconditionally in source(). The GPU-related hunks are inert in a CPU-only build
+(cmakegpu/CMakeLists.txt is only INCLUDEd when PX_GENERATE_GPU_PROJECTS is on,
+and the cudamanager driver-API code is compiled only for GPU builds), so there
+is no need to guard them on the gpu option.
+
+Changes:
+* PIC control: drop PhysX's global SET(CMAKE_POSITION_INDEPENDENT_CODE ON) and
+  the per-target POSITION_INDEPENDENT_CODE TRUE properties, so the recipe
+  toolchain decides PIC via CMAKE_POSITION_INDEPENDENT_CODE.
+* windows/CMakeLists.txt: honor PX_COPY_EXTERNAL_DLL instead of forcing the
+  PhysXDevice/freeglut DLL copy via PUBLIC_RELEASE (the freeglut path is unset
+  in this build and otherwise fails configure).
+* Stop treating warnings as errors (/WX on Windows, -Werror on
+  linux/mac/android/ios); modern toolchains emit far more warnings than PhysX's
+  suppression lists cover.
+* PxPreprocessor.h: don't force consumers to define exactly one of NDEBUG/_DEBUG.
+* CUDA 12 -> 13 (GPU only): PhysX 5.6.1's GPU sources target the CUDA 12
+  toolkit/ABI; bridge them to the CUDA 13 toolkit we build with (CUDA 13, unlike
+  12.x, supports the very new host MSVC/GCC toolsets):
+  - cmakegpu/CMakeLists.txt: drop -Werror=all-warnings (nvcc otherwise promotes
+    modern MSVC STL <cmath> host/device diagnostics to fatal errors).
+  - CudaContextManager.cpp: cuCtxCreate became _v4 in CUDA 13, taking an extra
+    leading CUctxCreateParams* (passed NULL).
+  - CudaKernelWrangler.cpp: PhysX ships its own cudart shim (PhysXGpu links only
+    the driver); CUDA 13's generated fatbin registration references
+    __cudaGetKernel/__cudaLaunchKernel, absent from the CUDA-12-era shim -- add
+    no-op stubs matching the existing ones.
+
+--- a/physx/source/compiler/cmake/CMakeLists.txt
++++ b/physx/source/compiler/cmake/CMakeLists.txt
+@@ -99,7 +99,7 @@
+ 	MESSAGE(FATAL_ERROR "Unable to find platform CMakeLists.txt for ${TARGET_BUILD_PLATFORM} at ${PLATFORM_CMAKELISTS}")
+ ENDIF()
+ 
+-SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
++
+ 
+ SET(SOURCE_DISTRO_FILE_LIST "")
+ 
+--- a/physx/source/compiler/cmake/LowLevel.cmake
++++ b/physx/source/compiler/cmake/LowLevel.cmake
+@@ -228,4 +228,4 @@
+ 	LIST(APPEND SOURCE_DISTRO_FILE_LIST ${LL_COMMON_UTILS_HEADERS})
+ ENDIF()
+ 
+-SET_TARGET_PROPERTIES(LowLevel PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/LowLevelAABB.cmake
++++ b/physx/source/compiler/cmake/LowLevelAABB.cmake
+@@ -134,4 +134,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(LowLevelAABB PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/LowLevelDynamics.cmake
++++ b/physx/source/compiler/cmake/LowLevelDynamics.cmake
+@@ -207,4 +207,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(LowLevelDynamics PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/PhysX.cmake
++++ b/physx/source/compiler/cmake/PhysX.cmake
+@@ -464,5 +464,5 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysX PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+ 
+--- a/physx/source/compiler/cmake/PhysXCharacterKinematic.cmake
++++ b/physx/source/compiler/cmake/PhysXCharacterKinematic.cmake
+@@ -130,5 +130,5 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXCharacterKinematic PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+ 
+--- a/physx/source/compiler/cmake/PhysXCommon.cmake
++++ b/physx/source/compiler/cmake/PhysXCommon.cmake
+@@ -719,4 +719,4 @@
+ 
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXCommon PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/PhysXCooking.cmake
++++ b/physx/source/compiler/cmake/PhysXCooking.cmake
+@@ -135,6 +135,6 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXCooking PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+ 
+ 
+--- a/physx/source/compiler/cmake/PhysXExtensions.cmake
++++ b/physx/source/compiler/cmake/PhysXExtensions.cmake
+@@ -402,4 +402,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXExtensions PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/PhysXFoundation.cmake
++++ b/physx/source/compiler/cmake/PhysXFoundation.cmake
+@@ -175,7 +175,7 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXFoundation PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+ 
+ IF(PLATFORM_COMPILE_FLAGS)
+ 	SET_TARGET_PROPERTIES(PhysXFoundation PROPERTIES COMPILE_FLAGS ${PLATFORM_COMPILE_FLAGS})
+--- a/physx/source/compiler/cmake/PhysXPvdSDK.cmake
++++ b/physx/source/compiler/cmake/PhysXPvdSDK.cmake
+@@ -183,4 +183,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXPvdSDK PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/PhysXTask.cmake
++++ b/physx/source/compiler/cmake/PhysXTask.cmake
+@@ -105,4 +105,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXTask PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/PhysXVehicle.cmake
++++ b/physx/source/compiler/cmake/PhysXVehicle.cmake
+@@ -309,4 +309,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(PhysXVehicle2 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/SceneQuery.cmake
++++ b/physx/source/compiler/cmake/SceneQuery.cmake
+@@ -135,4 +135,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(SceneQuery PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/SimulationController.cmake
++++ b/physx/source/compiler/cmake/SimulationController.cmake
+@@ -239,4 +239,4 @@
+ ENDIF()
+ 
+ # enable -fPIC so we can link static libs with the editor
+-SET_TARGET_PROPERTIES(SimulationController PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
++
+--- a/physx/source/compiler/cmake/windows/CMakeLists.txt
++++ b/physx/source/compiler/cmake/windows/CMakeLists.txt
+@@ -43,7 +43,7 @@
+ # Common Flags
+ # PT: changed /Ox to /O2 because "the /Ox compiler option enables only a subset of the speed optimization options enabled by /O2."
+ # See https://docs.microsoft.com/en-us/cpp/build/reference/ox-full-optimization?view=vs-2019
+-SET(PHYSX_COMMON_FLAGS "/std:c++14 /d2Zi+ /MP /WX /W4 /GF /GS- /Gd ${PHYSX_FP_MODE} /Oy ${PHYSX_WARNING_DISABLES}")
++SET(PHYSX_COMMON_FLAGS "/std:c++14 /d2Zi+ /MP /W4 /GF /GS- /Gd ${PHYSX_FP_MODE} /Oy ${PHYSX_WARNING_DISABLES}")
+ SET(PHYSX_COMMON_FLAGS_DEBUG "/Od ${WINCRT_DEBUG} /RTCu /Zi")
+ SET(PHYSX_COMMON_FLAGS_CHECKED "/O2 ${WINCRT_NDEBUG} /Zi")
+ SET(PHYSX_COMMON_FLAGS_PROFILE "/O2 ${WINCRT_NDEBUG} /Zi")
+@@ -135,7 +135,7 @@
+ SET(PHYSX_WINDOWS_RELEASE_COMPILE_DEFS "PX_SUPPORT_PVD=0;PX_SUPPORT_OMNI_PVD=0" CACHE INTERNAL "Release PhysX preprocessor definitions")
+ 
+ # copy the external dlls
+-IF(PX_COPY_EXTERNAL_DLL OR PUBLIC_RELEASE)
++IF(PX_COPY_EXTERNAL_DLL)
+ 	IF(NOT PHYSX_SLN_PHYSXDEVICE_PATH)
+ 		SET(PHYSX_SLN_PHYSXDEVICE_PATH "$ENV{PM_PhysXDevice_PATH}/bin/x86/" CACHE INTERNAL "PhysX device copy path")
+ 	ENDIF()
+--- a/physx/source/compiler/cmake/linux/CMakeLists.txt
++++ b/physx/source/compiler/cmake/linux/CMakeLists.txt
+@@ -27,7 +27,7 @@
+ STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWERCASE)
+ 
+ #TODO: Fix warnings
+-SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra -Werror -Weverything\
++SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra  -Weverything\
+ 	-Wno-unused-but-set-variable \
+ 	-Wno-switch-default \
+ 	-Wno-cast-qual \
+@@ -82,7 +82,7 @@
+ 	-Wno-format \
+ ")
+ 
+-SET(GCC_WARNINGS "-Wall -Werror \
++SET(GCC_WARNINGS "-Wall  \
+ 	-Wno-address \
+ 	-Wno-aligned-new \
+ 	-Wno-array-bounds \
+--- a/physx/source/compiler/cmake/mac/CMakeLists.txt
++++ b/physx/source/compiler/cmake/mac/CMakeLists.txt
+@@ -34,7 +34,7 @@
+     SET(ARCH_SIMD_FLAG "-msse2")
+ ENDIF()
+ 
+-SET(PHYSX_CXX_FLAGS "${OSX_BITNESS} ${ARCH_SIMD_FLAG} -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections -Werror -ferror-limit=0 -Wall -Wextra -fstrict-aliasing -Wstrict-aliasing=2 -Weverything -Wno-unknown-warning-option -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-float-equal -Wno-padded -Wno-weak-vtables -Wno-cast-align -Wno-conversion -Wno-missing-noreturn -Wno-missing-variable-declarations -Wno-shift-sign-overflow -Wno-covered-switch-default -Wno-exit-time-destructors -Wno-global-constructors -Wno-missing-prototypes -Wno-unreachable-code -Wno-unused-macros -Wno-unused-member-function -Wno-used-but-marked-unused -Wno-weak-template-vtables -Wno-deprecated -Wno-non-virtual-dtor -Wno-invalid-noreturn -Wno-return-type-c-linkage -Wno-reserved-id-macro -Wno-c++98-compat-pedantic -Wno-unused-local-typedef -Wno-old-style-cast -Wno-newline-eof -Wno-unused-private-field -Wno-undefined-reinterpret-cast -Wno-invalid-offsetof -Wno-zero-as-null-pointer-constant -Wno-atomic-implicit-seq-cst -Wno-suggest-destructor-override -Wno-suggest-override -Wno-alloca -Wno-switch-enum -Wno-unused-but-set-variable -Wno-shadow-field -gdwarf-2" CACHE INTERNAL "PhysX CXX")
++SET(PHYSX_CXX_FLAGS "${OSX_BITNESS} ${ARCH_SIMD_FLAG} -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections  -ferror-limit=0 -Wall -Wextra -fstrict-aliasing -Wstrict-aliasing=2 -Weverything -Wno-unknown-warning-option -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-float-equal -Wno-padded -Wno-weak-vtables -Wno-cast-align -Wno-conversion -Wno-missing-noreturn -Wno-missing-variable-declarations -Wno-shift-sign-overflow -Wno-covered-switch-default -Wno-exit-time-destructors -Wno-global-constructors -Wno-missing-prototypes -Wno-unreachable-code -Wno-unused-macros -Wno-unused-member-function -Wno-used-but-marked-unused -Wno-weak-template-vtables -Wno-deprecated -Wno-non-virtual-dtor -Wno-invalid-noreturn -Wno-return-type-c-linkage -Wno-reserved-id-macro -Wno-c++98-compat-pedantic -Wno-unused-local-typedef -Wno-old-style-cast -Wno-newline-eof -Wno-unused-private-field -Wno-undefined-reinterpret-cast -Wno-invalid-offsetof -Wno-zero-as-null-pointer-constant -Wno-atomic-implicit-seq-cst -Wno-suggest-destructor-override -Wno-suggest-override -Wno-alloca -Wno-switch-enum -Wno-unused-but-set-variable -Wno-shadow-field -gdwarf-2" CACHE INTERNAL "PhysX CXX")
+ 
+ SET(CMAKE_SHARED_LINKER_FLAGS_CHECKED "")
+ SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE "")
+--- a/physx/source/compiler/cmake/android/CMakeLists.txt
++++ b/physx/source/compiler/cmake/android/CMakeLists.txt
+@@ -27,7 +27,7 @@
+ STRING(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWERCASE)
+ 
+ #TODO: Fix warnings
+-SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra -Werror -Weverything\
++SET(CLANG_WARNINGS "-ferror-limit=0 -Wall -Wextra  -Weverything\
+ 	-Wno-unused-but-set-variable \
+ 	-Wno-switch-default \
+ 	-Wno-cast-qual \
+@@ -85,13 +85,13 @@
+ IF(${ANDROID_ABI} STREQUAL "armeabi-v7a")
+ 	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections -funwind-tables -fvisibility=hidden -fomit-frame-pointer -funswitch-loops -finline-limit=300 -fno-strict-aliasing -fstack-protector ${CLANG_WARNINGS}" CACHE INTERNAL "PhysX CXX")
+ ELSEIF(${ANDROID_ABI} STREQUAL "armeabi-v7a with NEON")
+-	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS} -Werror -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops -finline-limit=300 -fno-strict-aliasing -fstack-protector ${CLANG_WARNINGS}" CACHE INTERNAL "PhysX CXX")
++	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS}  -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops -finline-limit=300 -fno-strict-aliasing -fstack-protector ${CLANG_WARNINGS}" CACHE INTERNAL "PhysX CXX")
+ ELSEIF(${ANDROID_ABI} STREQUAL "arm64-v8a")
+-	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS} -Werror -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections ${CLANG_WARNINGS} " CACHE INTERNAL "PhysX CXX")
++	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS}  -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections ${CLANG_WARNINGS} " CACHE INTERNAL "PhysX CXX")
+ ELSEIF(${ANDROID_ABI} STREQUAL "x86")
+-	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS} -Werror -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections ${CLANG_WARNINGS} -fpack-struct=8 -malign-double " CACHE INTERNAL "PhysX CXX")
++	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS}  -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections ${CLANG_WARNINGS} -fpack-struct=8 -malign-double " CACHE INTERNAL "PhysX CXX")
+ ELSEIF(${ANDROID_ABI} STREQUAL "x86_64")
+-	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS} -Werror -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections ${CLANG_WARNINGS} -mstackrealign -msse3 " CACHE INTERNAL "PhysX CXX")
++	SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_CXX_FLAGS}  -Wall -Wextra -Wpedantic -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections ${CLANG_WARNINGS} -mstackrealign -msse3 " CACHE INTERNAL "PhysX CXX")
+ ENDIF()
+ 
+ # Build debug info for all configurations
+--- a/physx/source/compiler/cmake/ios/CMakeLists.txt
++++ b/physx/source/compiler/cmake/ios/CMakeLists.txt
+@@ -25,7 +25,7 @@
+ ## Copyright (c) 2008-2022 NVIDIA Corporation. All rights reserved.
+ 
+ 
+-SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections -ferror-limit=0 -Wall -Wextra -Werror -fstrict-aliasing -Wstrict-aliasing=2 -Weverything -Wno-unknown-warning-option -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-float-equal -Wno-padded -Wno-weak-vtables -Wno-cast-align -Wno-conversion -Wno-missing-noreturn -Wno-missing-variable-declarations -Wno-shift-sign-overflow -Wno-covered-switch-default -Wno-exit-time-destructors -Wno-global-constructors -Wno-missing-prototypes -Wno-unreachable-code -Wno-unused-macros -Wno-unused-member-function -Wno-used-but-marked-unused -Wno-weak-template-vtables -Wno-deprecated -Wno-non-virtual-dtor -Wno-invalid-noreturn -Wno-return-type-c-linkage -Wno-reserved-id-macro -Wno-c++98-compat-pedantic -Wno-unused-local-typedef -Wno-old-style-cast -Wno-newline-eof -Wno-unused-private-field -Wno-undefined-reinterpret-cast -Wno-invalid-offsetof -Wno-zero-as-null-pointer-constant -Wno-atomic-implicit-seq-cst -Wno-unused-but-set-variable -Wno-suggest-override -Wno-suggest-destructor-override -Wno-alloca -Wno-switch-enum -Wno-shadow-field -gdwarf-2" CACHE INTERNAL "PhysX CXX")
++SET(PHYSX_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections -ferror-limit=0 -Wall -Wextra  -fstrict-aliasing -Wstrict-aliasing=2 -Weverything -Wno-unknown-warning-option -Wno-documentation-deprecated-sync -Wno-documentation-unknown-command -Wno-float-equal -Wno-padded -Wno-weak-vtables -Wno-cast-align -Wno-conversion -Wno-missing-noreturn -Wno-missing-variable-declarations -Wno-shift-sign-overflow -Wno-covered-switch-default -Wno-exit-time-destructors -Wno-global-constructors -Wno-missing-prototypes -Wno-unreachable-code -Wno-unused-macros -Wno-unused-member-function -Wno-used-but-marked-unused -Wno-weak-template-vtables -Wno-deprecated -Wno-non-virtual-dtor -Wno-invalid-noreturn -Wno-return-type-c-linkage -Wno-reserved-id-macro -Wno-c++98-compat-pedantic -Wno-unused-local-typedef -Wno-old-style-cast -Wno-newline-eof -Wno-unused-private-field -Wno-undefined-reinterpret-cast -Wno-invalid-offsetof -Wno-zero-as-null-pointer-constant -Wno-atomic-implicit-seq-cst -Wno-unused-but-set-variable -Wno-suggest-override -Wno-suggest-destructor-override -Wno-alloca -Wno-switch-enum -Wno-shadow-field -gdwarf-2" CACHE INTERNAL "PhysX CXX")
+ 
+ SET(CMAKE_SHARED_LINKER_FLAGS_CHECKED "")
+ SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE "")
+--- a/physx/source/compiler/cmakegpu/CMakeLists.txt
++++ b/physx/source/compiler/cmakegpu/CMakeLists.txt
+@@ -97,7 +97,7 @@
+ set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_OBJECTS 0)
+ 
+ # Cuda setup that is the same for all platforms and sub-projects
+-SET(PHYSX_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Werror=all-warnings -use_fast_math -ftz=true -prec-div=false -prec-sqrt=false -t0 -D_CONSOLE" CACHE INTERNAL "PhysX CUDA")
++SET(PHYSX_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -use_fast_math -ftz=true -prec-div=false -prec-sqrt=false -t0 -D_CONSOLE" CACHE INTERNAL "PhysX CUDA")
+ # Include the platform specific CMakeLists (The other CUDA flags that are specific to each platform are defined there)
+ INCLUDE(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/CMakeLists.txt)
+ 
+--- a/physx/source/cudamanager/src/CudaContextManager.cpp
++++ b/physx/source/cudamanager/src/CudaContextManager.cpp
+@@ -574,7 +574,7 @@
+ 				return;
+ 			}
+ 			
+-			status = cuCtxCreate(&mCtx, (unsigned int)flags, mDevHandle);
++			status = cuCtxCreate(&mCtx, NULL, (unsigned int)flags, mDevHandle);
+ 			if (CUDA_SUCCESS != status)
+ 			{
+ 				const size_t bufferSize = 128;
+--- a/physx/source/cudamanager/src/CudaKernelWrangler.cpp
++++ b/physx/source/cudamanager/src/CudaKernelWrangler.cpp
+@@ -203,6 +203,18 @@
+ }
+ 
+ extern "C"
++cudaError_t CUDARTAPI __cudaGetKernel(cudaKernel_t* , const void* )
++{
++	return cudaSuccess;
++}
++
++extern "C"
++cudaError_t CUDARTAPI __cudaLaunchKernel( const void* , dim3 , dim3 , void** , size_t , cudaStream_t  )
++{
++	return cudaSuccess;
++}
++
++extern "C"
+ cudaError_t CUDARTAPI cudaSetupArgument(const void*, size_t, size_t)
+ {
+ 	return cudaSuccess;
+--- a/physx/include/foundation/PxPreprocessor.h
++++ b/physx/include/foundation/PxPreprocessor.h
+@@ -456,7 +456,7 @@
+ #if PX_WINDOWS_FAMILY
+ 	// check that exactly one of NDEBUG and _DEBUG is defined
+ 	#if !defined(NDEBUG) ^ defined(_DEBUG)
+-		#error Exactly one of NDEBUG and _DEBUG needs to be defined!
++		// #error Exactly one of NDEBUG and _DEBUG needs to be defined!
+ 	#endif
+ #endif
+ 
