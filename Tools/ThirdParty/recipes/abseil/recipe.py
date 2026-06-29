@@ -65,7 +65,7 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, cmake_folder)
 
         # Create a json helper file in order to populate package_info() at consume time
-        self._create_components_file(self._components_helper_filepath, components)
+        save(self, self._components_helper_filepath, json.dumps(components, indent=4))
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "absl")
@@ -138,27 +138,17 @@ class Recipe(RecipeBase[_Options]):
                             else:
                                 components[potential_lib_name].setdefault("defines", []).append(definition)
 
-        self._normalize_components(components)
-        return components
-
-    def _create_components_file(self, output_file: Path, components: dict[str, dict[str, Any]]):
-        content = json.dumps(components, indent=4)
-        save(self, output_file, content)
-
-    def _normalize_components(self, components: dict[str, dict[str, Any]]):
         for component_name, values in components.items():
             requires = values.get("requires", [])
             if requires:
-                values["requires"] = self._unique_preserve_order(
-                    dependency for dependency in requires if dependency != component_name)
+                values["requires"] = list(dict.fromkeys(dependency for dependency in requires if dependency != component_name))
 
             for key in ["defines", "frameworks", "libs", "system_libs"]:
                 entries = values.get(key, [])
                 if entries:
-                    values[key] = self._unique_preserve_order(entries)
+                    values[key] = list(dict.fromkeys(entries))
 
-    def _unique_preserve_order(self, values):
-        return list(dict.fromkeys(values))
+        return components
 
     @property
     def _components_helper_filepath(self):
