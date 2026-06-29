@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import py7zr
 
@@ -50,6 +51,26 @@ class TestUn7zip(unittest.TestCase):
             un7zip(archive, Path(dest), pattern="*.h")
             self.assertTrue(Path(dest, "keep.h").exists())
             self.assertFalse(Path(dest, "skip.cpp").exists())
+
+    def test_uses_7zip_program_when_available(self):
+        def fake_run(args, stdout, stderr, text):
+            self.assertEqual(args[:3], ["/usr/bin/7zz", "x", "-y"])
+            output_arg = next(arg for arg in args if arg.startswith("-o"))
+            Path(output_arg[2:], "from-tool.txt").write_text("ok", encoding="utf-8")
+            return mock.Mock(returncode=0, stdout="", stderr="")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = os.path.join(tmp, "pkg.7z")
+            Path(archive).write_bytes(b"not read by mocked extractors")
+            dest = os.path.join(tmp, "out")
+
+            with mock.patch("py7zr.SevenZipFile") as py7zr_mock:
+                with mock.patch("thirdparty.files.files.which", return_value="/usr/bin/7zz"):
+                    with mock.patch("thirdparty.files.files.subprocess.run", side_effect=fake_run):
+                        un7zip(archive, Path(dest))
+
+            py7zr_mock.assert_not_called()
+            self.assertEqual(Path(dest, "from-tool.txt").read_text(encoding="utf-8"), "ok")
 
 
 if __name__ == "__main__":

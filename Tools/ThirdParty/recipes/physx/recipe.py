@@ -281,6 +281,17 @@ class Recipe(RecipeBase[_Options]):
         # Don't treat warnings as errors (modern toolchains emit far more warnings than PhysX's
         # 2022-era flag lists suppress; mac/ios additionally use -Weverything).
         replace_in_file(self, cmake_dir / "windows" / "CMakeLists.txt", "/WX ", "", strict=False)
+
+        # The windows build copies PhysXDevice + freeglut DLLs from the packman-provided
+        # PM_PhysXDevice_PATH / PM_freeglut_PATH env vars. public/CMakeLists.txt forces
+        # PUBLIC_RELEASE=1, so this copy fires regardless of our PX_COPY_EXTERNAL_DLL=False: the
+        # env vars are unset (we download PhysXDevice directly and never fetch freeglut), so the
+        # paths collapse to "/bin/x86/" and configure fails. Drop the PUBLIC_RELEASE force so the
+        # block honors PX_COPY_EXTERNAL_DLL; we ship PhysXDevice64.dll ourselves in package() and
+        # freeglut is only needed by the (disabled) snippets.
+        replace_in_file(self, cmake_dir / "windows" / "CMakeLists.txt",
+                        "IF(PX_COPY_EXTERNAL_DLL OR PUBLIC_RELEASE)",
+                        "IF(PX_COPY_EXTERNAL_DLL)", strict=False)
         for cmake_os in ("linux", "mac", "android", "ios"):
             replace_in_file(self, cmake_dir / cmake_os / "CMakeLists.txt", "-Werror", "",
                             strict=False)

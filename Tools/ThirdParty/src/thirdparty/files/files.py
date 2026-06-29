@@ -537,25 +537,22 @@ def un7zip(
     strip_root: bool = False,
     excludes: Any = None):
     # NOT EXPOSED at `thirdparty.files` but used through unzip()/get() for `.7z` archives
-    # (the format packman packages are distributed in). Uses pure-Python ``py7zr`` so no
-    # system ``7z`` binary is required on any build host.
+    # (the format packman packages are distributed in). Prefer pure-Python ``py7zr`` for the
+    # common case, but fall back to a real 7-Zip executable for filters py7zr cannot decode
+    # (for example BCJ2, used by some Packman archives).
     import tempfile
-
-    import py7zr
 
     full_path = os.path.normpath(os.path.join(os.getcwd(), destination))
     os.makedirs(full_path, exist_ok=True)
 
     # Fast path: extract everything as-is.
     if not pattern and not excludes and not strip_root:
-        with py7zr.SevenZipFile(filename, mode="r") as archive:
-            archive.extractall(path=full_path)
+        _extract_7z_archive(filename, full_path)
         return
 
     # Filtered / strip_root path: extract to a staging dir, then relocate selected members.
     with tempfile.TemporaryDirectory() as tmp:
-        with py7zr.SevenZipFile(filename, mode="r") as archive:
-            archive.extractall(path=tmp)
+        _extract_7z_archive(filename, tmp)
 
         common_folder = None
         if strip_root:
@@ -578,6 +575,63 @@ def un7zip(
                 dst = os.path.join(full_path, *rel.split("/"))
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.move(abs_src, dst)
+
+
+def _extract_7z_archive(filename: str, destination: str):
+    seven_zip = _find_7zip_program()
+    if seven_zip:
+        _run_7zip(seven_zip, filename, destination)
+        return
+
+    try:
+        import py7zr
+        with py7zr.SevenZipFile(filename, mode="r") as archive:
+            archive.extractall(path=destination)
+        return
+    except Exception as exc:
+        raise RecipeException(
+            f"Unable to extract {filename} with py7zr ({exc}). "
+            "Install a 7-Zip compatible executable named '7zz', '7z', or '7za' and make sure "
+            "it is on PATH.") from exc
+
+
+def _run_7zip(seven_zip: str, filename: str, destination: str):
+    result = subprocess.run(
+        [seven_zip, "x", "-y", f"-o{destination}", os.fspath(filename)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True)
+    if result.returncode != 0:
+        raise RecipeException(
+            f"Unable to extract {filename} with {seven_zip}.\n"
+            f"stdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}")
+
+
+def _find_7zip_program() -> str | None:
+    for program in ("7zz", "7z", "7za"):
+        resolved = which(program)
+        if resolved:
+            return resolved
+
+    candidates: list[str] = []
+    if platform.system() == "Darwin":
+        candidates.extend((
+            "/opt/homebrew/bin/7zz",
+            "/opt/homebrew/bin/7z",
+            "/usr/local/bin/7zz",
+            "/usr/local/bin/7z",
+        ))
+    elif platform.system() == "Windows":
+        candidates.extend((
+            r"C:\Program Files\7-Zip\7z.exe",
+            r"C:\Program Files (x86)\7-Zip\7z.exe",
+        ))
+
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    return None
 
 
 def check_sha1(
