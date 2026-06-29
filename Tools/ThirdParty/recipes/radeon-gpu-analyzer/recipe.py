@@ -27,7 +27,7 @@ class Recipe(RecipeBase):
             sha256 = "341e7ca4f531e467be6de80a28342582230c54a42667a4eddda1b78489c35d62"
         else:
             raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")
-        get(self, url=url, sha256=sha256, destination=self.folders.build, strip_root=True)
+        get(self, url=url, sha256=sha256, destination=self.folders.build, strip_root=False)
 
     def package(self):
         copy(self, "*", src=self.folders.build, dst=self.folders.package / "bin")
