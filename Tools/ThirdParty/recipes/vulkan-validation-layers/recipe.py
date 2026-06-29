@@ -16,12 +16,12 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "vulkan-validation-layers"
-    version = "1.4.355"
+    version = "1.4.350.1"
     license = "Apache-2.0"
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-ValidationLayers")
-        return Version(repo.latest_release.removeprefix("vulkan-sdk-").lstrip("v"))
+        return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
 
     def configure(self):
         if not self._has_wsi_options:
@@ -47,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/v1.4.355.tar.gz",
+            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
             sha256="1c6e33f60bb0cfed62cdb02a82845a7cf2681f92e07c5255eacd4b418db0def5",
             destination=self.folders.source,
             strip_root=True)
