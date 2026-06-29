@@ -41,7 +41,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "sqlite"
-    version = "3.53.1"
+    version = "3.53.3"
     license = "Unlicense"
 
     def configure(self):
@@ -56,8 +56,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://sqlite.org/2026/sqlite-amalgamation-3530100.zip",
-            sha256="36ad6e7f38540a3b21a2ac36340833f0a9e426bc1c752751c3ba669466827eae",
+            url="https://sqlite.org/2026/sqlite-amalgamation-3530300.zip",
+            sha256="646421e12aac110282ef8cc68f1a62d4bb15fc7b8f09da0b53e29ee690500431",
             destination=self.folders.source,
             strip_root=True)
 
