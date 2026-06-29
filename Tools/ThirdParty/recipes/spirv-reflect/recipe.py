@@ -16,7 +16,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/SPIRV-Reflect")
-        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
+        return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
 
     def requirements(self):
         self.requires_tool("cmake")

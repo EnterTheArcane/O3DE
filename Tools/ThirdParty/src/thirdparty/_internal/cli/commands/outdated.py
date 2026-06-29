@@ -17,10 +17,9 @@ _BUMP_COLOR = {
 
 def setup_parser(p: argparse.ArgumentParser) -> None:
     g = p.add_mutually_exclusive_group()
-    g.add_argument(
-        "--all", action="store_true", dest="all", help="Include recipes that have no latest_version() method.", )
-    g.add_argument(
-        "--missing", action="store_true", dest="missing", help="List only recipes that have no latest_version() method.", )
+    g.add_argument("--all", action="store_true", dest="all")
+    g.add_argument("--missing", action="store_true", dest="missing")
+    p.add_argument("--outdated-only", action="store_true", dest="outdated_only")
 
 
 @command
@@ -63,6 +62,12 @@ def outdated(args: argparse.Namespace) -> None:
         futures = {ex.submit(_check_recipe, name, cls): name for name, cls in checkable}
         for f in as_completed(futures):
             rows.append(f.result())
+
+    if args.outdated_only:
+        rows = [row for row in rows if row[3] == "OUTDATED"]
+        if not rows:
+            print("No outdated recipes.")
+            return
 
     rows.sort(key=lambda r: r[0])
     _print_table(rows)

@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/SPIRV-Cross")
-        return Version(repo.latest_release.removeprefix("vulkan-sdk-"))
+        return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
 
     def configure(self):
         if self.options.shared:
