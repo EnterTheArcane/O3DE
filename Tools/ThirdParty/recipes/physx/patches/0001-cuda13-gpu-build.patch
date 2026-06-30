@@ -1,34 +1,3 @@
-Build PhysX 5.6.1 as a recipe-controlled, optionally GPU-accelerated package.
-
-This bundles every source adjustment the recipe needs into one patch, applied
-unconditionally in source(). The GPU-related hunks are inert in a CPU-only build
-(cmakegpu/CMakeLists.txt is only INCLUDEd when PX_GENERATE_GPU_PROJECTS is on,
-and the cudamanager driver-API code is compiled only for GPU builds), so there
-is no need to guard them on the gpu option.
-
-Changes:
-* PIC control: drop PhysX's global SET(CMAKE_POSITION_INDEPENDENT_CODE ON) and
-  the per-target POSITION_INDEPENDENT_CODE TRUE properties, so the recipe
-  toolchain decides PIC via CMAKE_POSITION_INDEPENDENT_CODE.
-* windows/CMakeLists.txt: honor PX_COPY_EXTERNAL_DLL instead of forcing the
-  PhysXDevice/freeglut DLL copy via PUBLIC_RELEASE (the freeglut path is unset
-  in this build and otherwise fails configure).
-* Stop treating warnings as errors (/WX on Windows, -Werror on
-  linux/mac/android/ios); modern toolchains emit far more warnings than PhysX's
-  suppression lists cover.
-* PxPreprocessor.h: don't force consumers to define exactly one of NDEBUG/_DEBUG.
-* CUDA 12 -> 13 (GPU only): PhysX 5.6.1's GPU sources target the CUDA 12
-  toolkit/ABI; bridge them to the CUDA 13 toolkit we build with (CUDA 13, unlike
-  12.x, supports the very new host MSVC/GCC toolsets):
-  - cmakegpu/CMakeLists.txt: drop -Werror=all-warnings (nvcc otherwise promotes
-    modern MSVC STL <cmath> host/device diagnostics to fatal errors).
-  - CudaContextManager.cpp: cuCtxCreate became _v4 in CUDA 13, taking an extra
-    leading CUctxCreateParams* (passed NULL).
-  - CudaKernelWrangler.cpp: PhysX ships its own cudart shim (PhysXGpu links only
-    the driver); CUDA 13's generated fatbin registration references
-    __cudaGetKernel/__cudaLaunchKernel, absent from the CUDA-12-era shim -- add
-    no-op stubs matching the existing ones.
-
 --- a/physx/source/compiler/cmake/CMakeLists.txt
 +++ b/physx/source/compiler/cmake/CMakeLists.txt
 @@ -99,7 +99,7 @@
@@ -166,7 +135,7 @@ Changes:
  # PT: changed /Ox to /O2 because "the /Ox compiler option enables only a subset of the speed optimization options enabled by /O2."
  # See https://docs.microsoft.com/en-us/cpp/build/reference/ox-full-optimization?view=vs-2019
 -SET(PHYSX_COMMON_FLAGS "/std:c++14 /d2Zi+ /MP /WX /W4 /GF /GS- /Gd ${PHYSX_FP_MODE} /Oy ${PHYSX_WARNING_DISABLES}")
-+SET(PHYSX_COMMON_FLAGS "/std:c++14 /d2Zi+ /MP /W4 /GF /GS- /Gd ${PHYSX_FP_MODE} /Oy ${PHYSX_WARNING_DISABLES}")
++SET(PHYSX_COMMON_FLAGS "/d2Zi+ /MP /W4 /GF /GS- /Gd ${PHYSX_FP_MODE} /Oy ${PHYSX_WARNING_DISABLES}")
  SET(PHYSX_COMMON_FLAGS_DEBUG "/Od ${WINCRT_DEBUG} /RTCu /Zi")
  SET(PHYSX_COMMON_FLAGS_CHECKED "/O2 ${WINCRT_NDEBUG} /Zi")
  SET(PHYSX_COMMON_FLAGS_PROFILE "/O2 ${WINCRT_NDEBUG} /Zi")
