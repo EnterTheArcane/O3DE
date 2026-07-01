@@ -12,7 +12,7 @@ from thirdparty._internal.graph import CONTEXT_BUILD, RECIPE_CONSUMER, RECIPE_ED
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.info import Info
-from thirdparty._internal.model.layout import Folders
+from thirdparty._internal.model.folders import Folders
 from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
@@ -285,7 +285,7 @@ class RecipeBase(ABC, Generic[TOptions]):
             self.output.writeln("")
 
         if not ignore_errors and retcode != 0:
-            raise RecipeException("Error %d while executing" % retcode)
+            raise RecipeException(f"Error {retcode} while executing")
 
         return retcode
 
