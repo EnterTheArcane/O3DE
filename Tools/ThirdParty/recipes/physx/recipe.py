@@ -12,11 +12,7 @@ class _Options(RecipeOptions):
     release_build_type: Literal["profile", "release"] = "release"
     enable_simd: bool = True
     enable_float_point_precise_math: bool = False
-    # Build the CUDA GPU-acceleration modules (PhysXGpu). Only supported on Windows/Linux x64 and
-    # Linux aarch64; auto-disabled elsewhere. Pulls in the cuda-toolkit (CUDA 13) build tool.
     gpu: bool = True
-    # Compile a reduced GPU architecture set (sm_80+) for faster builds; off = full upstream set
-    # (adds Volta sm_70). Only relevant when gpu is enabled.
     gpu_reduced_architectures: bool = True
 
 
@@ -28,26 +24,23 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         if self.settings.os != "Windows":
             self.options.enable_float_point_precise_math = False
+        
         if self.settings.os not in ["Windows", "Android"]:
             self.options.enable_simd = False
+        
         # Android needs an API level; default it when the profile didn't supply one.
         if self.settings.os == "Android" and not self.settings.get_safe("os.api_level"):
             self.settings.os.api_level = 24
+        
         # GPU acceleration only builds on Windows/Linux x64 and Linux aarch64 (PhysX disables CUDA
         # everywhere else). Silently fall back to CPU-only so a single cross-platform profile works.
-        if self.options.gpu and not self._gpu_supported():
-            self.output.warning(
-                f"physx: gpu acceleration is not supported on {self.settings.os}/{self.settings.arch}; "
-                "building CPU-only.")
-            self.options.gpu = False
+        if self.options.gpu:
+            self.options.gpu = (self.settings.os == "Windows" and self.settings.arch == "X64") \
+                or (self.settings.os == "Linux" and self.settings.arch in ("X64", "ARM"))
 
     def requirements(self):
         self.requires_tool("cmake")
-        if self.settings.os == "Android":
-            # Provides the NDK and the tools.android:ndk_path config the toolchain needs.
-            self.requires_tool("android-ndk")
-        if self._gpu_enabled():
-            # Provides nvcc + the CUDA toolkit used to compile PhysXGpu.
+        if self.options.gpu:
             self.requires_tool("cuda-toolkit")
 
     def source(self):
@@ -80,7 +73,7 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.pic
 
         # physx/compiler/public/CMakeLists.txt
-        tc.cache_variables["TARGET_BUILD_PLATFORM"] = self._target_build_platform()
+        tc.cache_variables["TARGET_BUILD_PLATFORM"] = str(self.settings.os).lower()
         tc.cache_variables["PHYSX_ROOT_DIR"] = (self.folders.source / "physx").as_posix()
         tc.cache_variables["PX_BUILDSNIPPETS"] = False
         tc.cache_variables["PX_BUILDPVDRUNTIME"] = False
@@ -90,8 +83,8 @@ class Recipe(RecipeBase[_Options]):
         # windows/CMakeLists.txt auto-defines DISABLE_CUDA_PHYSX (PX_SUPPORT_GPU_PHYSX=0) -- pure
         # CPU-only, matching mac/android, with nothing to fetch. When on, PhysX compiles PhysXGpu
         # from source using the cuda-toolkit we provide.
-        tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = self._gpu_enabled()
-        if self._gpu_enabled():
+        tc.cache_variables["PX_GENERATE_GPU_PROJECTS"] = self.options.gpu
+        if self.options.gpu:
             # Point CMake's CUDA language + FindCUDAToolkit explicitly at our cuda-toolkit. Setting
             # these as cache variables (-D) is deterministic: it overrides any system-installed CUDA.
             cuda_root = self.dependencies.build["cuda-toolkit"].folders.package
@@ -141,13 +134,13 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         cmake = CMake(self)
         cmake.configure(build_script_folder=self.folders.source / "physx" / "compiler" / "public")
-        cmake.build(build_type=self._physx_build_type())
+        cmake.build(build_type=self._physx_build_type)
 
     def package(self):
         cmake = CMake(self)
         # PhysX has no INSTALL(TARGETS); the install target only copies the public headers
         # (and the generated PxConfig.h) into <package>/include.
-        cmake.install(build_type=self._physx_build_type())
+        cmake.install(build_type=self._physx_build_type)
 
         save(self, self.folders.package / "licenses" / "LICENSE.md",
              load(self, self.folders.source / "LICENSE.md"))
@@ -168,7 +161,7 @@ class Recipe(RecipeBase[_Options]):
         # on Win/Linux x64 the public headers would otherwise default that to 1, so propagate it to
         # consumers to keep the header/lib ABI consistent (mac/ios/android define it by platform). In
         # a GPU build PhysX leaves it undefined (PX_SUPPORT_GPU_PHYSX=1), so we must not define it.
-        self.info.defines = [] if self._gpu_enabled() else ["DISABLE_CUDA_PHYSX"]
+        self.info.defines = [] if self.options.gpu else ["DISABLE_CUDA_PHYSX"]
 
         # The static libraries are compiled with PX_PHYSX_STATIC_LIB, but PhysX only writes that
         # define into the public PxConfig.h on Windows. Expose it to consumers on every platform
@@ -176,10 +169,15 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.shared:
             self.info.defines.append("PX_PHYSX_STATIC_LIB")
 
-        def component(key, target, libs, requires=None, system_libs=None):
+        def component(
+                key: str,
+                target: str,
+                libs: list[str],
+                requires: list[str] | None = None,
+                system_libs: list[str] | None = None,):
             comp = self.info.components[key]
             comp.set_property("cmake_target_name", f"PhysX::{target}")
-            comp.libs = [self._lib(lib) for lib in libs]
+            comp.libs = [f"{lib}_static_64" if not self.options.shared else f"{lib}_64" for lib in libs]
             if requires:
                 comp.requires = requires
             if system_libs:
@@ -214,21 +212,7 @@ class Recipe(RecipeBase[_Options]):
         component("physxvehicle2", "PhysXVehicle2", ["PhysXVehicle2"],
                   requires=["physxfoundation", "physxpvdsdk", "physxextensions"])
 
-    # ----- helpers -------------------------------------------------------------------------
-
-    def _gpu_supported(self) -> bool:
-        # PhysX builds CUDA GPU projects on Windows/Linux x64 and Linux aarch64 only.
-        os_name = str(self.settings.os)
-        arch = str(self.settings.arch)
-        return (os_name == "Windows" and arch == "X64") or (os_name == "Linux" and arch in ("X64", "ARM"))
-
-    def _gpu_enabled(self) -> bool:
-        return self.options.gpu and self._gpu_supported()
-
-    def _lib(self, base: str) -> str:
-        # Static libs: <Name>_static_64 ; shared import/runtime libs: <Name>_64
-        return f"{base}_static_64" if not self.options.shared else f"{base}_64"
-
+    @property
     def _physx_build_type(self) -> str:
         if self.settings.build_type == "Debug":
             return "debug"
@@ -237,12 +221,3 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.build_type == "Release":
             return "profile" if self.options.release_build_type == "profile" else "release"
         return "release"
-
-    def _target_build_platform(self) -> str | None:
-        return {
-            "Windows": "windows",
-            "Linux": "linux",
-            "Mac": "mac",
-            "Android": "android",
-            "iOS": "ios",
-        }.get(str(self.settings.os))

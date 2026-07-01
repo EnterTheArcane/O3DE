@@ -179,6 +179,48 @@
  
  SET(CMAKE_SHARED_LINKER_FLAGS_CHECKED "")
  SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE "")
+@@ -87,12 +87,10 @@
+ INCLUDE(PhysXCooking.cmake)
+ INCLUDE(PhysXExtensions.cmake)
+ INCLUDE(PhysXVehicle.cmake)
+-INCLUDE(PhysXVehicle2.cmake)
+ INCLUDE(PhysXPvdSDK.cmake)
+ INCLUDE(PhysXTask.cmake)
+ INCLUDE(SceneQuery.cmake)
+ INCLUDE(SimulationController.cmake)
+-INCLUDE(FastXml.cmake)
+ 
+ # Set folder PhysX SDK to all common SDK source projects
+ SET_PROPERTY(TARGET PhysX PROPERTY FOLDER "PhysX SDK")
+@@ -100,14 +98,12 @@
+ SET_PROPERTY(TARGET PhysXCommon PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXCooking PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXExtensions PROPERTY FOLDER "PhysX SDK")
+-SET_PROPERTY(TARGET PhysXVehicle PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXVehicle2 PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET LowLevel PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET LowLevelAABB PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET LowLevelDynamics PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET SceneQuery PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET SimulationController PROPERTY FOLDER "PhysX SDK")
+-SET_PROPERTY(TARGET FastXml PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXPvdSDK PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXTask PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXFoundation PROPERTY FOLDER "PhysX SDK")
+--- a/physx/source/compiler/cmake/mac/PhysXExtensions.cmake
++++ b/physx/source/compiler/cmake/mac/PhysXExtensions.cmake
+@@ -31,11 +31,7 @@
+ SET(PHYSXEXTENSIONS_PLATFORM_INCLUDES
+ 	PRIVATE ${PHYSX_SOURCE_DIR}/Common/src/mac
+ )
+ 
+-SET(PHYSXEXTENSIONS_PLATFORM_OBJECT_FILES
+-	$<TARGET_OBJECTS:FastXml>
+-)
+-
+ SET(PHYSXEXTENSIONS_PLATFORM_SRC_FILES
+ 	${PHYSXEXTENSIONS_PLATFORM_OBJECT_FILES}
+ )
 --- a/physx/source/compiler/cmake/android/CMakeLists.txt
 +++ b/physx/source/compiler/cmake/android/CMakeLists.txt
 @@ -27,7 +27,7 @@
@@ -219,6 +261,48 @@
  
  SET(CMAKE_SHARED_LINKER_FLAGS_CHECKED "")
  SET(CMAKE_SHARED_LINKER_FLAGS_PROFILE "")
+@@ -75,12 +75,10 @@
+ INCLUDE(PhysXCooking.cmake)
+ INCLUDE(PhysXExtensions.cmake)
+ INCLUDE(PhysXVehicle.cmake)
+-INCLUDE(PhysXVehicle2.cmake)
+ INCLUDE(PhysXPvdSDK.cmake)
+ INCLUDE(PhysXTask.cmake)
+ INCLUDE(SceneQuery.cmake)
+ INCLUDE(SimulationController.cmake)
+-INCLUDE(FastXml.cmake)
+ 
+ # Set folder PhysX SDK to all common SDK source projects
+ SET_PROPERTY(TARGET PhysX PROPERTY FOLDER "PhysX SDK")
+@@ -88,14 +86,12 @@
+ SET_PROPERTY(TARGET PhysXCommon PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXCooking PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXExtensions PROPERTY FOLDER "PhysX SDK")
+-SET_PROPERTY(TARGET PhysXVehicle PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXVehicle2 PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET LowLevel PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET LowLevelAABB PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET LowLevelDynamics PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET SceneQuery PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET SimulationController PROPERTY FOLDER "PhysX SDK")
+-SET_PROPERTY(TARGET FastXml PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXPvdSDK PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXTask PROPERTY FOLDER "PhysX SDK")
+ SET_PROPERTY(TARGET PhysXFoundation PROPERTY FOLDER "PhysX SDK")
+--- a/physx/source/compiler/cmake/ios/PhysXExtensions.cmake
++++ b/physx/source/compiler/cmake/ios/PhysXExtensions.cmake
+@@ -31,11 +31,7 @@
+ SET(PHYSXEXTENSIONS_PLATFORM_INCLUDES
+ 	PRIVATE ${PHYSX_SOURCE_DIR}/Common/src/ios
+ )
+ 
+-SET(PHYSXEXTENSIONS_PLATFORM_OBJECT_FILES
+-	$<TARGET_OBJECTS:FastXml>
+-)
+-
+ SET(PHYSXEXTENSIONS_PLATFORM_SRC_FILES
+ 	${PHYSXEXTENSIONS_PLATFORM_OBJECT_FILES}
+ )
 --- a/physx/source/compiler/cmakegpu/CMakeLists.txt
 +++ b/physx/source/compiler/cmakegpu/CMakeLists.txt
 @@ -97,7 +97,7 @@
@@ -230,6 +314,17 @@
  # Include the platform specific CMakeLists (The other CUDA flags that are specific to each platform are defined there)
  INCLUDE(${PHYSX_ROOT_DIR}/${PROJECT_CMAKE_FILES_DIR}/${TARGET_BUILD_PLATFORM}/CMakeLists.txt)
  
+--- a/physx/source/foundation/FdTempAllocator.cpp
++++ b/physx/source/foundation/FdTempAllocator.cpp
+@@ -64,7 +64,7 @@
+ 	if(!size)
+ 		return 0;
+ 
+-	PxU32 index = PxMax(PxHighestSetBit(PxU32(size) + sizeof(Chunk) - 1), sMinIndex);
++	PxU32 index = PxMax(PxHighestSetBit(PxU32(size + sizeof(Chunk) - 1)), sMinIndex);
+ 
+ 	Chunk* chunk = 0;
+ 	if(index < sMaxIndex)
 --- a/physx/source/cudamanager/src/CudaContextManager.cpp
 +++ b/physx/source/cudamanager/src/CudaContextManager.cpp
 @@ -574,7 +574,7 @@
