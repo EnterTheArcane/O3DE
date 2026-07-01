@@ -30,8 +30,7 @@ class Recipe(RecipeBase):
             self.requires_tool("strawberryperl")
             if not is_msvc(self):
                 self.win_bash = True
-                if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.requires_tool("msys2")
+                self.requires_tool("msys2")
 
     def source(self):
         get(

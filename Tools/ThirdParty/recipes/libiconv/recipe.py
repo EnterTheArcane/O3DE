@@ -39,8 +39,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         if self.settings_build.os == "Windows":
-            if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.requires_tool("msys2")
+            self.requires_tool("msys2")
             self.win_bash = True
 
     def source(self):

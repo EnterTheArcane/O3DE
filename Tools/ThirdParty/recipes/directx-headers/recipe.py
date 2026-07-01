@@ -46,7 +46,7 @@ class Recipe(RecipeBase):
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
-        if self.settings.os == "Linux" or self.settings.get_safe("os.subsystem") == "wsl":
+        if self.settings.os == "Linux":
             self.info.includedirs.append(os.path.join("include", "wsl", "stubs"))
         self.info.libs = ["d3dx12-format-properties", "DirectX-Guids"]
         self.info.set_property("cmake_file_name", "DirectX-Headers")

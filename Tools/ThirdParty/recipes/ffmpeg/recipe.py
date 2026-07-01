@@ -236,8 +236,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool("pkgconf")
         if self.settings.os == "Windows":
             self.win_bash = True
-            if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.requires_tool("msys2")
+            self.requires_tool("msys2")
             if self.settings.arch == "ARM" and is_msvc(self):
                 self.requires_tool("gas-preprocessor")
 

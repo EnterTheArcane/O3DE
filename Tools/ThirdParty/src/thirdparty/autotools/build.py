@@ -143,7 +143,7 @@ class Autotools:
         if os_build == "Windows":
             compiler = self._recipe.settings.get_safe("compiler")
             sub = self._recipe.settings.get_safe("os.subsystem")
-            if sub in ("cygwin", "msys2", "msys") or compiler == "qcc":
+            if sub == "msys2" or compiler == "qcc":
                 return False
             else:
                 if self._recipe.win_bash:

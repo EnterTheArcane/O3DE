@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase
-from thirdparty.errors import RecipeException
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
 
 
@@ -82,6 +82,14 @@ class Recipe(RecipeBase):
     name = "cuda-toolkit"
     version = "13.3.0"
     license = "NVIDIA CUDA Toolkit EULA"
+    
+    def validate(self):
+        if self.settings.os not in ("Linux", "Windows"):
+            raise RecipeInvalidConfiguration("cuda-toolkit is only available for Linux and Windows operating systems")
+        if self.settings.os == "Windows" and self.settings.arch != "X64":
+            raise RecipeInvalidConfiguration("cuda-toolkit on Windows is only available for x86_64 architecture")
+        if self.settings.os == "Linux" and self.settings.arch not in ("X64", "ARM"):
+            raise RecipeInvalidConfiguration("cuda-toolkit on Linux is only available for x86_64 and ARM architectures")
 
     def build(self):
         plat = self._redist_platform()
@@ -124,6 +132,4 @@ class Recipe(RecipeBase):
             return "linux-x86_64"
         if os_name == "Linux" and arch == "ARM":
             return "linux-sbsa"
-        raise RecipeException(
-            f"cuda-toolkit is only available for Windows/Linux x86_64 and Linux aarch64, "
-            f"not {os_name}/{arch}")
+        return "UNSUPPORTED"

@@ -5,13 +5,13 @@ Potential scenarios:
   - Targeting Windows native (os.subsystem = None)
     - No need of bash (no conf at all)
     - Need to build in bash (tools.microsoft.bash:path=<path>, recipe.win_bash)
-  - Targeting Subsystem (os.subsystem = msys2/cygwin)
+  - Targeting Subsystem (os.subsystem = msys2)
     - Always builds and runs in bash (tools.microsoft.bash:path)
 
 - Running from a subsytem terminal (tools.microsoft.bash:active=True,
                                     tools.microsoft.bash:path=None)
   - Targeting Windows native (os.subsystem = None)
-  - Targeting Subsystem (os.subsystem = msys2/cygwin)
+  - Targeting Subsystem (os.subsystem = msys2)
 
 """
 import os
@@ -25,9 +25,6 @@ from thirdparty.recipe import RecipeBase
 
 WINDOWS = "windows"
 MSYS2 = "msys2"
-MSYS = "msys"
-CYGWIN = "cygwin"
-WSL = "wsl"  # Windows Subsystem for Linux
 
 
 def command_env_wrapper(
@@ -106,7 +103,7 @@ def _escape_windows_cmd(command: str) -> str:
         1. Adds escapes so the argument can be unpacked by CommandLineToArgvW()
         2. Adds escapes for cmd.exe so the argument survives cmd.exe's substitutions.
 
-        Useful to escape commands to be executed in a windows bash (msys2, cygwin etc)
+        Useful to escape commands to be executed in a windows bash (msys2)
     """
     quoted_arg = cmd_args_to_string([command])
     return "".join(["^%s" % arg if arg in r'()%!^"<>&|' else arg for arg in quoted_arg])
@@ -144,8 +141,8 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
 
 
 def subsystem_path(subsystem: str | None, path: str | os.PathLike[str]) -> str | None:
-    """"Used to translate windows paths to MSYS unix paths like
-    c/users/path/to/file. Not working in a regular console or MinGW!
+    """"Used to translate windows paths to MSYS2 unix paths like
+    /c/users/path/to/file. Not working in a regular console or MinGW!
     """
     path = os.fspath(path)
     if subsystem is None or subsystem == WINDOWS:
@@ -158,20 +155,10 @@ def subsystem_path(subsystem: str | None, path: str | os.PathLike[str]) -> str |
     if path.startswith("\\\\?\\"):
         path = path[4:]
     path = path.replace(":/", ":\\")
-    append_prefix = re.match(r"[a-z]:\\", path, re.IGNORECASE)
     pattern = re.compile(r"([a-z]):\\", re.IGNORECASE)
     path = pattern.sub("/\\1/", path).replace("\\", "/")
 
-    if append_prefix:
-        if subsystem in (MSYS, MSYS2):
-            return path.lower()
-        elif subsystem == CYGWIN:
-            return "/cygdrive" + path.lower()
-        elif subsystem == WSL:
-            return "/mnt" + path[0:2].lower() + path[2:]
-    else:
-        return path if subsystem == WSL else path.lower()
-    return None
+    return path.lower()
 
 
 def get_cased_path(name: str) -> str:

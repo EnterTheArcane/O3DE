@@ -76,7 +76,7 @@ BUILT_IN_CONFS = {
     "tools.meson.toolchain:extra_machine_files": "List of paths for any additional native/cross file references to be appended to the existing Recipe ones",
     "tools.microsoft:msvc_update": "Force the specific update irrespective of compiler.update (CMakeToolchain and VCVars)",
     "tools.microsoft:winsdk_version": "Use this winsdk_version in vcvars",
-    "tools.microsoft.bash:active": "Set True only when Recipe runs in a POSIX Bash (MSYS2/Cygwin) where Python's subprocess (shell=True) uses a POSIX-compatible shell (e.g., /bin/sh). Do not set when using Recipe from cmd/PowerShell or with native Windows Python ('win32').",
+    "tools.microsoft.bash:active": "Set True only when Recipe runs in a POSIX Bash (MSYS2) where Python's subprocess (shell=True) uses a POSIX-compatible shell (e.g., /bin/sh). Do not set when using Recipe from cmd/PowerShell or with native Windows Python ('win32').",
     "tools.microsoft.bash:path": "The path to the shell to run when recipe.win_bash==True",
     "tools.msbuild:installation_path": "VS install path, to avoid auto-detect via vswhere, like C:/Program Files (x86)/Microsoft Visual Studio/2019/Community. Use empty string to disable",
     "tools.msbuild:max_cpu_count": "Argument for the /m when running msvc to build parallel projects",

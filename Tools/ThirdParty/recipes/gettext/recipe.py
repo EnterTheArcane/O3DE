@@ -44,8 +44,7 @@ class Recipe(RecipeBase[_Options]):
         self.requires("libiconv")
         if self.settings_build.os == "Windows":
             self.win_bash = True
-            if not self.conf.get("tools.microsoft.bash:path", default=False, check_type=str):
-                self.requires_tool("msys2")
+            self.requires_tool("msys2")
         if is_msvc(self) or self._is_clang_cl:
             self.requires_tool("automake")
 

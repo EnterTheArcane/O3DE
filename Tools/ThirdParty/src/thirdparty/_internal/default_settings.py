@@ -13,10 +13,7 @@ os:
   Windows:
     subsystem:
       - null
-      - cygwin
-      - msys
       - msys2
-      - wsl
   Linux: null
   iOS:
     version:

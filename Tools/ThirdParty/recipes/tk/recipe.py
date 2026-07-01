@@ -40,11 +40,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("fontconfig")
             self.requires("xorg")
         if not is_msvc(self):
-            if (
-                    self.settings.os == "Windows"
-                    and not self.conf.get("tools.microsoft.bash:path")
-                    and not self.conf.get("tools.microsoft.bash:active", default=False, check_type=bool)
-            ):
+            if self.settings.os == "Windows":
                 self.requires_tool("msys2")
 
     def source(self):

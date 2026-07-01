@@ -21,8 +21,7 @@ class Recipe(RecipeBase):
         self.requires_tool("m4")
         if self.settings.os == "Windows":
             self.win_bash = True
-            if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                self.requires_tool("msys2")
+            self.requires_tool("msys2")
 
     def source(self):
         get(

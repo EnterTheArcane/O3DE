@@ -115,8 +115,7 @@ class Recipe(RecipeBase[_Options]):
                 self.requires_tool("strawberryperl")
             else:
                 self.win_bash = True
-                if not self.conf.get("tools.microsoft.bash:path", check_type=str):
-                    self.requires_tool("msys2")
+                self.requires_tool("msys2")
 
     def source(self):
         get(
@@ -271,7 +270,6 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _targets(self):
-        is_cygwin = self.settings.get_safe("os.subsystem") == "cygwin"
         return {
             "Linux-x86-clang": "linux-x86-clang",
             "Linux-X64-clang": "linux-x86_64-clang",
@@ -323,9 +321,9 @@ class Recipe(RecipeBase[_Options]):
             "Android-mips-*": "linux-generic32",
             "Android-mips64-*": "linux-generic64",
             "Android-*-*": "linux-generic32",
-            "Windows-x86-gcc": "Cygwin-x86" if is_cygwin else "mingw",
-            "Windows-X64-gcc": "Cygwin-x86_64" if is_cygwin else "mingw64",
-            "Windows-*-gcc": "Cygwin-common" if is_cygwin else "mingw-common",
+            "Windows-x86-gcc": "mingw",
+            "Windows-X64-gcc": "mingw64",
+            "Windows-*-gcc": "mingw-common",
             "Windows-ia64-Visual Studio": "VC-WIN64I",  # Itanium
             "Windows-x86-Visual Studio": "VC-WIN32",
             "Windows-X64-Visual Studio": "VC-WIN64A",

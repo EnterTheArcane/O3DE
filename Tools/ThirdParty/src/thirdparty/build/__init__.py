@@ -24,7 +24,7 @@ def use_win_mingw(recipe: RecipeBase) -> bool:
     if os_build == "Windows":
         compiler_ = recipe.settings.get_safe("compiler")
         sub = recipe.settings.get_safe("os.subsystem")
-        if sub in ("cygwin", "msys2", "msys") or compiler_ == "qcc":
+        if sub == "msys2" or compiler_ == "qcc":
             return False
         else:
             return True
