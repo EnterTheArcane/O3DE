@@ -38,6 +38,17 @@ class NMakeToolchain:
         return [f"{opt[0].replace("-", "/")}{opt[1:]}" for opt in options if len(opt) > 1]
 
     @property
+    def _arch_defines(self) -> list[str]:
+        # Recent Windows SDK headers still check these target macros in some
+        # NMake/MSVC flows, but vcvarsall doesn't always seed them into CL.
+        arch = self._recipe.settings.get_safe("arch")
+        return {
+            "X86": ["_X86_"],
+            "X64": ["_AMD64_"],
+            "ARM": ["_ARM64_"],
+        }.get(arch, [])
+
+    @property
     def _cl(self):
         bt_flags = build_type_flags(self._recipe)
         bt_flags = bt_flags if bt_flags else []
@@ -62,6 +73,7 @@ class NMakeToolchain:
         build_type = self._recipe.settings.get_safe("build_type")
         if build_type in ["Release", "RelWithDebInfo", "MinSizeRel"]:
             defines.append("NDEBUG")
+        defines.extend(self._arch_defines)
         defines.extend(self._recipe.conf.get("tools.build:defines", default=[], check_type=list))
         defines.extend(self.extra_defines)
 

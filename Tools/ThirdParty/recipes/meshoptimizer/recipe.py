@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "meshoptimizer"
-    version = "1.1.1"
+    version = "1.2"
     license = "MIT"
 
     def latest_version(self):
@@ -26,8 +26,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/zeux/meshoptimizer/archive/refs/tags/v1.1.1.tar.gz",
-            sha256="30cd4d28fe71bf58c614c23c87fed385bac223acbb2dfaf343d20ffc3584a083",
+            url=f"https://github.com/zeux/meshoptimizer/archive/refs/tags/v{self.version}.tar.gz",
+            sha256="e40f71b809cdf3361b9a4def85fd44534e8733ce29d4b943c145b76859e4c2b4",
             destination=self.folders.source,
             strip_root=True)
 

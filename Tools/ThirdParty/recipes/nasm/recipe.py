@@ -14,7 +14,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "nasm"
-    version = "3.01"
+    version = "3.02"
     license = "BSD-2-Clause"
 
     def latest_version(self):
@@ -35,8 +35,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://www.nasm.us/pub/nasm/releasebuilds/3.01/nasm-3.01.tar.xz",
-            sha256="b7324cbe86e767b65f26f467ed8b12ad80e124e3ccb89076855c98e43a9eddd4",
+            url=f"https://www.nasm.us/pub/nasm/releasebuilds/{self.version}/nasm-{self.version}.tar.xz",
+            sha256="87336eba53b4acfe917424ab5d500d2b0054d9f5148d35c2273ccf2cfb712f0d",
             destination=self.folders.source,
             strip_root=True)
 

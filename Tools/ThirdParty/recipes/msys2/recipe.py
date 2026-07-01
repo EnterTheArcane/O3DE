@@ -17,6 +17,15 @@ _windll: Any = getattr(ctypes, "windll", None)
 _win_error: Any = getattr(ctypes, "WinError", None)
 
 
+_DEFAULT_PACKAGES = [
+    "base-devel",
+    "binutils",
+    "gcc",
+    "mingw-w64-x86_64-gcc",
+    "mingw-w64-cross-mingwarm64-gcc",
+]
+
+
 class OpLock:
     def __init__(self):
         self.handle = _windll.kernel32.CreateMutexA(None, 0, "Global\\RecipeMSYS2".encode())
@@ -56,7 +65,7 @@ class Recipe(RecipeBase[_Options]):
     license = "MSYS license"
 
     def configure(self):
-        default_packages = "base-devel,binutils,gcc,mingw-w64-cross-mingwarm64-gcc"
+        default_packages = ",".join(_DEFAULT_PACKAGES)
         self.options.packages = default_packages
 
     def validate(self):
@@ -98,10 +107,13 @@ class Recipe(RecipeBase[_Options]):
 
         msys_root = self.folders.package / "bin" / "msys64"
         msys_bin = msys_root / "usr" / "bin"
+        mingw64_bin = msys_root / "mingw64" / "bin"
+        self.info.bindirs.append(mingw64_bin)
         self.info.bindirs.append(msys_bin)
 
         self.info.buildenv.define_path("MSYS_ROOT", msys_root)
         self.info.buildenv.define_path("MSYS_BIN", msys_bin)
+        self.info.buildenv.prepend_path("PATH", mingw64_bin)
 
         self.info.conf.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
 
