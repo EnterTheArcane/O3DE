@@ -3,7 +3,7 @@ project(recipe_wrapper LANGUAGES CXX)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_subdirectory(${LUAU_SRC_DIR})
+add_subdirectory(${LUAU_SRC_DIR} ${CMAKE_CURRENT_BINARY_DIR}/luau)
 
 ## installer
 include(GNUInstallDirs)
