@@ -357,8 +357,8 @@ class AutotoolsToolchain:
         # Objective C/C++
         self._include_obj_arc_flags(env)
         # Issue related: upstream issue 15486
-        if self._is_cross_building and self._recipe.conf_build:
-            compilers_build_mapping = (self._recipe.conf_build.get(
+        if self._is_cross_building and self._recipe.conf:
+            compilers_build_mapping = (self._recipe.conf.get(
                 "tools.build:compiler_executables", default={}, check_type=dict))
             if "c" in compilers_build_mapping:
                 env.define("CC_FOR_BUILD", compilers_build_mapping["c"])

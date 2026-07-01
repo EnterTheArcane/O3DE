@@ -132,7 +132,7 @@ class MesonToolchain:
             raise RecipeException(
                 "You can only pass native=True if you're cross-building, "
                 "otherwise, it could cause unexpected results.")
-        self._recipe_conf = self._recipe.conf_build if native else self._recipe.conf
+        self._recipe_conf = self._recipe.conf
         # Values are kept as Python built-ins so users can modify them more easily, and they are
         # only converted to Meson file syntax for rendering
         # priority: first user conf, then recipe, last one is default "ninja"
