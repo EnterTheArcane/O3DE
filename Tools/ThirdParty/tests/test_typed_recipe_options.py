@@ -6,9 +6,8 @@ from typing import Any, Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from thirdparty._internal.model.recipe import (
-    RecipeBase, RecipeOptions as RecipeOptionsBase, _derive_options,
-)
+from thirdparty._internal.model.options import RecipeOptions as RecipeOptionsBase, _derive_options
+from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty.errors import RecipeException
 
 

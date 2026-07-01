@@ -1,378 +1,191 @@
-from typing import Any
+import types
+from functools import cache
+from typing import (
+    Any, ClassVar, Literal, Union, get_args, get_origin, get_type_hints,
+)
 
 from thirdparty.errors import RecipeException
 
-_falsey_options = ["false", "none", "0", "off", ""]
+
+_ANY_OPTION_VALUE = "ANY"
+_SCALAR_OPTION_TYPES = {str, int, float, Any}
 
 
-def option_not_exist_msg(option_name: str, existing_options: Any) -> str:
+class RecipeOptions:
+    """Typing stub that recipe option classes inherit from.
+
+    Provides the static signatures for the runtime ``Options`` API so type checkers accept
+    ``self.options.get_safe(...)`` etc. At runtime ``self.options`` is an ``Options`` instance.
     """
-    Someone is referencing an option that is not available in the current package options
-    """
-    result = [
-        "option '%s' doesn't exist" % option_name,
-        "Possible options are %s" % existing_options or "none",
-    ]
-    return "\n".join(result)
 
-
-class _PackageOption:
-    def __init__(
-        self,
-        name: str,
-        value: Any,
-        possible_values: Any = None):
-        self._name = name
-        self._value = value  # Value None = not defined
-        self.important = False
-        # possible_values only possible origin is recipes
-        if possible_values is None:
-            self._possible_values = None
-        else:
-            # This can contain "ANY"
-            self._possible_values = [str(v) if v is not None else None for v in possible_values]
-
-    def dumps(self, scope: str | None = None) -> str | None:
-        if self._value is None:
-            return None
-        important = "!" if self.important else ""
-        if scope:
-            return "%s:%s%s=%s" % (scope, self._name, important, self._value)
-        else:
-            return "%s%s=%s" % (self._name, important, self._value)
-
-    def copy_package_id_info_option(self) -> _PackageOption:
-        # To generate a copy without validation, for package_id info.options value
-        assert self._possible_values is not None  # this should always come from recipe, with []
-        return _PackageOption(self._name, self._value, self._possible_values + ["ANY"])
-
-    def __bool__(self) -> bool:
-        if self._value is None:
-            return False
-        return self._value.lower() not in _falsey_options
-
-    def __str__(self) -> str:
-        return str(self._value)
-
-    def __int__(self) -> int:
-        return int(self._value)
-
-    def _check_valid_value(self, value: Any):
-        """ checks that the provided value is allowed by current restrictions
-        """
-        if self._possible_values is None:  # validation not defined (profile)
-            return
-        if value in self._possible_values:
-            return
-        if value is not None and "ANY" in self._possible_values:
-            return
-        msg = ("'%s' is not a valid 'options.%s' value.\nPossible values are %s" % (value, self._name, self._possible_values))
-        raise RecipeException(msg)
-
-    def __eq__(self, other: object) -> bool:
-        # To promote the other to string, and always compare as strings
-        # if self.options.myoption == 1 => will convert 1 to "1"
-        if other is None:
-            return self._value is None
-        other = str(other)
-        self._check_valid_value(other)
-        if self._value is None:
-            return False  # Other is not None here
-        return other == self.__str__()
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def value(self) -> Any:
-        return self._value
-
-    @value.setter
-    def value(self, v: Any):
-        v = str(v) if v is not None else None
-        self._check_valid_value(v)
-        self._value = v
-
-    def validate(self):
-        # check that this has a valid option value defined
-        if self._value is not None:
-            return
-        if None not in self._possible_values:
-            raise RecipeException("'options.%s' value not defined" % self._name)
-
-
-class _PackageOptions:
-    _constrainted: bool
-    _data: dict[str, _PackageOption]
-    _freeze: bool
-    
-    def __init__(self, recipe_options_definition: Any = None):
-        if recipe_options_definition is None:
-            self._constrained = False
-            self._data: dict[str, _PackageOption] = {}
-        else:
-            self._constrained = True
-            self._data = {str(option): _PackageOption(str(option), None, possible_values) for option, possible_values in recipe_options_definition.items()}
-        self._freeze = False
-
-    def dumps(self, scope: str | None = None) -> str:
-        result = []
-        for _, package_option in sorted(list(self._data.items())):
-            dump = package_option.dumps(scope)
-            if dump:
-                result.append(dump)
-        return "\n".join(result)
-
-    @property
-    def possible_values(self) -> dict[str, Any]:
-        return {k: v._possible_values for k, v in self._data.items()}
-
-    def update(self, options: _PackageOptions):
-        """
-        @type options: _PackageOptions
-        """
-        # Necessary for init() extending of options for python_requires_extend
-        for k, v in options._data.items():
-            self._data[k] = v
-
-    def clear(self):
-        # for header_only() clearing
-        self._data.clear()
-
-    def freeze(self):
-        self._freeze = True
-
-    def __contains__(self, option: object) -> bool:
-        return str(option) in self._data
+    __defaults__: ClassVar[dict[str, Any]]
+    __possible_values__: ClassVar[dict[str, list[Any]]]
 
     def get_safe(self, field: str, default: Any = None) -> Any:
-        return self._data.get(field, default)
-
-    def rm_safe(self, field: str):
-        self._data.pop(field, None)
-
-    def validate(self):
-        for child in self._data.values():
-            child.validate()
-
-    def copy_package_id_info_options(self) -> _PackageOptions:
-        # To generate a copy without validation, for package_id info.options value
-        result = _PackageOptions()
-        for k, v in self._data.items():
-            result._data[k] = v.copy_package_id_info_option()
-        return result
-
-    def _ensure_exists(self, field: str):
-        if self._constrained and field not in self._data:
-            raise RecipeException(option_not_exist_msg(field, list(self._data.keys())))
-
-    def __getattr__(self, field: str) -> _PackageOption:
-        assert field[0] != "_", "ERROR %s" % field
-        try:
-            return self._data[field]
-        except KeyError:
-            raise RecipeException(option_not_exist_msg(field, list(self._data.keys())))
-
-    def __delattr__(self, field: str):
-        assert field[0] != "_", "ERROR %s" % field
-        # It is always possible to remove an option, even if it is frozen (freeze=True),
-        # and it got a value, because it is the only way an option could be removed
-        # conditionally to other option value (like pic if shared)
-        self._ensure_exists(field)
-        del self._data[field]
-
-    def __setattr__(self, field: str, value: Any):
-        if field[0] == "_":
-            return super(_PackageOptions, self).__setattr__(field, value)
-        self._set(field, value)
-
-    def __setitem__(self, item: str, value: Any):
-        self._set(item, value)
-
-    def _set(self, item: str, value: Any):
-        # programmatic way to define values, for Recipe codebase
-        important = item[-1] == "!"
-        item = item[:-1] if important else item
-
-        current_value = self._data.get(item)
-        if self._freeze and current_value.value is not None and current_value != value:
-            raise RecipeException(
-                f"Incorrect attempt to modify option '{item}' "
-                f"from '{current_value}' to '{value}'")
-        self._ensure_exists(item)
-        v = self._data.setdefault(item, _PackageOption(item, None))
-        new_value_important = important or (isinstance(value, _PackageOption) and value.important)
-        if new_value_important or not v.important:
-            v.value = value
-            v.important = new_value_important
+        ...
 
     def items(self) -> list[Any]:
-        result = []
-        for field, package_option in sorted(list(self._data.items())):
-            result.append((field, package_option.value))
+        ...
+
+    def __contains__(self, option: object) -> bool:
+        ...
+
+
+def _is_none_type(annotation: Any) -> bool:
+    return annotation is None or annotation is type(None)
+
+
+def _append_unique(values: list[Any], value: Any) -> None:
+    if value not in values:
+        values.append(value)
+
+
+def _derive_possible_values(name: str, annotation: Any) -> list[Any]:
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+
+    if _is_none_type(annotation):
+        return [None]
+    if annotation is bool:
+        return [True, False]
+    if origin is Literal:
+        return list(args)
+    if annotation in _SCALAR_OPTION_TYPES:
+        return [_ANY_OPTION_VALUE]
+    if origin in (types.UnionType, Union):
+        result: list[Any] = []
+        for arg in args:
+            for value in _derive_possible_values(name, arg):
+                _append_unique(result, value)
+        if None in result:
+            result.remove(None)
+            result.insert(0, None)
         return result
 
-    def update_options(self, other: _PackageOptions, is_pattern: bool = False):
-        """
-        @param is_pattern: if True, then the value might not exist and won't be updated
-        @type other: _PackageOptions
-        """
-        for k, v in other._data.items():
-            if is_pattern and k not in self._data:
-                continue
-            self._set(k, v)
+    raise RecipeException(
+        f"Unsupported typed option '{name}' annotation {annotation!r}. "
+        "Supported annotations are bool, Literal, str, int, float, Any, "
+        "and optional scalar forms like str | None")
+
+
+def _typed_options_class(cls: type[Any]) -> type[Any] | None:
+    from thirdparty._internal.model.recipe import RecipeBase
+    for base in getattr(cls, "__orig_bases__", ()):
+        if get_origin(base) is RecipeBase:
+            args = get_args(base)
+            if args and args[0] is not Any:
+                return args[0]
+    return None
+
+
+@cache
+def _derive_options(options_cls: type[Any]) -> tuple[dict[str, list[Any]], dict[str, Any]]:
+    annotations = get_type_hints(options_cls, include_extras=True)
+    explicit_defaults = getattr(options_cls, "__defaults__", {})
+    explicit_possible_values = getattr(options_cls, "__possible_values__", {})
+    options: dict[str, list[Any]] = {}
+    defaults: dict[str, Any] = {}
+
+    for name, annotation in annotations.items():
+        if name.startswith("_"):
+            continue
+        options[name] = explicit_possible_values.get(name, _derive_possible_values(name, annotation))
+        if name in options_cls.__dict__:
+            defaults[name] = getattr(options_cls, name)
+        elif name in explicit_defaults:
+            defaults[name] = explicit_defaults[name]
+
+    return options, defaults
 
 
 class Options:
-    def __init__(self, options: Any = None, options_values: Any = None):
-        # options=None means an unconstrained/profile definition
-        try:
-            self._package_options = _PackageOptions(options)
-            # Addressed only by name, as only 1 configuration is allowed
-            # if more than 1 is present, 1 should be "private" requirement and its options
-            # are not public, not overridable
-            self._deps_package_options: dict[str, _PackageOptions] = {}  # {name("Boost": PackageOptions}
-            if options_values:
-                for k, v in options_values.items():
-                    if v is None:
-                        continue  # defining a None value means same as not giving value
-                    k = str(k).strip()
-                    v = str(v).strip()
-                    tokens = k.split(":", 1)
-                    if len(tokens) == 2:
-                        package, option = tokens
-                        if not package:
-                            raise RecipeException(
-                                "Invalid empty package name in options. "
-                                f"Use a pattern like `mypkg/*:{option}`")
-                        if "/" not in package and "*" not in package and "&" not in package:
-                            msg = (f"The usage of package names `{k}` in options is "
-                                   f"deprecated, use a pattern like `{package}/*:{option}` "
-                                   f"instead")
-                            raise RecipeException(msg)
-                        if "[" in package:
-                            msg = (f"Options pattern {package} contains a version range, which has no effect. "
-                                   f"Only '&' for consumer and '*' as wildcard are supported in this context.")
-                            from thirdparty._internal.output import Output
-                            Output().warning(msg, warn_tag="risk")
-                        self._deps_package_options.setdefault(package, _PackageOptions())[option] = v
-                    else:
-                        self._package_options[k] = v
-        except Exception as e:
-            raise RecipeException("Error while initializing options. %s" % str(e))
+    """Runtime holder for a recipe's option values.
+
+    Values are stored as their real Python types (``bool``/``int``/``str``/``None``/``Literal``
+    members) derived from the recipe's typed options class. ``definition`` maps each option name
+    to its list of allowed values (a bare ``["ANY"]`` marks an unconstrained scalar); when
+    ``definition`` is ``None`` the options are unconstrained (any name/value allowed).
+    """
+
+    def __init__(self, definition: dict[str, list[Any]] | None = None,
+                 values: dict[str, Any] | None = None):
+        if definition is None:
+            self._constrained = False
+            self._possible: dict[str, list[Any]] = {}
+        else:
+            self._constrained = True
+            self._possible = {str(name): list(possible) for name, possible in definition.items()}
+        self._values: dict[str, Any] = {}
+        if values:
+            for name, value in values.items():
+                if value is None:
+                    continue  # a None value means "no value", same as not set
+                self._set(str(name), value)
+
+    @classmethod
+    def from_recipe(cls, recipe_cls: type[Any]) -> "Options":
+        typed = _typed_options_class(recipe_cls)
+        if typed is None:
+            return cls({}, {})
+        definition, defaults = _derive_options(typed)
+        return cls(definition, defaults)
+
+    @staticmethod
+    def validate_recipe_class(recipe_cls: type[Any]) -> None:
+        """Eagerly derive (and thereby validate) a recipe's typed options at class definition."""
+        typed = _typed_options_class(recipe_cls)
+        if typed is not None:
+            _derive_options(typed)
+
+    def _check_valid_value(self, name: str, value: Any) -> None:
+        possible = self._possible.get(name)
+        if possible is None:  # unconstrained
+            return
+        if value in possible:
+            return
+        if value is not None and _ANY_OPTION_VALUE in possible:
+            return
+        raise RecipeException(
+            "'%s' is not a valid 'options.%s' value.\nPossible values are %s"
+            % (value, name, possible))
+
+    def _ensure_exists(self, name: str) -> None:
+        if self._constrained and name not in self._possible:
+            raise RecipeException(
+                "option '%s' doesn't exist\nPossible options are %s"
+                % (name, list(self._possible.keys())))
+
+    def _set(self, name: str, value: Any) -> None:
+        self._ensure_exists(name)
+        self._check_valid_value(name, value)
+        self._values[name] = value
+
+    def get_safe(self, field: str, default: Any = None) -> Any:
+        return self._values.get(field, default)
+
+    def items(self) -> list[Any]:
+        return sorted(self._values.items())
+
+    def dumps(self) -> str:
+        """Multiline ``name=value`` representation, alphabetical, skipping unset values."""
+        return "\n".join("%s=%s" % (name, value) for name, value in sorted(self._values.items()))
 
     def __repr__(self) -> str:
         return self.dumps()
 
-    @property
-    def possible_values(self) -> dict[str, Any]:
-        return self._package_options.possible_values
-
-    def dumps(self) -> str:
-        """ produces a multiline text representation of all values, first self then others.
-        In alphabetical order, skipping real None (not string "None") values:
-            option1=value1
-            other_option=3
-            OtherPack:opt3=12.1
-        """
-        result = []
-        pkg_options_dumps = self._package_options.dumps()
-        if pkg_options_dumps:
-            result.append(pkg_options_dumps)
-        for pkg_pattern, pkg_option in sorted(self._deps_package_options.items()):
-            dep_pkg_option = pkg_option.dumps(scope=pkg_pattern)
-            if dep_pkg_option:
-                result.append(dep_pkg_option)
-        return "\n".join(result)
-
-    @staticmethod
-    def loads(text: str) -> Options:
-        """ parses a multiline text in the form produced by dumps(), NO validation here
-        """
-        values = {}
-        for line in text.splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            try:
-                name, value = line.split("=", 1)
-                values[name] = value
-            except ValueError:
-                raise RecipeException(
-                    f"Error while parsing option '{line}'. "
-                    f"Options should be specified as 'pkg/*:option=value'")
-        return Options(options_values=values)
-
-    def serialize(self) -> dict[str, Any]:
-        # used by PackageIdInfo serialization, involved in "list package-ids" output
-        # we need to maintain the "options" and "req_options" first level or servers will break
-        # This happens always after reading from package_id_info.txt => all str and not None
-        result = {k: v for k, v in self._package_options.items()}
-        # Include the dependencies ones, in case they have been explicitly added in package_id()
-        # to the package_id_info.txt, we want to report them
-        for pkg_pattern, pkg_option in sorted(self._deps_package_options.items()):
-            for key, value in pkg_option.items():
-                result["%s:%s" % (pkg_pattern, key)] = value
-        return result
-
-    def clear(self):
-        # for header_only() clearing
-        self._package_options.clear()
-        self._deps_package_options.clear()
-
     def __contains__(self, option: object) -> bool:
-        return option in self._package_options
+        return str(option) in self._values
 
-    def __getattr__(self, attr: str) -> Any:
-        return getattr(self._package_options, attr)
+    def __getattr__(self, name: str) -> Any:
+        assert name[0] != "_", "ERROR %s" % name
+        self._ensure_exists(name)
+        return self._values.get(name)
 
-    def __setattr__(self, attr: str, value: Any):
-        if attr[0] == "_" or attr == "values":
-            return super(Options, self).__setattr__(attr, value)
-        return setattr(self._package_options, attr, value)
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name[0] == "_":
+            return super().__setattr__(name, value)
+        self._set(name, value)
 
-    def __delattr__(self, field: str):
-        self._package_options.__delattr__(field)
-
-    def __getitem__(self, item: Any) -> _PackageOptions:
-        if isinstance(item, str):
-            if "/" not in item and "*" not in item:  # FIXME: To allow patterns like "*" or "foo*"
-                item += "/*"
-        return self._deps_package_options.setdefault(item, _PackageOptions())
-
-    def scope(self, ref: Any):
-        """ when there are free options like "shared=True", they apply to the "consumer" package
-        Once we know the name of such consumer package, it can be defined in the data, so it will
-        be later correctly apply when processing options """
-        package_options = self._deps_package_options.setdefault(str(ref), _PackageOptions())
-        package_options.update_options(self._package_options)
-        self._package_options = _PackageOptions()
-
-    def copy_package_id_info_options(self) -> Options:
-        # To generate the package_id info.options copy, that can destroy, change and remove things
-        result = Options()
-        result._package_options = self._package_options.copy_package_id_info_options()
-        # In most scenarios this should be empty at this stage, because it was cleared
-        if self._deps_package_options:
-            raise RecipeException(
-                "Dependencies options were defined incorrectly. Maybe you"
-                " tried to define options values in 'requirements()' or other"
-                " invalid place")
-        return result
-
-    def update(self, options: Any = None, options_values: Any = None):
-        # Necessary for init() extending of options for python_requires_extend
-        new_options = Options(options, options_values)
-        self._package_options.update(new_options._package_options)
-        for pkg, pkg_option in new_options._deps_package_options.items():
-            self._deps_package_options.setdefault(pkg, _PackageOptions()).update(pkg_option)
-
-    def update_options(self, other: Options):
-        """
-        dict-like update of options, "other" has priority, overwrite existing
-        @type other: Options
-        """
-        self._package_options.update_options(other._package_options)
-        for pkg, pkg_option in other._deps_package_options.items():
-            self._deps_package_options.setdefault(pkg, _PackageOptions()).update_options(pkg_option)
+    def __delattr__(self, name: str) -> None:
+        self._ensure_exists(name)
+        self._values.pop(name, None)

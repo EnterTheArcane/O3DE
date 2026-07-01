@@ -1,11 +1,8 @@
 import os
 import subprocess
-import types
 from abc import ABC
-from functools import cache
 from typing import (
-    IO, Any, ClassVar, Generic, Literal, TypeVar, Union, cast, get_args, get_origin,
-    get_type_hints,
+    IO, Any, Generic, TypeVar, cast,
 )
 
 from thirdparty._internal.graph import CONTEXT_BUILD, RECIPE_CONSUMER, RECIPE_EDITABLE
@@ -20,102 +17,12 @@ from thirdparty._internal.model.settings import Settings
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
-from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
 
 
 TOptions = TypeVar("TOptions", default=Any)
 
-
-_ANY_OPTION_VALUE = "ANY"
-_SCALAR_OPTION_TYPES = {str, int, float, Any}
-
-
-class RecipeOptions:
-    __defaults__: ClassVar[dict[str, Any]]
-    __possible_values__: ClassVar[dict[str, list[Any]]]
-
-    def get_safe(self, field: str, default: Any = None) -> Any:
-        ...
-
-    def rm_safe(self, field: str) -> None:
-        ...
-
-    def items(self) -> list[Any]:
-        ...
-
-    def __contains__(self, option: object) -> bool:
-        ...
-
-    def __getitem__(self, item: str) -> Any:
-        # Access the options of a dependency, e.g. ``self.options["glib"].shared``.
-        ...
-
-
-def _is_none_type(annotation: Any) -> bool:
-    return annotation is None or annotation is type(None)
-
-
-def _append_unique(values: list[Any], value: Any) -> None:
-    if value not in values:
-        values.append(value)
-
-
-def _derive_possible_values(name: str, annotation: Any) -> list[Any]:
-    origin = get_origin(annotation)
-    args = get_args(annotation)
-
-    if _is_none_type(annotation):
-        return [None]
-    if annotation is bool:
-        return [True, False]
-    if origin is Literal:
-        return list(args)
-    if annotation in _SCALAR_OPTION_TYPES:
-        return [_ANY_OPTION_VALUE]
-    if origin in (types.UnionType, Union):
-        result: list[Any] = []
-        for arg in args:
-            for value in _derive_possible_values(name, arg):
-                _append_unique(result, value)
-        if None in result:
-            result.remove(None)
-            result.insert(0, None)
-        return result
-
-    raise RecipeException(
-        f"Unsupported typed option '{name}' annotation {annotation!r}. "
-        "Supported annotations are bool, Literal, str, int, float, Any, "
-        "and optional scalar forms like str | None")
-
-
-def _typed_options_class(cls: type[Any]) -> type[Any] | None:
-    for base in getattr(cls, "__orig_bases__", ()):
-        if get_origin(base) is RecipeBase:
-            args = get_args(base)
-            if args and args[0] is not Any:
-                return args[0]
-    return None
-
-
-@cache
-def _derive_options(options_cls: type[Any]) -> tuple[dict[str, list[Any]], dict[str, Any]]:
-    annotations = get_type_hints(options_cls, include_extras=True)
-    explicit_defaults = getattr(options_cls, "__defaults__", {})
-    explicit_possible_values = getattr(options_cls, "__possible_values__", {})
-    options: dict[str, list[Any]] = {}
-    defaults: dict[str, Any] = {}
-
-    for name, annotation in annotations.items():
-        if name.startswith("_"):
-            continue
-        options[name] = explicit_possible_values.get(name, _derive_possible_values(name, annotation))
-        if name in options_cls.__dict__:
-            defaults[name] = getattr(options_cls, name)
-        elif name in explicit_defaults:
-            defaults[name] = explicit_defaults[name]
-
-    return options, defaults
+__all__ = ["RecipeBase"]
 
 
 class RecipeBase(ABC, Generic[TOptions]):
@@ -145,9 +52,7 @@ class RecipeBase(ABC, Generic[TOptions]):
                 "Recipes must define options only in the RecipeBase[...] options class, "
                 "not with explicit options/default_options dictionaries")
 
-        typed_options = _typed_options_class(cls)
-        if typed_options is not None:
-            _derive_options(typed_options)
+        Options.validate_recipe_class(cls)
 
         license = cls.__dict__.get("license")
         if isinstance(license, str):
@@ -163,12 +68,7 @@ class RecipeBase(ABC, Generic[TOptions]):
         # self.requires_tool() from requirements().
         self._requires: list[Requirement] = []
 
-        typed_options = _typed_options_class(type(self))
-        if typed_options is None:
-            options_definition, default_options = {}, {}
-        else:
-            options_definition, default_options = _derive_options(typed_options)
-        cast(Any, self).options = Options(options_definition, default_options)
+        cast(Any, self).options = Options.from_recipe(type(self))
         self._recipe_dependencies: "RecipeDependencies | None" = None
         self.env_scripts = {}  # Accumulate the env scripts generated in order
         

@@ -3,7 +3,6 @@ import os
 import textwrap
 from collections import OrderedDict
 
-from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import save
 from thirdparty.build import use_win_mingw
@@ -36,7 +35,7 @@ from thirdparty.cmake.toolchain.blocks import (
     VSDebuggerEnvironment,
     VariablesBlock,
     PreprocessorBlock,
-    RpathLinkFlagsBlock
+    RpathLinkFlagsBlock,
 )
 from thirdparty.cmake.utils import is_multi_configuration
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
@@ -222,13 +221,6 @@ class CMakeToolchain:
         for name, value in self.cache_variables.items():
             if isinstance(value, bool):
                 cache_variables[name] = "ON" if value else "OFF"
-            elif isinstance(value, _PackageOption):
-                if str(value).lower() in ["true", "false", "none"]:
-                    cache_variables[name] = "ON" if bool(value) else "OFF"
-                elif str(value).isdigit():
-                    cache_variables[name] = int(value)
-                else:
-                    cache_variables[name] = str(value)
             else:
                 cache_variables[name] = value
 

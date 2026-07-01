@@ -41,9 +41,6 @@ class Recipe(RecipeBase[_Options]):
         if not is_apple_os(self):
             self.options.with_coretext = False
 
-        if self.options.shared and self.options.with_glib:
-            self.options["glib"].shared = True
-
     def requirements(self):
         self.requires("freetype")
         self.requires("icu")

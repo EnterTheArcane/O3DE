@@ -1,5 +1,3 @@
-from thirdparty._internal.model.options import _PackageOption
-from thirdparty._internal.output import Output
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 from thirdparty.recipe import RecipeBase
 
@@ -51,11 +49,6 @@ def to_meson_value(value):
         return "true" if value else "false"
     elif isinstance(value, list):
         return f"[{", ".join([str(to_meson_value(val)) for val in value])}]"
-    elif isinstance(value, _PackageOption):
-        Output().warning(
-            f"Please, do not use a Recipe option value directly. "
-            f"Convert 'options.{value.name}' into a valid Python"
-            f"data type, e.g, bool(self.options.shared)", warn_tag="deprecated")
     return value
 
 

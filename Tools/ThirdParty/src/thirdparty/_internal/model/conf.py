@@ -5,7 +5,6 @@ import os
 import re
 from typing import Any
 
-from thirdparty._internal.model.options import _PackageOption
 from thirdparty._internal.model.settings import SettingsItem
 from thirdparty.errors import RecipeException
 
@@ -130,7 +129,7 @@ class _ConfValue:
         if name != name.lower():
             raise RecipeException(f"Conf '{name}' must be lowercase")
         name, important = (name[:-1], True) if name[-1] == "!" else (name, False)
-        if isinstance(value, (_PackageOption, SettingsItem)):
+        if isinstance(value, SettingsItem):
             raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
         return _ConfValue(name, value, path=path, update=update, important=important)
 
@@ -191,7 +190,7 @@ class _ConfValue:
         if isinstance(value, list):
             self._value.extend(value)
         else:
-            if isinstance(value, (_PackageOption, SettingsItem)):
+            if isinstance(value, SettingsItem):
                 raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
             self._value.append(value)
 
@@ -202,7 +201,7 @@ class _ConfValue:
         if isinstance(value, list):
             self._value = value + self._value
         else:
-            if isinstance(value, (_PackageOption, SettingsItem)):
+            if isinstance(value, SettingsItem):
                 raise RecipeException(f"Invalid 'conf' type, please use Python types (int, str, ...)")
             self._value.insert(0, value)
 
