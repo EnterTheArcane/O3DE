@@ -24,7 +24,7 @@ class _Options(RecipeOptions):
 class Recipe(RecipeBase[_Options]):
     name = "libheif"
     version = "1.23.1"
-    license = "LGPL-3.0-only", "GPL-3.0-or-later", "MIT"
+    license = "GPL-3.0-or-later", "LGPL-3.0-only", "MIT"
 
     def latest_version(self):
         repo = GithubRepository(self, "strukturag/libheif")

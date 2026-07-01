@@ -24,7 +24,7 @@ class _Options(RecipeOptions):
 class Recipe(RecipeBase[_Options]):
     name = "libjpeg-turbo"
     version = "3.1.4.1"
-    license = "IJG", "BSD-3-Clause", "Zlib"
+    license = "BSD-3-Clause", "IJG", "Zlib"
 
     def latest_version(self):
         repo = GithubRepository(self, "libjpeg-turbo/libjpeg-turbo")

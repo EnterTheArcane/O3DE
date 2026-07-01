@@ -14,8 +14,7 @@ def run_configure_method(recipe: RecipeBase):
 
     if initial_requires_count != len(recipe._requires):
         recipe.output.warning(
-            "Requirements should only be added in the requirements() method, "
-            "not configure().", warn_tag="deprecated")
+            "Requirements should only be added in the requirements() method, not configure().", warn_tag="deprecated")
 
     with recipe_exception_formatter(recipe, "requirements"):
         recipe.requirements()

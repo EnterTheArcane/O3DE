@@ -47,10 +47,6 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     def __init_subclass__(cls, **kwargs: Any):
         super().__init_subclass__(**kwargs)
-        if "options" in cls.__dict__ or "default_options" in cls.__dict__:
-            raise RecipeException(
-                "Recipes must define options only in the RecipeBase[...] options class, "
-                "not with explicit options/default_options dictionaries")
 
         Options.validate_recipe_class(cls)
 
@@ -64,8 +60,6 @@ class RecipeBase(ABC, Generic[TOptions]):
         self.folders = Folders()
         self.info = Info(set_defaults=True)
 
-        # Requirements accumulate here as the recipe calls self.requires() /
-        # self.requires_tool() from requirements().
         self._requires: list[Requirement] = []
 
         cast(Any, self).options = Options.from_recipe(type(self))

@@ -5,7 +5,7 @@ from thirdparty.files import apply_patches, copy, get, load, save
 class Recipe(RecipeBase):
     name = "getopt-for-visual-studio"
     version = "20200201"
-    license = "MIT", "BSD-2-Clause"
+    license = "BSD-2-Clause", "MIT"
 
     def source(self):
         get(

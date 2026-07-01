@@ -5,7 +5,7 @@ from thirdparty.files import copy, get, rmdir
 class Recipe(RecipeBase):
     name = "stb"
     version = "20240531"
-    license = "Unlicense", "MIT"
+    license = "MIT", "Unlicense"
 
     def source(self):
         get(

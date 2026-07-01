@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 class Recipe(RecipeBase[_Options]):
     name = "hidapi"
     version = "0.15.0"
-    license = "GPL-3.0-or-later", "BSD-3-Clause"
+    license = "BSD-3-Clause", "GPL-3.0-or-later"
 
     def latest_version(self):
         repo = GithubRepository(self, "libusb/hidapi")

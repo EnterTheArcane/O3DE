@@ -116,7 +116,7 @@ class _Options(RecipeOptions):
 class Recipe(RecipeBase[_Options]):
     name = "ffmpeg"
     version = "8.1.2"
-    license = "LGPL-2.1-or-later", "GPL-2.0-or-later"
+    license = "GPL-2.0-or-later", "LGPL-2.1-or-later"
 
     def latest_version(self):
         repo = GithubRepository(self, "FFmpeg/FFmpeg")
