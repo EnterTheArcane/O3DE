@@ -94,11 +94,11 @@ class RecipeBase(ABC, Generic[TOptions]):
         return Output(scope=scope)
 
     @property
-    def context(self):
+    def context(self) -> str:
         return self._recipe_node.context
 
     @property
-    def is_build_context(self):
+    def is_build_context(self) -> bool:
         return self.context == CONTEXT_BUILD
 
     @property
