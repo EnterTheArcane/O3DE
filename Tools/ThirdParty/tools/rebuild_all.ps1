@@ -30,7 +30,7 @@ $packages = @(
     "abseil", "libexpat", "pcre2", "re2",
     "lua", "luau",
     "rapidyaml", "yaml-cpp",
-    "jansson", "sqlite3",
+    "jansson", "sqlite",
     "pystring",
 
     # --- image & audio I/O primitives ---

@@ -117,9 +117,9 @@ class Recipe(RecipeBase[_Options]):
     def package_info(self):
         self.info.set_property("cmake_file_name", "SQLite3")
         self.info.set_property("cmake_target_name", "SQLite::SQLite3")
-        self.info.set_property("pkg_config_name", "sqlite")
+        self.info.set_property("pkg_config_name", "sqlite3")
 
-        self.info.components["sqlite"].libs = ["sqlite"]
+        self.info.components["sqlite"].libs = ["sqlite3"]
         if self.options.enable_icu:
             self.info.components["sqlite"].requires = ["icu::icu"]
         if self.options.omit_load_extension:
@@ -136,7 +136,7 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["sqlite"].defines.append("SQLITE_API=__declspec(dllimport)")
 
         self.info.components["sqlite"].set_property("cmake_target_name", "SQLite::SQLite3")
-        self.info.components["sqlite"].set_property("pkg_config_name", "sqlite")
+        self.info.components["sqlite"].set_property("pkg_config_name", "sqlite3")
 
     def _extract_license(self):
         header = load(self, self.folders.source / "sqlite3.h")

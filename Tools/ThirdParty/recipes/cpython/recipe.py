@@ -27,7 +27,7 @@ class _Options(RecipeOptions):
     with_curses: bool = True
     with_gdbm: bool = True
     with_lzma: bool = True
-    with_sqlite3: bool = True
+    with_sqlite: bool = True
     with_tkinter: bool = True
     env_vars: bool = True
 
@@ -50,7 +50,7 @@ class Recipe(RecipeBase[_Options]):
 
         if not self._supports_modules:
             self.options.with_bz2 = False
-            self.options.with_sqlite3 = False
+            self.options.with_sqlite = False
             self.options.with_tkinter = False
             self.options.with_lzma = False
 
@@ -69,8 +69,8 @@ class Recipe(RecipeBase[_Options]):
             self.requires("bzip2")
         if self.options.with_gdbm:
             self.requires("gdbm")
-        if self.options.with_sqlite3:
-            self.requires("sqlite3")
+        if self.options.with_sqlite:
+            self.requires("sqlite")
         if self.options.with_tkinter:
             self.requires("tk")
         if self.options.with_curses:
@@ -231,8 +231,8 @@ class Recipe(RecipeBase[_Options]):
                 self.info.components["_hidden"].requires.append("bzip2::bzip2")
             if self.options.with_gdbm:
                 self.info.components["_hidden"].requires.append("gdbm::gdbm")
-            if self.options.with_sqlite3:
-                self.info.components["_hidden"].requires.append("sqlite3::sqlite3")
+            if self.options.with_sqlite:
+                self.info.components["_hidden"].requires.append("sqlite::sqlite")
             if self.options.with_curses:
                 self.info.components["_hidden"].requires.append("ncurses::ncurses")
             if self.options.with_lzma:
@@ -307,9 +307,9 @@ class Recipe(RecipeBase[_Options]):
             f"--with-openssl={self.dependencies["openssl"].folders.package}",
         ]
         tc.configure_args.append("--disable-test-modules")
-        if self.options.with_sqlite3:
+        if self.options.with_sqlite:
             tc.configure_args.append(
-                f"--enable-loadable-sqlite-extensions={yes_no(not self.dependencies["sqlite3"].options.omit_load_extension)}"
+                f"--enable-loadable-sqlite-extensions={yes_no(not self.dependencies["sqlite"].options.omit_load_extension)}"
             )
         if self._supports_modules and "mpdecimal" in self.dependencies:
             # mpdecimal >= 4.0 renamed CONFIG_64/CONFIG_32 → MPD_CONFIG_64/MPD_CONFIG_32.
@@ -386,7 +386,7 @@ class Recipe(RecipeBase[_Options]):
         # Remove extra include directory
         replace_in_file(self, self._msvc_project_path("_decimal"), r"..\Modules\_decimal\libmpdec;", "")
 
-        # Don't include vendored sqlite3
+        # Don't include vendored sqlite
         replace_in_file(
             self, self._msvc_project_path("_sqlite3"),
             '<ProjectReference Include="sqlite3.vcxproj">',
@@ -454,7 +454,7 @@ class Recipe(RecipeBase[_Options]):
         self._inject_recipe_props_file("pyexpat", "libexpat", self._supports_modules)
         self._inject_recipe_props_file("_hashlib", "openssl", self._supports_modules)
         self._inject_recipe_props_file("_ssl", "openssl", self._supports_modules)
-        self._inject_recipe_props_file("_sqlite3", "sqlite3", self.options.with_sqlite3)
+        self._inject_recipe_props_file("_sqlite3", "sqlite", self.options.with_sqlite)
         self._inject_recipe_props_file("_tkinter", "tk", self.options.with_tkinter)
         self._inject_recipe_props_file("pythoncore", "zlib")
         self._inject_recipe_props_file("python", "zlib")
@@ -570,7 +570,7 @@ class Recipe(RecipeBase[_Options]):
         }
         if not self.options.with_bz2:
             discarded.add("bz2")
-        if not self.options.with_sqlite3:
+        if not self.options.with_sqlite:
             discarded.add("_sqlite3")
         if not self.options.with_tkinter:
             discarded.add("_tkinter")

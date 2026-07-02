@@ -139,7 +139,7 @@ class _Options(RecipeOptions):
     with_pcre2: bool = True
     with_pq: bool = False
     with_pulseaudio: bool = True
-    with_sqlite3: bool = True
+    with_sqlite: bool = True
     with_vulkan: bool = True
     with_x11: bool = True
     with_zstd: bool = True
@@ -305,8 +305,8 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libjpeg-turbo")
         if self.options.with_libpng:
             self.requires("libpng")
-        if self.options.with_sqlite3:
-            self.requires("sqlite3")
+        if self.options.with_sqlite:
+            self.requires("sqlite")
         if self.options.with_mysql:
             self.requires("libmysqlclient")
         if self.options.with_pq:
@@ -583,7 +583,7 @@ class Recipe(RecipeBase[_Options]):
             ("with_harfbuzz", "harfbuzz"),
             ("with_libjpeg", "jpeg"),
             ("with_libpng", "png"),
-            ("with_sqlite3", "sqlite"),
+            ("with_sqlite", "sqlite"),
             ("with_pcre2", "pcre2"),
         ]:
             if getattr(self.options, opt, False):
@@ -1119,8 +1119,8 @@ class Recipe(RecipeBase[_Options]):
 
         if self.options.with_mysql:
             _create_plugin("QMYSQLDriverPlugin", "qsqlmysql", "sqldrivers", ["libmysqlclient::libmysqlclient"])
-        if self.options.with_sqlite3:
-            _create_plugin("QSQLiteDriverPlugin", "qsqlite", "sqldrivers", ["sqlite3::sqlite3"])
+        if self.options.with_sqlite:
+            _create_plugin("QSQLiteDriverPlugin", "qsqlite", "sqldrivers", ["sqlite::sqlite"])
         if self.options.with_pq:
             _create_plugin("QPSQLDriverPlugin", "qsqlpsql", "sqldrivers", ["libpq::libpq"])
         if self.options.with_odbc:

@@ -24,7 +24,6 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
-        # box3d's core library is pure C17; drop C++ settings.
         self.settings.rm_safe("compiler.libcxx")
         self.settings.rm_safe("compiler.cppstd")
 
