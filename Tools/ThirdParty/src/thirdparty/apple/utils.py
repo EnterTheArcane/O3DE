@@ -6,6 +6,7 @@ from thirdparty._internal.util.runners import check_output_runner
 from thirdparty.build import cmd_args_to_string
 from thirdparty.errors import RecipeException
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 
 def is_apple_os(recipe: RecipeBase, build_context: bool = False) -> bool:
@@ -143,7 +144,7 @@ class XCRun:
         command.extend(args)
         output = StringIO()
         cmd_str = cmd_args_to_string(command)
-        self._recipe.run(f"{cmd_str}", stdout=output, quiet=True)
+        run(self._recipe, f"{cmd_str}", stdout=output, quiet=True)
         return output.getvalue().strip()
 
     def find(self, tool: str) -> str:
@@ -247,11 +248,11 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
 
     def _fix_install_name(dylib_path: str, new_name: str):
         command = f"{install_name_tool} {dylib_path} -id {new_name}"
-        recipe.run(command)
+        run(recipe, command)
 
     def _fix_dep_name(dylib_path: str, old_name: str, new_name: str):
         command = f"{install_name_tool} {dylib_path} -change {old_name} {new_name}"
-        recipe.run(command)
+        run(recipe, command)
 
     def _get_rpath_entries(binary_file: str) -> list[str]:
         entries = []
@@ -327,7 +328,7 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
                 rpaths_to_add = list(set(rel_paths) - set(existing_rpaths))
                 for entry in rpaths_to_add:
                     command = f"{install_name_tool} {executable} -add_rpath {entry}"
-                    recipe.run(command)
+                    run(recipe, command)
 
     substitutes = _fix_dylib_files()
 

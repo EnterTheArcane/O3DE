@@ -6,6 +6,7 @@ from thirdparty.build import cmd_args_to_string
 from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 
 class PkgConfig:
@@ -43,8 +44,8 @@ class PkgConfig:
         with env.vars(self._recipe).apply():
             # This way we get the environment from RecipeBase, from profile (default buildenv)
             output, err = StringIO(), StringIO()
-            ret = self._recipe.run(
-                command, stdout=output, stderr=err, quiet=True, ignore_errors=True)
+            ret = run(
+                self._recipe, command, stdout=output, stderr=err, quiet=True, ignore_errors=True)
             if ret != 0:
                 raise RecipeException(
                     f"PkgConfig failed. Command: {command}\n"

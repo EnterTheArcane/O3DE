@@ -10,6 +10,7 @@ from thirdparty.nmake import NMakeToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
+from thirdparty.shell import run
 
 
 class Recipe(RecipeBase):
@@ -54,7 +55,7 @@ class Recipe(RecipeBase):
         apply_patches(self)
         if is_msvc(self):
             with chdir(self, self.folders.source):
-                self.run(f"nmake /f {os.path.join("Mkfiles", "msvc.mak")}")
+                run(self,f"nmake /f {os.path.join("Mkfiles", "msvc.mak")}")
         else:
             with chdir(self, self.folders.source):
                 autotools = Autotools(self)

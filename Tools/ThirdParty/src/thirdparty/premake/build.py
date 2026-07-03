@@ -10,6 +10,7 @@ from thirdparty.msbuild import MSBuild
 from thirdparty.premake.constants import RECIPE_TO_PREMAKE_ARCH
 from thirdparty.premake.toolchain import PremakeToolchain
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 # Source: https://learn.microsoft.com/en-us/cpp/overview/compiler-versions?view=msvc-170
 PREMAKE_VS_VERSION = {
@@ -85,7 +86,7 @@ class Premake:
 
         premake_command = (f"premake5 {self._expand_args(premake_options)} {self.action} "
                            f"{self._expand_args(self.arguments)}{self._premake_verbosity}")
-        self._recipe.run(premake_command)
+        run(self._recipe, premake_command)
 
     @property
     def _premake_verbosity(self):
@@ -128,4 +129,4 @@ class Premake:
         else:
             targets = "all" if targets is None else " ".join(targets)
             njobs = build_jobs(self._recipe)
-            self._recipe.run(f"make config={build_type.lower()} {targets} -j{njobs}{self._compilation_verbosity}")
+            run(self._recipe, f"make config={build_type.lower()} {targets} -j{njobs}{self._compilation_verbosity}")

@@ -34,3 +34,16 @@ class Requirement:
 
     def __str__(self) -> str:
         return str(self.ref)
+
+
+@dataclass(eq=False)  # inherits Requirement's (name, build) identity
+class ToolRequirement(Requirement):
+    """A build-tool requirement (e.g. cmake, nasm).
+
+    Tools run on the build machine and expose neither headers nor libs.
+    """
+
+    headers: bool = False
+    libs: bool = False
+    build: bool = True
+    run: bool = True

@@ -10,6 +10,7 @@ from thirdparty.files import apply_patches, chdir, copy, get, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -94,7 +95,7 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         autotools = Autotools(self)
         with chdir(self, self.folders.source / "src"):
-            self.run("autoreconf -vif")
+            run(self,"autoreconf -vif")
         autotools.configure(build_script_folder="src")
         autotools.make()
 

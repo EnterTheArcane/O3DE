@@ -9,6 +9,7 @@ from thirdparty.errors import RecipeException
 from thirdparty.files import chdir, mkdir
 from thirdparty.msbuild.build import msbuild_verbosity_cmd_line_arg
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 
 def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]:
@@ -148,7 +149,7 @@ class CMake:
 
         command = " ".join(arg_list)
         with chdir(self, build_folder):
-            self._recipe.run(command, stdout=stdout, stderr=stderr)
+            run(self._recipe, command, stdout=stdout, stderr=stderr)
 
     def _config_arg(self, build_type: str | None) -> str:
         """ computes the '--config Release' arg when necessary, or warn or error if wrong
@@ -204,7 +205,7 @@ class CMake:
         arg_list = [f'"{bf}"', build_config, cmd_args_to_string(args)]
         arg_list = " ".join(filter(None, arg_list))
         command = "%s --build %s" % (self._cmake_program, arg_list)
-        self._recipe.run(command, env=env, stdout=stdout, stderr=stderr)
+        run(self._recipe, command, env=env, stdout=stdout, stderr=stderr)
 
     def build(
         self,
@@ -287,7 +288,7 @@ class CMake:
 
         arg_list = " ".join(filter(None, arg_list))
         command = "%s %s" % (self._cmake_program, arg_list)
-        self._recipe.run(command, stdout=stdout, stderr=stderr)
+        run(self._recipe, command, stdout=stdout, stderr=stderr)
 
     def test(
         self,
@@ -365,7 +366,7 @@ class CMake:
         command = f"ctest {arg_list}"
 
         env = ["env_build", "env_run"] if env == "" else env
-        self._recipe.run(command, env=env, stdout=stdout, stderr=stderr)
+        run(self._recipe, command, env=env, stdout=stdout, stderr=stderr)
 
     @property
     def _compilation_verbosity_arg(self):

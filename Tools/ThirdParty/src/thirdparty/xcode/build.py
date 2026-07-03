@@ -2,6 +2,7 @@
 from thirdparty.apple.utils import to_apple_arch, xcodebuild_deployment_target_key
 from thirdparty.build import cmd_args_to_string
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 
 class XcodeBuild:
@@ -65,4 +66,4 @@ class XcodeBuild:
         if cli_args:
             cmd += " " + cmd_args_to_string(cli_args)
 
-        self._recipe.run(cmd)
+        run(self._recipe, cmd)

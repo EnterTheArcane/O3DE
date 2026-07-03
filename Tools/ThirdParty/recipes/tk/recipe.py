@@ -13,6 +13,7 @@ from thirdparty.nmake import NMakeDeps, NMakeToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -244,7 +245,8 @@ class Recipe(RecipeBase[_Options]):
         }
         config_dir = self._get_configure_folder("win")
         with chdir(self, config_dir):
-            self.run(
+            run(
+                self,
                 f"""nmake -nologo -f makefile.vc {" ".join([f'{k}="{v}"' for k, v in flags.items()])} {target}""",
                 env="env_build",
             )

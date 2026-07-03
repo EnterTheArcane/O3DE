@@ -14,6 +14,7 @@ from thirdparty.autotools import AutotoolsToolchain
 from thirdparty.microsoft import is_msvc, msvc_runtime_flag, unix_path
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -150,7 +151,7 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         self._make()
         configdata_pm = self._adjust_path(self.folders.source / "configdata.pm")
-        self.run(f"{self._perl} {configdata_pm} --dump")
+        run(self,f"{self._perl} {configdata_pm} --dump")
 
     def package(self):
         copy(self, "*LICENSE*", src=self.folders.source, dst=self.folders.package / "licenses")
@@ -543,7 +544,7 @@ class Recipe(RecipeBase[_Options]):
             command.extend(targets)
         if self._make_program in ["make", "jom"]:
             command.append(f"-j{build_jobs(self)}" if parallel else "-j1")
-        self.run(" ".join(command), env="env_build")
+        run(self," ".join(command), env="env_build")
 
     @property
     def _perl(self):
@@ -558,7 +559,7 @@ class Recipe(RecipeBase[_Options]):
             if self._use_nmake:
                 self._replace_runtime_in_file(Path("Configurations") / "10-main.conf")
 
-            self.run(f"{self._perl} ./Configure {args}", env="env_build")
+            run(self,f"{self._perl} ./Configure {args}", env="env_build")
             if self._use_nmake:
                 # When `--prefix=/`, the scripts derive `\` without escaping, which
                 # causes issues on Windows

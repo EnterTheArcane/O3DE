@@ -6,6 +6,7 @@ from thirdparty.files import get, chdir, copy, apply_patches, mkdir, rename
 from thirdparty.autotools import AutotoolsToolchain, Autotools
 from thirdparty.nmake import NMakeDeps, NMakeToolchain
 from thirdparty.microsoft import VCVars, is_msvc
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -163,7 +164,8 @@ class Recipe(RecipeBase[_Options]):
 
         for build_dir, target in builds:
             with chdir(self, build_dir):
-                self.run(
+                run(
+                    self,
                     """nmake -f Makefile.vc {target} MACHINE={machine} DEBUG={debug} DLL={dll}""".format(
                         target=target,
                         machine={"X64": "x64"}[str(self.settings.arch)],

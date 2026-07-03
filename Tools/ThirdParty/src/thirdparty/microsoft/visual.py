@@ -100,7 +100,7 @@ class VCVars:
         :param scope: ``str`` activation scope, by default "build". It means it will add a
                       call to this ``vcvars_env.bat`` from the aggregating general
                       ``buildenv.bat``, which is the script that will be called by default
-                      in ``self.run()`` calls and build helpers such as ``cmake.configure()``
+                      in ``run(self, ...)`` calls and build helpers such as ``cmake.configure()``
                       and ``cmake.build()``.
         """
         recipe = self._recipe

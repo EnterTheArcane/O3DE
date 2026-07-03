@@ -12,6 +12,7 @@ from thirdparty.nmake import NMakeDeps, NMakeToolchain
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime, msvc_runtime_flag
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -161,7 +162,7 @@ class Recipe(RecipeBase[_Options]):
 
         if is_apple_os(self):
             with chdir(self, self.folders.source / "macosx"):
-                self.run("autoconf")
+                run(self, "autoconf")
 
         if is_apple_os(self) and self.settings.arch not in ("X64",):
             macos_configure = self.folders.source / "macosx" / "configure"
@@ -225,7 +226,8 @@ class Recipe(RecipeBase[_Options]):
 
         win_config_dir = self.folders.source / "win"
         with chdir(self, win_config_dir):
-            self.run(
+            run(
+                self,
                 'nmake -nologo -f "{cfgdir}/makefile.vc" INSTALLDIR="{pkgdir}" OPTS={opts} {targets}'.format(
                     cfgdir=win_config_dir,
                     pkgdir=self.folders.package,

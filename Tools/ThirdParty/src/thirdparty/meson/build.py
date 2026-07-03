@@ -4,6 +4,7 @@ from thirdparty.build import build_jobs
 from thirdparty.errors import RecipeException
 from thirdparty.meson.toolchain import MesonToolchain
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 
 class Meson:
@@ -47,7 +48,7 @@ class Meson:
         cmd += f' "{build_folder}" "{source_folder}"'
         cmd += f" --prefix={self._prefix}"
         self._recipe.output.info(f"Meson configure cmd: {cmd}")
-        self._recipe.run(cmd)
+        run(self._recipe, cmd)
 
     def build(self, target: str | None = None):
         """
@@ -68,7 +69,7 @@ class Meson:
         if verbosity:
             cmd += " " + verbosity
         self._recipe.output.info(f"Meson build cmd: {cmd}")
-        self._recipe.run(cmd)
+        run(self._recipe, cmd)
 
     def install(self, cli_args: list[str] | None = None):
         """
@@ -92,7 +93,7 @@ class Meson:
             cmd += " --strip"
         if cli_args:
             cmd += " " + " ".join(cli_args)
-        self._recipe.run(cmd)
+        run(self._recipe, cmd)
 
     def test(self):
         """
@@ -104,7 +105,7 @@ class Meson:
         cmd = f'meson test -v -C "{meson_build_folder}"'
         # TODO: Do we need vcvars for test?
         # TODO: This should use runenvenv, but what if meson itself is a build-require?
-        self._recipe.run(cmd)
+        run(self._recipe, cmd)
 
     @property
     def _build_verbosity(self) -> str:

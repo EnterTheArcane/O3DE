@@ -9,6 +9,7 @@ from typing import Any
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.errors import RecipeException, RecipeInvalidConfiguration
 from thirdparty.files import chdir, get, replace_in_file, copy, rm
+from thirdparty.shell import run
 
 
 # ``ctypes.windll`` / ``ctypes.WinError`` only exist on Windows; OpLock is Windows-only and the
@@ -128,13 +129,13 @@ class Recipe(RecipeBase[_Options]):
                 self._kill_pacman()
 
                 # https://www.msys2.org/docs/ci/
-                self.run('bash -l -c "pacman --debug --noconfirm --ask 20 -Syuu"')  # Core update (in case any core packages are outdated)
+                run(self,'bash -l -c "pacman --debug --noconfirm --ask 20 -Syuu"')  # Core update (in case any core packages are outdated)
                 self._kill_pacman()
-                self.run('bash -l -c "pacman --debug --noconfirm --ask 20 -Syuu"')  # Normal update
+                run(self,'bash -l -c "pacman --debug --noconfirm --ask 20 -Syuu"')  # Normal update
                 self._kill_pacman()
-                self.run('bash -l -c "pacman --debug -Rc dash --noconfirm"')
+                run(self,'bash -l -c "pacman --debug -Rc dash --noconfirm"')
             except RecipeException:
-                self.run('bash -l -c "cat /var/log/pacman.log || echo nolog"')
+                run(self,'bash -l -c "cat /var/log/pacman.log || echo nolog"')
                 self._kill_pacman()
                 raise
 
@@ -184,11 +185,11 @@ class Recipe(RecipeBase[_Options]):
 
         with chdir(self, self._msys_dir / "usr" / "bin"):
             for package in packages:
-                self.run(f'bash -l -c "pacman -S {package} --noconfirm"')
+                run(self,f'bash -l -c "pacman -S {package} --noconfirm"')
             for package in ["pkgconf"]:
-                if self.run(f'bash -l -c "pacman -Qq {package}"', ignore_errors=True, quiet=True) == 0:
-                    self.run(f'bash -l -c "pacman -Rs -d -d {package} --noconfirm"')
-            self.run(f'bash -l -c "pacman -Scc --noconfirm"')
+                if run(self,f'bash -l -c "pacman -Qq {package}"', ignore_errors=True, quiet=True) == 0:
+                    run(self,f'bash -l -c "pacman -Rs -d -d {package} --noconfirm"')
+            run(self,f'bash -l -c "pacman -Scc --noconfirm"')
 
         self._kill_pacman()
 

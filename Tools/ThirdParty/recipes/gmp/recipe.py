@@ -7,6 +7,7 @@ from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.scm import GnuFtp, Version
+from thirdparty.shell import run
 
 
 class Recipe(RecipeBase):
@@ -105,7 +106,7 @@ class Recipe(RecipeBase):
                 self.folders.source / "configure",
                 self.folders.build).replace("\\", "/")
             configure_args = load_toolchain_args(self.folders.generators).get("configure_args") or ""
-            self.run(f'"{configure_script}" {configure_args}', cwd=self.folders.build)
+            run(self,f'"{configure_script}" {configure_args}', cwd=self.folders.build)
         else:
             autotools.configure()
         autotools.make()

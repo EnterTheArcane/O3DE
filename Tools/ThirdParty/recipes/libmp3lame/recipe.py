@@ -8,6 +8,7 @@ from thirdparty.files import apply_patches, chdir, copy, get, rename, replace_in
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.nmake import NMakeToolchain
 from thirdparty.microsoft import is_msvc
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -115,7 +116,7 @@ class Recipe(RecipeBase[_Options]):
             else:
                 command += " asm=yes"
             command += " libmp3lame.dll" if self.options.shared else " libmp3lame-static.lib"
-            self.run(command)
+            run(self,command)
 
     def _build_autotools(self):
         for gnu_config in [

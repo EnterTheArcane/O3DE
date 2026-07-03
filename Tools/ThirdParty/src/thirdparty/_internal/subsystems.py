@@ -32,7 +32,7 @@ def command_env_wrapper(
     from thirdparty.env.environment import environment_wrap_command
     if getattr(recipe, "conf", None) is None:
         # TODO: No conf, no profile defined!! This happens at ``export()`` time
-        #  Is it possible to run a self.run() in export() in bash?
+        #  Is it possible to run a run(self, ...) in export() in bash?
         #  Is it necessary? Shouldn't be
         return command
 

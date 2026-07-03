@@ -3,6 +3,7 @@ import os
 from thirdparty.errors import RecipeException
 from thirdparty.microsoft.visual import msvc_platform_from_arch
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 
 def msbuild_verbosity_cmd_line_arg(recipe: RecipeBase) -> str:
@@ -80,7 +81,7 @@ class MSBuild:
         :param targets: ``targets`` is an optional argument, defaults to ``None``, and otherwise it is a list of targets to build
         """
         cmd = self.command(sln, targets=targets)
-        self._recipe.run(cmd)
+        run(self._recipe, cmd)
 
     @staticmethod
     def get_version(_):

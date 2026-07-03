@@ -9,6 +9,7 @@ from thirdparty.errors import RecipeException
 from thirdparty.files import chdir
 from thirdparty.microsoft import unix_path
 from thirdparty.recipe import RecipeBase
+from thirdparty.shell import run
 
 
 def join_arguments(args: Iterable[str | None]) -> str:
@@ -65,7 +66,7 @@ class Autotools:
         subsystem = deduce_subsystem(self._recipe, scope="build")
         configure_cmd = subsystem_path(subsystem, configure_cmd)
         cmd = f'"{configure_cmd}" {self._configure_args}'
-        self._recipe.run(cmd)
+        run(self._recipe, cmd)
 
     def make(
         self, target: str | None = None, args: list[str] | None = None, makefile: str | None = None):
@@ -94,7 +95,7 @@ class Autotools:
         str_makefile = f"--file={makefile}" if makefile else None
 
         command = join_arguments([make_program, str_makefile, target, str_args, str_extra_args, jobs])
-        self._recipe.run(command)
+        run(self._recipe, command)
 
     def install(
         self, args: list[str] | None = None, target: str | None = None, makefile: str | None = None):
@@ -135,7 +136,7 @@ class Autotools:
         args = args or []
         command = join_arguments(["autoreconf", self._autoreconf_args, cmd_args_to_string(args)])
         with chdir(self, script_folder):
-            self._recipe.run(command)
+            run(self._recipe, command)
 
     def _use_win_mingw(self) -> bool:
         os_build = self._recipe.settings_build.os

@@ -13,6 +13,7 @@ from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.msbuild import MSBuild, MSBuildDeps, MSBuildToolchain
 from thirdparty.microsoft import is_msvc, msvc_runtime_flag, msvs_toolset
 from thirdparty.scm import Version
+from thirdparty.shell import run
 
 
 class _Options(RecipeOptions):
@@ -596,7 +597,7 @@ class Recipe(RecipeBase[_Options]):
         sln = self.folders.source / "PCbuild" / "pcbuild.sln"
         # FIXME: Solution files do not pick up the toolset automatically.
         cmd = msbuild.command(sln, targets=projects)
-        self.run(f"{cmd} /p:PlatformToolset={msvs_toolset(self)} /p:SkipCopySSLDLL=true")
+        run(self,f"{cmd} /p:PlatformToolset={msvs_toolset(self)} /p:SkipCopySSLDLL=true")
 
     @property
     def _msvc_artifacts_path(self):
@@ -646,7 +647,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.build_type == "Debug":
             layout_args.append("-d")
         python_args = " ".join(f'"{a}"' for a in layout_args)
-        self.run(f"{python_built} {python_args}")
+        run(self,f"{python_built} {python_args}")
 
         rmdir(self, self.folders.package / "bin" / "tcl")
 
@@ -709,7 +710,7 @@ class Recipe(RecipeBase[_Options]):
 
         interpreter_path = build_path / self._cpython_interpreter_name
         lib_dir_path = (self.folders.package / self._msvc_install_subprefix / "Lib").as_posix()
-        self.run(f"{interpreter_path} -c \"import compileall; compileall.compile_dir('{lib_dir_path}')\"")
+        run(self,f"{interpreter_path} -c \"import compileall; compileall.compile_dir('{lib_dir_path}')\"")
 
     @property
     def _exact_lib_name(self):
