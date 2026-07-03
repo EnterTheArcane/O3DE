@@ -10,7 +10,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "directx-headers"
-    version = "1.619.1"
+    version = "1.721.2"
     license = "MIT"
 
     def latest_version(self):
@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="6193774904c940eebb9b0c51b816b93dd776cfeb25a951f0f4a58f22387e5008",
+            sha256="b736c311057f2b426eb465d4e7867da4eb4e76d69be27f45bfa359189f97c0b0",
             destination=self.folders.source,
             strip_root=True)
 

@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "slang"
-    version = "2026.12"
+    version = "2026.12.2"
     license = "Apache-2.0", "MIT"
 
     def latest_version(self):
@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/shader-slang/slang/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="714c8bfbddd7424f39e1904225e1c9cc742ecfab1c810519de321f6a8533364f",
+            sha256="d4c06414d210cc81f309c98b604ae51541b3a9bf946798f5ae562f2926256e47",
             destination=self.folders.source,
             strip_root=True)
         get(

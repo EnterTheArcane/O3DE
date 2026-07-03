@@ -23,7 +23,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libjpeg-turbo"
-    version = "3.1.4.1"
+    version = "3.2.0"
     license = "BSD-3-Clause", "IJG", "Zlib"
 
     def latest_version(self):
@@ -57,7 +57,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/{self.version}/libjpeg-turbo-{self.version}.tar.gz",
-            sha256="ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022",
+            sha256="6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

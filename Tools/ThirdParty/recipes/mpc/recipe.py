@@ -10,7 +10,7 @@ from thirdparty.scm import GnuFtp, Version
 
 class Recipe(RecipeBase):
     name = "mpc"
-    version = "1.3.1"
+    version = "1.4.1"
     license = "LGPL-3.0-or-later"
 
     def latest_version(self):
@@ -42,8 +42,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url=f"https://ftp.gnu.org/gnu/mpc/mpc-{self.version}.tar.gz",
-            sha256="ab642492f5cf882b74aa0cb730cd410a81edcdbec895183ce930e706c1c759b8",
+            url=f"https://ftp.gnu.org/gnu/mpc/mpc-{self.version}.tar.xz",
+            sha256="91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
             destination=self.folders.source,
             strip_root=True)
 

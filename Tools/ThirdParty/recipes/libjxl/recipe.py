@@ -21,7 +21,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libjxl"
-    version = "0.11.2"
+    version = "0.12.0"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -46,7 +46,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/libjxl/libjxl/archive/v{self.version}.tar.gz",
-            sha256="ab38928f7f6248e2a98cc184956021acb927b16a0dee71b4d260dc040a4320ea",
+            sha256="03e9be69a30be4011f559da75328b6d7cea8ad921fabfbd551ce10bf45cdc992",
             destination=self.folders.source,
             strip_root=True)
 

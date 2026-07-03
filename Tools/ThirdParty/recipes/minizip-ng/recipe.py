@@ -22,7 +22,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "minizip-ng"
-    version = "4.2.1"
+    version = "4.2.2"
     license = "Zlib"
 
     def latest_version(self):
@@ -61,7 +61,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/zlib-ng/minizip-ng/archive/{self.version}.tar.gz",
-            sha256="3cc35c2cb925dbe67cc801e3234b31b0f30197812a99377352fa1b551ab3d011",
+            sha256="71af7b9799856d8b03619df3949e9c1be9703f8de0795af71399ba283cb27aac",
             destination=self.folders.source,
             strip_root=True)
 

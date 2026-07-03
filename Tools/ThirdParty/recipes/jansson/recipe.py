@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "jansson"
-    version = "2.15.0"
+    version = "2.15.1"
     license = "MIT"
 
     def latest_version(self):
@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/akheron/jansson/releases/download/v{self.version}/jansson-{self.version}.tar.bz2",
-            sha256="a7eac7765000373165f9373eb748be039c10b2efc00be9af3467ec92357d8954",
+            sha256="f9aa4b3ec8496fee69db94f06f3d76fd4a26b012ee9bf1e917078c2cd2841881",
             destination=self.folders.source,
             strip_root=True)
 

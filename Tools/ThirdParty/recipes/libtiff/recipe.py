@@ -23,7 +23,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "libtiff"
-    version = "4.7.1"
+    version = "4.7.2"
     license = "libtiff"
 
     def latest_version(self):
@@ -58,7 +58,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://gitlab.com/libtiff/libtiff/-/archive/v{self.version}/libtiff-v{self.version}.tar.gz",
-            sha256="6ab956415ddb6cae497faad18398ff0fd056d17d8bf7b5921cc194c55b0191fc",
+            sha256="62b15f44c10106065211efa22a2dc77937bd97ee1f6e3afd2c9659010de112eb",
             destination=self.folders.source,
             strip_root=True)
         self._patch_sources()

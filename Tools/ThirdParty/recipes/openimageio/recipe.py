@@ -29,7 +29,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "openimageio"
-    version = "3.1.14.1"
+    version = "3.1.15.0"
     license = "Apache-2.0", "BSD-3-Clause"
 
     def latest_version(self):
@@ -92,7 +92,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v{self.version}/OpenImageIO-{self.version}.tar.gz",
-            sha256="747341fd98f10d82868ec7663f1f3763cf6fb9acf8a2ed81fc3f25256ef019be",
+            sha256="2c17eb34aa9d645629caf26a1c90e14556ae558f429e1ff6f0e41fbe4c80d42e",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

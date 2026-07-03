@@ -8,7 +8,7 @@ from thirdparty.files import copy, get
 from thirdparty.scm import Version
 
 
-_VERSION = "1.96.0"
+_VERSION = "1.96.1"
 _CHANNEL_MANIFEST_URL = "https://static.rust-lang.org/dist/channel-rust-stable.toml"
 
 _COMPONENTS = ("cargo", "rustc", "rust-std")
@@ -31,86 +31,86 @@ _HOST_TRIPLES = {
 _SOURCES = {
     "x86_64-pc-windows-msvc": {
         "cargo": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/cargo-1.96.0-x86_64-pc-windows-msvc.tar.xz",
-            "sha256": "a1ba24b0a35d1c3ce86dd24cf8633ad0d0b0eb1e5eaa1d01644417dea28351ee",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/cargo-1.96.1-x86_64-pc-windows-msvc.tar.xz",
+            "sha256": "e2c271f65ae10a2b40aebe483a2e7c0c566557f6bab8ab718be32ac9383a5081",
         },
         "rustc": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rustc-1.96.0-x86_64-pc-windows-msvc.tar.xz",
-            "sha256": "cfba935dbd6d0deaf0a02339f9b6c0573b30f41697919ba7532b60ef2e6306b4",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rustc-1.96.1-x86_64-pc-windows-msvc.tar.xz",
+            "sha256": "d226a2e142b4cd796df9db527f4f3ff79bc9ce4118b36dcd7c82b7eca557d0b8",
         },
         "rust-std": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rust-std-1.96.0-x86_64-pc-windows-msvc.tar.xz",
-            "sha256": "48b22b9237d5d43cbec4f7076e816a4d0b1b682932dfa82afd2573434d43fc53",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rust-std-1.96.1-x86_64-pc-windows-msvc.tar.xz",
+            "sha256": "f77bef11e2c032f8aafcdc60b4e50d21becf06d05c027fa87d7f45bf9bd146bb",
         },
     },
     "aarch64-pc-windows-msvc": {
         "cargo": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/cargo-1.96.0-aarch64-pc-windows-msvc.tar.xz",
-            "sha256": "26a37960a64570fd30d40d100c6a9b8a598584dff97e78f64c7cebab733ea9e6",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/cargo-1.96.1-aarch64-pc-windows-msvc.tar.xz",
+            "sha256": "6b9b9ba76ed946afc03a904013561a6e07f7de161362ea54fda5aa27f08bc6d7",
         },
         "rustc": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rustc-1.96.0-aarch64-pc-windows-msvc.tar.xz",
-            "sha256": "438408d6a8917401b2f816d87befc5783cc015af59c6f479f3649214cafd081c",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rustc-1.96.1-aarch64-pc-windows-msvc.tar.xz",
+            "sha256": "16d7acac79b065c27b3b4d3f3bcffb8d30a407475c2a0cd2b7f0232f9b96bfbc",
         },
         "rust-std": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rust-std-1.96.0-aarch64-pc-windows-msvc.tar.xz",
-            "sha256": "53c11671dbd91e634b92e304eb8163b2a38658c42e0152122709e2129298d754",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rust-std-1.96.1-aarch64-pc-windows-msvc.tar.xz",
+            "sha256": "1e3dbf6283206c6390a38312b41f26d88437c539a074ddb480e4aa503254a86f",
         },
     },
     "x86_64-unknown-linux-gnu": {
         "cargo": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/cargo-1.96.0-x86_64-unknown-linux-gnu.tar.xz",
-            "sha256": "dee75c3c8f9f600ad75bc0c93249e767d3047845a4dd668327ce43ab039ba266",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/cargo-1.96.1-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "ecc53a3c49fab5ab8c9301b3bbc8fb1dff9be6c65287add3f57a0fe8fddfea9e",
         },
         "rustc": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rustc-1.96.0-x86_64-unknown-linux-gnu.tar.xz",
-            "sha256": "7d7fa1d0cfb0fab71a956bb78f41107202c17f30ab56c45288e869a37fd9633d",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rustc-1.96.1-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "3545a0efad2355ecb0a3b9ac02efee96e27f1f9d24b7ce2fc3f279b2efb0d923",
         },
         "rust-std": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rust-std-1.96.0-x86_64-unknown-linux-gnu.tar.xz",
-            "sha256": "c09c7c646248f14f473f5f7a029af15ee57c3a9f9bc93dfa72d9621938586b82",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rust-std-1.96.1-x86_64-unknown-linux-gnu.tar.xz",
+            "sha256": "1bf4fde5048cca33e6ea00c7471281ed96d792f6923141e3db45072743a1afae",
         },
     },
     "aarch64-unknown-linux-gnu": {
         "cargo": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/cargo-1.96.0-aarch64-unknown-linux-gnu.tar.xz",
-            "sha256": "09ea03e74aa94e07db7bc00bd2ec1ad86d90a7348c89fde3909a8922543b949f",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/cargo-1.96.1-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "02a4d7bf424ea28d574fe5b5d29e7ae99b0bc11a5920d8f28fa7408aa6a37992",
         },
         "rustc": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rustc-1.96.0-aarch64-unknown-linux-gnu.tar.xz",
-            "sha256": "76b1a6e8dd1636e364d4bbba685485ff44eee5ff6434add089bab4c703c7e19d",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rustc-1.96.1-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "4bc079af433c730af16aa90c96777985b86d40c4670670380160bd61626a577f",
         },
         "rust-std": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rust-std-1.96.0-aarch64-unknown-linux-gnu.tar.xz",
-            "sha256": "538e85452709687797d990579a491ff9b02f8bffba4a5d54cfa945e28868053e",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rust-std-1.96.1-aarch64-unknown-linux-gnu.tar.xz",
+            "sha256": "24bd362ff484421cae8be8c4d326fde143a086782e59e21fc7f353a5d04cd630",
         },
     },
     "x86_64-apple-darwin": {
         "cargo": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/cargo-1.96.0-x86_64-apple-darwin.tar.xz",
-            "sha256": "23390ad69f74f3464774f17058f803e19cf45a9a11ee725b7a37e96c549f1243",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/cargo-1.96.1-x86_64-apple-darwin.tar.xz",
+            "sha256": "128041aa757a6bbc60664079ff294281cdbabd51cc4b7c1f7d40cd1b1ea955f5",
         },
         "rustc": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rustc-1.96.0-x86_64-apple-darwin.tar.xz",
-            "sha256": "f503815fe9e8cf6d654f751532932b6a9b13b8615a40fc6dfb9760a18cf595a1",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rustc-1.96.1-x86_64-apple-darwin.tar.xz",
+            "sha256": "814e1ed2d19952cf9771aeff5e0d4e0b77eefa76a689809f2c1bf769187ab051",
         },
         "rust-std": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rust-std-1.96.0-x86_64-apple-darwin.tar.xz",
-            "sha256": "afabf23aff5bf6d27dba9608a7c7bec349bf9fda9c3e37983dd5cc44c9afbcca",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rust-std-1.96.1-x86_64-apple-darwin.tar.xz",
+            "sha256": "a094fc4d30985f48aff70629d7a6c1f16d314a63f3cb141927095b6d506edd35",
         },
     },
     "aarch64-apple-darwin": {
         "cargo": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/cargo-1.96.0-aarch64-apple-darwin.tar.xz",
-            "sha256": "c042858192b7b6d66fe59b3bbbbd0f6e3cac6e8a478dc4cc091cde9eddea3c8b",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/cargo-1.96.1-aarch64-apple-darwin.tar.xz",
+            "sha256": "2f43d75e9ad3febae5022c6f295cf93b74131cfdb1293a83e291f878ea9585a0",
         },
         "rustc": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rustc-1.96.0-aarch64-apple-darwin.tar.xz",
-            "sha256": "1bb7b0bad1d2a42fc4173ede6dd460de2774fc1858a8369329d3e081e4e3426c",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rustc-1.96.1-aarch64-apple-darwin.tar.xz",
+            "sha256": "9b548f0665f85f3c7fd45165611e3dea79f048c69d163be193986310d204fc2c",
         },
         "rust-std": {
-            "url": "https://static.rust-lang.org/dist/2026-05-28/rust-std-1.96.0-aarch64-apple-darwin.tar.xz",
-            "sha256": "439c4f71060b913e00db3a2e01340b2da0aa49978b843e36871f3250267c63f8",
+            "url": "https://static.rust-lang.org/dist/2026-06-30/rust-std-1.96.1-aarch64-apple-darwin.tar.xz",
+            "sha256": "0d433a74c303febc915f8fa1091ef166445706461d0c96984ecb7303aa8208f5",
         },
     },
 }

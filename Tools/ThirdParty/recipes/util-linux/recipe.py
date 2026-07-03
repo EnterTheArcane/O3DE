@@ -17,7 +17,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "util-linux"
-    version = "2.41.2"
+    version = "2.42.2"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -41,7 +41,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/util-linux/util-linux/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="534aa113a323d6866c5f46baf909618dcc60c391ad24a91814e5d21511cefd30",
+            sha256="a451596f794739216da2e98398e31958ecf455f2372d99a12194a468e852e834",
             destination=self.folders.source,
             strip_root=True)
 

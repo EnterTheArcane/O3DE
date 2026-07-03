@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "miniz"
-    version = "3.1.1"
+    version = "3.1.2"
     license = "MIT"
 
     def latest_version(self):
@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/richgel999/miniz/archive/refs/tags/{self.version}.tar.gz",
-            sha256="8bb29c7bd6f22356e5583e794bed4a0b3e6dfcbcadb49974fc9270ccca1e5557",
+            sha256="98468f8924934b723276680f85238b6c78bf1f8b49b4459cc9b7214a20e2e9fb",
             destination=self.folders.source,
             strip_root=True)
 

@@ -12,7 +12,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "alembic"
-    version = "1.8.11"
+    version = "1.8.12"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/alembic/alembic/archive/refs/tags/{self.version}.tar.gz",
-            sha256="ab299bb4b1894a6675c73fa29940522b54c81a91b1d691ca3470d86b7345ffce",
+            sha256="b6d916c40446e8c502c84273092ab3d98f3f7f6094f8a2b8203d23e2f1d2a4a0",
             destination=self.folders.source,
             strip_root=True)
 

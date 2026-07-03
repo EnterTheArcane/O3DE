@@ -15,7 +15,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "astc-encoder"
-    version = "5.5.0"
+    version = "5.6.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -33,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/ARM-software/astc-encoder/archive/refs/tags/{self.version}.tar.gz",
-            sha256="9a3b884b040dcd5e70bc48d685c888b4aa166b559012eee059289690ac9d9958",
+            sha256="c77b4505792b36068b8ab5c548f606f8504f170e274e5870d3c5a405fe0bbc35",
             destination=self.folders.source,
             strip_root=True)
 
