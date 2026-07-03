@@ -44,6 +44,7 @@ class Recipe(RecipeBase[_Options]):
         self.settings.compiler_libcxx = None
 
     def requirements(self):
+        self.requires_tool("meson")
         self.requires("zlib")
         self.requires("libffi")
         self.requires("pcre2")
@@ -59,15 +60,15 @@ class Recipe(RecipeBase[_Options]):
 
         if is_apple_os(self):
             self.requires("libiconv")
-        self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
 
     def source(self):
+        ver = Version(self.version)
         get(
             self,
-            url=f"https://github.com/GNOME/glib/archive/refs/tags/{self.version}.tar.gz",
-            sha256="cf04bab8ebc33ad89d5e6bf1a2ddfa922bf577f4f7936c2882ed7c2c41e3d3ae",
+            url=f"https://download.gnome.org/sources/glib/{ver.major}.{ver.minor}/glib-{self.version}.tar.xz",
+            sha256="af229e1de191d66aebcdb03c7493c724fd4d0a6628b1ca4ea1f35739259b311d",
             destination=self.folders.source,
             strip_root=True)
 

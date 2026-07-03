@@ -28,10 +28,10 @@ class Recipe(RecipeBase[_Options]):
         self.settings.compiler_libcxx = None
 
     def requirements(self):
+        self.requires_tool("cmake")
         if self.settings_build.os == "Windows" and self.settings.os == "Android":
             self.win_bash = True
             self.requires_tool("msys2")
-        self.requires_tool("cmake")
 
     def source(self):
         get(

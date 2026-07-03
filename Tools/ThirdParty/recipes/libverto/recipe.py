@@ -33,8 +33,8 @@ class Recipe(RecipeBase[_Options]):
             raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def requirements(self):
-        self.requires("libevent")
         self.requires_tool("libtool")
+        self.requires("libevent")
         if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
             self.requires_tool("pkgconf")
 

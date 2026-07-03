@@ -22,11 +22,11 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def requirements(self):
+        self.requires_tool("cmake")
+        self.requires_tool("cpython")
         self.requires("cpython")
         self.requires("llvm")
         self.requires("qt")
-        self.requires_tool("cmake")
-        self.requires_tool("cpython")
 
     def source(self):
         version_major = Version(self.version).major

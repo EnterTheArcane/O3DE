@@ -368,7 +368,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.qtwayland:
             self.requires_tool("wayland")
         if cross_building(self):
-            self.requires_tool(f"qt")
+            self.requires_tool("qt")
 
     def source(self):
         ver = Version(self.version)

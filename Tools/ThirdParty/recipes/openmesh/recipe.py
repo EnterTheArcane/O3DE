@@ -20,8 +20,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://github.com/o3de/OpenMesh/archive/refs/tags/OpenMesh-{self.version}.tar.gz",
-            sha256="8552d99d1dae825c7c7454a0ba83cbe37a26e60d59350210355f1a1a4e431c0e",
+            url=f"https://www.graphics.rwth-aachen.de/media/openmesh_static/Releases/11.0/OpenMesh-11.0.0.tar.bz2",
+            sha256="9d22e65bdd6a125ac2043350a019ec4346ea83922cafdf47e125a03c16f6fa07",
             destination=self.folders.source,
             strip_root=True)
 

@@ -42,11 +42,11 @@ class Recipe(RecipeBase[_Options]):
             self.options.with_coretext = False
 
     def requirements(self):
+        self.requires_tool("meson")
         self.requires("freetype")
         self.requires("icu")
         if self.options.with_glib:
             self.requires("glib")
-        self.requires_tool("meson")
         if not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
         if self.options.with_glib:

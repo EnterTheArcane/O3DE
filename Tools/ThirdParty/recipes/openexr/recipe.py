@@ -24,7 +24,6 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         self.requires_tool("cmake")
         self.requires("zlib")
-        # Note: OpenEXR and Imath are versioned independently.
         self.requires("imath")
         self.requires("libdeflate")
 

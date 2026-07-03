@@ -1,5 +1,3 @@
-from typing import Literal
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.files import apply_patches, copy, get, rmdir
@@ -10,7 +8,6 @@ from thirdparty.scm.github import GithubRepository
 class _Options(RecipeOptions):
     shared: bool = False
     pic: bool = True
-    with_jpeg: Literal["libjpeg-turbo", "mozjpeg"] = "libjpeg-turbo"
 
 
 class Recipe(RecipeBase[_Options]):
@@ -24,10 +21,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
-        if self.options.with_jpeg == "libjpeg-turbo":
-            self.requires("libjpeg-turbo")
-        elif self.options.with_jpeg == "mozjpeg":
-            self.requires("mozjpeg")
+        self.requires("libjpeg-turbo")
 
     def source(self):
         get(
@@ -48,9 +42,8 @@ class Recipe(RecipeBase[_Options]):
 
         tc.generate()
         deps = CMakeDeps(self)
-        if self.options.with_jpeg:
-            deps.set_property(self.options.with_jpeg, "cmake_file_name", "JPEG")
-            deps.set_property(self.options.with_jpeg, "cmake_target_name", "JPEG::JPEG")
+        deps.set_property("libjpeg-turbo", "cmake_file_name", "JPEG")
+        deps.set_property("libjpeg-turbo", "cmake_target_name", "JPEG::JPEG")
         deps.generate()
 
     def build(self):
@@ -67,11 +60,6 @@ class Recipe(RecipeBase[_Options]):
 
     def package_info(self):
         self.info.libs = ["uhdr"]
-
-        if self.options.with_jpeg == "libjpeg-turbo":
-            self.info.requires = ["libjpeg-turbo::jpeg"]
-        elif self.options.with_jpeg == "mozjpeg":
-            self.info.requires = ["mozjpeg::libjpeg"]
-
+        self.info.requires = ["libjpeg-turbo::jpeg"]
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.system_libs = ["pthread"]

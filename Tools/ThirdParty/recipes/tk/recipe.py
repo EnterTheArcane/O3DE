@@ -46,7 +46,9 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://github.com/tcltk/tk/archive/refs/tags/core-{self.version.replace('.', '-')}.tar.gz", sha256="a1f37c5e9c040e1180b3bd41016d9e22191807194e6dad0e6e8c8c534dde2467", strip_root=True,
+            # NB: the GitHub archive omits release-only files (macosx/configure
+            # and doc/man.macros), so use the release tarball that ships them.
+            url=f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz", sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386", strip_root=True,
             destination=self.folders.source)
         apply_patches(self)
 

@@ -20,7 +20,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
-        self.requires(f"vulkan-headers")
+        self.requires("vulkan-headers")
 
     def source(self):
         get(

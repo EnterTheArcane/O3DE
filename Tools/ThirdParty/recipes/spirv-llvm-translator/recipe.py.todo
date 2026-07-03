@@ -30,9 +30,9 @@ class Recipe(RecipeBase):
             del self.options.fPIC
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("llvm")
         self.requires("spirv-headers")
-        self.requires_tool("cmake")
 
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/SPIRV-LLVM-Translator")

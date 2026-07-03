@@ -22,8 +22,8 @@ class Recipe(RecipeBase):
         self.settings.compiler_libcxx = None
 
     def requirements(self):
-        self.requires("autoconf")
         self.requires_tool("autoconf")
+        self.requires("autoconf")
         if self.settings_build.os == "Windows":
             self.win_bash = True
             self.requires_tool("msys2")

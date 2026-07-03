@@ -17,8 +17,8 @@ class Recipe(RecipeBase):
         return Version(repo.latest_release.removeprefix("v"))
 
     def requirements(self):
-        self.requires("m4")  # Needed at runtime by downstream clients as well
         self.requires_tool("m4")
+        self.requires("m4")  # Needed at runtime by downstream clients as well
         if self.settings.os == "Windows":
             self.win_bash = True
             self.requires_tool("msys2")

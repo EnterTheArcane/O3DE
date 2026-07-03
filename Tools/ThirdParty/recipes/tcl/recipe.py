@@ -38,6 +38,8 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Windows" and not is_msvc(self):
             self.win_bash = True
             self.requires_tool("msys2")
+        if is_apple_os(self):
+            self.requires_tool("autoconf")
 
     def source(self):
         get(
@@ -156,6 +158,10 @@ class Recipe(RecipeBase[_Options]):
 
     def _patch_sources(self):
         apply_patches(self)
+
+        if is_apple_os(self):
+            with chdir(self, self.folders.source / "macosx"):
+                self.run("autoconf")
 
         if is_apple_os(self) and self.settings.arch not in ("X64",):
             macos_configure = self.folders.source / "macosx" / "configure"

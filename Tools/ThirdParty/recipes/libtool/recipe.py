@@ -30,10 +30,10 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def requirements(self):
-        self.requires("automake")
         self.requires_tool("automake")
-        self.requires_tool("m4")  # Needed by configure
         self.requires_tool("gnu-config")
+        self.requires_tool("m4")  # Needed by configure
+        self.requires("automake")
         if self.settings_build.os == "Windows":
             self.win_bash = True
             self.requires_tool("msys2")

@@ -42,13 +42,13 @@ class Recipe(RecipeBase[_Options]):
             raise RecipeInvalidConfiguration(f"{self.name} is not supported on Windows")
 
     def requirements(self):
+        self.requires_tool("bison")
+        self.requires_tool("flex")
+        self.requires_tool("gnu-config")
         if self.options.with_libiconv:
             self.requires("libiconv")
         if self.options.with_readline:
             self.requires("readline")
-        self.requires_tool("bison")
-        self.requires_tool("flex")
-        self.requires_tool("gnu-config")
 
     def source(self):
         get(

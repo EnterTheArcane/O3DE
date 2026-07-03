@@ -20,10 +20,10 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def requirements(self):
-        self.requires("cpython")
-        self.requires("onetbb")
         self.requires_tool("cmake")
         self.requires_tool("cpython")
+        self.requires("cpython")
+        self.requires("onetbb")
 
     def source(self):
         get(

@@ -6,10 +6,10 @@ https://github.com/recipe-io/recipe-center-index/pull/29891
 
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7a43187..eff4a37 100644
+index a1293db..d83a81f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -197,7 +197,7 @@ if(CMAKE_INSTALL_PREFIX STREQUAL "${CMAKE_INSTALL_DEFAULT_PREFIX}")
+@@ -206,7 +206,7 @@ if(CMAKE_INSTALL_PREFIX STREQUAL "${CMAKE_INSTALL_DEFAULT_PREFIX}")
    endif()
  endif()
 
@@ -18,11 +18,11 @@ index 7a43187..eff4a37 100644
 
  macro(report_directory var)
    if(CMAKE_INSTALL_${var} STREQUAL CMAKE_INSTALL_FULL_${var})
-diff --git a/java/CMakeLists.txt b/java/CMakeLists.txt
-index 2b18925..78e7057 100644
---- a/java/CMakeLists.txt
-+++ b/java/CMakeLists.txt
-@@ -84,8 +84,6 @@ endif()
+diff --git a/jna/CMakeLists.txt b/jna/CMakeLists.txt
+index 0321b7d..eef9afa 100644
+--- a/jna/CMakeLists.txt
++++ b/jna/CMakeLists.txt
+@@ -37,8 +37,6 @@ endif()
  if(NOT DEFINED CMAKE_INSTALL_DEFAULT_JAVADIR)
    set(CMAKE_INSTALL_DEFAULT_JAVADIR "<CMAKE_INSTALL_DATAROOTDIR>/java")
  endif()

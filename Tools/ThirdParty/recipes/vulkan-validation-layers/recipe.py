@@ -30,6 +30,7 @@ class Recipe(RecipeBase[_Options]):
             self.options.with_wsi_wayland = False
 
     def requirements(self):
+        self.requires_tool("cmake")
         self.requires("robin-hood-hashing")
         self.requires("spirv-headers")
         self.requires("spirv-tools")
@@ -42,7 +43,6 @@ class Recipe(RecipeBase[_Options]):
             self.requires("wayland")
         if self._needs_pkg_config and not self.conf.get("tools.gnu:pkg_config", check_type=str):
             self.requires_tool("pkgconf")
-        self.requires_tool("cmake")
 
     def source(self):
         get(

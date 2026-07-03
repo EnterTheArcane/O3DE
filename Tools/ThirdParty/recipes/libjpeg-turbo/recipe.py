@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, replace_in_file, rm, rmdir, apply_patches
+from thirdparty.files import copy, get, rm, rmdir, apply_patches
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -61,11 +61,6 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
-        replace_in_file(
-            self,
-            self.folders.source / "sharedlib" / "CMakeLists.txt",
-            """string(REGEX REPLACE "/MT" "/MD" ${var} "${${var}}")""",
-            "")
 
     def generate(self):
         VirtualBuildEnv(self).generate()

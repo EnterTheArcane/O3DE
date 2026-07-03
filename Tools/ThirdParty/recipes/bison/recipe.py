@@ -19,10 +19,9 @@ class Recipe(RecipeBase):
             raise RecipeInvalidConfiguration("Windows is not supported")
 
     def requirements(self):
-        # bison invokes m4 at runtime to expand its parser skeletons
-        self.requires("m4")
-        self.requires_tool("m4")
         self.requires_tool("flex")
+        self.requires_tool("m4")
+        self.requires("m4")
 
     def source(self):
         get(

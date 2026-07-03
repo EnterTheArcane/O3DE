@@ -21,11 +21,11 @@ class Recipe(RecipeBase[_Options]):
         return Version(tag.split("_", 1)[-1])
 
     def requirements(self):
+        self.requires_tool("cmake")
+        self.requires_tool("gz-cmake")
         self.requires("eigen")
         self.requires("gz-cmake")
         self.requires("gz-utils")
-        self.requires_tool("cmake")
-        self.requires_tool("gz-cmake")
 
     def source(self):
         version_major = Version(self.version).major

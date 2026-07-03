@@ -1,5 +1,3 @@
-from typing import Literal
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
@@ -12,7 +10,7 @@ class _Options(RecipeOptions):
     shared: bool = False
     pic: bool = True
     lzma: bool = True
-    jpeg: Literal[False, "libjpeg-turbo", "mozjpeg"] = "libjpeg-turbo"
+    jpeg: bool = True
     zlib: bool = True
     libdeflate: bool = False
     zstd: bool = False
@@ -43,10 +41,8 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libdeflate")
         if self.options.lzma:
             self.requires("xz")
-        if self.options.jpeg == "libjpeg-turbo":
+        if self.options.jpeg:
             self.requires("libjpeg-turbo")
-        elif self.options.jpeg == "mozjpeg":
-            self.requires("mozjpeg")
         if self.options.jbig:
             self.requires("jbig")
         if self.options.zstd:
@@ -66,7 +62,7 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["lzma"] = self.options.lzma
-        tc.variables["jpeg"] = bool(self.options.jpeg)
+        tc.variables["jpeg"] = self.options.jpeg
         tc.variables["jpeg12"] = False
         tc.variables["jbig"] = self.options.jbig
         tc.variables["zlib"] = self.options.zlib
@@ -85,7 +81,7 @@ class Recipe(RecipeBase[_Options]):
         # BUILD_SHARED_LIBS must be set in command line because defined upstream before project()
         tc.cache_variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.cache_variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
-        tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = self.options.jpeg == "libjpeg-turbo"
+        tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = self.options.jpeg
         tc.generate()
         deps = CMakeDeps(self)
         deps.set_property("jbig", "cmake_file_name", "JBIG")
@@ -95,7 +91,7 @@ class Recipe(RecipeBase[_Options]):
         deps.set_property("libdeflate", "cmake_file_name", "Deflate")
         deps.set_property("libdeflate", "cmake_target_name", "Deflate::Deflate")
         deps.set_property("zstd", "cmake_file_name", "ZSTD")
-        if self.options.jpeg == "libjpeg-turbo":
+        if self.options.jpeg:
             # libtiff strips its bundled FindJPEG.cmake and prefers config mode,
             # so present libjpeg-turbo as a JPEGConfig.cmake for find_package(JPEG)
             deps.set_property("libjpeg-turbo", "cmake_file_name", "JPEG")
@@ -132,10 +128,8 @@ class Recipe(RecipeBase[_Options]):
             requires.append("libdeflate::libdeflate")
         if self.options.lzma:
             requires.append("xz::xz")
-        if self.options.jpeg == "libjpeg-turbo":
+        if self.options.jpeg:
             requires.append("libjpeg-turbo::jpeg")
-        elif self.options.jpeg == "mozjpeg":
-            requires.append("mozjpeg::libjpeg")
         if self.options.jbig:
             requires.append("jbig::jbig")
         if self.options.zstd:
