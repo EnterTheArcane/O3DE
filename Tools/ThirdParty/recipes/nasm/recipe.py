@@ -35,8 +35,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url=f"https://www.nasm.us/pub/nasm/releasebuilds/{self.version}/nasm-{self.version}.tar.xz",
-            sha256="87336eba53b4acfe917424ab5d500d2b0054d9f5148d35c2273ccf2cfb712f0d",
+            url=f"https://github.com/netwide-assembler/nasm/archive/refs/tags/nasm-{self.version}.tar.gz",
+            sha256="39e251d3048c9f68678903c6b05b83942c66c71e467e8c5c3c1b26cff2ef1586",
             destination=self.folders.source,
             strip_root=True)
 

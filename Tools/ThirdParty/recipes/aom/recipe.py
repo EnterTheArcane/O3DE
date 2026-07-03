@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "libaom-av1"
+    name = "aom"
     version = "3.14.1"
     license = "BSD-2-Clause"
 

@@ -46,8 +46,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://downloads.videolan.org/videolan/dav1d/{self.version}/dav1d-{self.version}.tar.xz",
-            sha256="732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
+            url=f"https://github.com/videolan/dav1d/archive/refs/tags/{self.version}.tar.gz",
+            sha256="cbe212b02faf8c6eed5b6d55ef8a6e363aaab83f15112e960701a9c3df813686",
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(self, self.folders.source / "meson.build", "subdir('doc')", "")

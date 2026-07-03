@@ -37,7 +37,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_x265:
             self.requires("x265")
         if self.options.with_libaomav1:
-            self.requires("libaom-av1")
+            self.requires("aom")
         if self.options.with_dav1d:
             self.requires("dav1d")
         if self.options.with_jpeg:
@@ -135,7 +135,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_x265:
             self.info.requires.append("x265::x265")
         if self.options.with_libaomav1:
-            self.info.requires.append("libaom-av1::libaom-av1")
+            self.info.requires.append("aom::aom")
         if self.options.with_dav1d:
             self.info.requires.append("dav1d::dav1d")
         if self.options.with_jpeg:

@@ -34,8 +34,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://sourceware.org/pub/bzip2/bzip2-{self.version}.tar.gz",
-            sha256="ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+            url=f"https://gitlab.com/bzip2/bzip2/-/archive/bzip2-{self.version}/bzip2-bzip2-{self.version}.tar.gz",
+            sha256="db106b740252669664fd8f3a1c69fe7f689d5cd4b132f82ba82b9afba27627df",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

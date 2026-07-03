@@ -37,8 +37,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://distfiles.ariadne.space/pkgconf/pkgconf-{self.version}.tar.xz",
-            sha256="cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243",
+            url=f"https://github.com/pkgconf/pkgconf/archive/refs/tags/pkgconf-{self.version}.tar.gz",
+            sha256="79721badcad1987dead9c3609eb4877ab9b58821c06bdacb824f2c8897c11f2a",
             destination=self.folders.source,
             strip_root=True)
 

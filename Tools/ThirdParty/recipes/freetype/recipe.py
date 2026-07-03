@@ -43,8 +43,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://download.savannah.gnu.org/releases/freetype/freetype-{self.version}.tar.xz",
-            sha256="36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f",
+            url=f"https://github.com/freetype/freetype/archive/refs/tags/VER-{self.version.replace('.', '-')}.tar.gz",
+            sha256="dc49de6b01a266eef4876a4dd34d9842c475d3e28ff2eff63bd2fb760ab56261",
             destination=self.folders.source,
             strip_root=True)
 

@@ -27,8 +27,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://zlib.net/fossils/zlib-{self.version}.tar.gz",
-            sha256="9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+            url=f"https://github.com/madler/zlib/archive/refs/tags/v{self.version}.tar.gz",
+            sha256="17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

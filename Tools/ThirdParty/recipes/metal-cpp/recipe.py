@@ -4,14 +4,14 @@ from thirdparty.files import get, copy
 
 class Recipe(RecipeBase):
     name = "metal-cpp"
-    version = "26"
+    version = "27"
     license = "Apache-2.0"
 
     def source(self):
         get(
             self,
-            url=f"https://developer.apple.com/metal/cpp/files/metal-cpp_{self.version}.zip",
-            sha256="4df3c078b9aadcb516212e9cb03004cbc5ce9a3e9c068fa3144d021db585a3a4",
+            url=f"https://github.com/apple/metal-cpp/archive/refs/tags/release/metal-cpp_macOS{self.version}_iOS{self.version}.zip",
+            sha256="16afce1932c476b254fca57c27ad9c0144134f9d1b9e329e09bb9df5cd07b69c",
             destination=self.folders.source,
             strip_root=True)
 

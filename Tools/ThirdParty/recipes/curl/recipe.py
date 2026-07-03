@@ -120,8 +120,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://curl.se/download/curl-{self.version}.tar.xz",
-            sha256="aa1b66a70eace83dc624508745646c08ae561de512ab403adffb93ac87fc72e6",
+            url=f"https://github.com/curl/curl/archive/refs/tags/curl-{self.version.replace('.', '_')}.tar.gz",
+            sha256="ec753aa6f408a3ca9f0d6d5f7a77417aecd1544db13c03ae5d443612bf367364",
             destination=self.folders.source,
             strip_root=True)
         cert_url = self.conf.get("user.curl.cert:url", check_type=str) or "https://curl.se/ca/cacert-2025-11-04.pem"

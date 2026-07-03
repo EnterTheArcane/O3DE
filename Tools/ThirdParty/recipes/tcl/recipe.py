@@ -42,8 +42,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://downloads.sourceforge.net/project/tcl/Tcl/{self.version}/tcl{self.version}-src.tar.gz",
-            sha256="43a1fae7412f61ff11de2cfd05d28cfc3a73762f354a417c62370a54e2caf066",
+            url=f"https://github.com/tcltk/tcl/archive/refs/tags/core-{self.version.replace('.', '-')}.tar.gz",
+            sha256="d9c68b6f76623e046df549ac988a064adf6ec063da6ae229c842f7b68fc78aee",
             destination=self.folders.source,
             strip_root=True)
 

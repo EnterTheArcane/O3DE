@@ -219,7 +219,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_libsvtav1:
             self.requires("svt-av1")
         if self.options.with_libaom:
-            self.requires("libaom-av1")
+            self.requires("aom")
         if self.options.with_libdav1d:
             self.requires("dav1d")
         if self.options.with_libdrm:
@@ -243,8 +243,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://ffmpeg.org/releases/ffmpeg-{self.version}.tar.xz",
-            sha256="464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c",
+            url=f"https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n{self.version}.tar.gz",
+            sha256="9fd092511605bbebafe095ea6d38d9e40f34d12f7386e1258372df8be0576eb7",
             destination=self.folders.source,
             strip_root=True)
 
@@ -691,7 +691,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_libsvtav1:
                 avcodec.requires.append("svt-av1::encoder")
             if self.options.with_libaom:
-                avcodec.requires.append("libaom-av1::libaom-av1")
+                avcodec.requires.append("aom::aom")
             if self.options.with_libdav1d:
                 avcodec.requires.append("dav1d::dav1d")
             if self.options.with_libjxl:

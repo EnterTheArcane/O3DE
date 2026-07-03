@@ -50,11 +50,10 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool("pkgconf")
 
     def source(self):
-        ver = Version(self.version)
         get(
             self,
-            url=f"https://kerberos.org/dist/krb5/{ver.major}.{ver.minor}/krb5-{self.version}.tar.gz",
-            sha256="3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13",
+            url=f"https://github.com/krb5/krb5/archive/refs/tags/krb5-{self.version}-final.tar.gz",
+            sha256="289f5bb81d1f2f8d5eecebe56a056aeed95d35fd9bb4a7071c5dd7ad4b3fe888",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)

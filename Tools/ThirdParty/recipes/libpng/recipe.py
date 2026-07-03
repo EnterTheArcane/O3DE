@@ -47,8 +47,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://download.sourceforge.net/libpng/libpng-{self.version}.tar.xz",
-            sha256="28eb403f51f0f7405249132cecfe82ea5c0ef97f1b32c5a65828814ae0d34775",
+            url=f"https://github.com/pnggroup/libpng/archive/refs/tags/v{self.version}.tar.gz",
+            sha256="a9d4df463d36a6e5f9c29bd6f4967312d17e996c1854f3511f833924eb1993cf",
             destination=self.folders.source,
             strip_root=True)
 

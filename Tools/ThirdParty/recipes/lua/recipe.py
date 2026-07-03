@@ -30,8 +30,8 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url=f"https://www.lua.org/ftp/lua-{self.version}.tar.gz",
-            sha256="57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d",
+            url=f"https://github.com/lua/lua/archive/refs/tags/v{self.version}.tar.gz",
+            sha256="a33484f7ce4c14e12ea4d51cc5a7353bff2796a8074004b96ae2dc246f33f16e",
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
