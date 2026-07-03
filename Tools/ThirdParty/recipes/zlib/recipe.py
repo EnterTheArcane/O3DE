@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+            url=f"https://zlib.net/fossils/zlib-{self.version}.tar.gz",
             sha256="bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
             destination=self.folders.source,
             strip_root=True)

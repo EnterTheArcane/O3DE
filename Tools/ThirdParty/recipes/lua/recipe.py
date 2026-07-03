@@ -30,7 +30,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://www.lua.org/ftp/lua-5.5.0.tar.gz",
+            url=f"https://www.lua.org/ftp/lua-{self.version}.tar.gz",
             sha256="57ccc32bbbd005cab75bcc52444052535af691789dba2b9016d5c50640d68b3d",
             destination=self.folders.source,
             strip_root=True)

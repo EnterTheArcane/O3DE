@@ -120,7 +120,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://curl.se/download/curl-8.21.0.tar.xz",
+            url=f"https://curl.se/download/curl-{self.version}.tar.xz",
             sha256="aa1b66a70eace83dc624508745646c08ae561de512ab403adffb93ac87fc72e6",
             destination=self.folders.source,
             strip_root=True)

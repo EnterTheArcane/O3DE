@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/wolfpld/tracy/archive/refs/tags/v0.13.1.tar.gz",
+            url=f"https://github.com/wolfpld/tracy/archive/refs/tags/v{self.version}.tar.gz",
             sha256="d4efc50ebcb0bfcfdbba148995aeb75044c0d80f5d91223aebfaa8fa9e563d2b",
             destination=self.folders.source,
             strip_root=True)

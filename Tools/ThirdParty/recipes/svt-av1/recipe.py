@@ -43,7 +43,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v4.1.0/SVT-AV1-v4.1.0.tar.gz",
+            url=f"https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v{self.version}/SVT-AV1-v{self.version}.tar.gz",
             sha256="6c4c0c44ff0ba3d136d6f57f3a707f9de8e9c866f50f809c1d22a43f0d8c9583",
             destination=self.folders.source,
             strip_root=True)

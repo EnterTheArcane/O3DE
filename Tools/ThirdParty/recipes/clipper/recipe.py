@@ -19,7 +19,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://sourceforge.net/projects/polyclipping/files/clipper_ver6.4.2.zip",
+            url=f"https://sourceforge.net/projects/polyclipping/files/clipper_ver{self.version}.zip",
             sha256="a14320d82194807c4480ce59c98aa71cd4175a5156645c4e2b3edd330b930627",
             destination=self.folders.source)
         apply_patches(self)

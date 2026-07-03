@@ -40,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/util-linux/util-linux/archive/refs/tags/v2.41.2.tar.gz",
+            url=f"https://github.com/util-linux/util-linux/archive/refs/tags/v{self.version}.tar.gz",
             sha256="534aa113a323d6866c5f46baf909618dcc60c391ad24a91814e5d21511cefd30",
             destination=self.folders.source,
             strip_root=True)

@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/glslang/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
+            url=f"https://github.com/KhronosGroup/glslang/archive/refs/tags/vulkan-sdk-{self.version}.tar.gz",
             sha256="da3224092779d09e275a993b5d2fe2c178847d1a4a5c802082ab99628c159c20",
             destination=self.folders.source / "src",
             strip_root=True)

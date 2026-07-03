@@ -57,7 +57,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://download.osgeo.org/libtiff/tiff-4.7.1.tar.xz",
+            url=f"https://download.osgeo.org/libtiff/tiff-{self.version}.tar.xz",
             sha256="b92017489bdc1db3a4c97191aa4b75366673cb746de0dce5d7a749d5954681ba",
             destination=self.folders.source,
             strip_root=True)

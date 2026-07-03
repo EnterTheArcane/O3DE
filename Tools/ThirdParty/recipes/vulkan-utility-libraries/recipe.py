@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/v1.4.355.tar.gz",
+            url=f"https://github.com/KhronosGroup/Vulkan-Utility-Libraries/archive/refs/tags/v{self.version}.tar.gz",
             sha256="06c3428be500d06ee1ddc69c8063e62fdf381256903bb42e4718c920c8454627",
             destination=self.folders.source,
             strip_root=True)

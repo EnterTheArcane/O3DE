@@ -32,9 +32,10 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("cmake")
 
     def source(self):
+        release_tag = self.version.replace(".", "_")
         get(
             self,
-            url="https://github.com/libexpat/libexpat/releases/download/R_2_8_2/expat-2.8.2.tar.xz",
+            url=f"https://github.com/libexpat/libexpat/releases/download/R_{release_tag}/expat-{self.version}.tar.xz",
             sha256="3ad89b8588e6644bd4e49981480d48b21289eebbcd4f0a1a4afb1c29f99b6ab4",
             destination=self.folders.source,
             strip_root=True)

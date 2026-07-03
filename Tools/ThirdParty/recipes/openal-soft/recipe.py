@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/kcat/openal-soft/archive/refs/tags/1.25.2.tar.gz",
+            url=f"https://github.com/kcat/openal-soft/archive/refs/tags/{self.version}.tar.gz",
             sha256="fb27e5839aa11f0e5b9d33756965291fad5d6909ab928ea1f796f4a1a6877894",
             destination=self.folders.source,
             strip_root=True)

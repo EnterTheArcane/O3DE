@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/strukturag/libde265/releases/download/v1.1.1/libde265-1.1.1.tar.gz",
+            url=f"https://github.com/strukturag/libde265/releases/download/v{self.version}/libde265-{self.version}.tar.gz",
             sha256="fd48a927e94ed74fc7ce8829d222b9d8599fcbfe8b6448ba66705babc56ab219",
             destination=self.folders.source,
             strip_root=True)

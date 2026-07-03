@@ -48,7 +48,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://libisl.sourceforge.io/isl-0.26.tar.xz",
+            url=f"https://libisl.sourceforge.io/isl-{self.version}.tar.xz",
             sha256="a0b5cb06d24f9fa9e77b55fabbe9a3c94a336190345c2555f9915bb38e976504",
             destination=self.folders.source,
             strip_root=True,

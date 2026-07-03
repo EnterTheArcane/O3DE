@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/kulp/naive-tsearch/releases/download/v0.1.1/naive-tsearch-0.1.1.tar.xz",
+            url=f"https://github.com/kulp/naive-tsearch/releases/download/v{self.version}/naive-tsearch-{self.version}.tar.xz",
             sha256="cb779326a8748fb527ab2f4d199923c92dc7d120988b45400d4b31fd77288a1b",
             destination=self.folders.source,
             strip_root=True)

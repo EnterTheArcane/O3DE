@@ -26,7 +26,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/Esri/lerc/archive/refs/tags/v4.1.0.tar.gz",
+            url=f"https://github.com/Esri/lerc/archive/refs/tags/v{self.version}.tar.gz",
             sha256="f05b24d2368becab9144873878655bb718910631550d4f786262378c16ab94a7",
             destination=self.folders.source,
             strip_root=True)

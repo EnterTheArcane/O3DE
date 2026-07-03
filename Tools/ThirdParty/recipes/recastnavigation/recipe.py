@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/recastnavigation/recastnavigation/archive/refs/tags/v1.6.0.tar.gz",
+            url=f"https://github.com/recastnavigation/recastnavigation/archive/refs/tags/v{self.version}.tar.gz",
             sha256="d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074",
             destination=self.folders.source,
             strip_root=True)

@@ -33,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/openexr/releases/download/v3.4.13/openexr-3.4.13.tar.gz",
+            url=f"https://github.com/AcademySoftwareFoundation/openexr/releases/download/v{self.version}/openexr-{self.version}.tar.gz",
             sha256="fe99c9cf06e41803db75ae4f5c9bb9955b7033ff47f05b02bc60bc5dba391996",
             destination=self.folders.source,
             strip_root=True)

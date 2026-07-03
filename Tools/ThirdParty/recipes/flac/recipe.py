@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/xiph/flac/releases/download/1.5.0/flac-1.5.0.tar.xz",
+            url=f"https://github.com/xiph/flac/releases/download/{self.version}/flac-{self.version}.tar.xz",
             sha256="f2c1c76592a82ffff8413ba3c4a1299b6c7ab06c734dee03fd88630485c2b920",
             destination=self.folders.source,
             strip_root=True)

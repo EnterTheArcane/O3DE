@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/Chlumsky/msdfgen/archive/refs/tags/v1.13.tar.gz",
+            url=f"https://github.com/Chlumsky/msdfgen/archive/refs/tags/v{self.version}.tar.gz",
             sha256="93cd1ad8918c1a78c5c96e82d4f4c77f0eb86c2e7e8579a0967e54196c4b7167",
             destination=self.folders.source,
             strip_root=True)

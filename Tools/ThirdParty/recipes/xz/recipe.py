@@ -36,7 +36,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://tukaani.org/xz/xz-5.8.3.tar.xz",
+            url=f"https://tukaani.org/xz/xz-{self.version}.tar.xz",
             sha256="fff1ffcf2b0da84d308a14de513a1aa23d4e9aa3464d17e64b9714bfdd0bbfb6",
             destination=self.folders.source,
             strip_root=True)

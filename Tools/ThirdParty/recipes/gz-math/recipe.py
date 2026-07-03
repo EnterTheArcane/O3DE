@@ -28,9 +28,10 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("gz-cmake")
 
     def source(self):
+        version_major = Version(self.version).major
         get(
             self,
-            url="https://github.com/gazebosim/gz-math/archive/refs/tags/gz-math9_9.1.0.tar.gz",
+            url=f"https://github.com/gazebosim/gz-math/archive/refs/tags/gz-math{version_major}_{self.version}.tar.gz",
             sha256="d6d266a2a5094b977a3cfec4646efb2eede5fd36781a53faaa37ba416da5cdaf",
             destination=self.folders.source,
             strip_root=True)

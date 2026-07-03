@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/aous72/OpenJPH/archive/0.30.1.tar.gz",
+            url=f"https://github.com/aous72/OpenJPH/archive/{self.version}.tar.gz",
             sha256="fb3ccf71af838ed2a42c6ea669308a2adaba115ae9d5862dfb1e2865b43eb5b8",
             destination=self.folders.source,
             strip_root=True)

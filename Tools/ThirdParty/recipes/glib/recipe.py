@@ -64,9 +64,10 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool("pkgconf")
 
     def source(self):
+        ver = Version(self.version)
         get(
             self,
-            url="https://download.gnome.org/sources/glib/2.85/glib-2.85.3.tar.xz",
+            url=f"https://download.gnome.org/sources/glib/{ver.major}.{ver.minor}/glib-{self.version}.tar.xz",
             sha256="af229e1de191d66aebcdb03c7493c724fd4d0a6628b1ca4ea1f35739259b311d",
             destination=self.folders.source,
             strip_root=True)

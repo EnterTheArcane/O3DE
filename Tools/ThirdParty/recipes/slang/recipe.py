@@ -33,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/shader-slang/slang/archive/refs/tags/v2026.12.tar.gz",
+            url=f"https://github.com/shader-slang/slang/archive/refs/tags/v{self.version}.tar.gz",
             sha256="714c8bfbddd7424f39e1904225e1c9cc742ecfab1c810519de321f6a8533364f",
             destination=self.folders.source,
             strip_root=True)

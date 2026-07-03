@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/imageworks/pystring/archive/refs/tags/v1.2.0.tar.gz",
+            url=f"https://github.com/imageworks/pystring/archive/refs/tags/v{self.version}.tar.gz",
             sha256="020a603a757ba1e429f4b1ea6feb3afbe0fb34bcafa355032e1f1b8a0019d198",
             destination=self.folders.source,
             strip_root=True)

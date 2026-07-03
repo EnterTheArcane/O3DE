@@ -26,7 +26,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v5.5.0.tar.gz",
+            url=f"https://github.com/jrouwe/JoltPhysics/archive/refs/tags/v{self.version}.tar.gz",
             sha256="3dae862a32c9092fca5b17f8e5d32cd57e035d30c3145c00040f13ca58a866df",
             destination=self.folders.source,
             strip_root=True)

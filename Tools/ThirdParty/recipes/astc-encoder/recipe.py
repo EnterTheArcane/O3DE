@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/ARM-software/astc-encoder/archive/refs/tags/5.5.0.tar.gz",
+            url=f"https://github.com/ARM-software/astc-encoder/archive/refs/tags/{self.version}.tar.gz",
             sha256="9a3b884b040dcd5e70bc48d685c888b4aa166b559012eee059289690ac9d9958",
             destination=self.folders.source,
             strip_root=True)

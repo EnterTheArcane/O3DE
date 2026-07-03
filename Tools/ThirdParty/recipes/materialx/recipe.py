@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/MaterialX/archive/refs/tags/v1.39.5.tar.gz",
+            url=f"https://github.com/AcademySoftwareFoundation/MaterialX/archive/refs/tags/v{self.version}.tar.gz",
             sha256="c0d739b70a36f6f72888a0e8e66db5c83ae87c40737cc9b51c108166804f3a3b",
             destination=self.folders.source,
             strip_root=True)

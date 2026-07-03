@@ -38,7 +38,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://storage.googleapis.com/aom-releases/libaom-3.14.1.tar.gz",
+            url=f"https://storage.googleapis.com/aom-releases/libaom-{self.version}.tar.gz",
             sha256="44bf90dbd23e734d50e70a8c41c285193922938bd0d3bc2ee56764d181d55ef5",
             destination=self.folders.source,
             strip_root=True)

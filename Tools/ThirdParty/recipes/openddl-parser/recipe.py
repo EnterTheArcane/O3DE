@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/kimkulling/openddl-parser/archive/v0.5.2.tar.gz",
+            url=f"https://github.com/kimkulling/openddl-parser/archive/v{self.version}.tar.gz",
             sha256="8058caacdc989a010c2ad3ab62df99f9f3034b4981649c5fb832efa6fbf10c36",
             destination=self.folders.source,
             strip_root=True)

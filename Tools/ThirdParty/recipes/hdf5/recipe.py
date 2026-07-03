@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/HDFGroup/hdf5/archive/refs/tags/2.1.1.tar.gz",
+            url=f"https://github.com/HDFGroup/hdf5/archive/refs/tags/{self.version}.tar.gz",
             sha256="5849ed7a81be6bc84ff8aa65dd966430adf0daf71e6bcb734b7a37474f92c859",
             destination=self.folders.source,
             strip_root=True)

@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/refs/tags/v3.2.0.tar.gz",
+            url=f"https://github.com/GPUOpen-LibrariesAndSDKs/D3D12MemoryAllocator/archive/refs/tags/v{self.version}.tar.gz",
             sha256="71d740ecb2d6cdf93b273ae571eb80097a530443993b0a5cb2bdb3cacc1548db",
             destination=self.folders.source,
             strip_root=True)

@@ -19,7 +19,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.4.0.tar.gz",
+            url=f"https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v{self.version}.tar.gz",
             sha256="822aa850c6ce77346ae96a8a1d351d52e77e85929f35363849a0a4e638e0a2a1",
             destination=self.folders.source,
             strip_root=True)

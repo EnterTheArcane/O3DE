@@ -42,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v2.5.2/OpenColorIO-2.5.2.tar.gz",
+            url=f"https://github.com/AcademySoftwareFoundation/OpenColorIO/releases/download/v{self.version}/OpenColorIO-{self.version}.tar.gz",
             sha256="cb8b0ae38fa523be8f899a0b2d6b8ca8cbcda7bc4322c91d1ac2b6b2a0082474",
             destination=self.folders.source,
             strip_root=True)

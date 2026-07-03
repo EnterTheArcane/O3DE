@@ -29,9 +29,10 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("cpython")
 
     def source(self):
+        version_major = Version(self.version).major
         get(
             self,
-            url="https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.11.1-src/pyside-setup-everywhere-src-6.11.1.tar.xz",
+            url=f"https://download.qt.io/official_releases/QtForPython/pyside{version_major}/PySide{version_major}-{self.version}-src/pyside-setup-everywhere-src-{self.version}.tar.xz",
             sha256="6ffd9835bb0dd2c56f061d62f1616bb1707cfc0202b80e3165d6be087f3965e2",
             destination=self.folders.source,
             strip_root=True)

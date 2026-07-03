@@ -91,7 +91,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v3.1.14.1/OpenImageIO-3.1.14.1.tar.gz",
+            url=f"https://github.com/AcademySoftwareFoundation/OpenImageIO/releases/download/v{self.version}/OpenImageIO-{self.version}.tar.gz",
             sha256="747341fd98f10d82868ec7663f1f3763cf6fb9acf8a2ed81fc3f25256ef019be",
             destination=self.folders.source,
             strip_root=True)

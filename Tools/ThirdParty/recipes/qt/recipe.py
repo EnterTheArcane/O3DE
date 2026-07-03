@@ -371,13 +371,14 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool(f"qt")
 
     def source(self):
+        ver = Version(self.version)
         destination = self.folders.source
         if platform.system() == "Windows":
             # Don't use os.path.join, or it removes the \\?\ prefix, which enables long paths
             destination = Path(rf"\\?\{self.folders.source}")
         get(
             self,
-            url="https://download.qt.io/official_releases/qt/6.11/6.11.1/single/qt-everywhere-src-6.11.1.tar.xz",
+            url=f"https://download.qt.io/official_releases/qt/{ver.major}.{ver.minor}/{self.version}/single/qt-everywhere-src-{self.version}.tar.xz",
             sha256="252acef8c5ae68074d91cadba2ee4a83465051bbb970dd26e8f0daa0f3904e03",
             strip_root=True,
             destination=destination,

@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v4.4.2.tar.gz",
+            url=f"https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v{self.version}.tar.gz",
             sha256="9412cb45045a503005acd47d98f9e8b47154634a50b4df21e17a1dfa8971d323",
             destination=self.folders.source,
             strip_root=True)

@@ -31,7 +31,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://ftpmirror.gnu.org/gnu/automake/automake-1.16.5.tar.gz",
+            url=f"https://ftpmirror.gnu.org/gnu/automake/automake-{self.version}.tar.gz",
             sha256="07bd24ad08a64bc17250ce09ec56e921d6343903943e99ccf63bbf0705e34605",
             destination=self.folders.source,
             strip_root=True)

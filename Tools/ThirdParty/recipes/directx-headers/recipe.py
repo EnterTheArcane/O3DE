@@ -23,7 +23,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v1.619.1.tar.gz",
+            url=f"https://github.com/microsoft/DirectX-Headers/archive/refs/tags/v{self.version}.tar.gz",
             sha256="6193774904c940eebb9b0c51b816b93dd776cfeb25a951f0f4a58f22387e5008",
             destination=self.folders.source,
             strip_root=True)

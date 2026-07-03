@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/xiph/ogg/archive/refs/tags/v1.3.6.tar.gz",
+            url=f"https://github.com/xiph/ogg/archive/refs/tags/v{self.version}.tar.gz",
             sha256="95b643da661155d79db9de2fca55daed3a8d491039829def246aacb3d9201c81",
             destination=self.folders.source,
             strip_root=True)

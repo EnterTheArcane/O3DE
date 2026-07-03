@@ -6,32 +6,25 @@ from thirdparty.files import copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
-_BASE_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8"
-
-_SOURCES = {
+_SOURCE_SHA256 = {
     "Windows": {
         "X64": {
-            "url": f"{_BASE_URL}/clang+llvm-22.1.8-x86_64-pc-windows-msvc.tar.xz",
             "sha256": "d96c2cc1736f4eb7fa43cb9bbdf56d93551a9ae0a9aadb9c99c3c3b2b712a234",
         },
         "ARM": {
-            "url": f"{_BASE_URL}/clang+llvm-22.1.8-aarch64-pc-windows-msvc.tar.xz",
             "sha256": "de718c58ebbc5f61d58c17b90457fcf42983bc2c4a4aba3e010d108713bfd7f1",
         },
     },
     "Linux": {
         "X64": {
-            "url": f"{_BASE_URL}/LLVM-22.1.8-Linux-X64.tar.xz",
             "sha256": "df0e1ecf16caf3489a272a5eea4eec9b0d82878f6477fa309504f918a0006384",
         },
         "ARM": {
-            "url": f"{_BASE_URL}/LLVM-22.1.8-Linux-ARM64.tar.xz",
             "sha256": "805efad2bb91cb4967fa569e0881d10c0f69c04461cf671cccbae19f547acc34",
         },
     },
     "Mac": {
         "ARM": {
-            "url": f"{_BASE_URL}/LLVM-22.1.8-macOS-ARM64.tar.xz",
             "sha256": "f260f4f7c0d430828a81ae8a3826a1d63fc0963ec2459489308cc23b1f7eab4f",
         },
     },
@@ -51,12 +44,12 @@ class Recipe(RecipeBase):
     def validate(self):
         os_name = str(self.settings.os)
         arch = str(self.settings.arch)
-        if os_name not in _SOURCES or arch not in _SOURCES[os_name]:
+        if os_name not in _SOURCE_SHA256 or arch not in _SOURCE_SHA256[os_name]:
             raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {os_name}/{arch}")
 
     def build(self):
-        entry = _SOURCES[str(self.settings.os)][str(self.settings.arch)]
-        get(self, url=entry["url"], sha256=entry["sha256"], destination=self.folders.build, strip_root=True)
+        sha256 = _SOURCE_SHA256[str(self.settings.os)][str(self.settings.arch)]["sha256"]
+        get(self, url=self._source_url, sha256=sha256, destination=self.folders.build, strip_root=True)
 
     def package(self):
         for subdir in ("bin", "include", "lib", "libexec", "share"):
@@ -71,3 +64,20 @@ class Recipe(RecipeBase):
         self.info.buildenv.define_path("LLVM_DIR", self.folders.package)
         self.info.buildenv.define_path("LIBCLANG_PATH", self.folders.package / "lib")
         self.info.conf.define("tools.llvm:dir", self.folders.package)
+
+    @property
+    def _source_url(self):
+        base_url = f"https://github.com/llvm/llvm-project/releases/download/llvmorg-{self.version}"
+        match (str(self.settings.os), str(self.settings.arch)):
+            case ("Windows", "X64"):
+                return f"{base_url}/clang+llvm-{self.version}-x86_64-pc-windows-msvc.tar.xz"
+            case ("Windows", "ARM"):
+                return f"{base_url}/clang+llvm-{self.version}-aarch64-pc-windows-msvc.tar.xz"
+            case ("Linux", "X64"):
+                return f"{base_url}/LLVM-{self.version}-Linux-X64.tar.xz"
+            case ("Linux", "ARM"):
+                return f"{base_url}/LLVM-{self.version}-Linux-ARM64.tar.xz"
+            case ("Mac", "ARM"):
+                return f"{base_url}/LLVM-{self.version}-macOS-ARM64.tar.xz"
+            case _:
+                raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}/{self.settings.arch}")

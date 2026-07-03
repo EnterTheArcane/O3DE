@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/martinus/robin-hood-hashing/archive/refs/tags/3.11.5.tar.gz",
+            url=f"https://github.com/martinus/robin-hood-hashing/archive/refs/tags/{self.version}.tar.gz",
             sha256="3693e44dda569e9a8b87ce8263f7477b23af448a3c3600c8ab9004fe79c20ad0",
             destination=self.folders.source,
             strip_root=True)

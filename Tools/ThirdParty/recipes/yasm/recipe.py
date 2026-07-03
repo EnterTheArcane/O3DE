@@ -20,7 +20,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/yasm/yasm/archive/refs/tags/v1.3.0.tar.gz",
+            url=f"https://github.com/yasm/yasm/archive/refs/tags/v{self.version}.tar.gz",
             sha256="f708be0b7b8c59bc1dbe7134153cd2f31faeebaa8eec48676c10f972a1f13df3",
             destination=self.folders.source,
             strip_root=True)

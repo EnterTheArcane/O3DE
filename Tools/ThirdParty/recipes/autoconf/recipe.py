@@ -26,7 +26,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://ftpmirror.gnu.org/autoconf/autoconf-2.72.tar.xz",
+            url=f"https://ftpmirror.gnu.org/autoconf/autoconf-{self.version}.tar.xz",
             sha256="ba885c1319578d6c94d46e9b0dceb4014caafe2490e437a0dbca3f270a223f5a",
             destination=self.folders.source,
             strip_root=True)

@@ -120,7 +120,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/openssl/openssl/releases/download/openssl-3.6.2/openssl-3.6.2.tar.gz",
+            url=f"https://github.com/openssl/openssl/releases/download/openssl-{self.version}/openssl-{self.version}.tar.gz",
             sha256="aaf51a1fe064384f811daeaeb4ec4dce7340ec8bd893027eee676af31e83a04f",
             destination=self.folders.source,
             strip_root=True)

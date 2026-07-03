@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/abseil/abseil-cpp/archive/20260526.0.tar.gz",
+            url=f"https://github.com/abseil/abseil-cpp/archive/{self.version}.tar.gz",
             sha256="6e1aee535473414164bf83e4ebc40240dec71a4701f8a642d906e95bea1aea0c",
             destination=self.folders.source,
             strip_root=True)

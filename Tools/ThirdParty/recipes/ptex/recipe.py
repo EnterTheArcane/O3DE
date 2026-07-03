@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/wdas/ptex/archive/refs/tags/v2.5.2.tar.gz",
+            url=f"https://github.com/wdas/ptex/archive/refs/tags/v{self.version}.tar.gz",
             sha256="dd95fbea4b50e9e68fd042f540fb83157a0ff25053066c3439d4527de3621d34",
             destination=self.folders.source,
             strip_root=True)

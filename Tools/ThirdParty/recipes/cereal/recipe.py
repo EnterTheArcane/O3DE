@@ -20,7 +20,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/USCiLab/cereal/archive/v1.3.2.tar.gz",
+            url=f"https://github.com/USCiLab/cereal/archive/v{self.version}.tar.gz",
             sha256="16a7ad9b31ba5880dac55d62b5d6f243c3ebc8d46a3514149e56b5e7ea81f85f",
             destination=self.folders.source,
             strip_root=True)

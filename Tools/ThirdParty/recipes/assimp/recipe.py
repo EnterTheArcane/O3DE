@@ -186,7 +186,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/assimp/assimp/archive/refs/tags/v6.0.5.tar.gz",
+            url=f"https://github.com/assimp/assimp/archive/refs/tags/v{self.version}.tar.gz",
             sha256="edf3749559c2b7d1f758ffb66fc5bec62186221e623b7f2e8969f17ee46ecb6f",
             destination=self.folders.source,
             strip_root=True)

@@ -37,7 +37,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/google/brotli/archive/v1.2.0.tar.gz",
+            url=f"https://github.com/google/brotli/archive/v{self.version}.tar.gz",
             sha256="816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
             destination=self.folders.source,
             strip_root=True)

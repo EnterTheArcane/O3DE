@@ -27,7 +27,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://ftpmirror.gnu.org/gnu/bison/bison-3.8.2.tar.gz",
+            url=f"https://ftpmirror.gnu.org/gnu/bison/bison-{self.version}.tar.gz",
             sha256="06c9e13bdf7eb24d4ceb6b59205a4f67c2c7e7213119644430fe82fbd14a0abb",
             destination=self.folders.source,
             strip_root=True)

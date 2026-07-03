@@ -39,7 +39,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/2.18.1/fontconfig-2.18.1.tar.xz",
+            url=f"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/{self.version}/fontconfig-{self.version}.tar.xz",
             sha256="2300f3dbfa7253b3a44f4feecdbc8dfa45dde5dc2cfb71fceaf31f394cb41031",
             destination=self.folders.source,
             strip_root=True)

@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/Tencent/rapidjson/archive/v1.1.0.tar.gz",
+            url=f"https://github.com/Tencent/rapidjson/archive/v{self.version}.tar.gz",
             sha256="bf7ced29704a1e696fbccf2a2b4ea068e7774fa37f6d7dd4039d0787f8bed98e",
             strip_root=True,
             destination=self.folders.source)

@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/gabime/spdlog/archive/v1.17.0.tar.gz",
+            url=f"https://github.com/gabime/spdlog/archive/v{self.version}.tar.gz",
             sha256="d8862955c6d74e5846b3f580b1605d2428b11d97a410d86e2fb13e857cd3a744",
             destination=self.folders.source,
             strip_root=True)

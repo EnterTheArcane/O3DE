@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.49/downloads/wayland-protocols-1.49.tar.xz",
+            url=f"https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/{self.version}/downloads/wayland-protocols-{self.version}.tar.xz",
             sha256="ec4c8f74942d6dff7ace8b4ce4764f0ef9ff618a935d974ea77edee2ad240b14",
             destination=self.folders.source,
             strip_root=True)

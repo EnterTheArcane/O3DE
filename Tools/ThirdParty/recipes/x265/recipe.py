@@ -48,7 +48,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://downloads.videolan.org/videolan/x265/x265_4.2.tar.gz",
+            url=f"https://downloads.videolan.org/videolan/x265/x265_{self.version}.tar.gz",
             sha256="40b1ea0453e0309f0eba934e0ddf533f8f6295966679e8894e8f1c1c8d5e1210",
             destination=self.folders.source,
             strip_root=True)

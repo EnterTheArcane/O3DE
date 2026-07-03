@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/nfrechette/rtm/archive/v2.3.1.tar.gz",
+            url=f"https://github.com/nfrechette/rtm/archive/v{self.version}.tar.gz",
             sha256="a16fc698feca580533fa12c92fe7d1df4f341f807df7ec314274659fdfec11fb",
             destination=self.folders.source,
             strip_root=True)

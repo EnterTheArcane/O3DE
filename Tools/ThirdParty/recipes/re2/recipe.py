@@ -25,9 +25,10 @@ class Recipe(RecipeBase[_Options]):
         self.requires("icu")
 
     def source(self):
+        release_date = f"{self.version[:4]}-{self.version[4:6]}-{self.version[6:]}"
         get(
             self,
-            url="https://github.com/google/re2/releases/download/2025-11-05/re2-2025-11-05.tar.gz",
+            url=f"https://github.com/google/re2/releases/download/{release_date}/re2-{release_date}.tar.gz",
             sha256="87f6029d2f6de8aa023654240a03ada90e876ce9a4676e258dd01ea4c26ffd67",
             destination=self.folders.source,
             strip_root=True)

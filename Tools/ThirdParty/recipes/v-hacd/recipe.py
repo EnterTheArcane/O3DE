@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/kmammou/v-hacd/archive/refs/tags/v4.1.0.tar.gz",
+            url=f"https://github.com/kmammou/v-hacd/archive/refs/tags/v{self.version}.tar.gz",
             sha256="9fe895cd10ec995d2171b11bde97aaaa221b418a3aaed0f5d9a068ae057d626b",
             destination=self.folders.source,
             strip_root=True)

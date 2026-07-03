@@ -46,7 +46,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://prdownloads.sourceforge.net/tcl/tk8.6.10-src.tar.gz", sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386", strip_root=True,
+            url=f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz", sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386", strip_root=True,
             destination=self.folders.source)
         apply_patches(self)
 

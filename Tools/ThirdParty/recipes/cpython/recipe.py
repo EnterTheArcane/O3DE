@@ -85,7 +85,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz",
+            url=f"https://www.python.org/ftp/python/{self.version}/Python-{self.version}.tgz",
             sha256="73ac8fe780227bf371add8373c3079f42a0dc62deff8d612cd15a618082ab623",
             destination=self.folders.source,
             strip_root=True)

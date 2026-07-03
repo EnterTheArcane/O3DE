@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/martinus/unordered_dense/archive/v4.8.1.tar.gz",
+            url=f"https://github.com/martinus/unordered_dense/archive/v{self.version}.tar.gz",
             sha256="9f7202ec6d8353932ef865d33f5872e4b7a1356e9032da7cd09c3a0c5bb2b7de",
             destination=self.folders.source,
             strip_root=True)

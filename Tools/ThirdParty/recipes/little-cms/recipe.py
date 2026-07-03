@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/mm2/Little-CMS/releases/download/lcms2.19.1/lcms2-2.19.1.tar.gz",
+            url=f"https://github.com/mm2/Little-CMS/releases/download/lcms{self.version}/lcms2-{self.version}.tar.gz",
             sha256="bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8",
             destination=self.folders.source,
             strip_root=True)

@@ -22,20 +22,20 @@ class Recipe(RecipeBase):
     def build(self):
         if self.settings.os == "Windows":
             if self.settings.arch == "ARM":
-                url = "https://github.com/Kitware/CMake/releases/download/v4.3.4/cmake-4.3.4-windows-arm64.zip"
+                url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-windows-arm64.zip"
                 sha256 = "91a59ca6ffbcec18e1fb05431fa22f538ab615b6e525d1bfd0b8dd67a4d45685"
             else:
-                url = "https://github.com/Kitware/CMake/releases/download/v4.3.4/cmake-4.3.4-windows-x86_64.zip"
+                url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-windows-x86_64.zip"
                 sha256 = "86e5fcafb38bdf58346a78b187c7b6b4f252ae5242cffe24c463a92bbd2e77d1"
         elif self.settings.os == "Linux":
             if self.settings.arch == "ARM":
-                url = "https://github.com/Kitware/CMake/releases/download/v4.3.4/cmake-4.3.4-linux-aarch64.tar.gz"
+                url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-linux-aarch64.tar.gz"
                 sha256 = "56a8014a8f28b8ff9cbe2c6fa8beebc028ac5b1987195d122b847fb486dc5282"
             else:
-                url = "https://github.com/Kitware/CMake/releases/download/v4.3.4/cmake-4.3.4-linux-x86_64.tar.gz"
+                url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-linux-x86_64.tar.gz"
                 sha256 = "ca6f08ccbd5e6b0a9068d33317d0d1aff7278d08cccaed4529b8fbead7942a68"
         elif self.settings.os == "Mac":
-            url = "https://github.com/Kitware/CMake/releases/download/v4.3.4/cmake-4.3.4-macos-universal.tar.gz"
+            url = f"https://github.com/Kitware/CMake/releases/download/v{self.version}/cmake-{self.version}-macos-universal.tar.gz"
             sha256 = "bf6647c78ac295c54dbe0a094d4428f495be93c1f810fd8bde57374e8b548523"
         else:
             raise RecipeException(f"Unsupported OS: {self.settings.os}")

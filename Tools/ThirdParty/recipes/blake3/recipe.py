@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.8.5.tar.gz",
+            url=f"https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/{self.version}.tar.gz",
             sha256="220bd81286e2a0585beac66d41ac3f4c2c33ae8a4e339fc88cf22d5e00514fe9",
             destination=self.folders.source,
             strip_root=True)

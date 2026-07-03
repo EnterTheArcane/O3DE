@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/mackron/miniaudio/archive/0.11.25.tar.gz",
+            url=f"https://github.com/mackron/miniaudio/archive/{self.version}.tar.gz",
             sha256="b900edcffe979816e2560a0580b9b1216d674b4f17fbadeca8f777a7f8ab0274",
             destination=self.folders.source,
             strip_root=True)

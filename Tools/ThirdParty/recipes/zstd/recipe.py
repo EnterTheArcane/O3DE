@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz",
+            url=f"https://github.com/facebook/zstd/releases/download/v{self.version}/zstd-{self.version}.tar.gz",
             sha256="eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
             destination=self.folders.source,
             strip_root=True)

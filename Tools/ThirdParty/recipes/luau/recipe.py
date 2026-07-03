@@ -20,7 +20,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/luau-lang/luau/archive/0.727.tar.gz",
+            url=f"https://github.com/luau-lang/luau/archive/{self.version}.tar.gz",
             sha256="a03896f1a55887a2d04dcd268f3c049724d728158ae0ac2b0bd749ea7b7b5e5b",
             destination=self.folders.source,
             strip_root=True)

@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/richgel999/miniz/archive/refs/tags/3.1.1.tar.gz",
+            url=f"https://github.com/richgel999/miniz/archive/refs/tags/{self.version}.tar.gz",
             sha256="8bb29c7bd6f22356e5583e794bed4a0b3e6dfcbcadb49974fc9270ccca1e5557",
             destination=self.folders.source,
             strip_root=True)

@@ -26,7 +26,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-0.9.0.tar.gz",
+            url=f"https://github.com/jbeder/yaml-cpp/archive/yaml-cpp-{self.version}.tar.gz",
             sha256="25cb043240f828a8c51beb830569634bc7ac603978e0f69d6b63558dadefd49a",
             destination=self.folders.source,
             strip_root=True)

@@ -41,7 +41,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/latchset/libverto/releases/download/0.3.2/libverto-0.3.2.tar.gz",
+            url=f"https://github.com/latchset/libverto/releases/download/{self.version}/libverto-{self.version}.tar.gz",
             sha256="8d1756fd704f147549f606cd987050fb94b0b1ff621ea6aa4d6bf0b74450468a",
             destination=self.folders.source,
             strip_root=True)

@@ -45,7 +45,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://ftpmirror.gnu.org/gnu/libiconv/libiconv-1.19.tar.gz",
+            url=f"https://ftpmirror.gnu.org/gnu/libiconv/libiconv-{self.version}.tar.gz",
             sha256="88dd96a8c0464eca144fc791ae60cd31cd8ee78321e67397e25fc095c4a19aa6",
             destination=self.folders.source,
             strip_root=True)

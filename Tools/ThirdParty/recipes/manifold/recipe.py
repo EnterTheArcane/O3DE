@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/elalish/manifold/archive/refs/tags/v3.5.2.tar.gz",
+            url=f"https://github.com/elalish/manifold/archive/refs/tags/v{self.version}.tar.gz",
             sha256="35cb5e0d78882f461ec39b17d8f09c2aceca761356f3ce948e3f3908289b8f2e",
             destination=self.folders.source,
             strip_root=True)

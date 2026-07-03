@@ -243,7 +243,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz",
+            url=f"https://ffmpeg.org/releases/ffmpeg-{self.version}.tar.xz",
             sha256="464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c",
             destination=self.folders.source,
             strip_root=True)

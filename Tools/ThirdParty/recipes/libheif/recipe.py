@@ -54,7 +54,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/strukturag/libheif/releases/download/v1.23.1/libheif-1.23.1.tar.gz",
+            url=f"https://github.com/strukturag/libheif/releases/download/v{self.version}/libheif-{self.version}.tar.gz",
             sha256="0de0327f60fcd47de90d5654c6fe152232738d60d84fe084ec3e0f35e03b166a",
             destination=self.folders.source,
             strip_root=True)

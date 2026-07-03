@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://gitlab.com/libeigen/eigen/-/archive/5.0.1/eigen-5.0.1.tar.bz2",
+            url=f"https://gitlab.com/libeigen/eigen/-/archive/{self.version}/eigen-{self.version}.tar.bz2",
             sha256="e4de6b08f33fd8b8985d2f204381408c660bffa6170ac65b68ae1bd3cd575c0a",
             destination=self.folders.source,
             strip_root=True)

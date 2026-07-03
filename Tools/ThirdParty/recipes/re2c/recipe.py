@@ -24,7 +24,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/skvadrik/re2c/releases/download/4.5.1/re2c-4.5.1.tar.xz",
+            url=f"https://github.com/skvadrik/re2c/releases/download/{self.version}/re2c-{self.version}.tar.xz",
             sha256="ffea067c11aa668bcb42885be6e6cd000302000b7747d2bb213299ec66b7864e",
             destination=self.folders.source,
             strip_root=True)

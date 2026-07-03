@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/google/highway/archive/1.4.0.tar.gz",
+            url=f"https://github.com/google/highway/archive/{self.version}.tar.gz",
             sha256="e72241ac9524bb653ae52ced768b508045d4438726a303f10181a38f764a453c",
             destination=self.folders.source,
             strip_root=True)

@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/AcademySoftwareFoundation/Imath/releases/download/v3.2.2/Imath-3.2.2.tar.gz",
+            url=f"https://github.com/AcademySoftwareFoundation/Imath/releases/download/v{self.version}/Imath-{self.version}.tar.gz",
             sha256="0f5a783b424f374e6f27ec8b0c73130e89b08814ac8fa2e84fd7fe0b05862c53",
             destination=self.folders.source,
             strip_root=True)

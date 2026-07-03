@@ -16,17 +16,17 @@ class Recipe(RecipeBase):
 
     def build(self):
         if self.settings.os == "Windows":
-            url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-windows.zip"
+            url = f"https://github.com/ispc/ispc/releases/download/v{self.version}/ispc-v{self.version}-windows.zip"
             sha256 = "9a18793800b91d5be7b851513672cd9a81a985a5a5dfec5611c2318e8ad4140a"
         elif self.settings.os == "Linux":
             if self.settings.arch == "ARM":
-                url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-linux.aarch64.tar.gz"
+                url = f"https://github.com/ispc/ispc/releases/download/v{self.version}/ispc-v{self.version}-linux.aarch64.tar.gz"
                 sha256 = "660ccac47ff7e0980b89b00a3ebd70201acf55f9e816c127fc28e868ab456193"
             else:
-                url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-linux.tar.gz"
+                url = f"https://github.com/ispc/ispc/releases/download/v{self.version}/ispc-v{self.version}-linux.tar.gz"
                 sha256 = "d74089c835e10fd7e2c4b9225ced38b87d1fb53d35c7ceabd48cdf035da11b11"
         elif self.settings.os == "Mac":
-            url = "https://github.com/ispc/ispc/releases/download/v1.31.0/ispc-v1.31.0-macOS.universal.tar.gz"
+            url = f"https://github.com/ispc/ispc/releases/download/v{self.version}/ispc-v{self.version}-macOS.universal.tar.gz"
             sha256 = "98c47aa9543f9f99f2c6778181d5c2f247c01c82653dd62f0c83e1fba923800e"
         else:
             raise RecipeInvalidConfiguration("Unsupported platform")

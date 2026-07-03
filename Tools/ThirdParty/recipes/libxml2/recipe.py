@@ -34,9 +34,10 @@ class Recipe(RecipeBase[_Options]):
         self.requires("zlib")
 
     def source(self):
+        ver = Version(self.version)
         get(
             self,
-            url="https://download.gnome.org/sources/libxml2/2.15/libxml2-2.15.3.tar.xz",
+            url=f"https://download.gnome.org/sources/libxml2/{ver.major}.{ver.minor}/libxml2-{self.version}.tar.xz",
             sha256="78262a6e7ac170d6528ebfe2efccdf220191a5af6a6cd61ea4a9a9a5042c7a07",
             destination=self.folders.source,
             strip_root=True)

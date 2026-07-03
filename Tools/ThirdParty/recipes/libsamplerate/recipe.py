@@ -33,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/libsndfile/libsamplerate/releases/download/0.2.2/libsamplerate-0.2.2.tar.xz",
+            url=f"https://github.com/libsndfile/libsamplerate/releases/download/{self.version}/libsamplerate-{self.version}.tar.xz",
             sha256="3258da280511d24b49d6b08615bbe824d0cacc9842b0e4caf11c52cf2b043893",
             destination=self.folders.source,
             strip_root=True)

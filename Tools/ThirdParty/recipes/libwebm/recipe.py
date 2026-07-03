@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/webmproject/libwebm/archive/refs/tags/libwebm-1.0.0.32.tar.gz",
+            url=f"https://github.com/webmproject/libwebm/archive/refs/tags/libwebm-{self.version}.tar.gz",
             sha256="7fd5e085bda9f8031cf2ad2a1e52d9b7b29cba9c0b96ad2ce794ce89e4249eb8",
             destination=self.folders.source,
             strip_root=True)

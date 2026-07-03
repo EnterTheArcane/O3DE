@@ -10,7 +10,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://developer.apple.com/metal/cpp/files/metal-cpp_26.zip",
+            url=f"https://developer.apple.com/metal/cpp/files/metal-cpp_{self.version}.zip",
             sha256="4df3c078b9aadcb516212e9cb03004cbc5ce9a3e9c068fa3144d021db585a3a4",
             destination=self.folders.source,
             strip_root=True)

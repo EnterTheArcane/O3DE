@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/uxlfoundation/oneTBB/archive/v2023.0.0.tar.gz",
+            url=f"https://github.com/uxlfoundation/oneTBB/archive/v{self.version}.tar.gz",
             sha256="f8767b971ec6aea25dde58ae0f593e94e7aa75a739a86f67967012f69e2199b1",
             destination=self.folders.source,
             strip_root=True)

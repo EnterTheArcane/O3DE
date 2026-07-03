@@ -19,9 +19,10 @@ class Recipe(RecipeBase):
         self.requires_tool("cmake")
 
     def source(self):
+        version_major = Version(self.version).major
         get(
             self,
-            url="https://github.com/gazebosim/gz-cmake/archive/refs/tags/gz-cmake5_5.1.1.tar.gz",
+            url=f"https://github.com/gazebosim/gz-cmake/archive/refs/tags/gz-cmake{version_major}_{self.version}.tar.gz",
             sha256="5424e481b765e7e88347c167e87b1c89f152ded2f8bbc7f24c7559ea3694f83f",
             destination=self.folders.source,
             strip_root=True)

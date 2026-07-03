@@ -31,7 +31,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/catchorg/Catch2/archive/v3.15.1.tar.gz",
+            url=f"https://github.com/catchorg/Catch2/archive/v{self.version}.tar.gz",
             sha256="be23a52b85cf04cd9587612147a10b023d59ed9757fa1843cc99e615d6c0893c",
             destination=self.folders.source,
             strip_root=True)

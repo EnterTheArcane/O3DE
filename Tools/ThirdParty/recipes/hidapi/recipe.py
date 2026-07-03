@@ -42,7 +42,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/libusb/hidapi/archive/hidapi-0.15.0.tar.gz",
+            url=f"https://github.com/libusb/hidapi/archive/hidapi-{self.version}.tar.gz",
             sha256="5d84dec684c27b97b921d2f3b73218cb773cf4ea915caee317ac8fc73cef8136",
             destination=self.folders.source,
             strip_root=True)

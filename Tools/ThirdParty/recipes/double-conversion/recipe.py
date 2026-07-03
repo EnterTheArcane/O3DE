@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/google/double-conversion/archive/refs/tags/v3.4.0.tar.gz",
+            url=f"https://github.com/google/double-conversion/archive/refs/tags/v{self.version}.tar.gz",
             sha256="42fd4d980ea86426e457b24bdfa835a6f5ad9517ddb01cdb42b99ab9c8dd5dc9",
             destination=self.folders.source,
             strip_root=True)

@@ -43,7 +43,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/MoltenVK/archive/refs/tags/v1.4.1.tar.gz",
+            url=f"https://github.com/KhronosGroup/MoltenVK/archive/refs/tags/v{self.version}.tar.gz",
             sha256="9985f141902a17de818e264d17c1ce334b748e499ee02fcb4703e4dc0038f89c",
             destination=self.folders.source,
             strip_root=True)

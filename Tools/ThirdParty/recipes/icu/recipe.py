@@ -43,7 +43,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-sources.tgz",
+            url=f"https://github.com/unicode-org/icu/releases/download/release-{self.version}/icu4c-{self.version}-sources.tgz",
             sha256="3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0",
             destination=self.folders.source,
             strip_root=True)

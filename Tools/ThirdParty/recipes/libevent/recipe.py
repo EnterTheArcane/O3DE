@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/libevent/libevent/archive/release-2.1.12-stable.tar.gz",
+            url=f"https://github.com/libevent/libevent/archive/release-{self.version}-stable.tar.gz",
             sha256="7180a979aaa7000e1264da484f712d403fcf7679b1e9212c4e3d09f5c93efc24",
             destination=self.folders.source,
             strip_root=True)

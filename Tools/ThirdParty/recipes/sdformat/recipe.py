@@ -31,9 +31,10 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("gz-cmake")
 
     def source(self):
+        version_major = Version(self.version).major
         get(
             self,
-            url="https://github.com/gazebosim/sdformat/archive/refs/tags/sdformat16_16.0.1.tar.gz",
+            url=f"https://github.com/gazebosim/sdformat/archive/refs/tags/sdformat{version_major}_{self.version}.tar.gz",
             sha256="4fac898700afb2953af5f8ac6b0221e4d9bc1e460aac6d4b7a5c3699c456126c",
             destination=self.folders.source,
             strip_root=True)

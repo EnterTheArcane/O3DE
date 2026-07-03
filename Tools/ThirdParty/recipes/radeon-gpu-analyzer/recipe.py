@@ -20,10 +20,10 @@ class Recipe(RecipeBase):
 
     def build(self):
         if self.settings.os == "Windows":
-            url = "https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/2.14.2/rga-windows-x64-2.14.2.zip"
+            url = f"https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/{self.version}/rga-windows-x64-{self.version}.zip"
             sha256 = "5b46941a72722ddb27c9427ca4413bccc6892b4185ec1d5b9120740687fa166d"
         elif self.settings.os == "Linux":
-            url = "https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/2.14.2/rga-2.14.2.tgz"
+            url = f"https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/{self.version}/rga-{self.version}.tgz"
             sha256 = "341e7ca4f531e467be6de80a28342582230c54a42667a4eddda1b78489c35d62"
         else:
             raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")

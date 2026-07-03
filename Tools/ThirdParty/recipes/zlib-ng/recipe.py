@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/zlib-ng/zlib-ng/archive/refs/tags/2.3.3.tar.gz",
+            url=f"https://github.com/zlib-ng/zlib-ng/archive/refs/tags/{self.version}.tar.gz",
             sha256="f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
             destination=self.folders.source,
             strip_root=True)

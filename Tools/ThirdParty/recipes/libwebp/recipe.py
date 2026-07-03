@@ -30,7 +30,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz",
+            url=f"https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-{self.version}.tar.gz",
             sha256="e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
             destination=self.folders.source,
             strip_root=True)

@@ -51,7 +51,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://ftpmirror.gnu.org/gnu/gettext/gettext-0.26.tar.gz",
+            url=f"https://ftpmirror.gnu.org/gnu/gettext/gettext-{self.version}.tar.gz",
             sha256="39acf4b0371e9b110b60005562aace5b3631fed9b1bb9ecccfc7f56e58bb1d7f",
             destination=self.folders.source,
             strip_root=True)

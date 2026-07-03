@@ -56,7 +56,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.1.4.1/libjpeg-turbo-3.1.4.1.tar.gz",
+            url=f"https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/{self.version}/libjpeg-turbo-{self.version}.tar.gz",
             sha256="ecae8008e2cc9ade2f2c1bb9d5e6d4fb73e7c433866a056bd82980741571a022",
             destination=self.folders.source,
             strip_root=True)

@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/lz4/lz4/archive/v1.10.0.tar.gz",
+            url=f"https://github.com/lz4/lz4/archive/v{self.version}.tar.gz",
             sha256="537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b",
             destination=self.folders.source,
             strip_root=True)

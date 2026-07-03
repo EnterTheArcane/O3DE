@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/erincatto/box3d/archive/refs/tags/v0.1.0.tar.gz",
+            url=f"https://github.com/erincatto/box3d/archive/refs/tags/v{self.version}.tar.gz",
             sha256="df232c7618c0d0d3927b798044559ee56eabadeb9d8ff9dc526d4b384d7b415d",
             destination=self.folders.source,
             strip_root=True)

@@ -22,10 +22,10 @@ class Recipe(RecipeBase):
 
     def build(self):
         if self.settings.os == "Windows":
-            url = "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.10.2605.24/dxc_preview_2026_05_22.zip"
+            url = f"https://github.com/microsoft/DirectXShaderCompiler/releases/download/v{self.version}/dxc_preview_2026_05_22.zip"
             sha256 = "045e2cfd900135f640954553038febbc98692599c5606376726d00541dae69b6"
         elif self.settings.os == "Linux":
-            url = "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.10.2605.24/linux_dxc_preview_2026_05_22.x86_64.tar.gz"
+            url = f"https://github.com/microsoft/DirectXShaderCompiler/releases/download/v{self.version}/linux_dxc_preview_2026_05_22.x86_64.tar.gz"
             sha256 = "6119f59c4f758973cadc170607ba83e657dd2c6fb7ca3dfb7362717a4ece8d9e"
         else:
             raise RecipeInvalidConfiguration(f"{self.name} has no prebuilt binaries for {self.settings.os}")

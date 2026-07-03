@@ -47,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
+            url=f"https://github.com/KhronosGroup/Vulkan-ValidationLayers/archive/refs/tags/vulkan-sdk-{self.version}.tar.gz",
             sha256="a299313781987946b6b26553d9f3da34126ebaea6e1bf805beb402d510d3b300",
             destination=self.folders.source,
             strip_root=True)

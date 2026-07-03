@@ -27,7 +27,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/alembic/alembic/archive/refs/tags/1.8.11.tar.gz",
+            url=f"https://github.com/alembic/alembic/archive/refs/tags/{self.version}.tar.gz",
             sha256="ab299bb4b1894a6675c73fa29940522b54c81a91b1d691ca3470d86b7345ffce",
             destination=self.folders.source,
             strip_root=True)

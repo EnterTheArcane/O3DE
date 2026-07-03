@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/zeux/pugixml/releases/download/v1.16/pugixml-1.16.tar.gz",
+            url=f"https://github.com/zeux/pugixml/releases/download/v{self.version}/pugixml-{self.version}.tar.gz",
             sha256="4cee1ca4aad395170f4c7a07824f3bdd41f28316c6e1e1090a1425b278ec0b4b",
             destination=self.folders.source,
             strip_root=True)

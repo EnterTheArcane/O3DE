@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-1.4.350.1.tar.gz",
+            url=f"https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/vulkan-sdk-{self.version}.tar.gz",
             sha256="6f7b9b9eed9a7aa485918466ea604b4edc7969d94e96c0c13ae266f4ec120f31",
             destination=self.folders.source,
             strip_root=True)

@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/kuba--/zip/archive/v0.3.14.tar.gz",
+            url=f"https://github.com/kuba--/zip/archive/v{self.version}.tar.gz",
             sha256="72d05d00de7bb2f0811d237b30d16de42f1e1dfbb2c33fb41191e3cf27fc7958",
             destination=self.folders.source,
             strip_root=True)

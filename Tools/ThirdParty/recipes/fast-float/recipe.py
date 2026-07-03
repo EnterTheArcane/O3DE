@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/fastfloat/fast_float/archive/refs/tags/v8.2.10.tar.gz",
+            url=f"https://github.com/fastfloat/fast_float/archive/refs/tags/v{self.version}.tar.gz",
             sha256="76f958dd97b1cf4d8862d1f0986a47d4bdfa8845252bae15ef0f40de3b95961f",
             destination=self.folders.source,
             strip_root=True)

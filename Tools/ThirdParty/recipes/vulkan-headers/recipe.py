@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.355.tar.gz",
+            url=f"https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v{self.version}.tar.gz",
             sha256="0820d86608b1f94bb84f8f7b39c6e190c4397d5cd967d60c10fb7df8351ba475",
             destination=self.folders.source,
             strip_root=True)

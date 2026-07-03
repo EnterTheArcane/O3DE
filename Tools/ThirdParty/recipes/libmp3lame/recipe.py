@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz",
+            url=f"https://downloads.sourceforge.net/project/lame/lame/{self.version}/lame-{self.version}.tar.gz",
             sha256="ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e",
             destination=self.folders.source,
             strip_root=True)

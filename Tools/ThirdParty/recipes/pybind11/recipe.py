@@ -22,7 +22,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/pybind/pybind11/archive/v3.0.4.tar.gz",
+            url=f"https://github.com/pybind/pybind11/archive/v{self.version}.tar.gz",
             sha256="74b6a2c2b4573a400cafb6ecbf60c98df300cd3d0041296b913d02b2cbbb2676",
             destination=self.folders.source,
             strip_root=True)

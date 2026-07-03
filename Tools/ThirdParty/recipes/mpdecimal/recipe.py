@@ -32,7 +32,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="http://www.bytereef.org/software/mpdecimal/releases/mpdecimal-4.0.0.tar.gz",
+            url=f"http://www.bytereef.org/software/mpdecimal/releases/mpdecimal-{self.version}.tar.gz",
             sha256="942445c3245b22730fd41a67a7c5c231d11cb1b9936b9c0f76334fb7d0b4468c",
             destination=self.folders.source,
             strip_root=True)

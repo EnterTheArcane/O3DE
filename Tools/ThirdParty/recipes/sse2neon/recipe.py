@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/DLTcollab/sse2neon/archive/refs/tags/v1.9.1.tar.gz",
+            url=f"https://github.com/DLTcollab/sse2neon/archive/refs/tags/v{self.version}.tar.gz",
             sha256="6b70e7cb8c5ce4641002b85deaafe97efdf9ade9b49884edeaf678b35f0e132f",
             destination=self.folders.source,
             strip_root=True)

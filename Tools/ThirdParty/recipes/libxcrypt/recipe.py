@@ -33,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/besser82/libxcrypt/archive/v4.4.36.tar.gz",
+            url=f"https://github.com/besser82/libxcrypt/archive/v{self.version}.tar.gz",
             sha256="b979838d5f1f238869d467484793b72b8bca64c4eae696fdbba0a9e0b6c28453",
             destination=self.folders.source,
             strip_root=True)

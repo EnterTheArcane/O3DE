@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-2.0.3.tar.gz",
+            url=f"https://sourceforge.net/projects/opencore-amr/files/fdk-aac/fdk-aac-{self.version}.tar.gz",
             sha256="829b6b89eef382409cda6857fd82af84fabb63417b08ede9ea7a553f811cb79e",
             destination=self.folders.source,
             strip_root=True)

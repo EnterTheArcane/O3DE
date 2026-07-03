@@ -34,7 +34,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/biojppm/rapidyaml/releases/download/v0.15.2/rapidyaml-0.15.2-src.tgz",
+            url=f"https://github.com/biojppm/rapidyaml/releases/download/v{self.version}/rapidyaml-{self.version}-src.tgz",
             sha256="85e1428266978ca4b28a4103f047314ee534be17502b30f752e5df736fd60df6",
             destination=self.folders.source,
             strip_root=True)

@@ -43,8 +43,8 @@ class Recipe(RecipeBase):
         get(
             self,
             url=[
-                "https://ftpmirror.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2",
-                "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2",
+                f"https://ftpmirror.gnu.org/gnu/gmp/gmp-{self.version}.tar.bz2",
+                f"https://ftp.gnu.org/gnu/gmp/gmp-{self.version}.tar.bz2",
             ],
             sha256="ac28211a7cfb609bae2e2c8d6058d66c8fe96434f740cf6fe2e47b000d1c20cb",
             destination=self.folders.source,

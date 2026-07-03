@@ -59,7 +59,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/microsoft/mimalloc/archive/v3.3.2.tar.gz",
+            url=f"https://github.com/microsoft/mimalloc/archive/v{self.version}.tar.gz",
             sha256="ca02384e007f46950598500dfaebde5ff9948c1d231f5a81b058799afa64bbbb",
             destination=self.folders.source,
             strip_root=True)

@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://sourceforge.net/projects/libsquish/files/libsquish-1.15.tgz",
+            url=f"https://sourceforge.net/projects/libsquish/files/libsquish-{self.version}.tgz",
             sha256="628796eeba608866183a61d080d46967c9dda6723bc0a3ec52324c85d2147269",
             destination=self.folders.source)
         apply_patches(self)

@@ -16,7 +16,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/tronkko/dirent/archive/1.26.tar.gz",
+            url=f"https://github.com/tronkko/dirent/archive/{self.version}.tar.gz",
             sha256="a91662ee5243d2dae5aee7ed8527f95097afda517cc5cc7ca2699648a74a419c",
             destination=self.folders.source,
             strip_root=True)

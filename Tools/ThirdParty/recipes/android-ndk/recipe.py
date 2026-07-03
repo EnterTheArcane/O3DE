@@ -7,22 +7,19 @@ from thirdparty.files import copy, download, rm, unzip
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
-_SOURCES = {
+_SOURCE_SHA256 = {
     "Linux": {
         "X64": {
-            "url": "https://dl.google.com/android/repository/android-ndk-r29-linux.zip",
             "sha256": "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf",
         },
     },
     "Mac": {
         "X64": {
-            "url": "https://dl.google.com/android/repository/android-ndk-r29-darwin.zip",
             "sha256": "ce5e4b100ec5fe5be4eb3edcb2c02528824ff9cda3860f5304619be6c3da34d3",
         },
     },
     "Windows": {
         "X64": {
-            "url": "https://dl.google.com/android/repository/android-ndk-r29-windows.zip",
             "sha256": "4f83a1a87ea0d33ae2b43812ce27b768be949bc78acf90b955134d19e3068f1c",
         },
     },
@@ -42,9 +39,9 @@ class Recipe(RecipeBase):
         pass
 
     def build(self):
-        data = _SOURCES[str(self.settings.os)][self._arch]
+        data = _SOURCE_SHA256[str(self.settings.os)][self._arch]
         self._unzip_fix_symlinks(
-            url=data["url"],
+            url=f"https://dl.google.com/android/repository/android-ndk-{self.version}-{self._source_os}.zip",
             target_folder=self.folders.source,
             sha256=data["sha256"])
 
@@ -84,12 +81,15 @@ class Recipe(RecipeBase):
 
     @property
     def _host_tag(self):
-        host_os = {
+        return f"{self._source_os}-x86_64"
+
+    @property
+    def _source_os(self):
+        return {
             "Linux": "linux",
             "Mac": "darwin",
             "Windows": "windows",
         }.get(str(self.settings.os))
-        return f"{host_os}-x86_64"
 
     @property
     def _toolchain_bin(self):

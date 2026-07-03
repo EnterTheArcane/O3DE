@@ -26,9 +26,10 @@ class Recipe(RecipeBase):
             raise RecipeInvalidConfiguration("Strawberry Perl is only supported on Windows")
 
     def build(self):
+        release_digits = self.version.replace(".", "")
         get(
             self,
-            url="https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54221_64bit/strawberry-perl-5.42.2.1-64bit-portable.zip",
+            url=f"https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_{release_digits}_64bit/strawberry-perl-{self.version}-64bit-portable.zip",
             sha256="32d83be90cf04b807cfb9477482bc36302cdee6f5b04cf57e81adecbd8f07898",
             destination=self.folders.build
         )

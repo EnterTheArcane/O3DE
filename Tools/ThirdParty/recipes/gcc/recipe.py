@@ -60,7 +60,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://ftp.gnu.org/gnu/gcc/gcc-16.1.0/gcc-16.1.0.tar.xz",
+            url=f"https://ftp.gnu.org/gnu/gcc/gcc-{self.version}/gcc-{self.version}.tar.xz",
             sha256="50efb4d94c3397aff3b0d61a5abd748b4dd31d9d3f2ab7be05b171d36a510f79",
             destination=self.folders.source,
             strip_root=True)

@@ -39,7 +39,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/libffi/libffi/releases/download/v3.6.0/libffi-3.6.0.tar.gz",
+            url=f"https://github.com/libffi/libffi/releases/download/v{self.version}/libffi-{self.version}.tar.gz",
             sha256="31ff1fe32deaebfbb388727f32677bb254bf2a41382c51464c0b1837c9ee9828",
             destination=self.folders.source,
             strip_root=True)

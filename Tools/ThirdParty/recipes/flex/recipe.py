@@ -30,7 +30,7 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url="https://github.com/westes/flex/releases/download/v2.6.4/flex-2.6.4.tar.gz",
+            url=f"https://github.com/westes/flex/releases/download/v{self.version}/flex-{self.version}.tar.gz",
             sha256="e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995",
             destination=self.folders.source,
             strip_root=True)

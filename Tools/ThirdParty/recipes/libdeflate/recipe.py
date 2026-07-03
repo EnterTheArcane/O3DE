@@ -29,7 +29,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://github.com/ebiggers/libdeflate/archive/refs/tags/v1.25.tar.gz",
+            url=f"https://github.com/ebiggers/libdeflate/archive/refs/tags/v{self.version}.tar.gz",
             sha256="d11473c1ad4c57d874695e8026865e38b47116bbcb872bfc622ec8f37a86017d",
             destination=self.folders.source,
             strip_root=True)

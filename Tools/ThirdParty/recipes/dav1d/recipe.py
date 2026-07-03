@@ -46,7 +46,7 @@ class Recipe(RecipeBase[_Options]):
     def source(self):
         get(
             self,
-            url="https://downloads.videolan.org/videolan/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
+            url=f"https://downloads.videolan.org/videolan/dav1d/{self.version}/dav1d-{self.version}.tar.xz",
             sha256="732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
             destination=self.folders.source,
             strip_root=True)
