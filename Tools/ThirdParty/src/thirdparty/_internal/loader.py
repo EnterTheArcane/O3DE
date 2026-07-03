@@ -11,10 +11,9 @@ from typing import Any
 
 from thirdparty._internal.errors import NotFoundException
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty._internal.model.recipe import RecipeBase, RecipeState
 from thirdparty._internal.util.detect import detect_settings, make_conf
 from thirdparty._internal.util.files import chdir
-from thirdparty.env import Environment
 from thirdparty.errors import RecipeException
 
 
@@ -107,25 +106,6 @@ def resolve_version(recipe_cls: type[RecipeBase]) -> str:
     return str(v) if v else "latest"
 
 
-# ---------------------------------------------------------------------------
-# Recipe runtime services + requirement shim, used when instantiating a recipe
-# ---------------------------------------------------------------------------
-class RecipeRuntime:
-    """Runtime services recipe methods touch during graph resolution and building.
-
-    This system has no Conan cache, remotes, or profiles, so recipes are driven directly;
-    this supplies the handful of services they reference (global conf + HTTP requester).
-    """
-
-    def __init__(self, conf: Any):
-        # Lazy import: rest.http_requester imports loader.load_python_file, so a module-level
-        # import here would be circular.
-        from thirdparty._internal.util.http_requester import HttpRequester
-        self.global_conf = conf
-        self.requester = HttpRequester(conf)
-        self.home_folder = None
-
-
 def make_probe_recipe(
     recipe_cls: type[RecipeBase], recipes_root: Path, name: str, version: str, build_type: str, jobs: int | None = None, target_os: str | None = None, target_arch: str | None = None, ) -> RecipeBase:
     """Instantiate a recipe with just enough state (settings, conf, requires shim) to
@@ -140,21 +120,20 @@ def make_probe_recipe(
     recipe.version = version
     recipe.folders.set_recipe(recipes_root / name)
 
-    recipe.settings = detect_settings(build_type, target_os, target_arch)
+    settings = detect_settings(build_type, target_os, target_arch)
     if target_os is None and target_arch is None:
-        recipe.settings_build = recipe.settings
+        settings_build = settings
     else:
-        recipe.settings_build = detect_settings(build_type)
+        settings_build = detect_settings(build_type)
     conf = make_conf(jobs=jobs)
-    recipe.conf = conf
-    recipe._recipe_runtime = RecipeRuntime(conf)
-    recipe._recipe_dependencies = RecipeDependencies(OrderedDict())
-    recipe._recipe_buildenv = Environment()
-    recipe._recipe_runenv = Environment()
-    # Give the probe a graph node so recipes can read self.context / recipe-origin state
+    # Give the probe state so recipes can read settings/conf/context
     # during config/requirements (e.g. cross-build recipes doing requires_tool(self.name)).
-    from thirdparty._internal.graph import Node, CONTEXT_HOST, RECIPE_INCACHE
-    recipe._recipe_node = Node(name, version, context=CONTEXT_HOST, recipe_state=RECIPE_INCACHE)
+    recipe._state = RecipeState(
+        dependencies=RecipeDependencies(OrderedDict()),
+        build_context=False,
+        settings=settings,
+        settings_build=settings_build,
+        conf=conf)
     return recipe
 
 

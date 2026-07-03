@@ -237,8 +237,4 @@ class CMakeToolchain:
             cmake_executable = self._recipe.conf.get("tools.cmake:cmake_program", None)
             cmake_executable = cmake_executable or self._find_cmake_exe()
 
-        user_presets = self.user_presets_path
-        if self._recipe.is_consumer:
-            user_presets = self._recipe.conf.get("tools.cmake.toolchain:user_presets", default=self.user_presets_path)
-
-        write_cmake_presets(self._recipe, toolchain_file, self.generator, cache_variables, user_presets, self.presets_prefix, buildenv, runenv, cmake_executable, self.absolute_paths)
+        write_cmake_presets(self._recipe, toolchain_file, self.generator, cache_variables, self.user_presets_path, self.presets_prefix, buildenv, runenv, cmake_executable, self.absolute_paths)

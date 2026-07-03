@@ -9,7 +9,7 @@ from thirdparty._internal.output import Output
 from thirdparty._internal.util.download_cache import DownloadCache
 from thirdparty._internal.util.file_downloader import FileDownloader
 from thirdparty._internal.util.files import mkdir, set_dirty_context_manager, remove_if_dirty, human_size
-from thirdparty._internal.util.home_paths import HomePaths
+from thirdparty._internal.util.http_requester import HttpRequester
 from thirdparty.errors import RecipeException
 
 from typing import Any
@@ -28,21 +28,19 @@ class SourcesCachingDownloader:
     """
 
     def __init__(self, recipe: RecipeBase):
-        helpers = getattr(recipe, "_recipe_runtime")
-        self._global_conf = helpers.global_conf
+        self._conf = recipe.conf
         self._file_downloader = FileDownloader(
-            helpers.requester, scope=recipe.name or "", source_credentials=True)
-        self._home_folder = helpers.home_folder
+            HttpRequester(recipe.conf), scope=recipe.name or "", source_credentials=True)
         self._output = recipe.output
         self._recipe = recipe
 
     def download(
         self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, md5: str | None, sha1: str | None, sha256: str | None):
-        download_cache_folder = self._global_conf.get("core.sources:download_cache")
-        source_origins = self._global_conf.get("core.sources:download_urls", check_type=list)
+        download_cache_folder = self._conf.get("core.sources:download_cache")
+        source_origins = self._conf.get("core.sources:download_urls", check_type=list)
         if source_origins and not download_cache_folder:
             # If backups are defined, but the download cache is not defined, use a default one
-            download_cache_folder = HomePaths(self._home_folder).default_sources_backup_folder
+            download_cache_folder = _o3de_download_cache_folder()
         if download_cache_folder and not os.path.isabs(download_cache_folder):
             raise RecipeException("core.sources:download_cache must be an absolute path")
         source_origins = source_origins or ["origin"]

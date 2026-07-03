@@ -16,8 +16,6 @@ BUILT_IN_CONFS = {
     "core.net.http:no_proxy_match": "List of urls to skip from proxies configuration",
     "core.net.http:proxies": "Dictionary containing the proxy configuration",
     "core.net.http:timeout": "Number of seconds without response to timeout (requests library)",
-    "core.scm:excluded": "List of excluded patterns for builtin git dirty checks",
-    "core.scm:local_url": "By default allows to store local folders as remote url, but not upload them. Use 'allow' for allowing upload and 'block' to completely forbid it",  # Tools
     "core.sources:download_cache": "Folder to store the sources backup",
     "core.sources:download_urls": "List of URLs to download backup sources from",
     "tools.android:cmake_legacy_toolchain": "Define to explicitly pass ANDROID_USE_LEGACY_TOOLCHAIN_FILE in CMake toolchain",

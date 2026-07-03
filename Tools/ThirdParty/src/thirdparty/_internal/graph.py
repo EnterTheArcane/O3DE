@@ -6,39 +6,22 @@ from thirdparty.recipe import RecipeBase
 if TYPE_CHECKING:
     from pathlib import Path  # noqa: F401  (annotation only)
 
-# Recipe-origin states (assigned to Node.recipe).
-RECIPE_INCACHE = "Cache"  # a normal, locally-resolved recipe
-RECIPE_EDITABLE = "Editable"
-RECIPE_CONSUMER = "Consumer"  # the user-facing recipe being built
-RECIPE_PLATFORM = "Platform"  # a platform-provided (system) requirement
-
 # Build contexts.
 CONTEXT_HOST = "host"
 CONTEXT_BUILD = "build"
 
 
 class Node:
-    """A node in the dependency graph: one recipe's identity and its direct dependencies.
-
-    Serves two roles with a single type:
-      * the recipe's identity that recipe methods read back via ``self._recipe_node``
-        (``context``/recipe-origin ``recipe`` state), and
-      * a vertex in a resolved :class:`Graph` (recipe class + direct host/tool dep names)
-        used for build ordering.
-    Dependency-graph nodes are produced by :meth:`Graph.build`; identity nodes are created by
-    ``build.py`` and assigned to ``recipe._recipe_node``.
-    """
+    """A node in the dependency graph: one recipe's identity and its direct dependencies."""
 
     def __init__(
-        self, name: str, version: str, recipe_cls: "type[RecipeBase] | None" = None, host_deps: "list[str] | None" = None, tool_deps: "list[str] | None" = None, *, context: str = CONTEXT_HOST, recipe_state: "str | None" = None) -> None:
+        self, name: str, version: str, recipe_cls: "type[RecipeBase] | None" = None, host_deps: "list[str] | None" = None, tool_deps: "list[str] | None" = None, *, context: str = CONTEXT_HOST) -> None:
         self._name: str = name
         self._version: str = version
         self.recipe_cls: "type[RecipeBase] | None" = recipe_cls
         self.host_deps: list[str] = list(host_deps or [])
         self.tool_deps: list[str] = list(tool_deps or [])
         self.context: str = context
-        # Recipe-origin state (RECIPE_CONSUMER / RECIPE_INCACHE / RECIPE_PLATFORM / ...).
-        self.recipe: "str | None" = recipe_state
 
     @property
     def name(self) -> str:

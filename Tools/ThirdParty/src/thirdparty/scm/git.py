@@ -1,7 +1,6 @@
 import fnmatch
 import os
 
-from thirdparty._internal.model.conf import ConfDefinition
 from thirdparty._internal.output import Color
 from thirdparty._internal.util.files import mkdir
 from thirdparty._internal.util.runners import check_output_runner
@@ -23,24 +22,11 @@ class Git:
         """
         :param recipe: Recipefile instance.
         :param folder: Current directory, by default ``.``, the current working directory.
-        :param excluded: Files to be excluded from the "dirty" checks. It will compose with the
-          configuration ``core.scm:excluded`` (the configuration has higher priority).
-          It is a list of patterns to ``fnmatch``.
+        :param excluded: File patterns to skip from dirty checks.
         """
         self._recipe = recipe
         self.folder = folder
         self._excluded = excluded
-        global_conf = recipe._recipe_runtime.global_conf  # noqa _recipe_runtime
-        conf_excluded = global_conf.get("core.scm:excluded", check_type=list)
-        if conf_excluded:
-            if excluded:
-                c = ConfDefinition()
-                c.loads(f"core.scm:excluded={excluded}")
-                c.update_conf_definition(global_conf)
-                self._excluded = c.get("core.scm:excluded", check_type=list)
-            else:
-                self._excluded = conf_excluded
-        self._local_url = global_conf.get("core.scm:local_url", choices=["allow", "block"])
 
     def run(self, cmd, hidden_output=None):
         """
@@ -139,8 +125,7 @@ class Git:
     def is_dirty(self, repository: bool = False):
         """
         Returns if the current folder is dirty, running ``git status -s``
-        The ``Git(..., excluded=[])`` argument and the ``core.scm:excluded`` configuration will
-        define file patterns to be skipped from this check.
+        The ``Git(..., excluded=[])`` argument defines file patterns to be skipped from this check.
 
         :param repository: By default checks if the current folder is dirty. If repository=True
                      it will check the root repository folder instead, not the current one.
@@ -198,16 +183,10 @@ class Git:
         in_remote = self.commit_in_remote(commit, remote=remote)
         if in_remote:
             return url, commit
-        if self._local_url == "block":
-            raise RecipeException(
-                f"Current commit {commit} doesn't exist in remote {remote}\n"
-                "Failing according to 'core.scm:local_url=block' conf")
-
-        if self._local_url != "allow":
-            self._recipe.output.warning(
-                f"Current commit {commit} doesn't exist in remote {remote}\n"
-                "This revision will not be buildable in other "
-                "computer")
+        self._recipe.output.warning(
+            f"Current commit {commit} doesn't exist in remote {remote}\n"
+            "This revision will not be buildable in other "
+            "computer")
         return self.get_repo_root(), commit
 
     def get_repo_root(self):

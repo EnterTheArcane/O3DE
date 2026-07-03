@@ -47,10 +47,6 @@ class VirtualBuildEnv:
         else:
             return self._buildenv
 
-        # Top priority: profile
-        profile_env = self._recipe.buildenv
-        self._buildenv.compose_env(profile_env)
-
         build_deps = self._recipe.dependencies.build.topological_sort
         for require, build_dep in reversed(build_deps.items()):
             if require.direct:  # Only direct buildenv from tool deps is propagated

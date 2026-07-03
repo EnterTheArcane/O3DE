@@ -3,7 +3,6 @@ import textwrap
 
 import jinja2
 
-from thirdparty._internal.graph import CONTEXT_BUILD
 from thirdparty._internal.model.info import PackageType
 from thirdparty._internal.util.generators import relativize_path
 from thirdparty.cmake.utils import cmake_escape_value
@@ -60,7 +59,7 @@ class TargetConfigurationTemplate2:
         # Fallback to consumer configuration if it doesn't have build_type
         config = self._recipe.settings.build_type or self._cmakedeps.configuration
         config = (config or "none").lower()
-        build = "Build" if self._recipe.context == CONTEXT_BUILD else ""
+        build = "Build" if self._recipe.is_build_context else ""
         return f"{f}-Targets{build}-{config}.cmake"
 
     def _requires(self, info: Any, components: Any) -> dict[str, Any]:
@@ -148,7 +147,7 @@ class TargetConfigurationTemplate2:
         config = config.upper() if config else None
         pkg_folder = self._recipe.folders.package.as_posix()
         config_folder = f"_{config}" if config else ""
-        build = "_BUILD" if self._recipe.context == CONTEXT_BUILD else ""
+        build = "_BUILD" if self._recipe.is_build_context else ""
         pkg_folder_var = f"{pkg_name}_PACKAGE_FOLDER{config_folder}{build}"
 
         libs = {}

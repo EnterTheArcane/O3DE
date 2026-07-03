@@ -65,10 +65,6 @@ class VirtualRunEnv:
         else:
             return self._runenv
 
-        # Top priority: profile
-        profile_env = self._recipe.runenv
-        self._runenv.compose_env(profile_env)
-
         host_req = self._recipe.dependencies.host
         for require, dep in host_req.items():
             if dep.info.runenv:

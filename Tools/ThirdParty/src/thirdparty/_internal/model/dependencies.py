@@ -1,7 +1,6 @@
 from collections import OrderedDict
 from typing import Any
 
-from thirdparty._internal.graph import RECIPE_PLATFORM
 from thirdparty.errors import RecipeException
 
 
@@ -105,8 +104,6 @@ class RecipeDependencies(UserRequirementsDict):
             return True
 
         data = OrderedDict((k, v) for k, v in self._data.items() if filter_fn(k))
-        if remove_system:
-            data = OrderedDict((k, v) for k, v in data.items() if v.recipe != RECIPE_PLATFORM)
         return RecipeDependencies(data, require_filter)
 
     def transitive_requires(self, other: RecipeDependencies) -> RecipeDependencies:

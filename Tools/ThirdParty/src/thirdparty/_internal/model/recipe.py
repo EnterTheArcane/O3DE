@@ -1,11 +1,13 @@
 import os
 import subprocess
 from abc import ABC
+from collections import OrderedDict
+from dataclasses import dataclass, field
 from typing import (
     IO, Any, Generic, TypeVar, cast,
 )
 
-from thirdparty._internal.graph import CONTEXT_BUILD, RECIPE_CONSUMER, RECIPE_EDITABLE
+from thirdparty._internal.graph import CONTEXT_BUILD, CONTEXT_HOST
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.info import Info
@@ -17,12 +19,22 @@ from thirdparty._internal.model.settings import Settings
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
+from thirdparty._internal.util.detect import detect_settings
 from thirdparty.errors import RecipeException
 
 
 TOptions = TypeVar("TOptions", default=Any)
 
-__all__ = ["RecipeBase"]
+__all__ = ["RecipeBase", "RecipeState"]
+
+
+@dataclass
+class RecipeState:
+    dependencies: RecipeDependencies
+    build_context: bool
+    settings: Settings
+    settings_build: Settings
+    conf: Conf
 
 
 class RecipeBase(ABC, Generic[TOptions]):
@@ -30,20 +42,14 @@ class RecipeBase(ABC, Generic[TOptions]):
     version: str
     license: str | tuple[str, ...]
 
-    # Binary model: Settings and Options
-    # The build driver assigns the real settings models. ``settings`` describes the host
-    # platform where this package runs; ``settings_build`` describes the build machine.
-    # ``options`` is generic for recipe author typing, but still holds the runtime Options proxy.
-    settings: Settings = None  # type: ignore[assignment]  # set to a Settings object by the build driver (host)
-    settings_build: Settings = None  # type: ignore[assignment]  # Settings for the build machine (tools)
-
     options: TOptions
 
     win_bash: bool | None = None
 
     folders: Folders
     info: Info
-    conf: Conf
+
+    _state: RecipeState
 
     def __init_subclass__(cls, **kwargs: Any):
         super().__init_subclass__(**kwargs)
@@ -63,24 +69,20 @@ class RecipeBase(ABC, Generic[TOptions]):
         self._requires: list[Requirement] = []
 
         cast(Any, self).options = Options.from_recipe(type(self))
-        self._recipe_dependencies: "RecipeDependencies | None" = None
+        settings = detect_settings()
+        self._state = RecipeState(
+            dependencies=RecipeDependencies(OrderedDict()),
+            build_context=False,
+            settings=settings,
+            settings_build=settings,
+            conf=Conf())
         self.env_scripts = {}  # Accumulate the env scripts generated in order
-        
-        self._recipe_runtime = None
-        self._recipe_buildenv = None  # The profile buildenv, will be assigned initialize()
-        self._recipe_runenv = None
-        self._recipe_node = None  # access to container Node object, to access info, context, deps...
 
-    def requires(self, ref: str, *, headers: bool = True, libs: bool = True,
-                 run: bool = False) -> None:
-        """Declare a regular (library) dependency. Call from requirements()."""
-        self._add_requirement(
-            Requirement(RecipeReference(ref), headers=headers, libs=libs, run=run))
+    def requires(self, ref: str, *, headers: bool = True, libs: bool = True, run: bool = False) -> None:
+        self._add_requirement(Requirement(RecipeReference(ref), headers=headers, libs=libs, run=run))
 
     def requires_tool(self, ref: str, *, run: bool = True) -> None:
-        """Declare a build tool dependency (e.g. cmake). Call from requirements()."""
-        self._add_requirement(
-            Requirement(RecipeReference(ref), headers=False, libs=False, build=True, run=run))
+        self._add_requirement(Requirement(RecipeReference(ref), headers=False, libs=False, build=True, run=run))
 
     def _add_requirement(self, req: Requirement) -> None:
         if any(r == req for r in self._requires):  # equality == (name, build)
@@ -94,39 +96,28 @@ class RecipeBase(ABC, Generic[TOptions]):
         return Output(scope=scope)
 
     @property
+    def settings(self) -> Settings:
+        return self._state.settings
+
+    @property
+    def settings_build(self) -> Settings:
+        return self._state.settings_build
+
+    @property
+    def conf(self) -> Conf:
+        return self._state.conf
+
+    @property
     def context(self) -> str:
-        return self._recipe_node.context
+        return CONTEXT_BUILD if self._state.build_context else CONTEXT_HOST
 
     @property
     def is_build_context(self) -> bool:
-        return self.context == CONTEXT_BUILD
+        return self._state.build_context
 
     @property
-    def is_consumer(self) -> bool:
-        try:
-            return self._recipe_node.recipe in (RECIPE_CONSUMER, RECIPE_EDITABLE)
-        except AttributeError:
-            return False
-
-    @property
-    def dependencies(self):
-        # Caching it, this object is requested many times. The build driver assigns the real
-        # dependency graph (see build.py); fall back to an empty set when none was provided.
-        if self._recipe_dependencies is None:
-            self._recipe_dependencies = RecipeDependencies({})
-        return self._recipe_dependencies
-
-    @property
-    def recipe(self) -> "str | None":
-        return self._recipe_node.recipe if self._recipe_node else None
-
-    @property
-    def buildenv(self):
-        return self._recipe_buildenv
-
-    @property
-    def runenv(self):
-        return self._recipe_runenv
+    def dependencies(self) -> RecipeDependencies:
+        return self._state.dependencies
 
     def run(
         self,

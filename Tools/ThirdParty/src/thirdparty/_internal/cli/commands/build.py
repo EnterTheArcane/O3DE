@@ -8,17 +8,16 @@ from pathlib import Path
 
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph import (
-    Node as _Node, Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER, CONTEXT_HOST as _CONTEXT_HOST, CONTEXT_BUILD as _CONTEXT_BUILD, RECIPE_INCACHE as _RECIPE_INCACHE, )
+    Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER, )
 from thirdparty._internal.loader import (
-    RecipeRuntime as _RecipeRuntime, make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, )
+    make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty._internal.model.recipe import RecipeBase, RecipeState
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
 from thirdparty._internal.util.detect import detect_settings, make_conf, detect_platform_tag
 from thirdparty._internal.util.files import rmdir as _rmdir
-from thirdparty.env import Environment
 from thirdparty.env.environment import generate_aggregated_env
 from thirdparty.errors import RecipeException
 
@@ -142,10 +141,6 @@ def _instantiate(
     recipe_cls: type[RecipeBase], recipes_root: Path, build_root: Path, name: str, version: str, build_type: str, target_os: str | None, target_arch: str | None, jobs: int | None = None, ) -> RecipeBase:
     recipe = make_probe_recipe(
         recipe_cls, recipes_root, name, version, build_type, jobs=jobs, target_os=target_os, target_arch=target_arch)
-    # Give the consumer recipe its own graph node (deps get one in _add_dep).  CMakeDeps
-    # and anything reading ``recipe.context``/recipe-origin state rely on this being present.
-    recipe._recipe_node = _Node(
-        name, version, context=_CONTEXT_HOST, recipe_state=_RECIPE_INCACHE)
 
     platform_tag = detect_platform_tag(target_os, target_arch)
     pkg_root = build_root / name / version / platform_tag
@@ -238,22 +233,18 @@ def _build_dep_graph(
         dep.folders.set_recipe(recipes_root / dep_name)
         dep.folders.set_base_package(pkg_dir)
 
-        dep.settings = detect_settings(build_type, dep_os, dep_arch)
+        dep_settings = detect_settings(build_type, dep_os, dep_arch)
         if dep_os is None and dep_arch is None:
-            dep.settings_build = dep.settings
+            dep_settings_build = dep_settings
         else:
-            dep.settings_build = detect_settings(build_type)
+            dep_settings_build = detect_settings(build_type)
         conf = make_conf(jobs=jobs)
-        dep.conf = conf
-        dep._recipe_runtime = _RecipeRuntime(conf)
-        dep._recipe_dependencies = RecipeDependencies(OrderedDict())
-        dep._recipe_buildenv = Environment()
-        dep._recipe_runenv = Environment()
-
-        dep._recipe_node = _Node(
-            dep_name, dep_version,
-            context=_CONTEXT_BUILD if is_build else _CONTEXT_HOST,
-            recipe_state=_RECIPE_INCACHE)
+        dep._state = RecipeState(
+            dependencies=RecipeDependencies(OrderedDict()),
+            build_context=is_build,
+            settings=dep_settings,
+            settings_build=dep_settings_build,
+            conf=conf)
 
         # Full config phase (configure + auto-fPIC + package-type +
         # requirements); populates dep.requires for the sub-graph below.
@@ -291,16 +282,16 @@ def _build_dep_graph(
         try:
             _sub_host = [str(r.name) for r in dep._requires if not r.build]
             _sub_tools = [str(r.name) for r in dep._requires if r.build]
-            dep._recipe_dependencies = _build_dep_graph(
+            dep._state.dependencies = _build_dep_graph(
                 recipes_root, build_root, _sub_host, build_type, dep_os, dep_arch, jobs=jobs, tool_names=_sub_tools, _recipe_cache=_recipe_cache, )
         except Exception:
-            dep._recipe_dependencies = RecipeDependencies(OrderedDict())
+            dep._state.dependencies = RecipeDependencies(OrderedDict())
 
         # Also propagate all transitive (non-direct) deps of this dep up to the current
         # deps_dict.  This ensures that when CMakeDeps calls get_transitive_requires() to
         # resolve header-transitive dependencies (transitive_headers=True), the transitive
         # packages are present in the consumer's dep graph with the same recipe objects.
-        for trans_req, trans_recipe in dep._recipe_dependencies._data.items():
+        for trans_req, trans_recipe in dep.dependencies._data.items():
             trans_name = str(trans_req.name)
             if not any(str(r.name) == trans_name and r.build == trans_req.build for r in deps_dict.keys()):
                 non_direct_req = Requirement(
@@ -566,7 +557,7 @@ def _build_recipe(
 
     recipe = _instantiate(
         recipe_cls, recipes_root, build_root, name, version, build_type, target_os, target_arch, jobs=jobs)
-    recipe._recipe_dependencies = dep_graph
+    recipe._state.dependencies = dep_graph
 
     # Propagate conf from tool dependency info into recipe.conf so that, e.g.,
     # msys2's exported bash:path is visible when generate()/build() run.

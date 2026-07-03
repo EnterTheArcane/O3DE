@@ -1,9 +1,8 @@
 import json
 import os
 import platform
-import textwrap
 
-from thirdparty._internal.output import Output, Color
+from thirdparty._internal.output import Output
 from thirdparty._internal.util.files import save, load
 from thirdparty.build import build_jobs
 
@@ -176,22 +175,6 @@ class _CMakePresets:
             # If we install a local recipe "recipe install ." with a layout(), it will be available
             ret["binaryDir"] = recipe.folders.build.as_posix()
 
-        def _format_val(val):
-            return f'"{val}"' if type(val) is str and " " in val else f"{val}"
-
-        # only for consumer that is not a "test_package"
-        if recipe.is_consumer and recipe.tested_reference_str is None:
-            # upstream PR 12034#issuecomment-1253776285
-            vars_tip = " ".join([f"-D{k}={_format_val(v)}" for k, v in cache_variables.items()])
-            tc_tip = f"-DCMAKE_TOOLCHAIN_FILE=<output_folder>/{toolchain_file} " if "CMAKE_TOOLCHAIN_FILE" not in vars_tip else ""
-
-            msg = textwrap.dedent(
-                f"""
-                CMakeToolchain: Preset '{name}' added to CMakePresets.json.
-                    (cmake>=3.23) cmake --preset {name}
-                    (cmake<3.23) cmake <path> -G {_format_val(generator)} {tc_tip} {vars_tip}
-                """)
-            recipe.output.info(msg, fg=Color.CYAN)
         return ret
 
     @staticmethod
