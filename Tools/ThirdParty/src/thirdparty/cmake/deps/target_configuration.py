@@ -58,7 +58,7 @@ class TargetConfigurationTemplate2:
     def filename(self) -> str:
         f = self._cmakedeps.get_cmake_filename(self._recipe)
         # Fallback to consumer configuration if it doesn't have build_type
-        config = self._recipe.settings.get_safe("build_type", self._cmakedeps.configuration)
+        config = self._recipe.settings.build_type or self._cmakedeps.configuration
         config = (config or "none").lower()
         build = "Build" if self._recipe.context == CONTEXT_BUILD else ""
         return f"{f}-Targets{build}-{config}.cmake"
@@ -144,7 +144,7 @@ class TargetConfigurationTemplate2:
         assert isinstance(info.type, PackageType)
         pkg_name = self._recipe.name
         # fallback to consumer configuration if it doesn't have build_type
-        config = self._recipe.settings.get_safe("build_type", self._cmakedeps.configuration)
+        config = self._recipe.settings.build_type or self._cmakedeps.configuration
         config = config.upper() if config else None
         pkg_folder = self._recipe.folders.package.as_posix()
         config_folder = f"_{config}" if config else ""

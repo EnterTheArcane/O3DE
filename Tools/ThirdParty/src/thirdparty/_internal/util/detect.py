@@ -6,20 +6,8 @@ import subprocess
 from functools import lru_cache
 from multiprocessing import cpu_count
 
-from thirdparty._internal.default_settings import default_settings_yml
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.settings import Settings
-
-
-@lru_cache(maxsize=1)
-def _settings_template() -> Settings:
-    """Parse the (static) settings definition once.
-
-    ``detect_settings`` is called once per recipe (often hundreds of times for ``list`` /
-    ``graph`` / the config-probe); the YAML never changes, so parse it a single time and hand
-    each caller an independent ``.copy()`` to mutate.
-    """
-    return Settings.loads(default_settings_yml)
 
 
 @lru_cache(maxsize=1)
@@ -147,48 +135,43 @@ def detect_settings(build_type: str = "Release", target_os: str=None, target_arc
     the target arch flows into the toolchain via ``settings.arch`` (and, for MSVC + Ninja,
     into the vcvars argument computed from ``settings_build.arch`` vs ``settings.arch``).
     """
-    settings = _settings_template().copy()
-
     machine_os = _machine_os()
     the_os = normalize_os(target_os) or machine_os
     arch = _default_target_arch(the_os, target_arch)
 
-    settings.update_values(
-        [
-            ("os", the_os), ("arch", arch), ("build_type", build_type),
-        ], raise_undefined=False)
+    settings = Settings(os=the_os, arch=arch, build_type=build_type)
 
     apple_sdk = _APPLE_SDK_DEFAULTS.get((the_os, arch))
     if apple_sdk:
-        settings.update_values([("os.sdk", apple_sdk)], raise_undefined=False)
+        settings.os_sdk = apple_sdk
 
     # Compiler detection is keyed on the BUILD MACHINE os (the locally available toolchain).
     if machine_os == "Windows":
         msvc_ver = _detect_msvc_version()
         if msvc_ver:
-            settings.update_values(
-                [
-                    ("compiler", "msvc"), ("compiler.version", msvc_ver), ("compiler.runtime", "dynamic"), ("compiler.cppstd", "17"),
-                ], raise_undefined=False)
+            settings.compiler = "msvc"
+            settings.compiler_version = msvc_ver
+            settings.compiler_runtime = "dynamic"
+            settings.compiler_cxx_standard = "17"
     elif machine_os == "Mac":
         ver = _detect_apple_clang_version()
         if ver:
-            settings.update_values(
-                [
-                    ("compiler", "apple-clang"), ("compiler.version", ver + ".0"), ("compiler.libcxx", "libc++"), ("compiler.cppstd", "17"),
-                ], raise_undefined=False)
+            settings.compiler = "apple-clang"
+            settings.compiler_version = ver + ".0"
+            settings.compiler_libcxx = "libc++"
+            settings.compiler_cxx_standard = "17"
     else:
         compiler, ver = _detect_linux_compiler()
         if compiler == "gcc":
-            settings.update_values(
-                [
-                    ("compiler", "gcc"), ("compiler.version", ver), ("compiler.libcxx", "libstdc++11"), ("compiler.cppstd", "17"),
-                ], raise_undefined=False)
+            settings.compiler = "gcc"
+            settings.compiler_version = ver
+            settings.compiler_libcxx = "libstdc++11"
+            settings.compiler_cxx_standard = "17"
         elif compiler == "clang":
-            settings.update_values(
-                [
-                    ("compiler", "clang"), ("compiler.version", ver), ("compiler.libcxx", "libc++"), ("compiler.cppstd", "17"),
-                ], raise_undefined=False)
+            settings.compiler = "clang"
+            settings.compiler_version = ver
+            settings.compiler_libcxx = "libc++"
+            settings.compiler_cxx_standard = "17"
 
     # os.version (deployment target) applies to the TARGET os; only known when the build
     # machine is itself a Mac.
@@ -197,7 +180,7 @@ def detect_settings(build_type: str = "Release", target_os: str=None, target_arc
         if _raw_ver:
             _parts = _raw_ver.split(".")
             _os_version = ".".join(_parts[:2]) if len(_parts) >= 2 else _parts[0]
-            settings.update_values([("os.version", _os_version)], raise_undefined=False)
+            settings.os_version = _os_version
 
     return settings
 

@@ -70,7 +70,7 @@ class Recipe(RecipeBase[_Options]):
 
         def meson_backend_and_flags() -> tuple[str, list[str]]:
             def is_vs_2017():
-                version = Version(self.settings.compiler.version)
+                version = Version(self.settings.compiler_version)
                 return version == "15" or version == "191"
 
             if is_msvc(self) and is_vs_2017() and self.settings.build_type == "Debug":
@@ -183,7 +183,7 @@ class Recipe(RecipeBase[_Options]):
 def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
-    if not recipe.settings.get_safe("compiler.runtime"):
+    if not recipe.settings.compiler_runtime:
         return
     libdirs = recipe.info.libdirs
     for libdir in libdirs:

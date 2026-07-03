@@ -28,7 +28,7 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         # OpenAL's API is pure C, thus the c++ standard does not matter
         # Because the backend is C++, the C++ STL matters
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires_tool("cmake")
@@ -91,7 +91,7 @@ class Recipe(RecipeBase[_Options]):
                 self.info.system_libs.append(libcxx)
         if not self.options.shared:
             self.info.defines.append("AL_LIBTYPE_STATIC")
-        if self.settings.get_safe("compiler.libcxx") in ["libstdc++", "libstdc++11"]:
+        if self.settings.compiler_libcxx in ["libstdc++", "libstdc++11"]:
             self.info.system_libs.append("atomic")
 
     def _create_cmake_module_variables(self, module_file: Path):

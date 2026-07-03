@@ -83,7 +83,7 @@ class AutotoolsToolchain:
 
         # Defines
         self.ndebug = None
-        build_type = self._recipe.settings.get_safe("build_type")
+        build_type = self._recipe.settings.build_type
         if build_type in ["Release", "RelWithDebInfo", "MinSizeRel"]:
             self.ndebug = "NDEBUG"
 
@@ -112,25 +112,25 @@ class AutotoolsToolchain:
         self.android_cross_flags = {}
         self._is_cross_building = cross_building(self._recipe)
         if self._is_cross_building:
-            compiler = self._recipe.settings.get_safe("compiler")
+            compiler = self._recipe.settings.compiler
             # If cross-building and tools.android:ndk_path is defined, let's try to guess the Android
             # cross-building flags
             self.android_cross_flags = self._resolve_android_cross_compilation()
             # If it's not defined the triplet
             if not self._host:
-                os_host = recipe.settings.get_safe("os")
-                arch_host = recipe.settings.get_safe("arch")
+                os_host = recipe.settings.os
+                arch_host = recipe.settings.arch
                 self._host = _get_gnu_triplet(os_host, arch_host, compiler=compiler)["triplet"]
             # Build triplet
             if not self._build:
-                os_build = recipe.settings_build.get_safe("os")
-                arch_build = recipe.settings_build.get_safe("arch")
+                os_build = recipe.settings_build.os
+                arch_build = recipe.settings_build.arch
                 self._build = _get_gnu_triplet(os_build, arch_build, compiler=compiler)["triplet"]
 
         sysroot = self._recipe.conf.get("tools.build:sysroot")
         if sysroot:
             root = sysroot.replace("\\", "/")
-            compiler = self._recipe.settings.get_safe("compiler")
+            compiler = self._recipe.settings.compiler
             self.sysroot_flag = f"--sysroot {root}" if compiler != "qcc" else f"-Wc,-isysroot,{root}"
         else:
             self.sysroot_flag = None
@@ -142,7 +142,7 @@ class AutotoolsToolchain:
         self.autoreconf_args = self._default_autoreconf_flags()
         self.make_args = []
         # Apple stuff
-        is_cross_building_osx = (self._is_cross_building and recipe.settings_build.get_safe("os") == "Mac" and is_apple_os(recipe))
+        is_cross_building_osx = (self._is_cross_building and recipe.settings_build.os == "Mac" and is_apple_os(recipe))
 
         min_flag, arch_flags, isysroot_flag = (resolve_apple_flags(
             recipe, is_cross_building=is_cross_building_osx))
@@ -174,10 +174,10 @@ class AutotoolsToolchain:
     def _resolve_android_cross_compilation(self) -> dict[str, str]:
         # Issue related: upstream issue 13443
         ret = {}
-        if not self._is_cross_building or not self._recipe.settings.get_safe("os") == "Android":
+        if not self._is_cross_building or not self._recipe.settings.os == "Android":
             return ret
         # Setting host if it was not already defined yet
-        arch = self._recipe.settings.get_safe("arch")
+        arch = self._recipe.settings.arch
         android_target = {
             "ARM": "aarch64-linux-android", "X64": "x86_64-linux-android",
         }.get(arch)
@@ -190,14 +190,14 @@ class AutotoolsToolchain:
                 self._recipe.output.warning(
                     "tools.build:compiler_executables conf has no effect"
                     " when tools.android:ndk_path is defined too.")
-            os_build = self._recipe.settings_build.get_safe("os")
+            os_build = self._recipe.settings_build.os
             ndk_os_folder = {
                 "Mac": "darwin", "iOS": "darwin", "tvOS": "darwin", "visionOS": "darwin", "Linux": "linux", "Windows": "windows", "WindowsCE": "windows", "WindowsStore": "windows",
             }.get(os_build, "linux")
             ext = ".cmd" if os_build == "Windows" else ""
             ndk_bin = os.path.join(
                 ndk_path, "toolchains", "llvm", "prebuilt", f"{ndk_os_folder}-x86_64", "bin")
-            android_api_level = self._recipe.settings.get_safe("os.api_level")
+            android_api_level = self._recipe.settings.os_api_level
             recipe_vars = {
                 "CC": os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang{ext}"),
                 "CXX": os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang++{ext}"),
@@ -223,8 +223,8 @@ class AutotoolsToolchain:
 
     def _get_msvc_runtime_flag(self) -> str:
         if llvm_clang_front(self._recipe) == "clang":
-            if self._recipe.settings.compiler.runtime == "dynamic":
-                runtime_type = self._recipe.settings.get_safe("compiler.runtime_type")
+            if self._recipe.settings.compiler_runtime == "dynamic":
+                runtime_type = self._recipe.settings.compiler_runtime_type
                 library = "msvcrtd" if runtime_type == "Debug" else "msvcrt"
                 # The -D_DEBUG is important to link with the Debug MSVCP140D.dll
                 debug = "-D_DEBUG " if runtime_type == "Debug" else ""
@@ -334,7 +334,7 @@ class AutotoolsToolchain:
                         # upstream issue 13780
                         compiler = unix_path(self._recipe, compiler)
                         env.define(env_var, compiler)
-            compiler_setting = self._recipe.settings.get_safe("compiler")
+            compiler_setting = self._recipe.settings.compiler
             if compiler_setting == "msvc":
                 # None of them defined, if one is defined by user, user should define the other too
                 if "c" not in compilers_by_conf and "cpp" not in compilers_by_conf:

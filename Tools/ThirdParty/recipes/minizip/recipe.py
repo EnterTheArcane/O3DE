@@ -16,8 +16,8 @@ class Recipe(RecipeBase[_Options]):
     license = "Zlib"
 
     def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         self.requires_tool("cmake")
@@ -39,7 +39,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["MINIZIP_ENABLE_BZIP2"] = True
         tc.variables["MINIZIP_BUILD_TOOLS"] = True
         # fopen64 and similar are unavailable before API level 24: https://github.com/madler/zlib/pull/436
-        if self.settings.os == "Android" and int(str(self.settings.os.api_level)) < 24:
+        if self.settings.os == "Android" and int(str(self.settings.os_api_level)) < 24:
             tc.preprocessor_definitions["IOAPI_NO_64"] = "1"
         tc.generate()
         deps = CMakeDeps(self)

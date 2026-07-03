@@ -20,10 +20,10 @@ RECIPE_TOOLCHAIN_ARGS_SECTION = "toolchain"
 
 
 def use_win_mingw(recipe: RecipeBase) -> bool:
-    os_build = recipe.settings_build.get_safe("os")
+    os_build = recipe.settings_build.os
     if os_build == "Windows":
-        compiler_ = recipe.settings.get_safe("compiler")
-        sub = recipe.settings.get_safe("os.subsystem")
+        compiler_ = recipe.settings.compiler
+        sub = recipe.settings.os_subsystem
         if sub == "msys2" or compiler_ == "qcc":
             return False
         else:

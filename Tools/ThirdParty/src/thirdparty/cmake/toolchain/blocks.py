@@ -82,14 +82,14 @@ class VSRuntimeBlock(Block):
     def context(self) -> dict[str, Any] | None:
         # Parsing existing toolchain file to get existing configured runtimes
         settings = self._recipe.settings
-        if settings.get_safe("os") != "Windows":
+        if settings.os != "Windows":
             return
 
-        compiler = settings.get_safe("compiler")
+        compiler = settings.compiler
         if compiler not in ("msvc", "clang"):
             return
 
-        runtime = settings.get_safe("compiler.runtime")
+        runtime = settings.compiler_runtime
         if runtime is None:
             return
 
@@ -103,12 +103,12 @@ class VSRuntimeBlock(Block):
                 matches = re.findall(r"\$<\$<CONFIG:([A-Za-z]*)>:([A-Za-z]*)>", capture)
                 config_dict = dict(matches)
 
-        build_type = settings.get_safe("build_type")  # FIXME: change for configuration
+        build_type = settings.build_type  # FIXME: change for configuration
         if build_type is None:
             return None
 
         if compiler == "msvc" or compiler == "clang":
-            runtime_type = settings.get_safe("compiler.runtime_type")
+            runtime_type = settings.compiler_runtime_type
             rt = "MultiThreadedDebug" if runtime_type == "Debug" else "MultiThreaded"
             if runtime != "static":
                 rt += "DLL"
@@ -140,8 +140,8 @@ class VSDebuggerEnvironment(Block):
         """)
 
     def context(self) -> dict[str, Any] | None:
-        os_ = self._recipe.settings.get_safe("os")
-        build_type = self._recipe.settings.get_safe("build_type")
+        os_ = self._recipe.settings.os
+        build_type = self._recipe.settings.build_type
 
         if (os_ and "Windows" not in os_) or not build_type:
             return None
@@ -192,7 +192,7 @@ class FPicBlock(Block):
         pic = self._recipe.options.get_safe("pic")
         if pic is None:
             return None
-        os_ = self._recipe.settings.get_safe("os")
+        os_ = self._recipe.settings.os
         if os_ and "Windows" in os_:
             self._recipe.output.warning("Toolchain: Ignoring pic option defined for Windows")
             return None
@@ -355,8 +355,8 @@ class CppStdBlock(Block):
         """)
 
     def context(self) -> dict[str, Any] | None:
-        compiler_cppstd = self._recipe.settings.get_safe("compiler.cppstd")
-        compiler_cstd = self._recipe.settings.get_safe("compiler.cstd")
+        compiler_cppstd = self._recipe.settings.compiler_cxx_standard
+        compiler_cstd = self._recipe.settings.compiler_c_standard
         result = {}
         if compiler_cppstd is not None:
             if compiler_cppstd.startswith("gnu"):
@@ -403,7 +403,7 @@ class ParallelBlock(Block):
 
     def context(self) -> dict[str, Any] | None:
         # TODO: Check this conf
-        compiler = self._recipe.settings.get_safe("compiler")
+        compiler = self._recipe.settings.compiler
         if compiler != "msvc" or "Visual" not in self._toolchain.generator:
             return
 
@@ -434,13 +434,13 @@ class AndroidSystemBlock(Block):
         """)
 
     def context(self) -> dict[str, Any] | None:
-        os_ = self._recipe.settings.get_safe("os")
+        os_ = self._recipe.settings.os
         if os_ != "Android":
             return
 
         # TODO: only 'c++_shared' y 'c++_static' supported?
         #  https://developer.android.com/ndk/guides/cpp-support
-        libcxx_str = self._recipe.settings.get_safe("compiler.libcxx")
+        libcxx_str = self._recipe.settings.compiler_libcxx
 
         android_ndk_path = self._recipe.conf.get("tools.android:ndk_path")
         if not android_ndk_path:
@@ -455,7 +455,7 @@ class AndroidSystemBlock(Block):
             use_cmake_legacy_toolchain = "ON" if use_cmake_legacy_toolchain else "OFF"
 
         ctxt_toolchain = {
-            "android_platform": "android-" + str(self._recipe.settings.os.api_level),
+            "android_platform": "android-" + str(self._recipe.settings.os_api_level),
             "android_abi": android_abi(self._recipe),
             "android_stl": libcxx_str,
             "android_ndk_path": android_ndk_path,
@@ -530,15 +530,15 @@ class AppleSystemBlock(Block):
 
         def to_apple_archs(recipe: RecipeBase):
             """converts recipe-style architecture into Apple-style arch"""
-            arch_ = recipe.settings.get_safe("arch") if recipe else None
+            arch_ = recipe.settings.arch if recipe else None
             if arch_ is not None:
                 return _to_apple_arch(arch_, default=arch_)
 
         host_architecture = to_apple_archs(self._recipe)
 
-        host_os_version = self._recipe.settings.get_safe("os.version")
+        host_os_version = self._recipe.settings.os_version
         host_sdk_name = self._recipe.conf.get("tools.apple:sdk_path") or get_apple_sdk_fullname(self._recipe)
-        is_debug = self._recipe.settings.get_safe("build_type") == "Debug"
+        is_debug = self._recipe.settings.build_type == "Debug"
 
         # Reading some configurations to enable or disable some Xcode toolchain flags and variables
         # Issue related: upstream issue 9448
@@ -645,7 +645,7 @@ class FindFiles(Block):
     def _get_host_runtime_dirs(self, host_req):
         settings = self._recipe.settings
         host_runtime_dirs = {}
-        is_win = self._recipe.settings.get_safe("os") == "Windows"
+        is_win = self._recipe.settings.os == "Windows"
 
         # Get the previous configuration
         if is_multi_configuration(self._toolchain.generator) and os.path.exists(RECIPE_TOOLCHAIN_FILENAME):
@@ -665,7 +665,7 @@ class FindFiles(Block):
             cppinfo = req.info.aggregated_components()
             runtime_dirs.extend(cppinfo.bindirs if is_win else cppinfo.libdirs)
 
-        build_type = settings.get_safe("build_type")
+        build_type = settings.build_type
         host_runtime_dirs[build_type] = [s.replace("\\", "/") for s in runtime_dirs]
 
         return host_runtime_dirs
@@ -831,7 +831,7 @@ class ExtraFlagsBlock(Block):
                     current_section.append(line)
             sections.pop("", None)  # Just in case it had a single config before
 
-        config = self._recipe.settings.get_safe("build_type")
+        config = self._recipe.settings.build_type
         for k, v in sections.items():
             if k != config:
                 v.insert(0, "{% raw %}")
@@ -862,7 +862,7 @@ class ExtraFlagsBlock(Block):
         config = ""
         suffix = ""
         if is_multi_configuration(self._toolchain.generator):
-            config = self._recipe.settings.get_safe("build_type")
+            config = self._recipe.settings.build_type
             suffix = f"_{config.upper()}" if config else ""
         return {
             "config": config, "suffix": suffix, "cxxflags": cxxflags, "cflags": cflags, "sharedlinkflags": sharedlinkflags, "exelinkflags": exelinkflags, "rcflags": rcflags, "defines": [define.replace('"', '\\"') for define in defines],
@@ -939,7 +939,7 @@ class TryCompileBlock(Block):
         # legacy code using check_function_exists that breaks in CMake with MSVC, see
         # upstream issue 18689
         # TODO: Resume this effort when other try_compile things are sorted out
-        # bt = self._recipe.settings.get_safe("build_type")
+        # bt = self._recipe.settings.build_type
         # config = bt if bt in ["Debug", "Release", "RelWithDebInfo", "MinSizeRel"] else None
         config = None  # Keep it defined but as `None` in case some user already customized it
         return {"config": config}
@@ -967,7 +967,7 @@ class CompilersBlock(Block):
             # To set CMAKE_<LANG>_COMPILER
             if comp in compilers_by_conf:
                 compilers[lang] = compilers_by_conf[comp]
-        compiler = self._recipe.settings.get_safe("compiler")
+        compiler = self._recipe.settings.compiler
         if compiler == "msvc" and "Ninja" in str(self._toolchain.generator):
             # None of them defined, if one is defined by user, user should define the other too
             if "c" not in compilers_by_conf and "cpp" not in compilers_by_conf:
@@ -1029,13 +1029,13 @@ class GenericSystemBlock(Block):
         if generator is None or ("Visual" not in generator and "Xcode" not in generator):
             return None
         settings = recipe.settings
-        compiler = settings.get_safe("compiler")
+        compiler = settings.compiler
         if compiler == "msvc":
-            toolset = settings.get_safe("compiler.toolset")
+            toolset = settings.compiler_toolset
             if toolset is None:
-                compiler_version = str(settings.compiler.version)
+                compiler_version = str(settings.compiler_version)
                 msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
-                compiler_update = msvc_update or settings.get_safe("compiler.update")
+                compiler_update = msvc_update or settings.compiler_update
                 toolset = msvc_version_to_toolset_version(compiler_version)
                 if compiler_update is not None:  # It is full one(19.28), not generic 19.2X
                     # The equivalent of compiler 19.26 is toolset 14.26
@@ -1063,21 +1063,18 @@ class GenericSystemBlock(Block):
     def get_generator_platform(generator: str | None, recipe: RecipeBase) -> str | None:
         settings = recipe.settings
         # Returns the generator platform to be used by CMake
-        compiler = settings.get_safe("compiler")
-        arch = settings.get_safe("arch")
-
-        if settings.get_safe("os") == "WindowsCE":
-            return settings.get_safe("os.platform")
+        compiler = settings.compiler
+        arch = settings.arch
 
         if compiler in ("msvc", "clang") and generator and "Visual" in generator:
             return msvc_platform_from_arch(arch)
         return None
 
     def _get_generic_system_name(self):
-        os_host = self._recipe.settings.get_safe("os")
-        os_build = self._recipe.settings_build.get_safe("os")
-        arch_host = self._recipe.settings.get_safe("arch")
-        arch_build = self._recipe.settings_build.get_safe("arch")
+        os_host = self._recipe.settings.os
+        os_build = self._recipe.settings_build.os
+        arch_host = self._recipe.settings.arch
+        arch_build = self._recipe.settings_build.arch
         cmake_system_name_map = {
             "Neutrino": "QNX", "": "Generic", "baremetal": "Generic", None: "Generic",
         }
@@ -1092,10 +1089,10 @@ class GenericSystemBlock(Block):
             return cmake_system_name_map.get(os_host, os_host)
 
     def _is_apple_cross_building(self):
-        os_host = self._recipe.settings.get_safe("os")
-        arch_host = self._recipe.settings.get_safe("arch")
-        arch_build = self._recipe.settings_build.get_safe("arch")
-        os_build = self._recipe.settings_build.get_safe("os")
+        os_host = self._recipe.settings.os
+        arch_host = self._recipe.settings.arch
+        arch_build = self._recipe.settings_build.arch
+        os_build = self._recipe.settings_build.os
         return os_host in ("iOS", "tvOS", "visionOS") or (os_host == "Mac" and (arch_host != arch_build or os_build != os_host))
 
     @staticmethod
@@ -1123,9 +1120,9 @@ class GenericSystemBlock(Block):
         system_processor = self._recipe.conf.get("tools.cmake.toolchain:system_processor")
 
         # try to detect automatically
-        os_host = self._recipe.settings.get_safe("os")
-        os_host_version = self._recipe.settings.get_safe("os.version")
-        arch_host = self._recipe.settings.get_safe("arch")
+        os_host = self._recipe.settings.os
+        os_host_version = self._recipe.settings.os_version
+        arch_host = self._recipe.settings.arch
         if arch_host == "ARM":
             arch_host = {"Windows": "ARM64", "Mac": "arm64"}.get(os_host, "aarch64")
 
@@ -1154,7 +1151,7 @@ class GenericSystemBlock(Block):
         return system_name, system_version, system_processor
 
     def _get_winsdk_version(self, system_version, generator_platform):
-        compiler = self._recipe.settings.get_safe("compiler")
+        compiler = self._recipe.settings.compiler
         if compiler not in ("msvc", "clang") or "Visual" not in str(self._toolchain.generator):
             # Ninja will get it from VCVars, not from toolchain
             return system_version, None, None
@@ -1166,8 +1163,8 @@ class GenericSystemBlock(Block):
                     "Both cmake_system_version and winsdk_version confs"
                     " defined, prioritizing winsdk_version")
             system_version = winsdk_version
-        elif "Windows" in self._recipe.settings.get_safe("os", ""):
-            winsdk_version = self._recipe.settings.get_safe("os.version")
+        elif "Windows" in (self._recipe.settings.os or ""):
+            winsdk_version = self._recipe.settings.os_version
             if system_version:
                 if winsdk_version:
                     self._recipe.output.warning(

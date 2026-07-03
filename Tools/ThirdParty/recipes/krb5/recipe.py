@@ -32,8 +32,8 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os != "Linux":
             self.options.with_keyutils = False
 
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def validate(self):
         if self.settings.os not in ("Linux", "Mac"):

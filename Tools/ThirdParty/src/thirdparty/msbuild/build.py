@@ -35,14 +35,12 @@ class MSBuild:
         """
         self._recipe = recipe
         #: Defines the build type. By default, ``settings.build_type``.
-        self.build_type = recipe.settings.get_safe("build_type")
+        self.build_type = recipe.settings.build_type
         # if platforms:
         #    msvc_arch.update(platforms)
-        arch = recipe.settings.get_safe("arch")
+        arch = recipe.settings.arch
         # MSVC default platform for VS projects is "x86", not "Win32" (but CMake default is "Win32")
         msvc_platform = msvc_platform_from_arch(arch) if arch != "x86" else "x86"
-        if recipe.settings.get_safe("os") == "WindowsCE":
-            msvc_platform = recipe.settings.get_safe("os.platform")
         #: Defines the platform name, e.g., ``ARM`` if ``settings.arch == "armv7"``.
         self.platform = msvc_platform
 

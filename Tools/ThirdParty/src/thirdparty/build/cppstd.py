@@ -14,7 +14,7 @@ def check_min_cppstd(recipe: RecipeBase, cppstd: Any, gnu_extensions: bool = Fal
         In case the current cppstd doesn't fit the minimal version required
         by cppstd, a RecipeInvalidConfiguration exception will be raised.
 
-        settings.compiler.cppstd must be defined, otherwise RecipeInvalidConfiguration is raised
+        settings.compiler_cxx_standard must be defined, otherwise RecipeInvalidConfiguration is raised
 
     :param recipe: The current recipe object. Always use ``self``.
     :param cppstd: Minimal cppstd version required
@@ -29,7 +29,7 @@ def check_max_cppstd(recipe: RecipeBase, cppstd: Any, gnu_extensions: bool = Fal
         In case the current cppstd doesn't fit the maximum version required
         by cppstd, a RecipeInvalidConfiguration exception will be raised.
 
-        settings.compiler.cppstd must be defined, otherwise RecipeInvalidConfiguration is raised
+        settings.compiler_cxx_standard must be defined, otherwise RecipeInvalidConfiguration is raised
 
     :param recipe: The current recipe object. Always use ``self``.
     :param cppstd: Maximum cppstd version required
@@ -78,10 +78,10 @@ def default_cppstd(recipe: RecipeBase, compiler: str | None = None, compiler_ver
     :param compiler_version: Version of the compiler e.g. 12
     :return: The default ``compiler.cppstd`` for the specified compiler
     """
-    compiler = compiler or recipe.settings.get_safe("compiler")
-    compiler_version = compiler_version or recipe.settings.get_safe("compiler.version")
+    compiler = compiler or recipe.settings.compiler
+    compiler_version = compiler_version or recipe.settings.compiler_version
     if not compiler or not compiler_version:
-        raise RecipeException("Called default_cppstd with no compiler or no compiler.version")
+        raise RecipeException("Called default_cppstd with no compiler or no compiler_version")
     return default_cppstd_(compiler, Version(compiler_version))
 
 
@@ -96,10 +96,10 @@ def supported_cppstd(recipe: RecipeBase, compiler: str | None = None, compiler_v
     :param compiler_version: Version of the compiler e.g: 12
     :return: a list of supported ``cppstd`` values.
     """
-    compiler = compiler or recipe.settings.get_safe("compiler")
-    compiler_version = compiler_version or recipe.settings.get_safe("compiler.version")
+    compiler = compiler or recipe.settings.compiler
+    compiler_version = compiler_version or recipe.settings.compiler_version
     if not compiler or not compiler_version:
-        raise RecipeException("Called supported_cppstd with no compiler or no compiler.version")
+        raise RecipeException("Called supported_cppstd with no compiler or no compiler_version")
 
     func = {
         "apple-clang": _apple_clang_supported_cppstd,
@@ -125,7 +125,7 @@ def _check_cppstd(
         In case the current cppstd doesn't fit the maximum version required
         by cppstd, a RecipeInvalidConfiguration exception will be raised.
 
-        settings.compiler.cppstd must be defined, otherwise RecipeInvalidConfiguration is raised
+        settings.compiler_cxx_standard must be defined, otherwise RecipeInvalidConfiguration is raised
 
     :param recipe: The current recipe object. Always use ``self``.
     :param cppstd: Required cppstd version.
@@ -146,7 +146,7 @@ def _check_cppstd(
         rhs = add_millennium(extract_cpp_version(rhs))
         return not comp(lhs, rhs)
 
-    current_cppstd = recipe.settings.get_safe("compiler.cppstd")
+    current_cppstd = recipe.settings.compiler_cxx_standard
     if current_cppstd is None:
         raise RecipeInvalidConfiguration("The compiler.cppstd is not defined for this configuration")
 

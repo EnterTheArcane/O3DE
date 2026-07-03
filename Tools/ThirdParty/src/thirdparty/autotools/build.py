@@ -138,11 +138,11 @@ class Autotools:
             self._recipe.run(command)
 
     def _use_win_mingw(self) -> bool:
-        os_build = self._recipe.settings_build.get_safe("os")
+        os_build = self._recipe.settings_build.os
 
         if os_build == "Windows":
-            compiler = self._recipe.settings.get_safe("compiler")
-            sub = self._recipe.settings.get_safe("os.subsystem")
+            compiler = self._recipe.settings.compiler
+            sub = self._recipe.settings.os_subsystem
             if sub == "msys2" or compiler == "qcc":
                 return False
             else:

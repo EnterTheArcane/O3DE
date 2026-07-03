@@ -27,11 +27,11 @@ def architecture_flag(recipe: RecipeBase) -> str:
         return ""
     settings = recipe.settings
     from thirdparty.apple.utils import _to_apple_arch
-    compiler = settings.get_safe("compiler")
-    arch = settings.get_safe("arch")
-    the_os = settings.get_safe("os")
-    subsystem = settings.get_safe("os.subsystem")
-    subsystem_ios_version = settings.get_safe("os.subsystem.ios_version")
+    compiler = settings.compiler
+    arch = settings.arch
+    the_os = settings.os
+    subsystem = settings.os_subsystem
+    subsystem_ios_version = settings.os_subsystem_ios_version
     if not compiler or not arch:
         return ""
 
@@ -45,7 +45,7 @@ def architecture_flag(recipe: RecipeBase) -> str:
         if clangcl:
             return ""  # Do not add arch flags for clang-cl, can happen in cross-build runtime=None
         # LLVM/Clang and VS/Clang must define runtime. msys2 clang won't
-        runtime = settings.get_safe("compiler.runtime")  # runtime is Windows only
+        runtime = settings.compiler_runtime  # runtime is Windows only
         if runtime is not None:
             return ""
         # TODO: Maybe Clang-Mingw runtime does, but with C++ is impossible to test
@@ -87,8 +87,8 @@ def architecture_link_flag(recipe: RecipeBase) -> str:
     """
     if disable_flag(recipe, "arch_link"):
         return ""
-    compiler = recipe.settings.get_safe("compiler")
-    arch = recipe.settings.get_safe("arch")
+    compiler = recipe.settings.compiler
+    arch = recipe.settings.arch
     if compiler == "emcc":
         # Emscripten default output is WASM since 1.37.x (long time ago)
         # Deactivate WASM output forcing asm.js output instead
@@ -98,12 +98,12 @@ def architecture_link_flag(recipe: RecipeBase) -> str:
 
 
 def libcxx_flags(recipe: RecipeBase):
-    libcxx = recipe.settings.get_safe("compiler.libcxx")
+    libcxx = recipe.settings.compiler_libcxx
     if not libcxx:
         return None, None
     if disable_flag(recipe, "libcxx"):
         return None, None
-    compiler = recipe.settings.get_safe("compiler")
+    compiler = recipe.settings.compiler
     lib = stdlib11 = None
     if compiler == "apple-clang":
         # In apple-clang 2 only values atm are "libc++" and "libstdc++"
@@ -134,8 +134,8 @@ def build_type_link_flags(settings: Any) -> list[str]:
     returns link flags specific to the build type (Debug, Release, etc.)
     [-debug]
     """
-    compiler = settings.get_safe("compiler")
-    build_type = settings.get_safe("build_type")
+    compiler = settings.compiler
+    build_type = settings.build_type
     if not compiler or not build_type:
         return []
 
@@ -157,9 +157,9 @@ def build_type_flags(recipe: RecipeBase) -> list[str]:
     if disable_flag(recipe, "build_type"):
         return []
     settings = recipe.settings
-    compiler = settings.get_safe("compiler")
-    build_type = settings.get_safe("build_type")
-    vs_toolset = settings.get_safe("compiler.toolset")
+    compiler = settings.compiler
+    build_type = settings.build_type
+    vs_toolset = settings.compiler_toolset
     if not compiler or not build_type:
         return []
 
@@ -206,8 +206,8 @@ def threads_flags(recipe: RecipeBase) -> list[str]:
     """
     if disable_flag(recipe, "threads"):
         return []
-    compiler = recipe.settings.get_safe("compiler")
-    threads = recipe.settings.get_safe("compiler.threads")
+    compiler = recipe.settings.compiler
+    threads = recipe.settings.compiler_threads
     if compiler == "emcc":
         if threads == "posix":
             return ["-pthread"]
@@ -218,7 +218,7 @@ def threads_flags(recipe: RecipeBase) -> list[str]:
 
 def llvm_clang_front(recipe: RecipeBase) -> str | None:
     # Only Windows clang with MSVC backend (LLVM/Clang, not MSYS2 clang)
-    if (recipe.settings.get_safe("os") != "Windows" or recipe.settings.get_safe("compiler") != "clang" or not recipe.settings.get_safe("compiler.runtime")):
+    if (recipe.settings.os != "Windows" or recipe.settings.compiler != "clang" or not recipe.settings.compiler_runtime):
         return
     compilers = recipe.conf.get("tools.build:compiler_executables", default={})
     if "clang-cl" in compilers.get("c", "") or "clang-cl" in compilers.get("cpp", ""):
@@ -229,9 +229,9 @@ def llvm_clang_front(recipe: RecipeBase) -> str | None:
 def cppstd_flag(recipe: RecipeBase) -> str:
     """
     Returns flags specific to the C++ standard based on the ``recipe.settings.compiler``,
-    ``recipe.settings.compiler.version`` and ``recipe.settings.compiler.cppstd``.
+    ``recipe.settings.compiler_version`` and ``recipe.settings.compiler_cxx_standard``.
 
-    It also considers when using GNU extension in ``settings.compiler.cppstd``, reflecting it in the
+    It also considers when using GNU extension in ``settings.compiler_cxx_standard``, reflecting it in the
     compiler flag. Currently, it supports GCC, Clang, AppleClang, MSVC, Intel, MCST-LCC.
 
     In case there is no ``settings.compiler`` or ``settings.cppstd`` in the profile, the result will
@@ -240,9 +240,9 @@ def cppstd_flag(recipe: RecipeBase) -> str:
     :param recipe: The current recipe object. Always use ``self``.
     :return: ``str`` with the standard C++ flag used by the compiler. e.g. "-std=c++11", "/std:c++latest"
     """
-    compiler = recipe.settings.get_safe("compiler")
-    compiler_version = recipe.settings.get_safe("compiler.version")
-    cppstd = recipe.settings.get_safe("compiler.cppstd")
+    compiler = recipe.settings.compiler
+    compiler_version = recipe.settings.compiler_version
+    cppstd = recipe.settings.compiler_cxx_standard
 
     if not compiler or not compiler_version or not cppstd:
         return ""
@@ -481,9 +481,9 @@ def _cppstd_mcst_lcc(mcst_lcc_version, cppstd):
 def cstd_flag(recipe: RecipeBase) -> str:
     """
     Returns flags specific to the C+standard based on the ``recipe.settings.compiler``,
-    ``recipe.settings.compiler.version`` and ``recipe.settings.compiler.cstd``.
+    ``recipe.settings.compiler_version`` and ``recipe.settings.compiler_c_standard``.
 
-    It also considers when using GNU extension in ``settings.compiler.cstd``, reflecting it in the
+    It also considers when using GNU extension in ``settings.compiler_c_standard``, reflecting it in the
     compiler flag. Currently, it supports GCC, Clang, AppleClang, MSVC, Intel, MCST-LCC.
 
     In case there is no ``settings.compiler`` or ``settings.cstd`` in the profile, the result will
@@ -492,9 +492,9 @@ def cstd_flag(recipe: RecipeBase) -> str:
     :param recipe: The current recipe object. Always use ``self``.
     :return: ``str`` with the standard C flag used by the compiler.
     """
-    compiler = recipe.settings.get_safe("compiler")
-    compiler_version = recipe.settings.get_safe("compiler.version")
-    cstd = recipe.settings.get_safe("compiler.cstd")
+    compiler = recipe.settings.compiler
+    compiler_version = recipe.settings.compiler_version
+    cstd = recipe.settings.compiler_c_standard
 
     if not compiler or not compiler_version or not cstd:
         return ""

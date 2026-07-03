@@ -19,8 +19,8 @@ class Recipe(RecipeBase[_Options]):
             # Only static for msvc
             # Injecting CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS is not sufficient since there are global symbols
             self.options.shared = False
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         self.requires_tool("cmake")

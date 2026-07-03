@@ -14,8 +14,8 @@ def check_min_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False):
         In case the current cstd doesn't fit the minimal version required
         by cstd, a RecipeInvalidConfiguration exception will be raised.
 
-        1. If settings.compiler.cstd, the tool will use settings.compiler.cstd to compare
-        2. It not settings.compiler.cstd, the tool will use compiler to compare (reading the
+        1. If settings.compiler_c_standard, the tool will use settings.compiler_c_standard to compare
+        2. It not settings.compiler_c_standard, the tool will use compiler to compare (reading the
            default from cstd_default)
         3. If not settings.compiler is present (not declared in settings) will raise because it
            cannot compare.
@@ -34,8 +34,8 @@ def check_max_cstd(recipe: RecipeBase, cstd: Any, gnu_extensions: bool = False):
         In case the current cstd doesn't fit the maximum version required
         by cstd, a RecipeInvalidConfiguration exception will be raised.
 
-        1. If settings.compiler.cstd, the tool will use settings.compiler.cstd to compare
-        2. It not settings.compiler.cstd, the tool will use compiler to compare (reading the
+        1. If settings.compiler_c_standard, the tool will use settings.compiler_c_standard to compare
+        2. It not settings.compiler_c_standard, the tool will use compiler to compare (reading the
            default from cstd_default)
         3. If not settings.compiler is present (not declared in settings) will raise because it
            cannot compare.
@@ -88,10 +88,10 @@ def default_cstd(recipe: RecipeBase, compiler: str | None = None, compiler_versi
     :param compiler_version: Version of the compiler e.g. 12
     :return: The default ``compiler.cstd`` for the specified compiler
     """
-    compiler = compiler or recipe.settings.get_safe("compiler")
-    compiler_version = compiler_version or recipe.settings.get_safe("compiler.version")
+    compiler = compiler or recipe.settings.compiler
+    compiler_version = compiler_version or recipe.settings.compiler_version
     if not compiler or not compiler_version:
-        raise RecipeException("Called default_cppstd with no compiler or no compiler.version")
+        raise RecipeException("Called default_cppstd with no compiler or no compiler_version")
     return default_cstd_(compiler, Version(compiler_version))
 
 
@@ -106,10 +106,10 @@ def supported_cstd(recipe: RecipeBase, compiler: str | None = None, compiler_ver
     :param compiler_version: Version of the compiler e.g: 12
     :return: a list of supported ``cstd`` values.
     """
-    compiler = compiler or recipe.settings.get_safe("compiler")
-    compiler_version = compiler_version or recipe.settings.get_safe("compiler.version")
+    compiler = compiler or recipe.settings.compiler
+    compiler_version = compiler_version or recipe.settings.compiler_version
     if not compiler or not compiler_version:
-        raise RecipeException("Called supported_cstd with no compiler or no compiler.version")
+        raise RecipeException("Called supported_cstd with no compiler or no compiler_version")
 
     func = {
         "apple-clang": _apple_clang_supported_cstd, "gcc": _gcc_supported_cstd, "msvc": _msvc_supported_cstd, "clang": _clang_supported_cstd, "emcc": _emcc_supported_cstd,
@@ -129,8 +129,8 @@ def _check_cstd(
         In case the current cstd doesn't fit the maximum version required
         by cstd, a RecipeInvalidConfiguration exception will be raised.
 
-        1. If settings.compiler.cstd, the tool will use settings.compiler.cstd to compare
-        2. It not settings.compiler.cstd, the tool will use compiler to compare (reading the
+        1. If settings.compiler_c_standard, the tool will use settings.compiler_c_standard to compare
+        2. It not settings.compiler_c_standard, the tool will use compiler to compare (reading the
            default from cstd_default)
         3. If not settings.compiler is present (not declared in settings) will raise because it
            cannot compare.
@@ -155,7 +155,7 @@ def _check_cstd(
         rhs = add_millennium(extract_cpp_version(rhs))
         return not comp(lhs, rhs)
 
-    current_cstd = recipe.settings.get_safe("compiler.cstd")
+    current_cstd = recipe.settings.compiler_c_standard
     if current_cstd is None:
         raise RecipeInvalidConfiguration("The compiler.cstd is not defined for this configuration")
 

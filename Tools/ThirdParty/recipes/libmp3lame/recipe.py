@@ -21,8 +21,8 @@ class Recipe(RecipeBase[_Options]):
     license = "LGPL-2.0"
 
     def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         if not is_msvc(self) and not self._is_clang_cl:

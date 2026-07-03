@@ -32,8 +32,8 @@ class Recipe(RecipeBase[_Options]):
             # debug builds with assembly often causes linker hangs or LNK1000
             self.options.assembly = False
 
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         self.requires_tool("meson")
@@ -90,7 +90,7 @@ class Recipe(RecipeBase[_Options]):
 def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
-    if not recipe.settings.get_safe("compiler.runtime"):
+    if not recipe.settings.compiler_runtime:
         return
     libdirs = recipe.info.libdirs
     for libdir in libdirs:

@@ -16,10 +16,10 @@ def cross_building(recipe: RecipeBase | None = None, skip_x64_x86: bool = False)
     if cross_build is not None:
         return cross_build
 
-    build_os = recipe.settings_build.get_safe("os")
-    build_arch = recipe.settings_build.get_safe("arch")
-    host_os = recipe.settings.get_safe("os")
-    host_arch = recipe.settings.get_safe("arch")
+    build_os = recipe.settings_build.os
+    build_arch = recipe.settings_build.arch
+    host_os = recipe.settings.os
+    host_arch = recipe.settings.arch
 
     if skip_x64_x86 and host_os is not None and (build_os == host_os) and host_arch is not None and (
         (build_arch == "x86_64") and (host_arch == "x86") or (build_arch == "sparcv9") and (host_arch == "sparc") or (build_arch == "ppc64") and (host_arch == "ppc32")):

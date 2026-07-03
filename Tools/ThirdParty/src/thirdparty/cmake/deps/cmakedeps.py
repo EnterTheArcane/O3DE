@@ -361,11 +361,11 @@ class _PathGenerator:
                 for config, paths in matches:
                     host_runtime_dirs.setdefault(config, []).append(paths)
 
-        is_win = self._recipe.settings.get_safe("os") == "Windows"
+        is_win = self._recipe.settings.os == "Windows"
 
         host_req = self._recipe.dependencies.host
         for req in host_req.values():
-            config = req.settings.get_safe("build_type", self._cmakedeps.configuration)
+            config = (req.settings.build_type or self._cmakedeps.configuration)
             aggregated_cppinfo = req.info.aggregated_components()
             runtime_dirs = aggregated_cppinfo.bindirs if is_win else aggregated_cppinfo.libdirs
             for d in runtime_dirs:

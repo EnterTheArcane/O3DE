@@ -6,7 +6,7 @@ def stdcpp_library(recipe: RecipeBase):
     to the linker, based on the current settings. Returs None if the name 
     of the C++ standard library file is not known.
     """
-    libcxx = recipe.settings.get_safe("compiler.libcxx")
+    libcxx = recipe.settings.compiler_libcxx
     if libcxx in ["libstdc++", "libstdc++11"]:
         return "stdc++"
     elif libcxx in ["libc++"]:

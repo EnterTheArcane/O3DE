@@ -67,7 +67,7 @@ def _windows_bash_wrapper(
     if subsystem == MSYS2:
         # Configure MSYS2 to inherith the PATH
         msys2_mode_env = Environment()
-        _msystem = {"x86": "MINGW32"}.get(recipe.settings.get_safe("arch"), "MINGW64")
+        _msystem = {"x86": "MINGW32"}.get(recipe.settings.arch, "MINGW64")
         # https://www.msys2.org/wiki/Launchers/ dictates that the shell should be launched with
         # - MSYSTEM defined
         # - CHERE_INVOKING is necessary to keep the CWD and not change automatically to the user home
@@ -120,11 +120,11 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
     """
     scope = "build" if scope is None else scope  # let's assume build context if scope=None
     if scope.startswith("build"):
-        the_os = recipe.settings_build.get_safe("os")
+        the_os = recipe.settings_build.os
         if the_os is None:
             raise RecipeException("The 'build' profile must have a 'os' declared")
     else:
-        the_os = recipe.settings.get_safe("os")
+        the_os = recipe.settings.os
 
     if not str(the_os).startswith("Windows"):
         return None

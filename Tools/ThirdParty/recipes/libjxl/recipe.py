@@ -171,7 +171,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _atomic_required(self):
-        return self.settings.get_safe("compiler.libcxx") in ["libstdc++", "libstdc++11"]
+        return self.settings.compiler_libcxx in ["libstdc++", "libstdc++11"]
 
     def _patch_sources(self):
         # Disable tools, extras and third_party

@@ -214,7 +214,7 @@ class PremakeToolchain:
         configuration.
         """
         premake_recipe_deps = Path(self._recipe.folders.generators) / PREMAKE_ROOT_FILE
-        cppstd = self._recipe.settings.get_safe("compiler.cppstd")
+        cppstd = self._recipe.settings.compiler_cxx_standard
         if cppstd:
             # See premake possible cppstd values: https://premake.github.io/docs/cppdialect/
             if cppstd.startswith("gnu"):
@@ -240,7 +240,7 @@ class PremakeToolchain:
             build_folder=Path(self._recipe.folders.build).as_posix(),
             has_recipe_deps=premake_recipe_deps.exists(),
             cppstd=cppstd,
-            cstd=self._recipe.settings.get_safe("compiler.cstd"),
+            cstd=self._recipe.settings.compiler_c_standard,
             shared=self._recipe.options.get_safe("shared"),
             pic=self._recipe.options.get_safe("pic"),
             target_build_os=self._target_build_os(),

@@ -36,8 +36,8 @@ class Recipe(RecipeBase[_Options]):
         if not is_apple_os(self):
             self.options.with_libcomp = False
 
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
         if self.options.with_libcomp:
             self.options.with_zlib = False
 

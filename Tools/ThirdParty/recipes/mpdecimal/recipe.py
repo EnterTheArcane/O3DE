@@ -21,8 +21,8 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self.options.cxx:
-            self.settings.rm_safe("compiler.libcxx")
-            self.settings.rm_safe("compiler.cppstd")
+            self.settings.compiler_libcxx = None
+            self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         if not is_msvc(self) and self.settings_build.os == "Windows":

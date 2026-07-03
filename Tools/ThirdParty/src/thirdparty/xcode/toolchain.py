@@ -36,11 +36,11 @@ class XcodeToolchain:
 
     def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
-        arch = recipe.settings.get_safe("arch")
+        arch = recipe.settings.arch
         self.architecture = to_apple_arch(self._recipe, default=arch)
         self.configuration = recipe.settings.build_type
-        self.libcxx = recipe.settings.get_safe("compiler.libcxx")
-        self.os_version = recipe.settings.get_safe("os.version")
+        self.libcxx = recipe.settings.compiler_libcxx
+        self.os_version = recipe.settings.os_version
         self._global_defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
         self._global_cxxflags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
         self._global_cflags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
@@ -65,7 +65,7 @@ class XcodeToolchain:
 
     @property
     def _apple_deployment_target(self):
-        deployment_target_key = xcodebuild_deployment_target_key(self._recipe.settings.get_safe("os"))
+        deployment_target_key = xcodebuild_deployment_target_key(self._recipe.settings.os)
         return "{}{}={}".format(
             deployment_target_key, _xcconfig_conditional(self._recipe.settings, self.configuration), self.os_version) if deployment_target_key and self.os_version else ""
 

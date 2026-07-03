@@ -19,8 +19,8 @@ class Recipe(RecipeBase[_Options]):
 
     def configure(self):
         if not self.options.compile_as_cpp:
-            self.settings.rm_safe("compiler.libcxx")
-            self.settings.rm_safe("compiler.cppstd")
+            self.settings.compiler_libcxx = None
+            self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires_tool("cmake")

@@ -19,8 +19,8 @@ class Recipe(RecipeBase[_Options]):
     license = "GPL-2.0"
 
     def configure(self):
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         if self._with_nasm:

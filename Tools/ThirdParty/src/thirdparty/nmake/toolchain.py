@@ -41,7 +41,7 @@ class NMakeToolchain:
     def _arch_defines(self) -> list[str]:
         # Recent Windows SDK headers still check these target macros in some
         # NMake/MSVC flows, but vcvarsall doesn't always seed them into CL.
-        arch = self._recipe.settings.get_safe("arch")
+        arch = self._recipe.settings.arch
         return {
             "X86": ["_X86_"],
             "X64": ["_AMD64_"],
@@ -70,7 +70,7 @@ class NMakeToolchain:
         cxxflags.extend(self.extra_cxxflags)
 
         defines = []
-        build_type = self._recipe.settings.get_safe("build_type")
+        build_type = self._recipe.settings.build_type
         if build_type in ["Release", "RelWithDebInfo", "MinSizeRel"]:
             defines.append("NDEBUG")
         defines.extend(self._arch_defines)

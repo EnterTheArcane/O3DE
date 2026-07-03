@@ -28,8 +28,8 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.enable_lib:
             self.options.shared = False
 
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires_tool("meson")

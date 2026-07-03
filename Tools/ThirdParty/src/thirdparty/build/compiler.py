@@ -28,10 +28,10 @@ def check_min_compiler_version(recipe: RecipeBase, compiler_restrictions):
                 ]
                 check_min_compiler_version(self, compiler_restrictions)
     """
-    compiler_value = recipe.settings.get_safe("compiler")
+    compiler_value = recipe.settings.compiler
     if not compiler_value:
         raise RecipeException("Called check_min_compiler_version with no compiler defined")
-    compiler_version = recipe.settings.get_safe("compiler.version")
+    compiler_version = recipe.settings.compiler_version
     if not compiler_version:
         raise RecipeException("Called check_min_compiler_version with no compiler.version defined")
 

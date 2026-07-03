@@ -40,8 +40,8 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Neutrino":
             self.options.with_elf = False
 
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         self.requires("zlib")
@@ -258,7 +258,7 @@ class Recipe(RecipeBase[_Options]):
 def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
     from thirdparty.files import rename
-    if not recipe.settings.get_safe("compiler.runtime"):
+    if not recipe.settings.compiler_runtime:
         return
     libdirs = recipe.info.libdirs
     for libdir in libdirs:

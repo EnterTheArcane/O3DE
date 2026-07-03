@@ -27,8 +27,8 @@ class Recipe(RecipeBase[_Options]):
         # enable libraries by defualt only on Linux, Android
         self.options.enable_libraries = self.settings.os in ("Linux", "Android")
 
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def validate(self):
         from thirdparty.errors import RecipeInvalidConfiguration

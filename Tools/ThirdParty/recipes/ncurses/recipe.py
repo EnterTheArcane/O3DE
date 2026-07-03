@@ -36,8 +36,8 @@ class Recipe(RecipeBase[_Options]):
         self.options.with_tinfo = self.settings.os != "Windows"
 
         if not self.options.with_cxx:
-            self.settings.rm_safe("compiler.libcxx")
-            self.settings.rm_safe("compiler.cppstd")
+            self.settings.compiler_libcxx = None
+            self.settings.compiler_cxx_standard = None
         if not self.options.with_widec:
             self.options.with_extended_colors = False
 
@@ -131,7 +131,7 @@ class Recipe(RecipeBase[_Options]):
         if host:
             tc.configure_args.append(f"ac_cv_host={host}")
             tc.configure_args.append(f"ac_cv_target={host}")
-        if self.settings.compiler == "gcc" and Version(self.settings.compiler.version) >= 15:
+        if self.settings.compiler == "gcc" and Version(self.settings.compiler_version) >= 15:
             # FIXME: Workaround to allow building with with GCC15
             # Upstream has proper but huge patches: https://invisible-island.net/ncurses/NEWS.html#index-t20241207
             tc.extra_cflags.append("-std=gnu17")

@@ -45,7 +45,7 @@ class GnuDepsFlags:
         """
         if not frameworks or not is_apple_os(self._recipe):
             return []
-        compiler = self._recipe.settings.get_safe("compiler")
+        compiler = self._recipe.settings.compiler
         if str(compiler) not in self._GCC_LIKE:
             return []
         if is_path:

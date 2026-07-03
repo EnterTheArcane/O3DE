@@ -11,7 +11,7 @@ from thirdparty.recipe import RecipeBase
 def is_apple_os(recipe: RecipeBase, build_context: bool = False) -> bool:
     """returns True if OS is Apple one (Mac, iOS, tvOS or visionOS)"""
     settings = recipe.settings_build if build_context else recipe.settings
-    return str(settings.get_safe("os")) in ["Mac", "iOS", "tvOS", "visionOS"]
+    return str(settings.os) in ["Mac", "iOS", "tvOS", "visionOS"]
 
 
 def _to_apple_arch(arch: str | None, default: Any = None) -> str | None:
@@ -23,7 +23,7 @@ def _to_apple_arch(arch: str | None, default: Any = None) -> str | None:
 
 def to_apple_arch(recipe: RecipeBase, default: Any = None) -> str | None:
     """converts recipe-style architecture into Apple-style arch"""
-    arch_ = recipe.settings.get_safe("arch")
+    arch_ = recipe.settings.arch
     return _to_apple_arch(arch_, default)
 
 
@@ -46,9 +46,9 @@ def get_apple_sdk_fullname(recipe: RecipeBase) -> str | None:
 
     Note: In case of MacOS it'll be the same for all the architectures.
     """
-    os_ = recipe.settings.get_safe("os")
-    os_sdk = recipe.settings.get_safe("os.sdk")
-    os_sdk_version = recipe.settings.get_safe("os.sdk_version") or ""
+    os_ = recipe.settings.os
+    os_sdk = recipe.settings.os_sdk
+    os_sdk_version = recipe.settings.os_sdk_version or ""
     if os_sdk:
         return f"{os_sdk}{os_sdk_version}"
     elif os_ == "Mac":  # it has only a single value for all the architectures
@@ -59,14 +59,14 @@ def get_apple_sdk_fullname(recipe: RecipeBase) -> str | None:
 
 def apple_min_version_flag(recipe: RecipeBase) -> str:
     """compiler flag name which controls deployment target"""
-    os_ = recipe.settings.get_safe("os")
-    os_sdk = recipe.settings.get_safe("os.sdk")
+    os_ = recipe.settings.os
+    os_sdk = recipe.settings.os_sdk
     os_sdk = os_sdk or ("macosx" if os_ == "Mac" else None)
-    os_version = recipe.settings.get_safe("os.version")
+    os_version = recipe.settings.os_version
     if not os_sdk or not os_version:
         # Legacy behavior
         return ""
-    if recipe.settings.get_safe("os.subsystem") == "catalyst":
+    if recipe.settings.os_subsystem == "catalyst":
         os_sdk = "iphoneos"
     return {
         "macosx": f"-mmacosx-version-min={os_version}",
@@ -130,7 +130,7 @@ class XCRun:
         settings = recipe.settings
 
         if sdk is None and settings:
-            sdk = settings.get_safe("os.sdk")
+            sdk = settings.os_sdk
 
         self._recipe = recipe
         self.settings = settings
@@ -342,7 +342,7 @@ def apple_extra_flags(recipe: RecipeBase) -> list[str]:
         return []
     enable_bitcode = recipe.conf.get("tools.apple:enable_bitcode", check_type=bool)
     enable_visibility = recipe.conf.get("tools.apple:enable_visibility", check_type=bool)
-    is_debug = recipe.settings.get_safe("build_type") == "Debug"
+    is_debug = recipe.settings.build_type == "Debug"
     flags: list[str] = []
     if enable_bitcode:
         if is_debug:

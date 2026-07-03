@@ -65,7 +65,7 @@ class Recipe(RecipeBase[_Options]):
         VirtualBuildEnv(self).generate()
         tc = AutotoolsToolchain(self)
 
-        if is_apple_os(self) and self.settings.get_safe("compiler.libcxx") == "libc++":
+        if is_apple_os(self) and self.settings.compiler_libcxx == "libc++":
             # special case, as gcc/g++ is hard-coded in makefile, it implicitly assumes -lstdc++
             tc.extra_ldflags.append("-stdlib=libc++")
 
@@ -184,10 +184,10 @@ class Recipe(RecipeBase[_Options]):
         compiler = str(self.settings.compiler)
         os_name = str(self.settings.os)
         if str(self.settings.compiler) == "Visual Studio":
-            vc_version = self.settings.compiler.version
+            vc_version = self.settings.compiler_version
             compiler = f"vs{vc_version}"
         elif is_msvc(self):
-            vc_version = str(self.settings.compiler.version)
+            vc_version = str(self.settings.compiler_version)
             vc_version = {"170": "11", "180": "12", "190": "14", "191": "15", "192": "16", "193": "17", "194": "17", "195": "18"}[vc_version]
             compiler = f"vs{vc_version}"
         elif self.settings.compiler in ["gcc", "clang", "apple-clang"]:

@@ -126,7 +126,7 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.shared:
             libcxx = stdcpp_library(self)
             if libcxx:
-                if self.settings.os == "Android" and self.settings.compiler.libcxx == "c++_static":
+                if self.settings.os == "Android" and self.settings.compiler_libcxx == "c++_static":
                     self.info.system_libs.append("c++abi")
                 self.info.system_libs.append(libcxx)
 

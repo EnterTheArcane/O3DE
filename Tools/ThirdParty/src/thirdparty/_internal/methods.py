@@ -7,7 +7,7 @@ def run_configure_method(recipe: RecipeBase):
     initial_requires_count = len(recipe._requires)
 
     # default implementation removes compiler.cstd
-    recipe.settings.rm_safe("compiler.cstd")
+    recipe.settings.compiler_c_standard = None
 
     with recipe_exception_formatter(recipe, "configure"):
         recipe.configure()

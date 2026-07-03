@@ -18,8 +18,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(self.version)
 
     def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         self.requires_tool("cmake")

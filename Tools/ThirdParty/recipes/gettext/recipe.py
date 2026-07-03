@@ -37,8 +37,8 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         self.options.threads = {"Solaris": "solaris", "Windows": "windows"}.get(str(self.settings.os), "posix")
 
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires("libiconv")
@@ -92,8 +92,8 @@ class Recipe(RecipeBase[_Options]):
             if target is not None:
                 tc.configure_args += [f"--host={target}", f"--build={target}"]
 
-            if (str(self.settings.compiler) == "Visual Studio" and Version(self.settings.compiler.version) >= "12") or \
-                    (str(self.settings.compiler) == "msvc" and Version(self.settings.compiler.version) >= "180"):
+            if (str(self.settings.compiler) == "Visual Studio" and Version(self.settings.compiler_version) >= "12") or \
+                    (str(self.settings.compiler) == "msvc" and Version(self.settings.compiler_version) >= "180"):
                 tc.extra_cflags += ["-FS"]
 
             if cross_building(self) or self.settings.arch == "ARM":
@@ -210,7 +210,7 @@ class Recipe(RecipeBase[_Options]):
     def _is_clang_cl(self):
         return self.settings.os == "Windows" \
             and self.settings.compiler == "clang" \
-            and self.settings.compiler.get_safe("runtime")
+            and self.settings.compiler_runtime
 
     @property
     def _gettext_folder(self):
@@ -219,7 +219,7 @@ class Recipe(RecipeBase[_Options]):
 
 def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
     """remove lib prefix & change extension to .lib in case of cl like compiler"""
-    if not recipe.settings.get_safe("compiler.runtime"):
+    if not recipe.settings.compiler_runtime:
         return
     libdirs = recipe.info.libdirs
     for libdir in libdirs:

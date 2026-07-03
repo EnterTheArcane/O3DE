@@ -100,8 +100,8 @@ class Recipe(RecipeBase[_Options]):
             self.options.capieng_dialog = False
             self.options.enable_capieng = False
 
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         if not self.options.no_zlib:
@@ -227,7 +227,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _is_clang_cl(self) -> bool:
-        return self.settings.os == "Windows" and self.settings.compiler == "clang" and self.settings.compiler.get_safe("runtime") # type: ignore
+        return self.settings.os == "Windows" and self.settings.compiler == "clang" and self.settings.compiler_runtime # type: ignore
 
     @property
     def _is_mingw(self):
@@ -239,7 +239,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _target(self):
-        target = f"recipe-{self.settings.build_type}-{self.settings.os}-{self.settings.arch}-{self.settings.compiler}-{self.settings.compiler.version}"
+        target = f"recipe-{self.settings.build_type}-{self.settings.os}-{self.settings.arch}-{self.settings.compiler}-{self.settings.compiler_version}"
         if self._use_nmake:
             target = f"VC-{target}"  # VC- prefix is important as it's checked by Configure
         if self._is_mingw:
@@ -410,7 +410,7 @@ class Recipe(RecipeBase[_Options]):
         ]
 
         if self.settings.os == "Android":
-            args.append(f" -D__ANDROID_API__={str(self.settings.os.api_level)}")  # see NOTES.ANDROID
+            args.append(f" -D__ANDROID_API__={str(self.settings.os_api_level)}")  # see NOTES.ANDROID
         if self.settings.os == "Windows":
             if self.options.enable_capieng:
                 args.append("enable-capieng")

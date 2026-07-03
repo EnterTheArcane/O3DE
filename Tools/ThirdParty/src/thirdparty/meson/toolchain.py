@@ -137,7 +137,7 @@ class MesonToolchain:
         # only converted to Meson file syntax for rendering
         # priority: first user conf, then recipe, last one is default "ninja"
         self.backend = backend or "ninja"
-        build_type = self._recipe.settings.get_safe("build_type")
+        build_type = self._recipe.settings.build_type
         #: Build type to use.
         self.buildtype = {
             "Debug": "debug",  # Note, it is not "'debug'"
@@ -157,15 +157,15 @@ class MesonToolchain:
         #: Default library type, e.g., "shared.
         self.default_library = ("shared" if shared else "static") if shared or static else None
 
-        compiler = self._recipe.settings.get_safe("compiler")
+        compiler = self._recipe.settings.compiler
         if compiler is None:
             raise RecipeException("MesonToolchain needs 'settings.compiler', but it is not defined")
-        compiler_version = self._recipe.settings.get_safe("compiler.version")
+        compiler_version = self._recipe.settings.compiler_version
         if compiler_version is None:
-            raise RecipeException("MesonToolchain needs 'settings.compiler.version', but it is not defined")
+            raise RecipeException("MesonToolchain needs 'settings.compiler_version', but it is not defined")
 
-        cppstd = self._recipe.settings.get_safe("compiler.cppstd")
-        cstd = self._recipe.settings.get_safe("compiler.cstd")
+        cppstd = self._recipe.settings.compiler_cxx_standard
+        cstd = self._recipe.settings.compiler_c_standard
         #: C++ language standard to use. Defined by ``to_cppstd_flag()`` by default.
         self.cpp_std = to_cppstd_flag(self._recipe, compiler, compiler_version, cppstd)
         #: C language standard to use. Defined by ``to_cstd_flag()`` by default.
@@ -220,10 +220,10 @@ class MesonToolchain:
         default_comp = ""
         default_comp_cpp = ""
         if native is False and is_cross_building:
-            os_host = recipe.settings.get_safe("os")
-            arch_host = recipe.settings.get_safe("arch")
-            os_build = recipe.settings_build.get_safe("os")
-            arch_build = recipe.settings_build.get_safe("arch")
+            os_host = recipe.settings.os
+            arch_host = recipe.settings.arch
+            os_build = recipe.settings_build.os
+            arch_build = recipe.settings_build.arch
             self.cross_build["build"] = to_meson_machine(os_build, arch_build)
             self.cross_build["host"] = to_meson_machine(os_host, arch_host)
             # Check subsystem if it's Apple cross-building only. It requires Meson >= 1.2.0,
@@ -231,8 +231,8 @@ class MesonToolchain:
             # See https://mesonbuild.com/Reference-tables.html#subsystem-names-since-120
             # Issue: upstream issue 17873
             if self._is_apple_system and is_apple_os(recipe, build_context=True):
-                sdk_build = recipe.settings_build.get_safe("os.sdk")
-                sdk_host = recipe.settings.get_safe("os.sdk")
+                sdk_build = recipe.settings_build.os_sdk
+                sdk_host = recipe.settings.os_sdk
                 self.cross_build["host"]["subsystem"] = get_apple_subsystem(sdk_host)
                 self.cross_build["build"]["subsystem"] = get_apple_subsystem(sdk_build)
             # Issue: upstream issue 19217
@@ -395,15 +395,15 @@ class MesonToolchain:
                 "You must provide a NDK path. Use 'tools.android:ndk_path' "
                 "configuration field.")
 
-        arch = self._recipe.settings.get_safe("arch")
+        arch = self._recipe.settings.arch
         os_build = self.cross_build["build"]["system"]
         ndk_bin = os.path.join(
             ndk_path, "toolchains", "llvm", "prebuilt", f"{os_build}-x86_64", "bin")
-        android_api_level = self._recipe.settings.get_safe("os.api_level")
+        android_api_level = self._recipe.settings.os_api_level
         android_target = {
             "ARM": "aarch64-linux-android", "X64": "x86_64-linux-android",
         }.get(arch)
-        os_build = self._recipe.settings_build.get_safe("os")
+        os_build = self._recipe.settings_build.os
         compile_ext = ".cmd" if os_build == "Windows" else ""
         # User has more prio than Recipe
         self.c = os.path.join(ndk_bin, f"{android_target}{android_api_level}-clang{compile_ext}")

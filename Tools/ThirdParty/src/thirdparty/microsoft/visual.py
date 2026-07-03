@@ -24,17 +24,17 @@ def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True) -
     :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
     :param version: ``str`` Visual Studio or msvc version number.
     """
-    compiler = recipe.settings.get_safe("compiler")
+    compiler = recipe.settings.compiler
     compiler_version = None
     if compiler == "Visual Studio":
-        compiler_version = recipe.settings.get_safe("compiler.version")
+        compiler_version = recipe.settings.compiler_version
         compiler_version = {
             "17": "193", "16": "192", "15": "191", "14": "190", "12": "180", "11": "170",
         }.get(compiler_version)
     elif compiler == "msvc":
-        compiler_version = recipe.settings.get_safe("compiler.version")
+        compiler_version = recipe.settings.compiler_version
         msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
-        compiler_update = msvc_update or recipe.settings.get_safe("compiler.update")
+        compiler_update = msvc_update or recipe.settings.compiler_update
         if compiler_version and compiler_update is not None:
             compiler_version += f".{compiler_update}"
 
@@ -105,13 +105,13 @@ class VCVars:
         """
         recipe = self._recipe
 
-        os_ = recipe.settings.get_safe("os")
-        build_os_ = recipe.settings_build.get_safe("os")
+        os_ = recipe.settings.os
+        build_os_ = recipe.settings_build.os
 
         if (os_ != "Windows" and os_ != "WindowsStore") or build_os_ != "Windows":
             return
 
-        compiler = recipe.settings.get_safe("compiler")
+        compiler = recipe.settings.compiler
         if compiler not in ("msvc", "clang"):
             return
 
@@ -126,7 +126,7 @@ class VCVars:
         vcvarsarch = _vcvars_arch(recipe)
 
         winsdk_version = recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
-        winsdk_version = winsdk_version or recipe.settings.get_safe("os.version")
+        winsdk_version = winsdk_version or recipe.settings.os_version
         # The vs_install_path is like
         # C:\Program Files (x86)\Microsoft Visual Studio\2019\Community
         # C:\Program Files (x86)\Microsoft Visual Studio\2017\Community
@@ -189,8 +189,8 @@ def vs_ide_version(recipe: RecipeBase) -> str:
     :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
     :return: ``str`` Visual IDE version number.
     """
-    compiler = recipe.settings.get_safe("compiler")
-    compiler_version = recipe.settings.get_safe("compiler.version")
+    compiler = recipe.settings.compiler
+    compiler_version = recipe.settings.compiler_version
     if compiler == "msvc":
         toolset_override = recipe.conf.get("tools.msbuild:vs_version", check_type=str)
         if toolset_override:
@@ -210,7 +210,7 @@ def msvc_runtime_flag(recipe: RecipeBase) -> str:
     :return: ``str`` runtime flag.
     """
     settings = recipe.settings
-    runtime = settings.get_safe("compiler.runtime")
+    runtime = settings.compiler_runtime
     if runtime is not None:
         if runtime == "static":
             runtime = "MT"
@@ -218,7 +218,7 @@ def msvc_runtime_flag(recipe: RecipeBase) -> str:
             runtime = "MD"
         else:
             raise RecipeException("compiler.runtime should be 'static' or 'dynamic'")
-        runtime_type = settings.get_safe("compiler.runtime_type")
+        runtime_type = settings.compiler_runtime_type
         if runtime_type == "Debug":
             runtime = f"{runtime}d"
         return runtime
@@ -276,14 +276,14 @@ def _vcvars_path(version: str, vs_install_path: str | None) -> str:
 
 
 def _vcvars_versions(recipe: RecipeBase) -> list[str]:
-    compiler = recipe.settings.get_safe("compiler")
+    compiler = recipe.settings.compiler
     msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
     if compiler == "clang":
         # The vcvars only needed for LLVM/Clang and VS ClangCL, who define runtime
-        if not recipe.settings.get_safe("compiler.runtime"):
+        if not recipe.settings.compiler_runtime:
             # NMake Makefiles will need vcvars activated, for VS target, defined with runtime
             return None, None
-        toolset_version = recipe.settings.get_safe("compiler.runtime_version")
+        toolset_version = recipe.settings.compiler_runtime_version
         vs_version = {
             "v140": "14", "v141": "15", "v142": "16", "v143": "17", "v144": "17", "v145": "18",
         }.get(toolset_version)
@@ -302,8 +302,8 @@ def _vcvars_versions(recipe: RecipeBase) -> list[str]:
         if int(vs_version) <= 14:
             vcvars_ver = None
         else:
-            compiler_version = str(recipe.settings.compiler.version)
-            compiler_update = msvc_update or recipe.settings.get_safe("compiler.update", "")
+            compiler_version = str(recipe.settings.compiler_version)
+            compiler_update = msvc_update or (recipe.settings.compiler_update or "")
             # The equivalent of compiler 19.26 is toolset 14.26
             vcvars_ver = f"14.{compiler_version[-1]}{compiler_update}"
     return vs_version, vcvars_ver
@@ -348,7 +348,7 @@ def is_msvc(recipe: RecipeBase, build_context: bool = False) -> bool:
         settings = recipe.settings
     else:
         settings = recipe.settings_build
-    return settings.get_safe("compiler") == "msvc"
+    return settings.compiler == "msvc"
 
 
 def is_msvc_static_runtime(recipe: RecipeBase) -> bool:
@@ -374,10 +374,10 @@ def msvs_toolset(recipe: RecipeBase) -> str | None:
     :return: A toolset when compiler.version is valid or compiler.toolset is configured. Otherwise, None.
     """
     settings = recipe.settings
-    compiler = settings.get_safe("compiler")
-    compiler_version = settings.get_safe("compiler.version")
+    compiler = settings.compiler
+    compiler_version = settings.compiler_version
     if compiler == "msvc":
-        subs_toolset = settings.get_safe("compiler.toolset")
+        subs_toolset = settings.compiler_toolset
         if subs_toolset:
             return subs_toolset
         return msvc_version_to_toolset_version(compiler_version)

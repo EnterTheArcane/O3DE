@@ -40,7 +40,7 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["BUILD_GMOCK"] = True
         tc.variables["gtest_hide_internal_symbols"] = False
 
-        if self.settings.compiler.get_safe("runtime"):
+        if self.settings.compiler_runtime:
             tc.variables["gtest_force_shared_crt"] = "MD" in msvc_runtime_flag(self)
         tc.variables["gtest_disable_pthreads"] = False
         tc.generate()
@@ -69,7 +69,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.info.components["libgtest"].system_libs.append("m")
             self.info.components["libgtest"].system_libs.append("pthread")
-        if self.settings.os == "Neutrino" and self.settings.os.version == "7.1":
+        if self.settings.os == "Neutrino" and self.settings.os_version == "7.1":
             self.info.components["libgtest"].system_libs.append("regex")
         if self.options.shared:
             self.info.components["libgtest"].defines.append("GTEST_LINKED_AS_SHARED_LIBRARY=1")

@@ -31,8 +31,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(tag.removeprefix("core-").replace("-", "."))
 
     def configure(self):
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires(f"tcl")
@@ -144,7 +144,7 @@ class Recipe(RecipeBase[_Options]):
             tk_suffix = "t{}{}{}".format(
                 "" if self.options.shared else "s",
                 "g" if self.settings.build_type == "Debug" else "",
-                "x" if ("dynamic" in str(self.settings.compiler.runtime) or "MD" in str(self.settings.compiler.runtime)) and not self.options.shared else "",
+                "x" if ("dynamic" in str(self.settings.compiler_runtime) or "MD" in str(self.settings.compiler_runtime)) and not self.options.shared else "",
             )
         else:
             tk_suffix = ""
@@ -209,11 +209,11 @@ class Recipe(RecipeBase[_Options]):
             opts.append("static")
         if self.settings.build_type == "Debug":
             opts.append("symbols")
-        if "dynamic" in str(self.settings.compiler.runtime) or "MD" in str(self.settings.compiler.runtime):
+        if "dynamic" in str(self.settings.compiler_runtime) or "MD" in str(self.settings.compiler_runtime):
             opts.append("msvcrt")
         else:
             opts.append("nomsvcrt")
-        if "d" not in str(self.settings.compiler.runtime):
+        if "d" not in str(self.settings.compiler_runtime):
             opts.append("unchecked")
         # https://core.tcl.tk/tk/tktview?name=3d34589aa0
         # https://wiki.tcl-lang.org/page/Building+with+Visual+Studio+2017

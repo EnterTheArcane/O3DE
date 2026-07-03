@@ -516,7 +516,7 @@ class Recipe(RecipeBase[_Options]):
         if is_msvc(self) and "MT" in msvc_runtime_flag(self):
             tc.variables["FEATURE_static_runtime"] = "ON"
 
-        tc.variables["FEATURE_optimize_size"] = ("ON" if self.settings.get_safe("build_type") == "MinSizeRel" else "OFF")
+        tc.variables["FEATURE_optimize_size"] = ("ON" if self.settings.build_type == "MinSizeRel" else "OFF")
 
         for module in _MODULE_DEPENDS:
             tc.variables[f"BUILD_{module}"] = ("ON" if self.options.get_safe(module) else "OFF")
@@ -613,7 +613,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Mac":
             tc.variables["FEATURE_framework"] = "OFF"
         elif self.settings.os == "Android":
-            tc.variables["CMAKE_ANDROID_NATIVE_API_LEVEL"] = self.settings.os.api_level
+            tc.variables["CMAKE_ANDROID_NATIVE_API_LEVEL"] = self.settings.os_api_level
             tc.variables["ANDROID_ABI"] = {
                 "ARM": "arm64-v8a",
                 "X64": "x86_64",
@@ -629,7 +629,7 @@ class Recipe(RecipeBase[_Options]):
             if xplatform_val:
                 tc.variables["QT_QMAKE_TARGET_MKSPEC"] = xplatform_val
             else:
-                self.output.warning(f"host not supported: {self.settings.os} {self.settings.compiler} {self.settings.compiler.version} {self.settings.arch}")
+                self.output.warning(f"host not supported: {self.settings.os} {self.settings.compiler} {self.settings.compiler_version} {self.settings.arch}")
         if self.options.cross_compile:
             tc.variables["QT_QMAKE_DEVICE_OPTIONS"] = f"CROSS_COMPILE={self.options.cross_compile}"
         if cross_building(self):
@@ -641,14 +641,14 @@ class Recipe(RecipeBase[_Options]):
             tc.cache_variables["QT_FORCE_BUILD_TOOLS"] = True
 
         tc.variables["FEATURE_pkg_config"] = "ON"
-        if self.settings.compiler == "gcc" and self.settings.get_safe("build_type") == "Debug" and not self.options.shared:
+        if self.settings.compiler == "gcc" and self.settings.build_type == "Debug" and not self.options.shared:
             tc.variables["BUILD_WITH_PCH"] = "OFF"  # disabling PCH to save disk space
 
             # "set(QT_EXTRA_INCLUDEPATHS ${RECIPE_INCLUDE_DIRS})\n"
             # "set(QT_EXTRA_DEFINES ${RECIPE_DEFINES})\n"
             # "set(QT_EXTRA_LIBDIRS ${RECIPE_LIB_DIRS})\n"
 
-        current_cpp_std = self.settings.get_safe("compiler.cppstd", default_cppstd(self))
+        current_cpp_std = (self.settings.compiler_cxx_standard or default_cppstd(self))
         current_cpp_std = str(current_cpp_std).replace("gnu", "")
         cpp_std_map = {
             11: "FEATURE_cxx11",
@@ -902,7 +902,7 @@ class Recipe(RecipeBase[_Options]):
             build_modules[component].append(module)
 
         libsuffix = ""
-        if self.settings.get_safe("build_type") == "Debug":
+        if self.settings.build_type == "Debug":
             if is_msvc(self):
                 libsuffix = "d"
             if is_apple_os(self):
@@ -1561,7 +1561,7 @@ class Recipe(RecipeBase[_Options]):
                 return {"ARM": "linux-aarch64-gnu-g++"}.get(str(self.settings.arch), "linux-g++")
             if self.settings.compiler == "clang":
                 if self.settings.arch == "X64":
-                    return "linux-clang-libc++" if self.settings.compiler.libcxx == "libc++" else "linux-clang"
+                    return "linux-clang-libc++" if self.settings.compiler_libcxx == "libc++" else "linux-clang"
 
         elif self.settings.os == "Mac":
             return {
@@ -1593,13 +1593,13 @@ class Recipe(RecipeBase[_Options]):
         elif self.settings.os == "WindowsStore":
             if is_msvc(self):
                 if self.settings.compiler == "Visual Studio":
-                    msvc_version = str(self.settings.compiler.version)
+                    msvc_version = str(self.settings.compiler_version)
                 else:
                     msvc_version = {
                         "190": "14",
                         "191": "15",
                         "192": "16",
-                    }.get(str(self.settings.compiler.version), "")
+                    }.get(str(self.settings.compiler_version), "")
                 return {
                     "14": {
                         "armv7": "winrt-arm-msvc2015",
@@ -1627,9 +1627,9 @@ class Recipe(RecipeBase[_Options]):
         elif self.settings.os == "SunOS":
             if self.settings.compiler == "sun-cc":
                 if self.settings.arch == "sparc":
-                    return "solaris-cc-stlport" if self.settings.compiler.libcxx == "libstlport" else "solaris-cc"
+                    return "solaris-cc-stlport" if self.settings.compiler_libcxx == "libstlport" else "solaris-cc"
                 if self.settings.arch == "sparcv9":
-                    return "solaris-cc64-stlport" if self.settings.compiler.libcxx == "libstlport" else "solaris-cc64"
+                    return "solaris-cc64-stlport" if self.settings.compiler_libcxx == "libstlport" else "solaris-cc64"
             elif self.settings.compiler == "gcc":
                 return {
                     "sparc": "solaris-g++",

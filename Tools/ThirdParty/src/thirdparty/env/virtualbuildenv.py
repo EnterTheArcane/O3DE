@@ -19,12 +19,12 @@ class VirtualBuildEnv:
     def _filename(self):
         if not self.configuration:
             # TODO: Make this use the settings_build
-            configuration = self._recipe.settings.get_safe("build_type")
+            configuration = self._recipe.settings.build_type
             configuration = configuration.lower() if configuration else None
         else:
             configuration = self.configuration
         if not self.arch:
-            arch = self._recipe.settings.get_safe("arch")
+            arch = self._recipe.settings.arch
             arch = arch.lower() if arch else None
         else:
             arch = self.arch
@@ -62,7 +62,7 @@ class VirtualBuildEnv:
                 self._buildenv.compose_env(build_dep.info.runenv)
             # Then the implicit
             if require.run:
-                os_name = self._recipe.settings_build.get_safe("os")
+                os_name = self._recipe.settings_build.os
                 self._buildenv.compose_env(runenv_from_cpp_info(build_dep, os_name))
 
         # Requires in host context can also bring some direct buildenv

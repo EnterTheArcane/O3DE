@@ -666,8 +666,8 @@ class EnvVars:
             self.save_sh(path)
 
         if self._recipe.conf.get("tools.env:dotenv", check_type=bool):
-            bt = self._recipe.settings.get_safe("build_type")
-            arch = self._recipe.settings.get_safe("arch")
+            bt = self._recipe.settings.build_type
+            arch = self._recipe.settings.arch
             name = name.replace(bt.lower(), bt) if bt else name
             name = name.replace(arch.lower(), arch) if arch else name
             Output().warning(

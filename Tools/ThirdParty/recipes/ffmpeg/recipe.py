@@ -123,8 +123,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("n"))
 
     def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
         if self.settings.os == "Windows":
             if is_msvc(self) and self.settings.arch == "ARM":

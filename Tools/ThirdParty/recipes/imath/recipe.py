@@ -36,7 +36,7 @@ class Recipe(RecipeBase[_Options]):
     def generate(self):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_TESTING"] = False
-        if is_msvc(self) and self.settings.compiler.get_safe("cppstd"):
+        if is_msvc(self) and self.settings.compiler_cxx_standard:
             # when msvc is working with a C++ standard level higher
             # than the default, we need the __cplusplus macro to be correct
             tc.variables["CMAKE_CXX_FLAGS"] = "/Zc:__cplusplus"

@@ -37,8 +37,8 @@ class Recipe(RecipeBase[_Options]):
         if not self._has_vsx_support:
             self.options.vsx = False
 
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires_tool("cmake")
@@ -113,7 +113,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _is_clang_cl(self):
         return self.settings.os == "Windows" and self.settings.compiler == "clang" and \
-            self.settings.compiler.get_safe("runtime")
+            self.settings.compiler_runtime
 
     @property
     def _has_neon_support(self):

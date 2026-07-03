@@ -25,8 +25,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("bzip2-"))
 
     def configure(self):
-        self.settings.compiler.rm_safe("libcxx")
-        self.settings.compiler.rm_safe("cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires_tool("cmake")

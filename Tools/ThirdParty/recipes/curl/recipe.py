@@ -73,8 +73,8 @@ class Recipe(RecipeBase[_Options]):
         if not is_apple_os(self):
             self.options.with_apple_sectrust = False
 
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         if self.options.with_ssl == "openssl":

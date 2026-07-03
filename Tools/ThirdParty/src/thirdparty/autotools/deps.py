@@ -63,7 +63,7 @@ class AutotoolsDeps:
             ldflags.extend(flags.lib_paths)
 
             # set the rpath in Macos so that the library are found in the configure step
-            if self._recipe.settings.get_safe("os") == "Mac":
+            if self._recipe.settings.os == "Mac":
                 ldflags.extend(self._rpaths_flags())
 
             # libs

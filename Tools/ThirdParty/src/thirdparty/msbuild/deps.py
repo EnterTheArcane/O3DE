@@ -449,7 +449,7 @@ class MSBuildDeps:
         return result
 
     def _content(self) -> dict[str, str]:
-        if not self._recipe.settings.get_safe("build_type"):
+        if not self._recipe.settings.build_type:
             raise RecipeException("The 'msbuild' generator requires a 'build_type' setting value")
         result = {}
 

@@ -24,9 +24,9 @@ class Recipe(RecipeBase):
         return max(versions) if versions else None
 
     def configure(self):
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.cstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_c_standard = None
         if self.settings_build.os == "Windows":
             self.win_bash = True
             self.conf.define("tools.gnu:disable_flags", ["build_type"])

@@ -15,12 +15,12 @@ class XcodeBuild:
 
     def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
-        self._build_type = recipe.settings.get_safe("build_type")
+        self._build_type = recipe.settings.build_type
         self._arch = to_apple_arch(self._recipe)
-        self._sdk = recipe.settings.get_safe("os.sdk") or ""
-        self._sdk_version = recipe.settings.get_safe("os.sdk_version") or ""
-        self._os = recipe.settings.get_safe("os")
-        self._os_version = recipe.settings.get_safe("os.version")
+        self._sdk = recipe.settings.os_sdk or ""
+        self._sdk_version = recipe.settings.os_sdk_version or ""
+        self._os = recipe.settings.os
+        self._os_version = recipe.settings.os_version
 
     @property
     def _verbosity(self) -> str:

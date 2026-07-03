@@ -340,7 +340,7 @@ class CMake:
             return
 
         arg_list = []
-        bt = self._recipe.settings.get_safe("build_type")
+        bt = self._recipe.settings.build_type
         is_multi = is_multi_configuration(self._generator)
         if bt and is_multi:
             arg_list.append(f"--build-config {bt}")

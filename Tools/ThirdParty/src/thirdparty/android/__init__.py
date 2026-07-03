@@ -24,7 +24,7 @@ def android_abi(recipe: RecipeBase, context: str = "host"):
             raise RecipeException(f"settings_{context} not declared in recipe")
     if settings is None:
         raise RecipeException(f"settings_{context}=None in recipe")
-    arch = settings.get_safe("arch")
+    arch = settings.arch
     # https://cmake.org/cmake/help/latest/variable/CMAKE_ANDROID_ARCH_ABI.html
     return {
         "ARM": "arm64-v8a", "X64": "x86_64",

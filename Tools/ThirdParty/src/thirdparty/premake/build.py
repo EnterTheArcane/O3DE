@@ -52,7 +52,7 @@ class Premake:
         self.arguments = {}  # https://premake.github.io/docs/Command-Line-Arguments/
 
         if "msvc" in self._recipe.settings.compiler:
-            msvc_version = PREMAKE_VS_VERSION.get(str(self._recipe.settings.compiler.version))
+            msvc_version = PREMAKE_VS_VERSION.get(str(self._recipe.settings.compiler_version))
             self.action = f"vs{msvc_version}"
         else:
             self.action = "gmake"  # New generator (old gmakelegacy is deprecated)

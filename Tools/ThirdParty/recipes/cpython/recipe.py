@@ -45,8 +45,8 @@ class Recipe(RecipeBase[_Options]):
             self.options.with_curses = False
             self.options.with_gdbm = False
 
-        self.settings.compiler.rm_safe("libcxx")
-        self.settings.compiler.rm_safe("cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
         if not self._supports_modules:
             self.options.with_bz2 = False

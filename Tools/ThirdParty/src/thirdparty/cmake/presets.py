@@ -124,7 +124,7 @@ class _CMakePresets:
     @staticmethod
     def _configure_preset(
         recipe: RecipeBase, generator: Any, cache_variables: Any, toolchain_file: Any, multiconfig: bool, preset_prefix: Any, buildenv: Any, cmake_executable: Any) -> dict[str, Any]:
-        build_type = recipe.settings.get_safe("build_type")
+        build_type = recipe.settings.build_type
         name = _CMakePresets._configure_preset_name(recipe, multiconfig)
         if preset_prefix:
             name = f"{preset_prefix}-{name}"
@@ -161,7 +161,7 @@ class _CMakePresets:
         # for cmake-tools to activate environment. Similar to CompilersBlock
         # Only for cl/clang-cl, other compilers such clang can be breaking (Android)
         compilers_by_conf = recipe.conf.get("tools.build:compiler_executables", default={})
-        compiler = recipe.settings.get_safe("compiler")
+        compiler = recipe.settings.compiler
         default_cl = "cl" if compiler == "msvc" and "Ninja" in str(generator) else None
         for lang in ("c", "cpp"):
             comp = compilers_by_conf.get(lang, default_cl)
@@ -196,7 +196,7 @@ class _CMakePresets:
 
     @staticmethod
     def _common_preset_fields(recipe: RecipeBase, multiconfig: bool, preset_prefix: Any) -> dict[str, Any]:
-        build_type = recipe.settings.get_safe("build_type")
+        build_type = recipe.settings.build_type
         configure_preset_name = _CMakePresets._configure_preset_name(recipe, multiconfig)
         build_preset_name = _CMakePresets._build_and_test_preset_name(recipe)
         if preset_prefix:
@@ -231,12 +231,12 @@ class _CMakePresets:
 
     @staticmethod
     def _build_and_test_preset_name(recipe: RecipeBase) -> str:
-        build_type = recipe.settings.get_safe("build_type")
+        build_type = recipe.settings.build_type
         return build_type.lower() if build_type else "default"
 
     @staticmethod
     def _configure_preset_name(recipe: RecipeBase, multiconfig: bool) -> str:
-        build_type = recipe.settings.get_safe("build_type")
+        build_type = recipe.settings.build_type
         if multiconfig or not build_type:
             return "default"
         return str(build_type).lower()

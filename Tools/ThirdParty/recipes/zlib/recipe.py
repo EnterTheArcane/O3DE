@@ -20,8 +20,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         self.requires_tool("cmake")
@@ -61,7 +61,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_target_name", "ZLIB::ZLIB")
         self.info.set_property("pkg_config_name", "zlib")
 
-        if self.settings.os == "Windows" and self.settings.get_safe("compiler.runtime"):
+        if self.settings.os == "Windows" and self.settings.compiler_runtime:
             # The recipe patches the CMakeLists.txt to generate different filenames when CMake
             # detects MINGW (clang, gcc with compiler.runtime undefined and compiler.libcxx defined)
             libname = "zdll" if self.options.shared else "zlib"

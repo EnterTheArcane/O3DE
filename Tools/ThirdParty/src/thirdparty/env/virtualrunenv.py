@@ -37,10 +37,10 @@ class VirtualRunEnv:
         self._runenv = None
         self._recipe = recipe
         self.basename = "runenv"
-        self.configuration = recipe.settings.get_safe("build_type")
+        self.configuration = recipe.settings.build_type
         if self.configuration:
             self.configuration = self.configuration.lower()
-        self.arch = recipe.settings.get_safe("arch")
+        self.arch = recipe.settings.arch
         if self.arch:
             self.arch = self.arch.lower()
 
@@ -74,7 +74,7 @@ class VirtualRunEnv:
             if dep.info.runenv:
                 self._runenv.compose_env(dep.info.runenv)
             if require.run:  # Only if the require is run (shared or application to be run)
-                _os = self._recipe.settings.get_safe("os")
+                _os = self._recipe.settings.os
                 self._runenv.compose_env(runenv_from_cpp_info(dep, _os))
 
         return self._runenv

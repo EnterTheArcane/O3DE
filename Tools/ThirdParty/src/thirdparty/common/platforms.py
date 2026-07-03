@@ -13,3 +13,8 @@ class Os(StrEnum):
     MAC = "Mac"
     TVOS = "tvOS"
     WINDOWS = "Windows"
+
+class BuildType(StrEnum):
+    DEBUG = "Debug"
+    PROFILE = "Profile"
+    RELEASE = "Release"

@@ -26,14 +26,14 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             self.requires_tool("msys2")
-        if self.settings_build.os == "Windows" and self.settings.get_safe("compiler.runtime"):
+        if self.settings_build.os == "Windows" and self.settings.compiler_runtime:
             self.requires_tool("automake")
 
     def source(self):
@@ -69,7 +69,7 @@ class Recipe(RecipeBase[_Options]):
             tc.extra_defines.append("FFI_STATIC_BUILD")
 
         env = tc.environment()
-        if self.settings_build.os == "Windows" and self.settings.get_safe("compiler.runtime"):
+        if self.settings_build.os == "Windows" and self.settings.compiler_runtime:
 
             if is_msvc(self) and check_min_vs(self, "180", raise_invalid=False):
                 # upstream issue 6514

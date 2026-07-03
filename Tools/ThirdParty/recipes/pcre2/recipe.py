@@ -32,8 +32,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("pcre2-"))
 
     def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
         if not self.options.build_pcre2grep:
             self.options.with_zlib = False
             self.options.with_bzip2 = False

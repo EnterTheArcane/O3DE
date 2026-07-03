@@ -29,8 +29,8 @@ class Recipe(RecipeBase[_Options]):
             self.options.enable_simd = False
         
         # Android needs an API level; default it when the profile didn't supply one.
-        if self.settings.os == "Android" and not self.settings.get_safe("os.api_level"):
-            self.settings.os.api_level = 24
+        if self.settings.os == "Android" and not self.settings.os_api_level:
+            self.settings.os_api_level = 24
         
         # GPU acceleration only builds on Windows/Linux x64 and Linux aarch64 (PhysX disables CUDA
         # everywhere else). Silently fall back to CPU-only so a single cross-platform profile works.

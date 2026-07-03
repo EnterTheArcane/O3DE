@@ -25,8 +25,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_tag("v").removeprefix("v"))
 
     def configure(self):
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def validate(self):
         from thirdparty.errors import RecipeInvalidConfiguration

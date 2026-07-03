@@ -30,8 +30,8 @@ class Recipe(RecipeBase[_Options]):
         is_ios_variant = is_apple_os(self) and not self.settings.os == "Mac"
         self.options.md2html = not is_ios_variant
 
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         self.requires_tool("cmake")

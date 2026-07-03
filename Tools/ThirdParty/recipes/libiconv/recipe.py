@@ -34,8 +34,8 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release)
 
     def configure(self):
-        self.settings.rm_safe("compiler.libcxx")
-        self.settings.rm_safe("compiler.cppstd")
+        self.settings.compiler_libcxx = None
+        self.settings.compiler_cxx_standard = None
 
     def requirements(self):
         if self.settings_build.os == "Windows":
@@ -117,7 +117,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _is_clang_cl(self):
         return self.settings.compiler == "clang" and self.settings.os == "Windows" and \
-            self.settings.compiler.get_safe("runtime")
+            self.settings.compiler_runtime
 
     @property
     def _msvc_tools(self):

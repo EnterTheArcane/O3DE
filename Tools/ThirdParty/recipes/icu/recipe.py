@@ -55,7 +55,7 @@ class Recipe(RecipeBase[_Options]):
         if check_min_vs(self, "180", raise_invalid=False):
             tc.extra_cflags.append("-FS")
             tc.extra_cxxflags.append("-FS")
-        if not self.settings.compiler.cppstd and is_msvc(self):
+        if not self.settings.compiler_cxx_standard and is_msvc(self):
             tc.extra_cxxflags.append(f"-std:c++17")
         if not self.options.shared:
             tc.extra_defines.append("U_STATIC_IMPLEMENTATION")
@@ -265,7 +265,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _data_filename(self):
         vtag = Version(self.version).major
-        arch = self.settings.get_safe("arch")
+        arch = self.settings.arch
         suffix = "b" if arch in {
             "ppc32", "ppc64",
             "sparc", "sparcv9",

@@ -25,8 +25,8 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.arch not in ("X64",):
             self.options.assembly = False
 
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
     def requirements(self):
         self.requires_tool("cmake")

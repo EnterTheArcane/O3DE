@@ -34,8 +34,8 @@ class Recipe(RecipeBase[_Options]):
         self.options.enable12bit = False
         self.options.mem_src_dst = False
 
-        self.settings.rm_safe("compiler.cppstd")
-        self.settings.rm_safe("compiler.libcxx")
+        self.settings.compiler_cxx_standard = None
+        self.settings.compiler_libcxx = None
 
         if self.options.enable12bit:
             self.options.java = False

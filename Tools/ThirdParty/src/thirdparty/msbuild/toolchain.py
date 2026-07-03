@@ -76,8 +76,8 @@ class MSBuildToolchain:
         #: The runtime flag. By default, it'll be based on the `compiler.runtime` setting.
         self.runtime_library = self._runtime_library()
         #: cppstd value. By default, ``compiler.cppstd`` one.
-        self.cppstd = recipe.settings.get_safe("compiler.cppstd")
-        self.cstd = recipe.settings.get_safe("compiler.cstd")
+        self.cppstd = recipe.settings.compiler_cxx_standard
+        self.cstd = recipe.settings.compiler_c_standard
         #: VS IDE Toolset, e.g., ``"v140"``. If ``compiler=msvc``, you can use ``compiler.toolset``
         #: setting, else, it'll be based on ``msvc`` version.
         self.toolset = msvs_toolset(recipe)
@@ -85,7 +85,7 @@ class MSBuildToolchain:
         self.toolset_version_full_path = _get_toolset_props(recipe)
 
     def _name_condition(self, settings):
-        platform = msvc_platform_from_arch(settings.get_safe("arch"))
+        platform = msvc_platform_from_arch(settings.arch)
         props = [
             ("Configuration", self.configuration), ("Platform", platform),
         ]
@@ -144,7 +144,7 @@ class MSBuildToolchain:
             f"\n      <{k}>{v}</{k}>" for k, v in self.compile_options.items())
 
         winsdk_version = self._recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
-        winsdk_version = winsdk_version or self._recipe.settings.get_safe("os.version")
+        winsdk_version = winsdk_version or self._recipe.settings.os_version
 
         return {
             "defines": defines,
@@ -227,7 +227,7 @@ class MSBuildToolchain:
 
 def _get_toolset_props(recipe: RecipeBase):
     msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
-    compiler_update = msvc_update or recipe.settings.get_safe("compiler.update")
+    compiler_update = msvc_update or recipe.settings.compiler_update
     if compiler_update is None:
         return
 
@@ -241,7 +241,7 @@ def _get_toolset_props(recipe: RecipeBase):
 
     basebuild = os.path.normpath(os.path.join(vs_path, "VC/Auxiliary/Build"))
     # The equivalent of compiler 19.26 is toolset 14.26
-    compiler_version = str(recipe.settings.compiler.version)
+    compiler_version = str(recipe.settings.compiler_version)
     vcvars_ver = f"14.{compiler_version[-1]}{compiler_update}"
     for folder in os.listdir(basebuild):
         if not os.path.isdir(os.path.join(basebuild, folder)):

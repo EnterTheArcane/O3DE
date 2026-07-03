@@ -24,10 +24,10 @@ def _format_name(name: str) -> str:
 
 
 def _xcconfig_settings_filename(settings: Any, configuration: Any) -> str:
-    arch = settings.get_safe("arch")
+    arch = settings.arch
     architecture = _to_apple_arch(arch) or arch
     props = [
-        ("configuration", configuration), ("architecture", architecture), ("sdk name", settings.get_safe("os.sdk")), ("sdk version", settings.get_safe("os.sdk_version")),
+        ("configuration", configuration), ("architecture", architecture), ("sdk name", settings.os_sdk), ("sdk version", settings.os_sdk_version),
     ]
     name = "".join(f"_{v}" for _, v in props if v is not None and v)
     return _format_name(name)
@@ -35,11 +35,11 @@ def _xcconfig_settings_filename(settings: Any, configuration: Any) -> str:
 
 def _xcconfig_conditional(settings: Any, configuration: Any) -> str:
     sdk_condition = "*"
-    arch = settings.get_safe("arch")
+    arch = settings.arch
     architecture = _to_apple_arch(arch) or arch
-    sdk = settings.get_safe("os.sdk") if settings.get_safe("os") != "Mac" else "macosx"
+    sdk = settings.os_sdk if settings.os != "Mac" else "macosx"
     if sdk:
-        sdk_condition = "{}{}".format(sdk, settings.get_safe("os.sdk_version") or "*")
+        sdk_condition = "{}{}".format(sdk, settings.os_sdk_version or "*")
 
     return f"[config={configuration}][arch={architecture}][sdk={sdk_condition}]"
 
@@ -109,12 +109,12 @@ class XcodeDeps:
 
     def __init__(self, recipe: RecipeBase):
         self._recipe = recipe
-        self.configuration = recipe.settings.get_safe("build_type")
-        arch = recipe.settings.get_safe("arch")
+        self.configuration = recipe.settings.build_type
+        arch = recipe.settings.arch
         self.architecture = _to_apple_arch(arch, default=arch)
-        self.os_version = recipe.settings.get_safe("os.version")
-        self.sdk = recipe.settings.get_safe("os.sdk")
-        self.sdk_version = recipe.settings.get_safe("os.sdk_version")
+        self.os_version = recipe.settings.os_version
+        self.sdk = recipe.settings.os_sdk
+        self.sdk_version = recipe.settings.os_sdk_version
 
     def generate(self):
         if self.configuration is None:
