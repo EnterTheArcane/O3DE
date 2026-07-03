@@ -5,8 +5,10 @@ from thirdparty._internal.graph import CONTEXT_BUILD, CONTEXT_HOST
 from thirdparty._internal.loader import make_probe_recipe
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.recipe import RecipeBase, RecipeState
+from thirdparty._internal.model.info import Info
+from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty._internal.model.settings import Settings
+from thirdparty._internal.model.state import RecipeState
 
 
 class Recipe(RecipeBase):
@@ -22,6 +24,7 @@ def make_state(
     settings: Settings | None = None,
     settings_build: Settings | None = None,
     conf: Conf | None = None,
+    info: Info | None = None,
 ) -> RecipeState:
     settings = settings if settings is not None else Settings("X64", "Release", "Mac")
     return RecipeState(
@@ -30,6 +33,7 @@ def make_state(
         settings=settings,
         settings_build=settings_build if settings_build is not None else settings,
         conf=conf if conf is not None else Conf(),
+        info=info if info is not None else Info(set_defaults=True),
     )
 
 
@@ -42,6 +46,7 @@ class RecipeStateTest(unittest.TestCase):
         self.assertIsInstance(recipe.settings, Settings)
         self.assertIsInstance(recipe.settings_build, Settings)
         self.assertIsInstance(recipe.conf, Conf)
+        self.assertIsInstance(recipe.info, Info)
         self.assertEqual(recipe.context, CONTEXT_HOST)
         self.assertFalse(recipe.is_build_context)
 
@@ -61,17 +66,19 @@ class RecipeStateTest(unittest.TestCase):
         self.assertEqual(recipe.context, CONTEXT_BUILD)
         self.assertTrue(recipe.is_build_context)
 
-    def test_settings_and_conf_are_read_only_state_facades(self):
+    def test_mutable_state_is_exposed_as_read_only_facades(self):
         recipe = Recipe()
         settings = Settings("X64", "Release", "Mac")
         settings_build = Settings("ARM", "Debug", "Windows")
         conf = Conf()
+        info = Info(set_defaults=True)
 
-        recipe._state = make_state(settings=settings, settings_build=settings_build, conf=conf)
+        recipe._state = make_state(settings=settings, settings_build=settings_build, conf=conf, info=info)
 
         self.assertIs(recipe.settings, settings)
         self.assertIs(recipe.settings_build, settings_build)
         self.assertIs(recipe.conf, conf)
+        self.assertIs(recipe.info, info)
 
         with self.assertRaises(AttributeError):
             recipe.settings = settings
@@ -79,6 +86,8 @@ class RecipeStateTest(unittest.TestCase):
             recipe.settings_build = settings_build
         with self.assertRaises(AttributeError):
             recipe.conf = conf
+        with self.assertRaises(AttributeError):
+            recipe.info = info
 
     def test_recipe_does_not_receive_graph_node_back_reference(self):
         recipe = Recipe()
@@ -95,6 +104,7 @@ class RecipeStateTest(unittest.TestCase):
         self.assertIsInstance(recipe.settings, Settings)
         self.assertIsInstance(recipe.settings_build, Settings)
         self.assertIsInstance(recipe.conf, Conf)
+        self.assertIsInstance(recipe.info, Info)
 
     @staticmethod
     def _recipes_root():

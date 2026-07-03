@@ -2,7 +2,6 @@ import os
 import subprocess
 from abc import ABC
 from collections import OrderedDict
-from dataclasses import dataclass, field
 from typing import (
     IO, Any, Generic, TypeVar, cast,
 )
@@ -16,6 +15,7 @@ from thirdparty._internal.model.options import Options
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
 from thirdparty._internal.model.settings import Settings
+from thirdparty._internal.model.state import RecipeState
 from thirdparty._internal.model.version import Version
 from thirdparty._internal.output import Output, Color, LEVEL_QUIET
 from thirdparty._internal.subsystems import command_env_wrapper
@@ -28,15 +28,6 @@ TOptions = TypeVar("TOptions", default=Any)
 __all__ = ["RecipeBase", "RecipeState"]
 
 
-@dataclass
-class RecipeState:
-    dependencies: RecipeDependencies
-    build_context: bool
-    settings: Settings
-    settings_build: Settings
-    conf: Conf
-
-
 class RecipeBase(ABC, Generic[TOptions]):
     name: str
     version: str
@@ -47,7 +38,6 @@ class RecipeBase(ABC, Generic[TOptions]):
     win_bash: bool | None = None
 
     folders: Folders
-    info: Info
 
     _state: RecipeState
 
@@ -64,7 +54,6 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     def __init__(self):
         self.folders = Folders()
-        self.info = Info(set_defaults=True)
 
         self._requires: list[Requirement] = []
 
@@ -75,7 +64,8 @@ class RecipeBase(ABC, Generic[TOptions]):
             build_context=False,
             settings=settings,
             settings_build=settings,
-            conf=Conf())
+            conf=Conf(),
+            info=Info(set_defaults=True))
         self.env_scripts = {}  # Accumulate the env scripts generated in order
 
     def requires(self, ref: str, *, headers: bool = True, libs: bool = True, run: bool = False) -> None:
@@ -106,6 +96,10 @@ class RecipeBase(ABC, Generic[TOptions]):
     @property
     def conf(self) -> Conf:
         return self._state.conf
+
+    @property
+    def info(self) -> Info:
+        return self._state.info
 
     @property
     def context(self) -> str:

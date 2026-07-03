@@ -13,9 +13,11 @@ from thirdparty._internal.loader import (
     make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.recipe import RecipeBase, RecipeState
+from thirdparty._internal.model.info import Info
+from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty._internal.model.refs import RecipeReference
 from thirdparty._internal.model.requires import Requirement
+from thirdparty._internal.model.state import RecipeState
 from thirdparty._internal.util.detect import detect_settings, make_conf, detect_platform_tag
 from thirdparty._internal.util.files import rmdir as _rmdir
 from thirdparty.env.environment import generate_aggregated_env
@@ -244,7 +246,8 @@ def _build_dep_graph(
             build_context=is_build,
             settings=dep_settings,
             settings_build=dep_settings_build,
-            conf=conf)
+            conf=conf,
+            info=Info(set_defaults=True))
 
         # Full config phase (configure + auto-fPIC + package-type +
         # requirements); populates dep.requires for the sub-graph below.

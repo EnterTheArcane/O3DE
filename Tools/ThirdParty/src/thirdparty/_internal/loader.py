@@ -11,7 +11,9 @@ from typing import Any
 
 from thirdparty._internal.errors import NotFoundException
 from thirdparty._internal.model.dependencies import RecipeDependencies
-from thirdparty._internal.model.recipe import RecipeBase, RecipeState
+from thirdparty._internal.model.info import Info
+from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty._internal.model.state import RecipeState
 from thirdparty._internal.util.detect import detect_settings, make_conf
 from thirdparty._internal.util.files import chdir
 from thirdparty.errors import RecipeException
@@ -133,7 +135,8 @@ def make_probe_recipe(
         build_context=False,
         settings=settings,
         settings_build=settings_build,
-        conf=conf)
+        conf=conf,
+        info=Info(set_defaults=True))
     return recipe
 
 
