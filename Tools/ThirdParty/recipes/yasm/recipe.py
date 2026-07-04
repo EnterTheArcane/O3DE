@@ -49,3 +49,4 @@ class Recipe(RecipeBase):
     def package_info(self):
         self.info.includedirs = []
         self.info.libdirs = []
+        self.info.buildenv.prepend_path("PATH", self.folders.package / "bin")
