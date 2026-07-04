@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.files import copy, get, replace_in_file, rm, rmdir
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -39,6 +39,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="5849ed7a81be6bc84ff8aa65dd966430adf0daf71e6bcb734b7a37474f92c859",
             destination=self.folders.source,
             strip_root=True)
+        apply_patches(self)
 
     def generate(self):
         deps = CMakeDeps(self)

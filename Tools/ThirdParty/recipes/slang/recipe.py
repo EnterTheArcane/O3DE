@@ -1,4 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.scm import Version
@@ -21,6 +22,8 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
+        if cross_building(self):
+            self.requires_tool(self.name)
         self.requires("fast-float")
         self.requires("lua")  # TODO
         self.requires("lz4")
@@ -74,6 +77,11 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["SLANG_USE_SYSTEM_SPIRV_HEADERS"] = True
         tc.variables["SLANG_USE_SYSTEM_UNORDERED_DENSE"] = True
         tc.variables["SLANG_USE_SYSTEM_VULKAN_HEADERS"] = True
+        if cross_building(self):
+            # Reuse the build-machine generators (imported as executables by tools/CMakeLists.txt)
+            # instead of building/running target-arch ones.
+            host_generators = self.dependencies.build[self.name].folders.package / "generators"
+            tc.cache_variables["SLANG_GENERATORS_PATH"] = host_generators.as_posix()
         tc.generate()
         deps = CMakeDeps(self)
         deps.set_property("lz4", "cmake_target_name", "LZ4::lz4")
@@ -87,6 +95,13 @@ class Recipe(RecipeBase[_Options]):
     def package(self):
         cmake = CMake(self)
         cmake.install()
+        # Ship the code generators so a cross-compiled build of another arch can consume them via SLANG_GENERATORS_PATH.
+        copy(
+            self,
+            "*.exe",
+            src=self.folders.build / "generators",
+            dst=self.folders.package / "generators",
+            keep_path=False)
         copy(self, "LICENSE", src=self.folders.source, dst=self.folders.package / "licenses")
         rmdir(self, self.folders.package / "cmake")
         rmdir(self, self.folders.package / "lib" / "cmake")

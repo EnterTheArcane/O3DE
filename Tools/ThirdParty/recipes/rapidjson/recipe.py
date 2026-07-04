@@ -1,8 +1,7 @@
 from thirdparty import RecipeBase
-from thirdparty.files import get, copy
+from thirdparty.files import apply_patches, get, copy
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
-
 
 class Recipe(RecipeBase):
     name = "rapidjson"
@@ -20,6 +19,7 @@ class Recipe(RecipeBase):
             sha256="bf7ced29704a1e696fbccf2a2b4ea068e7774fa37f6d7dd4039d0787f8bed98e",
             strip_root=True,
             destination=self.folders.source)
+        apply_patches(self)
 
     def package(self):
         copy(self, pattern="license.txt", src=self.folders.source, dst=self.folders.package / "licenses")

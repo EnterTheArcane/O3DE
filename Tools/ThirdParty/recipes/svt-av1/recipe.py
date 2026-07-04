@@ -27,13 +27,19 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
-        if self.settings.arch != "ARM":
+        if self.settings.arch != "ARM" or self._arm_simd_unsupported:
             self.options.with_neon = False
             self.options.with_arm_crc32 = False
             self.options.with_neon_dotprod = False
             self.options.with_neon_i8mm = False
             self.options.with_neon_sve = False
             self.options.with_neon_sve2 = False
+
+    @property
+    def _arm_simd_unsupported(self) -> bool:
+        # SVT-AV1's ARM optimizations require a GCC/Clang toolchain: the CMake ARM branch calls enable_language(ASM) for GNU .S files and passes -march=... flags.
+        # MSVC has no compatible assembler and rejects -march, so on Windows ARM64 the library can only be built C-only (no NEON/SVE).
+        return self.settings.arch == "ARM" and self.settings.os == "Windows"
 
     def requirements(self):
         self.requires_tool("cmake")
@@ -52,7 +58,9 @@ class Recipe(RecipeBase[_Options]):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_APPS"] = False
         tc.cache_variables["MINIMAL_BUILD"] = self.options.minimal_build
-        if self.settings.arch == "ARM":
+        if self._arm_simd_unsupported:
+            tc.cache_variables["COMPILE_C_ONLY"] = True
+        elif self.settings.arch == "ARM":
             tc.cache_variables["ENABLE_NEON"] = self.options.with_neon
             tc.cache_variables["ENABLE_ARM_CRC32"] = self.options.with_arm_crc32
             tc.cache_variables["ENABLE_NEON_DOTPROD"] = self.options.with_neon_dotprod

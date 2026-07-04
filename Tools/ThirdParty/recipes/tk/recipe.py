@@ -43,13 +43,20 @@ class Recipe(RecipeBase[_Options]):
         if not is_msvc(self):
             if self.settings.os == "Windows":
                 self.requires_tool("msys2")
+        # Cross-compiling tk with makefile.vc requires a native tclsh to run during the
+        # build (rules.vc: "You must explicitly set TCLSH_NATIVE"). Pull in a build-machine
+        # copy of tcl and pass its tclsh as TCLSH_NATIVE (see _build_nmake).
+        if cross_building(self) and is_msvc(self):
+            self.requires_tool("tcl")
 
     def source(self):
         get(
             self,
             # NB: the GitHub archive omits release-only files (macosx/configure
             # and doc/man.macros), so use the release tarball that ships them.
-            url=f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz", sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386", strip_root=True,
+            url=f"https://prdownloads.sourceforge.net/tcl/tk{self.version}-src.tar.gz",
+            sha256="63df418a859d0a463347f95ded5cd88a3dd3aaa1ceecaeee362194bc30f3e386",
+            strip_root=True,
             destination=self.folders.source)
         apply_patches(self)
 
@@ -243,6 +250,10 @@ class Recipe(RecipeBase[_Options]):
             "TCLIMPLIB": tclimplib,
             "TCLSTUBLIB": tclstublib,
         }
+        if cross_building(self):
+            # Provide a build-machine tclsh so the cross build can run it (rules.vc U1050).
+            native_tcl = self.dependencies.build["tcl"].folders.package
+            flags["TCLSH_NATIVE"] = next(iter((native_tcl / "bin").glob("tclsh*.exe")))
         config_dir = self._get_configure_folder("win")
         with chdir(self, config_dir):
             run(

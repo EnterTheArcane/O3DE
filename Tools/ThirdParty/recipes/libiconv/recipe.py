@@ -91,6 +91,15 @@ class Recipe(RecipeBase[_Options]):
         self._apply_resource_patch()
         autotools = Autotools(self)
         autotools.configure()
+        if self.settings.os == "Windows" and self.settings.arch == "ARM":
+            # GNU windres cannot emit ARM64 COFF objects (its only PE targets are
+            # pe-x86-64 / pe-i386), so the compiled version resource would be an x64
+            # object and fail to link into the ARM64 DLL/exe (LNK1112). Drop the
+            # purely-cosmetic version resource from the link on ARM64.
+            for makefile, obj in (("lib", "libiconv.res.lo"), ("src", "iconv.res")):
+                replace_in_file(
+                    self, self.folders.build / makefile / "Makefile",
+                    f"OBJECTS_RES_yes = {obj}", "OBJECTS_RES_yes =", strict=False)
         autotools.make()
 
     def package(self):

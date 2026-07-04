@@ -50,7 +50,11 @@ install(FILES "${SRC_DIR}/ispc_texcomp.h"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-if(WIN32)
+# The bundled DirectXTex command-line tools (texconv/texassemble/texdiag) are host-side asset-pipeline utilities.
+# Their DirectXMath HDR colour matrices use nested brace-initialization of XMMATRIX, which does not compile for ARM64 (NEON) DirectXMath,
+# and an ARM64 build of these tools could not run on an x64 build host anyway.
+# Restrict them (and the DirectXTex lib they need) to x64.
+if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|x64")
     set(DXTEX_ROOT "${ISPC_TEXCOMP_SRC_DIR}/ISPC Texture Compressor/DirectXTex")
     set(DXTEX_SRC "${DXTEX_ROOT}/DirectXTex")
 

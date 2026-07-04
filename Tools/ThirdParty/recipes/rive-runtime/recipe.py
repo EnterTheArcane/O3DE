@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.env import Environment, VirtualBuildEnv
-from thirdparty.files import copy, get
+from thirdparty.files import apply_patches, copy, get
 from thirdparty.premake import Premake, PremakeDeps, PremakeToolchain
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -24,8 +24,7 @@ class Recipe(RecipeBase):
             url=f"https://github.com/rive-app/rive-runtime/archive/refs/tags/runtime-v{self.version}.tar.gz",
             sha256="9da0819d70d0b7a4fb436b60dbcbc8fa9b3c99495a3dabcc50a5b0fd05ff6d85",
             destination=self.folders.source,
-            strip_root=True,
-        )
+            strip_root=True)
 
         deps_dir = self.folders.source / "dependencies"
 
@@ -35,8 +34,7 @@ class Recipe(RecipeBase):
             url="https://github.com/rive-app/harfbuzz/archive/08d34675f64b1ac4880f4f10c9fd474a56dd4399.tar.gz",
             sha256="0c36546f9cadbed2a5c3d7b29cb94024bdbf553fb7cde7278a24a3938c195bc0",
             destination=deps_dir / "rive-app_harfbuzz_rive_13.1.1",
-            strip_root=True,
-        )
+            strip_root=True)
 
         # SheenBidi (tag)
         get(
@@ -44,8 +42,7 @@ class Recipe(RecipeBase):
             url="https://github.com/Tehreer/SheenBidi/archive/refs/tags/v2.6.tar.gz",
             sha256="f538f51a7861dd95fb9e3f4ad885f39204b5c670867019b5adb7c4b410c8e0d9",
             destination=deps_dir / "Tehreer_SheenBidi_v2.6",
-            strip_root=True,
-        )
+            strip_root=True)
 
         # rive-app fork of yoga (branch rive_changes_v2_0_1_2, pinned to commit)
         get(
@@ -53,8 +50,7 @@ class Recipe(RecipeBase):
             url="https://github.com/rive-app/yoga/archive/b827168e5e66c56b3117660a12607fe4f54ea33c.tar.gz",
             sha256="952d0a3900d04ae6a10ba5aa18a0c619c43271a5ace7240e510bfe6fb91ebd4c",
             destination=deps_dir / "rive-app_yoga_rive_changes_v2_0_1_2",
-            strip_root=True,
-        )
+            strip_root=True)
 
         # rive-app fork of miniaudio (branch rive_changes_5, pinned to commit)
         get(
@@ -62,8 +58,8 @@ class Recipe(RecipeBase):
             url="https://github.com/rive-app/miniaudio/archive/3a8b070f80e203a35ec763c5118da20805a90d5a.tar.gz",
             sha256="a464609bba1294675e65e559277fe7ae0b1b7732011f537493133c486c609c76",
             destination=deps_dir / "rive-app_miniaudio_rive_changes_5",
-            strip_root=True,
-        )
+            strip_root=True)
+        apply_patches(self)
 
     def generate(self):
         deps = PremakeDeps(self)

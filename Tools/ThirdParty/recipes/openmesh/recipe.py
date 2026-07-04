@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get, rm, rmdir
+from thirdparty.files import apply_patches, copy, get, rm, rmdir
 from thirdparty.microsoft import is_msvc
 
 
@@ -24,6 +24,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="9d22e65bdd6a125ac2043350a019ec4346ea83922cafdf47e125a03c16f6fa07",
             destination=self.folders.source,
             strip_root=True)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

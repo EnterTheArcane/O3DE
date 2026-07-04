@@ -168,8 +168,7 @@ class Recipe(RecipeBase[_Options]):
                     self,
                     """nmake -f Makefile.vc {target} MACHINE={machine} DEBUG={debug} DLL={dll}""".format(
                         target=target,
-                        machine={"X64": "x64"}[str(self.settings.arch)],
-                        # FIXME: else, use ansi32 and ansi64
+                        machine=("x64" if self.settings.arch == "X64" else "ansi64"),
                         debug="1" if self.settings.build_type == "Debug" else "0",
                         dll="1" if self.options.shared else "0",
                     ))

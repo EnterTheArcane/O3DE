@@ -89,9 +89,13 @@ class Recipe(RecipeBase):
         if self.settings.os in ["Linux", "FreeBSD"]:
             tbbmalloc.system_libs = ["dl", "pthread"]
 
-        tbbproxy = self.info.components["tbbmalloc_proxy"]
-        tbbproxy.set_property("cmake_target_name", "TBB::tbbmalloc_proxy")
-        tbbproxy.libs = [lib_name("tbbmalloc_proxy")]
-        tbbproxy.requires = ["tbbmalloc"]
-        if self.settings.os in ["Linux", "FreeBSD"]:
-            tbbproxy.system_libs = ["m", "dl", "pthread"]
+        # oneTBB does not build tbbmalloc_proxy on Windows ARM64
+        # (see the top-level CMakeLists guard: TBBMALLOC_PROXY_BUILD AND NOT MSVC_CXX_ARCHITECTURE_ID MATCHES "ARM64"),
+        # so the component must not be declared there.
+        if not (self.settings.os == "Windows" and self.settings.arch == "ARM"):
+            tbbproxy = self.info.components["tbbmalloc_proxy"]
+            tbbproxy.set_property("cmake_target_name", "TBB::tbbmalloc_proxy")
+            tbbproxy.libs = [lib_name("tbbmalloc_proxy")]
+            tbbproxy.requires = ["tbbmalloc"]
+            if self.settings.os in ["Linux", "FreeBSD"]:
+                tbbproxy.system_libs = ["m", "dl", "pthread"]

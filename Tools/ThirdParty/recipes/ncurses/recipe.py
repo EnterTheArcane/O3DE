@@ -3,9 +3,9 @@ from typing import Any, Literal
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
-from thirdparty.build import stdcpp_library
+from thirdparty.build import cross_building, stdcpp_library
 from thirdparty.env import Environment, VirtualBuildEnv
-from thirdparty.files import copy, get
+from thirdparty.files import copy, get, replace_in_file
 from thirdparty.autotools import Autotools, AutotoolsToolchain
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import is_msvc, unix_path
@@ -95,6 +95,11 @@ class Recipe(RecipeBase[_Options]):
             "--disable-pc-files",
             "--datarootdir=${prefix}/res",
         ]
+        if cross_building(self):
+            # `install -s` strips with the build machine's strip, which cannot process
+            # target-arch executables (e.g. x64 strip on an ARM64 tic.exe reports
+            # "file format not recognized"). Skip stripping when cross-compiling.
+            tc.configure_args.append("--disable-stripping")
         build = None
         host = None
         if self.settings.os == "Windows":
@@ -185,6 +190,17 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         autotools = Autotools(self)
         autotools.configure()
+        if is_msvc(self):
+            # ncurses builds host tools (make_keys/make_hash) with BUILD_CC (gcc when
+            # cross-compiling), compiling the library's generated names.c. Those variable
+            # definitions are decorated __declspec(dllimport) unless NCURSES_STATIC is
+            # defined -- MSVC only warns, but gcc errors ("definition is marked dllimport").
+            # Host tools are never DLLs, so force NCURSES_STATIC into BUILD_CPPFLAGS.
+            for root, _, files in os.walk(self.folders.build):
+                if "Makefile" in files:
+                    replace_in_file(
+                        self, os.path.join(root, "Makefile"),
+                        "-DUSE_BUILD_CC", "-DUSE_BUILD_CC -DNCURSES_STATIC", strict=False)
         autotools.make()
 
     def package(self):

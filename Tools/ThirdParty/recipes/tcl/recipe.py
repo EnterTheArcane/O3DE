@@ -41,6 +41,11 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool("msys2")
         if is_apple_os(self):
             self.requires_tool("autoconf")
+        # Cross-compiling tcl with the MSVC makefile requires a native tclsh to run
+        # during the build (rules.vc: "You must explicitly set TCLSH_NATIVE"). Build a
+        # build-machine copy of tcl and pass its tclsh as TCLSH_NATIVE (see _build_nmake).
+        if cross_building(self) and is_msvc(self):
+            self.requires_tool(self.name)
 
     def source(self):
         get(
@@ -224,14 +229,22 @@ class Recipe(RecipeBase[_Options]):
         if "d" not in msvc_runtime_flag(self):
             opts.append("unchecked")
 
+        extra_args: list[str] = []
+        if cross_building(self):
+            # Provide a build-machine tclsh so the cross build can run it (rules.vc U1050).
+            native_pkg = self.dependencies.build[self.name].folders.package
+            native_tclsh = next(iter((native_pkg / "bin").glob("tclsh*.exe")))
+            extra_args.append(f'TCLSH_NATIVE="{native_tclsh}"')
+
         win_config_dir = self.folders.source / "win"
         with chdir(self, win_config_dir):
             run(
                 self,
-                'nmake -nologo -f "{cfgdir}/makefile.vc" INSTALLDIR="{pkgdir}" OPTS={opts} {targets}'.format(
+                'nmake -nologo -f "{cfgdir}/makefile.vc" INSTALLDIR="{pkgdir}" OPTS={opts} {extra} {targets}'.format(
                     cfgdir=win_config_dir,
                     pkgdir=self.folders.package,
                     opts=",".join(opts),
+                    extra=" ".join(extra_args),
                     targets=" ".join(targets),
                 ))
 

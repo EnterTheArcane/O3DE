@@ -89,12 +89,17 @@ class Recipe(RecipeBase):
         self._patch_sources()
         autotools = Autotools(self)
         autotools.configure()
-        autotools.make()
+        # gnulib ships self-tests (SUBDIRS 'tests') that link a windows-utf8 manifest .res compiled by GNU windres.
+        # windres only emits x64 objects, so linking the test exes against an ARM64 target fails with LNK1112.
+        # The m4 binary itself does not need those tests, so restrict the build to the library and the tool.
+        make_args = ["SUBDIRS='. lib src'"] if self.settings.os == "Windows" else None
+        autotools.make(args=make_args)
 
     def package(self):
         copy(self, "COPYING", src=self.folders.source, dst=self.folders.package / "licenses")
         autotools = Autotools(self)
-        autotools.install()
+        install_args = ["SUBDIRS='. lib src'"] if self.settings.os == "Windows" else None
+        autotools.install(args=install_args)
         rmdir(self, self.folders.package / "share")
 
     def package_info(self):

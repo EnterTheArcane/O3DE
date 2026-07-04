@@ -937,11 +937,20 @@ class Recipe(RecipeBase[_Options]):
                 requires.append("Core")
             self.info.components[componentname].requires = _get_corrected_reqs(requires)
 
+        def _plugin_exists(libname: str, plugintype: str) -> bool:
+            # Some plugins are only built when their backing library/feature is available (e.g. qjp2 needs jasper, qmng needs libmng)
+            # or are  platform-specific (qmacjp2/qmacheif on Apple).
+            # Only declare a plugin component when its artifact is actually present in the package.
+            plugin_dir = os.path.join(str(self.folders.package), "plugins", plugintype)
+            return bool(glob.glob(os.path.join(plugin_dir, f"{libname}*")))
+
         def _create_plugin(
             pluginname: str,
             libname: str,
             plugintype: str,
             requires: list[str]):
+            if not _plugin_exists(libname, plugintype):
+                return
             componentname = f"qt{pluginname}"
             assert componentname not in self.info.components, f"Plugin {pluginname} already present in self.info.components"
             self.info.components[componentname].set_property("cmake_target_name", f"Qt6::{pluginname}")

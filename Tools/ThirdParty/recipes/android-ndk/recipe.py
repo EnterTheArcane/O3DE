@@ -3,26 +3,16 @@ from pathlib import Path
 import zipfile
 
 from thirdparty import RecipeBase
+from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, download, rm, unzip
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
+
 _SOURCE_SHA256 = {
-    "Linux": {
-        "X64": {
-            "sha256": "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf",
-        },
-    },
-    "Mac": {
-        "X64": {
-            "sha256": "ce5e4b100ec5fe5be4eb3edcb2c02528824ff9cda3860f5304619be6c3da34d3",
-        },
-    },
-    "Windows": {
-        "X64": {
-            "sha256": "4f83a1a87ea0d33ae2b43812ce27b768be949bc78acf90b955134d19e3068f1c",
-        },
-    },
+    ("Linux", "X64"): "4abbbcdc842f3d4879206e9695d52709603e52dd68d3c1fff04b3b5e7a308ecf",
+    ("Mac", "X64"): "ce5e4b100ec5fe5be4eb3edcb2c02528824ff9cda3860f5304619be6c3da34d3",
+    ("Windows", "X64"): "4f83a1a87ea0d33ae2b43812ce27b768be949bc78acf90b955134d19e3068f1c",
 }
 
 
@@ -34,16 +24,19 @@ class Recipe(RecipeBase):
     def latest_version(self):
         repo = GithubRepository(self, "android/ndk")
         return Version(repo.latest_release)
+    
+    def validate(self):
+        if (self.settings.os, self._arch) not in _SOURCE_SHA256:
+            raise RecipeInvalidConfiguration(f"Unsupported os/arch")
 
     def source(self):
         pass
 
     def build(self):
-        data = _SOURCE_SHA256[str(self.settings.os)][self._arch]
         self._unzip_fix_symlinks(
             url=f"https://dl.google.com/android/repository/android-ndk-{self.version}-{self._source_os}.zip",
             target_folder=self.folders.source,
-            sha256=data["sha256"])
+            sha256=_SOURCE_SHA256[(self.settings.os, self._arch)])
 
     def package(self):
         copy(self, "*", src=self.folders.source, dst=self.folders.package / "bin")
@@ -100,23 +93,22 @@ class Recipe(RecipeBase):
         return self._toolchain_bin / f"{name}{suffix}"
 
     def _fix_permissions(self):
-        if os.name != "posix":
-            return
-        for root, _, files in os.walk(self.folders.package / "bin"):
-            for filename in files:
-                filepath = os.path.join(root, filename)
-                with open(filepath, "rb") as f:
-                    sig = list(f.read(4))
-                if len(sig) > 2 and sig[0] == 0x23 and sig[1] == 0x21:
-                    _chmod_plus_x(filepath)
-                elif sig == [0x7F, 0x45, 0x4C, 0x46]:
-                    _chmod_plus_x(filepath)
-                elif sig[:4] in (
-                        [0xCA, 0xFE, 0xBA, 0xBE], [0xBE, 0xBA, 0xFE, 0xCA],
-                        [0xFE, 0xED, 0xFA, 0xCF], [0xCF, 0xFA, 0xED, 0xFE],
-                        [0xFE, 0xEF, 0xFA, 0xCE], [0xCE, 0xFA, 0xED, 0xFE],
-                ):
-                    _chmod_plus_x(filepath)
+        if os.name == "posix":
+            for root, _, files in os.walk(self.folders.package / "bin"):
+                for filename in files:
+                    filepath = os.path.join(root, filename)
+                    with open(filepath, "rb") as f:
+                        sig = list(f.read(4))
+                    if len(sig) > 2 and sig[0] == 0x23 and sig[1] == 0x21:
+                        _chmod_plus_x(filepath)
+                    elif sig == [0x7F, 0x45, 0x4C, 0x46]:
+                        _chmod_plus_x(filepath)
+                    elif sig[:4] in (
+                            [0xCA, 0xFE, 0xBA, 0xBE], [0xBE, 0xBA, 0xFE, 0xCA],
+                            [0xFE, 0xED, 0xFA, 0xCF], [0xCF, 0xFA, 0xED, 0xFE],
+                            [0xFE, 0xEF, 0xFA, 0xCE], [0xCE, 0xFA, 0xED, 0xFE],
+                    ):
+                        _chmod_plus_x(filepath)
 
     def _unzip_fix_symlinks(
         self,

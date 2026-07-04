@@ -5,7 +5,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os, fix_apple_shared_install_name
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv, Environment
-from thirdparty.files import copy, get, rename
+from thirdparty.files import copy, get, rename, replace_in_file
 from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
 from thirdparty.scm import GnuFtp
 from thirdparty.microsoft import is_msvc, unix_path
@@ -180,6 +180,13 @@ class Recipe(RecipeBase[_Options]):
     def build(self):
         autotools = Autotools(self)
         autotools.configure("gettext-runtime")
+        if self.settings.os == "Windows" and self.settings.arch == "ARM":
+            # GNU windres cannot emit ARM64 objects, so the compiled libintl version
+            # resource is an x64 object and fails to link (LNK1112). Drop the cosmetic
+            # resource from libintl on ARM64.
+            replace_in_file(
+                self, self.folders.build / "intl" / "Makefile",
+                "WOE32_LIBADD = libintl.res.lo", "WOE32_LIBADD =", strict=False)
         autotools.make()
 
     def package(self):

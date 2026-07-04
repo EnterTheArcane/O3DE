@@ -146,8 +146,7 @@ class Recipe(RecipeBase):
                 url=entry["url"],
                 sha256=entry["sha256"],
                 destination=component_folder,
-                strip_root=True,
-            )
+                strip_root=True)
 
     def package(self):
         triple = self._target_triple
