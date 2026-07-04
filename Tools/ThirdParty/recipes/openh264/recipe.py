@@ -1,10 +1,8 @@
-import os
-
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.build import stdcpp_library
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get, rmdir, rm, rename
+from thirdparty.files import copy, get, rmdir, rm
 from thirdparty.meson import Meson, MesonToolchain
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
@@ -63,15 +61,6 @@ class Recipe(RecipeBase[_Options]):
 
         if is_msvc(self) or self._is_clang_cl:
             rm(self, "*.pdb", self.folders.package / "bin")
-            if not self.options.shared:
-                lib_dir = self.folders.package / "lib"
-                gnu_lib = lib_dir / "libopenh264.a"
-                # meson emits the static lib as libopenh264.a; rename to the MSVC-style
-                # openh264.lib. Clear any stale destination first so a re-run doesn't fail
-                # with "dst exists" (os.rename won't overwrite on Windows).
-                if os.path.exists(gnu_lib):
-                    rm(self, "openh264.lib", lib_dir)
-                    rename(self, gnu_lib, lib_dir / "openh264.lib")
         fix_apple_shared_install_name(self)
 
     def package_info(self):

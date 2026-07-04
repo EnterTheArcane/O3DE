@@ -94,6 +94,32 @@ class Meson:
         if cli_args:
             cmd += " " + " ".join(cli_args)
         run(self._recipe, cmd)
+        self._fix_msvc_static_lib_names()
+
+    def _fix_msvc_static_lib_names(self):
+        """Rename meson's GNU-style static libraries to the MSVC convention.
+
+        Meson always emits static libraries as ``libNAME.a`` (and import libraries as
+        ``libNAME.dll.a``), even under MSVC where the archive is a valid COFF ``lib.exe``
+        output. MSVC consumers link ``-lNAME`` which resolves to ``NAME.lib``, so rename
+        ``lib<name>.a`` -> ``<name>.lib`` in each libdir. No-op for non-MSVC toolchains,
+        where ``lib<name>.a`` is already the correct native name.
+        """
+        from thirdparty.files import rename
+
+        if not self._recipe.settings.compiler_runtime:
+            return
+        for libdir in self._recipe.info.libdirs:
+            full_folder = self._recipe.folders.package / libdir
+            for ext in [".dll.a", ".dll.lib", ".a"]:
+                for filepath in full_folder.glob(f"*{ext}"):
+                    libname = filepath.name[0:-len(ext)]
+                    if libname[0:3] == "lib":
+                        libname = libname[3:]
+                    dst = filepath.parent / f"{libname}.lib"
+                    if dst.exists():
+                        dst.unlink()
+                    rename(self._recipe, filepath, dst)
 
     def test(self):
         """

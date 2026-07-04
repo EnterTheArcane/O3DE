@@ -124,7 +124,6 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "lib" / "cmake")
         rmdir(self, self.folders.package / "lib" / "pkgconfig")
         fix_apple_shared_install_name(self)
-        fix_msvc_libname(self)
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "harfbuzz")
@@ -180,20 +179,3 @@ class Recipe(RecipeBase[_Options]):
             self.info.components["gobject"].requires = ["core", "glib::glib"]
 
 
-def fix_msvc_libname(recipe: RecipeBase, remove_lib_prefix: bool = True):
-    """remove lib prefix & change extension to .lib in case of cl like compiler"""
-    from thirdparty.files import rename
-    if not recipe.settings.compiler_runtime:
-        return
-    libdirs = recipe.info.libdirs
-    for libdir in libdirs:
-        for ext in [".dll.a", ".dll.lib", ".a"]:
-            full_folder = recipe.folders.package / libdir
-            for filepath in full_folder.glob(f"*{ext}"):
-                libname = filepath.name[0:-len(ext)]
-                if remove_lib_prefix and libname[0:3] == "lib":
-                    libname = libname[3:]
-                dst = filepath.parent / f"{libname}.lib"
-                if dst.exists():
-                    dst.unlink()
-                rename(recipe, filepath, dst)
