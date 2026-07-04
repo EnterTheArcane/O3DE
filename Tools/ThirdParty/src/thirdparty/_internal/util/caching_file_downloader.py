@@ -35,7 +35,7 @@ class SourcesCachingDownloader:
         self._recipe = recipe
 
     def download(
-        self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, md5: str | None, sha1: str | None, sha256: str | None):
+        self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, sha256: str | None):
         download_cache_folder = self._conf.get("core.sources:download_cache")
         source_origins = self._conf.get("core.sources:download_urls", check_type=list)
         if source_origins and not download_cache_folder:
@@ -85,7 +85,7 @@ class SourcesCachingDownloader:
                 if need_download:
                     with set_dirty_context_manager(download_path):
                         self._do_download(
-                            source_origins, urls, download_path, retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256)
+                            source_origins, urls, download_path, retry, retry_wait, verify_ssl, auth, headers, sha256)
 
                 # copy it to the package "source" folder
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -95,16 +95,16 @@ class SourcesCachingDownloader:
             # Not in local cache, check origins from core.sources:download_urls
             # This doesn't need to be dirty-protected, as the full "source" folder is protected
             self._do_download(
-                source_origins, urls, file_path, retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256)
+                source_origins, urls, file_path, retry, retry_wait, verify_ssl, auth, headers, sha256)
 
     def _do_download(
-        self, source_origins: Any, urls: Any, download_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, md5: str | None, sha1: str | None, sha256: str | None):
+        self, source_origins: Any, urls: Any, download_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, sha256: str | None):
         # iterates the origins until one works
         for backup_url in source_origins:
             if backup_url == "origin":  # download from the internet
                 try:
                     self._download_from_urls(
-                        urls, download_path, retry, retry_wait, verify_ssl, auth, headers, md5, sha1, sha256)
+                        urls, download_path, retry, retry_wait, verify_ssl, auth, headers, sha256)
                     return
                 except Exception as e:
                     if backup_url is source_origins[-1]:
@@ -134,7 +134,7 @@ class SourcesCachingDownloader:
                         f"Please check your 'source_credentials.json'")
 
     def _download_from_urls(
-        self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, md5: str | None, sha1: str | None, sha256: str | None):
+        self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, sha256: str | None):
         """ iterate the recipe provided list of urls (mirrors, all with same checksum) until
         one succeed
         """
@@ -146,10 +146,10 @@ class SourcesCachingDownloader:
                 if url.startswith("file:"):  # plain copy from local disk, no real download
                     file_origin = url2pathname(urlparse(url).path)
                     shutil.copyfile(file_origin, file_path)
-                    self._file_downloader.check_checksum(file_path, md5, sha1, sha256)
+                    self._file_downloader.check_checksum(file_path, sha256)
                 else:
                     self._file_downloader.download(
-                        url, file_path, retry, retry_wait, verify_ssl, auth, True, headers, md5, sha1, sha256)
+                        url, file_path, retry, retry_wait, verify_ssl, auth, True, headers, sha256)
                 self._output.info(f"Sources correctly downloaded from {url}")
                 return  # Success! Return to caller
             except Exception as error:

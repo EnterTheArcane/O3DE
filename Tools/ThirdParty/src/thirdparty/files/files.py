@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 from thirdparty._internal.output import TimedOutput
 from thirdparty._internal.util.caching_file_downloader import SourcesCachingDownloader
-from thirdparty._internal.util.files import rmdir as _internal_rmdir, human_size, check_with_algorithm_sum
+from thirdparty._internal.util.files import rmdir as _internal_rmdir, human_size, check_sha256sum
 from thirdparty.errors import RecipeException
 from thirdparty.recipe import RecipeBase
 
@@ -127,8 +127,6 @@ def rm(
 def get(
     recipe: RecipeBase,
     url: Any,
-    md5: str | None = None,
-    sha1: str | None = None,
     sha256: str | None = None,
     destination: Path = Path("."),
     filename: str = "",
@@ -145,16 +143,14 @@ def get(
     """
     High level download and decompressing of a tgz, zip or other compressed format file.
     Just a high level wrapper for download, unzip, and remove the temporary zip file once unzipped.
-    You can pass hash checking parameters: ``md5``, ``sha1``, ``sha256``. All the specified
-    algorithms will be checked. If any of them doesn't match, it will raise a ``RecipeException``.
+    You can pass the ``sha256`` hash checking parameter. If it doesn't match, it will raise
+    a ``RecipeException``.
 
     :param recipe: The current recipe object. Always use ``self``.
     :param destination: (Optional defaulted to ``.``) Destination folder
     :param filename: (Optional defaulted to '') If provided, the saved file will have the specified name,
            otherwise it is deduced from the URL
     :param url: forwarded to ``tools.file.download()``.
-    :param md5: forwarded to ``tools.file.download()``.
-    :param sha1:  forwarded to ``tools.file.download()``.
     :param sha256:  forwarded to ``tools.file.download()``.
     :param keep_permissions:  forwarded to ``tools.file.unzip()``.
     :param pattern: forwarded to ``tools.file.unzip()``.
@@ -177,7 +173,7 @@ def get(
         filename = os.path.basename(url_base)
 
     download(
-        recipe, url, filename, verify=verify, retry=retry, retry_wait=retry_wait, auth=auth, headers=headers, md5=md5, sha1=sha1, sha256=sha256)
+        recipe, url, filename, verify=verify, retry=retry, retry_wait=retry_wait, auth=auth, headers=headers, sha256=sha256)
     unzip(
         recipe, filename, destination=destination, keep_permissions=keep_permissions, pattern=pattern, strip_root=strip_root, extract_filter=extract_filter, excludes=excludes)
     os.unlink(filename)
@@ -192,16 +188,13 @@ def download(
     retry_wait: int | None = None,
     auth: Any = None,
     headers: Any = None,
-    md5: str | None = None,
-    sha1: str | None = None,
     sha256: str | None = None):
     """
     Retrieves a file from a given URL into a file with a given filename. It uses certificates from
     a list of known verifiers for https downloads, but this can be optionally disabled.
 
-    You can pass hash checking parameters: ``md5``, ``sha1``, ``sha256``. All the specified
-    algorithms will be checked. If any of them doesn't match, the downloaded file will be removed
-    and it will raise a ``RecipeException``.
+    You can pass the ``sha256`` hash checking parameter. If it doesn't match, the downloaded file
+    will be removed and it will raise a ``RecipeException``.
 
     :param recipe: The current recipe object. Always use ``self``.
     :param url: URL to download. It can be a list, which only the first one will be downloaded, and
@@ -216,8 +209,6 @@ def download(
            "tools.files.download:retry_wait" conf.
     :param auth: A tuple of user and password to use HTTPBasic authentication
     :param headers: A dictionary with additional headers
-    :param md5: MD5 hash code to check the downloaded file
-    :param sha1: SHA-1 hash code to check the downloaded file
     :param sha256: SHA-256 hash code to check the downloaded file
     """
     config = recipe.conf
@@ -230,7 +221,7 @@ def download(
 
     filename = os.path.abspath(filename)
     downloader = SourcesCachingDownloader(recipe)
-    downloader.download(url, filename, retry, retry_wait, verify, auth, headers, md5, sha1, sha256)
+    downloader.download(url, filename, retry, retry_wait, verify, auth, headers, sha256)
 
 
 def rename(
@@ -527,36 +518,6 @@ def untargz(
             tarredgzippedFile.extractall(destination, members=members)
 
 
-def check_sha1(
-    recipe: RecipeBase,
-    file_path: str,
-    signature: str):
-    """
-    Check that the specified ``SHA-1`` hash of the ``file_path`` matches the actual hash.
-    If doesn't match it will raise a ``RecipeException``.
-
-    :param recipe: Recipefile object.
-    :param file_path: Path of the file to check.
-    :param signature: Expected SHA-1 hash.
-    """
-    check_with_algorithm_sum("sha1", file_path, signature)
-
-
-def check_md5(
-    recipe: RecipeBase,
-    file_path: str,
-    signature: str):
-    """
-    Check that the specified ``MD5`` hash of the ``file_path`` matches the actual hash.
-    If doesn't match it will raise a ``RecipeException``.
-
-    :param recipe: The current recipe object. Always use ``self``.
-    :param file_path: Path of the file to check.
-    :param signature: Expected MD5 hash.
-    """
-    check_with_algorithm_sum("md5", file_path, signature)
-
-
 def check_sha256(
     recipe: RecipeBase,
     file_path: str,
@@ -569,7 +530,7 @@ def check_sha256(
     :param file_path: Path of the file to check.
     :param signature: Expected SHA-256 hash.
     """
-    check_with_algorithm_sum("sha256", file_path, signature)
+    check_sha256sum(file_path, signature)
 
 
 def replace_in_file(

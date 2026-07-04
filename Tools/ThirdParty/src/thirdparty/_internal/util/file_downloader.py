@@ -7,7 +7,7 @@ from typing import Any
 from thirdparty._internal.errors import (
     ConnectionErrorException, RequestErrorException, AuthenticationException, ForbiddenException, NotFoundException, )
 from thirdparty._internal.output import Output, TimedOutput
-from thirdparty._internal.util.files import human_size, check_with_algorithm_sum
+from thirdparty._internal.util.files import human_size, check_sha256sum
 from thirdparty.errors import RecipeException
 
 
@@ -57,8 +57,6 @@ class FileDownloader:
         auth: Any = None,
         overwrite: bool = False,
         headers: Any = None,
-        md5: str | None = None,
-        sha1: str | None = None,
         sha256: str | None = None):
         """ in order to make the download concurrent, the folder for file_path MUST exist
         """
@@ -90,7 +88,7 @@ class FileDownloader:
                         self._output.info(f"Waiting {retry_wait} seconds to retry...")
                         time.sleep(retry_wait)
 
-            self.check_checksum(file_path, md5, sha1, sha256)
+            self.check_checksum(file_path, sha256)
             self._output.debug(f"Downloaded {file_path} from {url}")
         except Exception:
             if os.path.exists(file_path):
@@ -100,15 +98,9 @@ class FileDownloader:
     @staticmethod
     def check_checksum(
         file_path: str,
-        md5: str | None,
-        sha1: str | None,
         sha256: str | None):
-        if md5 is not None:
-            check_with_algorithm_sum("md5", file_path, md5)
-        if sha1 is not None:
-            check_with_algorithm_sum("sha1", file_path, sha1)
         if sha256 is not None:
-            check_with_algorithm_sum("sha256", file_path, sha256)
+            check_sha256sum(file_path, sha256)
 
     def _download_file(
         self,

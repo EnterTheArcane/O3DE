@@ -65,54 +65,24 @@ def chdir(newdir: str):
         os.chdir(old_path)
 
 
-def md5(content: str) -> str:
-    try:
-        md5alg = hashlib.md5()
-    except ValueError:  # FIPS error upstream issue 7800
-        md5alg = hashlib.md5(usedforsecurity=False)
-    if isinstance(content, bytes):
-        tmp = content
-    else:
-        tmp = content.encode("utf-8")
-    md5alg.update(tmp)
-    return md5alg.hexdigest()
-
-
-def md5sum(file_path: str) -> str:
-    return _generic_algorithm_sum(file_path, "md5")
-
-
-def sha1sum(file_path: str) -> str:
-    return _generic_algorithm_sum(file_path, "sha1")
-
-
 def sha256sum(file_path: str) -> str:
-    return _generic_algorithm_sum(file_path, "sha256")
-
-
-def _generic_algorithm_sum(file_path: str, algorithm_name: str) -> str:
     with open(file_path, "rb") as fh:
-        try:
-            m = hashlib.new(algorithm_name)
-        except ValueError:  # FIPS error upstream issue 7800
-            m = hashlib.new(algorithm_name, usedforsecurity=False)
+        digest = hashlib.sha256()
         while True:
             data = fh.read(8192)
             if not data:
                 break
-            m.update(data)
-        return m.hexdigest()
+            digest.update(data)
+        return digest.hexdigest()
 
 
-def check_with_algorithm_sum(algorithm_name: str, file_path: str, provided_hash: str):
-    real_hash = _generic_algorithm_sum(file_path, algorithm_name)
+def check_sha256sum(file_path: str, provided_hash: str):
+    real_hash = sha256sum(file_path)
     if real_hash != provided_hash.lower():
         raise RecipeException(
-            "%s hash failed for '%s' file. \n"
+            "sha256 hash failed for '%s' file. \n"
             " Provided hash: %s  \n"
-            " Computed hash: %s" % (
-                algorithm_name, os.path.basename(file_path), provided_hash, real_hash,
-            ))
+            " Computed hash: %s" % (os.path.basename(file_path), provided_hash, real_hash))
 
 
 def save(path: str, content: str, encoding: str = "utf-8"):
