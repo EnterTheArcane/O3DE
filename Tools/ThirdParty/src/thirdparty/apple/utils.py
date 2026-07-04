@@ -29,7 +29,7 @@ def to_apple_arch(recipe: RecipeBase, default: Any = None) -> str | None:
 
 
 def apple_sdk_path(recipe: RecipeBase, is_cross_building: bool = True) -> str | None:
-    sdk_path = recipe.conf.get("tools.apple:sdk_path")
+    sdk_path = recipe.conf.tools.apple.sdk_path
     if not sdk_path:
         # XCRun already knows how to extract os.sdk from recipe.settings
         sdk_path = XCRun(recipe).sdk_path
@@ -341,8 +341,8 @@ def fix_apple_shared_install_name(recipe: RecipeBase):
 def apple_extra_flags(recipe: RecipeBase) -> list[str]:
     if not is_apple_os(recipe):
         return []
-    enable_bitcode = recipe.conf.get("tools.apple:enable_bitcode", check_type=bool)
-    enable_visibility = recipe.conf.get("tools.apple:enable_visibility", check_type=bool)
+    enable_bitcode = recipe.conf.tools.apple.enable_bitcode
+    enable_visibility = recipe.conf.tools.apple.enable_visibility
     is_debug = recipe.settings.build_type == "Debug"
     flags: list[str] = []
     if enable_bitcode:

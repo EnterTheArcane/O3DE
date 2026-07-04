@@ -109,7 +109,7 @@ class Recipe(RecipeBase[_Options]):
                 self.requires_tool("ninja")
         else:
             self.requires_tool("libtool")
-            if not self.conf.get("tools.gnu:pkg_config", check_type=str):
+            if not self.conf.tools.gnu.pkg_config:
                 self.requires_tool("pkgconf")
             if self.settings.os in ["tvOS", "watchOS"]:
                 self.requires_tool("gnu-config")
@@ -124,8 +124,8 @@ class Recipe(RecipeBase[_Options]):
             sha256="ec753aa6f408a3ca9f0d6d5f7a77417aecd1544db13c03ae5d443612bf367364",
             destination=self.folders.source,
             strip_root=True)
-        cert_url = self.conf.get("user.curl.cert:url", check_type=str) or "https://curl.se/ca/cacert-2025-11-04.pem"
-        cert_sha256 = self.conf.get("user.curl.cert:sha256", check_type=str) or "8ac40bdd3d3e151a6b4078d2b2029796e8f843e3f86fbf2adbc4dd9f05e79def"
+        cert_url = self.conf.tools.curl.cert.url or "https://curl.se/ca/cacert-2025-11-04.pem"
+        cert_sha256 = self.conf.tools.curl.cert.sha256 or "8ac40bdd3d3e151a6b4078d2b2029796e8f843e3f86fbf2adbc4dd9f05e79def"
         download(
             self,
             cert_url,

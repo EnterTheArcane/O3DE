@@ -116,7 +116,7 @@ class Recipe(RecipeBase[_Options]):
         self.info.buildenv.define_path("MSYS_BIN", msys_bin)
         self.info.buildenv.prepend_path("PATH", mingw64_bin)
 
-        self.info.conf.define("tools.microsoft.bash:path", msys_bin / "bash.exe")
+        self.info.conf.tools.microsoft.bash.path = msys_bin / "bash.exe"
 
     def compatibility(self):
         if self.settings.arch == "ARM":

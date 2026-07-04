@@ -253,11 +253,10 @@ class MesonToolchain:
             default_comp_cpp = "cl"
 
         # Read configuration for sys_root property (honoring existing conf)
-        self._sys_root = self._recipe_conf.get("tools.build:sysroot", check_type=str)
+        self._sys_root = self._recipe_conf.tools.build.sysroot
 
         # Read configuration for compilers
-        compilers_by_conf = self._recipe_conf.get(
-            "tools.build:compiler_executables", default={}, check_type=dict)
+        compilers_by_conf = self._recipe_conf.tools.build.compiler_executables
         # Read the VirtualBuildEnv to update the variables
         build_env = self._recipe.buildenv_build.vars(self._recipe) if native else (VirtualBuildEnv(self._recipe).vars())
         #: Sets the Meson ``c`` variable, defaulting to the ``CC`` build environment value.
@@ -291,7 +290,7 @@ class MesonToolchain:
         self.windres = build_env.get("WINDRES")
         #: Defines the Meson ``pkgconfig`` variable. Defaulted to ``PKG_CONFIG``
         #: build environment value
-        self.pkgconfig = (self._recipe_conf.get("tools.gnu:pkg_config", check_type=str) or build_env.get("PKG_CONFIG"))
+        self.pkgconfig = (self._recipe_conf.tools.gnu.pkg_config or build_env.get("PKG_CONFIG"))
         #: Defines the Meson ``c_args`` variable. Defaulted to ``CFLAGS`` build environment value
         self.c_args = self._get_env_list(build_env.get("CFLAGS", []))
         #: Defines the Meson ``c_link_args`` variable. Defaulted to ``LDFLAGS`` build
@@ -374,7 +373,7 @@ class MesonToolchain:
         # Objective C/C++ ones
         self.objc = compilers_by_conf.get("objc", "clang")
         self.objcpp = compilers_by_conf.get("objcpp", "clang++")
-        enable_arc = self._recipe.conf.get("tools.apple:enable_arc", check_type=bool)
+        enable_arc = self._recipe.conf.tools.apple.enable_arc
         fobj_arc = ""
         if enable_arc:
             fobj_arc = "-fobjc-arc"
@@ -389,7 +388,7 @@ class MesonToolchain:
         if not self.cross_build or not self.cross_build["host"]["system"] == "android":
             return
 
-        ndk_path = self._recipe_conf.get("tools.android:ndk_path")
+        ndk_path = self._recipe_conf.tools.android.ndk_path
         if not ndk_path:
             raise RecipeException(
                 "You must provide a NDK path. Use 'tools.android:ndk_path' "
@@ -412,7 +411,7 @@ class MesonToolchain:
 
     @property
     def _rpath_link_flag(self) -> list[str]:
-        add_rpath_link = self._recipe.conf.get("tools.build:add_rpath_link", check_type=bool)
+        add_rpath_link = self._recipe.conf.tools.build.add_rpath_link
         if not add_rpath_link:
             return []
         runtime_dirs = []
@@ -424,16 +423,13 @@ class MesonToolchain:
 
     def _get_extra_flags(self) -> dict[str, Any]:
         # Now, it's time to get all the flags defined by the user
-        cxxflags = self._recipe_conf.get("tools.build:cxxflags", default=[], check_type=list)
-        cflags = self._recipe_conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._recipe_conf.get(
-            "tools.build:sharedlinkflags", default=[], check_type=list)
-        exelinkflags = self._recipe_conf.get(
-            "tools.build:exelinkflags", default=[], check_type=list)
-        linker_scripts = self._recipe_conf.get(
-            "tools.build:linker_scripts", default=[], check_type=list)
+        cxxflags = self._recipe_conf.tools.build.cxxflags
+        cflags = self._recipe_conf.tools.build.cflags
+        sharedlinkflags = self._recipe_conf.tools.build.sharedlinkflags
+        exelinkflags = self._recipe_conf.tools.build.exelinkflags
+        linker_scripts = self._recipe_conf.tools.build.linker_scripts
         linker_script_flags = ["-T" + linker_script for linker_script in linker_scripts]
-        defines = self._recipe_conf.get("tools.build:defines", default=[], check_type=list)
+        defines = self._recipe_conf.tools.build.defines
         sys_root = [f"--sysroot={self._sys_root}"] if self._sys_root else [""]
         ld = (sharedlinkflags + exelinkflags + linker_script_flags + sys_root + self.extra_ldflags + self.threads_flags)
         # Apple extra flags from confs (visibilty, bitcode, arc)

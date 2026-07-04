@@ -60,7 +60,7 @@ class Recipe(RecipeBase[_Options]):
 
         if is_apple_os(self):
             self.requires("libiconv")
-        if not self.conf.get("tools.gnu:pkg_config", check_type=str):
+        if not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
 
     def source(self):

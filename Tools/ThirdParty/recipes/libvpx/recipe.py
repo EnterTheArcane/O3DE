@@ -218,7 +218,7 @@ class Recipe(RecipeBase[_Options]):
 
         # Disable LTO for Visual Studio when CFLAGS doesn't contain -GL
         if is_msvc(self):
-            cflags = " ".join(self.conf.get("tools.build:cflags", default=[], check_type=list))
+            cflags = " ".join(self.conf.tools.build.cflags)
             lto = any(re.finditer("(^| )[/-]GL($| )", cflags))
             if not lto:
                 self.output.info("Disabling LTO")

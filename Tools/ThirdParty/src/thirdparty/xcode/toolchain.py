@@ -41,11 +41,11 @@ class XcodeToolchain:
         self.configuration = recipe.settings.build_type
         self.libcxx = recipe.settings.compiler_libcxx
         self.os_version = recipe.settings.os_version
-        self._global_defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
-        self._global_cxxflags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
-        self._global_cflags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list)
-        exelinkflags = self._recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list)
+        self._global_defines = self._recipe.conf.tools.build.defines
+        self._global_cxxflags = self._recipe.conf.tools.build.cxxflags
+        self._global_cflags = self._recipe.conf.tools.build.cflags
+        sharedlinkflags = self._recipe.conf.tools.build.sharedlinkflags
+        exelinkflags = self._recipe.conf.tools.build.exelinkflags
         self._global_ldflags = sharedlinkflags + exelinkflags
 
     def generate(self):

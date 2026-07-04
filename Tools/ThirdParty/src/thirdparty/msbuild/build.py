@@ -12,7 +12,7 @@ def msbuild_verbosity_cmd_line_arg(recipe: RecipeBase) -> str:
     See https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-command-line-reference
     :return:
     """
-    verbosity = recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose"))
+    verbosity = recipe.conf.tools.build.verbosity
     if verbosity is not None:
         verbosity = {
             "quiet": "Quiet", "verbose": "Detailed",
@@ -61,8 +61,7 @@ class MSBuild:
         if verbosity:
             cmd += f" {verbosity}"
 
-        maxcpucount = self._recipe.conf.get(
-            "tools.msbuild:max_cpu_count", check_type=int)
+        maxcpucount = self._recipe.conf.tools.msbuild.max_cpu_count
         if maxcpucount is not None:
             cmd += f' -m:"{maxcpucount}"' if maxcpucount > 0 else " -m"
 

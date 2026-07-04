@@ -41,7 +41,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("xorg")
         if self.options.with_wsi_wayland:
             self.requires("wayland")
-        if self._needs_pkg_config and not self.conf.get("tools.gnu:pkg_config", check_type=str):
+        if self._needs_pkg_config and not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
 
     def source(self):

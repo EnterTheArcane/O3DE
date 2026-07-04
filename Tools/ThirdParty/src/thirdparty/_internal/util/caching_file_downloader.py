@@ -36,8 +36,8 @@ class SourcesCachingDownloader:
 
     def download(
         self, urls: Any, file_path: str, retry: int, retry_wait: int, verify_ssl: bool, auth: Any, headers: Any, sha256: str | None):
-        download_cache_folder = self._conf.get("core.sources:download_cache")
-        source_origins = self._conf.get("core.sources:download_urls", check_type=list)
+        download_cache_folder = self._conf.core.sources.download_cache
+        source_origins = self._conf.core.sources.download_urls
         if source_origins and not download_cache_folder:
             # If backups are defined, but the download cache is not defined, use a default one
             download_cache_folder = _o3de_download_cache_folder()
@@ -170,7 +170,7 @@ class PackageCacheDownloader:
         requester: Any,
         config: Any,
         scope: Any = None):
-        self._download_cache = config.get("core.download:download_cache")
+        self._download_cache = config.core.download.download_cache
         if self._download_cache and not os.path.isabs(self._download_cache):
             raise RecipeException("core.download:download_cache must be an absolute path")
         self._file_downloader = FileDownloader(requester, scope=scope)

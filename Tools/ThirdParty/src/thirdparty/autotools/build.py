@@ -80,8 +80,7 @@ class Autotools:
                      ``make`` call.
         :param makefile: (Optional, Defaulted to ``None``): Allow specifying a custom makefile to use instead of default "Makefile"
         """
-        make_program = self._recipe.conf.get(
-            "tools.gnu:make_program", default="mingw32-make" if self._use_win_mingw() else "make")
+        make_program = self._recipe.conf.tools.gnu.make_program or ("mingw32-make" if self._use_win_mingw() else "make")
         subsystem = deduce_subsystem(self._recipe, scope="build")
         make_program = subsystem_path(subsystem, make_program)
         str_args = self._make_args
@@ -111,10 +110,8 @@ class Autotools:
         """
         if target is None:
             target = "install"
-            try:
-                do_strip = self._recipe.conf.get("tools.build:install_strip", check_type=bool)
-            except RecipeException:
-                do_strip = "autotools" in self._recipe.conf.get("tools.build:install_strip", check_type=list)
+            install_strip = self._recipe.conf.tools.build.install_strip
+            do_strip = install_strip if isinstance(install_strip, bool) else "autotools" in (install_strip or [])
             if do_strip:
                 target += "-strip"
         args = args if args else []

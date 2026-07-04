@@ -70,7 +70,7 @@ class Recipe(RecipeBase[_Options]):
 
         env = tc.environment()
         if is_msvc(self):
-            ar_wrapper = self.dependencies.build["automake"].info.conf.get("user.automake:lib-wrapper")
+            ar_wrapper = self.dependencies.build["automake"].info.conf.tools.automake.lib_wrapper
             ar_wrapper = unix_path(self, ar_wrapper)
             env.define("CC", "cl -nologo")
             env.define("CXX", "cl -nologo")
@@ -174,8 +174,8 @@ class Recipe(RecipeBase[_Options]):
 
     def _patch_sources(self):
         apply_patches(self)
-        config_guess = self.dependencies.build["gnu-config"].info.conf.get("user.gnu-config:config_guess")
-        config_sub = self.dependencies.build["gnu-config"].info.conf.get("user.gnu-config:config_sub")
+        config_guess = self.dependencies.build["gnu-config"].info.conf.tools.gnu_config.config_guess
+        config_sub = self.dependencies.build["gnu-config"].info.conf.tools.gnu_config.config_sub
         shutil.copy(config_sub, self.folders.source / "build-aux" / "config.sub")
         shutil.copy(config_guess, self.folders.source / "build-aux" / "config.guess")
 

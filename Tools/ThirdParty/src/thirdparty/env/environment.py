@@ -53,7 +53,7 @@ def environment_wrap_command(
         raise RecipeException(
             f"Cannot wrap command with different envs,{bats + ps1s} - {shs}")
 
-    powershell = recipe.conf.get("tools.env.virtualenv:powershell", default="powershell.exe")
+    powershell = recipe.conf.tools.env.virtualenv.powershell or "powershell.exe"
 
     if bats:
         launchers = " && ".join(f'"{b}"' for b in bats)
@@ -406,7 +406,7 @@ class EnvVars:
         self._recipe = recipe
         self._scope = scope
         self._subsystem = deduce_subsystem(recipe, scope)
-        self._deactivation_mode = recipe.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
+        self._deactivation_mode = recipe.conf.tools.env.deactivation_mode
 
     @property
     def _pathsep(self) -> str:
@@ -636,7 +636,7 @@ class EnvVars:
     def save_script(self, filename: str):
         """
         Saves a script file (bat, sh, ps1) with a launcher to set the environment.
-        If the conf "tools.env.virtualenv:powershell" is not an empty string
+        If ``conf.tools.env.virtualenv.powershell`` is not an empty string
         it will generate powershell
         launchers if Windows.
 
@@ -650,7 +650,7 @@ class EnvVars:
             is_ps1 = ext == ".ps1"
         else:  # Need to deduce it automatically
             is_bat = self._subsystem == WINDOWS
-            is_ps1 = self._recipe.conf.get("tools.env.virtualenv:powershell", check_type=str)
+            is_ps1 = self._recipe.conf.tools.env.virtualenv.powershell
             if is_ps1:
                 filename = filename + ".ps1"
                 is_bat = False
@@ -665,7 +665,7 @@ class EnvVars:
         else:
             self.save_sh(path)
 
-        if self._recipe.conf.get("tools.env:dotenv", check_type=bool):
+        if self._recipe.conf.tools.env.dotenv:
             bt = self._recipe.settings.build_type
             arch = self._recipe.settings.arch
             name = name.replace(bt.lower(), bt) if bt else name
@@ -827,7 +827,7 @@ def generate_aggregated_env(recipe: RecipeBase):
     def deactivate_function_names(filenames):
         return [os.path.splitext(os.path.basename(s))[0].replace("-", "_") for s in reversed(filenames)]
 
-    deactivation_mode = recipe.conf.get("tools.env:deactivation_mode", default=None, check_type=str)
+    deactivation_mode = recipe.conf.tools.env.deactivation_mode
     generated = []
     for group, env_scripts in recipe.env_scripts.items():
         subsystem = deduce_subsystem(recipe, group)

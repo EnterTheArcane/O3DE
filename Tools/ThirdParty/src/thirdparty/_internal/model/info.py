@@ -787,7 +787,6 @@ class Info:
             component.set_relative_base_folder(folder)
         self.buildenv.set_relative_base_folder(folder)
         self.runenv.set_relative_base_folder(folder)
-        self.conf.set_relative_base_folder(folder)
 
     def deploy_base_folder(self, package_folder: str, deploy_folder: str):
         """Prepend the folder to all the directories"""
@@ -796,7 +795,6 @@ class Info:
             component.deploy_base_folder(package_folder, deploy_folder)
         self.buildenv.deploy_base_folder(package_folder, deploy_folder)
         self.runenv.deploy_base_folder(package_folder, deploy_folder)
-        self.conf.deploy_base_folder(package_folder, deploy_folder)
 
     def get_sorted_components(self) -> OrderedDict[str, _Component]:
         """

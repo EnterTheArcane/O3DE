@@ -108,7 +108,7 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.no_zlib:
             self.requires("zlib")
         if self.settings_build.os == "Windows":
-            if self.conf.get("user.openssl:windows_use_jom", False):
+            if self.conf.tools.openssl.windows_use_jom:
                 self.requires_tool("jom")
             if not self.options.no_asm and self.settings.arch == "X64":
                 self.requires_tool("nasm")
@@ -510,7 +510,7 @@ class Recipe(RecipeBase[_Options]):
             if self.options.pic:
                 shared_cflag = 'shared_cflag => "-fPIC",'
 
-        if self.settings.os in ["iOS", "tvOS", "watchOS"] and self.conf.get("tools.apple:enable_bitcode", check_type=bool):
+        if self.settings.os in ["iOS", "tvOS", "watchOS"] and self.conf.tools.apple.enable_bitcode:
             cflags.append("-fembed-bitcode")
             cxxflags.append("-fembed-bitcode")
 
@@ -549,7 +549,7 @@ class Recipe(RecipeBase[_Options]):
     @property
     def _perl(self):
         if self._use_nmake:
-            return self.dependencies.build["strawberryperl"].info.conf.get("user.strawberryperl:perl", check_type=str)
+            return self.dependencies.build["strawberryperl"].info.conf.tools.strawberryperl.perl
         return "perl"
 
     def _make(self):
@@ -576,7 +576,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _make_program(self):
-        use_jom = self._use_nmake and self.conf.get("user.openssl:windows_use_jom", False)
+        use_jom = self._use_nmake and self.conf.tools.openssl.windows_use_jom
         if self._use_nmake:
             return "jom" if use_jom else "nmake"
         else:

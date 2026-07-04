@@ -22,7 +22,7 @@ def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]
     if njobs and ("Makefiles" in generator or "Ninja" in generator) and "NMake" not in generator:
         args.append(f"-j{njobs}")
 
-    maxcpucount = recipe.conf.get("tools.msbuild:max_cpu_count", check_type=int)
+    maxcpucount = recipe.conf.tools.msbuild.max_cpu_count
     if maxcpucount is not None and "Visual Studio" in generator:
         args.append(f"/m:{maxcpucount}" if maxcpucount > 0 else "/m")
 
@@ -33,7 +33,7 @@ def _cmake_cmd_line_args(recipe: RecipeBase, generator: str | None) -> list[str]
             # trying to avoid issues with powershell and - : characters preceded by --
             # -verbosity -> /verbosity
             # https://github.com/PowerShell/PowerShell/issues/17399
-            if recipe.conf.get("tools.env.virtualenv:powershell"):
+            if recipe.conf.tools.env.virtualenv.powershell:
                 verbosity = verbosity.replace("-", "/", 1)
             args.append(verbosity)
 
@@ -64,7 +64,7 @@ class CMake:
         self._toolchain_file = configure_preset.get("toolchainFile")
         self._cache_variables = configure_preset["cacheVariables"]
 
-        self._cmake_program = recipe.conf.get("tools.cmake:cmake_program", default="cmake")
+        self._cmake_program = recipe.conf.tools.cmake.cmake_program or "cmake"
 
     @property
     def is_multi_configuration(self) -> bool:
@@ -137,8 +137,7 @@ class CMake:
 
         arg_list.append(f'"{cmakelist_folder}"')
 
-        extra_args = self._recipe.conf.get(
-            "tools.cmake:configure_args", check_type=list, default=[])
+        extra_args = self._recipe.conf.tools.cmake.configure_args
         arg_list.extend(extra_args)
 
         if not cli_args or ("--log-level" not in cli_args and "--loglevel" not in cli_args):
@@ -274,10 +273,8 @@ class CMake:
             arg_list.extend(["--component", component])
         arg_list.extend(self._compilation_verbosity_arg)
 
-        try:
-            do_strip = self._recipe.conf.get("tools.build:install_strip", check_type=bool)
-        except RecipeException:
-            do_strip = "cmake" in self._recipe.conf.get("tools.build:install_strip", check_type=list)
+        install_strip = self._recipe.conf.tools.build.install_strip
+        do_strip = install_strip if isinstance(install_strip, bool) else "cmake" in (install_strip or [])
         if do_strip:
             arg_list.append("--strip")
 
@@ -313,7 +310,7 @@ class CMake:
         :param stdout: Use it to redirect stdout to this stream
         :param stderr: Use it to redirect stderr to this stream
         """
-        if self._recipe.conf.get("tools.build:skip_test", check_type=bool):
+        if self._recipe.conf.tools.build.skip_test:
             return
         if not target:
             is_multi = is_multi_configuration(self._generator)
@@ -337,7 +334,7 @@ class CMake:
         :param stdout: Use it to redirect stdout to this stream
         :param stderr: Use it to redirect stderr to this stream
         """
-        if self._recipe.conf.get("tools.build:skip_test", check_type=bool):
+        if self._recipe.conf.tools.build.skip_test:
             return
 
         arg_list = []
@@ -351,14 +348,14 @@ class CMake:
 
         arg_list.extend(cli_args or [])
 
-        verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose"))
+        verbosity = self._recipe.conf.tools.build.verbosity
         if verbosity:
             # https://cmake.org/cmake/help/latest/manual/ctest.1.html
             # Options such as --verbose, --extra-verbose, and --debug are
             # ignored if --quiet is specified.
             arg_list.append(f"--{verbosity}")
 
-        extra_args = self._recipe.conf.get("tools.cmake:ctest_args", check_type=list)
+        extra_args = self._recipe.conf.tools.cmake.ctest_args
         if extra_args:
             arg_list.extend(extra_args)
 
@@ -374,8 +371,7 @@ class CMake:
         Controls build tool verbosity, that is, those controlled by -DCMAKE_VERBOSE_MAKEFILE
         See https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-build-v
         """
-        verbosity = self._recipe.conf.get(
-            "tools.compilation:verbosity", choices=("quiet", "verbose"))
+        verbosity = self._recipe.conf.tools.compilation.verbosity
         return ["--verbose"] if verbosity == "verbose" else []
 
     @property
@@ -385,7 +381,7 @@ class CMake:
         See https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-log-level
         :return:
         """
-        log_level = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose"))
+        log_level = self._recipe.conf.tools.build.verbosity
         if log_level == "quiet":
             log_level = "error"
         return ["--loglevel=" + log_level.upper()] if log_level is not None else []

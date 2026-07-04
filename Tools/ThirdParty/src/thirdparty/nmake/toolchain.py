@@ -57,16 +57,14 @@ class NMakeToolchain:
         rt_flags = [f"/{rt_flags}"] if rt_flags else []
 
         cflags = []
-        cflags.extend(self._recipe.conf.get("tools.build:cflags", default=[], check_type=list))
+        cflags.extend(self._recipe.conf.tools.build.cflags)
         cflags.extend(self.extra_cflags)
 
         cxxflags = []
         cppstd = cppstd_flag(self._recipe)
         if cppstd:
             cxxflags.append(cppstd)
-        cxxflags.extend(
-            self._recipe.conf.get(
-                "tools.build:cxxflags", default=[], check_type=list))
+        cxxflags.extend(self._recipe.conf.tools.build.cxxflags)
         cxxflags.extend(self.extra_cxxflags)
 
         defines = []
@@ -74,7 +72,7 @@ class NMakeToolchain:
         if build_type in ["Release", "RelWithDebInfo", "MinSizeRel"]:
             defines.append("NDEBUG")
         defines.extend(self._arch_defines)
-        defines.extend(self._recipe.conf.get("tools.build:defines", default=[], check_type=list))
+        defines.extend(self._recipe.conf.tools.build.defines)
         defines.extend(self.extra_defines)
 
         return (["/nologo"] + self._format_options(bt_flags + rt_flags + cflags + cxxflags) + format_defines(defines, toolchain=True))
@@ -86,19 +84,15 @@ class NMakeToolchain:
 
         ldflags = []
         ldflags.extend(bt_ldflags)
-        ldflags.extend(
-            self._recipe.conf.get(
-                "tools.build:sharedlinkflags", default=[], check_type=list))
-        ldflags.extend(
-            self._recipe.conf.get(
-                "tools.build:exelinkflags", default=[], check_type=list))
+        ldflags.extend(self._recipe.conf.tools.build.sharedlinkflags)
+        ldflags.extend(self._recipe.conf.tools.build.exelinkflags)
         ldflags.extend(self.extra_ldflags)
 
         return ["/nologo"] + self._format_options(ldflags)
 
     @property
     def _rcflags(self):
-        rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
+        rcflags = self._recipe.conf.tools.build.rcflags
         return self._format_options(rcflags) if rcflags else []
 
     def environment(self):
@@ -113,8 +107,7 @@ class NMakeToolchain:
             env.append("RCFLAGS", self._rcflags)
         # Also define some special env-vars which can override special NMake macros:
         # https://learn.microsoft.com/en-us/cpp/build/reference/special-nmake-macros
-        conf_compilers = self._recipe.conf.get(
-            "tools.build:compiler_executables", default={}, check_type=dict)
+        conf_compilers = self._recipe.conf.tools.build.compiler_executables
         if conf_compilers:
             compilers_mapping = {
                 "AS": "asm", "CC": "c", "CPP": "cpp", "CXX": "cpp", "RC": "rc",

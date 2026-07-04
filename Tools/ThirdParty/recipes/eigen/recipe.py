@@ -30,7 +30,8 @@ class Recipe(RecipeBase):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.cache_variables["BUILD_TESTING"] = not self.conf.get("tools.build:skip_test", default=True, check_type=bool)
+        skip_test = self.conf.tools.build.skip_test if self.conf.tools.build.skip_test is not None else True
+        tc.cache_variables["BUILD_TESTING"] = not skip_test
         tc.cache_variables["EIGEN_BUILD_BLAS"] = False
         tc.cache_variables["EIGEN_BUILD_LAPACK"] = False
         tc.cache_variables["EIGEN_BUILD_DEMOS"] = False

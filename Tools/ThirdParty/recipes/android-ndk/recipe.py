@@ -62,7 +62,7 @@ class Recipe(RecipeBase):
         self.info.buildenv.define_path("ANDROID_NDK_ROOT", ndk_root)
         self.info.buildenv.define_path("ANDROID_NDK_HOME", ndk_root)
         self.info.buildenv.define_path("NDK_ROOT", ndk_root)
-        self.info.conf.define("tools.android:ndk_path", str(ndk_root))
+        self.info.conf.tools.android.ndk_path = str(ndk_root)
         self.info.buildenv.define_path("AR", self._tool_exe("llvm-ar"))
         self.info.buildenv.define_path("RANLIB", self._tool_exe("llvm-ranlib"))
         self.info.buildenv.define_path("STRIP", self._tool_exe("llvm-strip"))

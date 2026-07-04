@@ -115,11 +115,9 @@ class MSBuildDeps:
         #: Defines the platform key used to conditionally select which property sheet to
         #: import (defaults to ``"Platform"``).
         self.platform_key = "Platform"
-        ca_exclude = "tools.msbuilddeps:exclude_code_analysis"
         #: List of packages names patterns to add Visual Studio ``CAExcludePath`` property
-        #: to each match as part of its ``recipe_[DEP]_[CONFIG].props``. By default, value given by
-        #: ``tools.msbuilddeps:exclude_code_analysis`` configuration.
-        self.exclude_code_analysis = self._recipe.conf.get(ca_exclude, check_type=list)
+        #: to each match as part of its ``recipe_[DEP]_[CONFIG].props``.
+        self.exclude_code_analysis = self._recipe.conf.tools.msbuilddeps.exclude_code_analysis
 
     def generate(self):
         """

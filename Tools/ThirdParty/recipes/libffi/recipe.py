@@ -93,7 +93,7 @@ class Recipe(RecipeBase[_Options]):
             if architecture_flag:
                 compile_wrapper = f"{compile_wrapper} {architecture_flag}"
 
-            ar_wrapper = unix_path(self, self.dependencies.build["automake"].info.conf.get("user.automake:lib-wrapper"))
+            ar_wrapper = unix_path(self, self.dependencies.build["automake"].info.conf.tools.automake.lib_wrapper)
             env.define("CC", f"{compile_wrapper}")
             env.define("CXX", f"{compile_wrapper}")
             env.define("LD", "link -nologo")

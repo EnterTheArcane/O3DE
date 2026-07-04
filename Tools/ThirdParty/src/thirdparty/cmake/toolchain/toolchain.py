@@ -208,7 +208,7 @@ class CMakeToolchain:
         """
           This method will save the generated files to the recipe.folders.generators
         """
-        toolchain_file = self._recipe.conf.get("tools.cmake.toolchain:toolchain_file")
+        toolchain_file = self._recipe.conf.tools.cmake.toolchain.toolchain_file
         if toolchain_file is None:  # The main toolchain file generated only if user dont define
             toolchain_file = self.filename
             save(os.path.join(self._recipe.folders.generators, toolchain_file), self.content)
@@ -226,15 +226,14 @@ class CMakeToolchain:
 
         buildenv, runenv, cmake_executable = None, None, None
 
-        if self._recipe.conf.get(
-            "tools.cmake.toolchain:presets_environment", default="", check_type=str, choices=("disabled", "")) != "disabled":
+        if self._recipe.conf.tools.cmake.toolchain.presets_environment != "disabled":
             build_env = self.presets_build_environment.vars(self._recipe) if self.presets_build_environment else VirtualBuildEnv(self._recipe).vars()
             run_env = self.presets_run_environment.vars(self._recipe) if self.presets_run_environment else VirtualRunEnv(self._recipe).vars()
 
             buildenv = {name: value for name, value in build_env.items(variable_reference="$penv{{{name}}}")}
             runenv = {name: value for name, value in run_env.items(variable_reference="$penv{{{name}}}")}
 
-            cmake_executable = self._recipe.conf.get("tools.cmake:cmake_program", None)
+            cmake_executable = self._recipe.conf.tools.cmake.cmake_program
             cmake_executable = cmake_executable or self._find_cmake_exe()
 
         write_cmake_presets(self._recipe, toolchain_file, self.generator, cache_variables, self.user_presets_path, self.presets_prefix, buildenv, runenv, cmake_executable, self.absolute_paths)

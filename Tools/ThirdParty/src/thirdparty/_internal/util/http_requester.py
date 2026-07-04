@@ -69,18 +69,17 @@ class _SourceURLCredentials:
 class HttpRequester:
     def __init__(self, config: Any, cache_folder: Any = None):
         self._url_creds = _SourceURLCredentials(cache_folder)
-        _max_retries = config.get("core.net.http:max_retries", default=2, check_type=int)
+        _max_retries = config.core.net.http.max_retries if config.core.net.http.max_retries is not None else 2
         self._http_requester = requests.Session()
         _adapter = HTTPAdapter(max_retries=self._get_retries(_max_retries))
         self._http_requester.mount("http://", _adapter)
         self._http_requester.mount("https://", _adapter)
-        self._timeout = config.get("core.net.http:timeout", default=DEFAULT_TIMEOUT)
-        self._no_proxy_match = config.get("core.net.http:no_proxy_match", check_type=list)
-        self._proxies = config.get("core.net.http:proxies")
-        self._cacert_path = config.get("core.net.http:cacert_path", check_type=str)
-        self._client_certificates = config.get("core.net.http:client_cert")
-        self._clean_system_proxy = config.get(
-            "core.net.http:clean_system_proxy", default=False, check_type=bool)
+        self._timeout = config.core.net.http.timeout if config.core.net.http.timeout is not None else DEFAULT_TIMEOUT
+        self._no_proxy_match = config.core.net.http.no_proxy_match
+        self._proxies = config.core.net.http.proxies
+        self._cacert_path = config.core.net.http.cacert_path
+        self._client_certificates = config.core.net.http.client_cert
+        self._clean_system_proxy = config.core.net.http.clean_system_proxy or False
         platform_info = "; ".join(
             [
                 " ".join([platform.system(), platform.release()]), "Python " + platform.python_version(), platform.machine(),
@@ -171,4 +170,3 @@ class HttpRequester:
             if popped:
                 os.environ.clear()
                 os.environ.update(old_env)
-

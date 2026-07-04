@@ -240,18 +240,10 @@ class Recipe(RecipeBase[_Options]):
             shiboken.system_libs = ["pthread", "dl"]
 
         # Expose the shiboken6 generator location via conf
-        self.info.conf.define(
-            "user.pyside:shiboken6_generator",
-            (self.folders.package / "bin" / "shiboken6").as_posix())
-        self.info.conf.define(
-            "user.pyside:pyside_dir",
-            self.folders.package.as_posix())
-        self.info.conf.define(
-            "user.pyside6:shiboken6_generator",
-            (self.folders.package / "bin" / "shiboken6").as_posix())
-        self.info.conf.define(
-            "user.pyside6:pyside6_dir",
-            self.folders.package.as_posix())
+        self.info.conf.tools.pyside.shiboken6_generator = (self.folders.package / "bin" / "shiboken6").as_posix()
+        self.info.conf.tools.pyside.pyside_dir = self.folders.package.as_posix()
+        self.info.conf.tools.pyside6.shiboken6_generator = (self.folders.package / "bin" / "shiboken6").as_posix()
+        self.info.conf.tools.pyside6.pyside6_dir = self.folders.package.as_posix()
 
         bin_dir = self.folders.package / "bin"
         self.info.buildenv.prepend_path("PATH", bin_dir)

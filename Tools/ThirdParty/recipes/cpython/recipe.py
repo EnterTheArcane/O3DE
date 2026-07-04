@@ -80,7 +80,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("ncurses")
         if self.options.with_lzma:
             self.requires("xz")
-        if not is_msvc(self) and not self.conf.get("tools.gnu:pkg_config", check_type=str):
+        if not is_msvc(self) and not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
 
     def source(self):
@@ -254,7 +254,7 @@ class Recipe(RecipeBase[_Options]):
             self.output.info(f"Appending PATH environment variable: {bindir}")
 
         python = self._cpython_interpreter_path
-        self.info.conf.define("user.cpython:python", python)
+        self.info.conf.tools.cpython.python = python
         if self.options.env_vars:
             self.info.runenv.append_path("PYTHON", python)
             self.info.buildenv.append_path("PYTHON", python)
@@ -266,17 +266,17 @@ class Recipe(RecipeBase[_Options]):
             pythonhome = self.folders.package / "bin"
         else:
             pythonhome = self.folders.package
-        self.info.conf.define("user.cpython:pythonhome", pythonhome)
+        self.info.conf.tools.cpython.pythonhome = pythonhome
 
         pythonhome_required = is_msvc(self) or is_apple_os(self)
-        self.info.conf.define("user.cpython:module_requires_pythonhome", pythonhome_required)
+        self.info.conf.tools.cpython.module_requires_pythonhome = pythonhome_required
 
         python_root = self.folders.package
         if self.options.env_vars:
             self.info.runenv.append_path("PYTHON_ROOT", python_root)
             self.info.buildenv.append_path("PYTHON_ROOT", python_root)
 
-        self.info.conf.define("user.cpython:python_root", python_root)
+        self.info.conf.tools.cpython.python_root = python_root
 
     @property
     def _supports_modules(self):

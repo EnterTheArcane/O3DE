@@ -55,14 +55,14 @@ def _generate_flags(self, recipe: RecipeBase):
     thread_flags_list = threads_flags(self._recipe)
 
     extra_defines = format_list(
-        recipe.conf.get("tools.build:defines", default=[], check_type=list) + self.extra_defines + to_list(libcxx_compile_definitions))
+        recipe.conf.tools.build.defines + self.extra_defines + to_list(libcxx_compile_definitions))
     extra_c_flags = format_list(
-        recipe.conf.get("tools.build:cflags", default=[], check_type=list) + self.extra_cflags + arch_flags + thread_flags_list)
+        recipe.conf.tools.build.cflags + self.extra_cflags + arch_flags + thread_flags_list)
     extra_cxx_flags = format_list(
-        recipe.conf.get("tools.build:cxxflags", default=[], check_type=list) + to_list(cxx_flags) + self.extra_cxxflags + arch_flags + thread_flags_list)
+        recipe.conf.tools.build.cxxflags + to_list(cxx_flags) + self.extra_cxxflags + arch_flags + thread_flags_list)
     extra_ld_flags = format_list(
-        recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list) + recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list) + self.extra_ldflags + arch_flags + arch_link_flags + thread_flags_list)
-    extra_rc_flags = format_list(recipe.conf.get("tools.build:rcflags", default=[], check_type=list))
+        recipe.conf.tools.build.sharedlinkflags + recipe.conf.tools.build.exelinkflags + self.extra_ldflags + arch_flags + arch_link_flags + thread_flags_list)
+    extra_rc_flags = format_list(recipe.conf.tools.build.rcflags)
 
     return (jinja2.Template(template, trim_blocks=True, lstrip_blocks=True).render(
         extra_defines=extra_defines, extra_cflags=extra_c_flags, extra_cxxflags=extra_cxx_flags, extra_ldflags=extra_ld_flags, extra_rcflags=extra_rc_flags, ).strip())
@@ -222,8 +222,7 @@ class PremakeToolchain:
             elif cppstd[0].isnumeric():
                 cppstd = f"c++{cppstd}"
 
-        compilers_build_mapping = self._recipe.conf.get(
-            "tools.build:compiler_executables", default={}, check_type=dict)
+        compilers_build_mapping = self._recipe.conf.tools.build.compiler_executables
         if compilers_build_mapping:
             build_env = VirtualBuildEnv(self._recipe)
             env = build_env.environment()

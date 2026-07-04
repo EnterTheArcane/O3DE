@@ -20,4 +20,4 @@ def build_jobs(recipe: RecipeBase) -> int:
     :param recipe: The current recipe object. Always use ``self``.
     :return: ``int`` with the number of jobs
     """
-    return recipe.conf.get("tools.build:jobs", default=cpu_count(), check_type=int)
+    return recipe.conf.tools.build.jobs or cpu_count()

@@ -182,7 +182,7 @@ class Recipe(RecipeBase):
         self.info.buildenv.define_path("CARGO_HOME", self.folders.package / ".cargo")
         self.info.buildenv.define_path("CARGO", cargo)
         self.info.buildenv.define_path("RUSTC", rustc)
-        self.info.conf.define("tools.rust:dir", self.folders.package)
+        self.info.conf.tools.rust.dir = self.folders.package
 
     @property
     def _target_triple(self):

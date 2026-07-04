@@ -33,7 +33,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libudev")
         if self.settings.os != "Windows":
             self.requires_tool("libtool")
-            if self.settings.os in ["Linux", "FreeBSD"] and not self.conf.get("tools.gnu:pkg_config", check_type=str):
+            if self.settings.os in ["Linux", "FreeBSD"] and not self.conf.tools.gnu.pkg_config:
                 self.requires_tool("pkgconf")
             if self.settings_build.os == "Windows":
                 self.win_bash = True

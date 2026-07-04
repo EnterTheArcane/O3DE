@@ -130,8 +130,7 @@ class MSBuildToolchain:
         cstd = f"stdc{self.cstd}" if self.cstd else ""
         runtime_library = self.runtime_library
         toolset = self.toolset or ""
-        conf_options = self._recipe.conf.get(
-            "tools.msbuildtoolchain:compile_options", default={}, check_type=dict)
+        conf_options = self._recipe.conf.tools.msbuildtoolchain.compile_options
         self.compile_options.update(conf_options)
         parallel = ""
         njobs = build_jobs(self._recipe)
@@ -143,7 +142,7 @@ class MSBuildToolchain:
         compile_options = "".join(
             f"\n      <{k}>{v}</{k}>" for k, v in self.compile_options.items())
 
-        winsdk_version = self._recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
+        winsdk_version = self._recipe.conf.tools.microsoft.winsdk_version
         winsdk_version = winsdk_version or self._recipe.settings.os_version
 
         return {
@@ -214,19 +213,17 @@ class MSBuildToolchain:
 
     def _get_extra_flags(self):
         # Now, it's time to get all the flags defined by the user
-        cxxflags = self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
-        cflags = self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._recipe.conf.get(
-            "tools.build:sharedlinkflags", default=[], check_type=list)
-        exelinkflags = self._recipe.conf.get(
-            "tools.build:exelinkflags", default=[], check_type=list)
-        rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
-        defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
+        cxxflags = self._recipe.conf.tools.build.cxxflags
+        cflags = self._recipe.conf.tools.build.cflags
+        sharedlinkflags = self._recipe.conf.tools.build.sharedlinkflags
+        exelinkflags = self._recipe.conf.tools.build.exelinkflags
+        rcflags = self._recipe.conf.tools.build.rcflags
+        defines = self._recipe.conf.tools.build.defines
         return cxxflags, cflags, defines, sharedlinkflags, exelinkflags, rcflags
 
 
 def _get_toolset_props(recipe: RecipeBase):
-    msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
+    msvc_update = recipe.conf.tools.microsoft.msvc_update
     compiler_update = msvc_update or recipe.settings.compiler_update
     if compiler_update is None:
         return
@@ -234,7 +231,7 @@ def _get_toolset_props(recipe: RecipeBase):
     vs_version = vs_ide_version(recipe)
     if int(vs_version) <= 14:
         return
-    vs_install_path = recipe.conf.get("tools.msbuild:installation_path")
+    vs_install_path = recipe.conf.tools.msbuild.installation_path
     vs_path = vs_install_path or vs_installation_path(vs_version)
     if not vs_path or not os.path.isdir(vs_path):
         return

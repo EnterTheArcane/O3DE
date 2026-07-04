@@ -126,8 +126,8 @@ class Recipe(RecipeBase[_Options]):
     def _patch_sources(self):
         apply_patches(self)
         for gnu_config in [
-            self.conf.get("user.gnu-config:config_guess", check_type=str),
-            self.conf.get("user.gnu-config:config_sub", check_type=str),
+            self.conf.tools.gnu_config.config_guess,
+            self.conf.tools.gnu_config.config_sub,
         ]:
             if gnu_config:
                 copy(self, os.path.basename(gnu_config), os.path.dirname(gnu_config), self.folders.source / "build-aux")

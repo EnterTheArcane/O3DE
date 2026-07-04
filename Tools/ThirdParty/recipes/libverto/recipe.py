@@ -35,7 +35,7 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         self.requires_tool("libtool")
         self.requires("libevent")
-        if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
+        if not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
 
     def source(self):

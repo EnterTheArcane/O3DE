@@ -50,8 +50,7 @@ class _CMakePresets:
             if "CMAKE_SH" not in cache_variables:
                 cache_variables["CMAKE_SH"] = "CMAKE_SH-NOTFOUND"
 
-        cmake_make_program = recipe.conf.get(
-            "tools.gnu:make_program", default=cache_variables.get("CMAKE_MAKE_PROGRAM"))
+        cmake_make_program = recipe.conf.tools.gnu.make_program or cache_variables.get("CMAKE_MAKE_PROGRAM")
         if cmake_make_program:
             cmake_make_program = cmake_make_program.replace("\\", "/")
             cache_variables["CMAKE_MAKE_PROGRAM"] = cmake_make_program
@@ -60,7 +59,7 @@ class _CMakePresets:
             cache_variables["CMAKE_POLICY_DEFAULT_CMP0091"] = "NEW"
 
         if "BUILD_TESTING" not in cache_variables:
-            if recipe.conf.get("tools.build:skip_test", check_type=bool):
+            if recipe.conf.tools.build.skip_test:
                 cache_variables["BUILD_TESTING"] = "OFF"
 
         preset_path = os.path.join(recipe.folders.generators, "CMakePresets.json")
@@ -159,7 +158,7 @@ class _CMakePresets:
         # Second attempt at upstream issue 13136
         # for cmake-tools to activate environment. Similar to CompilersBlock
         # Only for cl/clang-cl, other compilers such clang can be breaking (Android)
-        compilers_by_conf = recipe.conf.get("tools.build:compiler_executables", default={})
+        compilers_by_conf = recipe.conf.tools.build.compiler_executables
         compiler = recipe.settings.compiler
         default_cl = "cl" if compiler == "msvc" and "Ninja" in str(generator) else None
         for lang in ("c", "cpp"):

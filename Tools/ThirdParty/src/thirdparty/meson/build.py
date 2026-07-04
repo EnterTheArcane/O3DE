@@ -33,8 +33,7 @@ class Meson:
         cross = os.path.join(generators_folder, MesonToolchain.cross_filename)
         native = os.path.join(generators_folder, MesonToolchain.native_filename)
         is_cross_build = os.path.exists(cross)
-        machine_files = self._recipe.conf.get(
-            "tools.meson.toolchain:extra_machine_files", default=[], check_type=list)
+        machine_files = list(self._recipe.conf.tools.meson.toolchain.extra_machine_files)
         cmd = "meson setup "
         if is_cross_build:
             machine_files.insert(0, cross)
@@ -85,10 +84,8 @@ class Meson:
         verbosity = self._install_verbosity
         if verbosity:
             cmd += " " + verbosity
-        try:
-            do_strip = self._recipe.conf.get("tools.build:install_strip", check_type=bool)
-        except RecipeException:
-            do_strip = "meson" in self._recipe.conf.get("tools.build:install_strip", check_type=list)
+        install_strip = self._recipe.conf.tools.build.install_strip
+        do_strip = install_strip if isinstance(install_strip, bool) else "meson" in (install_strip or [])
         if do_strip:
             cmd += " --strip"
         if cli_args:
@@ -125,7 +122,7 @@ class Meson:
         """
         Runs ``meson test -v -C "."`` in the build folder.
         """
-        if self._recipe.conf.get("tools.build:skip_test", check_type=bool):
+        if self._recipe.conf.tools.build.skip_test:
             return
         meson_build_folder = self._recipe.folders.build
         cmd = f'meson test -v -C "{meson_build_folder}"'
@@ -137,8 +134,7 @@ class Meson:
     def _build_verbosity(self) -> str:
         # verbosity of build tools. This passes -v to ninja, for example.
         # See https://github.com/mesonbuild/meson/blob/master/mesonbuild/mcompile.py#L156
-        verbosity = self._recipe.conf.get(
-            "tools.compilation:verbosity", choices=("quiet", "verbose"))
+        verbosity = self._recipe.conf.tools.compilation.verbosity
         return "--verbose" if verbosity == "verbose" else ""
 
     @property
@@ -146,7 +142,7 @@ class Meson:
         # https://github.com/mesonbuild/meson/blob/master/mesonbuild/minstall.py#L81
         # Errors are always logged, and status about installed files is controlled by this flag,
         # so it's a bit backwards
-        verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose"))
+        verbosity = self._recipe.conf.tools.build.verbosity
         return "--quiet" if verbosity == "quiet" else ""
 
     @property

@@ -352,7 +352,7 @@ class Recipe(RecipeBase[_Options]):
             self.requires("md4c")  # stable API since 0.3x as per md4c wiki
         self.requires_tool("cmake")
         self.requires_tool("ninja")
-        if not self.conf.get("tools.gnu:pkg_config", check_type=str):
+        if not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
 
         if self.options.qtwebengine:
@@ -1544,7 +1544,7 @@ class Recipe(RecipeBase[_Options]):
 
         self.info.set_property("cmake_build_modules", build_modules_list)
 
-        self.info.conf.define("user.qt:tools_directory", self.folders.package / ("bin" if self.settings.os == "Windows" else "libexec"))
+        self.info.conf.tools.qt.tools_directory = self.folders.package / ("bin" if self.settings.os == "Windows" else "libexec")
 
     def _excluded_module_patterns(self) -> list[str]:
         root = f"qt-everywhere-src-{self.version}"

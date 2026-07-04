@@ -97,7 +97,7 @@ class Recipe(RecipeBase[_Options]):
             replace_in_file(self, "Makefile.MSVC", "ADDL_OBJ = bufferoverflowU.lib", "", strict=False)
             command = "nmake -f Makefile.MSVC comp=msvc"
             if self._is_clang_cl:
-                compilers_from_conf = self.conf.get("tools.build:compiler_executables", default={}, check_type=dict)
+                compilers_from_conf = self.conf.tools.build.compiler_executables
                 buildenv_vars = VirtualBuildEnv(self).vars()
                 cl = compilers_from_conf.get("c", buildenv_vars.get("CC", "clang-cl"))
                 link = buildenv_vars.get("LD", "lld-link")
@@ -120,8 +120,8 @@ class Recipe(RecipeBase[_Options]):
 
     def _build_autotools(self):
         for gnu_config in [
-            self.conf.get("user.gnu-config:config_guess", check_type=str),
-            self.conf.get("user.gnu-config:config_sub", check_type=str),
+            self.conf.tools.gnu_config.config_guess,
+            self.conf.tools.gnu_config.config_sub,
         ]:
             if gnu_config:
                 copy(self, os.path.basename(gnu_config), src=os.path.dirname(gnu_config), dst=self.folders.source)

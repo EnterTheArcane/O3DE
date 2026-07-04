@@ -231,7 +231,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.arch == "X64":
             self.requires_tool("nasm")
 
-        if self.settings.os != "Linux" and not self.conf.get("tools.gnu:pkg_config", check_type=str):
+        if self.settings.os != "Linux" and not self.conf.tools.gnu.pkg_config:
             # See https://github.com/recipe-io/recipe-center-index/pull/26447#discussion_r1926682155
             self.requires_tool("pkgconf")
         if self.settings.os == "Windows":
@@ -435,7 +435,7 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.with_programs:
             args.append("--disable-programs")
         # since ffmpeg"s build system ignores CC and CXX
-        compilers_from_conf = self.conf.get("tools.build:compiler_executables", default={}, check_type=dict)
+        compilers_from_conf = self.conf.tools.build.compiler_executables
         buildenv_vars = VirtualBuildEnv(self).vars()
         nm = buildenv_vars.get("NM")
         if nm:
@@ -462,7 +462,7 @@ class Recipe(RecipeBase[_Options]):
         ranlib = buildenv_vars.get("RANLIB")
         if ranlib:
             args.append(f"--ranlib={unix_path(self, ranlib)}")
-        pkg_config = self.conf.get("tools.gnu:pkg_config", default=buildenv_vars.get("PKG_CONFIG"), check_type=str)
+        pkg_config = self.conf.tools.gnu.pkg_config or buildenv_vars.get("PKG_CONFIG")
         if pkg_config:
             # the ffmpeg configure script hardcodes the name of the executable,
             # unlike other tools that use the PKG_CONFIG environment variable

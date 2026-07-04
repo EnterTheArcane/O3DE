@@ -25,8 +25,7 @@ class XcodeBuild:
 
     @property
     def _verbosity(self) -> str:
-        verbosity = self._recipe.conf.get("tools.build:verbosity", choices=("quiet", "verbose")) or self._recipe.conf.get(
-            "tools.compilation:verbosity", choices=("quiet", "verbose"))
+        verbosity = self._recipe.conf.tools.build.verbosity or self._recipe.conf.tools.compilation.verbosity
         return "-" + verbosity if verbosity is not None else ""
 
     @property
@@ -34,7 +33,7 @@ class XcodeBuild:
         # User's sdk_path has priority, then if specified try to compose sdk argument
         # with sdk/sdk_version settings, leave blank otherwise and the sdk will be automatically
         # chosen by the build system
-        sdk = self._recipe.conf.get("tools.apple:sdk_path")
+        sdk = self._recipe.conf.tools.apple.sdk_path
         if not sdk and self._sdk:
             sdk = f"{self._sdk}{self._sdk_version}"
         return f"SDKROOT={sdk}" if sdk else ""

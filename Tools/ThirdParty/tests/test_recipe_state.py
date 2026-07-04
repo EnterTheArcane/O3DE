@@ -89,6 +89,16 @@ class RecipeStateTest(unittest.TestCase):
         with self.assertRaises(AttributeError):
             recipe.info = info
 
+    def test_info_serializes_typed_conf_state(self):
+        info = Info(set_defaults=True)
+        info.conf.tools.gnu_config.config_guess = "/tmp/config.guess"
+        info.conf.tools.build.compiler_executables["c"] = "/usr/bin/clang"
+
+        restored = Info(set_defaults=True).deserialize(info.serialize())
+
+        self.assertEqual(restored.conf.tools.gnu_config.config_guess, "/tmp/config.guess")
+        self.assertEqual(restored.conf.tools.build.compiler_executables["c"], "/usr/bin/clang")
+
     def test_recipe_does_not_receive_graph_node_back_reference(self):
         recipe = Recipe()
 

@@ -25,7 +25,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("meson")
-        if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
+        if not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
         if self.settings.arch in ["X64"]:
             self.requires_tool("nasm")

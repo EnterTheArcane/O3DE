@@ -52,7 +52,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings_build.os == "Windows":
             self.win_bash = True
             self.requires_tool("msys2")
-        if not self.conf.get("tools.gnu:pkg_config", default=False, check_type=str):
+        if not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
 
     def source(self):
@@ -257,7 +257,7 @@ class Recipe(RecipeBase[_Options]):
         terminfo = self.folders.package / "res" / "terminfo"
         self.info.buildenv.define_path("TERMINFO", terminfo.as_posix())
         self.info.runenv.define_path("TERMINFO", terminfo.as_posix())
-        self.info.conf.define("user.ncurses:lib_suffix", self._lib_suffix)
+        self.info.conf.tools.ncurses.lib_suffix = self._lib_suffix
 
     @property
     def _is_mingw(self):

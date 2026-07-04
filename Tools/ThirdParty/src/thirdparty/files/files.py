@@ -204,9 +204,9 @@ def download(
     :param filename: Name of the file to be created in the local storage
     :param verify: When False, disables https certificate validation
     :param retry: Number of retries in case of failure. Default is overridden by
-           "tools.files.download:retry" conf
+           ``conf.tools.files.download.retry``
     :param retry_wait: Seconds to wait between download attempts. Default is overriden by
-           "tools.files.download:retry_wait" conf.
+           ``conf.tools.files.download.retry_wait``.
     :param auth: A tuple of user and password to use HTTPBasic authentication
     :param headers: A dictionary with additional headers
     :param sha256: SHA-256 hash code to check the downloaded file
@@ -214,10 +214,10 @@ def download(
     config = recipe.conf
 
     retry: int = retry if retry is not None else 2
-    retry = config.get("tools.files.download:retry", check_type=int, default=retry)
+    retry = config.tools.files.download.retry if config.tools.files.download.retry is not None else retry
     retry_wait: int = retry_wait if retry_wait is not None else 5
-    retry_wait = config.get("tools.files.download:retry_wait", check_type=int, default=retry_wait)
-    verify = config.get("tools.files.download:verify", check_type=bool, default=verify)
+    retry_wait = config.tools.files.download.retry_wait if config.tools.files.download.retry_wait is not None else retry_wait
+    verify = config.tools.files.download.verify if config.tools.files.download.verify is not None else verify
 
     filename = os.path.abspath(filename)
     downloader = SourcesCachingDownloader(recipe)
@@ -396,7 +396,7 @@ def unzip(
 
     filename = os.fspath(filename)
     output = recipe.output
-    extract_filter = recipe.conf.get("tools.files.unzip:filter") or extract_filter
+    extract_filter = recipe.conf.tools.files.unzip_filter or extract_filter
     output.info(f"Uncompressing {filename} to {destination}")
     if (filename.endswith(".tar.gz") or filename.endswith(".tgz") or filename.endswith(".tbz2") or filename.endswith(".tar.bz2") or filename.endswith(".tar")):
         return untargz(

@@ -33,7 +33,7 @@ def check_min_vs(recipe: RecipeBase, version: str, raise_invalid: bool = True) -
         }.get(compiler_version)
     elif compiler == "msvc":
         compiler_version = recipe.settings.compiler_version
-        msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
+        msvc_update = recipe.conf.tools.microsoft.msvc_update
         compiler_update = msvc_update or recipe.settings.compiler_update
         if compiler_version and compiler_update is not None:
             compiler_version += f".{compiler_update}"
@@ -115,7 +115,7 @@ class VCVars:
         if compiler not in ("msvc", "clang"):
             return
 
-        vs_install_path = recipe.conf.get("tools.msbuild:installation_path")
+        vs_install_path = recipe.conf.tools.msbuild.installation_path
         if vs_install_path == "":  # Empty string means "disable"
             return
 
@@ -125,7 +125,7 @@ class VCVars:
 
         vcvarsarch = _vcvars_arch(recipe)
 
-        winsdk_version = recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
+        winsdk_version = recipe.conf.tools.microsoft.winsdk_version
         winsdk_version = winsdk_version or recipe.settings.os_version
         # The vs_install_path is like
         # C:\Program Files (x86)\Microsoft Visual Studio\2019\Community
@@ -147,7 +147,7 @@ class VCVars:
         create_env_script(recipe, content, recipe_vcvars_bat, scope)
         _create_deactivate_vcvars_file(recipe, recipe_vcvars_bat)
 
-        is_ps1 = self._recipe.conf.get("tools.env.virtualenv:powershell", check_type=str)
+        is_ps1 = self._recipe.conf.tools.env.virtualenv.powershell
         if is_ps1:
             content_ps1 = textwrap.dedent(
                 rf"""
@@ -168,7 +168,7 @@ class VCVars:
 
 
 def _create_deactivate_vcvars_file(recipe: RecipeBase, filename: str):
-    if recipe.conf.get("tools.env:deactivation_mode") == "function":
+    if recipe.conf.tools.env.deactivation_mode == "function":
         return
     deactivate_filename = f"deactivate_{filename}"
     message = f"[{deactivate_filename}]: *** vcvars env cannot be deactivated ***\n"
@@ -192,7 +192,7 @@ def vs_ide_version(recipe: RecipeBase) -> str:
     compiler = recipe.settings.compiler
     compiler_version = recipe.settings.compiler_version
     if compiler == "msvc":
-        toolset_override = recipe.conf.get("tools.msbuild:vs_version", check_type=str)
+        toolset_override = recipe.conf.tools.msbuild.vs_version
         if toolset_override:
             visual_version = toolset_override
         else:
@@ -277,7 +277,7 @@ def _vcvars_path(version: str, vs_install_path: str | None) -> str:
 
 def _vcvars_versions(recipe: RecipeBase) -> list[str]:
     compiler = recipe.settings.compiler
-    msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
+    msvc_update = recipe.conf.tools.microsoft.msvc_update
     if compiler == "clang":
         # The vcvars only needed for LLVM/Clang and VS ClangCL, who define runtime
         if not recipe.settings.compiler_runtime:

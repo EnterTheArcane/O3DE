@@ -1,726 +1,400 @@
+from __future__ import annotations
+
 import copy
-import fnmatch
-import numbers
 import os
-import re
-from typing import Any
+import types
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
+from typing import Literal, TypeAlias, get_args, get_origin, get_type_hints
 
-from thirdparty.errors import RecipeException
-
-BUILT_IN_CONFS = {
-    "core.download:download_cache": "Define path to a source file download cache",
-    "core.net.http:cacert_path": "Path containing a custom Cacert file",
-    "core.net.http:clean_system_proxy": "If defined, the proxies system env-vars will be discarded",
-    "core.net.http:client_cert": "Path or tuple of files containing a client cert (and key)",
-    "core.net.http:max_retries": "Maximum number of connection retries (requests library)",
-    "core.net.http:no_proxy_match": "List of urls to skip from proxies configuration",
-    "core.net.http:proxies": "Dictionary containing the proxy configuration",
-    "core.net.http:timeout": "Number of seconds without response to timeout (requests library)",
-    "core.sources:download_cache": "Folder to store the sources backup",
-    "core.sources:download_urls": "List of URLs to download backup sources from",
-    "tools.android:cmake_legacy_toolchain": "Define to explicitly pass ANDROID_USE_LEGACY_TOOLCHAIN_FILE in CMake toolchain",
-    "tools.android:ndk_path": "Argument for the CMAKE_ANDROID_NDK",
-    "tools.apple:enable_arc": "(boolean) Enable/Disable ARC Apple Clang flags",
-    "tools.apple:enable_bitcode": "(boolean) Enable/Disable Bitcode Apple Clang flags",
-    "tools.apple:enable_visibility": "(boolean) Enable/Disable Visibility Apple Clang flags",
-    "tools.apple:sdk_path": "Path to the SDK to be used",
-    "tools.build:add_rpath_link": "Add -Wl,-rpath-link flags pointing to all lib directories for host dependencies (CMake and Meson toolchains)",
-    "tools.build:cflags": "List of extra C flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:compiler_executables": "Defines a Python dict-like with the compilers path to be used. Allowed keys {'c', 'cpp', 'cuda', 'objc', 'objcxx', 'rc', 'fortran', 'asm', 'hip', 'ispc'}",
-    "tools.build:cxxflags": "List of extra CXX flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:defines": "List of extra definition flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:exelinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:install_strip": "(boolean or list) True/False to strip on install for every CMake, Meson and Autotools integration, or a list of 'cmake', 'meson', 'autotools' to strip only for those.",
-    "tools.build:jobs": "Default compile jobs number -jX Ninja, Make, /MP VS (default: max CPUs)",
-    "tools.build:linker_scripts": "List of linker script files to pass to the linker used by different toolchains like CMakeToolchain, AutotoolsToolchain, and MesonToolchain",  # Toolchain installation
-    "tools.build:rcflags": "List of extra RC (resource compiler) flags used by different toolchains like CMakeToolchain, MSBuildToolchain and MesonToolchain",
-    "tools.build:sharedlinkflags": "List of extra flags used by different toolchains like CMakeToolchain, AutotoolsToolchain and MesonToolchain",
-    "tools.build:skip_test": "Do not execute CMake.test() and Meson.test() when enabled",
-    "tools.build:sysroot": "Pass the --sysroot=<tools.build:sysroot> flag if available. (None by default)",
-    "tools.build:verbosity": "Verbosity of build systems if set. Possible values are 'quiet' and 'verbose'",
-    "tools.build.cross_building:can_run": "(boolean) Indicates whether is possible to run a non-native app on the same architecture. It's used by 'can_run' tool",
-    "tools.build.cross_building:cross_build": "(boolean) Decides whether cross-building or not regardless of arch/OS settings. Used by 'cross_building' tool",
-    "tools.cmake:cmake_program": "Path to CMake executable",
-    "tools.cmake:configure_args": "Add extra arguments to CMake.configure() command line",
-    "tools.cmake:ctest_args": "Add extra arguments to CMake.ctest() runner command line",
-    "tools.cmake.toolchain:enabled_blocks": "Select the specific blocks to use in the recipe_toolchain.cmake",
-    "tools.cmake.toolchain:extra_variables": "Dictionary with variables to be injected in CMakeToolchain (potential override of CMakeToolchain defined variables)",
-    "tools.cmake.toolchain:find_package_prefer_config": "Argument for the CMAKE_FIND_PACKAGE_PREFER_CONFIG",
-    "tools.cmake.toolchain:presets_environment": "String to define wether to add or not the environment section to the CMake presets. Empty by default, will generate the environment section in CMakePresets. Can take values: 'disabled'.",
-    "tools.cmake.toolchain:system_name": "Define CMAKE_SYSTEM_NAME in CMakeToolchain",
-    "tools.cmake.toolchain:system_processor": "Define CMAKE_SYSTEM_PROCESSOR in CMakeToolchain",
-    "tools.cmake.toolchain:system_version": "Define CMAKE_SYSTEM_VERSION in CMakeToolchain",
-    "tools.cmake.toolchain:toolchain_file": "Use other existing file rather than recipe_toolchain.cmake one",
-    "tools.cmake.toolchain:toolset_arch": "Toolset architecture to be used as part of CMAKE_GENERATOR_TOOLSET in CMakeToolchain",
-    "tools.cmake.toolchain:toolset_cuda": "(Experimental) Path to a CUDA toolset to use, or version if installed at the system level",
-    "tools.cmake.toolchain:user_presets": "(Experimental) Select a different name instead of CMakeUserPresets.json, empty to disable",
-    "tools.cmake.toolchain:user_toolchain": "Inject existing user toolchains at the beginning of recipe_toolchain.cmake",
-    "tools.compilation:verbosity": "Verbosity of compilation tools if set. Possible values are 'quiet' and 'verbose'",
-    "tools.env:deactivation_mode": "(Experimental) If 'function', generate a deactivate function instead of a script to unset the environment variables",  # Compilers/Flags configurations
-    "tools.env:dotenv": "(Experimental) Generate dotenv environment files",
-    "tools.env.virtualenv:powershell": "If specified, it generates PowerShell launchers (.ps1). Use this configuration setting the PowerShell executable you want to use (e.g., 'powershell.exe' or 'pwsh')",
-    "tools.files.download:retry_wait": "(int, default: 5s) Seconds to wait between download attempts",
-    "tools.files.download:retry": "(int, default: 2) Number of retries in case of failure when downloading",
-    "tools.files.download:verify": "If set, overrides recipes on whether to perform SSL verification for their downloaded files. Only recommended to be set while testing",
-    "tools.files.unzip:filter": "Define tar extraction filter: 'fully_trusted', 'tar', 'data'",
-    "tools.gnu:build_triplet": "Custom build triplet to pass to Autotools scripts",
-    "tools.gnu:define_libcxx11_abi": "Force definition of GLIBCXX_USE_CXX11_ABI=1 for libstdc++11",
-    "tools.gnu:disable_flags": "Disable the automatic addition of flags to some build systems. List of possible values: ['arch', 'arch_link', 'libcxx', 'build_type', 'build_type_link', 'threads','cppstd', 'cstd']",
-    "tools.gnu:extra_configure_args": "List of extra arguments to pass to configure when using AutotoolsToolchain",
-    "tools.gnu:host_triplet": "Custom host triplet to pass to Autotools scripts",
-    "tools.gnu:make_program": "Indicate path to make program",
-    "tools.gnu:pkg_config": "Path to pkg-config executable used by PkgConfig build helper",
-    "tools.meson.toolchain:extra_machine_files": "List of paths for any additional native/cross file references to be appended to the existing Recipe ones",
-    "tools.microsoft:msvc_update": "Force the specific update irrespective of compiler.update (CMakeToolchain and VCVars)",
-    "tools.microsoft:winsdk_version": "Use this winsdk_version in vcvars",
-    "tools.microsoft.bash:active": "Set True only when Recipe runs in a POSIX Bash (MSYS2) where Python's subprocess (shell=True) uses a POSIX-compatible shell (e.g., /bin/sh). Do not set when using Recipe from cmd/PowerShell or with native Windows Python ('win32').",
-    "tools.microsoft.bash:path": "The path to the shell to run when recipe.win_bash==True",
-    "tools.msbuild:installation_path": "VS install path, to avoid auto-detect via vswhere, like C:/Program Files (x86)/Microsoft Visual Studio/2019/Community. Use empty string to disable",
-    "tools.msbuild:max_cpu_count": "Argument for the /m when running msvc to build parallel projects",
-    "tools.msbuild:vs_version": "Defines the IDE version (15, 16, 17) when using the msvc compiler. Necessary if compiler.version specifies a toolset that is not the IDE default",
-    "tools.msbuilddeps:exclude_code_analysis": "Suppress MSBuild code analysis for patterns",
-    "tools.msbuildtoolchain:compile_options": "Dictionary with MSBuild compiler options",
-}
-
-_BUILT_IN_CONFS_TYPES = {
-    "tools.microsoft:msvc_update": str,
-}
-
-CORE_CONF_PATTERN = re.compile(r"^(core\..+|core):.*")
-TOOLS_CONF_PATTERN = re.compile(r"^(tools\..+|tools):.*")
-USER_CONF_PATTERN = re.compile(r"^(user\..+|user):.*")
+PathValue: TypeAlias = str | os.PathLike[str]
+CompilerExecutable: TypeAlias = Literal["c", "cpp", "cuda", "objc", "objcxx", "objcpp", "rc", "fortran", "asm", "hip", "ispc"]
+Verbosity: TypeAlias = Literal["quiet", "verbose"]
+InstallStrip: TypeAlias = bool | list[Literal["cmake", "meson", "autotools"]]
 
 
-def _is_profile_module(module_name):
-    # These are the modules that are propagated to profiles and user recipes
-    return TOOLS_CONF_PATTERN.match(module_name) or USER_CONF_PATTERN.match(module_name)
+@dataclass(slots=True)
+class _CoreDownload:
+    download_cache: PathValue | None = None
 
 
-# FIXME: Refactor all the next classes because they are mostly the same as
-#        thirdparty.tools.env.environment ones
-class _ConfVarPlaceHolder:
-    pass
+@dataclass(slots=True)
+class _CoreNetHttp:
+    cacert_path: PathValue | None = None
+    clean_system_proxy: bool | None = None
+    client_cert: PathValue | tuple[PathValue, PathValue] | None = None
+    max_retries: int | None = None
+    no_proxy_match: list[str] = field(default_factory=list)
+    proxies: dict[str, str] | None = None
+    timeout: int | float | None = None
 
 
-class _ConfValue:
-    def __init__(
-        self,
-        name: str,
-        value: Any,
-        path: bool = False,
-        update: bool | None = None,
-        important: bool = False):
-        self.name = name
-        self._important = important
-        self._value = value
-        self._value_type = type(value)
-        self._path = path
-        self._update = update
-
-    @staticmethod
-    def parse(
-        name: str,
-        value: Any,
-        path: bool = False,
-        update: bool | None = None) -> _ConfValue:
-        if name != name.lower():
-            raise RecipeException(f"Conf '{name}' must be lowercase")
-        name, important = (name[:-1], True) if name[-1] == "!" else (name, False)
-        return _ConfValue(name, value, path=path, update=update, important=important)
-
-    def __repr__(self) -> str:
-        return repr(self._value)
-
-    @property
-    def value(self) -> Any:
-        if self._value_type is list and _ConfVarPlaceHolder in self._value:
-            v = self._value[:]
-            v.remove(_ConfVarPlaceHolder)
-            return v
-        return self._value
-
-    def copy(self) -> _ConfValue:
-        # Using copy for when self._value is a mutable list
-        return _ConfValue(
-            self.name, copy.copy(self._value), self._path, self._update, self._important)
-
-    def dumps(self) -> str:
-        name = f"{self.name}!" if self._important else self.name
-        if self._value is None:
-            return f"{name}=!"  # unset
-        elif self._value_type is list and _ConfVarPlaceHolder in self._value:
-            v = self._value[:]
-            v.remove(_ConfVarPlaceHolder)
-            return f"{name}={v}"
-        else:
-            return f"{name}={self._value}"
-
-    def serialize(self) -> dict[str, Any]:
-        name = f"{self.name}!" if self._important else self.name
-        if self._value is None:
-            _value = "!"  # unset
-        elif self._value_type is list and _ConfVarPlaceHolder in self._value:
-            v = self._value[:]
-            v.remove(_ConfVarPlaceHolder)
-            _value = v
-        else:
-            _value = self._value
-        return {name: _value}
-
-    def update(self, value: dict[Any, Any]):
-        assert self._value_type is dict, "Only dicts can be updated"
-        assert isinstance(value, dict), "Only dicts can update"
-        self._value.update(value)
-
-    def remove(self, value: Any):
-        if self._value_type is list:
-            self._value.remove(value)
-        elif self._value_type is dict:
-            self._value.pop(value, None)
-
-    def append(self, value: Any):
-        if self._value_type is not list:
-            raise RecipeException("Only list-like values can append other values.")
-
-        if isinstance(value, list):
-            self._value.extend(value)
-        else:
-            self._value.append(value)
-
-    def prepend(self, value: Any):
-        if self._value_type is not list:
-            raise RecipeException("Only list-like values can prepend other values.")
-
-        if isinstance(value, list):
-            self._value = value + self._value
-        else:
-            self._value.insert(0, value)
-
-    def compose_conf_value(self, other: _ConfValue):
-        """
-        self has precedence, the "other" will add/append if possible and not conflicting, but
-        self mandates what to do. If self has define(), without placeholder, that will remain.
-        :type other: _ConfValue
-        """
-        v_type = self._value_type
-        o_type = other._value_type
-
-        important = other._important and not self._important
-        if v_type is list and o_type is list:
-            # If important, we swap values to prioritize the other
-            v1, v2 = (other._value, self._value) if important else (self._value, other._value)
-            try:
-                index = v1.index(_ConfVarPlaceHolder)
-            except ValueError:  # It doesn't have placeholder
-                if important:
-                    self._value = other._value
-            else:
-                new_value = v1[:]  # do a copy
-                new_value[index:index + 1] = v2  # replace the placeholder
-                self._value = new_value
-        elif v_type is dict and o_type is dict:
-            if self._update:
-                # only if the current one is marked as "*=" update, otherwise it remains
-                # as this is a "compose" operation, self has priority, it is the one updating
-                # If important, we swap values to prioritize the other
-                v1, v2 = (other._value, self._value) if important else (self._value, other._value)
-                new_value = v2.copy()
-                new_value.update(v1)
-                self._value = new_value
-            elif important:
-                self._value = other._value
-        elif ((issubclass(v_type, numbers.Number) and issubclass(o_type, numbers.Number)) or
-              # They might be different kind of numbers, so skip the check below
-              self._value is None or other._value is None):
-            # It means any of those values were an "unset" so doing nothing because we don't
-            # really know the original value type
-            if important:
-                self._value = other._value
-                self._value_type = other._value_type
-        elif o_type != v_type:
-            raise RecipeException(
-                f"It's not possible to compose {v_type.__name__} values "
-                f"and {o_type.__name__} ones.")
-        # TODO: In case of any other object types?
-        elif important:  # equal type, but just string
-            self._value = other._value
-
-    def set_relative_base_folder(self, folder: str):
-        if not self._path:
-            return
-        if isinstance(self._value, list):
-            self._value = [os.path.join(folder, v) if v != _ConfVarPlaceHolder else v for v in self._value]
-        if isinstance(self._value, dict):
-            self._value = {k: os.path.join(folder, v) for k, v in self._value.items()}
-        elif isinstance(self._value, str):
-            self._value = os.path.join(folder, self._value)
-
-    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
-        if not self._path:
-            return
-
-        def _relocate(value: Any) -> Any:
-            if value is _ConfVarPlaceHolder:
-                return value
-            rel_path = os.path.relpath(value, package_folder)
-            if rel_path.startswith(".."):
-                return value
-            return os.path.join(deploy_folder, rel_path)
-
-        if isinstance(self._value, list):
-            self._value = [_relocate(v) for v in self._value]
-        elif isinstance(self._value, dict):
-            self._value = {k: _relocate(v) for k, v in self._value.items()}
-        elif isinstance(self._value, str):
-            self._value = _relocate(self._value)
+@dataclass(slots=True)
+class _CoreNet:
+    http: _CoreNetHttp = field(default_factory=_CoreNetHttp)
 
 
+@dataclass(slots=True)
+class _CoreSources:
+    download_cache: PathValue | None = None
+    download_urls: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class _Core:
+    download: _CoreDownload = field(default_factory=_CoreDownload)
+    net: _CoreNet = field(default_factory=_CoreNet)
+    sources: _CoreSources = field(default_factory=_CoreSources)
+
+
+@dataclass(slots=True)
+class _AndroidTools:
+    cmake_legacy_toolchain: bool | None = None
+    ndk_path: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _AppleTools:
+    enable_arc: bool | None = None
+    enable_bitcode: bool | None = None
+    enable_visibility: bool | None = None
+    sdk_path: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _CrossBuildingTools:
+    can_run: bool | None = None
+    cross_build: bool | None = None
+
+
+@dataclass(slots=True)
+class _BuildTools:
+    add_rpath_link: bool | None = None
+    cflags: list[str] = field(default_factory=list)
+    compiler_executables: dict[CompilerExecutable, PathValue] = field(default_factory=dict)
+    cross_building: _CrossBuildingTools = field(default_factory=_CrossBuildingTools)
+    cxxflags: list[str] = field(default_factory=list)
+    defines: list[str] = field(default_factory=list)
+    exelinkflags: list[str] = field(default_factory=list)
+    install_strip: InstallStrip | None = None
+    jobs: int | None = None
+    linker_scripts: list[PathValue] = field(default_factory=list)
+    rcflags: list[str] = field(default_factory=list)
+    sharedlinkflags: list[str] = field(default_factory=list)
+    skip_test: bool | None = None
+    sysroot: PathValue | None = None
+    verbosity: Verbosity | None = None
+
+
+@dataclass(slots=True)
+class _CMakeToolchainTools:
+    enabled_blocks: list[str] = field(default_factory=list)
+    extra_variables: dict[str, object] = field(default_factory=dict)
+    find_package_prefer_config: bool | None = None
+    presets_environment: Literal["disabled", ""] | None = None
+    system_name: str | None = None
+    system_processor: str | None = None
+    system_version: str | None = None
+    toolchain_file: PathValue | None = None
+    toolset_arch: str | None = None
+    toolset_cuda: PathValue | str | None = None
+    user_presets: str | None = None
+    user_toolchain: list[PathValue] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class _CMakeTools:
+    cmake_program: PathValue | None = None
+    configure_args: list[str] = field(default_factory=list)
+    ctest_args: list[str] = field(default_factory=list)
+    toolchain: _CMakeToolchainTools = field(default_factory=_CMakeToolchainTools)
+
+
+@dataclass(slots=True)
+class _CompilationTools:
+    verbosity: Verbosity | None = None
+
+
+@dataclass(slots=True)
+class _VirtualEnvTools:
+    powershell: str | None = None
+
+
+@dataclass(slots=True)
+class _EnvTools:
+    deactivation_mode: Literal["function"] | str | None = None
+    dotenv: bool | None = None
+    virtualenv: _VirtualEnvTools = field(default_factory=_VirtualEnvTools)
+
+
+@dataclass(slots=True)
+class _FileDownloadTools:
+    retry: int | None = None
+    retry_wait: int | None = None
+    verify: bool | None = None
+
+
+@dataclass(slots=True)
+class _FilesTools:
+    download: _FileDownloadTools = field(default_factory=_FileDownloadTools)
+    unzip_filter: Literal["fully_trusted", "tar", "data"] | str | None = None
+
+
+@dataclass(slots=True)
+class _GnuTools:
+    build_triplet: str | None = None
+    define_libcxx11_abi: bool | None = None
+    disable_flags: list[str] = field(default_factory=list)
+    extra_configure_args: list[str] = field(default_factory=list)
+    host_triplet: str | None = None
+    make_program: PathValue | None = None
+    pkg_config: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _GnuConfigTools:
+    config_guess: PathValue | None = None
+    config_sub: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _MesonToolchainTools:
+    extra_machine_files: list[PathValue] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class _MesonTools:
+    toolchain: _MesonToolchainTools = field(default_factory=_MesonToolchainTools)
+
+
+@dataclass(slots=True)
+class _MicrosoftBashTools:
+    active: bool | None = None
+    path: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _MicrosoftTools:
+    bash: _MicrosoftBashTools = field(default_factory=_MicrosoftBashTools)
+    msvc_update: str | None = None
+    winsdk_version: str | None = None
+
+
+@dataclass(slots=True)
+class _MSBuildTools:
+    installation_path: PathValue | None = None
+    max_cpu_count: int | None = None
+    vs_version: str | None = None
+
+
+@dataclass(slots=True)
+class _MSBuildDepsTools:
+    exclude_code_analysis: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class _MSBuildToolchainTools:
+    compile_options: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class _AutomakeTools:
+    compile_wrapper: PathValue | None = None
+    lib_wrapper: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _CPythonTools:
+    module_requires_pythonhome: bool | None = None
+    python: PathValue | None = None
+    python_root: PathValue | None = None
+    pythonhome: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _CurlCertTools:
+    sha256: str | None = None
+    url: str | None = None
+
+
+@dataclass(slots=True)
+class _CurlTools:
+    cert: _CurlCertTools = field(default_factory=_CurlCertTools)
+
+
+@dataclass(slots=True)
+class _FreetypeTools:
+    libtool_version: str | None = None
+
+
+@dataclass(slots=True)
+class _NcursesTools:
+    lib_suffix: str | None = None
+
+
+@dataclass(slots=True)
+class _OpenJDKTools:
+    java: PathValue | None = None
+    java_home: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _OpenSSLTools:
+    windows_use_jom: bool | None = None
+
+
+@dataclass(slots=True)
+class _PySideTools:
+    pyside_dir: PathValue | None = None
+    shiboken6_generator: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _PySide6Tools:
+    pyside6_dir: PathValue | None = None
+    shiboken6_generator: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _QtTools:
+    tools_directory: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _RustTools:
+    dir: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _LLVMTools:
+    dir: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _StrawberryPerlTools:
+    perl: PathValue | None = None
+
+
+@dataclass(slots=True)
+class _Tools:
+    android: _AndroidTools = field(default_factory=_AndroidTools)
+    apple: _AppleTools = field(default_factory=_AppleTools)
+    automake: _AutomakeTools = field(default_factory=_AutomakeTools)
+    build: _BuildTools = field(default_factory=_BuildTools)
+    cmake: _CMakeTools = field(default_factory=_CMakeTools)
+    compilation: _CompilationTools = field(default_factory=_CompilationTools)
+    cpython: _CPythonTools = field(default_factory=_CPythonTools)
+    curl: _CurlTools = field(default_factory=_CurlTools)
+    env: _EnvTools = field(default_factory=_EnvTools)
+    files: _FilesTools = field(default_factory=_FilesTools)
+    freetype: _FreetypeTools = field(default_factory=_FreetypeTools)
+    gnu: _GnuTools = field(default_factory=_GnuTools)
+    gnu_config: _GnuConfigTools = field(default_factory=_GnuConfigTools)
+    llvm: _LLVMTools = field(default_factory=_LLVMTools)
+    meson: _MesonTools = field(default_factory=_MesonTools)
+    microsoft: _MicrosoftTools = field(default_factory=_MicrosoftTools)
+    msbuild: _MSBuildTools = field(default_factory=_MSBuildTools)
+    msbuilddeps: _MSBuildDepsTools = field(default_factory=_MSBuildDepsTools)
+    msbuildtoolchain: _MSBuildToolchainTools = field(default_factory=_MSBuildToolchainTools)
+    ncurses: _NcursesTools = field(default_factory=_NcursesTools)
+    openjdk: _OpenJDKTools = field(default_factory=_OpenJDKTools)
+    openssl: _OpenSSLTools = field(default_factory=_OpenSSLTools)
+    pyside: _PySideTools = field(default_factory=_PySideTools)
+    pyside6: _PySide6Tools = field(default_factory=_PySide6Tools)
+    qt: _QtTools = field(default_factory=_QtTools)
+    rust: _RustTools = field(default_factory=_RustTools)
+    strawberryperl: _StrawberryPerlTools = field(default_factory=_StrawberryPerlTools)
+
+
+@dataclass(slots=True)
 class Conf:
-    # Putting some default expressions to check that any value could be false
-    boolean_false_expressions = ("0", '"0"', "false", '"false"', "off")
-    boolean_true_expressions = ("1", '"1"', "true", '"true"', "on")
-
-    def __init__(self):
-        # It being ordered allows for Windows case-insensitive composition
-        self._values: dict[str, _ConfValue] = {}  # {var_name: [] of values, including separators}
+    core: _Core = field(default_factory=_Core)
+    tools: _Tools = field(default_factory=_Tools)
 
     def __bool__(self) -> bool:
-        return bool(self._values)
-
-    def clear(self):
-        self._values.clear()
-
-    def validate(self):
-        for conf in self._values:
-            self._check_conf_name(conf)
-
-    def items(self):
-        # FIXME: Keeping backward compatibility
-        for k, v in self._values.items():
-            yield k, v.value
-
-    def get(
-        self, conf_name: str, default: Any = None, check_type: Any = None, choices: Any = None) -> Any:
-        """
-        Get all the values of the given configuration name.
-
-        :param conf_name: Name of the configuration.
-        :param default: Default value in case of conf does not have the conf_name key.
-        :param check_type: Check the conf type(value) is the same as the given by this param.
-                           There are two default smart conversions for bool and str types.
-        :param choices: list of possible values this conf can have, if value not in it, errors.
-        """
-        # Skipping this check only the user.* configurations
-        self._check_conf_name(conf_name)
-
-        conf_value = self._values.get(conf_name)
-        if conf_value:
-            v = conf_value.value
-            if v is None:  # value was unset
-                return default
-            if choices is not None and v not in choices:
-                raise RecipeException(f"Unknown value '{v}' for '{conf_name}'")
-            # Some smart conversions
-            if check_type is bool and not isinstance(v, bool):
-                if str(v).lower() in Conf.boolean_false_expressions:
-                    return False
-                if str(v).lower() in Conf.boolean_true_expressions:
-                    return True
-                raise RecipeException(
-                    f"[conf] {conf_name} must be a boolean-like object "
-                    f"(true/false, 1/0, on/off) and value '{v}' does not match it.")
-            elif check_type is str and not isinstance(v, str):
-                # TODO: this would be converting things like lists to strings without
-                #   proper error, is it worth trying to change it?
-                return str(v)
-            elif (check_type is not None and not isinstance(v, check_type) or check_type is int and isinstance(v, bool)):
-                raise RecipeException(
-                    f"[conf] {conf_name} must be a "
-                    f"{check_type.__name__}-like object. The value '{v}' "
-                    f"introduced is a {type(v).__name__} object")
-            return v
-        else:
-            return default
-
-    def pop(self, conf_name: str, default: Any = None) -> Any:
-        """
-        Remove the given configuration, returning its value.
-
-        :param conf_name: Name of the configuration.
-        :param default: Default value to return in case the configuration doesn't exist.
-        :return:
-        """
-        value = self.get(conf_name, default=default)
-        self._values.pop(conf_name, None)
-        return value
-
-    def show(self, fnpattern: str, pattern: str = "") -> dict[str, Any]:
-        return {key: self.get(key) for key in self._values.keys() if fnmatch.fnmatch(pattern + key, fnpattern)}
+        return self != Conf()
 
     def copy(self) -> Conf:
-        c = Conf()
-        c._values = {k: v.copy() for k, v in self._values.items()}
-        return c
-
-    def filter_core(self) -> Conf:
-        c = Conf()
-        c._values = {k: v.copy() for k, v in self._values.items() if not CORE_CONF_PATTERN.match(k)}
-        return c
-
-    def dumps(self) -> str:
-        """
-        Returns a string with the format ``name=conf-value``
-        """
-        return "\n".join([v.dumps() for v in sorted(self._values.values(), key=lambda x: x.name)])
-
-    def serialize(self) -> dict[str, Any]:
-        """
-        Returns a dict-like object, e.g., ``{"tools.xxxx": "value1"}``
-        """
-        ret = {}
-        for v in self._values.values():
-            ret.update(v.serialize())
-        return ret
-
-    def serialize_state(self) -> dict[str, Any]:
-        values = []
-        for conf_value in self._values.values():
-            raw_value = conf_value._value
-            if isinstance(raw_value, list):
-                serialized_value = [
-                    os.fspath(v) if v is not _ConfVarPlaceHolder else None
-                    for v in raw_value
-                ]
-                placeholder_indexes = [
-                    i for i, v in enumerate(raw_value) if v is _ConfVarPlaceHolder
-                ]
-            elif isinstance(raw_value, dict):
-                serialized_value = {k: os.fspath(v) for k, v in raw_value.items()}
-                placeholder_indexes = []
-            else:
-                serialized_value = os.fspath(raw_value) if hasattr(raw_value, "__fspath__") else raw_value
-                placeholder_indexes = []
-
-            values.append({
-                "name": conf_value.name,
-                "value": serialized_value,
-                "placeholder_indexes": placeholder_indexes,
-                "path": conf_value._path,
-                "update": conf_value._update,
-                "important": conf_value._important,
-            })
-        return {"values": values}
-
-    def deserialize_state(self, content: dict[str, Any]) -> "Conf":
-        self._values = {}
-        for entry in content.get("values", []):
-            raw_value = entry.get("value")
-            if isinstance(raw_value, list):
-                value = list(raw_value)
-                for index in entry.get("placeholder_indexes", []):
-                    value[index] = _ConfVarPlaceHolder
-            else:
-                value = raw_value
-            conf_value = _ConfValue(
-                entry["name"],
-                value,
-                path=entry.get("path", False),
-                update=entry.get("update"),
-                important=entry.get("important", False),
-            )
-            self._values[conf_value.name] = conf_value
-        return self
-
-    def define(self, name: str, value: Any):
-        """
-        Define a value for the given configuration name.
-
-        :param name: Name of the configuration.
-        :param value: Value of the configuration.
-        """
-        v = _ConfValue.parse(name, value)
-        self._values[v.name] = v
-
-    def define_path(self, name: str, value: Any):
-        v = _ConfValue.parse(name, value, path=True)
-        self._values[v.name] = v
-
-    def unset(self, name: str):
-        """
-        Clears the variable, equivalent to a unset or set XXX=
-
-        :param name: Name of the configuration.
-        """
-        v = _ConfValue.parse(name, None)
-        self._values[v.name] = v
-
-    def update(self, name: str, value: Any):
-        """
-        Update the value to the given configuration name.
-
-        :param name: Name of the configuration.
-        :param value: Value of the configuration.
-        """
-        # Placeholder trick is not good for dict update, so we need to explicitly update=True
-        conf_value = _ConfValue.parse(name, {}, update=True)
-        self._values.setdefault(conf_value.name, conf_value).update(value)
-
-    def update_path(self, name: str, value: Any):
-        conf_value = _ConfValue.parse(name, {}, path=True, update=True)
-        self._values.setdefault(conf_value.name, conf_value).update(value)
-
-    def append(self, name: str, value: Any):
-        """
-        Append a value to the given configuration name.
-
-        :param name: Name of the configuration.
-        :param value: Value to append.
-        """
-        conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder])
-        self._values.setdefault(conf_value.name, conf_value).append(value)
-
-    def append_path(self, name: str, value: Any):
-        conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder], path=True)
-        self._values.setdefault(conf_value.name, conf_value).append(value)
-
-    def prepend(self, name: str, value: Any):
-        """
-        Prepend a value to the given configuration name.
-
-        :param name: Name of the configuration.
-        :param value: Value to prepend.
-        """
-        conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder])
-        self._values.setdefault(conf_value.name, conf_value).prepend(value)
-
-    def prepend_path(self, name: str, value: Any):
-        conf_value = _ConfValue.parse(name, [_ConfVarPlaceHolder], path=True)
-        self._values.setdefault(conf_value.name, conf_value).prepend(value)
-
-    def remove(self, name: str, value: Any):
-        """
-        Remove a value from the given configuration name.
-
-        :param name: Name of the configuration.
-        :param value: Value to remove.
-        """
-        conf_value = self._values.get(name)
-        if conf_value:
-            conf_value.remove(value)
-        else:
-            raise RecipeException(f"Conf {name} does not exist.")
+        return copy.deepcopy(self)
 
     def compose_conf(self, other: Conf) -> Conf:
-        """
-        :param other: other has less priority than current one
-        :type other: Conf
-        """
-        for k, v in other._values.items():
-            existing = self._values.get(k)
-            if existing is None:
-                self._values[k] = v.copy()
-            else:
-                existing.compose_conf_value(v)
+        _compose_dataclass(self, other)
         return self
 
-    def set_relative_base_folder(self, folder: str):
-        for v in self._values.values():
-            v.set_relative_base_folder(folder)
+    def serialize_state(self) -> dict[str, object]:
+        return _to_jsonable(asdict(self))
 
-    def deploy_base_folder(self, package_folder: str, deploy_folder: str):
-        for v in self._values.values():
-            v.deploy_base_folder(package_folder, deploy_folder)
-
-    @staticmethod
-    def _check_conf_name(conf: str):
-        if conf.startswith("user"):
-            if USER_CONF_PATTERN.match(conf) is None:
-                raise RecipeException(f"User conf '{conf}' invalid format, not 'user.org.group:conf'")
-        elif conf not in BUILT_IN_CONFS:
-            raise RecipeException(
-                f"[conf] '{conf}' does not exist in configuration list. "
-                "Run 'recipe config list' to see all the available confs.")
+    def deserialize_state(self, content: dict[str, object]) -> Conf:
+        _load_dataclass(self, content)
+        return self
 
 
-class ConfDefinition:
-    # Order is important, "define" must be latest
-    actions = (
-        ("+=", "append"), ("=+", "prepend"), ("=!", "unset"), ("*=", "update"), ("=", "define"),
-    )
+def _compose_dataclass(current: object, other: object):
+    for data_field in fields(current):
+        name = data_field.name
+        current_value = getattr(current, name)
+        other_value = getattr(other, name)
+        if is_dataclass(current_value):
+            _compose_dataclass(current_value, other_value)
+        elif isinstance(current_value, dict) and isinstance(other_value, dict):
+            merged = copy.deepcopy(other_value)
+            merged.update(current_value)
+            setattr(current, name, merged)
+        elif isinstance(current_value, list) and isinstance(other_value, list):
+            if not current_value and other_value:
+                setattr(current, name, copy.deepcopy(other_value))
+        elif current_value is None and other_value is not None:
+            setattr(current, name, copy.deepcopy(other_value))
 
-    def __init__(self):
-        self._pattern_confs: dict[str | None, Conf] = {}
 
-    def __bool__(self) -> bool:
-        return bool(self._pattern_confs)
+def _to_jsonable(value):
+    if is_dataclass(value):
+        return _to_jsonable(asdict(value))
+    if isinstance(value, dict):
+        return {key: _to_jsonable(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [_to_jsonable(val) for val in value]
+    if isinstance(value, tuple):
+        return [_to_jsonable(val) for val in value]
+    if hasattr(value, "__fspath__"):
+        return os.fspath(value)
+    return value
 
-    def get(
-        self,
-        conf_name: str,
-        default: Any = None,
-        check_type: Any = None,
-        choices: Any = None) -> Any:
-        """
-        Get the value of the conf name requested and convert it to the [type]-like passed.
-        """
-        pattern, name = self._split_pattern_name(conf_name)
-        return self._pattern_confs.get(pattern, Conf()).get(
-            name, default=default, check_type=check_type, choices=choices)
 
-    def show(self, fnpattern: str) -> dict[str, Any]:
-        """
-        Get the value of the confs that match the requested pattern
-        """
-        result = {}
-
-        for patter_key, patter_conf in self._pattern_confs.items():
-            if patter_key is None:
-                patter_key = ""
-            else:
-                patter_key += ":"
-
-            pattern_values = patter_conf.show(fnpattern, patter_key)
-            result.update(
-                {patter_key + pattern_subkey: pattern_subvalue for pattern_subkey, pattern_subvalue in pattern_values.items()})
-
-        return result
-
-    def pop(self, conf_name: str, default: Any = None) -> Any:
-        """
-        Remove the conf name passed.
-        """
-        pattern, name = self._split_pattern_name(conf_name)
-        return self._pattern_confs.get(pattern, Conf()).pop(name, default=default)
-
-    @staticmethod
-    def _split_pattern_name(pattern_name: str) -> tuple[str | None, str]:
-        if pattern_name.count(":") >= 2:
-            pattern, name = pattern_name.split(":", 1)
+def _load_dataclass(target: object, content: dict[str, object]):
+    type_hints = get_type_hints(type(target))
+    for data_field in fields(target):
+        if data_field.name not in content:
+            continue
+        value = content[data_field.name]
+        current_value = getattr(target, data_field.name)
+        if is_dataclass(current_value) and isinstance(value, dict):
+            _load_dataclass(current_value, value)
         else:
-            pattern, name = None, pattern_name
-        return pattern, name
+            setattr(target, data_field.name, _restore_value(value, type_hints[data_field.name]))
 
-    def update_conf_definition(self, other: ConfDefinition):
-        """
-        :type other: ConfDefinition
-        :param other: The argument profile has priority/precedence over the current one.
-        """
-        for pattern, conf in other._pattern_confs.items():
-            self._update_conf_definition(pattern, conf)
 
-    def _update_conf_definition(self, pattern: str | None, conf: Conf):
-        existing = self._pattern_confs.get(pattern)
-        if existing:
-            self._pattern_confs[pattern] = conf.compose_conf(existing)
-        else:
-            self._pattern_confs[pattern] = conf
-
-    def rebase_conf_definition(self, global_conf: ConfDefinition):
-        """
-        for taking the new global.conf and composing with the profile [conf]
-        :type global_conf: ConfDefinition
-        """
-        result = ConfDefinition()
-        # Do not add ``core.xxx`` configuration to profiles
-        for k, v in global_conf._pattern_confs.items():
-            result._pattern_confs[k] = v.filter_core()
-        result.update_conf_definition(self)
-        self._pattern_confs = result._pattern_confs
-        return
-
-    def update(
-        self,
-        key: str,
-        value: Any,
-        profile: bool = False,
-        method: str = "define"):
-        """
-        Define/append/prepend/unset any Conf line
-        >> update("tools.build:verbosity", "verbose")
-        """
-        pattern, name = self._split_pattern_name(key)
-
-        if not _is_profile_module(name):
-            if profile:
-                raise RecipeException(f"[conf] '{key}' not allowed in profiles")
-            if pattern is not None:
-                raise RecipeException(f"Conf '{key}' cannot have a package pattern")
-
-        # strip whitespaces before/after =
-        # values are not strip() unless they are a path, to preserve potential whitespaces
-        name = name.strip()
-
-        # When loading from profile file, latest line has priority
-        conf = Conf()
-        if method == "unset":
-            conf.unset(name)
-        else:
-            getattr(conf, method)(name, value)
-        # Update
-        self._update_conf_definition(pattern, conf)
-
-    def dumps(self) -> str:
-        result = []
-        for pattern, conf in self._pattern_confs.items():
-            if pattern is None:
-                result.append(conf.dumps())
-            else:
-                result.append(
-                    "\n".join(
-                        f"{pattern}:{line}" if line else "" for line in conf.dumps().splitlines()))
-        if result:
-            result.append("")
-        return "\n".join(result)
-
-    def serialize(self) -> dict[str, Any]:
-        result = {}
-        for pattern, conf in self._pattern_confs.items():
-            if pattern is None:
-                result.update(conf.serialize())
-            else:
-                for k, v in conf.serialize().items():
-                    result[f"{pattern}:{k}"] = v
-        return result
-
-    @staticmethod
-    def _get_evaluated_value(_v: str) -> Any:
-        """
-        Function to avoid eval() catching local variables
-        """
-        try:
-            value = eval(_v)  # This destroys Windows path strings with backslash
-        except (Exception,):  # It means eval() failed because of a string without quotes
-            value = _v.strip()
-        else:
-            if not isinstance(value, (numbers.Number, bool, dict, list, set, tuple)) and value is not None:
-                # If it is quoted string we respect it as-is
-                value = _v.strip()
+def _restore_value(value, annotation):
+    if value is None:
+        return None
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+    if origin is list:
+        item_type = args[0] if args else object
+        return [_restore_value(item, item_type) for item in value]
+    if origin is dict:
+        return dict(value)
+    if origin is tuple:
+        return tuple(value)
+    if origin is Literal:
         return value
-
-    def loads(self, text: str, profile: bool = False):
-        self._pattern_confs = {}
-
-        for line in text.splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            for op, method in ConfDefinition.actions:
-                tokens = line.split(op, 1)
-                if len(tokens) != 2:
-                    continue
-                pattern_name, value = tokens
-                _, name = self._split_pattern_name(pattern_name)
-                # We only implement str type at the moment
-                isstr = _BUILT_IN_CONFS_TYPES.get(name) is str
-                parsed_value = value.strip() if isstr else ConfDefinition._get_evaluated_value(value)
-                self.update(pattern_name, parsed_value, profile=profile, method=method)
-                break
-            else:
-                raise RecipeException(f"Bad conf definition: {line}")
-
-    def validate(self):
-        for conf in self._pattern_confs.values():
-            conf.validate()
-
-    def clear(self):
-        self._pattern_confs.clear()
+    if origin is type(None):
+        return value
+    if origin in (types.UnionType,):
+        tuple_args = [arg for arg in args if get_origin(arg) is tuple]
+        if tuple_args and isinstance(value, list):
+            return _restore_value(value, tuple_args[0])
+    if origin is not None and type(None) in args:
+        non_none_args = [arg for arg in args if arg is not type(None)]
+        if len(non_none_args) == 1:
+            return _restore_value(value, non_none_args[0])
+    return value

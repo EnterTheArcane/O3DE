@@ -6,15 +6,13 @@ from thirdparty.recipe import RecipeBase
 
 
 def disable_flag(recipe: Recipe, flag: str) -> bool:
-    disable_flags = recipe.conf.get("tools.gnu:disable_flags", check_type=list)
-    if disable_flags is None:
-        return False
+    disable_flags = recipe.conf.tools.gnu.disable_flags
     valid = [
         "arch", "arch_link", "libcxx", "build_type", "build_type_link", "threads", "cppstd", "cstd",
     ]
     for v in disable_flags:
         if v not in valid:
-            raise RecipeException(f"tools.gnu:disable_flags value '{v}', must be one of: {valid}")
+            raise RecipeException(f"conf.tools.gnu.disable_flags value '{v}', must be one of: {valid}")
     return flag in disable_flags
 
 
@@ -39,8 +37,7 @@ def architecture_flag(recipe: RecipeBase) -> str:
         return ""
 
     if compiler == "clang" and the_os == "Windows":
-        comp_exes = recipe.conf.get(
-            "tools.build:compiler_executables", check_type=dict, default={})
+        comp_exes = recipe.conf.tools.build.compiler_executables
         clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
         if clangcl:
             return ""  # Do not add arch flags for clang-cl, can happen in cross-build runtime=None
@@ -123,8 +120,7 @@ def libcxx_flags(recipe: RecipeBase):
     if compiler in ["clang", "apple-clang", "gcc", "emcc"]:
         if libcxx == "libstdc++":
             stdlib11 = "_GLIBCXX_USE_CXX11_ABI=0"
-        elif libcxx == "libstdc++11" and recipe.conf.get(
-            "tools.gnu:define_libcxx11_abi", check_type=bool):
+        elif libcxx == "libstdc++11" and recipe.conf.tools.gnu.define_libcxx11_abi:
             stdlib11 = "_GLIBCXX_USE_CXX11_ABI=1"
     return lib, stdlib11
 
@@ -163,8 +159,7 @@ def build_type_flags(recipe: RecipeBase) -> list[str]:
     if not compiler or not build_type:
         return []
 
-    comp_exes = recipe.conf.get(
-        "tools.build:compiler_executables", check_type=dict, default={})
+    comp_exes = recipe.conf.tools.build.compiler_executables
     clangcl = "clang-cl" in (comp_exes.get("c") or comp_exes.get("cpp", ""))
 
     if compiler == "msvc" or clangcl:
@@ -220,7 +215,7 @@ def llvm_clang_front(recipe: RecipeBase) -> str | None:
     # Only Windows clang with MSVC backend (LLVM/Clang, not MSYS2 clang)
     if (recipe.settings.os != "Windows" or recipe.settings.compiler != "clang" or not recipe.settings.compiler_runtime):
         return
-    compilers = recipe.conf.get("tools.build:compiler_executables", default={})
+    compilers = recipe.conf.tools.build.compiler_executables
     if "clang-cl" in compilers.get("c", "") or "clang-cl" in compilers.get("cpp", ""):
         return "clang-cl"  # The MSVC-compatible front
     return "clang"  # The GNU-compatible front

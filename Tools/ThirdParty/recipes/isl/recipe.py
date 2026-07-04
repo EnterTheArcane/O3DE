@@ -29,7 +29,7 @@ class Recipe(RecipeBase):
         self.settings.compiler_c_standard = None
         if self.settings_build.os == "Windows":
             self.win_bash = True
-            self.conf.define("tools.gnu:disable_flags", ["build_type"])
+            self.conf.tools.gnu.disable_flags = ["build_type"]
 
     def validate(self):
         if self.settings.os not in ("Linux", "Mac", "Windows"):

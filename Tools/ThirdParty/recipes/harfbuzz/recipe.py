@@ -47,7 +47,7 @@ class Recipe(RecipeBase[_Options]):
         self.requires("icu")
         if self.options.with_glib:
             self.requires("glib")
-        if not self.conf.get("tools.gnu:pkg_config", check_type=str):
+        if not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
         if self.options.with_glib:
             self.requires_tool("glib")

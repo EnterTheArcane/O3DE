@@ -121,7 +121,7 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _msvc_tools(self):
-        compilers = self.conf.get("tools.build:compiler_executables", default={})
+        compilers = self.conf.tools.build.compiler_executables
         compiler = compilers.get("c") or compilers.get("cpp")
         return (compiler or "clang-cl", "llvm-lib", "lld-link") if self._is_clang_cl else ("cl", "lib", "link")
 

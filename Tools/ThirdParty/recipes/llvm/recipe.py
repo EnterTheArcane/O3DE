@@ -63,7 +63,7 @@ class Recipe(RecipeBase):
         self.info.buildenv.prepend_path("PATH", bin_dir)
         self.info.buildenv.define_path("LLVM_DIR", self.folders.package)
         self.info.buildenv.define_path("LIBCLANG_PATH", self.folders.package / "lib")
-        self.info.conf.define("tools.llvm:dir", self.folders.package)
+        self.info.conf.tools.llvm.dir = self.folders.package
 
     @property
     def _source_url(self):

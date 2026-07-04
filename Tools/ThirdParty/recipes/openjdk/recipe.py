@@ -72,8 +72,8 @@ class Recipe(RecipeBase):
         self.info.runenv.define_path("JAVA_HOME", java_home)
         self.info.buildenv.prepend_path("PATH", bin_dir)
         self.info.runenv.prepend_path("PATH", bin_dir)
-        self.info.conf.define("user.openjdk:java_home", str(java_home))
-        self.info.conf.define("user.openjdk:java", str(java_exe))
+        self.info.conf.tools.openjdk.java_home = str(java_home)
+        self.info.conf.tools.openjdk.java = str(java_exe)
 
     @property
     def _jdk_home(self) -> Path:

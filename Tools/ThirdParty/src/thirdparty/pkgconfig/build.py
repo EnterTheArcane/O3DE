@@ -35,7 +35,7 @@ class PkgConfig:
         self._variables = None
 
     def _parse_output(self, option: str) -> str:
-        executable = self._recipe.conf.get("tools.gnu:pkg_config", default="pkg-config")
+        executable = self._recipe.conf.tools.gnu.pkg_config or "pkg-config"
         command = cmd_args_to_string([executable, "--" + option, self._library, "--print-errors"])
 
         env = Environment()

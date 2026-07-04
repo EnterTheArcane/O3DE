@@ -1,7 +1,7 @@
 from thirdparty.recipe import RecipeBase
 
 
-def cross_building(recipe: RecipeBase | None = None, skip_x64_x86: bool = False) -> bool:
+def cross_building(recipe: RecipeBase, skip_x64_x86: bool = False) -> bool:
     """
     Check if we are cross building comparing the *build* and *host* settings. Returns ``True``
     in the case that we are cross-building.
@@ -12,7 +12,7 @@ def cross_building(recipe: RecipeBase | None = None, skip_x64_x86: bool = False)
     :return: ``bool`` value from ``tools.build.cross_building:cross_build`` if exists, otherwise,
              it returns ``True`` if we are cross-building, else, ``False``.
     """
-    cross_build = recipe.conf.get("tools.build.cross_building:cross_build", check_type=bool)
+    cross_build = recipe.conf.tools.build.cross_building.cross_build
     if cross_build is not None:
         return cross_build
 
@@ -44,7 +44,7 @@ def can_run(recipe: RecipeBase) -> bool:
              it returns ``False`` if we are cross-building, else, ``True``.
     """
     # Issue related: upstream issue 11035
-    allowed = recipe.conf.get("tools.build.cross_building:can_run", check_type=bool)
+    allowed = recipe.conf.tools.build.cross_building.can_run
     if allowed is None:
         return not cross_building(recipe)
     return allowed

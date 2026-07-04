@@ -74,8 +74,8 @@ class Recipe(RecipeBase):
         automake_helper_scripts_dir = self.folders.package / "share" / f"automake-{ver.major}.{ver.minor}"
         compile_wrapper = automake_helper_scripts_dir / "compile"
         lib_wrapper = automake_helper_scripts_dir / "ar-lib"
-        self.info.conf.define("user.automake:compile-wrapper", compile_wrapper)
-        self.info.conf.define("user.automake:lib-wrapper", lib_wrapper)
+        self.info.conf.tools.automake.compile_wrapper = compile_wrapper
+        self.info.conf.tools.automake.lib_wrapper = lib_wrapper
 
     def _patch_sources(self):
         apply_patches(self)

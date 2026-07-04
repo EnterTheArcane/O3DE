@@ -287,7 +287,7 @@ class RpathLinkFlagsBlock(Block):
         """)
 
     def context(self) -> dict[str, Any] | None:
-        add_rpath_link = self._toolchain.add_rpath_link or self._recipe.conf.get("tools.build:add_rpath_link", check_type=bool)
+        add_rpath_link = self._toolchain.add_rpath_link or self._recipe.conf.tools.build.add_rpath_link
         if add_rpath_link:
             runtime_dirs = []
             host_req = self._recipe.dependencies.filter({"build": False}).values()
@@ -312,8 +312,7 @@ class LinkerScriptsBlock(Block):
         """)
 
     def context(self) -> dict[str, Any] | None:
-        linker_scripts = self._recipe.conf.get(
-            "tools.build:linker_scripts", check_type=list, default=[])
+        linker_scripts = self._recipe.conf.tools.build.linker_scripts
         if not linker_scripts:
             return
         linker_scripts = [linker_script.replace("\\", "/") for linker_script in linker_scripts]
@@ -442,15 +441,14 @@ class AndroidSystemBlock(Block):
         #  https://developer.android.com/ndk/guides/cpp-support
         libcxx_str = self._recipe.settings.compiler_libcxx
 
-        android_ndk_path = self._recipe.conf.get("tools.android:ndk_path")
+        android_ndk_path = self._recipe.conf.tools.android.ndk_path
         if not android_ndk_path:
-            raise RecipeException("CMakeToolchain needs tools.android:ndk_path configuration defined")
+            raise RecipeException("CMakeToolchain needs conf.tools.android.ndk_path configuration defined")
         android_ndk_path = android_ndk_path.replace("\\", "/")
         android_ndk_path = relativize_path(
             android_ndk_path, self._recipe, "${CMAKE_CURRENT_LIST_DIR}")
 
-        use_cmake_legacy_toolchain = self._recipe.conf.get(
-            "tools.android:cmake_legacy_toolchain", check_type=bool)
+        use_cmake_legacy_toolchain = self._recipe.conf.tools.android.cmake_legacy_toolchain
         if use_cmake_legacy_toolchain is not None:
             use_cmake_legacy_toolchain = "ON" if use_cmake_legacy_toolchain else "OFF"
 
@@ -537,15 +535,15 @@ class AppleSystemBlock(Block):
         host_architecture = to_apple_archs(self._recipe)
 
         host_os_version = self._recipe.settings.os_version
-        host_sdk_name = self._recipe.conf.get("tools.apple:sdk_path") or get_apple_sdk_fullname(self._recipe)
+        host_sdk_name = self._recipe.conf.tools.apple.sdk_path or get_apple_sdk_fullname(self._recipe)
         is_debug = self._recipe.settings.build_type == "Debug"
 
         # Reading some configurations to enable or disable some Xcode toolchain flags and variables
         # Issue related: upstream issue 9448
         # Based on https://github.com/leetal/ios-cmake repository
-        enable_bitcode = self._recipe.conf.get("tools.apple:enable_bitcode", check_type=bool)
-        enable_arc = self._recipe.conf.get("tools.apple:enable_arc", check_type=bool)
-        enable_visibility = self._recipe.conf.get("tools.apple:enable_visibility", check_type=bool)
+        enable_bitcode = self._recipe.conf.tools.apple.enable_bitcode
+        enable_arc = self._recipe.conf.tools.apple.enable_arc
+        enable_visibility = self._recipe.conf.tools.apple.enable_visibility
 
         ctxt_toolchain = {
             "enable_bitcode": enable_bitcode, "enable_bitcode_marker": all([enable_bitcode, is_debug]), "enable_arc": enable_arc, "enable_visibility": enable_visibility,
@@ -679,8 +677,7 @@ class FindFiles(Block):
         # To find the generated cmake_find_package finders
         # TODO: Change this for parameterized output location of CMakeDeps
         find_package_prefer_config = "ON"  # assume ON by default if not specified in conf
-        prefer_config = self._recipe.conf.get(
-            "tools.cmake.toolchain:find_package_prefer_config", check_type=bool)
+        prefer_config = self._recipe.conf.tools.cmake.toolchain.find_package_prefer_config
         if prefer_config is False:
             find_package_prefer_config = "OFF"
 
@@ -742,7 +739,7 @@ class PkgConfigBlock(Block):
         """)
 
     def context(self) -> dict[str, Any] | None:
-        pkg_config = self._recipe.conf.get("tools.gnu:pkg_config", check_type=str)
+        pkg_config = self._recipe.conf.tools.gnu.pkg_config
         if pkg_config:
             pkg_config = pkg_config.replace("\\", "/")
         subsystem = deduce_subsystem(self._recipe, "build")
@@ -766,8 +763,7 @@ class UserToolchain(Block):
 
     def context(self) -> dict[str, Any] | None:
         # This is global [conf] injection of extra toolchain files
-        user_toolchain = self._recipe.conf.get(
-            "tools.cmake.toolchain:user_toolchain", default=[], check_type=list)
+        user_toolchain = self._recipe.conf.tools.cmake.toolchain.user_toolchain
         paths = [relativize_path(p, self._recipe, "${CMAKE_CURRENT_LIST_DIR}") for p in user_toolchain]
         paths = [p.replace("\\", "/") for p in paths]
         return {"paths": paths}
@@ -843,21 +839,20 @@ class ExtraFlagsBlock(Block):
 
     def context(self) -> dict[str, Any] | None:
         # Now, it's time to get all the flags defined by the user
-        cxxflags = self._toolchain.extra_cxxflags + self._recipe.conf.get("tools.build:cxxflags", default=[], check_type=list)
-        cflags = self._toolchain.extra_cflags + self._recipe.conf.get("tools.build:cflags", default=[], check_type=list)
-        sharedlinkflags = self._toolchain.extra_sharedlinkflags + self._recipe.conf.get("tools.build:sharedlinkflags", default=[], check_type=list)
-        exelinkflags = self._toolchain.extra_exelinkflags + self._recipe.conf.get("tools.build:exelinkflags", default=[], check_type=list)
-        rcflags = self._recipe.conf.get("tools.build:rcflags", default=[], check_type=list)
-        defines = self._recipe.conf.get("tools.build:defines", default=[], check_type=list)
+        cxxflags = self._toolchain.extra_cxxflags + self._recipe.conf.tools.build.cxxflags
+        cflags = self._toolchain.extra_cflags + self._recipe.conf.tools.build.cflags
+        sharedlinkflags = self._toolchain.extra_sharedlinkflags + self._recipe.conf.tools.build.sharedlinkflags
+        exelinkflags = self._toolchain.extra_exelinkflags + self._recipe.conf.tools.build.exelinkflags
+        rcflags = self._recipe.conf.tools.build.rcflags
+        defines = self._recipe.conf.tools.build.defines
 
         # See upstream issue 13374
-        android_ndk_path = self._recipe.conf.get("tools.android:ndk_path")
-        android_legacy_toolchain = self._recipe.conf.get(
-            "tools.android:cmake_legacy_toolchain", check_type=bool)
+        android_ndk_path = self._recipe.conf.tools.android.ndk_path
+        android_legacy_toolchain = self._recipe.conf.tools.android.cmake_legacy_toolchain
         if android_ndk_path and (cxxflags or cflags) and android_legacy_toolchain is not False:
             self._recipe.output.warning(
-                "tools.build:cxxflags or cflags are defined, but Android NDK toolchain may be overriding "
-                "the values. Consider setting tools.android:cmake_legacy_toolchain to False.")
+                "conf.tools.build.cxxflags or cflags are defined, but Android NDK toolchain may be overriding "
+                "the values. Consider setting conf.tools.android.cmake_legacy_toolchain to False.")
 
         config = ""
         suffix = ""
@@ -954,9 +949,7 @@ class CompilersBlock(Block):
         """)
 
     def context(self) -> dict[str, Any] | None:
-        # Reading configuration from "tools.build:compiler_executables" -> {"C": "/usr/bin/gcc"}
-        compilers_by_conf = self._recipe.conf.get(
-            "tools.build:compiler_executables", default={}, check_type=dict)
+        compilers_by_conf = self._recipe.conf.tools.build.compiler_executables
         # Map the possible languages
         compilers = {}
         # Allowed <LANG> variables (and <LANG>_LAUNCHER)
@@ -1034,7 +1027,7 @@ class GenericSystemBlock(Block):
             toolset = settings.compiler_toolset
             if toolset is None:
                 compiler_version = str(settings.compiler_version)
-                msvc_update = recipe.conf.get("tools.microsoft:msvc_update")
+                msvc_update = recipe.conf.tools.microsoft.msvc_update
                 compiler_update = msvc_update or settings.compiler_update
                 toolset = msvc_version_to_toolset_version(compiler_version)
                 if compiler_update is not None:  # It is full one(19.28), not generic 19.2X
@@ -1048,11 +1041,11 @@ class GenericSystemBlock(Block):
                     raise RecipeException(
                         "CMakeToolchain with compiler=clang and a CMake "
                         "'Visual Studio' generator requires VS16, VS17 or VS18")
-        toolset_arch = recipe.conf.get("tools.cmake.toolchain:toolset_arch")
+        toolset_arch = recipe.conf.tools.cmake.toolchain.toolset_arch
         if toolset_arch is not None:
             toolset_arch = f"host={toolset_arch}"
             toolset = toolset_arch if toolset is None else f"{toolset},{toolset_arch}"
-        toolset_cuda = recipe.conf.get("tools.cmake.toolchain:toolset_cuda")
+        toolset_cuda = recipe.conf.tools.cmake.toolchain.toolset_cuda
         if toolset_cuda is not None:
             toolset_cuda = relativize_path(toolset_cuda, recipe, "${CMAKE_CURRENT_LIST_DIR}")
             toolset_cuda = f"cuda={toolset_cuda}"
@@ -1115,9 +1108,9 @@ class GenericSystemBlock(Block):
         return version_mapping.get(os_name, {}).get(str(os_version))
 
     def _get_cross_build(self):
-        system_name = self._recipe.conf.get("tools.cmake.toolchain:system_name")
-        system_version = self._recipe.conf.get("tools.cmake.toolchain:system_version")
-        system_processor = self._recipe.conf.get("tools.cmake.toolchain:system_processor")
+        system_name = self._recipe.conf.tools.cmake.toolchain.system_name
+        system_version = self._recipe.conf.tools.cmake.toolchain.system_version
+        system_processor = self._recipe.conf.tools.cmake.toolchain.system_processor
 
         # try to detect automatically
         os_host = self._recipe.settings.os
@@ -1156,7 +1149,7 @@ class GenericSystemBlock(Block):
             # Ninja will get it from VCVars, not from toolchain
             return system_version, None, None
 
-        winsdk_version = self._recipe.conf.get("tools.microsoft:winsdk_version", check_type=str)
+        winsdk_version = self._recipe.conf.tools.microsoft.winsdk_version
         if winsdk_version:
             if system_version:
                 self._recipe.output.warning(
@@ -1186,7 +1179,7 @@ class GenericSystemBlock(Block):
         system_name, system_version, system_processor = self._get_cross_build()
 
         # This is handled by the tools.apple:sdk_path and CMAKE_OSX_SYSROOT in Apple
-        cmake_sysroot = self._recipe.conf.get("tools.build:sysroot")
+        cmake_sysroot = self._recipe.conf.tools.build.sysroot
         cmake_sysroot = cmake_sysroot.replace("\\", "/") if cmake_sysroot is not None else None
         if cmake_sysroot is not None:
             cmake_sysroot = relativize_path(
@@ -1221,13 +1214,9 @@ class ExtraVariablesBlock(Block):
 
     def context(self) -> dict[str, Any] | None:
         from thirdparty.cmake.utils import parse_extra_variable
-        # Reading configuration from "tools.cmake.toolchain:extra_variables"
-        extra_variables = self._recipe.conf.get(
-            "tools.cmake.toolchain:extra_variables", default={}, check_type=dict)
-        compilation_verbosity = self._recipe.conf.get(
-            "tools.compilation:verbosity", choices=("quiet", "verbose"))
-        build_verbosity = self._recipe.conf.get(
-            "tools.build:verbosity", choices=("quiet", "verbose"))
+        extra_variables = self._recipe.conf.tools.cmake.toolchain.extra_variables
+        compilation_verbosity = self._recipe.conf.tools.compilation.verbosity
+        build_verbosity = self._recipe.conf.tools.build.verbosity
         if build_verbosity == "quiet":
             build_verbosity = "error"
 
@@ -1246,7 +1235,7 @@ class ExtraVariablesBlock(Block):
         parsed_extra_variables = {}
         for key, value in extra_variables.items():
             parsed_extra_variables[key] = parse_extra_variable(
-                "tools.cmake.toolchain:extra_variables", key, value)
+                "conf.tools.cmake.toolchain.extra_variables", key, value)
         return {"extra_variables": parsed_extra_variables}
 
 
@@ -1419,9 +1408,8 @@ class ToolchainBlocks:
         return self._blocks[name]
 
     def process_blocks(self):
-        blocks = self._recipe.conf.get(
-            "tools.cmake.toolchain:enabled_blocks", check_type=list)
-        if blocks is not None:
+        blocks = self._recipe.conf.tools.cmake.toolchain.enabled_blocks
+        if blocks:
             try:
                 new_blocks = {b: self._blocks[b] for b in blocks}
             except KeyError as e:

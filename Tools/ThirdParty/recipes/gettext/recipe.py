@@ -131,8 +131,8 @@ class Recipe(RecipeBase[_Options]):
                     return os.environ.get("CC", "clang-cl"), os.environ.get("AR", "llvm-lib"), os.environ.get("LD", "lld-link"), rc
                 return "cl -nologo", "lib", "link", rc
 
-            compile_wrapper = unix_path(self, self.conf.get("user.automake:compile-wrapper", check_type=str))
-            ar_wrapper = unix_path(self, self.conf.get("user.automake:lib-wrapper", check_type=str))
+            compile_wrapper = unix_path(self, self.conf.tools.automake.compile_wrapper)
+            ar_wrapper = unix_path(self, self.conf.tools.automake.lib_wrapper)
             cc, ar, link, rc = programs()
             env.define("CC", f"{compile_wrapper} {cc}")
             env.define("CXX", f"{compile_wrapper} {cc}")

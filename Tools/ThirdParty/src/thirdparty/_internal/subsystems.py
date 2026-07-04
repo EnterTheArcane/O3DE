@@ -36,7 +36,7 @@ def command_env_wrapper(
         #  Is it necessary? Shouldn't be
         return command
 
-    active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
+    active = recipe.conf.tools.microsoft.bash.active
     if platform.system() == "Windows" and ((recipe.win_bash and scope == "build")):
         if active:
             wrapped_cmd = environment_wrap_command(recipe, envfiles, envfiles_folder, command)
@@ -57,10 +57,10 @@ def _windows_bash_wrapper(
     if not platform.system() == "Windows":
         raise RecipeException("Command only for Windows operating system")
 
-    shell_path = recipe.conf.get("tools.microsoft.bash:path")
+    shell_path = recipe.conf.tools.microsoft.bash.path
     if not shell_path:
         raise RecipeException(
-            "The config 'tools.microsoft.bash:path' is "
+            "The config 'conf.tools.microsoft.bash.path' is "
             "needed to run commands in a Windows subsystem")
     shell_path = Path(shell_path).as_posix()  # Should work in all terminals
     env = env or []
@@ -129,7 +129,7 @@ def deduce_subsystem(recipe: RecipeBase, scope: str | None) -> str | None:
     if not str(the_os).startswith("Windows"):
         return None
 
-    active = recipe.conf.get("tools.microsoft.bash:active", check_type=bool)
+    active = recipe.conf.tools.microsoft.bash.active
     if active:
         return MSYS2
 
