@@ -142,6 +142,13 @@ class Recipe(RecipeBase[_Options]):
             "unset(_t)\n"
             "unset(_type)\n"
         )
+        if self.settings.os == "Windows" and not self.dependencies["qt"].options.shared:
+            fix_script_content += (
+                "\n"
+                "if(TARGET QtDesigner)\n"
+                "    target_compile_definitions(QtDesigner PRIVATE QT_DESIGNER_STATIC)\n"
+                "endif()\n"
+            )
         fix_script_path = self.folders.generators / "fix_msvc_runtime.cmake"
         fix_script_fwd = fix_script_path.as_posix()
         with open(fix_script_path, "w") as f:
