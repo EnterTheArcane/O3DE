@@ -4,7 +4,7 @@ from thirdparty.files import get, copy
 
 class Recipe(RecipeBase):
     name = "fp16"
-    version = "cci.20210320"
+    version = "20210320"
     license = "MIT"
 
     def source(self):

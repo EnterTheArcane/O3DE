@@ -14,7 +14,7 @@ class _Options(RecipeOptions):
     pic: bool = True
     # XNNPACK EP is wired but OFF by default: onnxruntime 1.24.4 expects the XNNPACK API from its
     # pinned commit 3cf85e705098622d59056dcb8f5f963ea7bb0a00 (2025.06.22), newer than the
-    # xnnpack recipe's cci.20241203. The older xn_create_fully_connected_nc_f32 signature (12 args
+    # xnnpack recipe's 20241203. The older xn_create_fully_connected_nc_f32 signature (12 args
     # vs 11) breaks core/providers/xnnpack. Bump the xnnpack recipe to that commit to enable.
     with_xnnpack: bool = False
     # CUDA EP is fully wired (cutlass dep, arch list, provider patch) but OFF by default:

@@ -13,7 +13,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "xnnpack"
-    version = "cci.20241203"
+    version = "20241203"
     license = "BSD-3-Clause"
 
     def requirements(self):

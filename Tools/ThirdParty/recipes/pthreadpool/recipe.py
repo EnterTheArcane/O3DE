@@ -10,7 +10,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "pthreadpool"
-    version = "cci.20231129"
+    version = "20231129"
     license = "BSD-2-Clause"
 
     def configure(self):

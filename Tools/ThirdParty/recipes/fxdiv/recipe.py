@@ -4,7 +4,7 @@ from thirdparty.files import get, copy
 
 class Recipe(RecipeBase):
     name = "fxdiv"
-    version = "cci.20200417"
+    version = "20200417"
     license = "MIT"
 
     def source(self):
