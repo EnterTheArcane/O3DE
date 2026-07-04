@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
-from thirdparty.files import get, copy, rmdir, apply_patches
+from thirdparty.files import get, copy, rmdir, replace_in_file
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -29,7 +29,7 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "onnx"
-    version = "1.20.1"
+    version = "1.21.0"
     license = "Apache-2.0"
 
     def latest_version(self):
@@ -51,10 +51,35 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://github.com/onnx/onnx/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="9bcd6473c689b1ac3aeba8df572891756e01c1a151ae788df5cbc7a4499e5db5",
+            sha256="42ffedcd8c9b6363694300c6ffec1ada77f9620176465719acb27b13a4d6f2de",
             destination=self.folders.source,
             strip_root=True)
-        apply_patches(self)
+
+        # Use conan-provided abseil (CONFIG) and treat protobuf's utf8_range as optional
+        # (it is a private static component only exposed for static protobuf builds).
+        cmakelists = self.folders.source / "CMakeLists.txt"
+        replace_in_file(
+            self,
+            cmakelists,
+            "          find_package(absl REQUIRED)",
+            "          find_package(absl REQUIRED CONFIG)")
+        replace_in_file(
+            self,
+            cmakelists,
+            "          find_package(utf8_range)",
+            "          # find_package(utf8_range)")
+        replace_in_file(
+            self,
+            cmakelists,
+            "            absl::variant\n"
+            "            utf8_range::utf8_range\n"
+            "            utf8_range::utf8_validity\n"
+            "          )",
+            "            absl::variant\n"
+            "          )\n"
+            "          if (TARGET utf8_range::utf8_range)\n"
+            "            list(APPEND protobuf_ABSL_USED_TARGETS utf8_range::utf8_range utf8_range::utf8_validity)\n"
+            "          endif()")
 
     def generate(self):
         protobuf = self.dependencies["protobuf"].options
@@ -103,13 +128,12 @@ class Recipe(RecipeBase[_Options]):
         if protobuf.options.lite:
             defines.append("ONNX_USE_LITE_PROTO=1")
 
-        # onnx
         self.info.components["libonnx"].set_property("cmake_target_name", "ONNX::onnx")
         self.info.components["libonnx"].set_property("cmake_target_aliases", ["onnx"])
         self.info.components["libonnx"].libs = ["onnx"]
         self.info.components["libonnx"].defines = defines
         self.info.components["libonnx"].requires = requires
-        # onnx_proto
+
         self.info.components["onnx_proto"].set_property("cmake_target_name", "ONNX::onnx_proto")
         self.info.components["onnx_proto"].set_property("cmake_target_aliases", ["onnx_proto"])
         self.info.components["onnx_proto"].libs = ["onnx_proto"]

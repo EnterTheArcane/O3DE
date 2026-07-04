@@ -7,7 +7,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "cutlass"
-    version = "3.5.0"
+    version = "4.5.2"
     license = "BSD-3-Clause"
 
     def latest_version(self):
@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://github.com/NVIDIA/cutlass/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="ef6af8526e3ad04f9827f35ee57eec555d09447f70a0ad0cf684a2e426ccbcb6",
+            sha256="7d3ffb03b2d767439189492ab2aa0785632e1b80ba0c5e5618d6c5265d44e008",
             destination=self.folders.source,
             strip_root=True)
         # Don't look for CUDA, we're only installing the headers.

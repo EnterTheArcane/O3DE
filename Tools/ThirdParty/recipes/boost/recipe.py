@@ -1,10 +1,16 @@
-from thirdparty import RecipeBase
-from thirdparty.files import get, copy
+from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.files import get, copy, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
 
-class Recipe(RecipeBase):
+class _Options(RecipeOptions):
+    shared: bool = False
+    pic: bool = True
+
+
+class Recipe(RecipeBase[_Options]):
     name = "boost"
     version = "1.91.0-1"
     license = "BSL-1.0"
@@ -12,6 +18,9 @@ class Recipe(RecipeBase):
     def latest_version(self):
         repo = GithubRepository(self, "boostorg/boost")
         return Version(repo.latest_release.removeprefix("boost-"))
+
+    def requirements(self):
+        self.requires_tool("cmake")
 
     def source(self):
         get(
@@ -21,25 +30,30 @@ class Recipe(RecipeBase):
             destination=self.folders.source,
             strip_root=True)
 
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.cache_variables["BUILD_SHARED_LIBS"] = self.options.shared
+        tc.cache_variables["BUILD_TESTING"] = False
+        tc.cache_variables["BOOST_INSTALL_LAYOUT"] = "system"
+        tc.cache_variables["BOOST_ENABLE_MPI"] = False
+        tc.cache_variables["BOOST_ENABLE_PYTHON"] = False
+        runtime = self.settings.compiler_runtime or "shared"
+        tc.cache_variables["BOOST_RUNTIME_LINK"] = "static" if runtime == "static" else "shared"
+        tc.cache_variables["CMAKE_POSITION_INDEPENDENT_CODE"] = self.options.pic
+        tc.generate()
+
+    def build(self):
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
+
     def package(self):
         copy(self, "LICENSE_1_0.txt", src=self.folders.source, dst=self.folders.package / "licenses")
-        # Header-only packaging: the whole Boost header tree lives under <root>/boost.
-        # This satisfies onnxruntime's header-only Boost.MP11 usage (Boost::mp11).
-        copy(self, "*", src=self.folders.source / "boost", dst=self.folders.package / "include" / "boost")
+        cmake = CMake(self)
+        cmake.install()
+        rmdir(self, self.folders.package / "lib" / "pkgconfig")
 
     def package_info(self):
         self.info.set_property("cmake_file_name", "Boost")
-        self.info.set_property("cmake_target_name", "Boost::boost")
-        self.info.bindirs = []
-        self.info.libdirs = []
-
-        # Aggregate header component
-        self.info.components["headers"].set_property("cmake_target_name", "Boost::headers")
-        self.info.components["headers"].bindirs = []
-        self.info.components["headers"].libdirs = []
-
-        # Boost.MP11 (header-only) - the only Boost lib onnxruntime consumes
-        self.info.components["mp11"].set_property("cmake_target_name", "Boost::mp11")
-        self.info.components["mp11"].requires = ["headers"]
-        self.info.components["mp11"].bindirs = []
-        self.info.components["mp11"].libdirs = []
+        self.info.set_property("cmake_find_mode", "none")
+        self.info.builddirs = ["lib/cmake/Boost-1.91.0"]

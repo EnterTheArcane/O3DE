@@ -6,7 +6,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "ms-gsl"
-    version = "4.0.0"
+    version = "4.2.2"
     license = "MIT"
 
     def latest_version(self):
@@ -17,7 +17,7 @@ class Recipe(RecipeBase):
         get(
             self,
             url=f"https://github.com/microsoft/GSL/archive/v{self.version}.tar.gz",
-            sha256="f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9",
+            sha256="59e2a0a0ea22e8bcf9db2dc4d4bd21212ac6595748295fc27a7e02cf75eac4b5",
             destination=self.folders.source,
             strip_root=True)
 

@@ -4,7 +4,7 @@ from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
 from thirdparty.common.platforms import Os
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.microsoft import is_msvc
-from thirdparty.files import get, copy, rmdir, replace_in_file, apply_patches
+from thirdparty.files import get, copy, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -26,28 +26,31 @@ class _Options(RecipeOptions):
 
 class Recipe(RecipeBase[_Options]):
     name = "onnxruntime"
-    version = "1.24.4"
+    version = "1.27.0"
     license = "MIT"
 
     def latest_version(self):
         repo = GithubRepository(self, "microsoft/onnxruntime")
         return Version(repo.latest_release.removeprefix("v"))
+    
+    def configure(self):
+        self.settings.compiler_cxx_standard = "20"
 
     def requirements(self):
         self.requires_tool("cmake")
         self.requires_tool("protobuf")  # protoc at build time
-        self.requires("onnx")
         self.requires("abseil")
-        self.requires("protobuf")
-        self.requires("date")
-        self.requires("re2")
-        self.requires("flatbuffers")
         self.requires("boost")
-        self.requires("safeint")
-        self.requires("nlohmann_json")
-        self.requires("eigen")
-        self.requires("ms-gsl")
         self.requires("cpuinfo")
+        self.requires("date")
+        self.requires("eigen")
+        self.requires("flatbuffers")
+        self.requires("ms-gsl")
+        self.requires("nlohmann-json")
+        self.requires("onnx")
+        self.requires("protobuf")
+        self.requires("re2")
+        self.requires("safeint")
         if self.settings.os != Os.WINDOWS:
             self.requires("nsync")
         else:
@@ -61,20 +64,17 @@ class Recipe(RecipeBase[_Options]):
     def validate(self):
         onnx = self.dependencies["onnx"].options
         if not onnx.disable_static_registration:
-            raise RecipeInvalidConfiguration(
-                "onnxruntime requires onnx built with disable_static_registration=True")
+            raise RecipeInvalidConfiguration("onnxruntime requires onnx built with disable_static_registration=True")
         if onnx.get_safe("shared"):
-            raise RecipeInvalidConfiguration(
-                "onnxruntime requires onnx built static (onnx:shared=False)")
+            raise RecipeInvalidConfiguration("onnxruntime requires onnx built static (onnx:shared=False)")
 
     def source(self):
         get(
             self,
             url=f"https://github.com/microsoft/onnxruntime/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="0cf4d2ee4392fbb8aedaabc6b2ba11b4a680d1071fa4f75546c2289ca5b404cf",
+            sha256="b41d09905a3c2f3a25709d1dcce8ef3942a4c2799d1046f74be7b6bbebc45e6a",
             destination=self.folders.source,
             strip_root=True)
-        apply_patches(self)
         # Replace onnxruntime's FetchContent dependency logic with find_package(... CONFIG).
         copy(self, "onnxruntime_external_deps.cmake",
              src=self.folders.recipe / "cmake",
@@ -85,11 +85,12 @@ class Recipe(RecipeBase[_Options]):
         # Drop /sdl: it promotes C4996 to a hard error, and the vendored abseil (20260526)
         # marks absl::disjunction/conjunction/negation deprecated (protobuf still uses them).
         replace_in_file(
-            self, self.folders.source / "cmake" / "CMakeLists.txt",
+            self,
+            self.folders.source / "cmake" / "CMakeLists.txt",
             '      target_compile_options(${target_name} PRIVATE '
             '"$<$<COMPILE_LANGUAGE:CUDA>:SHELL:--compiler-options /sdl>" '
             '"$<$<COMPILE_LANGUAGE:CXX,C>:/sdl>")',
-            '      # /sdl removed by thirdparty recipe (promotes deprecated-absl C4996 to errors)')
+            '')
 
     def generate(self):
         protobuf = self.dependencies["protobuf"].options

@@ -6,7 +6,7 @@ from thirdparty.scm.github import GithubRepository
 
 class Recipe(RecipeBase):
     name = "safeint"
-    version = "3.0.28"
+    version = "3.24"
     license = "MIT"
 
     def latest_version(self):
@@ -16,8 +16,8 @@ class Recipe(RecipeBase):
     def source(self):
         get(
             self,
-            url=f"https://github.com/dcleblanc/SafeInt/archive/refs/tags/{self.version}.tar.gz",
-            sha256="d6b164bcea92a746e4d44132e505c7ab1816d1089ba99ebc674ccd4b70262ed5",
+            url=f"https://github.com/dcleblanc/SafeInt/archive/{self.version}.tar.gz",
+            sha256="af6c7222a8420f6f87e198dc94791c28da75fe7241b605342c333fd03fd9dea6",
             destination=self.folders.source,
             strip_root=True)
 

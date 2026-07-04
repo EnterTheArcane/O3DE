@@ -24,7 +24,7 @@ find_package(date REQUIRED CONFIG)
 include_directories(${date_INCLUDE_DIRS})
 add_library(date_interface INTERFACE)
 
-find_package(Boost REQUIRED CONFIG)
+find_package(Boost REQUIRED COMPONENTS mp11 CONFIG)
 
 find_package(nlohmann_json REQUIRED CONFIG)
 

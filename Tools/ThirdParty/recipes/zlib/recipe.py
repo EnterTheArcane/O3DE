@@ -61,9 +61,9 @@ class Recipe(RecipeBase[_Options]):
         self.info.set_property("cmake_target_name", "ZLIB::ZLIB")
         self.info.set_property("pkg_config_name", "zlib")
 
-        if self.settings.os == "Windows" and self.settings.compiler_runtime:
-            # The recipe patches the CMakeLists.txt to generate different filenames when CMake
-            # detects MINGW (clang, gcc with compiler.runtime undefined and compiler.libcxx defined)
+        if self.settings.os == "Windows" and not self.settings.compiler_libcxx:
+            # The recipe patches CMakeLists.txt to keep the MSVC-style filenames on Windows.
+            # MinGW-style builds still use the upstream z/zdll names.
             libname = "zdll" if self.options.shared else "zlib"
         else:
             libname = "z"

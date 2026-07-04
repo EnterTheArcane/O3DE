@@ -64,7 +64,7 @@ class Recipe(RecipeBase):
             "--enable-portable-binary",
             "--with-int=gmp",
             "--with-gmp=system",
-            f"--with-gmp-prefix={unix_path(self, self.dependencies['gmp'].folders.package)}",
+            f"--with-gmp-prefix={unix_path(self, self.dependencies["gmp"].folders.package)}",
         ])
 
         if host := self._host_triplet():
