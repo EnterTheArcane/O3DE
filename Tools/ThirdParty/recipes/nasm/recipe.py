@@ -89,6 +89,7 @@ class Recipe(RecipeBase):
         self.info.buildenv.define_path("NASM", self._nasm)
         self.info.buildenv.define_path("NDISASM", self._ndisasm)
         self.info.buildenv.define_path("AS", self._nasm)
+        self.info.buildenv.prepend_path("PATH", self.folders.package / "bin")
 
     @property
     def _nasm(self):

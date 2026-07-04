@@ -37,7 +37,7 @@ class Recipe(RecipeBase[_Options]):
         return Version(repo.latest_release.removeprefix("v"))
 
     def configure(self):
-        if str(self.settings.arch) not in ["X64"]:
+        if self.settings.arch not in ["X64"]:
             for name in self._arch_options:
                 setattr(self.options, name, False)
 
@@ -47,8 +47,8 @@ class Recipe(RecipeBase[_Options]):
             self.options.shared = False
 
     def requirements(self):
-        if self.settings.arch in ["X64"]:
-            self.requires_tool("yasm")
+        if self.settings.arch == "X64":
+            self.requires_tool("nasm")
         if self.settings.os == "Windows":
             self.win_bash = True
             self.requires_tool("msys2")
@@ -76,7 +76,7 @@ class Recipe(RecipeBase[_Options]):
                 "--disable-tools",
                 "--disable-docs",
                 "--enable-vp9-highbitdepth",
-                "--as=yasm",
+                "--as=nasm",
             ])
         # Note for MSVC: release libs are always built, we just avoid keeping the release lib
         # Note2: Can't use --enable-debug_libs (to help install on Windows),
