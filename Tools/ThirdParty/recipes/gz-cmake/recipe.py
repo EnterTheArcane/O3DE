@@ -43,7 +43,7 @@ class Recipe(RecipeBase):
         cmake.install()
 
     def package_info(self):
-        # gz-cmake installs only cmake modules — no compiled libraries
+        # gz-cmake installs only cmake modules - no compiled libraries
         self.info.set_property("cmake_find_mode", "none")
         self.info.libdirs = []
         self.info.bindirs = []

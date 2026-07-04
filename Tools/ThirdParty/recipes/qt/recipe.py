@@ -459,7 +459,7 @@ class Recipe(RecipeBase[_Options]):
         deps.set_property("egl", "cmake_find_mode", "config")
         deps.set_property("egl::egl", "cmake_target_name", "EGL::EGL")
 
-        # Don't generate any file for gstreamer — let Qt's own FindGStreamer.cmake handle
+        # Don't generate any file for gstreamer - let Qt's own FindGStreamer.cmake handle
         # detection via CMAKE_PREFIX_PATH (same intent as the previous gstreamer_recipe hack).
         deps.set_property("gstreamer", "cmake_find_mode", "none")
 

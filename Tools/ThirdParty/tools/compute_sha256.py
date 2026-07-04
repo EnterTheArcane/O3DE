@@ -1,5 +1,5 @@
 """
-compute_sha256.py — Download new recipe tarballs and compute sha256 hashes.
+compute_sha256.py - Download new recipe tarballs and compute sha256 hashes.
 
 Run from D:\O3DE\Engine\Tools\ThirdParty:
     python tools\compute_sha256.py
@@ -22,7 +22,7 @@ class RecipeUpdate:
 
 
 UPDATES: list[RecipeUpdate] = [
-    # Phase 1 — simple version bumps
+    # Phase 1 - simple version bumps
     RecipeUpdate("alembic",         "1.8.8",   "1.8.11",
         "https://github.com/alembic/alembic/archive/refs/tags/1.8.11.tar.gz",
         drop_patches=True),
@@ -100,7 +100,7 @@ UPDATES: list[RecipeUpdate] = [
         "https://github.com/Tessil/robin-map/archive/v1.4.1.tar.gz"),
     RecipeUpdate("utfcpp",          "4.0.9",   "4.1.1",
         "https://github.com/nemtrif/utfcpp/archive/v4.1.1.tar.gz"),
-    # Phase 2 — major upgrades (sha256 only, code changes done separately)
+    # Phase 2 - major upgrades (sha256 only, code changes done separately)
     RecipeUpdate("catch2",          "2.13.10", "3.15.0",
         "https://github.com/catchorg/Catch2/archive/v3.15.0.tar.gz"),
     RecipeUpdate("joltphysics",     "3.0.1",   "5.5.0",

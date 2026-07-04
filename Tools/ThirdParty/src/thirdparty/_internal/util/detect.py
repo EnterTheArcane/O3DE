@@ -130,7 +130,7 @@ def detect_settings(build_type: str = "Release", target_os: str=None, target_arc
 
     ``target_os``/``target_arch`` select the HOST/target platform the package will run
     on (defaulting to the build machine).  The compiler, however, is always detected from
-    the BUILD MACHINE — it is the toolchain that exists locally and does the compiling.
+    the BUILD MACHINE - it is the toolchain that exists locally and does the compiling.
     For same-OS cross-architecture builds (e.g. X64 -> ARM) this is exactly right;
     the target arch flows into the toolchain via ``settings.arch`` (and, for MSVC + Ninja,
     into the vcvars argument computed from ``settings_build.arch`` vs ``settings.arch``).
@@ -190,8 +190,8 @@ def platform_tag(settings) -> str:
 
     Build outputs are grouped by OS and architecture so that packages built for
     different platforms never share an output folder.  The tag is derived from the
-    *host* settings (the platform the package will run on) — which is what governs
-    binary compatibility — NOT the build machine.
+    *host* settings (the platform the package will run on) - which is what governs
+    binary compatibility - NOT the build machine.
 
     NOTE on HOST vs BUILD context: tools that run during the build (``requires_tool``
     such as cmake/ninja/nasm) must be built/located for the *build machine* and so
@@ -209,7 +209,7 @@ def detect_platform_tag(target_os=None, target_arch=None) -> str:
 
     Defaults to the current machine.  Produces the same string as :func:`platform_tag`
     applied to :func:`detect_settings` with the same overrides, but without shelling out
-    to detect the compiler — cheap enough to call for status display and folder paths.
+    to detect the compiler - cheap enough to call for status display and folder paths.
     """
     the_os = normalize_os(target_os) or _machine_os()
     arch = _default_target_arch(the_os, target_arch)

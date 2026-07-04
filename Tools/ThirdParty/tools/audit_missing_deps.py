@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-audit_missing_deps.py — Find transitive dependencies our recipes will pull in
+audit_missing_deps.py - Find transitive dependencies our recipes will pull in
 from conan-center-index that we don't already ship under ``recipes/``.
 
 This is a static, AST-only analysis: nothing is imported and no network is
@@ -93,7 +93,7 @@ HOST_TOOLS_ALLOWLIST = frozenset({
     "unzip",
     "doxygen",
     "swig",
-    "wayland",  # protocol scanner only — wayland-scanner; runtime wayland is host package
+    "wayland",  # protocol scanner only - wayland-scanner; runtime wayland is host package
     "b2",
     "premake",
     "scons",
@@ -185,7 +185,7 @@ def _contains(haystack: ast.AST, needle: ast.AST) -> bool:
 def _safe_unparse(node: ast.AST) -> str:
     try:
         return ast.unparse(node)
-    except Exception:  # pragma: no cover — defensive
+    except Exception:  # pragma: no cover - defensive
         return "<unparseable>"
 
 
@@ -194,7 +194,7 @@ def _string_from(node: ast.AST) -> Optional[str]:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
     if isinstance(node, ast.JoinedStr):
-        # f-string — try the leading literal segment only.
+        # f-string - try the leading literal segment only.
         for v in node.values:
             if isinstance(v, ast.Constant) and isinstance(v.value, str):
                 return v.value
@@ -388,7 +388,7 @@ def audit(
         for edge in extract_edges(pkg, recipe):
             dep = edge.to_pkg
             if dep in have:
-                # Already shipped — keep walking through it.
+                # Already shipped - keep walking through it.
                 if dep not in visited:
                     queue.append(dep)
                 continue

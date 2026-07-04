@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""port_data.py — Convert a conan-center-index recipe_data.yml to ThirdParty data.yml.
+"""port_data.py - Convert a conan-center-index recipe_data.yml to ThirdParty data.yml.
 
 Usage::
 
@@ -188,7 +188,7 @@ def port_data(
     out_path = out_dir / "data.yml"
 
     if not overwrite and out_path.exists() and not dry_run:
-        print(f"[port_data] SKIP {name} — {out_path} already exists (use --overwrite)")
+        print(f"[port_data] SKIP {name} - {out_path} already exists (use --overwrite)")
         return
 
     recipe_data = _load_yaml(recipe_data_path)

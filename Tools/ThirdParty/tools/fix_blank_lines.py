@@ -123,7 +123,7 @@ def main() -> int:
         print("No blank lines after declarations found.")
         return 0
 
-    suffix = "fixed" if args.fix else "found (dry run — pass --fix to apply)"
+    suffix = "fixed" if args.fix else "found (dry run - pass --fix to apply)"
     print(f"\n{total_findings} instance(s) across {affected_files} file(s) {suffix}.")
     return 0 if args.fix else 1
 

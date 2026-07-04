@@ -17,7 +17,7 @@ from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty.errors import RecipeInvalidConfiguration
 
 # (os, arch) target matrix exercised by the recipes check.  These are the canonical INTERNAL
-# names (settings.yml defines arch as just ARM/X64; OS names use Mac, not Macos) — tools that
+# names (settings.yml defines arch as just ARM/X64; OS names use Mac, not Macos) - tools that
 # need the longer forms (x86_64, darwin, ...) map them at their own boundary.  The compiler is
 # always detected from the build machine; only the target os/arch vary, which is what surfaces
 # platform-specific configure()/requirements() bugs.
@@ -93,7 +93,7 @@ def _check_recipes(
 
 
 def _check_duplicates() -> tuple[bool, dict[str, list[str]]]:
-    """Find class names defined in more than one file under the thirdparty package — the
+    """Find class names defined in more than one file under the thirdparty package - the
     signature of an incomplete refactor (stale duplicate left behind)."""
     src_root = Path(thirdparty.__file__).parent
     seen: dict[str, list[str]] = {}

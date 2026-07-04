@@ -114,8 +114,98 @@ class BuildCommandTests(unittest.TestCase):
 
         self.assertEqual(exc.exception.code, 1)
         self.assertEqual([call.args[2] for call in build_recipe.call_args_list], ["ffmpeg"])
-        self.assertIn("SKIP openimageio/1 — dependency failed/skipped: ffmpeg", stdout.getvalue())
+        self.assertIn("SKIP openimageio/1 - dependency failed/skipped: ffmpeg", stdout.getvalue())
         self.assertIn("SKIP openimageio (dependency failed/skipped: ffmpeg)", stdout.getvalue())
+
+    def test_failed_build_leaves_build_folder_for_logs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recipes_root = root / "recipes"
+            build_root = root / "build"
+            recipe_dir = recipes_root / "fails"
+            recipe_dir.mkdir(parents=True)
+            (recipe_dir / "recipe.py").write_text(
+                "\n".join([
+                    "from pathlib import Path",
+                    "from thirdparty import RecipeBase",
+                    "",
+                    "class Recipe(RecipeBase):",
+                    "    name = 'fails'",
+                    "    version = '1'",
+                    "    license = 'MIT'",
+                    "",
+                    "    def build(self):",
+                    "        Path('build.log').write_text('failed build log', encoding='utf-8')",
+                    "        raise RuntimeError('boom')",
+                    "",
+                ]),
+                encoding="utf-8")
+
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), self.assertRaises(RuntimeError):
+                build_command._build_recipe(
+                    recipes_root,
+                    build_root,
+                    "fails",
+                    "Release",
+                    set(),
+                    target_os=None,
+                    target_arch=None,
+                )
+
+            platform_tag = build_command.detect_platform_tag(None, None)
+            build_dir = build_root / "fails" / "1" / platform_tag / "build"
+            self.assertTrue((build_dir / "build.log").is_file())
+            self.assertFalse((build_dir / build_command._COMPLETE_MARKER).exists())
+
+    def test_incomplete_build_folder_is_wiped_before_next_build(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            recipes_root = root / "recipes"
+            build_root = root / "build"
+            recipe_dir = recipes_root / "stale"
+            recipe_dir.mkdir(parents=True)
+            (recipe_dir / "recipe.py").write_text(
+                "\n".join([
+                    "from pathlib import Path",
+                    "from thirdparty import RecipeBase",
+                    "",
+                    "class Recipe(RecipeBase):",
+                    "    name = 'stale'",
+                    "    version = '1'",
+                    "    license = 'MIT'",
+                    "",
+                    "    def build(self):",
+                    "        assert not Path('stale.txt').exists()",
+                    "        Path('fresh.txt').write_text('fresh build', encoding='utf-8')",
+                    "",
+                ]),
+                encoding="utf-8")
+
+            platform_tag = build_command.detect_platform_tag(None, None)
+            build_dir = build_root / "stale" / "1" / platform_tag / "build"
+            package_dir = build_root / "stale" / "1" / platform_tag / "package"
+            build_dir.mkdir(parents=True)
+            package_dir.mkdir(parents=True)
+            (build_dir / "stale.txt").write_text("old partial build", encoding="utf-8")
+            (package_dir / "stale.txt").write_text("old partial package", encoding="utf-8")
+
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                build_command._build_recipe(
+                    recipes_root,
+                    build_root,
+                    "stale",
+                    "Release",
+                    set(),
+                    target_os=None,
+                    target_arch=None,
+                )
+
+            self.assertFalse((build_dir / "stale.txt").exists())
+            self.assertFalse(package_dir.exists())
+            self.assertTrue((build_dir / "fresh.txt").is_file())
+            self.assertTrue((build_dir / build_command._COMPLETE_MARKER).is_file())
 
 
 if __name__ == "__main__":

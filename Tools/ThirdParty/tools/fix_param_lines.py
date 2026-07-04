@@ -239,7 +239,7 @@ def main() -> int:
         print("No single-line multi-param defs found.")
         return 0
 
-    suffix = "fixed" if args.fix else "need reformatting (dry run — pass --fix to apply)"
+    suffix = "fixed" if args.fix else "need reformatting (dry run - pass --fix to apply)"
     print(f"\n{total} def(s) across {affected} file(s) {suffix}.")
     return 0 if args.fix else 1
 

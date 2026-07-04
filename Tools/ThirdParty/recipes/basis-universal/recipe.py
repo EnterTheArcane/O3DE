@@ -18,7 +18,7 @@ class Recipe(RecipeBase[_Options]):
 
     def latest_version(self):
         repo = GithubRepository(self, "BinomialLLC/basis_universal")
-        return Version(repo.latest_release.lstrip("v").replace("_", "."))
+        return Version(repo.latest_release.lstrip("v").replace("_", ".").rstrip("r"))
 
     def configure(self):
         if self.settings.arch != "X64":

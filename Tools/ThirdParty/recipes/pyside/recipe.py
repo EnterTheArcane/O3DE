@@ -117,7 +117,7 @@ class Recipe(RecipeBase[_Options]):
             # bindings fail to link with LNK2019.  Add them explicitly.  PySide6's .pyd modules
             # are CMake MODULE libraries, so CMAKE_MODULE_LINKER_FLAGS is the one that matters;
             # SHARED/EXE are set too for completeness.  Use /DEFAULTLIB: (not bare names) so the
-            # linker searches them LAST — bare names land at the start of the link line, before
+            # linker searches them LAST - bare names land at the start of the link line, before
             # harfbuzz.lib, so MSVC's single-pass import-lib resolution would still miss the
             # symbols (classic link-order issue).
             hb_system_libs = ("/DEFAULTLIB:usp10.lib /DEFAULTLIB:rpcrt4.lib "

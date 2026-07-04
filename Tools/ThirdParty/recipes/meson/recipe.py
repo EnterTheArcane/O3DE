@@ -36,7 +36,7 @@ class Recipe(RecipeBase):
             #
             # Instead we create a thin meson.py launcher that adds meson.pyz to
             # sys.path and calls mesonmain.  sys.argv[0] then ends with '.py', so
-            # meson stores [python.exe, meson.py] as the command — executable by ninja.
+            # meson stores [python.exe, meson.py] as the command - executable by ninja.
             copy(self, "meson.pyz", src=self.folders.build, dst=dst)
             save(
                 self, dst / "meson.py",

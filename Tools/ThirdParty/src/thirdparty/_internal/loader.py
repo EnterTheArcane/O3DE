@@ -22,8 +22,8 @@ from thirdparty.errors import RecipeException
 class RecipeLoader:
     """Loads and caches recipe CLASSES from ``recipes/<name>/recipe.py``.
 
-    The parsed recipe class is cached per path, so repeated lookups — version injection
-    during ``requirements()``, the config-probe, graph resolution — don't re-parse the same
+    The parsed recipe class is cached per path, so repeated lookups - version injection
+    during ``requirements()``, the config-probe, graph resolution - don't re-parse the same
     file.  Instantiation is left to the caller (``make_probe_recipe`` / build.py), since each
     build/probe needs a fresh recipe object with its own folders + settings.
     """
@@ -115,7 +115,7 @@ def make_probe_recipe(
 
     ``target_os``/``target_arch`` select the HOST/target platform (default: build machine).
     ``settings`` is the target platform; ``settings_build`` is always the build machine.
-    No build folders are created — this is for dependency discovery only.  ``build.py``
+    No build folders are created - this is for dependency discovery only.  ``build.py``
     layers folder setup on top of this for actual builds.
     """
     recipe = recipe_cls()

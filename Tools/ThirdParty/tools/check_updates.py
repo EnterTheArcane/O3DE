@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-check_updates.py — Scan ThirdParty recipes for available upstream updates.
+check_updates.py - Scan ThirdParty recipes for available upstream updates.
 
 Parses each recipe.py to extract the source URL, then queries the GitHub API
 to find the latest release or tag and compares it against the recipe's current
@@ -64,7 +64,7 @@ class UpdateResult:
 
 
 # ---------------------------------------------------------------------------
-# Recipe parsing (AST-based — no imports executed)
+# Recipe parsing (AST-based - no imports executed)
 # ---------------------------------------------------------------------------
 
 def _collect_module_strings(tree: ast.Module) -> dict[str, str]:
@@ -99,7 +99,7 @@ def _first_get_url(tree: ast.AST, string_vars: dict[str, str]) -> Optional[str]:
                 return kw.value.value
             if isinstance(kw.value, ast.Name):
                 return string_vars.get(kw.value.id)
-            # f-string / complex expression — skip
+            # f-string / complex expression - skip
     return None
 
 
@@ -216,7 +216,7 @@ def get_latest_github_tag(
     """
     current_prefix = _tag_prefix(current_tag)
 
-    # 1. Latest release — accept only if same release family
+    # 1. Latest release - accept only if same release family
     data = _gh_request(f"/repos/{owner}/{repo}/releases/latest", token)
     if isinstance(data, dict) and "tag_name" in data:
         release_tag: str = data["tag_name"]
@@ -259,7 +259,7 @@ def normalize_version(tag: str) -> str:
     Examples::
 
         "v3.0.1"              -> "3.0.1"
-        "vulkan-sdk-1.4.313"  -> "vulkan-sdk-1.4.313"  (prefix kept — non-numeric start)
+        "vulkan-sdk-1.4.313"  -> "vulkan-sdk-1.4.313"  (prefix kept - non-numeric start)
         "R_2_8_1"             -> "2.8.1"
         "release-78.2"        -> "78.2"
     """
@@ -317,7 +317,7 @@ def check_recipe(recipe: RecipeInfo, token: Optional[str]) -> UpdateResult:
         return UpdateResult(recipe, "", "", "skipped", "no source URL")
 
     if is_commit_hash_url(recipe.url):
-        return UpdateResult(recipe, recipe.version, "", "skipped", "pinned to commit hash — manual review required")
+        return UpdateResult(recipe, recipe.version, "", "skipped", "pinned to commit hash - manual review required")
 
     gh = parse_github_url(recipe.url)
     if gh is None:

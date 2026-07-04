@@ -269,7 +269,7 @@ def apply_update(update: RecipeUpdate) -> bool:
             text,
         )
 
-    # 3. Replace sha256 — if we know the old one, replace it; otherwise replace any 64-char hex after sha256=
+    # 3. Replace sha256 - if we know the old one, replace it; otherwise replace any 64-char hex after sha256=
     if update.old_sha256 and update.old_sha256 in text:
         text = text.replace(update.old_sha256, update.new_sha256)
     else:

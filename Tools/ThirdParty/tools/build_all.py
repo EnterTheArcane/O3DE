@@ -38,7 +38,7 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true",
                     help="Print build order without actually building")
     ap.add_argument("--generate-only", action="store_true",
-                    help="Only run generate() — no source download, cmake build, or package")
+                    help="Only run generate() - no source download, cmake build, or package")
     ap.add_argument("--skip-built", action="store_true", default=True,
                     help="Skip already-built packages (default: true)")
     ap.add_argument("--force", action="store_true",
@@ -105,14 +105,14 @@ def main() -> None:
     for name in order:
         node = g[name]
         if node.recipe_cls is None:
-            print(f"\n[build_all] SKIP {name} — cannot load recipe", file=sys.stderr)
+            print(f"\n[build_all] SKIP {name} - cannot load recipe", file=sys.stderr)
             skipped.append(name)
             continue
 
         version = node.version
 
         if not args.force and is_built(build_root, name, version, plat):
-            print(f"[build_all] {name}/{version} — already built, skipping")
+            print(f"[build_all] {name}/{version} - already built, skipping")
             skipped.append(name)
             continue
 
@@ -132,7 +132,7 @@ def main() -> None:
             result = subprocess.run(
                 cmd,
                 cwd=str(REPO),
-                # Don't capture — let output stream live
+                # Don't capture - let output stream live
             )
             elapsed = time.time() - t0
             if result.returncode == 0:

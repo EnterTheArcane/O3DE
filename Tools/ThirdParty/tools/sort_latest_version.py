@@ -136,7 +136,7 @@ def main() -> int:
         print("All latest_version methods are already in position.")
         return 0
 
-    suffix = "reordered" if args.fix else "need reordering (dry run — pass --fix to apply)"
+    suffix = "reordered" if args.fix else "need reordering (dry run - pass --fix to apply)"
     print(f"\n{total} class(es) {suffix}.")
     return 0 if args.fix else 1
 

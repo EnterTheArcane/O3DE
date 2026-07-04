@@ -54,12 +54,12 @@ def is_built(
 def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:
     """Drive the recipe's config phase and return ``(host_dep_names, tool_dep_names)``.
 
-    host_dep_names — regular library dependencies (build=False)
-    tool_dep_names — requires_tool (build=True)
+    host_dep_names - regular library dependencies (build=False)
+    tool_dep_names - requires_tool (build=True)
 
     The whole config phase (configure + default auto-fPIC handling +
     requirements) is delegated to ``run_configure_method``.  Errors are
-    swallowed — dependency discovery is best-effort and must not abort graph resolution.
+    swallowed - dependency discovery is best-effort and must not abort graph resolution.
     """
     from thirdparty._internal.methods import run_configure_method
 
@@ -110,7 +110,7 @@ class Graph:
         before cross-building).  That self tool-edge is not a real cycle: the native copy
         lives in the build context and the target copy in the host context (see conan's
         two-context model), and the build executor (``_build_recipe``) builds the native
-        copy first via its own recursion — keyed by ``(name, target_os, target_arch)`` —
+        copy first via its own recursion - keyed by ``(name, target_os, target_arch)`` -
         rather than as a second node here.  So a self *tool* edge is dropped for ordering
         and the single name-keyed node is emitted once.  A self *host* require is left in
         place so it still surfaces as a ``graphlib.CycleError`` (it is a real recipe bug).

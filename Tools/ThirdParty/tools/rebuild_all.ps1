@@ -12,7 +12,7 @@ $thirdparty = ".\.venv\Scripts\thirdparty.exe"
 
 # All Windows-compatible recipes, roughly in dependency order so the output
 # reads naturally.  The build tool handles transitive dep ordering itself, so
-# the exact sequence here only affects readability — not correctness.
+# the exact sequence here only affects readability - not correctness.
 $packages = @(
     # --- no-dep / header-only / compiler-level ---
     "eigen", "wil", "directx-headers", "spirv-headers", "vulkan-headers",

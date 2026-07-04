@@ -183,7 +183,7 @@ def main() -> int:
         print("No single-quoted strings found that can be converted.")
         return 0
 
-    suffix = "converted" if args.fix else "can be converted (dry run — pass --fix to apply)"
+    suffix = "converted" if args.fix else "can be converted (dry run - pass --fix to apply)"
     print(f"\n{total} string(s) across {affected} file(s) {suffix}.")
     return 0 if args.fix else 1
 

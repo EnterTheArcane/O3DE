@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""port_recipe.py — Convert a conan-center-index recipe to ThirdParty format.
+"""port_recipe.py - Convert a conan-center-index recipe to ThirdParty format.
 
 Usage::
 
@@ -56,10 +56,10 @@ _IMPORT_MAP: dict[str, str | None] = {
     "conan.tools.env":            "thirdparty.tools.env",
     "conan.tools.gnu":            "thirdparty.tools.gnu",
     "conan.tools.meson":          "thirdparty.tools.meson",
-    "conan.errors":               None,   # RecipeInvalidConfiguration — validate() removed
-    "conan.tools.system":         None,   # system package installation — not supported
+    "conan.errors":               None,   # RecipeInvalidConfiguration - validate() removed
+    "conan.tools.system":         None,   # system package installation - not supported
     "conan.tools.cross_building": None,   # we don't cross-compile
-    "conan.tools.layout":         None,   # cmake_layout/basic_layout — layout() removed
+    "conan.tools.layout":         None,   # cmake_layout/basic_layout - layout() removed
 }
 
 # Symbols to drop from a specific module's import list
@@ -170,7 +170,7 @@ class _ConanTransformer(cst.CSTTransformer):
 
         mod = _module_str(updated_node.module)
 
-        # Not a conan import at all — leave completely alone
+        # Not a conan import at all - leave completely alone
         if not mod.startswith("conan"):
             return updated_node
 
@@ -400,7 +400,7 @@ def _copy_patches(recipe_data: dict, version: str, cci_dir: Path, out_dir: Path)
             continue
         src = cci_dir / src_rel
         if not src.exists():
-            print(f"  [patch] WARNING: {src.name} not found — skipping")
+            print(f"  [patch] WARNING: {src.name} not found - skipping")
             continue
         dst = out_patches / src.name
         shutil.copy2(src, dst)
@@ -535,7 +535,7 @@ def _find_cci_root() -> Path:
     for c in candidates:
         if c.is_dir():
             return c
-    raise RuntimeError("Cannot auto-detect CCI root — pass --cci-root")
+    raise RuntimeError("Cannot auto-detect CCI root - pass --cci-root")
 
 
 def _find_cci_dir(cci_root: Path, name: str, subdir: str | None = None) -> Path | None:
@@ -567,12 +567,12 @@ def port_recipe(
 ) -> bool:
     cci_dir = _find_cci_dir(cci_root, cci_name or name, cci_subdir)
     if cci_dir is None:
-        print(f"[port] SKIP {name} — not found in CCI")
+        print(f"[port] SKIP {name} - not found in CCI")
         return False
 
     out_path = out_root / name / "recipe.py"
     if not overwrite and out_path.exists() and not dry_run:
-        print(f"[port] SKIP {name} — exists (--overwrite to replace)")
+        print(f"[port] SKIP {name} - exists (--overwrite to replace)")
         return False
 
     recipe_data = _read_recipe_data(cci_dir)
@@ -583,7 +583,7 @@ def port_recipe(
         url, sha256 = _get_source_info(recipe_data, version)
     else:
         version, url, sha256 = "0.0.0", "", ""
-        print(f"[port] WARNING {name} — no sources in recipe_data.yml")
+        print(f"[port] WARNING {name} - no sources in recipe_data.yml")
 
     source_code = (cci_dir / "recipe.py").read_text(encoding="utf-8")
 
@@ -592,7 +592,7 @@ def port_recipe(
         transformer = _ConanTransformer(version=version, url=url, sha256=sha256)
         transformed = tree.visit(transformer).code
     except cst.ParserSyntaxError as exc:
-        print(f"[port] WARNING {name} — libcst parse error: {exc}; CST skipped")
+        print(f"[port] WARNING {name} - libcst parse error: {exc}; CST skipped")
         transformed = source_code
 
     transformed = _apply_regex_transforms(transformed)

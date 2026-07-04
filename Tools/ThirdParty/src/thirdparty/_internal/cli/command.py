@@ -21,7 +21,7 @@ def command(fn: CommandFn | None = None, *, name: str | None = None) -> Callable
     """Decorator that registers a function as a CLI subcommand.
 
     Used bare (``@command``) the function name becomes the command name.  Pass
-    ``@command(name="list")`` to override it — useful when the function name would
+    ``@command(name="list")`` to override it - useful when the function name would
     shadow a builtin (the ``list`` command).  The docstring, if present, becomes the
     help text shown in ``thirdparty --help``.
 

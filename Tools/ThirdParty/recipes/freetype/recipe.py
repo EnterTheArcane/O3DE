@@ -106,7 +106,7 @@ class Recipe(RecipeBase[_Options]):
         # Use config mode with the canonical "Freetype" name. The CMakeDeps generator
         # does not emit Find modules, so a split "both"/module setup would let consumers'
         # find_package(Freetype) fall through to CMake's builtin FindFreetype, which links
-        # only freetype itself and drops freetype's private static deps (brotli, bzip2) —
+        # only freetype itself and drops freetype's private static deps (brotli, bzip2) -
         # causing unresolved BrotliDecoderDecompress / BZ2_* symbols downstream.
         self.info.set_property("cmake_find_mode", "config")
         self.info.set_property("cmake_file_name", "Freetype")

@@ -171,9 +171,9 @@ def _build_dep_graph(
     _recipe_cache: dict | None = None, ) -> RecipeDependencies:
     """Create a RecipeDependencies from a list of already-built packages.
 
-    dep_names  — host (non-build) deps (build=False); inherit the parent's effective
+    dep_names  - host (non-build) deps (build=False); inherit the parent's effective
                  target platform (``target_os``/``target_arch``).
-    tool_names — requires_tool (build=True); built for the BUILD MACHINE (target reset).
+    tool_names - requires_tool (build=True); built for the BUILD MACHINE (target reset).
 
     _recipe_cache is a shared dict[(dep_name, os, arch, is_build) → (Requirement, RecipeBase)]
     passed through recursive calls so that the *same* RecipeBase object is reused
@@ -417,7 +417,7 @@ def _build_ordered(
     for name in order:
         cls = _try_load_recipe_class(recipes_root, name)
         if cls is None:
-            print(f"[thirdparty] SKIP {name} — cannot load recipe", file=sys.stderr)
+            print(f"[thirdparty] SKIP {name} - cannot load recipe", file=sys.stderr)
             _skip(name, "cannot load recipe", blocks_dependants=True)
             continue
         version = _resolve_version(cls)
@@ -435,7 +435,7 @@ def _build_ordered(
         blocked_deps = _blocked_dependencies(name)
         if blocked_deps:
             reason = f"dependency failed/skipped: {', '.join(blocked_deps)}"
-            print(f"[thirdparty] SKIP {name}/{version} — {reason}")
+            print(f"[thirdparty] SKIP {name}/{version} - {reason}")
             _skip(name, reason, blocks_dependants=True)
             continue
         t0 = time.time()
@@ -497,7 +497,7 @@ def _build_recipe(
     ``exact_set`` (``--exact``): when not ``None``, only recipes whose name is in this set are
     actually built.  Every other recipe is still walked to resolve the dependency graph (so
     generators can reference its package folder) but is never sourced, built, packaged, or
-    wiped — its pre-existing package folder is used as-is.
+    wiped - its pre-existing package folder is used as-is.
 
     Returns the ordered list of all transitive dep names for *name* (deepest
     first) so that the caller can populate its own dep graph.
@@ -520,7 +520,7 @@ def _build_recipe(
         recipe_cls, recipes_root, build_root, name, version, build_type, target_os, target_arch, jobs=jobs)
     direct_deps, direct_tools = _get_requires(probe)
 
-    # Recursively build tool dependencies that have local recipes — for the BUILD MACHINE.
+    # Recursively build tool dependencies that have local recipes - for the BUILD MACHINE.
     for tool_name in direct_tools:
         if (recipes_root / tool_name / "recipe.py").exists():
             _build_recipe(
@@ -544,12 +544,12 @@ def _build_recipe(
 
     # --exact: dependencies (above) are resolved for reference only.  If this recipe was not
     # explicitly named, return its transitive dep list without sourcing/building/packaging or
-    # wiping anything — the existing package folder (if any) is left untouched.
+    # wiping anything - the existing package folder (if any) is left untouched.
     if exact_set is not None and name not in exact_set:
         return transitive
 
     if not generate_only and not force and _is_built(build_root, name, version, platform_tag):
-        print(f"[thirdparty] {name}/{version} already built — skipping")
+        print(f"[thirdparty] {name}/{version} already built - skipping")
         return transitive
 
     # Build the dependency graph for this recipe from all transitive deps.
@@ -578,10 +578,11 @@ def _build_recipe(
         # Wipe all build artifacts so source(), build(), and package() run fresh.
         for _dir in (src_dir, build_dir, pkg_dir):
             _wipe(_dir)
-    elif pkg_dir.exists() and not (build_dir / _COMPLETE_MARKER).is_file():
-        # If the package directory exists but the completion marker is absent, the
-        # previous build was interrupted or failed mid-package().  Remove the partial
-        # package directory so we start clean.
+    elif not (build_dir / _COMPLETE_MARKER).is_file():
+        # If the build marker is absent, the previous run was interrupted or failed.
+        # Start the next attempt from a clean build/package tree while leaving the
+        # failed tree in place until that next attempt so its logs can be inspected.
+        _wipe(build_dir)
         _wipe(pkg_dir)
 
     # Drive the recipe's full config phase (configure + default auto-fPIC +
@@ -594,7 +595,7 @@ def _build_recipe(
     except Exception as _cfg_exc:
         from thirdparty.errors import RecipeInvalidConfiguration
         if isinstance(_cfg_exc, RecipeInvalidConfiguration):
-            print(f"[thirdparty] {name}/{version} not supported on this platform: {_cfg_exc} — skipping")
+            print(f"[thirdparty] {name}/{version} not supported on this platform: {_cfg_exc} - skipping")
             return transitive
         raise
 
@@ -645,12 +646,6 @@ def _build_recipe(
             try:
                 os.chdir(recipe.folders.build)
                 recipe.build()
-            except Exception:
-                # Clean up so that the next run starts fresh rather than resuming a broken state.
-                if not os.environ.get("THIRDPARTY_NO_WIPE_ON_FAIL"):
-                    _wipe(recipe.folders.build)
-                    _wipe(recipe.folders.package)
-                raise
             finally:
                 os.chdir(_orig_cwd_build)
         if type(recipe).package is not RecipeBase.package:
