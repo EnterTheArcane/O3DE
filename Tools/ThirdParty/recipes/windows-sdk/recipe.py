@@ -26,12 +26,6 @@ class Recipe(RecipeBase):
     version = "10.0.28000.2270"
     license = "Microsoft Windows SDK License"
 
-    def validate(self) -> None:
-        if self.settings.os != "Windows":
-            raise RecipeInvalidConfiguration("windows-sdk is only available for Windows")
-        if self.settings.arch not in _ARCH or self.settings_build.arch not in _ARCH:
-            raise RecipeInvalidConfiguration(f"windows-sdk does not support arch {self.settings.arch}")
-
     def build(self) -> None:
         # Headers/sources, the target-arch libs only, and the tools -- not both arches.
         cpp_arch = f"microsoft.windows.sdk.cpp.{_ARCH[self.settings.arch]}"
