@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 from typing import Any, Literal
 
 from thirdparty import RecipeBase, RecipeOptions
@@ -239,6 +240,10 @@ class Recipe(RecipeBase[_Options]):
             self.requires_tool("msys2")
             if self.settings.arch == "ARM" and is_msvc(self):
                 self.requires_tool("gas-preprocessor")
+                # gas-preprocessor.pl has a "#!/usr/bin/env perl" shebang and is invoked by
+                # ffmpeg's configure as the aarch64 assembler wrapper; without perl on PATH it
+                # fails with "command not found". strawberryperl provides the interpreter.
+                self.requires_tool("strawberryperl")
 
     def source(self):
         get(
@@ -477,9 +482,24 @@ class Recipe(RecipeBase[_Options]):
             args.append(f"--target-os={self._target_os}")
             if is_apple_os(self) and self.options.with_audiotoolbox:
                 args.append("--disable-outdev=audiotoolbox")
+            # ffmpeg builds and RUNS small helper tools (e.g. bin2c, which embeds the CLI's
+            # graph.html/css resources) with its "host" compiler during the build. The default
+            # host compiler is gcc, absent from the MSVC toolchain, and simply reusing the target
+            # cl produces ARM64 helpers that cannot run on the x64 build host ("Exec format
+            # error"). Point --host-cc at a wrapper that builds helper tools with the x64 host cl
+            # (sibling of the arm64 cross cl) and x64 import libraries, yielding runnable helpers.
+            if is_msvc(self) and cc:
+                args.append(f"--host-cc={unix_path(self, self._write_host_cc_wrapper())}")
 
         if tc.cflags:
-            args.append(f"--extra-cflags={" ".join(tc.cflags)}")
+            cflags = tc.cflags
+            if is_msvc(self):
+                # AutotoolsToolchain injects -fPIC, a GCC/Clang concept. MSVC's cl merely warns
+                # and ignores it (D9002), but ffmpeg also forwards --extra-cflags to the ARM
+                # assembler (armasm64 via gas-preprocessor), which hard-errors on it (A2029).
+                # Windows code is always position independent, so drop this GCC-only flag.
+                cflags = [f for f in cflags if f != "-fPIC"]
+            args.append(f"--extra-cflags={" ".join(cflags)}")
         if tc.ldflags:
             args.append(f"--extra-ldflags={" ".join(tc.ldflags)}")
         tc.configure_args.extend(args)
@@ -836,6 +856,28 @@ class Recipe(RecipeBase[_Options]):
         elif is_msvc(self):
             return {"cc": "cl.exe", "cxx": "cl.exe"}
         return {}
+
+    def _write_host_cc_wrapper(self) -> Path:
+        # Written for msys2 /bin/sh. During the build the environment is the amd64_arm64 vcvars,
+        # so cl.exe on PATH targets arm64 (.../bin/Hostx64/arm64/cl.exe) and LIB points at the
+        # arm64 import libraries. The sibling .../bin/Hostx64/x64/cl.exe targets x64, and the x64
+        # import libraries live at the same paths with "arm64" replaced by "x64". INCLUDE is
+        # architecture independent, so it needs no change. The wrapper rewrites both at runtime so
+        # ffmpeg's helper tools (bin2c, ...) are built as runnable x64 executables.
+        wrapper = self.folders.generators / "ffmpeg_host_cc.sh"
+        content = (
+            "#!/bin/sh\n"
+            'target_cl="$(command -v cl.exe)"\n'
+            'host_cl="$(dirname "$(dirname "$target_cl")")/x64/cl.exe"\n'
+            '[ -x "$host_cl" ] || host_cl="$target_cl"\n'
+            "LIB=\"$(printf %s \"$LIB\" | sed 's/arm64/x64/gI')\"\n"
+            "export LIB\n"
+            'exec "$host_cl" -nologo "$@"\n'
+        )
+        with open(wrapper, "w", newline="\n") as f:
+            f.write(content)
+        os.chmod(wrapper, os.stat(wrapper).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        return wrapper
 
     def _create_toolchain(self):
         tc = AutotoolsToolchain(self)

@@ -1,6 +1,7 @@
 {
   "pythonVersion": "3.14",
   "typeCheckingMode": "strict",
+  "reportPrivateUsage": "none",
   "venvPath": ".",
   "venv": ".venv",
   "extraPaths": ["src"],
