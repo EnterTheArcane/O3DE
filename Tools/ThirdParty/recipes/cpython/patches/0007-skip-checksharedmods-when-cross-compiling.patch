@@ -1,0 +1,26 @@
+diff --git a/Makefile.pre.in b/Makefile.pre.in
+index 1111111111..2222222222 100644
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -612,10 +612,20 @@
+ # First target in Makefile is implicit default. So .PHONY needs to come after
+ # all.
+ .PHONY: all
++
++# checksharedmods/rundsymutil execute the freshly built python in-process to sanity
++# check the shared extension modules loaded correctly. That can never succeed when
++# cross-compiling to a different architecture than the build machine: a process
++# can't dlopen a foreign-arch .so, Rosetta or not. Skip them in that case.
++ifeq ($(BUILD_GNU_TYPE),$(HOST_GNU_TYPE))
++BUILD_ALL_EXTRA_TARGETS = checksharedmods rundsymutil
++else
++BUILD_ALL_EXTRA_TARGETS =
++endif
+ 
+ .PHONY: build_all
+ build_all:	check-clean-src $(BUILDPYTHON) platform sharedmods \
+-		gdbhooks Programs/_testembed scripts checksharedmods rundsymutil
++		gdbhooks Programs/_testembed scripts $(BUILD_ALL_EXTRA_TARGETS)
+ 
+ .PHONY: build_wasm
+ build_wasm: check-clean-src $(BUILDPYTHON) platform sharedmods \

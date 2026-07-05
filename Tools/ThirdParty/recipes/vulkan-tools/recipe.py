@@ -1,4 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get
 from thirdparty.scm import Version
@@ -19,6 +20,10 @@ class Recipe(RecipeBase[_Options]):
     def latest_version(self):
         repo = GithubRepository(self, "KhronosGroup/Vulkan-Tools")
         return Version(repo.latest_tag("vulkan-sdk-").removeprefix("vulkan-sdk-"))
+        
+    def configure(self):
+        if self.settings.os == "Mac" and cross_building(self):
+            self.options.build_cube = False
 
     def requirements(self):
         self.requires_tool("cmake")

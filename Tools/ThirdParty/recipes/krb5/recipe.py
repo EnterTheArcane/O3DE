@@ -3,7 +3,7 @@ from typing import Literal
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name, is_apple_os
 from thirdparty.autotools import Autotools, AutotoolsDeps, AutotoolsToolchain
-from thirdparty.build import can_run
+from thirdparty.build import can_run, cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import apply_patches, chdir, copy, get, rm, rmdir
@@ -85,6 +85,11 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_keyutils
             else "--without-keyutils",
         ])
+        if cross_building(self):
+            tc.configure_args.extend([
+                "krb5_cv_attr_constructor_destructor=yes,yes",
+                "ac_cv_printf_positional=yes",
+            ])
         if is_apple_os(self):
             for dependency in self.dependencies.host.values():
                 for libdir in dependency.info.aggregated_components().libdirs:

@@ -1,0 +1,42 @@
+diff --git a/configure.ac b/configure.ac
+index ddf638a23b..8a1b2c3d4e 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -568,7 +568,15 @@ then
+ 		MACHDEP="unknown"
+ 		AC_MSG_ERROR([cross build not supported for $host])
+ 	esac
+-	ac_sys_release=
++	# Darwin sets ac_sys_release above (uname -r isn't reliable when cross
++	# compiling); don't clobber it here like the other cross targets, or
++	# 'define_xopen_source' below falls through to its default of "yes",
++	# which defines _POSIX_C_SOURCE and hides sendfile()'s prototype in
++	# <sys/socket.h> on macOS (its declaration isn't guarded by
++	# _DARWIN_C_SOURCE like the rest of the BSD extensions are).
++	if test "$ac_sys_system" != "Darwin"; then
++		ac_sys_release=
++	fi
+     else
+ 	ac_sys_system=`uname -s`
+ 	if test "$ac_sys_system" = "AIX" \
+diff --git a/configure b/configure
+index 83072cb277..9f8e7d6c5b 100755
+--- a/configure
++++ b/configure
+@@ -4288,7 +4288,15 @@ fi
+ 		MACHDEP="unknown"
+ 		as_fn_error $? "cross build not supported for $host" "$LINENO" 5
+ 	esac
+-	ac_sys_release=
++	# Darwin sets ac_sys_release above (uname -r isn't reliable when cross
++	# compiling); don't clobber it here like the other cross targets, or
++	# 'define_xopen_source' below falls through to its default of "yes",
++	# which defines _POSIX_C_SOURCE and hides sendfile()'s prototype in
++	# <sys/socket.h> on macOS (its declaration isn't guarded by
++	# _DARWIN_C_SOURCE like the rest of the BSD extensions are).
++	if test "$ac_sys_system" != "Darwin"; then
++		ac_sys_release=
++	fi
+     else
+ 	ac_sys_system=`uname -s`
+ 	if test "$ac_sys_system" = "AIX" \

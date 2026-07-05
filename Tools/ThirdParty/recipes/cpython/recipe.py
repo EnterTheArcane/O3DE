@@ -90,10 +90,9 @@ class Recipe(RecipeBase[_Options]):
             self.requires("xz")
         if not is_msvc(self) and not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
-        # When cross-compiling on Windows (e.g. to ARM64) the freshly built python.exe cannot run
-        # on the x64 build host, yet the packaging layout step must execute a python interpreter.
-        # Provide a host-runnable python of the same version as a build tool.
-        if is_msvc(self) and cross_building(self):
+        # When cross-compiling, the freshly built Python cannot run on the build host. CPython's
+        # Unix configure needs a build Python, and the Windows package layout step needs one too.
+        if cross_building(self):
             self.requires_tool(self.name)
 
     def source(self):
@@ -320,6 +319,20 @@ class Recipe(RecipeBase[_Options]):
             "--with-system-libmpdec",
             f"--with-openssl={self.dependencies["openssl"].folders.package}",
         ]
+        if cross_building(self):
+            build_python = self.dependencies.build[self.name].info.conf.tools.cpython.python
+            tc.configure_args.extend([
+                f"--with-build-python={build_python}",
+                "ac_cv_buggy_getaddrinfo=no",
+                "ac_cv_file__dev_ptmx=yes",
+                "ac_cv_file__dev_ptc=no",
+                # 'make install' runs ensurepip through the host-runnable build-python, but its
+                # PYTHONPATH also includes the freshly built target's shared-module directory, so
+                # importing subprocess picks up the target arch's _posixsubprocess.so and fails to
+                # dlopen. The ensurepip wheels stay bundled in the package regardless: the target
+                # python can bootstrap pip itself when it's actually run on a matching-arch machine.
+                "--with-ensurepip=no",
+            ])
         tc.configure_args.append("--disable-test-modules")
         if self.options.with_sqlite:
             tc.configure_args.append(

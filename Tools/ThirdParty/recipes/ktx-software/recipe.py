@@ -1,4 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.apple import is_apple_os
 from thirdparty.build import stdcpp_library
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir, save
@@ -54,6 +55,14 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["KTX_FEATURE_LOADTEST_APPS"] = False
         tc.variables["KTX_FEATURE_TESTS"] = False
         tc.variables["BASISU_SUPPORT_SSE"] = self.options.sse
+        if is_apple_os(self) and self.settings.arch == "X64":
+            # astc-encoder's CMakeLists defaults to AVX2 codegen on x86_64 when no other ISA
+            # option is set. Apple's clang tags AVX2 object code with the 'x86_64h' (Haswell)
+            # Mach-O subtype, so libtool splits the merged libktx.a into separate x86_64/x86_64h
+            # slices - and the plain x86_64 slice (the one CMAKE_OSX_ARCHITECTURES=x86_64 actually
+            # links against) ends up missing the astcenc symbols entirely. SSE4.1 doesn't trigger
+            # the subtype split and is guaranteed present on every 64-bit Intel Mac.
+            tc.variables["ASTCENC_ISA_SSE41"] = True
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()
