@@ -1215,22 +1215,19 @@ class ExtraVariablesBlock(Block):
     def context(self) -> dict[str, Any] | None:
         from thirdparty.cmake.utils import parse_extra_variable
         extra_variables = self._recipe.conf.tools.cmake.toolchain.extra_variables
-        compilation_verbosity = self._recipe.conf.tools.compilation.verbosity
-        build_verbosity = self._recipe.conf.tools.build.verbosity
-        if build_verbosity == "quiet":
-            build_verbosity = "error"
+        compilation_verbose = self._recipe.conf.tools.compilation.verbose
+        build_log_level = "VERBOSE" if self._recipe.conf.tools.build.verbose else "ERROR"
 
-        if compilation_verbosity == "verbose":
+        if compilation_verbose:
             extra_variables.setdefault(
                 "CMAKE_VERBOSE_MAKEFILE", {
                     "cache": True, "type": "BOOL", "value": "ON",
                 })
 
-        if build_verbosity:
-            extra_variables.setdefault(
-                "CMAKE_MESSAGE_LOG_LEVEL", {
-                    "cache": True, "type": "STRING", "value": build_verbosity.upper(),
-                })
+        extra_variables.setdefault(
+            "CMAKE_MESSAGE_LOG_LEVEL", {
+                "cache": True, "type": "STRING", "value": build_log_level,
+            })
 
         parsed_extra_variables = {}
         for key, value in extra_variables.items():

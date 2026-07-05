@@ -25,8 +25,8 @@ class XcodeBuild:
 
     @property
     def _verbosity(self) -> str:
-        verbosity = self._recipe.conf.tools.build.verbosity or self._recipe.conf.tools.compilation.verbosity
-        return "-" + verbosity if verbosity is not None else ""
+        verbose = self._recipe.conf.tools.build.verbose or self._recipe.conf.tools.compilation.verbose
+        return "-verbose" if verbose else "-quiet"
 
     @property
     def _sdkroot(self) -> str:

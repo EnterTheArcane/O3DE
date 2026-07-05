@@ -8,7 +8,6 @@ from typing import Literal, TypeAlias, get_args, get_origin, get_type_hints
 
 PathValue: TypeAlias = str | os.PathLike[str]
 CompilerExecutable: TypeAlias = Literal["c", "cpp", "cuda", "objc", "objcxx", "objcpp", "rc", "fortran", "asm", "hip", "ispc"]
-Verbosity: TypeAlias = Literal["quiet", "verbose"]
 InstallStrip: TypeAlias = bool | list[Literal["cmake", "meson", "autotools"]]
 
 
@@ -23,7 +22,7 @@ class _CoreNetHttp:
     clean_system_proxy: bool | None = None
     client_cert: PathValue | tuple[PathValue, PathValue] | None = None
     max_retries: int | None = None
-    no_proxy_match: list[str] = field(default_factory=list)
+    no_proxy_match: list[str] = field(default_factory=lambda: [])
     proxies: dict[str, str] | None = None
     timeout: int | float | None = None
 
@@ -36,7 +35,7 @@ class _CoreNet:
 @dataclass(slots=True)
 class _CoreSources:
     download_cache: PathValue | None = None
-    download_urls: list[str] = field(default_factory=list)
+    download_urls: list[str] = field(default_factory=lambda: [])
 
 
 @dataclass(slots=True)
@@ -69,26 +68,26 @@ class _CrossBuildingTools:
 @dataclass(slots=True)
 class _BuildTools:
     add_rpath_link: bool | None = None
-    cflags: list[str] = field(default_factory=list)
-    compiler_executables: dict[CompilerExecutable, PathValue] = field(default_factory=dict)
+    cflags: list[str] = field(default_factory=lambda: [])
+    compiler_executables: dict[CompilerExecutable, PathValue] = field(default_factory=lambda: {})
     cross_building: _CrossBuildingTools = field(default_factory=_CrossBuildingTools)
-    cxxflags: list[str] = field(default_factory=list)
-    defines: list[str] = field(default_factory=list)
-    exelinkflags: list[str] = field(default_factory=list)
+    cxxflags: list[str] = field(default_factory=lambda: [])
+    defines: list[str] = field(default_factory=lambda: [])
+    exelinkflags: list[str] = field(default_factory=lambda: [])
     install_strip: InstallStrip | None = None
     jobs: int | None = None
-    linker_scripts: list[PathValue] = field(default_factory=list)
-    rcflags: list[str] = field(default_factory=list)
-    sharedlinkflags: list[str] = field(default_factory=list)
+    linker_scripts: list[PathValue] = field(default_factory=lambda: [])
+    rcflags: list[str] = field(default_factory=lambda: [])
+    sharedlinkflags: list[str] = field(default_factory=lambda: [])
     skip_test: bool | None = None
     sysroot: PathValue | None = None
-    verbosity: Verbosity | None = None
+    verbose: bool = False
 
 
 @dataclass(slots=True)
 class _CMakeToolchainTools:
-    enabled_blocks: list[str] = field(default_factory=list)
-    extra_variables: dict[str, object] = field(default_factory=dict)
+    enabled_blocks: list[str] = field(default_factory=lambda: [])
+    extra_variables: dict[str, object] = field(default_factory=lambda: {})
     find_package_prefer_config: bool | None = None
     presets_environment: Literal["disabled", ""] | None = None
     system_name: str | None = None
@@ -98,20 +97,20 @@ class _CMakeToolchainTools:
     toolset_arch: str | None = None
     toolset_cuda: PathValue | str | None = None
     user_presets: str | None = None
-    user_toolchain: list[PathValue] = field(default_factory=list)
+    user_toolchain: list[PathValue] = field(default_factory=lambda: [])
 
 
 @dataclass(slots=True)
 class _CMakeTools:
     cmake_program: PathValue | None = None
-    configure_args: list[str] = field(default_factory=list)
-    ctest_args: list[str] = field(default_factory=list)
+    configure_args: list[str] = field(default_factory=lambda: [])
+    ctest_args: list[str] = field(default_factory=lambda: [])
     toolchain: _CMakeToolchainTools = field(default_factory=_CMakeToolchainTools)
 
 
 @dataclass(slots=True)
 class _CompilationTools:
-    verbosity: Verbosity | None = None
+    verbose: bool = False
 
 
 @dataclass(slots=True)
@@ -143,8 +142,8 @@ class _FilesTools:
 class _GnuTools:
     build_triplet: str | None = None
     define_libcxx11_abi: bool | None = None
-    disable_flags: list[str] = field(default_factory=list)
-    extra_configure_args: list[str] = field(default_factory=list)
+    disable_flags: list[str] = field(default_factory=lambda: [])
+    extra_configure_args: list[str] = field(default_factory=lambda: [])
     host_triplet: str | None = None
     make_program: PathValue | None = None
     pkg_config: PathValue | None = None
@@ -158,7 +157,7 @@ class _GnuConfigTools:
 
 @dataclass(slots=True)
 class _MesonToolchainTools:
-    extra_machine_files: list[PathValue] = field(default_factory=list)
+    extra_machine_files: list[PathValue] = field(default_factory=lambda: [])
 
 
 @dataclass(slots=True)
@@ -188,12 +187,12 @@ class _MSBuildTools:
 
 @dataclass(slots=True)
 class _MSBuildDepsTools:
-    exclude_code_analysis: list[str] = field(default_factory=list)
+    exclude_code_analysis: list[str] = field(default_factory=lambda: [])
 
 
 @dataclass(slots=True)
 class _MSBuildToolchainTools:
-    compile_options: dict[str, object] = field(default_factory=dict)
+    compile_options: dict[str, object] = field(default_factory=lambda: {})
 
 
 @dataclass(slots=True)
@@ -235,11 +234,6 @@ class _NcursesTools:
 class _OpenJDKTools:
     java: PathValue | None = None
     java_home: PathValue | None = None
-
-
-@dataclass(slots=True)
-class _OpenSSLTools:
-    windows_use_jom: bool | None = None
 
 
 @dataclass(slots=True)
@@ -297,7 +291,6 @@ class _Tools:
     msbuildtoolchain: _MSBuildToolchainTools = field(default_factory=_MSBuildToolchainTools)
     ncurses: _NcursesTools = field(default_factory=_NcursesTools)
     openjdk: _OpenJDKTools = field(default_factory=_OpenJDKTools)
-    openssl: _OpenSSLTools = field(default_factory=_OpenSSLTools)
     pyside: _PySideTools = field(default_factory=_PySideTools)
     pyside6: _PySide6Tools = field(default_factory=_PySide6Tools)
     qt: _QtTools = field(default_factory=_QtTools)

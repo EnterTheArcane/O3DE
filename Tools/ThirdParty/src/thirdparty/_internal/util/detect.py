@@ -4,9 +4,7 @@ import platform
 import re
 import subprocess
 from functools import lru_cache
-from multiprocessing import cpu_count
 
-from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.settings import Settings
 
 
@@ -215,10 +213,3 @@ def detect_platform_tag(target_os=None, target_arch=None) -> str:
     arch = _default_target_arch(the_os, target_arch)
     return f"{the_os}-{arch}".lower()
 
-
-def make_conf(jobs=None) -> Conf:
-    conf = Conf()
-    conf.tools.build.jobs = jobs if jobs is not None else cpu_count()
-    conf.tools.cmake.configure_args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
-    conf.tools.openssl.windows_use_jom = True
-    return conf

@@ -93,7 +93,14 @@ class Autotools:
                 jobs = f"-j{njobs}"
         str_makefile = f"--file={makefile}" if makefile else None
 
-        command = join_arguments([make_program, str_makefile, target, str_args, str_extra_args, jobs])
+        # Automake silent rules: `V=0` makes make print the terse "CC foo.o" line instead of the
+        # full (very long) compiler command, keeping quiet builds' logs small. It's a no-op for
+        # makefiles that don't support it, and nmake doesn't use it.
+        silent = None
+        if "nmake" not in make_program.lower() and not self._recipe.conf.tools.compilation.verbose:
+            silent = "V=0"
+
+        command = join_arguments([make_program, str_makefile, target, str_args, str_extra_args, jobs, silent])
         run(self._recipe, command)
 
     def install(

@@ -5,16 +5,18 @@ import traceback
 import uuid
 from collections import OrderedDict
 from importlib import util as imp_util
+from multiprocessing import cpu_count
 from pathlib import Path
 from threading import Lock
 from typing import Any
 
 from thirdparty._internal.errors import NotFoundException
+from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.info import Info
 from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty._internal.model.state import RecipeState
-from thirdparty._internal.util.detect import detect_settings, make_conf
+from thirdparty._internal.util.detect import detect_settings
 from thirdparty._internal.util.files import chdir
 from thirdparty.errors import RecipeException
 
@@ -109,7 +111,15 @@ def resolve_version(recipe_cls: type[RecipeBase]) -> str:
 
 
 def make_probe_recipe(
-    recipe_cls: type[RecipeBase], recipes_root: Path, name: str, version: str, build_type: str, jobs: int | None = None, target_os: str | None = None, target_arch: str | None = None, ) -> RecipeBase:
+    recipe_cls: type[RecipeBase],
+    recipes_root: Path,
+    name: str,
+    version: str,
+    build_type: str,
+    jobs: int | None = None,
+    target_os: str | None = None,
+    target_arch: str | None = None,
+    verbose: bool = False) -> RecipeBase:
     """Instantiate a recipe with just enough state (settings, conf, requires shim) to
     drive ``configure()``/``requirements()``.
 
@@ -127,7 +137,17 @@ def make_probe_recipe(
         settings_build = settings
     else:
         settings_build = detect_settings(build_type)
-    conf = make_conf(jobs=jobs)
+    conf = Conf()
+    conf.tools.build.jobs = jobs if jobs is not None else cpu_count()
+    conf.tools.cmake.configure_args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+    # Quiet by default so CI logs stay small (only the compiled file + errors); `build
+    # --verbose` restores full build-tool output and compiler warnings. "-w" suppresses
+    # warnings for every compiler (cl/gcc/clang); all toolchains append tools.build:c[xx]flags.
+    conf.tools.build.verbose = verbose
+    conf.tools.compilation.verbose = verbose
+    if not verbose:
+        conf.tools.build.cflags = [*conf.tools.build.cflags, "-w"]
+        conf.tools.build.cxxflags = [*conf.tools.build.cxxflags, "-w"]
     # Give the probe state so recipes can read settings/conf/context
     # during config/requirements (e.g. cross-build recipes doing requires_tool(self.name)).
     recipe._state = RecipeState(

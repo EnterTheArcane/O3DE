@@ -28,16 +28,13 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
-        self.requires("libexpat")
-        self.requires("openexr")
         self.requires("imath")
+        self.requires("libexpat")
+        self.requires("little-cms")
+        self.requires("minizip-ng")
+        self.requires("openexr")
         self.requires("pystring")
         self.requires("yaml-cpp")
-        self.requires("minizip-ng")
-
-        # for tools only
-        self.requires("little-cms")
-        # TODO: add GLUT (needed for ociodisplay tool)
 
     def source(self):
         get(
@@ -52,7 +49,7 @@ class Recipe(RecipeBase[_Options]):
 
     def generate(self):
         tc = CMakeToolchain(self)
-        tc.variables["CMAKE_VERBOSE_MAKEFILE"] = True
+        tc.variables["CMAKE_VERBOSE_MAKEFILE"] = self.conf.tools.compilation.verbose
         tc.variables["OCIO_BUILD_PYTHON"] = False
 
         tc.variables["OCIO_USE_SSE"] = self.options.use_sse
@@ -87,13 +84,13 @@ class Recipe(RecipeBase[_Options]):
         deps.generate()
 
     def build(self):
-        cm = CMake(self)
-        cm.configure()
-        cm.build()
+        cmake = CMake(self)
+        cmake.configure()
+        cmake.build()
 
     def package(self):
-        cm = CMake(self)
-        cm.install()
+        cmake = CMake(self)
+        cmake.install()
 
         if not self.options.shared:
             copy(

@@ -108,8 +108,7 @@ class Recipe(RecipeBase[_Options]):
         if not self.options.no_zlib:
             self.requires("zlib")
         if self.settings_build.os == "Windows":
-            if self.conf.tools.openssl.windows_use_jom:
-                self.requires_tool("jom")
+            self.requires_tool("jom")
             if not self.options.no_asm and self.settings.arch == "X64":
                 self.requires_tool("nasm")
             if self._use_nmake:
@@ -576,9 +575,8 @@ class Recipe(RecipeBase[_Options]):
 
     @property
     def _make_program(self):
-        use_jom = self._use_nmake and self.conf.tools.openssl.windows_use_jom
         if self._use_nmake:
-            return "jom" if use_jom else "nmake"
+            return "jom" # if use_jom else "nmake"
         else:
             return "make"
 

@@ -90,14 +90,13 @@ class Premake:
 
     @property
     def _premake_verbosity(self):
-        verbosity = self._recipe.conf.tools.build.verbosity
-        return " --verbose" if verbosity == "verbose" else ""
+        return " --verbose" if self._recipe.conf.tools.build.verbose else ""
 
     @property
     def _compilation_verbosity(self):
-        verbosity = self._recipe.conf.tools.compilation.verbosity
+        verbosity = self._recipe.conf.tools.compilation.verbose
         # --verbose does not print compilation commands but internal Makefile progress logic
-        return " verbose=1" if verbosity == "verbose" else ""
+        return " verbose=1" if verbosity else ""
 
     def build(
         self,

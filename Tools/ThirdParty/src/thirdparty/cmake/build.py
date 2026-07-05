@@ -348,12 +348,11 @@ class CMake:
 
         arg_list.extend(cli_args or [])
 
-        verbosity = self._recipe.conf.tools.build.verbosity
-        if verbosity:
+        if self._recipe.conf.tools.build.verbose:
             # https://cmake.org/cmake/help/latest/manual/ctest.1.html
             # Options such as --verbose, --extra-verbose, and --debug are
             # ignored if --quiet is specified.
-            arg_list.append(f"--{verbosity}")
+            arg_list.append("--verbose")
 
         extra_args = self._recipe.conf.tools.cmake.ctest_args
         if extra_args:
@@ -371,8 +370,7 @@ class CMake:
         Controls build tool verbosity, that is, those controlled by -DCMAKE_VERBOSE_MAKEFILE
         See https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-build-v
         """
-        verbosity = self._recipe.conf.tools.compilation.verbosity
-        return ["--verbose"] if verbosity == "verbose" else []
+        return ["--verbose"] if self._recipe.conf.tools.compilation.verbose else []
 
     @property
     def _cmake_log_levels_args(self):
@@ -381,7 +379,5 @@ class CMake:
         See https://cmake.org/cmake/help/latest/manual/cmake.1.html#cmdoption-cmake-log-level
         :return:
         """
-        log_level = self._recipe.conf.tools.build.verbosity
-        if log_level == "quiet":
-            log_level = "error"
-        return ["--loglevel=" + log_level.upper()] if log_level is not None else []
+        log_level = "VERBOSE" if self._recipe.conf.tools.build.verbose else "ERROR"
+        return ["--loglevel=" + log_level]

@@ -134,13 +134,21 @@ class VCVars:
         vcvars = vcvars_command(
             vs_version, architecture=vcvarsarch, platform_type=None, winsdk_version=winsdk_version, vcvars_ver=vcvars_ver, vs_install_path=vs_install_path)
 
+        # Quiet by default: drop the "Activating environment" echo and swallow vcvarsall's
+        # "[vcvarsall.bat] Environment initialized for: ..." stdout (env vars still get set).
+        # `build --verbose` restores both. stderr is kept so real vcvars errors still surface.
+        verbose = recipe.conf.tools.compilation.verbose
+        activation_echo = (
+            f"echo vcvars_env.bat: Activating environment Visual Studio {vs_version} - {vcvarsarch} - winsdk_version={winsdk_version} - vcvars_ver={vcvars_ver}"
+            if verbose else "rem vcvars_env.bat: activating environment (quiet)")
+        vcvars_call = vcvars if verbose else f"{vcvars} >nul"
         content = textwrap.dedent(
             f"""
             @echo off
             set __VSCMD_ARG_NO_LOGO=1
             set VSCMD_SKIP_SENDTELEMETRY=1
-            echo vcvars_env.bat: Activating environment Visual Studio {vs_version} - {vcvarsarch} - winsdk_version={winsdk_version} - vcvars_ver={vcvars_ver}
-            {vcvars}
+            {activation_echo}
+            {vcvars_call}
             """)
         from thirdparty.env.environment import create_env_script
         recipe_vcvars_bat = f"{RECIPE_VCVARS}.bat"

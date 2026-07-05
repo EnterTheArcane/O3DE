@@ -12,13 +12,8 @@ def msbuild_verbosity_cmd_line_arg(recipe: RecipeBase) -> str:
     See https://learn.microsoft.com/en-us/visualstudio/msbuild/msbuild-command-line-reference
     :return:
     """
-    verbosity = recipe.conf.tools.build.verbosity
-    if verbosity is not None:
-        verbosity = {
-            "quiet": "Quiet", "verbose": "Detailed",
-        }.get(verbosity)
-        return f"-verbosity:{verbosity}"
-    return ""
+    level = "Detailed" if recipe.conf.tools.build.verbose else "Quiet"
+    return f"-verbosity:{level}"
 
 
 class MSBuild:

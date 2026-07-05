@@ -98,6 +98,11 @@ class Recipe(RecipeBase[_Options]):
                         os.unlink(fullname)
         # See https://github.com/recipe-io/recipe-center-index/blob/master/docs/error_knowledge_base.md#kb-h013-default-package-layout
         copy(self, "*", dst=self.folders.package / "bin" / "msys64", src=self._msys_dir, excludes=excludes)
+        # copy() only transfers files, so the empty /dev/shm and /dev/mqueue dirs are lost.
+        # Without them the msys2 runtime tries to mkdir them at every --login startup and fails
+        # (virtual /dev is read-only), spamming "Creating /dev/shm failed / POSIX ... will not work".
+        for _dev_dir in ("shm", "mqueue"):
+            (self.folders.package / "bin" / "msys64" / "dev" / _dev_dir).mkdir(parents=True, exist_ok=True)
         shutil.copytree(
             self._msys_dir / "usr" / "share" / "licenses",
             self.folders.package / "licenses")
@@ -124,16 +129,17 @@ class Recipe(RecipeBase[_Options]):
             return [{"settings": [("arch", "X64")]}]
 
     def _update_pacman(self):
+        debug = "--debug " if self.conf.tools.build.verbose else ""
         with chdir(self, self._msys_dir / "usr" / "bin"):
             try:
                 self._kill_pacman()
 
                 # https://www.msys2.org/docs/ci/
-                run(self,'bash -l -c "pacman --debug --noconfirm --ask 20 -Syuu"')  # Core update (in case any core packages are outdated)
+                run(self,f'bash -l -c "pacman {debug}--noconfirm --ask 20 -Syuu"')  # Core update (in case any core packages are outdated)
                 self._kill_pacman()
-                run(self,'bash -l -c "pacman --debug --noconfirm --ask 20 -Syuu"')  # Normal update
+                run(self,f'bash -l -c "pacman {debug}--noconfirm --ask 20 -Syuu"')  # Normal update
                 self._kill_pacman()
-                run(self,'bash -l -c "pacman --debug -Rc dash --noconfirm"')
+                run(self,f'bash -l -c "pacman {debug}-Rc dash --noconfirm"')
             except RecipeException:
                 run(self,'bash -l -c "cat /var/log/pacman.log || echo nolog"')
                 self._kill_pacman()

@@ -42,6 +42,8 @@ def _is_incompatible(recipes_root: Path, node: Node, build_type: str) -> bool:
         probe.validate()
     except RecipeInvalidConfiguration:
         return True
+    except Exception:
+        return False
     return False
 
 
