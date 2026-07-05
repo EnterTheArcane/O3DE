@@ -1,7 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.common.platforms import Os
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import get, copy, rmdir, replace_in_file, apply_patches
 from thirdparty.scm import Version
@@ -24,7 +22,7 @@ class Recipe(RecipeBase[_Options]):
 
     def validate(self):
         # nsync is only consumed on non-Windows platforms; onnxruntime uses wil on Windows.
-        if self.settings.os == Os.WINDOWS:
+        if self.settings.os == "Windows":
             raise RecipeInvalidConfiguration("nsync is not supported on Windows")
 
     def requirements(self):

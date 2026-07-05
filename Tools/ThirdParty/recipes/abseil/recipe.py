@@ -6,7 +6,6 @@ from typing import Any
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.common.platforms import Os
 from thirdparty.files import copy, get, load, rmdir, save
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -42,7 +41,7 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["ABSL_ENABLE_INSTALL"] = True
         tc.cache_variables["ABSL_PROPAGATE_CXX_STD"] = True
         tc.cache_variables["BUILD_TESTING"] = False
-        if self.settings.os == Os.WINDOWS and self.settings.compiler in ["msvc", "clang"] and self.settings.compiler_runtime:
+        if self.settings.os == "Windows" and self.settings.compiler in ["msvc", "clang"] and self.settings.compiler_runtime:
             runtime = str(self.settings.compiler_runtime)
             tc.cache_variables["ABSL_MSVC_STATIC_RUNTIME"] = runtime == "static"
         tc.generate()

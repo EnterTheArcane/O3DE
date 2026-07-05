@@ -1,7 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain, CMakeDeps
-from thirdparty.common.platforms import Os
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.microsoft import is_msvc
 from thirdparty.files import get, copy, rmdir, replace_in_file
@@ -51,7 +50,7 @@ class Recipe(RecipeBase[_Options]):
         self.requires("protobuf")
         self.requires("re2")
         self.requires("safeint")
-        if self.settings.os != Os.WINDOWS:
+        if self.settings.os != "Windows":
             self.requires("nsync")
         else:
             self.requires("wil")

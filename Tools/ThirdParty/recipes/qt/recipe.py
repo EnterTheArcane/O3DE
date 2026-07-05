@@ -140,7 +140,9 @@ class _Options(RecipeOptions):
     with_pq: bool = False
     with_pulseaudio: bool = True
     with_sqlite: bool = True
+    with_tiff: bool = True
     with_vulkan: bool = True
+    with_webp: bool = True
     with_x11: bool = True
     with_zstd: bool = True
 
@@ -305,6 +307,10 @@ class Recipe(RecipeBase[_Options]):
             self.requires("libjpeg-turbo")
         if self.options.with_libpng:
             self.requires("libpng")
+        if self.options.qtimageformats and self.options.with_tiff:
+            self.requires("libtiff")
+        if self.options.qtimageformats and self.options.with_webp:
+            self.requires("libwebp")
         if self.options.with_sqlite:
             self.requires("sqlite")
         if self.options.with_mysql:
@@ -619,21 +625,25 @@ class Recipe(RecipeBase[_Options]):
         for feature in str(self.options.disabled_features).split():
             tc.variables[f"FEATURE_{feature}"] = "OFF"
 
+        tc.variables["INPUT_tiff"] = "system" if self.options.with_tiff else "no"
+        tc.variables["INPUT_webp"] = "system" if self.options.with_webp else "no"
+        tc.variables["INPUT_jasper"] = "no"
+
         # The androiddeployqt/androidtestrunner host tools are gated by
-        # "CONDITION NOT CMAKE_CROSSCOMPILING", so a native Windows build enables them while a
-        # cross build (e.g. windows-arm) disables them. That makes the host CoreTools export set
-        # (13 tools) disagree with the cross-build's expected set (11 tools), and importing the
-        # host tools then fails Qt's export consistency check. Desktop Windows never needs the
-        # Android deployment tools, so disable them for all Windows builds to keep the host and
-        # target tool sets identical.
-        if self.settings.os == "Windows":
-            tc.variables["FEATURE_androiddeployqt"] = "OFF"
-            # qmlcontextpropertydump is another host tool that a native build produces but a
-            # cross build does not, causing the same Qt export-set consistency failure when the
-            # cross build imports the host QmlTools package. Its CMake feature also guards the
-            # generator expression that references the tool, so disable via the feature (not by
-            # removing the tool subdirectory) to keep both consistent. Not needed for desktop.
-            tc.variables["FEATURE_qmlcontextpropertydump"] = "OFF"
+        # "CONDITION NOT CMAKE_CROSSCOMPILING", so a native build enables them while a cross
+        # build (e.g. windows-arm, mac-x64 from a mac-arm host) disables them. That makes the
+        # host CoreTools export set (13 tools) disagree with the cross-build's expected set (11
+        # tools), and importing the host tools then fails Qt's export consistency check. O3DE
+        # doesn't use androiddeployqt/androidtestrunner at all, so disable them unconditionally
+        # (both the host tool build and the cross-target build get this same setting) to keep
+        # the host and target tool sets identical everywhere, regardless of host OS.
+        tc.variables["FEATURE_androiddeployqt"] = "OFF"
+        # qmlcontextpropertydump is another host tool that a native build produces but a
+        # cross build does not, causing the same Qt export-set consistency failure when the
+        # cross build imports the host QmlTools package. Its CMake feature also guards the
+        # generator expression that references the tool, so disable via the feature (not by
+        # removing the tool subdirectory) to keep both consistent.
+        tc.variables["FEATURE_qmlcontextpropertydump"] = "OFF"
 
         if self.settings.os == "Mac":
             tc.variables["FEATURE_framework"] = "OFF"
