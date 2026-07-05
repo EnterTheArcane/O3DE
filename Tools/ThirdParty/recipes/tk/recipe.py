@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -252,9 +253,15 @@ class Recipe(RecipeBase[_Options]):
         }
         if cross_building(self):
             # Provide a build-machine tclsh so the cross build can run it (rules.vc U1050).
-            native_tcl = self.dependencies.build["tcl"].folders.package
+            native_tcl: Path = self.dependencies.build["tcl"].folders.package
             flags["TCLSH_NATIVE"] = next(iter((native_tcl / "bin").glob("tclsh*.exe")))
         config_dir = self._get_configure_folder("win")
+        if cross_building(self):
+            # rules.vc normally recompiles nmakehlp.exe with the target compiler, but that
+            # ARM64 helper cannot run on the build host (NMAKE U1045). Drop in the native
+            # nmakehlp.exe shipped by the Tcl install; the patched rules.vc reuses it.
+            native_nmakehlp: Path = next(iter((native_tcl / "lib" / "nmake").glob("*nmakehlp*.exe")))
+            shutil.copy2(native_nmakehlp, config_dir / "nmakehlp.exe")
         with chdir(self, config_dir):
             run(
                 self,

@@ -14,6 +14,7 @@ from thirdparty.msbuild import MSBuild, MSBuildDeps, MSBuildToolchain
 from thirdparty.microsoft import is_msvc, msvc_runtime_flag, msvs_toolset
 from thirdparty.scm import Version
 from thirdparty.shell import run
+from thirdparty.build.cross_building import cross_building
 
 
 class _Options(RecipeOptions):
@@ -45,6 +46,13 @@ class Recipe(RecipeBase[_Options]):
             self.options.pymalloc = False
             self.options.with_curses = False
             self.options.with_gdbm = False
+            # CPython's PCbuild solution builds the _tkinter project only for x64: its ARM64
+            # solution configuration has an ActiveCfg but no Build.0 entry, so msbuild reports
+            # "target _tkinter does not exist" (MSB4057) when targeting Windows ARM64. Tkinter
+            # therefore cannot be built for Windows ARM64; disable it to match CPython's own
+            # configuration (the x64 build is unaffected).
+            if self.settings.arch == "ARM":
+                self.options.with_tkinter = False
 
         self.settings.compiler_libcxx = None
         self.settings.compiler_cxx_standard = None
@@ -82,6 +90,11 @@ class Recipe(RecipeBase[_Options]):
             self.requires("xz")
         if not is_msvc(self) and not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
+        # When cross-compiling on Windows (e.g. to ARM64) the freshly built python.exe cannot run
+        # on the x64 build host, yet the packaging layout step must execute a python interpreter.
+        # Provide a host-runnable python of the same version as a build tool.
+        if is_msvc(self) and cross_building(self):
+            self.requires_tool(self.name)
 
     def source(self):
         get(
@@ -629,8 +642,13 @@ class Recipe(RecipeBase[_Options]):
         mkdir(self, install_prefix)
         build_path = self._msvc_artifacts_path
         infix = "_d" if self.settings.build_type == "Debug" else ""
-        # FIXME: if cross building, use a build python executable here
-        python_built = build_path / f"python{infix}.exe"
+        # The built python targets the host arch; when cross-compiling it cannot run on the build
+        # machine, so use the host-runnable python provided via the build-context tool_require.
+        if cross_building(self):
+            host_python_pkg = Path(self.dependencies.build[self.name].folders.package)
+            python_built = host_python_pkg / self._msvc_install_subprefix / f"python{infix}.exe"
+        else:
+            python_built = build_path / f"python{infix}.exe"
         layout_args = [
             self.folders.source / "PC" / "layout" / "main.py",
             "-v",

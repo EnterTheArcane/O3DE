@@ -468,6 +468,15 @@ class Recipe(RecipeBase[_Options]):
             deps.set_property("libjpeg-turbo", "cmake_file_name", "JPEG")
             deps.set_property("libjpeg-turbo", "cmake_target_name", "JPEG::JPEG")
 
+        if cross_building(self):
+            # When cross-building, the host Qt is provided via QT_HOST_PATH with its full,
+            # real CMake package (including internal components such as Qt6BuildInternals).
+            # Don't let CMakeDeps emit a competing Qt6Config for the host qt tool_require:
+            # it lacks those components and would shadow the real config, making Qt's own
+            # submodule find_package(Qt6 ... COMPONENTS BuildInternals) fail. qt is a build
+            # context dependency, so build_context=True is required for the property to apply.
+            deps.set_property("qt", "cmake_find_mode", "none", build_context=True)
+
         deps.generate()
 
         for f in glob.glob("*.cmake"):
@@ -609,6 +618,22 @@ class Recipe(RecipeBase[_Options]):
 
         for feature in str(self.options.disabled_features).split():
             tc.variables[f"FEATURE_{feature}"] = "OFF"
+
+        # The androiddeployqt/androidtestrunner host tools are gated by
+        # "CONDITION NOT CMAKE_CROSSCOMPILING", so a native Windows build enables them while a
+        # cross build (e.g. windows-arm) disables them. That makes the host CoreTools export set
+        # (13 tools) disagree with the cross-build's expected set (11 tools), and importing the
+        # host tools then fails Qt's export consistency check. Desktop Windows never needs the
+        # Android deployment tools, so disable them for all Windows builds to keep the host and
+        # target tool sets identical.
+        if self.settings.os == "Windows":
+            tc.variables["FEATURE_androiddeployqt"] = "OFF"
+            # qmlcontextpropertydump is another host tool that a native build produces but a
+            # cross build does not, causing the same Qt export-set consistency failure when the
+            # cross build imports the host QmlTools package. Its CMake feature also guards the
+            # generator expression that references the tool, so disable via the feature (not by
+            # removing the tool subdirectory) to keep both consistent. Not needed for desktop.
+            tc.variables["FEATURE_qmlcontextpropertydump"] = "OFF"
 
         if self.settings.os == "Mac":
             tc.variables["FEATURE_framework"] = "OFF"
@@ -848,10 +873,15 @@ class Recipe(RecipeBase[_Options]):
                 endif()
                 list(JOIN entrypoint_conditions "," entrypoint_conditions)
                 set(entrypoint_conditions "$<AND:${entrypoint_conditions}>")
-                set_property(
-                    TARGET ${QT_CMAKE_EXPORT_NAMESPACE}::Core
-                    APPEND PROPERTY INTERFACE_LINK_LIBRARIES "$<${entrypoint_conditions}:${QT_CMAKE_EXPORT_NAMESPACE}::EntryPointPrivate>"
-                )""")
+                # When this module is pulled in from the host Qt during a cross-build,
+                # ::Core is imported as an ALIAS target, which set_property() rejects.
+                get_target_property(_recipe_core_aliased ${QT_CMAKE_EXPORT_NAMESPACE}::Core ALIASED_TARGET)
+                if(NOT _recipe_core_aliased)
+                    set_property(
+                        TARGET ${QT_CMAKE_EXPORT_NAMESPACE}::Core
+                        APPEND PROPERTY INTERFACE_LINK_LIBRARIES "$<${entrypoint_conditions}:${QT_CMAKE_EXPORT_NAMESPACE}::EntryPointPrivate>"
+                    )
+                endif()""")
             save(self, self.folders.package / self._cmake_entry_point_file, contents)
 
         # https://github.com/qt/qtbase/blob/6.7.3/cmake/QtPlatformTargetHelpers.cmake#L68
@@ -866,7 +896,12 @@ class Recipe(RecipeBase[_Options]):
                     list(APPEND utf8_flags "$<$<CXX_COMPILER_ID:MSVC>:-utf-8>")
                 endif()
 
-                if(utf8_flags)
+                # When this module is pulled in from the host Qt during a cross-build,
+                # Qt6::Platform is imported as an ALIAS target, which target_compile_*()
+                # reject. Skip re-applying the flags in that case.
+                get_target_property(_recipe_platform_aliased Qt6::Platform ALIASED_TARGET)
+
+                if(utf8_flags AND NOT _recipe_platform_aliased)
                     set(opt_out_condition "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UTF8_SOURCE>>>")
                     set(language_condition "$<COMPILE_LANGUAGE:C,CXX>")
                     set(genex_condition "$<AND:${opt_out_condition},${language_condition}>")
@@ -874,7 +909,7 @@ class Recipe(RecipeBase[_Options]):
                     target_compile_options(Qt6::Platform INTERFACE "${utf8_flags}")
                 endif()
 
-                if(WIN32)
+                if(WIN32 AND NOT _recipe_platform_aliased)
                     set(no_unicode_condition
                         "$<NOT:$<BOOL:$<TARGET_PROPERTY:QT_NO_UNICODE_DEFINES>>>")
                     target_compile_definitions(Qt6::Platform

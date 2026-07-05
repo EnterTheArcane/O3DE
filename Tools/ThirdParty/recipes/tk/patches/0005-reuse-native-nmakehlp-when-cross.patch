@@ -1,0 +1,42 @@
+--- win/rules-ext.vc
++++ win/rules-ext.vc
+@@ -30,8 +30,12 @@
+ 
+ # We extract version numbers using the nmakehlp program. For now use
+ # the local copy of nmakehlp. Once we locate Tcl, we will use that
+-# one if it is newer.
++# one if it is newer. When cross-compiling, the recipe supplies a native
++# nmakehlp.exe (rebuilding it for the target arch would make it unrunnable
++# on the build host), signalled by TCLSH_NATIVE being set.
++!if "$(TCLSH_NATIVE)" == ""
+ !if [$(CC) -nologo "nmakehlp.c" -link -subsystem:console > nul]
++!endif
+ !endif
+ 
+ # First locate the Tcl directory that we are working with.
+--- win/rules.vc
++++ win/rules.vc
+@@ -438,6 +438,8 @@
+     && ![echo ARCH=IX86 >> vercl.x] \
+     && ![echo $(_HASH)elif defined(_M_AMD64) >> vercl.x] \
+     && ![echo ARCH=AMD64 >> vercl.x] \
++    && ![echo $(_HASH)elif defined(_M_ARM64) >> vercl.x] \
++    && ![echo ARCH=ARM64 >> vercl.x] \
+     && ![echo $(_HASH)endif >> vercl.x] \
+     && ![$(cc32) -nologo -TC -P vercl.x 2>NUL]
+ !include vercl.i
+@@ -546,9 +548,12 @@
+ 
+ !endif # NMAKEHLPC
+ 
+-# We always build nmakehlp even if it exists since we do not know
+-# what source it was built from.
++# Normally nmakehlp is (re)built here with the target compiler. When cross-
++# compiling that helper cannot run on the build host, so the recipe instead
++# drops in a native nmakehlp.exe and signals the cross build via TCLSH_NATIVE.
++!if "$(TCLSH_NATIVE)" == ""
+ !if [$(cc32) -nologo "$(NMAKEHLPC)" -link -subsystem:console > nul]
++!endif
+ !endif
+ 
+ ################################################################
