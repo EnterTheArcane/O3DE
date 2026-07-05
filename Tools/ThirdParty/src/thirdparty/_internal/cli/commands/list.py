@@ -8,8 +8,7 @@ from colorama import Fore, Style
 
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph import Node, Graph, is_built
-from thirdparty._internal.loader import make_probe_recipe
-from thirdparty._internal.util.detect import detect_platform_tag
+from thirdparty._internal.loader import make_probe_recipe, compute_package_id
 from thirdparty.errors import RecipeInvalidConfiguration
 
 
@@ -81,14 +80,15 @@ def list_recipes(args: argparse.Namespace) -> None:
     graph = Graph.build(recipes_root, names, args.build_type)
     order = graph.topo_order() if args.build_order else sorted(names)
 
-    plat = detect_platform_tag()
     rows: list[tuple[str, str, bool, bool, list[str], list[str]]] = []
     built_count = 0
     incompatible_count = 0
     for name in order:
         node = graph[name]
         incompatible = _is_incompatible(recipes_root, node, args.build_type)
-        built = not incompatible and node.version != "?" and is_built(build_root, name, node.version, plat)
+        pkg_id = (compute_package_id(node.recipe_cls, recipes_root, name, node.version, args.build_type)
+                  if node.recipe_cls and node.version != "?" else None)
+        built = not incompatible and pkg_id is not None and is_built(build_root, name, node.version, pkg_id)
         built_count += built
         incompatible_count += incompatible
         rows.append((name, node.version, built, incompatible, node.host_deps, node.tool_deps))

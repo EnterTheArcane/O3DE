@@ -16,7 +16,7 @@ from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.info import Info
 from thirdparty._internal.model.recipe import RecipeBase
 from thirdparty._internal.model.state import RecipeState
-from thirdparty._internal.util.detect import detect_settings
+from thirdparty._internal.util.detect import detect_settings, platform_tag
 from thirdparty._internal.util.files import chdir
 from thirdparty.errors import RecipeException
 
@@ -158,6 +158,18 @@ def make_probe_recipe(
         conf=conf,
         info=Info(set_defaults=True))
     return recipe
+
+
+def resolve_package_id(recipe: RecipeBase) -> str:
+    """Recipe's package_id, substituting the default ``<os>-<arch>`` when it returns None."""
+    return recipe.package_id() or platform_tag(recipe.settings)
+
+
+def compute_package_id(
+    recipe_cls: type[RecipeBase], recipes_root: Path, name: str, version: str, build_type: str = "Release", target_os: str | None = None, target_arch: str | None = None) -> str:
+    """Resolve a recipe's package_id for a target via a cheap settings-only probe."""
+    probe = make_probe_recipe(recipe_cls, recipes_root, name, version, build_type, target_os=target_os, target_arch=target_arch)
+    return resolve_package_id(probe)
 
 
 def load_python_file(recipe_path: Any):

@@ -14,6 +14,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from thirdparty._internal.cli.commands import build as build_command
 from thirdparty._internal.graph import Graph, Node
+from thirdparty import RecipeBase
+
+
+class _StubRecipe(RecipeBase):
+    name = "stub"
+    version = "1"
+    license = "MIT"
+
+    def latest_version(self):
+        return None
 
 
 def _args(*recipes: str) -> argparse.Namespace:
@@ -92,7 +102,7 @@ class BuildCommandTests(unittest.TestCase):
             with (
                 redirect_stdout(stdout),
                 patch.object(build_command._Graph, "build", return_value=graph),
-                patch.object(build_command, "_try_load_recipe_class", return_value=object),
+                patch.object(build_command, "_try_load_recipe_class", return_value=_StubRecipe),
                 patch.object(build_command, "_resolve_version", return_value="1"),
                 patch.object(build_command, "_is_built", return_value=False),
                 patch.object(build_command, "_build_recipe", side_effect=fail_ffmpeg) as build_recipe,
@@ -154,7 +164,7 @@ class BuildCommandTests(unittest.TestCase):
                 )
 
             platform_tag = build_command.detect_platform_tag(None, None)
-            build_dir = build_root / "fails" / "1" / platform_tag / "build"
+            build_dir = build_root / "fails" / platform_tag / "build"
             self.assertTrue((build_dir / "build.log").is_file())
             self.assertFalse((build_dir / build_command._COMPLETE_MARKER).exists())
 
@@ -183,8 +193,8 @@ class BuildCommandTests(unittest.TestCase):
                 encoding="utf-8")
 
             platform_tag = build_command.detect_platform_tag(None, None)
-            build_dir = build_root / "stale" / "1" / platform_tag / "build"
-            package_dir = build_root / "stale" / "1" / platform_tag / "package"
+            build_dir = build_root / "stale" / platform_tag / "build"
+            package_dir = build_root / "stale" / platform_tag / "package"
             build_dir.mkdir(parents=True)
             package_dir.mkdir(parents=True)
             (build_dir / "stale.txt").write_text("old partial build", encoding="utf-8")

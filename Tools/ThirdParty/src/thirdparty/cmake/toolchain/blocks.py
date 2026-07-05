@@ -194,7 +194,6 @@ class FPicBlock(Block):
             return None
         os_ = self._recipe.settings.os
         if os_ and "Windows" in os_:
-            self._recipe.output.warning("Toolchain: Ignoring pic option defined for Windows")
             return None
         return {"pic": "ON" if pic else "OFF"}
 
@@ -1227,6 +1226,13 @@ class ExtraVariablesBlock(Block):
         extra_variables.setdefault(
             "CMAKE_MESSAGE_LOG_LEVEL", {
                 "cache": True, "type": "STRING", "value": build_log_level,
+            })
+
+        # Silence the per-file "-- Installing: <path>" spam from cmake --install unless verbose
+        # (default is ALWAYS); projects with many files otherwise flood the log.
+        extra_variables.setdefault(
+            "CMAKE_INSTALL_MESSAGE", {
+                "cache": True, "type": "STRING", "value": "ALWAYS" if compilation_verbose else "NEVER",
             })
 
         parsed_extra_variables = {}

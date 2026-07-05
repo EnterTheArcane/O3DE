@@ -1,8 +1,6 @@
 from abc import ABC
 from collections import OrderedDict
-from typing import (
-    Any, Generic, TypeVar, cast,
-)
+from typing import Any, Generic, TypeVar, cast
 
 from thirdparty._internal.graph import CONTEXT_BUILD, CONTEXT_HOST
 from thirdparty._internal.model.conf import Conf
@@ -36,6 +34,7 @@ class RecipeBase(ABC, Generic[TOptions]):
 
     folders: Folders
 
+    _requires: list[Requirement]
     _state: RecipeState
 
     def __init_subclass__(cls, **kwargs: Any):
@@ -115,6 +114,7 @@ class RecipeBase(ABC, Generic[TOptions]):
     def configure(self): ...
     def validate(self): ...
     def requirements(self): ...
+    def package_id(self) -> str | None: ...
     def source(self): ...
     def generate(self): ...
     def build(self): ...

@@ -13,6 +13,9 @@ class Recipe(RecipeBase):
         repo = GithubRepository(self, "nlohmann/json")
         return Version(repo.latest_release.removeprefix("v"))
 
+    def package_id(self):
+        return "universal"
+
     def source(self):
         get(
             self,

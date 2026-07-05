@@ -4,7 +4,7 @@
 The main recipe lifecycle methods are emitted first, in this order:
 
     latest_version, configure, validate, requirements,
-    source, generate, build, package, package_info
+    package_id, source, generate, build, package, package_info
 
 Any other methods (private helpers, properties, dunders) are kept *after* the
 lifecycle methods, in their original relative order.  Class-level attributes
@@ -32,6 +32,7 @@ CANONICAL_ORDER = [
     "configure",
     "validate",
     "requirements",
+    "package_id",
     "source",
     "generate",
     "build",

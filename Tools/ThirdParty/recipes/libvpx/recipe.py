@@ -218,6 +218,17 @@ class Recipe(RecipeBase[_Options]):
 
         # Disable LTO for Visual Studio when CFLAGS doesn't contain -GL
         if is_msvc(self):
+            # nasm 3.02's CodeView writer (-gcv8) crashes (access violation) assembling
+            # libvpx's .asm, corrupting the .obj -> LNK1136. libvpx only requests -gcv8 for the
+            # Debug config, which is built alongside Release even for a Release build_type, so
+            # drop it (Debug asm just loses CodeView line info, matching the Release command).
+            replace_in_file(
+                self,
+                self.folders.source / "build" / "make" / "gen_msvs_vcxproj.sh",
+                "-Xvc -gcv8 -f",
+                "-Xvc -f",
+                strict=False)
+
             cflags = " ".join(self.conf.tools.build.cflags)
             lto = any(re.finditer("(^| )[/-]GL($| )", cflags))
             if not lto:

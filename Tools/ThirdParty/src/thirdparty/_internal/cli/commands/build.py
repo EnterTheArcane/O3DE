@@ -9,9 +9,10 @@ from pathlib import Path
 
 from thirdparty._internal.cli.command import command
 from thirdparty._internal.graph import (
-    Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER, )
+    Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER,
+    package_root as _package_root, invalidate_stale as _invalidate_stale, write_manifest as _write_manifest, )
 from thirdparty._internal.loader import (
-    make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, )
+    make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, compute_package_id as _compute_package_id, resolve_package_id as _resolve_package_id, )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
@@ -151,8 +152,7 @@ def _instantiate(
     recipe = make_probe_recipe(
         recipe_cls, recipes_root, name, version, build_type, jobs=jobs, target_os=target_os, target_arch=target_arch, verbose=verbose)
 
-    platform_tag = detect_platform_tag(target_os, target_arch)
-    pkg_root = build_root / name / version / platform_tag
+    pkg_root = _package_root(build_root, name, _resolve_package_id(recipe))
     source_dir = str(pkg_root / "source")
     build_dir = str(pkg_root / "build")
     pkg_dir = str(pkg_root / "package")
@@ -235,13 +235,10 @@ def _build_dep_graph(
 
         dep_cls = _load_recipe_class(recipes_root, dep_name)
         dep_version = _resolve_version(dep_cls)
-        dep_plat = detect_platform_tag(dep_os, dep_arch)
-        pkg_dir = str((build_root / dep_name / dep_version / dep_plat / "package").resolve())
 
         dep = dep_cls()
         dep.version = dep_version
         dep.folders.set_recipe(recipes_root / dep_name)
-        dep.folders.set_base_package(pkg_dir)
 
         dep_settings = detect_settings(build_type, dep_os, dep_arch)
         if dep_os is None and dep_arch is None:
@@ -265,6 +262,10 @@ def _build_dep_graph(
             settings_build=dep_settings_build,
             conf=conf,
             info=Info(set_defaults=True))
+
+        # Package folder is keyed by the dep's own package_id (needs settings, set above).
+        pkg_dir = str((_package_root(build_root, dep_name, _resolve_package_id(dep)) / "package").resolve())
+        dep.folders.set_base_package(pkg_dir)
 
         # Full config phase (configure + auto-fPIC + package-type +
         # requirements); populates dep.requires for the sub-graph below.
@@ -338,9 +339,8 @@ def _build_dep_graph(
 def _is_sourced(
     build_root: Path,
     name: str,
-    version: str,
-    platform_tag: str) -> bool:
-    return (build_root / name / version / platform_tag / "source" / _COMPLETE_MARKER).is_file()
+    package_id: str) -> bool:
+    return (_package_root(build_root, name, package_id) / "source" / _COMPLETE_MARKER).is_file()
 
 
 def _build_only_tools(rgraph) -> set[str]:
@@ -400,15 +400,18 @@ def _build_ordered(
         label += "  [exact]"
     print(f"\n=== Build Plan: {len(order)} recipes ({label}) ===")
     for i, name in enumerate(order, 1):
-        version = rgraph[name].version
+        node = rgraph[name]
+        version = node.version
         n_to, n_ta = _node_target(name)
-        n_plat = detect_platform_tag(n_to, n_ta)
-        built = _is_built(build_root, name, version, n_plat)
+        _cls = node.recipe_cls or _try_load_recipe_class(recipes_root, name)
+        n_id = (_compute_package_id(_cls, recipes_root, name, version, build_type, n_to, n_ta)
+                if _cls else detect_platform_tag(n_to, n_ta))
+        built = _is_built(build_root, name, version, n_id)
         if exact_set is not None and name not in exact_set:
             status = "[ref-only]"
         else:
             status = "[force]" if force else ("[built]" if built else "[pending]")
-        ctx = "" if not cross else f"  ({n_plat})"
+        ctx = "" if not cross else f"  ({n_id})"
         print(f"  {i:3d}. {name}/{version}  {status}{ctx}")
 
     if dry_run:
@@ -440,15 +443,15 @@ def _build_ordered(
             continue
         version = _resolve_version(cls)
         n_to, n_ta = _node_target(name)
-        n_plat = detect_platform_tag(n_to, n_ta)
+        n_id = _compute_package_id(cls, recipes_root, name, version, build_type, n_to, n_ta)
         # --exact: only build the explicitly named recipes; the rest are graph context only
         # and must never be built, wiped, or touched here.
         if exact_set is not None and name not in exact_set:
             _skip(name, "ref-only")
             continue
-        if not force and _is_built(build_root, name, version, n_plat):
+        if not force and _is_built(build_root, name, version, n_id):
             _skip(name, "already built")
-            visited.add((name, n_to, n_ta))
+            visited.add((name, n_id))
             continue
         blocked_deps = _blocked_dependencies(name)
         if blocked_deps:
@@ -521,17 +524,17 @@ def _build_recipe(
     Returns the ordered list of all transitive dep names for *name* (deepest
     first) so that the caller can populate its own dep graph.
     """
-    # visited is keyed by (name, target) so the same recipe can be built both for the host
-    # target and (as a tool) for the build machine when cross-compiling.
-    key = (name, target_os, target_arch)
+    recipe_cls = _load_recipe_class(recipes_root, name)
+    version = _resolve_version(recipe_cls)
+    package_id = _compute_package_id(
+        recipe_cls, recipes_root, name, version, build_type, target_os, target_arch)
+
+    # visited is keyed by (name, package_id) so a recipe builds once per distinct output
+    # identity (universal deps collapse across targets; self-tool cross-compile still twice).
+    key = (name, package_id)
     if key in visited:
         return []
     visited.add(key)
-
-    platform_tag = detect_platform_tag(target_os, target_arch)
-
-    recipe_cls = _load_recipe_class(recipes_root, name)
-    version = _resolve_version(recipe_cls)
 
     # Probe the recipe to discover its direct dependencies (even when pre-built,
     # so we can return the correct transitive dep list to our caller).
@@ -567,9 +570,13 @@ def _build_recipe(
     if exact_set is not None and name not in exact_set:
         return transitive
 
-    if not generate_only and not force and _is_built(build_root, name, version, platform_tag):
+    if not generate_only and not force and _is_built(build_root, name, version, package_id):
         print(f"[thirdparty] {name}/{version} already built - skipping")
         return transitive
+
+    # A different-version folder is stale: wipe it, then stamp the write-once manifest.
+    _invalidate_stale(build_root, name, version, package_id)
+    _write_manifest(build_root, name, version, package_id)
 
     # Build the dependency graph for this recipe from all transitive deps.
     dep_graph = _build_dep_graph(
@@ -622,7 +629,7 @@ def _build_recipe(
         src_folder = Path(recipe.folders.source)
         src_folder.mkdir(parents=True, exist_ok=True)
         # Only run source() once per package; skip if already completed successfully.
-        if not _is_sourced(build_root, name, version, platform_tag):
+        if not _is_sourced(build_root, name, package_id):
             # Wipe any partial state from a previous failed source() attempt
             _wipe(src_folder)
             src_folder.mkdir(parents=True, exist_ok=True)

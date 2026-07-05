@@ -1,10 +1,8 @@
 from graphlib import TopologicalSorter
-from typing import TYPE_CHECKING
+from pathlib import Path  # noqa: F401  (annotation only)
 
 from thirdparty.recipe import RecipeBase
 
-if TYPE_CHECKING:
-    from pathlib import Path  # noqa: F401  (annotation only)
 
 # Build contexts.
 CONTEXT_HOST = "host"
@@ -37,18 +35,56 @@ class Node:
 
 
 COMPLETE_MARKER = ".complete"
+MANIFEST = "manifest.json"
+
+
+def package_root(build_root: Path, name: str, package_id: str) -> Path:
+    """Output folder for a build, keyed by *package_id* (not version): ``build/<name>/<package_id>``."""
+    return build_root / name / package_id
+
+
+def read_manifest(build_root: Path, name: str, package_id: str) -> "dict[str, object] | None":
+    import json
+    path = package_root(build_root, name, package_id) / MANIFEST
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def write_manifest(build_root: Path, name: str, version: str, package_id: str) -> None:
+    """Write ``manifest.json`` once when the folder is created; never updated (no completion flag)."""
+    import json
+    root = package_root(build_root, name, package_id)
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / MANIFEST
+    if path.exists():
+        return
+    path.write_text(
+        json.dumps({"name": name, "version": str(version), "package_id": package_id}, indent=2),
+        encoding="utf-8")
+
+
+def invalidate_stale(build_root: Path, name: str, version: str, package_id: str) -> None:
+    """Wipe the whole ``<package_id>`` folder if its manifest records a different version."""
+    import shutil
+    manifest = read_manifest(build_root, name, package_id)
+    if manifest is not None and manifest.get("version") != str(version):
+        shutil.rmtree(package_root(build_root, name, package_id), ignore_errors=True)
 
 
 def is_built(
     build_root: Path,
     name: str,
     version: str,
-    platform_tag: str) -> bool:
-    """True if ``name/version`` has a completed build for *platform_tag*.
+    package_id: str) -> bool:
+    """True if *version* is fully built for *package_id* (``build/.complete`` + matching manifest)."""
+    root = package_root(build_root, name, package_id)
+    if not (root / "build" / COMPLETE_MARKER).is_file():
+        return False
+    manifest = read_manifest(build_root, name, package_id)
+    return manifest is not None and manifest.get("version") == str(version)
 
-    The build-phase marker lives at ``build/<name>/<version>/<platform_tag>/build/.complete``.
-    """
-    return (build_root / name / version / platform_tag / "build" / COMPLETE_MARKER).is_file()
 
 
 def discover_requires(recipe: RecipeBase) -> tuple[list[str], list[str]]:

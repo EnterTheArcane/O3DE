@@ -25,20 +25,11 @@ FIND_MODE_BOTH = "both"
 
 class CMakeDeps:
     def __init__(self, recipe: RecipeBase):
-        """
-        :param recipe: ``< RecipeBase object >`` The current recipe object. Always use ``self``.
-        """
         self._recipe = recipe
         self.configuration = str(self._recipe.settings.build_type)
         self._properties = {}
 
     def generate(self):
-        """
-        This method will save the generated files to the ``recipe.folders.generators`` folder
-        """
-        self._recipe.output.warning(
-            "CMakeDeps is experimental, and might get "
-            "breaking changes in future releases", warn_tag="experimental")
         # Current directory is the generators_folder
         generator_files = self._content()
         for generator_file, content in generator_files.items():
@@ -50,7 +41,7 @@ class CMakeDeps:
         build_req = self._recipe.dependencies.direct_build
 
         # Iterate all the transitive requires
-        ret = {}
+        ret: dict[str, str] = {}
         direct_deps = []
         for require, dep in list(host_req.items()) + list(build_req.items()):
             cmake_find_mode = self.get_property("cmake_find_mode", dep)
@@ -78,7 +69,7 @@ class CMakeDeps:
             target_configuration = TargetConfigurationTemplate2(self, dep, require, full_cpp_info)
             ret[target_configuration.filename] = target_configuration.content()
 
-        self._print_help(direct_deps)
+        #self._print_help(direct_deps)
         return ret
 
     def _print_help(self, direct_deps: Any):
