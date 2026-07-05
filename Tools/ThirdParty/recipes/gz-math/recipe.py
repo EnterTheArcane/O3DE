@@ -6,7 +6,7 @@ from thirdparty.scm.github import GithubRepository
 
 
 class _Options(RecipeOptions):
-    shared: bool = True
+    shared: bool = False
     pic: bool = True
 
 

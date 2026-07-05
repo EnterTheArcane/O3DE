@@ -20,7 +20,7 @@ from thirdparty.scm import Version
 
 
 class _Options(RecipeOptions):
-    shared: bool = True
+    shared: bool = False
     pic: bool = True
 
 
