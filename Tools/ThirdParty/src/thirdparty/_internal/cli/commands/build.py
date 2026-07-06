@@ -247,9 +247,11 @@ def _build_dep_graph(
             dep_settings_build = detect_settings(build_type)
         conf = Conf()
         conf.tools.build.jobs = jobs if jobs is not None else cpu_count()
-        conf.tools.cmake.configure_args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+        conf.tools.cmake.configure_args = []
+        if not verbose:
+            conf.tools.cmake.configure_args.append("-DCMAKE_POLICY_DEFAULT_CMP0092=NEW")
         # Quiet by default (small CI logs); `build --verbose` restores full build-tool output
-        # and compiler warnings. "-w" suppresses warnings for cl/gcc/clang alike.
+        # and compiler warnings. "-w" is safe on MSVC too: CMP0092=NEW drops the default /W3.
         conf.tools.build.verbose = verbose
         conf.tools.compilation.verbose = verbose
         if not verbose:

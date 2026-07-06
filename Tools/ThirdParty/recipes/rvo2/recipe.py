@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import fix_apple_shared_install_name
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import copy, get, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -30,19 +30,18 @@ class Recipe(RecipeBase[_Options]):
             sha256="20b59fcc4cf61783cb0d1baa40a0dff3c557a97246651f95d9d9fed91bf17724",
             destination=self.folders.source,
             strip_root=True)
+        set_cmake_minimum_required(self)
         replace_in_file(self, self.folders.source / "CMakeLists.txt", "add_subdirectory(examples)", "")
         replace_in_file(
             self,
             self.folders.source / "src" / "CMakeLists.txt",
             "DESTINATION include",
-            "DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}",
-        )
+            "DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}")
         replace_in_file(
             self,
             self.folders.source / "src" / "CMakeLists.txt",
             "RVO DESTINATION lib",
-            "RVO RUNTIME LIBRARY ARCHIVE",
-        )
+            "RVO RUNTIME LIBRARY ARCHIVE")
 
     def generate(self):
         tc = CMakeToolchain(self)

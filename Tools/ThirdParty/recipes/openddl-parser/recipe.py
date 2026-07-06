@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import apply_patches, copy, get, rmdir
+from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -30,6 +30,14 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
+        # Strip the project's unconditional /W4 so the quiet -w wins without cl's D9025 spam
+        # (set(CMAKE_CXX_FLAGS) can't be intercepted by the toolchain's compile_options override).
+        replace_in_file(
+            self,
+            self.folders.source / "CMakeLists.txt",
+            "${CMAKE_CXX_FLAGS} /W4",
+            "${CMAKE_CXX_FLAGS}",
+            strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

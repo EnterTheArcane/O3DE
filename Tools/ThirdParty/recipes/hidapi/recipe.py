@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import copy, get, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
@@ -46,6 +46,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="5d84dec684c27b97b921d2f3b73218cb773cf4ea915caee317ac8fc73cef8136",
             destination=self.folders.source,
             strip_root=True)
+        set_cmake_minimum_required(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

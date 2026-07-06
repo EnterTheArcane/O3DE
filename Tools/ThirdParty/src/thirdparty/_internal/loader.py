@@ -139,12 +139,18 @@ def make_probe_recipe(
         settings_build = detect_settings(build_type)
     conf = Conf()
     conf.tools.build.jobs = jobs if jobs is not None else cpu_count()
-    conf.tools.cmake.configure_args = ["-DCMAKE_POLICY_VERSION_MINIMUM=3.5"]
+    conf.tools.cmake.configure_args = []
+    if not verbose:
+        # Drop CMake's default MSVC /W3 (kept for cmake_minimum_required < 3.15 via CMP0092=OLD)
+        # so our injected /w is the only warning flag -> no "D9025: overriding '/w' with '/W3'".
+        conf.tools.cmake.configure_args.append("-DCMAKE_POLICY_DEFAULT_CMP0092=NEW")
     # Quiet by default so CI logs stay small (only the compiled file + errors); `build
-    # --verbose` restores full build-tool output and compiler warnings. "-w" suppresses
-    # warnings for every compiler (cl/gcc/clang); all toolchains append tools.build:c[xx]flags.
+    # --verbose` restores full build-tool output and compiler warnings.
     conf.tools.build.verbose = verbose
     conf.tools.compilation.verbose = verbose
+    # Suppress compiler warnings when quiet. "-w" (== /w on cl) works for every compiler; on
+    # MSVC the CMake toolchain also sets CMP0092=NEW so the default /W3 is gone and /w is the
+    # only warning flag (no "D9025: overriding '/w' with '/W3'" spam).
     if not verbose:
         conf.tools.build.cflags = [*conf.tools.build.cflags, "-w"]
         conf.tools.build.cxxflags = [*conf.tools.build.cxxflags, "-w"]

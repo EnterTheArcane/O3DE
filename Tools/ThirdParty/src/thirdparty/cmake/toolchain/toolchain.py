@@ -12,6 +12,7 @@ from thirdparty.cmake.toolchain import RECIPE_TOOLCHAIN_FILENAME
 from thirdparty.cmake.toolchain.blocks import (
     ExtraVariablesBlock,
     ToolchainBlocks,
+    WarningFilterBlock,
     UserToolchain,
     GenericSystemBlock,
     AndroidSystemBlock,
@@ -135,6 +136,7 @@ class CMakeToolchain:
             self._recipe, self, [
                 ("user_toolchain", UserToolchain),
                 ("generic_system", GenericSystemBlock),
+                ("warning_filter", WarningFilterBlock),
                 ("compilers", CompilersBlock),
                 ("android_system", AndroidSystemBlock),
                 ("apple_system", AppleSystemBlock),

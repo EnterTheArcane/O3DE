@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
@@ -37,6 +37,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="3258da280511d24b49d6b08615bbe824d0cacc9842b0e4caf11c52cf2b043893",
             destination=self.folders.source,
             strip_root=True)
+        set_cmake_minimum_required(self)
         replace_in_file(self, self.folders.source / "CMakeLists.txt", "cmake_policy(SET CMP0091 OLD)", "")
 
     def generate(self):

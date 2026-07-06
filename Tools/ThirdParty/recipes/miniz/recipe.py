@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get, rmdir
+from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -35,6 +35,14 @@ class Recipe(RecipeBase[_Options]):
             sha256="98468f8924934b723276680f85238b6c78bf1f8b49b4459cc9b7214a20e2e9fb",
             destination=self.folders.source,
             strip_root=True)
+        # Strip the project's unconditional /W3 so the quiet -w wins without cl's D9025 spam
+        # (set(CMAKE_C_FLAGS) can't be intercepted by the toolchain's compile_options override).
+        replace_in_file(
+            self,
+            self.folders.source / "CMakeLists.txt",
+            "${CMAKE_C_FLAGS} /W3",
+            "${CMAKE_C_FLAGS}",
+            strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

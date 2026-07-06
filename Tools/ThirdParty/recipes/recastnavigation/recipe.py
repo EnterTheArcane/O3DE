@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import copy, get, rmdir, rm
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -29,6 +29,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="d48ca0121962fa0639502c0f56c4e3ae72f98e55d88727225444f500775c0074",
             destination=self.folders.source,
             strip_root=True)
+        set_cmake_minimum_required(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

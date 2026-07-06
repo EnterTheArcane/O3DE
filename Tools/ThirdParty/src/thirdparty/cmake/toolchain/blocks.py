@@ -1371,6 +1371,49 @@ class PreprocessorBlock(Block):
         }
 
 
+class WarningFilterBlock(Block):
+    """Strip project-set MSVC warning-level flags so the quiet ``/w`` wins without D9025.
+
+    When building quietly we inject ``-w`` (== ``/w``) to silence warnings, but any ``/W0-4``
+    or ``/Wall`` a project passes to ``add_compile_options``/``target_compile_options`` collides
+    with it and makes cl spam ``D9025: overriding '/w' with '/W3'`` once per file (and the
+    project flag wins, so warnings show anyway).  Redefining those two commands here - before
+    ``project()`` - to drop warning-level flags lets ``/w`` take effect cleanly.  Verbose builds
+    skip this block so warnings are shown.
+    """
+
+    @property
+    def template(self) -> str:
+        return textwrap.dedent(
+            """
+            function(add_compile_options)
+                set(_recipe_filtered "")
+                foreach(_recipe_opt ${ARGV})
+                    if(NOT "${_recipe_opt}" MATCHES "[-/]W([0-4]|all)([^a-zA-Z0-9]|$)")
+                        list(APPEND _recipe_filtered "${_recipe_opt}")
+                    endif()
+                endforeach()
+                _add_compile_options(${_recipe_filtered})
+            endfunction()
+
+            function(target_compile_options)
+                set(_recipe_filtered "")
+                foreach(_recipe_opt ${ARGV})
+                    if(NOT "${_recipe_opt}" MATCHES "[-/]W([0-4]|all)([^a-zA-Z0-9]|$)")
+                        list(APPEND _recipe_filtered "${_recipe_opt}")
+                    endif()
+                endforeach()
+                _target_compile_options(${_recipe_filtered})
+            endfunction()
+            """)
+
+    def context(self) -> dict[str, Any] | None:
+        # Only when quiet: verbose builds want the project's warnings shown.
+        if self._recipe.conf.tools.compilation.verbose:
+            return None
+        return {}
+
+
 class ToolchainBlocks:
     def __init__(
         self,

@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rmdir
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.scm import Version
@@ -38,6 +38,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="7180a979aaa7000e1264da484f712d403fcf7679b1e9212c4e3d09f5c93efc24",
             destination=self.folders.source,
             strip_root=True)
+        set_cmake_minimum_required(self)
         apply_patches(self)
         replace_in_file(
             self,
