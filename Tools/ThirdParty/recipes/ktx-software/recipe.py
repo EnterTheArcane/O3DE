@@ -46,6 +46,13 @@ class Recipe(RecipeBase[_Options]):
             self,
             self.folders.source / "external" / "astc-encoder" / "CMakeLists.txt",
             "set(CMAKE_CXX_STANDARD", "#")
+        # astc-encoder hard-codes MSVC /W4 in a genex, which the toolchain warning filter can't
+        # strip (genexes are preserved intact); drop the /W4 so the quiet -w wins without D9025.
+        replace_in_file(
+            self,
+            self.folders.source / "external" / "astc-encoder" / "Source" / "cmake_core.cmake",
+            "$<${is_msvc_fe}:/W4>",
+            "$<${is_msvc_fe}:>")
         apply_patches(self)
 
     def generate(self):

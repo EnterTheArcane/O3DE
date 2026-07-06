@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import apply_patches, copy, get, rmdir
 
 
@@ -23,6 +23,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="a14320d82194807c4480ce59c98aa71cd4175a5156645c4e2b3edd330b930627",
             destination=self.folders.source)
         apply_patches(self)
+        set_cmake_minimum_required(self, path=self.folders.source / "cpp" / "CMakeLists.txt")
 
     def generate(self):
         tc = CMakeToolchain(self)

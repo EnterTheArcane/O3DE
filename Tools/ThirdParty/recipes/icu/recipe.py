@@ -262,6 +262,21 @@ class Recipe(RecipeBase[_Options]):
         # workaround for "No rule to make target 'out/tmp/dirs.timestamp'"
         save(self, self.folders.build / "data" / "out" / "tmp" / "dirs.timestamp", "")
 
+        # Quiet ICU's own chatter: every platform fragment echoes "generating dependency
+        # information for <file>" (one line per source file), and each subdir's install rule
+        # echoes an "install -c ... <header>" line per installed header. Both are pure noise that
+        # `-s`/`V=0` can't suppress (explicit @echo/echo), so drop them.
+        for mh in (self.folders.source / "source" / "config").glob("mh-*"):
+            replace_in_file(
+                self, mh,
+                '@echo "generating dependency information for $<"', "@true", strict=False)
+        for mf in (self.folders.source / "source").glob("*/Makefile.in"):
+            for subdir in ("unicode", "layout"):
+                replace_in_file(
+                    self, mf,
+                    f'echo "$(INSTALL_DATA) $$file $(DESTDIR)$(includedir)/{subdir}"', "true",
+                    strict=False)
+
     @property
     def _data_filename(self):
         vtag = Version(self.version).major

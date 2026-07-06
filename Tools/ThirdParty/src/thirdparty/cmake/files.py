@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from thirdparty.recipe import RecipeBase
+if TYPE_CHECKING:
+    from thirdparty.recipe import RecipeBase
 
 # cmake_minimum_required(VERSION <min>[...<max>] [FATAL_ERROR]) - case-insensitive.
 _MIN_RE = re.compile(

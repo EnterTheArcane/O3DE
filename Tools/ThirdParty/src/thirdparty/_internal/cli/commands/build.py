@@ -8,6 +8,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 
 from thirdparty._internal.cli.command import command
+from thirdparty._internal.cli import output as _out
 from thirdparty._internal.graph import (
     Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER,
     package_root as _package_root, invalidate_stale as _invalidate_stale, write_manifest as _write_manifest, )
@@ -91,7 +92,7 @@ def build(args: argparse.Namespace) -> None:
     build_root = cwd / "build"
 
     if not recipes_root.exists():
-        print(f"[thirdparty] error: no 'recipes/' directory in {cwd}", file=sys.stderr)
+        _out.error(f"no 'recipes/' directory in {cwd}")
         sys.exit(1)
 
     all_names = sorted(d.name for d in recipes_root.iterdir() if d.is_dir() and (d / "recipe.py").exists())
@@ -102,19 +103,19 @@ def build(args: argparse.Namespace) -> None:
         if any(c in pat for c in ("*", "?", "[")):
             matched = fnmatch.filter(all_names, pat)
             if not matched:
-                print(f"[thirdparty] warn: no recipes match '{pat}'")
+                _out.warn(f"no recipes match '{pat}'")
             for m in matched:
                 if m not in names:
                     names.append(m)
         else:
             if pat not in all_names_set:
-                print(f"[thirdparty] error: recipe not found: {pat}", file=sys.stderr)
+                _out.error(f"recipe not found: {pat}")
                 sys.exit(1)
             if pat not in names:
                 names.append(pat)
 
     if not names:
-        print("[thirdparty] error: no recipes matched", file=sys.stderr)
+        _out.error("no recipes matched")
         sys.exit(1)
 
     # --exact: the set of recipes the user explicitly asked for.  Only these are ever built;
@@ -138,11 +139,11 @@ def _load_recipe_class(recipes_root: Path, name: str) -> type[RecipeBase]:
     if cls is None:
         recipe_path = recipes_root / name / "recipe.py"
         if not recipe_path.exists():
-            print(f"[thirdparty] error: recipe not found: {recipe_path}", file=sys.stderr)
+            _out.error(f"recipe not found: {recipe_path}")
         else:
-            print(
-                f"[thirdparty] error: {recipe_path} must define a class named 'Recipe' "
-                "that subclasses RecipeBase", file=sys.stderr, )
+            _out.error(
+                f"{recipe_path} must define a class named 'Recipe' "
+                "that subclasses RecipeBase")
         sys.exit(1)
     return cls
 
@@ -325,7 +326,7 @@ def _build_dep_graph(
             try:
                 dep.package_info()
             except Exception as exc:
-                print(f"[thirdparty] warn: package_info() failed for {dep_name}: {exc}")
+                _out.warn(f"package_info() failed for {dep_name}: {exc}")
 
         # Make all relative info paths absolute so generators don't assert.
         dep.info.set_relative_base_folder(pkg_dir)
@@ -382,8 +383,7 @@ def _build_ordered(
 
     if resume:
         if resume not in order:
-            print(
-                f"[thirdparty] error: --resume '{resume}' not found in build order", file=sys.stderr)
+            _out.error(f"--resume '{resume}' not found in build order")
             sys.exit(1)
         order = order[order.index(resume):]
 
@@ -400,7 +400,7 @@ def _build_ordered(
         label += f" -> {detect_platform_tag(target_os, target_arch)}"
     if exact_set is not None:
         label += "  [exact]"
-    print(f"\n=== Build Plan: {len(order)} recipes ({label}) ===")
+    _out.info(f"\n=== Build Plan: {len(order)} recipes ({label}) ===")
     for i, name in enumerate(order, 1):
         node = rgraph[name]
         version = node.version
@@ -414,12 +414,12 @@ def _build_ordered(
         else:
             status = "[force]" if force else ("[built]" if built else "[pending]")
         ctx = "" if not cross else f"  ({n_id})"
-        print(f"  {i:3d}. {name}/{version}  {status}{ctx}")
+        _out.info(f"  {i:3d}. {name}/{version}  {status}{ctx}")
 
     if dry_run:
         return
 
-    print()
+    _out.info()
 
     visited: set = set()
     results: list[tuple[str, str, float, str | None]] = []
@@ -440,7 +440,7 @@ def _build_ordered(
     for name in order:
         cls = _try_load_recipe_class(recipes_root, name)
         if cls is None:
-            print(f"[thirdparty] SKIP {name} - cannot load recipe", file=sys.stderr)
+            _out.info(f"[thirdparty] SKIP {name} - cannot load recipe")
             _skip(name, "cannot load recipe", blocks_dependants=True)
             continue
         version = _resolve_version(cls)
@@ -458,7 +458,7 @@ def _build_ordered(
         blocked_deps = _blocked_dependencies(name)
         if blocked_deps:
             reason = f"dependency failed/skipped: {', '.join(blocked_deps)}"
-            print(f"[thirdparty] SKIP {name}/{version} - {reason}")
+            _out.info(f"[thirdparty] SKIP {name}/{version} - {reason}")
             _skip(name, reason, blocks_dependants=True)
             continue
         t0 = time.time()
@@ -471,7 +471,10 @@ def _build_ordered(
             elapsed = time.time() - t0
             results.append((name, version, elapsed, str(exc)))
             unavailable[name] = "failed"
-            print(f"[thirdparty] FAIL {name}/{version}: {exc}")
+            # The recipe opened a build group in _build_recipe; close it so the failure
+            # summary and the next recipe aren't swallowed into the failed recipe's group.
+            _out.group_end()
+            _out.info(f"[thirdparty] FAIL {name}/{version}: {exc}")
             if fail_fast:
                 import traceback
                 traceback.print_exc()
@@ -480,22 +483,22 @@ def _build_ordered(
     ok = [(n, v, t) for n, v, t, e in results if e is None]
     fail = [(n, v, e) for n, v, t, e in results if e is not None]
 
-    print(f"\n{"=" * 70}")
-    print(f"=== Summary: {len(ok)} built, {len(fail)} failed, {len(skipped)} skipped ===")
-    print(f"{"=" * 70}")
+    _out.info(f"\n{"=" * 70}")
+    _out.info(f"=== Summary: {len(ok)} built, {len(fail)} failed, {len(skipped)} skipped ===")
+    _out.info(f"{"=" * 70}")
     if ok:
-        print(f"\nBuilt ({len(ok)}):")
+        _out.info(f"\nBuilt ({len(ok)}):")
         for n, v, t in ok:
-            print(f"  OK   {n}/{v}  ({t:.1f}s)")
+            _out.info(f"  OK   {n}/{v}  ({t:.1f}s)")
     if skipped:
-        print(f"\nSkipped ({len(skipped)}):")
+        _out.info(f"\nSkipped ({len(skipped)}):")
         for n, reason in skipped:
             suffix = f" ({reason})" if reason else ""
-            print(f"  SKIP {n}{suffix}")
+            _out.info(f"  SKIP {n}{suffix}")
     if fail:
-        print(f"\nFailed ({len(fail)}):")
+        _out.info(f"\nFailed ({len(fail)}):")
         for n, v, e in fail:
-            print(f"  FAIL {n}/{v}: {e}")
+            _out.info(f"  FAIL {n}/{v}: {e}")
         sys.exit(1)
 
 
@@ -554,7 +557,7 @@ def _build_recipe(
     transitive: list[str] = []
     for dep_name in direct_deps:
         if not (recipes_root / dep_name / "recipe.py").exists():
-            print(f"[thirdparty] warn: dep recipe not found, skipping: {dep_name}")
+            _out.warn(f"dep recipe not found, skipping: {dep_name}")
             continue
         sub = _build_recipe(
             recipes_root, build_root, dep_name, build_type, visited, target_os, target_arch, jobs=jobs, generate_only=generate_only, force=force, exact_set=exact_set, verbose=verbose)
@@ -573,7 +576,7 @@ def _build_recipe(
         return transitive
 
     if not generate_only and not force and _is_built(build_root, name, version, package_id):
-        print(f"[thirdparty] {name}/{version} already built - skipping")
+        _out.info(f"[thirdparty] {name}/{version} already built - skipping")
         return transitive
 
     # A different-version folder is stale: wipe it, then stamp the write-once manifest.
@@ -584,7 +587,7 @@ def _build_recipe(
     dep_graph = _build_dep_graph(
         recipes_root, build_root, transitive, build_type, target_os, target_arch, jobs=jobs, verbose=verbose, tool_names=direct_tools)
 
-    print(f"\n[thirdparty] === Building {name}/{version} ({build_type}) ===\n")
+    _out.group_start(f"Building {name}/{version} ({build_type})")
 
     recipe = _instantiate(
         recipe_cls, recipes_root, build_root, name, version, build_type, target_os, target_arch, jobs=jobs, verbose=verbose)
@@ -623,7 +626,8 @@ def _build_recipe(
     except Exception as _cfg_exc:
         from thirdparty.errors import RecipeInvalidConfiguration
         if isinstance(_cfg_exc, RecipeInvalidConfiguration):
-            print(f"[thirdparty] {name}/{version} not supported on this platform: {_cfg_exc} - skipping")
+            _out.info(f"[thirdparty] {name}/{version} not supported on this platform: {_cfg_exc} - skipping")
+            _out.group_end()
             return transitive
         raise
 
@@ -693,5 +697,6 @@ def _build_recipe(
         build_dir.mkdir(parents=True, exist_ok=True)
         (build_dir / _COMPLETE_MARKER).write_text("")
 
-    print(f"[thirdparty] {name}/{version} done -> {recipe.folders.package}")
+    _out.info(f"[thirdparty] {name}/{version} done -> {recipe.folders.package}")
+    _out.group_end()
     return transitive

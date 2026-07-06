@@ -103,6 +103,9 @@ class AutotoolsToolchain:
         self.msvc_runtime_link_flags = []
         if llvm_clang_front(self._recipe) == "clang":
             self.msvc_runtime_link_flags = ["-fuse-ld=lld-link"]
+            
+        if self._recipe.settings.os == "Windows" and "pic" in self._recipe.options:
+            self._recipe.options.pic = False
 
         # Cross build triplets
         self._host = self._recipe.conf.tools.gnu.host_triplet

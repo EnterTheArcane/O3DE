@@ -12,10 +12,6 @@ def run_configure_method(recipe: RecipeBase):
     with recipe_exception_formatter(recipe, "configure"):
         recipe.configure()
 
-    # Windows targets are always position independent, so -fPIC is meaningless there
-    if recipe.settings.os == "Windows" and "pic" in recipe.options:
-        recipe.options.pic = False
-
     if initial_requires_count != len(recipe._requires):
         recipe.output.warning("Requirements should only be added in the requirements() method, not configure().", warn_tag="deprecated")
 

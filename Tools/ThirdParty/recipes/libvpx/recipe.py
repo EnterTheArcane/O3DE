@@ -229,6 +229,17 @@ class Recipe(RecipeBase[_Options]):
                 "-Xvc -f",
                 strict=False)
 
+            # msbuild defaults to "normal" verbosity, which dumps every task/target for the whole
+            # solution. Quiet the generated build rule down to errors/warnings unless asked to be
+            # verbose.
+            if not self.conf.tools.compilation.verbose:
+                replace_in_file(
+                    self,
+                    self.folders.source / "build" / "make" / "gen_msvs_sln.sh",
+                    "\\$(MSBUILD_TOOL) $outfile -m -t:Build",
+                    "\\$(MSBUILD_TOOL) $outfile -m -nologo -v:quiet -t:Build",
+                    strict=False)
+
             cflags = " ".join(self.conf.tools.build.cflags)
             lto = any(re.finditer("(^| )[/-]GL($| )", cflags))
             if not lto:

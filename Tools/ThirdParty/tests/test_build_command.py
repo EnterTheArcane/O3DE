@@ -99,8 +99,10 @@ class BuildCommandTests(unittest.TestCase):
                 raise AssertionError(f"unexpected build: {args[2]}")
 
             stdout = io.StringIO()
+            stderr = io.StringIO()
             with (
                 redirect_stdout(stdout),
+                redirect_stderr(stderr),
                 patch.object(build_command._Graph, "build", return_value=graph),
                 patch.object(build_command, "_try_load_recipe_class", return_value=_StubRecipe),
                 patch.object(build_command, "_resolve_version", return_value="1"),
@@ -124,8 +126,8 @@ class BuildCommandTests(unittest.TestCase):
 
         self.assertEqual(exc.exception.code, 1)
         self.assertEqual([call.args[2] for call in build_recipe.call_args_list], ["ffmpeg"])
-        self.assertIn("SKIP openimageio/1 - dependency failed/skipped: ffmpeg", stdout.getvalue())
-        self.assertIn("SKIP openimageio (dependency failed/skipped: ffmpeg)", stdout.getvalue())
+        self.assertIn("SKIP openimageio/1 - dependency failed/skipped: ffmpeg", stderr.getvalue())
+        self.assertIn("SKIP openimageio (dependency failed/skipped: ffmpeg)", stderr.getvalue())
 
     def test_failed_build_leaves_build_folder_for_logs(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -152,7 +154,7 @@ class BuildCommandTests(unittest.TestCase):
                 encoding="utf-8")
 
             stdout = io.StringIO()
-            with redirect_stdout(stdout), self.assertRaises(RuntimeError):
+            with redirect_stdout(stdout), redirect_stderr(io.StringIO()), self.assertRaises(RuntimeError):
                 build_command._build_recipe(
                     recipes_root,
                     build_root,
@@ -201,7 +203,7 @@ class BuildCommandTests(unittest.TestCase):
             (package_dir / "stale.txt").write_text("old partial package", encoding="utf-8")
 
             stdout = io.StringIO()
-            with redirect_stdout(stdout):
+            with redirect_stdout(stdout), redirect_stderr(io.StringIO()):
                 build_command._build_recipe(
                     recipes_root,
                     build_root,

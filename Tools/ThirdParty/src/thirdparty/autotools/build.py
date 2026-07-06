@@ -93,12 +93,13 @@ class Autotools:
                 jobs = f"-j{njobs}"
         str_makefile = f"--file={makefile}" if makefile else None
 
-        # Automake silent rules: `V=0` makes make print the terse "CC foo.o" line instead of the
-        # full (very long) compiler command, keeping quiet builds' logs small. It's a no-op for
-        # makefiles that don't support it, and nmake doesn't use it.
+        # Quiet builds: `-s` silences make's own command echo (so makefiles that don't support
+        # automake silent rules, e.g. icu/libvpx, stop dumping the full compiler command per file),
+        # and `V=0` additionally selects automake's terse "CC foo.o" rules. Both leave warnings and
+        # errors intact. nmake doesn't use either.
         silent = None
         if "nmake" not in make_program.lower() and not self._recipe.conf.tools.compilation.verbose:
-            silent = "V=0"
+            silent = "-s V=0"
 
         command = join_arguments([make_program, str_makefile, target, str_args, str_extra_args, jobs, silent])
         run(self._recipe, command)

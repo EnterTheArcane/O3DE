@@ -1378,8 +1378,13 @@ class WarningFilterBlock(Block):
     or ``/Wall`` a project passes to ``add_compile_options``/``target_compile_options`` collides
     with it and makes cl spam ``D9025: overriding '/w' with '/W3'`` once per file (and the
     project flag wins, so warnings show anyway).  Redefining those two commands here - before
-    ``project()`` - to drop warning-level flags lets ``/w`` take effect cleanly.  Verbose builds
-    skip this block so warnings are shown.
+    ``project()`` - to drop plain warning-level args lets ``/w`` take effect cleanly.  Verbose
+    builds skip this block so warnings are shown.
+
+    Only *plain* whole-argument warning flags are dropped; generator expressions are preserved
+    intact (iterating ``ARGV`` by index and re-escaping ``;`` avoids splitting a multi-element
+    genex like ``$<$<COMPILER_ID:GNU>:-Wall;-Wextra>`` and leaking ``-Wextra`` to cl).  A genex
+    that hard-codes ``/W4`` for MSVC therefore still slips through and is handled per-recipe.
     """
 
     @property
@@ -1388,21 +1393,29 @@ class WarningFilterBlock(Block):
             """
             function(add_compile_options)
                 set(_recipe_filtered "")
-                foreach(_recipe_opt ${ARGV})
-                    if(NOT "${_recipe_opt}" MATCHES "[-/]W([0-4]|all)([^a-zA-Z0-9]|$)")
+                set(_recipe_i 0)
+                while(_recipe_i LESS ${ARGC})
+                    set(_recipe_opt "${ARGV${_recipe_i}}")
+                    if(NOT "${_recipe_opt}" MATCHES "^[-/]W([0-4]|all)$")
+                        string(REPLACE ";" "\\;" _recipe_opt "${_recipe_opt}")
                         list(APPEND _recipe_filtered "${_recipe_opt}")
                     endif()
-                endforeach()
+                    math(EXPR _recipe_i "${_recipe_i} + 1")
+                endwhile()
                 _add_compile_options(${_recipe_filtered})
             endfunction()
 
             function(target_compile_options)
                 set(_recipe_filtered "")
-                foreach(_recipe_opt ${ARGV})
-                    if(NOT "${_recipe_opt}" MATCHES "[-/]W([0-4]|all)([^a-zA-Z0-9]|$)")
+                set(_recipe_i 0)
+                while(_recipe_i LESS ${ARGC})
+                    set(_recipe_opt "${ARGV${_recipe_i}}")
+                    if(NOT "${_recipe_opt}" MATCHES "^[-/]W([0-4]|all)$")
+                        string(REPLACE ";" "\\;" _recipe_opt "${_recipe_opt}")
                         list(APPEND _recipe_filtered "${_recipe_opt}")
                     endif()
-                endforeach()
+                    math(EXPR _recipe_i "${_recipe_i} + 1")
+                endwhile()
                 _target_compile_options(${_recipe_filtered})
             endfunction()
             """)

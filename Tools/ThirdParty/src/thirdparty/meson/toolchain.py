@@ -156,6 +156,9 @@ class MesonToolchain:
         # Do not adjust "debug" if already adjusted "buildtype"
         #: Default library type, e.g., "shared.
         self.default_library = ("shared" if shared else "static") if shared or static else None
+        
+        if self._recipe.settings.os == "Windows" and "pic" in self._recipe.options:
+            self._recipe.options.pic = False
 
         compiler = self._recipe.settings.compiler
         if compiler is None:
