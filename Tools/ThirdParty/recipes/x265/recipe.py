@@ -133,6 +133,8 @@ class Recipe(RecipeBase[_Options]):
     def _patch_sources(self):
         apply_patches(self)
         cmakelists = self.folders.source / "source" / "CMakeLists.txt"
+        # Drop the project's add_definitions(/W4) so the quiet -w wins without cl's D9025 spam.
+        replace_in_file(self, cmakelists, "add_definitions(/W4)", "# add_definitions(/W4)", strict=False)
         replace_in_file(
             self, cmakelists,
             "if((WIN32 AND ENABLE_CLI) OR (WIN32 AND ENABLE_SHARED))",

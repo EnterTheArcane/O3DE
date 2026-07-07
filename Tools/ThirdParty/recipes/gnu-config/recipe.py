@@ -17,9 +17,6 @@ class Recipe(RecipeBase):
             strip_root=True)
         apply_patches(self)
 
-    def build(self):
-        pass
-
     def package(self):
         save(self, self.folders.package / "licenses" / "COPYING", self._extract_license())
         copy(self, "config.guess", src=self.folders.source, dst=self.folders.package / "bin")

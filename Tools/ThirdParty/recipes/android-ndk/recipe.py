@@ -30,9 +30,6 @@ class Recipe(RecipeBase):
             raise RecipeInvalidConfiguration(f"Unsupported os/arch")
 
     def source(self):
-        pass
-
-    def build(self):
         self._unzip_fix_symlinks(
             url=f"https://dl.google.com/android/repository/android-ndk-{self.version}-{self._source_os}.zip",
             target_folder=self.folders.source,

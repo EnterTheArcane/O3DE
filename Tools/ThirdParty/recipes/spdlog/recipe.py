@@ -40,6 +40,14 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         replace_in_file(self, self.folders.source / "cmake" / "utils.cmake", "/WX", "")
+        # spdlog is built with SPDLOG_NO_EXCEPTIONS, which appends /EHs-c- on top of CMake's default
+        # /EHsc -> "D9025: overriding '/EHs' with '/EHs-'". Strip the /EHsc default so the /EHs-c-
+        # applies cleanly (exceptions stay disabled - /EHs-c- was already the winning flag).
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            "target_compile_options(spdlog PRIVATE /EHs-c-)",
+            'string(REGEX REPLACE " /EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")\n'
+            "    target_compile_options(spdlog PRIVATE /EHs-c-)", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -34,6 +34,8 @@ class Recipe(RecipeBase[_Options]):
 
         internal_utils = self.folders.source / "googletest" / "cmake" / "internal_utils.cmake"
         replace_in_file(self, internal_utils, "-WX", "")
+        # Also drop the base /W4 (in cxx_base_flags) so the quiet -w wins without cl's D9025 spam.
+        replace_in_file(self, internal_utils, 'set(cxx_base_flags "-GS -W4', 'set(cxx_base_flags "-GS', strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

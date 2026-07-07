@@ -138,6 +138,10 @@ class Recipe(RecipeBase[_Options]):
         replace_in_file(self, macros_cmake, "find_package(${_find_name})", "find_package(${_find_name} CONFIG REQUIRED)")
         replace_in_file(self, macros_cmake, "find_package(${_find_name} MODULE)", "find_package(${_find_name} CONFIG REQUIRED)")
         replace_in_file(self, macros_cmake, "find_package(${_find_name} REQUIRED)", "find_package(${_find_name} CONFIG REQUIRED)")
+        # curl's PickyWarnings adds -W4 for MSVC; drop it so the quiet -w wins without D9025.
+        replace_in_file(
+            self, self.folders.source / "CMake" / "PickyWarnings.cmake",
+            'list(APPEND _picky "-W4")', "list(APPEND _picky)", strict=False)
         replace_in_file(self, macros_cmake, "find_package(${_find_name} MODULE REQUIRED)", "find_package(${_find_name} CONFIG REQUIRED)")
 
     def generate(self):

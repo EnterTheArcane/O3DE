@@ -2,7 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv, VirtualRunEnv
-from thirdparty.files import get, chdir, copy, apply_patches, mkdir, rename
+from thirdparty.files import get, chdir, copy, apply_patches, mkdir, rename, replace_in_file
 from thirdparty.autotools import AutotoolsToolchain, Autotools
 from thirdparty.nmake import NMakeDeps, NMakeToolchain
 from thirdparty.microsoft import VCVars, is_msvc
@@ -68,6 +68,13 @@ class Recipe(RecipeBase[_Options]):
 
     def build(self):
         apply_patches(self)
+        # After patching, the per-library Makefile.vc WARN hardcodes /W4; drop it (the patch
+        # rewrites this line, so it must run here rather than in source()) so the quiet -w wins.
+        if is_msvc(self):
+            for _sub in ("libmpdec", "libmpdec++"):
+                replace_in_file(
+                    self, self.folders.source / _sub / "Makefile.vc",
+                    "WARN = /W4 /wd4200", "WARN = /wd4200", strict=False)
         if is_msvc(self):
             self._build_msvc()
         else:

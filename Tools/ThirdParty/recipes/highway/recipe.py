@@ -78,6 +78,18 @@ class Recipe(RecipeBase[_Options]):
         # Honor pic option
         cmakelists = self.folders.source / "CMakeLists.txt"
         replace_in_file(self, cmakelists, "set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)", "")
+        # highway disables RTTI/exceptions by appending /GR- /EHs-c- (via HWY_FLAGS) on top of
+        # CMake's default /GR /EHsc, which cl reports as cosmetic "D9025: overriding '/GR' with
+        # '/GR-'" / "'/EHs' with '/EHs-'". Strip the defaults from CMAKE_CXX_FLAGS so highway's
+        # negations apply cleanly without the warning.
+        replace_in_file(
+            self, cmakelists,
+            "if (MSVC)\n  set(HWY_FLAGS",
+            'if (MSVC)\n'
+            '  string(REGEX REPLACE " /GR( |$)" " " CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")\n'
+            '  string(REPLACE " /EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")\n'
+            "  set(HWY_FLAGS",
+            strict=False)
         replace_in_file(
             self, cmakelists,
             "set_property(TARGET hwy PROPERTY POSITION_INDEPENDENT_CODE ON)",

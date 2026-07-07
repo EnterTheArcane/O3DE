@@ -21,14 +21,15 @@ def _version_tuple(value: str) -> tuple[int, ...]:
     return tuple(int(part) for part in value.split("."))
 
 
-def set_cmake_minimum_required(recipe: RecipeBase, version: str = "3.5", path: str | Path | None = None) -> None:
+def set_cmake_minimum_required(recipe: RecipeBase, version: str = "3.10", path: str | Path | None = None) -> None:
     """Raise a CMakeLists' ``cmake_minimum_required`` floor to at least *version*.
 
     Rewrites the first ``cmake_minimum_required(VERSION ...)`` call, preserving a trailing
     ``FATAL_ERROR`` and any ``...max`` range (dropping the range when *version* exceeds the
     old max, since ``min > max`` is invalid).  No-op when the declared minimum is already
     ``>= version``.  Lets recipes with an old upstream minimum build without the global
-    ``CMAKE_POLICY_VERSION_MINIMUM`` override (CMake 4.x drops support for ``< 3.5``).
+    ``CMAKE_POLICY_VERSION_MINIMUM`` override (CMake 4.x drops support for ``< 3.5``) and
+    without CMake's "Compatibility with CMake < 3.10 will be removed" deprecation warning.
 
     ``path`` defaults to ``<source>/CMakeLists.txt``; pass an explicit path for sub-project CMakeLists.
     """

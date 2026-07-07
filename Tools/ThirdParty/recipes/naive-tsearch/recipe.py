@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import get, copy, rm, rmdir
+from thirdparty.files import get, copy, rm, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -35,6 +35,10 @@ class Recipe(RecipeBase[_Options]):
             sha256="cb779326a8748fb527ab2f4d199923c92dc7d120988b45400d4b31fd77288a1b",
             destination=self.folders.source,
             strip_root=True)
+        # Empty the MSVC branch of the genex-wrapped warning flag so the quiet -w wins (D9025).
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            "$<IF:$<C_COMPILER_ID:MSVC>,/W4,", "$<IF:$<C_COMPILER_ID:MSVC>,,", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

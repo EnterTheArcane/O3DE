@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -43,6 +43,7 @@ class Recipe(RecipeBase[_Options]):
             "${CMAKE_C_FLAGS} /W3",
             "${CMAKE_C_FLAGS}",
             strict=False)
+        set_cmake_minimum_required(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

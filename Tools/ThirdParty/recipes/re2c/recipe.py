@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMakeToolchain, CMake
-from thirdparty.files import copy, get, rmdir
+from thirdparty.files import copy, get, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -28,6 +28,12 @@ class Recipe(RecipeBase):
             sha256="ffea067c11aa668bcb42885be6e6cd000302000b7747d2bb213299ec66b7864e",
             destination=self.folders.source,
             strip_root=True)
+        # re2c adds /W3 to CMAKE_CXX_FLAGS via try_cxxflag (which tests its first arg); the tested
+        # flag isn't visible to the toolchain's compile_options filter. Drop /W3 so /wd4068 becomes
+        # the tested flag (keeping the suppressions) and the quiet -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "cmake" / "Re2cCompilerFlags.cmake",
+            'try_cxxflag("/W3"', "try_cxxflag(", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

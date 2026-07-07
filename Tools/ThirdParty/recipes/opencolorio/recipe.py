@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.files import apply_patches, get, copy, rm, rmdir
+from thirdparty.files import apply_patches, get, copy, rm, rmdir, replace_in_file
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -44,6 +44,14 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
+        # Strip the hardcoded /W3 (added to PLATFORM_COMPILE_OPTIONS) so the quiet -w wins without
+        # cl's D9025 spam - it's applied via a variable, so the toolchain filter can't catch it.
+        replace_in_file(
+            self,
+            self.folders.source / "share" / "cmake" / "utils" / "CompilerFlags.cmake",
+            '"${PLATFORM_COMPILE_OPTIONS};/W3"',
+            '"${PLATFORM_COMPILE_OPTIONS}"',
+            strict=False)
         for module in ("expat", "lcms2", "pystring", "yaml-cpp", "Imath", "minizip-ng"):
             rm(self, f"Find{module}.cmake", self.folders.source / "share" / "cmake" / "modules")
 

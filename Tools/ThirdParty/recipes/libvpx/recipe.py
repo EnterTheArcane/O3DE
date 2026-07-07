@@ -239,6 +239,15 @@ class Recipe(RecipeBase[_Options]):
                     "\\$(MSBUILD_TOOL) $outfile -m -t:Build",
                     "\\$(MSBUILD_TOOL) $outfile -m -nologo -v:quiet -t:Build",
                     strict=False)
+                # The generated vcxproj hard-codes WarningLevel Level3 (/W3), which conflicts with
+                # the framework's injected -w -> "D9025: overriding '/w' with '/W3'" for every one
+                # of libvpx's ~thousand source files. Turn warnings off to match quiet mode.
+                replace_in_file(
+                    self,
+                    self.folders.source / "build" / "make" / "gen_msvs_vcxproj.sh",
+                    "tag_content WarningLevel Level3",
+                    "tag_content WarningLevel TurnOffAllWarnings",
+                    strict=False)
 
             cflags = " ".join(self.conf.tools.build.cflags)
             lto = any(re.finditer("(^| )[/-]GL($| )", cflags))

@@ -54,6 +54,9 @@ class Recipe(RecipeBase[_Options]):
             sha256="d9c68b6f76623e046df549ac988a064adf6ec063da6ae229c842f7b68fc78aee",
             destination=self.folders.source,
             strip_root=True)
+        # tcl's nmake rules.vc sets WARNINGS to -W3/-W4; blank the level so the quiet -w wins (D9025).
+        replace_in_file(self, self.folders.source / "win" / "rules.vc", "= -W3", "=", strict=False)
+        replace_in_file(self, self.folders.source / "win" / "rules.vc", "= -W4", "=", strict=False)
 
     def generate(self):
         if is_msvc(self):

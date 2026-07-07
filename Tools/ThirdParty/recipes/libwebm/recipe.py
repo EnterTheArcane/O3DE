@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get
+from thirdparty.files import copy, get, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -31,6 +31,10 @@ class Recipe(RecipeBase[_Options]):
             sha256="7fd5e085bda9f8031cf2ad2a1e52d9b7b29cba9c0b96ad2ce794ce89e4249eb8",
             destination=self.folders.source,
             strip_root=True)
+        # Drop the /W4 so the quiet -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            'add_cxx_flag_if_supported("/W4")', '# add_cxx_flag_if_supported("/W4")', strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

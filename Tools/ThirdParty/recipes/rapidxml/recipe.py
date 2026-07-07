@@ -18,9 +18,6 @@ class Recipe(RecipeBase):
             strip_root=True)
         apply_patches(self)
 
-    def build(self):
-        pass
-
     def package(self):
         copy(self, "license.txt", src=self.folders.source, dst=self.folders.package / "licenses")
         copy(self, "*.hpp", src=self.folders.source, dst=self.folders.package / "include" / "rapidxml")

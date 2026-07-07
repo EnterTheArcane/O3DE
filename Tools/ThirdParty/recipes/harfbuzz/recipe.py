@@ -64,6 +64,23 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
 
+        # Upstream src/meson.build creates the GPU shader-header custom_targets in a foreach loop
+        # but throws away their handles, so nothing tells ninja that libharfbuzz-gpu's sources
+        # (hb-gpu-draw.cc, ...) depend on the generated *.hh. On a clean parallel build a .cc can
+        # compile before its header is generated -> intermittent C1083 (e.g. missing
+        # 'hb-gpu-draw-fragment-msl.hh'). Capture the custom_target outputs and add them to the
+        # library so meson emits the proper ordering edge.
+        src_meson = self.folders.source / "src" / "meson.build"
+        replace_in_file(
+            self, src_meson,
+            "foreach p: hb_gpu_shader_sources\n  custom_target('@0@'.format(p.get(1)),",
+            "hb_gpu_generated_headers = []\nforeach p: hb_gpu_shader_sources\n"
+            "  hb_gpu_generated_headers += custom_target('@0@'.format(p.get(1)),")
+        replace_in_file(
+            self, src_meson,
+            "  libharfbuzz_gpu = library('harfbuzz-gpu',\n    hb_gpu_sources,\n    include_directories: incconfig,",
+            "  libharfbuzz_gpu = library('harfbuzz-gpu',\n    hb_gpu_sources,\n    hb_gpu_generated_headers,\n    include_directories: incconfig,")
+
     def generate(self):
         def is_enabled(value: Any):
             return "enabled" if value else "disabled"

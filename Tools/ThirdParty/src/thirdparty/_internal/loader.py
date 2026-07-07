@@ -144,6 +144,10 @@ def make_probe_recipe(
         # Drop CMake's default MSVC /W3 (kept for cmake_minimum_required < 3.15 via CMP0092=OLD)
         # so our injected /w is the only warning flag -> no "D9025: overriding '/w' with '/W3'".
         conf.tools.cmake.configure_args.append("-DCMAKE_POLICY_DEFAULT_CMP0092=NEW")
+        # Projects whose cmake_minimum_required is already >= 3.15 default CMP0092 to NEW without
+        # consulting the -D above, so CMake reports it as an unused manually-specified variable.
+        # Suppress that (and any other unused framework-injected -D) cosmetic warning.
+        conf.tools.cmake.configure_args.append("--no-warn-unused-cli")
     # Quiet by default so CI logs stay small (only the compiled file + errors); `build
     # --verbose` restores full build-tool output and compiler warnings.
     conf.tools.build.verbose = verbose

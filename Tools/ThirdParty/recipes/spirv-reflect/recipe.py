@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get
+from thirdparty.files import copy, get, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -20,7 +20,7 @@ class Recipe(RecipeBase[_Options]):
 
     def requirements(self):
         self.requires_tool("cmake")
-        self.requires(f"spirv-headers")
+        self.requires("spirv-headers")
 
     def source(self):
         get(
@@ -29,6 +29,10 @@ class Recipe(RecipeBase[_Options]):
             sha256="e045cdd7598211cdbaf39791151bc526a9844401d615579e4959966d2317bdd7",
             destination=self.folders.source,
             strip_root=True)
+        # Empty the genex-wrapped /W4 /WX so the quiet -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            "$<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>", "$<$<CXX_COMPILER_ID:MSVC>:>", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

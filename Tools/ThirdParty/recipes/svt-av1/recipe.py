@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMakeToolchain, CMakeDeps, CMake
-from thirdparty.files import copy, get, rmdir
+from thirdparty.files import copy, get, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.gitlab import GitlabRepository
 
@@ -53,6 +53,11 @@ class Recipe(RecipeBase[_Options]):
             sha256="6c4c0c44ff0ba3d136d6f57f3a707f9de8e9c866f50f809c1d22a43f0d8c9583",
             destination=self.folders.source,
             strip_root=True)
+        # SVT-AV1 prepends /W3 to the compile flags; it's applied via a variable the toolchain
+        # filter can't intercept, so drop it so the quiet -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            "check_both_flags_add(PREPEND /W3)", "# check_both_flags_add(PREPEND /W3)", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

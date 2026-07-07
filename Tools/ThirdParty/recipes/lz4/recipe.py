@@ -1,7 +1,7 @@
 import os
 
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import apply_patches, copy, get, rmdir
 from thirdparty.microsoft import is_msvc
 from thirdparty.scm import Version
@@ -37,6 +37,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
+        set_cmake_minimum_required(self, path=self._cmakelists_folder / "CMakeLists.txt")
 
     def generate(self):
         tc = CMakeToolchain(self)

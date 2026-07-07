@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.files import apply_patches, copy, get, rm, rmdir
+from thirdparty.files import apply_patches, copy, get, rm, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -53,6 +53,11 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source / "external" / "cmark",
             strip_root=True)
         apply_patches(self)
+        # slang's CompilerFlags adds /W4 under USE_EXTRA_WARNINGS; drop it so the quiet -w wins
+        # without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "cmake" / "CompilerFlags.cmake",
+            "list(APPEND warning_flags /W4)", "list(APPEND warning_flags)", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

@@ -205,6 +205,11 @@ class MesonToolchain:
         self.project_options = {
             "wrap_mode": "nofallback",  # upstream issue 10671
         }
+        if not self._recipe.conf.tools.compilation.verbose:
+            # Quiet: meson's default warning_level (1) injects /W2 (msvc) / -Wall, which conflicts
+            # with the framework's injected -w -> "D9025: overriding '/w' with '/W2'" per file.
+            # Level 0 emits no warning flags, so -w cleanly wins and warnings stay suppressed.
+            self.project_options["warning_level"] = "0"
         #: Dict-like object that defines Meson ``preprocessor definitions``
         self.preprocessor_definitions = {}
         # Add all the default dirs

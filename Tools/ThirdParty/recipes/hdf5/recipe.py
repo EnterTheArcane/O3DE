@@ -40,6 +40,14 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
+        # hdf5 appends /W3 to HDF5_CMAKE_C[XX]_FLAGS (applied via variables the toolchain filter
+        # can't intercept); drop it (keep the /wd suppressions) so the quiet -w wins without D9025.
+        replace_in_file(
+            self, self.folders.source / "config" / "flags" / "HDFCompilerCXXFlags.cmake",
+            'HDF5_CMAKE_CXX_FLAGS "/W3" "/wd4100"', 'HDF5_CMAKE_CXX_FLAGS "/wd4100"', strict=False)
+        replace_in_file(
+            self, self.folders.source / "config" / "flags" / "HDFCompilerFlags.cmake",
+            'HDF5_CMAKE_C_FLAGS "/W3" "/wd4100"', 'HDF5_CMAKE_C_FLAGS "/wd4100"', strict=False)
 
     def generate(self):
         deps = CMakeDeps(self)

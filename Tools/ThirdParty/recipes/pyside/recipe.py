@@ -2,7 +2,7 @@ import os
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
-from thirdparty.files import copy, get
+from thirdparty.files import copy, get, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -36,6 +36,22 @@ class Recipe(RecipeBase[_Options]):
             sha256="6ffd9835bb0dd2c56f061d62f1616bb1707cfc0202b80e3165d6be087f3965e2",
             destination=self.folders.source,
             strip_root=True)
+        # shiboken compiles against exception-free libclang and applies LLVM's exported
+        # /EHs-c- (LLVM_CXXFLAGS_EH_DISABLE) on top of ShibokenHelpers' own set(CMAKE_CXX_FLAGS
+        # ".../GR /EHsc..."), so cl reports cosmetic "D9025: overriding '/EHs' with '/EHs-'"
+        # (+ /EHc, /GR). Drop the /GR /EHsc defaults so the disable flags apply cleanly (shiboken
+        # is already built exception-free - the disable flags were already winning).
+        replace_in_file(
+            self,
+            self.folders.source / "sources" / "shiboken6" / "cmake" / "ShibokenHelpers.cmake",
+            "/Zc:wchar_t /GR /EHsc /DWIN32", "/Zc:wchar_t /DWIN32", strict=False)
+        # PySideModules also adds /EHsc per module, which likewise conflicts with LLVM's /EHs-c-;
+        # drop it (exceptions stay disabled - the /EHs-c- was already the winning flag).
+        replace_in_file(
+            self,
+            self.folders.source / "sources" / "pyside6" / "cmake" / "Macros" / "PySideModules.cmake",
+            "target_compile_options(${_module_name} PRIVATE /Gy /Gw /EHsc)",
+            "target_compile_options(${_module_name} PRIVATE /Gy /Gw)", strict=False)
 
     def generate(self):
         llvm_pkg = self.dependencies["llvm"].folders.package

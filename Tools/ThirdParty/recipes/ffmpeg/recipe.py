@@ -847,6 +847,18 @@ class Recipe(RecipeBase[_Options]):
 
             # replace_in_file(self, self.folders.source / "configure", "echo libx264.lib", "echo x264.lib")
 
+        if is_msvc(self) and not self.conf.tools.compilation.verbose:
+            # ffmpeg's configure adds -Wall/-Wextra by default and its cl wrapper (msvc_flags)
+            # maps them to /W3 and /W4, which conflict with the quiet -w -> "D9025: overriding
+            # '/w' with '/W3'|'/W4'" for ~every source file. Drop just the /W level (keep the -wd
+            # warning suppressions) so the injected -w wins.
+            replace_in_file(
+                self, self.folders.source / "configure",
+                "echo -W3 -wd4018 -wd4146", "echo -wd4018 -wd4146", strict=False)
+            replace_in_file(
+                self, self.folders.source / "configure",
+                "echo -W4 -wd4244 -wd4127", "echo -wd4244 -wd4127", strict=False)
+
     @property
     def _default_compilers(self) -> dict[str, str]:
         if self.settings.compiler == "gcc":

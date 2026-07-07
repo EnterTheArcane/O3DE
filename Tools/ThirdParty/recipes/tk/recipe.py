@@ -60,6 +60,9 @@ class Recipe(RecipeBase[_Options]):
             strip_root=True,
             destination=self.folders.source)
         apply_patches(self)
+        # tk's nmake rules.vc sets WARNINGS to -W3/-W4; blank the level so the quiet -w wins (D9025).
+        replace_in_file(self, self.folders.source / "win" / "rules.vc", "= -W3", "=", strict=False)
+        replace_in_file(self, self.folders.source / "win" / "rules.vc", "= -W4", "=", strict=False)
 
     def generate(self):
         VirtualBuildEnv(self).generate()

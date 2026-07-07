@@ -446,6 +446,17 @@ class Recipe(RecipeBase[_Options]):
                          " target_include_directories(WrapVulkanHeaders::WrapVulkanHeaders INTERFACE ${moltenvk_INCLUDE_DIR})"
             )
 
+        # qt appends /W3 to _qt_compiler_warning_flags_on and applies it through a genex fed to
+        # add_compile_options; the toolchain's warning filter preserves genexes intact, so the
+        # /W3 survives and conflicts with the quiet -w -> "D9025: overriding '/w' with '/W3'" for
+        # every one of qt's ~thousand+ source files. Drop the /W3 (keeping /wd5105) so -w wins.
+        replace_in_file(
+            self,
+            self.folders.source / "qtbase" / "cmake" / "QtCompilerFlags.cmake",
+            "list(APPEND _qt_compiler_warning_flags_on /W3)",
+            "list(APPEND _qt_compiler_warning_flags_on)",
+            strict=False)
+
     def generate(self):
         ms = VirtualBuildEnv(self)
         ms.generate()

@@ -57,6 +57,10 @@ class Recipe(RecipeBase[_Options]):
             sha256="62b15f44c10106065211efa22a2dc77937bd97ee1f6e3afd2c9659010de112eb",
             destination=self.folders.source,
             strip_root=True)
+        # Drop the tested /W4 warning level so the quiet -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "cmake" / "CompilerChecks.cmake",
+            "                /W4\n", "", strict=False)
         self._patch_sources()
 
     def generate(self):

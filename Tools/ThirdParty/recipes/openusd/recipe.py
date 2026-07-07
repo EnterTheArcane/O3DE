@@ -37,6 +37,15 @@ class Recipe(RecipeBase[_Options]):
             self.folders.source / "pxr" / "base" / "work" / "workTBB" / "dispatcher_impl.h",
             "#include <tbb/blocked_range.h>",
             "#include <tbb/version.h>\n#include <tbb/blocked_range.h>")
+        # openusd hardcodes /W3 into _PXR_CXX_FLAGS (which lands in CMAKE_CXX_FLAGS), conflicting
+        # with the framework's quiet -w -> "D9025: overriding '/w' with '/W3'" for ~every source
+        # file. Drop it so -w wins (verbose builds still get warnings via the compiler default).
+        replace_in_file(
+            self,
+            self.folders.source / "cmake" / "defaults" / "msvcdefaults.cmake",
+            'set(_PXR_CXX_FLAGS "${_PXR_CXX_FLAGS} /W3")',
+            'set(_PXR_CXX_FLAGS "${_PXR_CXX_FLAGS}")',
+            strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

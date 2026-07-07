@@ -537,6 +537,11 @@ class Recipe(RecipeBase[_Options]):
         parallel: bool = True,
         install: bool = False):
         command = [self._make_program]
+        if self._use_nmake and not self.conf.tools.compilation.verbose:
+            # nmake/jom echo the full cl command line for every source file and print a logo
+            # banner; /S silences the command echo and /NOLOGO drops the banner when quiet.
+            command.append("/NOLOGO")
+            command.append("/S")
         if install:
             command.append(f"DESTDIR={self._adjust_path(self.folders.package)}")
         if targets:

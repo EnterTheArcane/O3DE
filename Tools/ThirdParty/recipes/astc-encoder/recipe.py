@@ -2,7 +2,7 @@ from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get, rmdir
+from thirdparty.files import copy, get, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -36,6 +36,11 @@ class Recipe(RecipeBase[_Options]):
             sha256="c77b4505792b36068b8ab5c548f606f8504f170e274e5870d3c5a405fe0bbc35",
             destination=self.folders.source,
             strip_root=True)
+        # astc-encoder wraps /W4 in a genex the toolchain warning filter preserves; empty it so
+        # the quiet -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "Source" / "cmake_core.cmake",
+            "$<${is_msvc_fe}:/W4>", "$<${is_msvc_fe}:>", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

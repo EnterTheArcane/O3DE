@@ -55,6 +55,10 @@ class Recipe(RecipeBase):
         apply_patches(self)
         if is_msvc(self):
             with chdir(self, self.folders.source):
+                # msvc.mak hardcodes /W2 in BUILD_CFLAGS, conflicting with the quiet -w -> D9025.
+                replace_in_file(
+                    self, os.path.join("Mkfiles", "msvc.mak"),
+                    "$(CFLAGS) /W2", "$(CFLAGS)", strict=False)
                 run(self,f"nmake /f {os.path.join("Mkfiles", "msvc.mak")}")
         else:
             with chdir(self, self.folders.source):

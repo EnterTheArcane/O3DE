@@ -81,6 +81,15 @@ class Recipe(RecipeBase[_Options]):
         # Don't try to derive the version from git.
         replace_in_file(self, self.folders.source / "cmake" / "CMakeLists.txt",
                         "if (Git_FOUND)", "if (FALSE)")
+        # onnxruntime forces /W4 on its own code via set_msvc_c_cpp_compiler_warning_level(4),
+        # which builds "/W${warning_level}" and applies it as a genex directory COMPILE_OPTIONS
+        # entry (invisible to a literal /W4 search and preserved past the toolchain warning filter).
+        # It overrides the quiet -w -> "D9025: overriding '/w' with '/W4'" for ~every source file
+        # AND re-enables thousands of C4100/C4267/... warnings. Make the constructed flag empty so
+        # no /W level is set and -w wins.
+        replace_in_file(
+            self, self.folders.source / "cmake" / "CMakeLists.txt",
+            'set(warning_flag "/W${warning_level}")', 'set(warning_flag "")', strict=False)
         # Drop /sdl: it promotes C4996 to a hard error, and the vendored abseil (20260526)
         # marks absl::disjunction/conjunction/negation deprecated (protobuf still uses them).
         replace_in_file(

@@ -159,11 +159,22 @@ def load_user_encoded(path: str) -> str:
 
 
 def _change_permissions(func: Any, path: str, exc_info: Any):
-    if not os.access(path, os.W_OK):
+    # rmtree failed to remove `path`. Usually it is read-only; on Windows it can also be a
+    # System/Hidden file that blocks deletion - notably msys2's sys-format /etc/mtab symlink
+    # (a System-attributed file), which is recreated every time bash runs. Clear the blocking
+    # bits (chmod + Windows attributes) and retry the operation; if it still fails, let it raise.
+    try:
         os.chmod(path, stat.S_IWUSR)
-        func(path)
-    else:
-        raise OSError(f"Cannot change permissions for {path}! Exception info: {exc_info}")
+    except OSError:
+        pass
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            # FILE_ATTRIBUTE_NORMAL clears ReadOnly/System/Hidden in one call.
+            ctypes.windll.kernel32.SetFileAttributesW(str(path), 0x80)
+        except Exception:
+            pass
+    func(path)
 
 
 if platform.system() == "Windows":

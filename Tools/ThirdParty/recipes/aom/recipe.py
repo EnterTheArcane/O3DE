@@ -1,7 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import apply_patches, copy, get, rmdir
+from thirdparty.files import apply_patches, copy, get, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.google import GoogleSourceRepository
 
@@ -43,6 +43,12 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
+        # aom's aom_configure.cmake add_compiler_flag_if_supported("/W3") lands in the cmake flags
+        # via a variable the toolchain filter can't intercept; drop it so the quiet -w wins (D9025).
+        replace_in_file(
+            self, self.folders.source / "cmake" / "aom_configure.cmake",
+            'add_compiler_flag_if_supported("/W3")', '# add_compiler_flag_if_supported("/W3")',
+            strict=False)
 
     def generate(self):
         VirtualBuildEnv(self).generate()

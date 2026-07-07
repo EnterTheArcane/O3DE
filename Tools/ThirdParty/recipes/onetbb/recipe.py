@@ -2,7 +2,7 @@ import re
 
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get, load, rm, rmdir
+from thirdparty.files import copy, get, load, rm, rmdir, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -26,6 +26,12 @@ class Recipe(RecipeBase):
             sha256="f8767b971ec6aea25dde58ae0f593e94e7aa75a739a86f67967012f69e2199b1",
             destination=self.folders.source,
             strip_root=True)
+        # onetbb sets TBB_WARNING_LEVEL to a genex-wrapped /W4; empty the /W4 branch so the quiet
+        # -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "cmake" / "compilers" / "MSVC.cmake",
+            "$<$<NOT:$<CXX_COMPILER_ID:Intel>>:/W4>", "$<$<NOT:$<CXX_COMPILER_ID:Intel>>:>",
+            strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

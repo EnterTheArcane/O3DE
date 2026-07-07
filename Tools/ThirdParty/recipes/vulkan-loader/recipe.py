@@ -39,6 +39,10 @@ class Recipe(RecipeBase[_Options]):
             self.folders.source / "CMakeLists.txt",
             "set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<$<CONFIG:Debug>:Debug>\")",
             "")
+        # Empty the genex-wrapped /W4 so the quiet -w wins without cl's D9025 spam.
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            "$<$<COMPILE_LANGUAGE::CXX,C>:/W4>", "$<$<COMPILE_LANGUAGE::CXX,C>:>", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

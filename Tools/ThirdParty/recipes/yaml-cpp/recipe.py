@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import apply_patches, collect_libs, copy, get, rmdir
+from thirdparty.files import apply_patches, collect_libs, copy, get, rmdir, replace_in_file
 from thirdparty.microsoft import is_msvc, is_msvc_static_runtime
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -31,6 +31,12 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
+        # yaml-cpp's bundled googletest sets a base /W4 (cxx_base_flags); drop it so the quiet -w
+        # wins without cl's D9025 spam.
+        replace_in_file(
+            self,
+            self.folders.source / "test" / "googletest-1.13.0" / "googletest" / "cmake" / "internal_utils.cmake",
+            'set(cxx_base_flags "-GS -W4', 'set(cxx_base_flags "-GS', strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

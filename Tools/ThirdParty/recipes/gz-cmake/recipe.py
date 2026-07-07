@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get
+from thirdparty.files import copy, get, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -26,6 +26,13 @@ class Recipe(RecipeBase):
             sha256="5424e481b765e7e88347c167e87b1c89f152ded2f8bbc7f24c7559ea3694f83f",
             destination=self.folders.source,
             strip_root=True)
+        # gz-cmake's GzSetCompilerFlags module (consumed by all gz-based recipes: sdformat,
+        # gz-math, gz-utils, ...) hardcodes /W2 in MSVC_MINIMAL_FLAGS, conflicting with the quiet
+        # -w -> cl D9025 for every consumer's source file. Drop it so -w wins.
+        replace_in_file(
+            self, self.folders.source / "cmake" / "GzSetCompilerFlags.cmake",
+            'set(MSVC_MINIMAL_FLAGS "/Gy /W2 /bigobj")',
+            'set(MSVC_MINIMAL_FLAGS "/Gy /bigobj")', strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

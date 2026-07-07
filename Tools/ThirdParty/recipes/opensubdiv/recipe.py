@@ -50,6 +50,11 @@ class Recipe(RecipeBase[_Options]):
             sha256="f843eb49daf20264007d807cbc64516a1fed9cdb1149aaf84ff47691d97491f9",
             destination=self.folders.source,
             strip_root=True)
+        # opensubdiv adds /W3 to OSD_COMPILER_FLAGS; drop it so the quiet -w wins without D9025.
+        replace_in_file(
+            self, self.folders.source / "CMakeLists.txt",
+            "/W3     # Use warning level recommended for production purposes.",
+            "# (W3 removed for quiet -w)", strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)

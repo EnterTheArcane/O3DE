@@ -106,6 +106,10 @@ class AutotoolsToolchain:
             
         if self._recipe.settings.os == "Windows" and "pic" in self._recipe.options:
             self._recipe.options.pic = False
+            # self.pic was captured above, before this override; keep it in sync so cflags/cxxflags
+            # don't emit -fPIC on Windows (cl.exe warns D9002 'ignoring unknown option -fPIC' per
+            # compile; all Windows code is already position independent - mirrors cmake FPicBlock).
+            self.pic = False
 
         # Cross build triplets
         self._host = self._recipe.conf.tools.gnu.host_triplet
@@ -239,10 +243,15 @@ class AutotoolsToolchain:
         return flag
 
     def _msvc_extra_flags(self) -> list[str]:
-        if is_msvc(self._recipe) and check_min_vs(
-            self._recipe, "180", raise_invalid=False):
-            return ["-FS"]
-        return []
+        if not is_msvc(self._recipe):
+            return []
+        # -nologo silences cl/link's "Microsoft (R) ... Copyright (C) Microsoft" banner, which is
+        # otherwise printed once per invocation (1000s of lines across an autotools/nmake build).
+        # -FS avoids fatal PDB write races (C1041) on VS >= 18.
+        flags = ["-nologo"]
+        if check_min_vs(self._recipe, "180", raise_invalid=False):
+            flags.append("-FS")
+        return flags
 
     def _add_msvc_flags(self, flags: list[str]) -> list[str]:
         # This is to avoid potential duplicate with users recipes -FS (already some in RecipeCenter)

@@ -236,6 +236,13 @@ class Recipe(RecipeBase[_Options]):
             "if test -z \"$PYTHON\"",
             "if true",
             strict=False)
+        # icu's configure appends /W4 to CFLAGS for MSVC; drop it so the quiet -w wins (D9025).
+        replace_in_file(
+            self,
+            self.folders.source / "source" / "configure",
+            'CFLAGS="$CFLAGS /W4"',
+            'CFLAGS="$CFLAGS"',
+            strict=False)
 
         if self.settings.os == "Windows":
             # https://unicode-org.atlassian.net/projects/ICU/issues/ICU-20545

@@ -1,5 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.files import apply_patches, copy, get, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -34,6 +34,7 @@ class Recipe(RecipeBase[_Options]):
             destination=self.folders.source,
             strip_root=True)
         apply_patches(self)
+        set_cmake_minimum_required(self)
 
     def generate(self):
         tc = CMakeToolchain(self)
