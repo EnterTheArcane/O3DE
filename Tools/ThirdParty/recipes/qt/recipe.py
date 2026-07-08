@@ -16,6 +16,20 @@ from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
 from thirdparty.scm import Version
 
+# X.Org libraries the XCB platform plugin needs. Depend on the individual libx* recipes directly
+# rather than a meta package, so each library's own pkg-config .pc (with correct Libs) is used.
+_X11_RECIPE_REQUIRES = [
+    "libx11", "libxau", "libxcb", "libxdmcp", "libxext", "libxfixes",
+    "libxrandr", "libxrender", "libxv", "libice", "libsm", "libxt",
+]
+_X11_COMPONENT_REQUIRES = [
+    "libx11::x11", "libx11::x11-xcb", "libxau::libxau", "libxcb::xcb",
+    "libxcb::shape", "libxcb::shm", "libxcb::xfixes", "libxdmcp::libxdmcp",
+    "libxext::libxext", "libxfixes::libxfixes", "libxrandr::libxrandr",
+    "libxrender::libxrender", "libxv::libxv", "libice::libice",
+    "libsm::libsm", "libxt::libxt",
+]
+
 SUBMODULES = [
     "qt3d",
     "qt5compat",
@@ -154,14 +168,14 @@ class _Options(RecipeOptions):
     disabled_features: str | None = ""
 
     qt3d: bool = False
-    qt5compat: bool = True
+    qt5compat: bool = False
     qtactiveqt: bool = False
-    qtcanvaspainter: bool = False
+    qtcanvaspainter: bool = False # but i want it
     qtcharts: bool = False
     qtcoap: bool = False
     qtconnectivity: bool = False
     qtdatavis3d: bool = False
-    qtdeclarative: bool = True
+    qtdeclarative: bool = False
     qtdoc: bool = False
     qtgraphs: bool = False
     qtgrpc: bool = True
@@ -186,7 +200,7 @@ class _Options(RecipeOptions):
     qtsensors: bool = False
     qtserialbus: bool = False
     qtserialport: bool = False
-    qtshadertools: bool = False
+    qtshadertools: bool = True
     qtspeech: bool = False
     qtsvg: bool = True
     qttasktree: bool = False
@@ -206,6 +220,11 @@ class Recipe(RecipeBase[_Options]):
     license = "LGPL-3.0-only"
 
     def configure(self):
+        if self.settings.os in ("Linux", "FreeBSD"):
+            # Qt requires a GNU-extensions C++ mode to enable __int128: strict -std=c++NN defines
+            # __STRICT_ANSI__, which makes qtbase/src/corelib/global/qtypes.cpp #error out on GCC.
+            std = str(self.settings.compiler_cxx_standard or "17").replace("gnu", "")
+            self.settings.compiler_cxx_standard = f"gnu{std}"
         if self.settings.os not in ["Linux", "FreeBSD"]:
             self.options.with_icu = False
             self.options.with_fontconfig = False
@@ -327,7 +346,8 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_x11 or self.options.qtwayland:
             self.requires("xkbcommon")
         if self.options.with_x11:
-            self.requires("xorg")
+            for _x11_recipe in _X11_RECIPE_REQUIRES:
+                self.requires(_x11_recipe)
         if self.options.with_egl:
             self.requires("egl")
         if self.settings.os != "Windows" and self.options.with_opengl != "no":
@@ -1082,7 +1102,7 @@ class Recipe(RecipeBase[_Options]):
                 if self.options.qtwayland or self.options.with_x11:
                     gui_reqs.append("xkbcommon::xkbcommon")
                 if self.options.with_x11:
-                    gui_reqs.append("xorg::xorg")
+                    gui_reqs.extend(_X11_COMPONENT_REQUIRES)
                 if self.options.with_egl:
                     gui_reqs.append("egl::egl")
             if self.settings.os != "Windows" and self.options.with_opengl != "no":
@@ -1174,7 +1194,7 @@ class Recipe(RecipeBase[_Options]):
             elif self.settings.os == "Emscripten":
                 _create_plugin("QWasmIntegrationPlugin", "qwasm", "platforms", ["Core", "Gui"])
             elif self.options.with_x11:
-                _create_module("XcbQpaPrivate", ["xkbcommon::libxkbcommon-x11", "xorg::xorg"], has_include_dir=False)
+                _create_module("XcbQpaPrivate", ["xkbcommon::libxkbcommon-x11", *_X11_COMPONENT_REQUIRES], has_include_dir=False)
                 _create_plugin("QXcbIntegrationPlugin", "qxcb", "platforms", ["Core", "Gui", "XcbQpaPrivate"])
 
             _create_plugin("QGifPlugin", "qgif", "imageformats", ["Gui"])

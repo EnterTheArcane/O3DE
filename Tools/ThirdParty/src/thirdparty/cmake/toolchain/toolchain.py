@@ -1,5 +1,6 @@
 import jinja2
 import os
+import platform
 import textwrap
 from collections import OrderedDict
 
@@ -218,6 +219,12 @@ class CMakeToolchain:
         # Generators like Ninja or NMake requires an active vcvars
         if self.generator is not None and "Visual" not in self.generator:
             VCVars(self._recipe).generate()
+            # VCVars is a no-op off Windows, but the tool dependencies (cmake, ninja, ...) still
+            # need to be on PATH for run() and the CMake build helpers (which invoke a bare
+            # `cmake`/`ninja`). On non-Windows emit the aggregated build environment as an env
+            # script so run() sources it (Windows relies on vcvars + a system/tool cmake).
+            if platform.system() != "Windows":
+                VirtualBuildEnv(self._recipe).generate()
 
         cache_variables = {}
         for name, value in self.cache_variables.items():

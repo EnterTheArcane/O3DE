@@ -23,7 +23,7 @@ _Options.__possible_values__ = {"threads": ["posix", "solaris", "pth", "windows"
 
 class Recipe(RecipeBase[_Options]):
     name = "gettext"
-    version = "0.26"
+    version = "1.0"
     # Some parts of the project are GPL-3.0-or-later and some are LGPL-2.1-or-later.
     # At this time, only libintl is packaged, which is licensed under the LGPL-2.1-or-later.
     # If you modify this package to include other portions of the library, please configure the license accordingly.
@@ -52,7 +52,7 @@ class Recipe(RecipeBase[_Options]):
         get(
             self,
             url=f"https://ftpmirror.gnu.org/gnu/gettext/gettext-{self.version}.tar.gz",
-            sha256="39acf4b0371e9b110b60005562aace5b3631fed9b1bb9ecccfc7f56e58bb1d7f",
+            sha256="85d99b79c981a404874c02e0342176cf75c7698e2b51fe41031cf6526d974f1a",
             destination=self.folders.source,
             strip_root=True)
 

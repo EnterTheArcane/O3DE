@@ -35,12 +35,17 @@ class Recipe(RecipeBase[_Options]):
     def configure(self):
         self.settings.compiler_libcxx = None
         self.settings.compiler_cxx_standard = None
+        self.settings.compiler_c_standard = "gnu17"
 
     def requirements(self):
-        self.requires(f"tcl")
+        self.requires("tcl")
         if self.settings.os == "Linux":
             self.requires("fontconfig")
-            self.requires("xorg")
+            self.requires("libx11")
+            self.requires("libxcb")
+            self.requires("libxrender")
+            self.requires("libxau")
+            self.requires("libxdmcp")
         if not is_msvc(self):
             if self.settings.os == "Windows":
                 self.requires_tool("msys2")
@@ -186,11 +191,11 @@ class Recipe(RecipeBase[_Options]):
             self.info.requires = [
                 "tcl::tcl",
                 "fontconfig::fontconfig",
-                "xorg::x11",
-                "xorg::xcb",
-                "xorg::xrender",
-                "xorg::xau",
-                "xorg::xdmcp",
+                "libx11::x11",
+                "libxcb::xcb",
+                "libxrender::libxrender",
+                "libxau::libxau",
+                "libxdmcp::libxdmcp",
             ]
 
         tk_library = (self.folders.package / "lib" / f"{self.name}{tk_version.major}.{tk_version.minor}").as_posix()

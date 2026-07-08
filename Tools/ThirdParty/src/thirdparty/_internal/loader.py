@@ -1,5 +1,6 @@
 import inspect
 import os
+import shutil
 import sys
 import traceback
 import uuid
@@ -15,6 +16,7 @@ from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
 from thirdparty._internal.model.info import Info
 from thirdparty._internal.model.recipe import RecipeBase
+from thirdparty._internal.model.settings import Settings
 from thirdparty._internal.model.state import RecipeState
 from thirdparty._internal.util.detect import detect_settings, platform_tag
 from thirdparty._internal.util.files import chdir
@@ -110,6 +112,26 @@ def resolve_version(recipe_cls: type[RecipeBase]) -> str:
     return str(v) if v else "latest"
 
 
+_LINUX_GCC_TRIPLETS = {"X64": "x86_64-linux-gnu", "ARM": "aarch64-linux-gnu"}
+
+
+def set_linux_compiler_executables(conf: Conf, settings: Settings) -> None:
+    """On Linux/gcc, point CMAKE_C/CXX_COMPILER (and autotools CC/CXX) at the target-triplet
+    compiler. The minimal build container ships only triplet-prefixed compilers
+    (x86_64-linux-gnu-gcc / aarch64-linux-gnu-gcc, no bare gcc/cc), and selecting by triplet
+    also drives arm64 cross builds from an x64 host. No-op on other platforms/compilers.
+    """
+    if str(settings.os) != "Linux" or str(settings.compiler) != "gcc":
+        return
+    triplet = _LINUX_GCC_TRIPLETS.get(str(settings.arch))
+    if not triplet:
+        return
+    cc = shutil.which(f"{triplet}-gcc") or shutil.which("gcc")
+    cxx = shutil.which(f"{triplet}-g++") or shutil.which("g++")
+    if cc and cxx:
+        conf.tools.build.compiler_executables = {"c": cc, "cpp": cxx}
+
+
 def make_probe_recipe(
     recipe_cls: type[RecipeBase],
     recipes_root: Path,
@@ -158,6 +180,7 @@ def make_probe_recipe(
     if not verbose:
         conf.tools.build.cflags = [*conf.tools.build.cflags, "-w"]
         conf.tools.build.cxxflags = [*conf.tools.build.cxxflags, "-w"]
+    set_linux_compiler_executables(conf, settings)
     # Give the probe state so recipes can read settings/conf/context
     # during config/requirements (e.g. cross-build recipes doing requires_tool(self.name)).
     recipe._state = RecipeState(

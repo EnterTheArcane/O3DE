@@ -27,6 +27,11 @@ class Recipe(RecipeBase[_Options]):
         self.requires("cpython")
         self.requires("llvm")
         self.requires("qt")
+        if self.settings.os in ("Linux", "FreeBSD"):
+            # Qt6Gui's cmake config does find_package(XKB >= 0.9.0) expecting an XKB::XKB target.
+            # Our xkbcommon ships no .pc/cmake config and Qt bundles no FindXKB, so alias xkbcommon
+            # to the XKB package name via CMakeDeps below.
+            self.requires("xkbcommon")
 
     def source(self):
         version_major = Version(self.version).major
@@ -142,6 +147,14 @@ class Recipe(RecipeBase[_Options]):
             tc.variables["CMAKE_SHARED_LINKER_FLAGS"] = hb_system_libs
             tc.variables["CMAKE_EXE_LINKER_FLAGS"] = hb_system_libs
 
+        if self.settings.os in ("Linux", "FreeBSD"):
+            # Qt6Gui's find_package(XKB) uses NO_DEFAULT_PATH scoped to Qt's own dependency paths,
+            # so XKB_DIR / CMAKE_PREFIX_PATH are ignored. QT_ADDITIONAL_PACKAGES_PREFIX_PATH is the
+            # sanctioned way to add the generators folder (where CMakeDeps writes XKBConfig.cmake).
+            _gen = self.folders.generators.as_posix()
+            tc.cache_variables["QT_ADDITIONAL_PACKAGES_PREFIX_PATH"] = _gen
+            tc.cache_variables["XKB_DIR"] = _gen
+
         tc.generate()
 
         fix_script_content = (
@@ -211,6 +224,10 @@ class Recipe(RecipeBase[_Options]):
         # create Qt6::Core as an IMPORTED target but NOT set Qt6Core_FOUND, causing
         # ShibokenHelpers.cmake to fatal-error on macOS. Use Qt's native cmake instead.
         deps.set_property("qt", "cmake_find_mode", "none")
+        if self.settings.os in ("Linux", "FreeBSD"):
+            # Emit XKBConfig.cmake providing XKB::XKB (xkbcommon 1.7.0 satisfies Qt6Gui's >= 0.9.0).
+            deps.set_property("xkbcommon", "cmake_file_name", "XKB")
+            deps.set_property("xkbcommon", "cmake_target_name", "XKB::XKB")
         deps.generate()
 
     def build(self):

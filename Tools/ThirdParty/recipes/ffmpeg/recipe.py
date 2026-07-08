@@ -206,7 +206,11 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_libalsa:
             self.requires("libalsa")
         if self.options.with_xcb or self.options.with_xlib:
-            self.requires("xorg")
+            self.requires("libx11")
+            self.requires("libxext")
+            self.requires("libxv")
+        if self.options.with_xcb:
+            self.requires("libxcb")
         if self.options.with_soxr:
             self.requires("soxr")
         if self.options.with_pulse:
@@ -232,8 +236,7 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.arch == "X64":
             self.requires_tool("nasm")
 
-        if self.settings.os != "Linux" and not self.conf.tools.gnu.pkg_config:
-            # See https://github.com/recipe-io/recipe-center-index/pull/26447#discussion_r1926682155
+        if not self.conf.tools.gnu.pkg_config:
             self.requires_tool("pkgconf")
         if self.settings.os == "Windows":
             self.win_bash = True
@@ -661,9 +664,9 @@ class Recipe(RecipeBase[_Options]):
             if self.options.with_libalsa:
                 avdevice.requires.append("libalsa::libalsa")
             if self.options.with_xcb:
-                avdevice.requires.extend(["xorg::xcb", "xorg::xcb-shm", "xorg::xcb-xfixes", "xorg::xcb-shape", "xorg::xv", "xorg::xext"])
+                avdevice.requires.extend(["libxcb::xcb", "libxcb::shm", "libxcb::xfixes", "libxcb::shape", "libxv::libxv", "libxext::libxext"])
             if self.options.with_xlib:
-                avdevice.requires.extend(["xorg::x11", "xorg::xext", "xorg::xv"])
+                avdevice.requires.extend(["libx11::x11", "libxext::libxext", "libxv::libxv"])
             if self.options.with_pulse:
                 avdevice.requires.append("pulseaudio::pulseaudio")
             if self.options.with_appkit:
@@ -754,7 +757,7 @@ class Recipe(RecipeBase[_Options]):
         if self.options.with_vaapi:
             avutil.requires.append("vaapi::vaapi")
         if self.options.with_xcb:
-            avutil.requires.append("xorg::x11")
+            avutil.requires.append("libx11::x11")
 
         if self.options.with_vdpau:
             avutil.requires.append("vdpau::vdpau")

@@ -50,7 +50,7 @@ def _detect_apple_clang_version() -> str | None:
 
 @lru_cache(maxsize=1)
 def _detect_linux_compiler():
-    for exe in ("gcc", "clang", "cc"):
+    for exe in ("gcc", "clang", "cc", "x86_64-linux-gnu-gcc", "aarch64-linux-gnu-gcc"):
         try:
             out = subprocess.check_output(
                 [exe, "--version"], text=True, stderr=subprocess.STDOUT, )

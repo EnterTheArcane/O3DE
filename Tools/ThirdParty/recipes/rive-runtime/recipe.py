@@ -81,7 +81,12 @@ class Recipe(RecipeBase):
         # Put generated build files directly in build_folder so premake.build() can find them
         premake.arguments["out"] = "."
         premake.arguments["arch"] = _arch_map.get(str(self.settings.arch), "x64")
-        premake.arguments["toolset"] = "msc" if self.settings.os == "Windows" else "clang"
+        if self.settings.os == "Windows":
+            premake.arguments["toolset"] = "msc"
+        elif self.settings.compiler == "clang":
+            premake.arguments["toolset"] = "clang"
+        else:
+            premake.arguments["toolset"] = "gcc"
         premake.arguments["with_rive_text"] = ""
         premake.arguments["with_rive_layout"] = ""
 

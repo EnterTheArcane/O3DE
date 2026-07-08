@@ -1,6 +1,8 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rmdir
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -26,6 +28,13 @@ class Recipe(RecipeBase[_Options]):
     def requirements(self):
         self.requires_tool("cmake")
         self.requires("vulkan-headers")
+        # The Linux loader uses PkgConfig to find the X11/XCB WSI system libraries.
+        if self.settings.os in ("Linux", "FreeBSD"):
+            self.requires("libxcb")
+            self.requires("libx11")
+            self.requires("libxrandr")
+            if not self.conf.tools.gnu.pkg_config:
+                self.requires_tool("pkgconf")
 
     def source(self):
         get(
@@ -53,6 +62,10 @@ class Recipe(RecipeBase[_Options]):
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()
+        # X11/XCB WSI libraries are discovered via pkg-config on Linux.
+        if self.settings.os in ("Linux", "FreeBSD"):
+            VirtualBuildEnv(self).generate()
+            PkgConfigDeps(self).generate()
 
     def build(self):
         cmake = CMake(self)

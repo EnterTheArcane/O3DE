@@ -40,12 +40,13 @@ class Recipe(RecipeBase[_Options]):
 
     def generate(self):
         tc = CMakeToolchain(self)
+        tc.variables["MATERIALX_BUILD_DOCS"] = False
+        tc.variables["MATERIALX_BUILD_EDITOR"] = False
+        tc.variables["MATERIALX_BUILD_GEN_MSL"] = self.options.build_gen_msl
+        tc.variables["MATERIALX_BUILD_RENDER"] = False
         tc.variables["MATERIALX_BUILD_SHARED_LIBS"] = self.options.shared
         tc.variables["MATERIALX_BUILD_TESTS"] = False
-        tc.variables["MATERIALX_BUILD_DOCS"] = False
-        tc.variables["MATERIALX_BUILD_GEN_MSL"] = self.options.build_gen_msl
         tc.variables["MATERIALX_BUILD_VIEWER"] = False
-        tc.variables["MATERIALX_BUILD_EDITOR"] = False
         tc.variables["MATERIALX_INSTALL_PYTHON"] = False
         tc.generate()
 

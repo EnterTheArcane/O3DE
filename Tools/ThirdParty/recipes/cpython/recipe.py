@@ -82,6 +82,12 @@ class Recipe(RecipeBase[_Options]):
             self.requires("sqlite")
         if self.options.with_tkinter:
             self.requires("tk")
+            if self.settings.os in ("Linux", "FreeBSD"):
+                self.requires("libx11")
+                self.requires("libxcb")
+                self.requires("libxrender")
+                self.requires("libxau")
+                self.requires("libxdmcp")
         if self.options.with_curses:
             # Used in a public header
             # https://github.com/python/cpython/blob/v3.10.13/Include/py_curses.h#L34
@@ -264,6 +270,14 @@ class Recipe(RecipeBase[_Options]):
 
             # TODO remove once Recipe 1.x is no longer supported
             self.output.info(f"Appending PATH environment variable: {bindir}")
+
+            if self.settings.os in ("Linux", "FreeBSD") and self.options.shared:
+                # The shared interpreter links libpython<ver>.so.1.0 from lib/ with no rpath, so it
+                # cannot run unless that directory is on LD_LIBRARY_PATH. Export it so downstream
+                # builds that run the interpreter (e.g. FindPython in pybind11/pyside) work.
+                libdir = self.folders.package / "lib"
+                self.info.runenv.append_path("LD_LIBRARY_PATH", libdir)
+                self.info.buildenv.append_path("LD_LIBRARY_PATH", libdir)
 
         python = self._cpython_interpreter_path
         self.info.conf.tools.cpython.python = python

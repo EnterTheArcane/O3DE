@@ -1,5 +1,4 @@
 from thirdparty import RecipeBase, RecipeOptions
-from thirdparty.apple import is_apple_os
 from thirdparty.cmake import CMake, CMakeToolchain, set_cmake_minimum_required
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -26,9 +25,7 @@ class Recipe(RecipeBase[_Options]):
         self.settings.compiler_libcxx = None
 
     def requirements(self):
-        if is_apple_os(self) and self.options.shared:
-            # see https://github.com/libsndfile/libsamplerate/blob/0.2.2/src/CMakeLists.txt#L110-L119
-            self.requires_tool("cmake")
+        self.requires_tool("cmake")
 
     def source(self):
         get(

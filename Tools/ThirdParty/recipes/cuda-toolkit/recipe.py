@@ -2,6 +2,8 @@ from thirdparty import RecipeBase
 from thirdparty.errors import RecipeInvalidConfiguration
 from thirdparty.files import copy, get
 
+import os
+
 
 _REDIST_BASE = "https://developer.download.nvidia.com/compute/cuda/redist/"
 
@@ -76,6 +78,15 @@ class Recipe(RecipeBase):
                 copy(self, "*", src=src, dst=self.folders.package / subdir)
         # Each redist archive ships a LICENSE at its root (identical CUDA EULA across components).
         copy(self, "LICENSE", src=self.folders.build, dst=self.folders.package / "licenses")
+
+        # CUDA 13's Linux redist ships libraries under lib/ (and lib/stubs/), but nvcc's profile
+        # still searches lib64/ and lib64/stubs/ on 64-bit Linux. Add a lib64 -> lib symlink so
+        # nvcc (and CMake's CUDA compiler detection) find libcudart_static/libcudadevrt/libcuda.
+        if self.settings.os in ("Linux", "FreeBSD"):
+            lib_dir = self.folders.package / "lib"
+            lib64_dir = self.folders.package / "lib64"
+            if lib_dir.is_dir() and not lib64_dir.exists():
+                os.symlink("lib", lib64_dir)
 
     def package_info(self):
         # Build tool only: nothing for consumers to compile/link against directly.

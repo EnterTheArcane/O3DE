@@ -1,7 +1,9 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get
+from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -29,6 +31,16 @@ class Recipe(RecipeBase[_Options]):
         self.requires_tool("cmake")
         self.requires("vulkan-headers")
         self.requires("vulkan-loader")
+        # vulkaninfo/cube use the X11/XCB/Wayland WSI system libraries on Linux.
+        if self.settings.os in ("Linux", "FreeBSD"):
+            self.requires("libxcb")
+            self.requires("libx11")
+            self.requires("libxrandr")
+            self.requires("wayland")
+            self.requires("wayland-protocols")
+            self.requires("xkbcommon")
+            if not self.conf.tools.gnu.pkg_config:
+                self.requires_tool("pkgconf")
 
     def source(self):
         get(
@@ -49,9 +61,22 @@ class Recipe(RecipeBase[_Options]):
         if self.settings.os == "Mac":
             # Use system ICD discovery instead of requiring MoltenVK source tree layout
             tc.variables["APPLE_USE_SYSTEM_ICD"] = True
+        if self.settings.os in ("Linux", "FreeBSD"):
+            # cube/vulkaninfo include vulkan.h + X11/Xlib.h with the platform macros defined, so the
+            # xcb/X11 headers (in package dirs, not /usr/include) must be visible to every target.
+            include_flags = []
+            for dep in self.dependencies.host.topological_sort.values():
+                inc = dep.folders.package / "include"
+                if inc.is_dir():
+                    include_flags.append(f"-I{inc.as_posix()}")
+            tc.extra_cflags.extend(include_flags)
+            tc.extra_cxxflags.extend(include_flags)
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()
+        if self.settings.os in ("Linux", "FreeBSD"):
+            VirtualBuildEnv(self).generate()
+            PkgConfigDeps(self).generate()
 
     def build(self):
         cmake = CMake(self)

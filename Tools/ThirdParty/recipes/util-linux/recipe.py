@@ -38,10 +38,13 @@ class Recipe(RecipeBase[_Options]):
             self.requires("gettext")
 
     def source(self):
+        # Use the kernel.org release tarball, which ships a pre-generated ./configure. The GitHub
+        # archive does not, and regenerating it needs autopoint (from gettext), which is unavailable.
+        major_minor = ".".join(self.version.split(".")[:2])
         get(
             self,
-            url=f"https://github.com/util-linux/util-linux/archive/refs/tags/v{self.version}.tar.gz",
-            sha256="a451596f794739216da2e98398e31958ecf455f2372d99a12194a468e852e834",
+            url=f"https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v{major_minor}/util-linux-{self.version}.tar.xz",
+            sha256="03a05d3adf9602ef128f2da05b84b3205ce60c351e5737c0370f74000679ce8a",
             destination=self.folders.source,
             strip_root=True)
 

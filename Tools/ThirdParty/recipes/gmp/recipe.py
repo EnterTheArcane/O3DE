@@ -21,7 +21,7 @@ class Recipe(RecipeBase):
     def configure(self):
         self.settings.compiler_libcxx = None
         self.settings.compiler_cxx_standard = None
-        self.settings.compiler_c_standard = None
+        self.settings.compiler_c_standard = "gnu17"
         if self.settings_build.os == "Windows":
             self.win_bash = True
             self.conf.tools.gnu.disable_flags = ["build_type"]

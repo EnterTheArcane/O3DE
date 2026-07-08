@@ -1,3 +1,5 @@
+import os
+
 from thirdparty import RecipeBase
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, replace_in_file, rmdir
@@ -54,3 +56,9 @@ class Recipe(RecipeBase):
         self.info.libdirs = []
         self.info.includedirs = []
         self.info.bindirs = []
+        # Consumers (e.g. vulkan-tools' cube) locate the protocol XML via
+        # `pkg-config --variable=pkgdatadir wayland-protocols`.
+        self.info.set_property("pkg_config_name", "wayland-protocols")
+        self.info.set_property(
+            "pkg_config_custom_content",
+            f"pkgdatadir={os.path.join(self.folders.package, 'res', 'wayland-protocols')}")

@@ -1,0 +1,11 @@
+--- physx/source/cudamanager/src/CudaContextManager.cpp
++++ physx/source/cudamanager/src/CudaContextManager.cpp
+@@ -91,7 +91,7 @@
+ typedef unsigned int GLuint;
+ 
+ //#include <GL/gl.h>
+-#include <cudaGL.h>
++// cudaGL.h removed on Linux: CUDA 13 forces <GL/gl.h> and PhysX uses no GL interop
+ #include <assert.h>
+ 
+ #include "foundation/PxErrors.h"

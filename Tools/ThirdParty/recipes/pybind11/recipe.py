@@ -2,6 +2,7 @@ import os
 
 from thirdparty import RecipeBase
 from thirdparty.cmake import CMake, CMakeToolchain
+from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import get, copy, replace_in_file, rm, rmdir
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -18,6 +19,10 @@ class Recipe(RecipeBase):
 
     def requirements(self):
         self.requires_tool("cmake")
+        # cpython as a tool require exposes its LD_LIBRARY_PATH via the build env (so FindPython can
+        # actually run the interpreter); as a host require it provides the headers/lib to link against.
+        self.requires_tool("cpython")
+        self.requires("cpython")
 
     def source(self):
         get(
@@ -28,11 +33,34 @@ class Recipe(RecipeBase):
             strip_root=True)
 
     def generate(self):
+        VirtualBuildEnv(self).generate()
         tc = CMakeToolchain(self)
         tc.variables["PYBIND11_FINDPYTHON"] = True
         tc.variables["PYBIND11_INSTALL"] = True
         tc.variables["PYBIND11_TEST"] = False
         tc.variables["PYBIND11_CMAKECONFIG_INSTALL_DIR"] = "lib/cmake/pybind11"
+
+        # Build against our cpython recipe, not the container's system interpreter (which has no dev
+        # headers). PYBIND11_FINDPYTHON runs find_package(Python COMPONENTS Development.Module), so
+        # point FindPython/FindPython3 at cpython's package (matches the pyside recipe's approach).
+        python_root = self.dependencies["cpython"].folders.package.as_posix()
+        py_maj, py_min = str(self.dependencies["cpython"].version).split(".")[:2]
+        if self.settings.os == "Windows":
+            py_exe = f"{python_root}/bin/python.exe"
+            py_inc = f"{python_root}/bin/include"
+            py_lib = f"{python_root}/bin/libs/python{py_maj}{py_min}.lib"
+        else:
+            py_exe = f"{python_root}/bin/python{py_maj}.{py_min}"
+            py_inc = f"{python_root}/include/python{py_maj}.{py_min}"
+            py_lib = f"{python_root}/lib/libpython{py_maj}.{py_min}.so"
+        for prefix in ("Python", "Python3"):
+            tc.variables[f"{prefix}_ROOT_DIR"] = python_root
+            tc.variables[f"{prefix}_FIND_STRATEGY"] = "LOCATION"
+            tc.variables[f"{prefix}_EXECUTABLE"] = py_exe
+            tc.variables[f"{prefix}_INCLUDE_DIR"] = py_inc
+            tc.variables[f"{prefix}_LIBRARY"] = py_lib
+            if self.settings.os == "Windows":
+                tc.variables[f"{prefix}_FIND_REGISTRY"] = "NEVER"
         tc.generate()
 
     def build(self):

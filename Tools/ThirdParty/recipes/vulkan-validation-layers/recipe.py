@@ -37,8 +37,11 @@ class Recipe(RecipeBase[_Options]):
         self.requires("vulkan-headers")
         self.requires("vulkan-utility-libraries")
 
-        if self.options.with_wsi_xcb or self.options.with_wsi_xlib:
-            self.requires("xorg")
+        if self.options.with_wsi_xcb:
+            self.requires("libxcb")
+        if self.options.with_wsi_xlib:
+            self.requires("libx11")
+            self.requires("libxrandr")
         if self.options.with_wsi_wayland:
             self.requires("wayland")
         if self._needs_pkg_config and not self.conf.tools.gnu.pkg_config:
@@ -63,6 +66,18 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["BUILD_WERROR"] = False
         tc.cache_variables["BUILD_TESTS"] = False
         tc.cache_variables["UPDATE_DEPS"] = False
+        if self._needs_pkg_config:
+            # vvl adds VK_USE_PLATFORM_{XCB,XLIB,WAYLAND}_KHR globally, so vulkan.h pulls
+            # xcb/xcb.h, X11/Xlib.h and wayland-client.h in every translation unit - but vvl only
+            # wires those platform include dirs onto a couple of targets. Here the headers come
+            # from package dirs (not /usr/include), so expose them to every target.
+            include_flags = []
+            for dep in self.dependencies.host.topological_sort.values():
+                inc = dep.folders.package / "include"
+                if inc.is_dir():
+                    include_flags.append(f"-I{inc.as_posix()}")
+            tc.extra_cflags.extend(include_flags)
+            tc.extra_cxxflags.extend(include_flags)
         tc.generate()
 
         deps = CMakeDeps(self)
