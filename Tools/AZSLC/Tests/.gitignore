@@ -1,0 +1,3 @@
+testfuncs.pyc
+*.tmp
+__pycache__/
