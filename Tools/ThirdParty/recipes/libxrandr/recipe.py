@@ -1,5 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.autotools import Autotools, AutotoolsToolchain
+from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
 from thirdparty.pkgconfig import PkgConfigDeps
@@ -44,6 +45,8 @@ class Recipe(RecipeBase[_Options]):
         VirtualBuildEnv(self).generate()
         PkgConfigDeps(self).generate()
         tc = AutotoolsToolchain(self)
+        if cross_building(self):
+            tc.configure_args.append("xorg_cv_malloc0_returns_null=no")
         tc.generate()
 
     def build(self):

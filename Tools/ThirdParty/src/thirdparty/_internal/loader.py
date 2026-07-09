@@ -115,21 +115,40 @@ def resolve_version(recipe_cls: type[RecipeBase]) -> str:
 _LINUX_GCC_TRIPLETS = {"X64": "x86_64-linux-gnu", "ARM": "aarch64-linux-gnu"}
 
 
+def _linux_gcc_compiler_executables(settings: Settings) -> dict[str, str] | None:
+    """Return {"c": <cc>, "cpp": <cxx>} triplet-prefixed gcc executables for ``settings``, or None
+    when the platform/compiler isn't Linux/gcc or the triplet compilers aren't installed."""
+    if str(settings.os) != "Linux" or str(settings.compiler) != "gcc":
+        return None
+    triplet = _LINUX_GCC_TRIPLETS.get(str(settings.arch))
+    if not triplet:
+        return None
+    cc = shutil.which(f"{triplet}-gcc") or shutil.which("gcc")
+    cxx = shutil.which(f"{triplet}-g++") or shutil.which("g++")
+    if cc and cxx:
+        return {"c": cc, "cpp": cxx}
+    return None
+
+
 def set_linux_compiler_executables(conf: Conf, settings: Settings) -> None:
     """On Linux/gcc, point CMAKE_C/CXX_COMPILER (and autotools CC/CXX) at the target-triplet
     compiler. The minimal build container ships only triplet-prefixed compilers
     (x86_64-linux-gnu-gcc / aarch64-linux-gnu-gcc, no bare gcc/cc), and selecting by triplet
     also drives arm64 cross builds from an x64 host. No-op on other platforms/compilers.
     """
-    if str(settings.os) != "Linux" or str(settings.compiler) != "gcc":
-        return
-    triplet = _LINUX_GCC_TRIPLETS.get(str(settings.arch))
-    if not triplet:
-        return
-    cc = shutil.which(f"{triplet}-gcc") or shutil.which("gcc")
-    cxx = shutil.which(f"{triplet}-g++") or shutil.which("g++")
-    if cc and cxx:
-        conf.tools.build.compiler_executables = {"c": cc, "cpp": cxx}
+    execs = _linux_gcc_compiler_executables(settings)
+    if execs:
+        conf.tools.build.compiler_executables = execs
+
+
+def set_linux_build_compiler_executables(conf: Conf, settings_build: Settings) -> None:
+    """Populate the BUILD-machine compiler executables (used for CC_FOR_BUILD/CXX_FOR_BUILD when
+    cross-compiling). Derived from ``settings_build`` so it tracks the build host's compiler rather
+    than the (cross) target's. No-op on non-Linux/gcc build machines.
+    """
+    execs = _linux_gcc_compiler_executables(settings_build)
+    if execs:
+        conf.tools.build.compiler_executables_build = execs
 
 
 def make_probe_recipe(
@@ -181,6 +200,7 @@ def make_probe_recipe(
         conf.tools.build.cflags = [*conf.tools.build.cflags, "-w"]
         conf.tools.build.cxxflags = [*conf.tools.build.cxxflags, "-w"]
     set_linux_compiler_executables(conf, settings)
+    set_linux_build_compiler_executables(conf, settings_build)
     # Give the probe state so recipes can read settings/conf/context
     # during config/requirements (e.g. cross-build recipes doing requires_tool(self.name)).
     recipe._state = RecipeState(

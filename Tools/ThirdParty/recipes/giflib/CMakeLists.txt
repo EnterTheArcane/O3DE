@@ -52,8 +52,11 @@ if(UTILS)
         add_executable(${GIF_UTIL} "${GIFLIB_SRC_DIR}/${GIF_UTIL}.c")
         target_link_libraries(${GIF_UTIL} PRIVATE gif giflib_util)
     endforeach()
-    find_library(LIBM NAMES m)
-    target_link_libraries(gifclrmp PRIVATE $<$<BOOL:${LIBM}>:${LIBM}>)
+    if(NOT MSVC)
+        # gifclrmp uses pow() from libm. Link -lm via the compiler driver (works for cross builds
+        # too); find_library(NAMES m) misses libm in the aarch64 cross sysroot -> undefined `pow`.
+        target_link_libraries(gifclrmp PRIVATE m)
+    endif()
     if(MSVC)
         find_package(getopt-for-visual-studio REQUIRED CONFIG)
         target_link_libraries(giftool PRIVATE getopt-for-visual-studio::getopt-for-visual-studio)

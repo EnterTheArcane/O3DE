@@ -73,6 +73,15 @@ class Recipe(RecipeBase[_Options]):
             tc.variables["PLATFORM_LIBS"] = "dl"
         if "arm" in self.settings.arch:
             tc.variables["CROSS_COMPILE_ARM"] = cross_building(self)
+        if self.settings.os in ("Linux", "FreeBSD") and self.settings.arch == "ARM":
+            # x265's aarch64 asm addresses internal data tables (e.g. x265_entropyStateBits, defined
+            # in dct.cpp) with ADRP+ADD direct page-relative relocations - its `movrel` macro has no
+            # GOT-indirect path on Linux. Those R_AARCH64_ADR_PREL_PG_HI21 relocations "may bind
+            # externally" when this static lib is linked into a shared object (e.g. libheif's
+            # plugins), which ld rejects. Building the C/C++ with hidden visibility makes those data
+            # symbols bind locally so the direct relocations are valid.
+            tc.extra_cflags.append("-fvisibility=hidden")
+            tc.extra_cxxflags.append("-fvisibility=hidden")
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

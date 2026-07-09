@@ -70,6 +70,7 @@ class _BuildTools:
     add_rpath_link: bool | None = None
     cflags: list[str] = field(default_factory=lambda: [])
     compiler_executables: dict[CompilerExecutable, PathValue] = field(default_factory=lambda: {})
+    compiler_executables_build: dict[CompilerExecutable, PathValue] = field(default_factory=lambda: {})
     cross_building: _CrossBuildingTools = field(default_factory=_CrossBuildingTools)
     cxxflags: list[str] = field(default_factory=lambda: [])
     defines: list[str] = field(default_factory=lambda: [])

@@ -364,7 +364,9 @@ class AutotoolsToolchain:
         self._include_obj_arc_flags(env)
         # Issue related: upstream issue 15486
         if self._is_cross_building and self._recipe.conf:
-            compilers_build_mapping = self._recipe.conf.tools.build.compiler_executables
+            # Use the BUILD-machine compilers for CC_FOR_BUILD/CXX_FOR_BUILD (helpers that must run
+            # on the build host), NOT the target compiler_executables used for CC/CXX.
+            compilers_build_mapping = self._recipe.conf.tools.build.compiler_executables_build
             if "c" in compilers_build_mapping:
                 env.define("CC_FOR_BUILD", compilers_build_mapping["c"])
             if "cpp" in compilers_build_mapping:

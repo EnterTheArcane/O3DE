@@ -1,9 +1,7 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.autotools import Autotools, AutotoolsToolchain
-from thirdparty.build import cross_building
 from thirdparty.env import VirtualBuildEnv
 from thirdparty.files import copy, get, rm, rmdir
-from thirdparty.pkgconfig import PkgConfigDeps
 
 
 class _Options(RecipeOptions):
@@ -12,9 +10,9 @@ class _Options(RecipeOptions):
 
 
 class Recipe(RecipeBase[_Options]):
-    name = "libxext"
-    version = "1.3.6"
-    license = "MIT"
+    name = "libalsa"
+    version = "1.2.14"
+    license = "LGPL-2.1-or-later"
 
     def configure(self):
         self.settings.compiler_cxx_standard = None
@@ -22,29 +20,23 @@ class Recipe(RecipeBase[_Options]):
 
     def validate(self):
         from thirdparty.errors import RecipeInvalidConfiguration
-        if self.settings.os not in ("Linux", "FreeBSD", "Android"):
+        if self.settings.os not in ("Linux", "FreeBSD"):
             raise RecipeInvalidConfiguration(f"{self.name} is only supported on Linux-like platforms")
-
-    def requirements(self):
-        self.requires("xorg-proto")
-        self.requires("libx11")
-        if not self.conf.tools.gnu.pkg_config:
-            self.requires_tool("pkgconf")
 
     def source(self):
         get(
             self,
-            url=f"https://www.x.org/releases/individual/lib/libXext-{self.version}.tar.xz",
-            sha256="edb59fa23994e405fdc5b400afdf5820ae6160b94f35e3dc3da4457a16e89753",
+            url=f"https://www.alsa-project.org/files/pub/lib/alsa-lib-{self.version}.tar.bz2",
+            sha256="be9c88a0b3604367dd74167a2b754a35e142f670292ae47a2fdef27a2ee97a32",
             destination=self.folders.source,
             strip_root=True)
 
     def generate(self):
         VirtualBuildEnv(self).generate()
-        PkgConfigDeps(self).generate()
         tc = AutotoolsToolchain(self)
-        if cross_building(self):
-            tc.configure_args.append("xorg_cv_malloc0_returns_null=no")
+        tc.configure_args.append("--disable-python")
+        tc.configure_args.append("--disable-topology")
+        tc.configure_args.append("--without-debug")
         tc.generate()
 
     def build(self):
@@ -61,6 +53,7 @@ class Recipe(RecipeBase[_Options]):
         rmdir(self, self.folders.package / "share")
 
     def package_info(self):
-        self.info.set_property("pkg_config_name", "xext")
-        self.info.libs = ["Xext"]
-        self.info.requires = ["libx11::x11", "xorg-proto::xextproto"]
+        self.info.set_property("pkg_config_name", "alsa")
+        self.info.libs = ["asound"]
+        if self.settings.os in ("Linux", "FreeBSD"):
+            self.info.system_libs = ["dl", "m", "pthread", "rt"]

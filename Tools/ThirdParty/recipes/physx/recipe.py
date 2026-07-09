@@ -1,6 +1,7 @@
 from typing import Literal
 
 from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.build import cross_building
 from thirdparty.cmake import CMakeToolchain, CMake
 from thirdparty.files import apply_patches, load, save, get, copy
 from thirdparty.microsoft import msvc_runtime_flag, is_msvc
@@ -37,6 +38,11 @@ class Recipe(RecipeBase[_Options]):
         if self.options.gpu:
             self.options.gpu = (self.settings.os == "Windows" and self.settings.arch == "X64") \
                 or (self.settings.os == "Linux" and self.settings.arch in ("X64", "ARM"))
+            # CUDA cross-compilation from an x86 host to aarch64 needs the sbsa cross toolkit and
+            # nvcc host-compiler wiring we don't provide; the x64 nvcc emits x86 host objects that
+            # can't link into the aarch64 build. Fall back to CPU-only physx when cross-compiling.
+            if cross_building(self):
+                self.options.gpu = False
 
     def requirements(self):
         self.requires_tool("cmake")

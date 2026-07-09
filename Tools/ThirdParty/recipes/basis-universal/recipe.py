@@ -1,6 +1,6 @@
 from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.cmake import CMake, CMakeToolchain
-from thirdparty.files import copy, get
+from thirdparty.files import apply_patches, copy, get
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
 
@@ -34,6 +34,7 @@ class Recipe(RecipeBase[_Options]):
             sha256="ee1dbeb4c16699b577a0c78dce337bbede268e04bd2d463946971f8cb1e9c8df",
             destination=self.folders.source,
             strip_root=True)
+        apply_patches(self)
 
     def generate(self):
         tc = CMakeToolchain(self)

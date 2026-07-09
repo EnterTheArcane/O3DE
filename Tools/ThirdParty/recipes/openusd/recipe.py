@@ -1,4 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import copy, get, replace_in_file, rmdir
 from thirdparty.scm import Version
@@ -86,6 +87,17 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["Python3_FIND_STRATEGY"] = "LOCATION"
         if self.settings.os == "Windows":
             tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
+
+        if cross_building(self):
+            # FindPython3 runs the interpreter during configure (and OpenUSD runs it for build-time
+            # codegen), but the target aarch64 python can't execute on the build host. Use the
+            # build-context (host) interpreter for running, while keeping the target headers/lib so
+            # the python bindings still link against the aarch64 libpython.
+            host_python_root = self.dependencies.build["cpython"].folders.package
+            py_maj, py_min = str(python_pkg.version).split(".")[:2]
+            tc.variables["Python3_EXECUTABLE"] = (host_python_root / "bin" / f"python{py_maj}.{py_min}").as_posix()
+            tc.variables["Python3_INCLUDE_DIR"] = (python_pkg.folders.package / "include" / f"python{py_maj}.{py_min}").as_posix()
+            tc.variables["Python3_LIBRARY"] = (python_pkg.folders.package / "lib" / f"libpython{py_maj}.{py_min}.so").as_posix()
 
         tc.generate()
 

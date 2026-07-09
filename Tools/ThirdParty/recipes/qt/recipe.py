@@ -818,7 +818,10 @@ class Recipe(RecipeBase[_Options]):
                 targets.extend(["qhelpgenerator"])
             if "linguist" not in disabled_features:
                 #targets.extend(["lconvert", "lprodump", "lrelease", "lrelease-pro", "lupdate", "lupdate-pro"])
-                targets.extend(["lconvert", "lrelease", "lrelease-pro", "lupdate", "lupdate-pro"])
+                # qt 6.11's LinguistTools export set includes lcheck + ltext2id too; the imported-target
+                # executables file must define ALL of them, else the cross build's host-tools precheck
+                # (_qt_internal_check_multiple_inclusion) fails with "some but not all targets defined".
+                targets.extend(["lconvert", "lrelease", "lrelease-pro", "lupdate", "lupdate-pro", "lcheck", "ltext2id"])
         if self.options.qtshadertools:
             targets.append("qsb")
         if self.options.qtdeclarative:

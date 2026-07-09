@@ -1,7 +1,9 @@
 import os
 
 from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
+from thirdparty.env import Environment
 from thirdparty.files import copy, get, replace_in_file
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -27,6 +29,18 @@ class Recipe(RecipeBase[_Options]):
         self.requires("cpython")
         self.requires("llvm")
         self.requires("qt")
+        if cross_building(self):
+            # PySide cross-compile bootstraps host tools: the shiboken6 generator (libclang-based)
+            # and Qt's moc/rcc must run on the build machine. Pull in a build-context (native)
+            # pyside for the host shiboken generator + Shiboken6Tools cmake package, and a
+            # build-context qt for the host moc (QT_HOST_PATH). See generate() for the QFP_* wiring.
+            self.requires_tool("pyside")
+            self.requires_tool("qt")
+            # The host shiboken generator discovers Clang's builtin include dir via env
+            # CLANG_INSTALL_DIR / by running llvm-config from PATH. Without CLANG_INSTALL_DIR it
+            # runs the target (aarch64) llvm-config on PATH, which can't execute on the host. Pull
+            # in the build-context (host) llvm and point CLANG_INSTALL_DIR at it (see generate()).
+            self.requires_tool("llvm")
         if self.settings.os in ("Linux", "FreeBSD"):
             # Qt6Gui's cmake config does find_package(XKB >= 0.9.0) expecting an XKB::XKB target.
             # Our xkbcommon ships no .pc/cmake config and Qt bundles no FindXKB, so alias xkbcommon
@@ -57,6 +71,16 @@ class Recipe(RecipeBase[_Options]):
             self.folders.source / "sources" / "pyside6" / "cmake" / "Macros" / "PySideModules.cmake",
             "target_compile_options(${_module_name} PRIVATE /Gy /Gw /EHsc)",
             "target_compile_options(${_module_name} PRIVATE /Gy /Gw)", strict=False)
+        if cross_building(self):
+            # Cross builds use the host shiboken generator (QFP_SHIBOKEN_HOST_PATH). The target
+            # shiboken6_generator/ApiExtractor links the aarch64 libclang - it is neither runnable
+            # on the build host nor needed, and fails to link. Skip it in the superproject build.
+            replace_in_file(
+                self,
+                self.folders.source / "CMakeLists.txt",
+                "add_subdirectory(sources/shiboken6_generator)",
+                "if(NOT CMAKE_CROSSCOMPILING)\n    add_subdirectory(sources/shiboken6_generator)\nendif()",
+                strict=False)
 
     def generate(self):
         llvm_pkg = self.dependencies["llvm"].folders.package
@@ -87,12 +111,40 @@ class Recipe(RecipeBase[_Options]):
         py_exe = f"{python_root}/bin/python.exe" if self.settings.os == "Windows" else f"{python_root}/bin/python{py_maj}.{py_min}"
         py_inc = f"{python_root}/bin/include" if self.settings.os == "Windows" else f"{python_root}/include/python{py_maj}.{py_min}"
         py_lib = f"{python_root}/bin/libs/python{py_maj}{py_min}.lib" if self.settings.os == "Windows" else f"{python_root}/lib/libpython{py_maj}.{py_min}.so"
-        tc.variables["Python_EXECUTABLE"] = py_exe
-        tc.variables["Python3_EXECUTABLE"] = py_exe
-        tc.variables["Python_INCLUDE_DIR"] = py_inc
-        tc.variables["Python3_INCLUDE_DIR"] = py_inc
-        tc.variables["Python_LIBRARY"] = py_lib
-        tc.variables["Python3_LIBRARY"] = py_lib
+        if cross_building(self):
+            # Cross-compile: the shiboken generator, moc and the embedding_generator all run on the
+            # build host. Mirror what PySide's own build_scripts/main.py passes for cross: keep
+            # Python_ROOT_DIR pointing at the target python (FindPython resolves the aarch64
+            # Development artifacts via python-config, without running the interpreter), and DON'T
+            # set Python_EXECUTABLE/INCLUDE_DIR/LIBRARY (those would pin the un-runnable target
+            # interpreter). Host tools/interpreter are provided via the QFP_* paths below.
+            host_pyside = self.dependencies.build["pyside"].folders.package
+            host_qt = self.dependencies.build["qt"].folders.package
+            host_python_root = self.dependencies.build["cpython"].folders.package
+            tc.variables["QFP_PYTHON_HOST_PATH"] = (host_python_root / "bin" / f"python{py_maj}.{py_min}").as_posix()
+            tc.variables["QFP_QT_HOST_PATH"] = host_qt.as_posix()
+            tc.variables["QFP_QT_TARGET_PATH"] = qt_pkg.as_posix()
+            tc.variables["QFP_SHIBOKEN_HOST_PATH"] = host_pyside.as_posix()
+            # Make the host shiboken generator resolve Clang's builtin include dir from the HOST
+            # llvm (via CLANG_INSTALL_DIR) instead of running the un-runnable target llvm-config.
+            host_llvm = self.dependencies.build["llvm"].folders.package
+            env = Environment()
+            env.define("CLANG_INSTALL_DIR", host_llvm.as_posix())
+            # shiboken's host clang parses the target headers with -target aarch64, but its g++
+            # include-path probe keeps only the "c++"/"sysroot" dirs and drops the target's plain C
+            # system dir - so libclang falls back to the host /usr/include and can't find the
+            # aarch64 glibc headers (bits/wordsize.h etc.). Expose the target include dir via CPATH
+            # (honored by libclang) so the aarch64 system headers are found.
+            triplet = "aarch64-linux-gnu" if self.settings.arch == "ARM" else "x86_64-linux-gnu"
+            env.define("CPATH", f"/usr/{triplet}/include")
+            env.vars(self).save_script("buildenv_shiboken_clang")
+        else:
+            tc.variables["Python_EXECUTABLE"] = py_exe
+            tc.variables["Python3_EXECUTABLE"] = py_exe
+            tc.variables["Python_INCLUDE_DIR"] = py_inc
+            tc.variables["Python3_INCLUDE_DIR"] = py_inc
+            tc.variables["Python_LIBRARY"] = py_lib
+            tc.variables["Python3_LIBRARY"] = py_lib
         if self.settings.os == "Windows":
             tc.variables["Python3_FIND_REGISTRY"] = "NEVER"
             tc.variables["Python_FIND_REGISTRY"] = "NEVER"
@@ -148,12 +200,10 @@ class Recipe(RecipeBase[_Options]):
             tc.variables["CMAKE_EXE_LINKER_FLAGS"] = hb_system_libs
 
         if self.settings.os in ("Linux", "FreeBSD"):
-            # Qt6Gui's find_package(XKB) uses NO_DEFAULT_PATH scoped to Qt's own dependency paths,
-            # so XKB_DIR / CMAKE_PREFIX_PATH are ignored. QT_ADDITIONAL_PACKAGES_PREFIX_PATH is the
-            # sanctioned way to add the generators folder (where CMakeDeps writes XKBConfig.cmake).
-            _gen = self.folders.generators.as_posix()
-            tc.cache_variables["QT_ADDITIONAL_PACKAGES_PREFIX_PATH"] = _gen
-            tc.cache_variables["XKB_DIR"] = _gen
+            # Qt6Gui's cmake config does find_dependency(XKB >= 0.9.0) (standard search, honors
+            # XKB_DIR). xkbcommon ships no cmake/pc config and Qt bundles no FindXKB, so point
+            # XKB_DIR at the generators folder where we synthesize XKBConfig.cmake (see below).
+            tc.cache_variables["XKB_DIR"] = self.folders.generators.as_posix()
 
         tc.generate()
 
@@ -224,11 +274,46 @@ class Recipe(RecipeBase[_Options]):
         # create Qt6::Core as an IMPORTED target but NOT set Qt6Core_FOUND, causing
         # ShibokenHelpers.cmake to fatal-error on macOS. Use Qt's native cmake instead.
         deps.set_property("qt", "cmake_find_mode", "none")
-        if self.settings.os in ("Linux", "FreeBSD"):
-            # Emit XKBConfig.cmake providing XKB::XKB (xkbcommon 1.7.0 satisfies Qt6Gui's >= 0.9.0).
-            deps.set_property("xkbcommon", "cmake_file_name", "XKB")
-            deps.set_property("xkbcommon", "cmake_target_name", "XKB::XKB")
+        if cross_building(self):
+            # The build-context (host) qt/cpython/pyside are wired in via QFP_* paths, not CMakeDeps;
+            # suppress any cmake config generation for them too.
+            deps.set_property("qt", "cmake_find_mode", "none", build_context=True)
+            deps.set_property("cpython", "cmake_find_mode", "none", build_context=True)
+            deps.set_property("pyside", "cmake_find_mode", "none", build_context=True)
         deps.generate()
+
+        if self.settings.os in ("Linux", "FreeBSD"):
+            # Synthesize XKBConfig.cmake (+ version) so Qt6Gui's find_dependency(XKB >= 0.9.0)
+            # resolves to an XKB::XKB target backed by our xkbcommon package.
+            xkb_pkg = self.dependencies["xkbcommon"].folders.package
+            xkb_ver = str(self.dependencies["xkbcommon"].version)
+            xkb_lib = (xkb_pkg / "lib" / "libxkbcommon.a").as_posix()
+            xkb_inc = (xkb_pkg / "include").as_posix()
+            xkb_config = (
+                "if(NOT TARGET XKB::XKB)\n"
+                "    add_library(XKB::XKB UNKNOWN IMPORTED)\n"
+                "    set_target_properties(XKB::XKB PROPERTIES\n"
+                f'        IMPORTED_LOCATION "{xkb_lib}"\n'
+                f'        INTERFACE_INCLUDE_DIRECTORIES "{xkb_inc}")\n'
+                "endif()\n"
+                "set(XKB_FOUND TRUE)\n"
+                f'set(XKB_VERSION "{xkb_ver}")\n'
+            )
+            xkb_version = (
+                f'set(PACKAGE_VERSION "{xkb_ver}")\n'
+                "if(PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION)\n"
+                "    set(PACKAGE_VERSION_COMPATIBLE FALSE)\n"
+                "else()\n"
+                "    set(PACKAGE_VERSION_COMPATIBLE TRUE)\n"
+                "    if(PACKAGE_VERSION VERSION_EQUAL PACKAGE_FIND_VERSION)\n"
+                "        set(PACKAGE_VERSION_EXACT TRUE)\n"
+                "    endif()\n"
+                "endif()\n"
+            )
+            with open(self.folders.generators / "XKBConfig.cmake", "w") as f:
+                f.write(xkb_config)
+            with open(self.folders.generators / "XKBConfigVersion.cmake", "w") as f:
+                f.write(xkb_version)
 
     def build(self):
         if self.settings.os == "Mac":

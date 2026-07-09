@@ -2,7 +2,7 @@ from thirdparty import RecipeBase, RecipeOptions
 from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.env import VirtualBuildEnv
-from thirdparty.files import copy, get
+from thirdparty.files import copy, get, replace_in_file
 from thirdparty.pkgconfig import PkgConfigDeps
 from thirdparty.scm import Version
 from thirdparty.scm.github import GithubRepository
@@ -39,6 +39,11 @@ class Recipe(RecipeBase[_Options]):
             self.requires("wayland")
             self.requires("wayland-protocols")
             self.requires("xkbcommon")
+            if cross_building(self):
+                # cube generates its Wayland protocol glue with wayland-scanner, which must run on
+                # the build machine. The target (aarch64) scanner can't execute here, so pull in a
+                # build-context wayland to provide a runnable host scanner (see generate()).
+                self.requires_tool("wayland")
             if not self.conf.tools.gnu.pkg_config:
                 self.requires_tool("pkgconf")
 
@@ -49,6 +54,17 @@ class Recipe(RecipeBase[_Options]):
             sha256="502b53a585f49036e45372724f652bacc1fad2c62396e321bc8f5fbc031c14d5",
             destination=self.folders.source,
             strip_root=True)
+        # cube reads the wayland-scanner path from pkg-config (target -> aarch64 binary). When
+        # cross-compiling that binary can't run on the build host, so let the recipe override
+        # WAYLAND_SCANNER_EXECUTABLE with a runnable host scanner (set in generate()).
+        replace_in_file(
+            self,
+            self.folders.source / "cube" / "CMakeLists.txt",
+            "pkg_get_variable(WAYLAND_SCANNER_EXECUTABLE wayland-scanner wayland_scanner)",
+            "if(NOT WAYLAND_SCANNER_EXECUTABLE)\n"
+            "        pkg_get_variable(WAYLAND_SCANNER_EXECUTABLE wayland-scanner wayland_scanner)\n"
+            "    endif()",
+            strict=False)
 
     def generate(self):
         tc = CMakeToolchain(self)
@@ -71,6 +87,11 @@ class Recipe(RecipeBase[_Options]):
                     include_flags.append(f"-I{inc.as_posix()}")
             tc.extra_cflags.extend(include_flags)
             tc.extra_cxxflags.extend(include_flags)
+        if self.settings.os in ("Linux", "FreeBSD") and cross_building(self):
+            # Point cube at the build-context (host) wayland-scanner so protocol-code generation
+            # runs natively instead of trying to execute the aarch64 target scanner.
+            host_scanner = self.dependencies.build["wayland"].folders.package / "bin" / "wayland-scanner"
+            tc.cache_variables["WAYLAND_SCANNER_EXECUTABLE"] = host_scanner.as_posix()
         tc.generate()
         deps = CMakeDeps(self)
         deps.generate()

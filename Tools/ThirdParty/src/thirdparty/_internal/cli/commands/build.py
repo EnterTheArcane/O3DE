@@ -13,7 +13,7 @@ from thirdparty._internal.graph import (
     Graph as _Graph, discover_requires as _get_requires, is_built as _is_built, COMPLETE_MARKER as _COMPLETE_MARKER,
     package_root as _package_root, invalidate_stale as _invalidate_stale, write_manifest as _write_manifest, )
 from thirdparty._internal.loader import (
-    make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, compute_package_id as _compute_package_id, resolve_package_id as _resolve_package_id, set_linux_compiler_executables as _set_linux_compiler_executables, )
+    make_probe_recipe, try_load_recipe_class as _try_load_recipe_class, resolve_version as _resolve_version, compute_package_id as _compute_package_id, resolve_package_id as _resolve_package_id, set_linux_compiler_executables as _set_linux_compiler_executables, set_linux_build_compiler_executables as _set_linux_build_compiler_executables, )
 from thirdparty._internal.methods import run_configure_method as _run_configure_method
 from thirdparty._internal.model.conf import Conf
 from thirdparty._internal.model.dependencies import RecipeDependencies
@@ -262,6 +262,7 @@ def _build_dep_graph(
             conf.tools.build.cflags = [*conf.tools.build.cflags, "-w"]
             conf.tools.build.cxxflags = [*conf.tools.build.cxxflags, "-w"]
         _set_linux_compiler_executables(conf, dep_settings)
+        _set_linux_build_compiler_executables(conf, dep_settings_build)
         dep._state = RecipeState(
             dependencies=RecipeDependencies(OrderedDict()),
             build_context=is_build,

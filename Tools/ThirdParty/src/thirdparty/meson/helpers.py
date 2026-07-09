@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 from thirdparty.build.flags import cppstd_msvc_flag, disable_flag
 from thirdparty.recipe import RecipeBase
 
@@ -49,6 +52,10 @@ def to_meson_value(value):
         return "true" if value else "false"
     elif isinstance(value, list):
         return f"[{", ".join([str(to_meson_value(val)) for val in value])}]"
+    elif isinstance(value, Path):
+        return f"'{value.as_posix()}'"
+    elif isinstance(value, os.PathLike):
+        return f"'{os.fspath(value)}'"
     return value
 
 

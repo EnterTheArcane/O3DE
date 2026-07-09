@@ -1,4 +1,5 @@
 from thirdparty import RecipeBase, RecipeOptions
+from thirdparty.build import cross_building
 from thirdparty.cmake import CMake, CMakeDeps, CMakeToolchain
 from thirdparty.files import apply_patches, copy, get, replace_in_file, rm, rmdir
 from thirdparty.microsoft import is_msvc
@@ -86,6 +87,13 @@ class Recipe(RecipeBase[_Options]):
         tc.cache_variables["BUILD_SHARED_LIBS"] = bool(self.options.shared)
         tc.cache_variables["CMAKE_FIND_PACKAGE_PREFER_CONFIG"] = True
         tc.cache_variables["HAVE_JPEGTURBO_DUAL_MODE_8_12"] = self.options.jpeg
+        if cross_building(self):
+            # libtiff's FindCMath does find_library(NAMES m). The cross gcc's sysroot is '/', and the
+            # aarch64 libm lives in /usr/<triplet>/lib which CMake doesn't search by default -> the
+            # check fails ("CMath_pow"). Add that dir to CMAKE_LIBRARY_PATH so find_library finds it.
+            _triplet = {"ARM": "aarch64-linux-gnu", "X64": "x86_64-linux-gnu"}.get(str(self.settings.arch))
+            if _triplet:
+                tc.cache_variables["CMAKE_LIBRARY_PATH"] = f"/usr/{_triplet}/lib"
         tc.generate()
         deps = CMakeDeps(self)
         deps.set_property("jbig", "cmake_file_name", "JBIG")

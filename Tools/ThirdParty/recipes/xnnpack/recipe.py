@@ -51,6 +51,11 @@ class Recipe(RecipeBase[_Options]):
         tc.variables["CMAKE_SKIP_INSTALL_ALL_DEPENDENCY"] = True
         tc.variables["CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS"] = True
         tc.cache_variables["XNNPACK_ENABLE_KLEIDIAI"] = False
+        if self.settings.compiler in ("gcc", "clang"):
+            # gcc-14+ promotes -Wincompatible-pointer-types to a hard error (not silenced by -w).
+            # XNNPACK's aarch64 NEON fp16 kernels pass xnn_float16* (_Float16*) to intrinsics that
+            # expect uint16_t* (identical bit layout). Demote back to a warning.
+            tc.extra_cflags.append("-Wno-incompatible-pointer-types")
         tc.generate()
 
         deps = CMakeDeps(self)
