@@ -8,10 +8,10 @@
 
 #include <CLI/CLI.hpp>
 
-#include "AzslcReflection.h"
-#include "AzslcEmitter.h"
-#include "AzslcHomonymVisitor.h"
-#include "AzslcPlatformEmitter.h"
+#include "Reflection.h"
+#include "Emitter.h"
+#include "HomonymVisitor.h"
+#include "PlatformEmitter.h"
 #include "Texture2DMSto2DCodeMutator.h"
 #include "SubpassInputToTexture2DCodeMutator.h"
 
@@ -319,7 +319,7 @@ int main(int argc, const char* argv[])
 
     bool uniqueIdx = false;
     cli.add_flag("--unique-idx", uniqueIdx, "Use unique indices for all registers. e.g. b0, t0, u0, s0 becomes b0, t1, u2, s3. Use on platforms that don't differentiate registers by resource type.");
-    
+
     bool cbBody = false;
     cli.add_flag("--cb-body", cbBody, "Emit ConstantBuffer body rather than using <T>.");
 
@@ -348,7 +348,7 @@ int main(int argc, const char* argv[])
     cli.add_flag("--pack-opengl", packOpenGL, "Pack buffers using strict OpenGL packing rules (Vector-strict std140 for uniforms and std430 for storage buffers).");
 
     std::vector<std::string> namespaces;
-    cli.add_option("--namespace", namespaces, 
+    cli.add_option("--namespace", namespaces,
         "Activate an attribute namespace. May be used multiple times to activate multiple namespaces. "
         "Activating a namespace may also activate corresponding API-specific features, like dx for DirectX 12, vk for Vulkan, and mt for Metal.");
 
@@ -441,7 +441,7 @@ int main(int argc, const char* argv[])
     std::string minDescriptors;
     cli.add_option("--min-descriptors", minDescriptors, "Comma-separated list of limits corresponding to "
         "<set,space,sampler,texture,buffer> descriptors. Emits a warning if a count overshoots a limit. Use -1 to specify \"no limit\".");
-    
+
     bool verbose = false;
     cli.add_flag("--verbose", verbose);
 

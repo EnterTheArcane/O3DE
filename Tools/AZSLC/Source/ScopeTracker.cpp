@@ -6,7 +6,7 @@
  *
  */
 
-#include "AzslcScopeTracker.h"
+#include "ScopeTracker.h"
 
 namespace AZ::ShaderCompiler
 {

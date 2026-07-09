@@ -1,12 +1,12 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
-#include "AzslcIntermediateRepresentation.h"
+#include "IntermediateRepresentation.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -116,7 +116,7 @@ namespace AZ::ShaderCompiler
         // At this point we have an order apparition vector that stores symbols in the immediate naive
         // order in which they are first seen in the source code.
         //
-        // However for code re-emission, it's not really the ordering we need. The ordering we need 
+        // However for code re-emission, it's not really the ordering we need. The ordering we need
         // corresponds exactly to the "head recursion visit of AST nodes".
         // We're not going to transform our flat vector to tree and to vector again,
         // instead we'll shift around the elements to respect that order.
@@ -326,7 +326,7 @@ namespace AZ::ShaderCompiler
             case Kind::Variable:
             {
                 auto& sub = sym.GetSubRefAs<VarInfo>();
-                // We treat some attributes as static const-s for consistency with the grammar and rest of the code, 
+                // We treat some attributes as static const-s for consistency with the grammar and rest of the code,
                 //  but they don't have actual type or declaration line, so we skip them here.
                 cout << "  line: " << (sub.m_declNode ? std::to_string(sub.m_declNode->start->getLine()) : "NA") << "\n";
                 cout << "  type:\n" << ToYaml(sub.m_typeInfoExt, ir, "    ") << "\n";
@@ -575,7 +575,7 @@ namespace AZ::ShaderCompiler
         // Register a struct Root_Constants and its members to ir
         auto& [rootConstantStructUid, rootConstantStructKindInfo] = m_symbols.AddIdentifier(name, Kind::Struct, none, AddIdentifierChecks::None);
         rootConstantStructKindInfo.GetSubRefAs<ClassInfo>().m_kind = Kind::Struct;
-        
+
         for (auto& [uid, varInfo] : m_symbols.GetOrderedSymbolsOfSubType_2<VarInfo>())
         {
             if (varInfo->CheckHasAnyStorageFlags({ StorageFlag::Rootconstant })
@@ -603,7 +603,7 @@ namespace AZ::ShaderCompiler
             uint32_t endOffset = 0;
             switch (layoutPacking)
             {
-                case Packing::Layout::DirectXPacking:          
+                case Packing::Layout::DirectXPacking:
                 case Packing::Layout::RelaxedDirectXPacking:
                     // asStructEnd does nothing in DirectX, but in case of padding the root constant We force
                     // asStructStart in order to get 16byte alignment.
@@ -821,7 +821,7 @@ namespace AZ::ShaderCompiler
                 }
                 continue;
             }
-            
+
             // Is the type a struct or class whose last member is a Matrix of interest?
             const auto prevVarTypeUid = prevVarInfo->m_typeInfoExt.m_coreType.m_typeId;
             if (structsWithMatrixRx2AsLastField.count(prevVarTypeUid))
@@ -937,7 +937,7 @@ namespace AZ::ShaderCompiler
     IdentifierUID IntermediateRepresentation::GetLastMemberVariable(const IdentifierUID& uid)
     {
         auto kind = GetKind(uid);
-        ClassInfo* classInfo = nullptr; 
+        ClassInfo* classInfo = nullptr;
         if (kind.IsOneOf(Kind::Struct, Kind::Class))
         {
             classInfo = GetSymbolSubAs<ClassInfo>(uid.GetName());

@@ -1,13 +1,13 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
-#include "AzslcBackend.h"
-#include "AzslcPlatformEmitter.h"
+#include "Backend.h"
+#include "PlatformEmitter.h"
 
 #include <tuple>
 #include <cmath>
@@ -341,7 +341,7 @@ namespace AZ::ShaderCompiler
                 numberOfOptions = 0;
 
                 // Integers should support a range of possible values, for example [0 .. 63] (or any other range)
-                // Range should be added as an attribute specifier. In the above example it will be [[range(0, 63]] 
+                // Range should be added as an attribute specifier. In the above example it will be [[range(0, 63]]
                 auto rangeAttribute = m_ir->m_symbols.GetAttribute(varUid, "range");
                 if (!rangeAttribute)
                 {
@@ -597,7 +597,7 @@ namespace AZ::ShaderCompiler
             // Also, on dx12 we don't necessarily need to call SignalIncrementRegister() in this case, and could instead
             // just use register 0 because the register space is unique, but since other platforms ignore the register
             // space it's easier to also increment the register on all platforms.
-            
+
             binding.m_pair[BindingPair::Set::Untainted].m_logicalSpace = m_unboundedSpillSpace;
             binding.m_pair[BindingPair::Set::Merged].m_logicalSpace = m_unboundedSpillSpace;
             ++m_unboundedSpillSpace;

@@ -6,8 +6,8 @@
  *
  */
 
-#include "AzslcSymbolTranslation.h"
-#include "AzslcHomonymVisitor.h"
+#include "SymbolTranslation.h"
+#include "HomonymVisitor.h"
 
 namespace AZ::ShaderCompiler
 {

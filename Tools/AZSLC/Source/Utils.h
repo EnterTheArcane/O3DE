@@ -8,9 +8,9 @@
 #pragma once
 
 
-#include "AzslcMangling.h"
-#include "AzslcCommon.h"
-#include "AzslcException.h"
+#include "Mangling.h"
+#include "Common.h"
+#include "Exception.h"
 #include "DiagnosticStream.h"
 
 #include "antlr4-runtime.h"
@@ -19,7 +19,7 @@
 #include "azslParserBaseListener.h"
 #include "azslParser.h"
 
-#include "AzslcPredefinedTypes.h"
+#include "PredefinedTypes.h"
 
 #include "ReflectableEnums.h"
 #include "ReflectableEnumsUtils.h"
@@ -381,7 +381,7 @@ namespace AZ::ShaderCompiler
 
     //! OutputFormat
     //!  Specifies the pixel output format hint for the render target
-    //! 
+    //!
     //! None - hints that the target is unused
     //! R32 - one channel (R), can be Float32, Uint32 or Sint32
     //! R32G32 - two channels (RG), can be Float32, Uint32 or Sint32
@@ -392,7 +392,7 @@ namespace AZ::ShaderCompiler
     //! R16G16B16A16_UINT - four or less channels (RGBA), Uint16
     //! R16G16B16A16_SINT - four or less channels (RGBA), Sint16
     //! R32G32B32A32 - four channels (RGBA), can be Float32, Uint32 or Sint32
-    
+
     MAKE_REFLECTABLE_ENUM(OutputFormat,
         None, R32, R32G32, R32A32, R16G16B16A16_FLOAT, R16G16B16A16_UNORM, R16G16B16A16_SNORM, R16G16B16A16_UINT, R16G16B16A16_SINT, R32G32B32A32
     );
@@ -434,11 +434,11 @@ namespace AZ::ShaderCompiler
         {
             if (scalarLayout == Layout::RelaxedStd430Packing)
             {
-                return Layout::RelaxedStd140Packing;                
+                return Layout::RelaxedStd140Packing;
             }
             else if (scalarLayout == Layout::StrictStd430Packing)
             {
-                return Layout::StrictStd140Packing;                                
+                return Layout::StrictStd140Packing;
             }
 
             return scalarLayout;
@@ -537,7 +537,7 @@ namespace AZ::ShaderCompiler
                 {
                     // Matrices with only one row or only one column collapse to vectors and don't require alignment if the size fits the remaining register
                     // const auto elements = std::max(rows, cols);
-                    // According to the base alignment packing rules vectors with 3 elements align as 4-element vectors with strict std140. 
+                    // According to the base alignment packing rules vectors with 3 elements align as 4-element vectors with strict std140.
                     // dxc doesn't seem to follow that standard with relaxed std140.
                     return currentSize;
                 }

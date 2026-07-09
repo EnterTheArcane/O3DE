@@ -6,7 +6,7 @@
  *
  */
 
-#include "AzslcSemanticOrchestrator.h"
+#include "SemanticOrchestrator.h"
 
 namespace AZ::ShaderCompiler
 {

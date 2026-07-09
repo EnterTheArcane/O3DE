@@ -1,12 +1,12 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
-#include <AzslcEmitter.h>
+#include <Emitter.h>
 #include "DirectX12PlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
@@ -27,7 +27,7 @@ namespace AZ::ShaderCompiler
 
         return &platformEmitter;
     }
-    
+
     string DirectX12PlatformEmitter::GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options&, BindingPair::Set querySet) const
     {
         vector<string> rootAttrList;
@@ -134,7 +134,7 @@ namespace AZ::ShaderCompiler
         auto* ir = codeEmitter.GetIR();
         auto* varInfo = ir->GetSymbolSubAs<VarInfo>(symbolUid.GetName());
         auto retInfo = varInfo->GetTypeRefInfo();
-        
+
         // Volatile is not allowed for global variables, so we create a function to wrap it.
         std::string varName = "sc_" + JoinAllNestedNamesWithUnderscore(symbolUid.m_name);
         std::string retType = codeEmitter.GetTranslatedName(retInfo, UsageContext::ReferenceSite);

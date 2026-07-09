@@ -1,15 +1,15 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
 #include "GenericUtils.h"
-#include "AzslcKindInfo.h"
-#include "AzslcRegisters.h"
+#include "KindInfo.h"
+#include "Registers.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -54,7 +54,7 @@ namespace AZ::ShaderCompiler
         //! Key is an SRG Uid, value is its space index.
         unordered_map<IdentifierUID, SpaceIndex> m_srgToSpaceIndex;
         //! Keeps track of max SpaceIndex value in m_srgToSpaceIndex.
-        SpaceIndex m_maxSpaceIndex = 0; 
+        SpaceIndex m_maxSpaceIndex = 0;
 
     };
 } // namespace AZ::ShaderCompiler

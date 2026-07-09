@@ -1,12 +1,12 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
-#include <AzslcEmitter.h>
+#include <Emitter.h>
 #include "VulkanPlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
@@ -37,7 +37,7 @@ namespace AZ::ShaderCompiler
         strOut << "[[vk::push_constant]]\n";
         strOut << UnmangleTrimedName(structUid.GetName()) << " " << rootCBForEmission << ";\n\n";
 
-        return strOut.str();        
+        return strOut.str();
     }
 
     SubpassInputSupportFlag VulkanPlatformEmitter::GetSubpassInputSupport() const

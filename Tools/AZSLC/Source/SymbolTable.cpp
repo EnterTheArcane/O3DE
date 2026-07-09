@@ -6,7 +6,7 @@
  *
  */
 
-#include "AzslcSymbolTable.h"
+#include "SymbolTable.h"
 
 namespace AZ::ShaderCompiler
 {

@@ -1,15 +1,15 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
-#include "AzslcBackend.h"
-#include "AzslcSymbolTranslation.h"
-#include "AzslcCodeEmissionMutator.h"
+#include "Backend.h"
+#include "SymbolTranslation.h"
+#include "CodeEmissionMutator.h"
 
 namespace Json
 {
@@ -90,7 +90,7 @@ namespace AZ::ShaderCompiler
 
 		//! Emits get function declarations for root constant members
         void EmitGetterFunctionDeclarationsForRootConstants(const IdentifierUID& uid) const;
-		
+
         struct Except : std::initializer_list<string>
         {};
         //! Emit all attributes accumulated over a symbol. Omit an optional list of attributes passed as 2nd argument.
@@ -215,9 +215,9 @@ namespace AZ::ShaderCompiler
         map<size_t, size_t> m_alreadyEmittedPreprocessorLineDirectives;
 
         IdentifierUID m_shaderVariantFallbackUid;
-        
+
         //! If not null it will be used during code emission to produce
-        //! the mutations. 
+        //! the mutations.
         vector<ICodeEmissionMutator*> m_codeMutators;
 
         //! We keep track here of the number of lines that have been emitted.

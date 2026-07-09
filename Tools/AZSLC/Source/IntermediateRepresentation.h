@@ -1,15 +1,15 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
-#include "AzslcSemanticOrchestrator.h"
-#include "AzslcTokenToAst.h"
-#include "AzslcKindInfo.h"
+#include "SemanticOrchestrator.h"
+#include "TokenToAst.h"
+#include "KindInfo.h"
 #include "PadToAttributeMutator.h"
 
 namespace AZ::ShaderCompiler
@@ -246,7 +246,7 @@ namespace AZ::ShaderCompiler
         // Upgrade DXC and if the alignment issues are fixed when using
         // -fvk-use-dx-layout then this function can be deleted.
         ///////////////////////////////////////////////////////////////////////
-        //! This function is useful to check if the alignment of the data in "struct"s 
+        //! This function is useful to check if the alignment of the data in "struct"s
         //! or "SRG"s will encounter issues related with  a bug in DXC when
         //! -fvk-use-dx-layout is specified and there are
         //! float or float2 variables
@@ -254,25 +254,25 @@ namespace AZ::ShaderCompiler
         //! float2x2, float3x2, float4x2
         //! In such case the "float" or "float2" should be be prepadded by a float3 variable
         //! and an exception error will be produced with a proposed solution.
-        //! 
+        //!
         //! The other cases are when
         //! "float" type variables
         //! are preceded by matrices or structs that end in matrices of type:
         //! float2x3, float3x3, float4x3
         //! In such case the "float" should be prepadded by a float2 variables.
-        //! 
+        //!
         //! Also it's important to keep track of structs that end in one of the matrices mentioned above.
-        //! 
+        //!
         //! ////////////////////////////////////////////////////////////
         //! Example 1:
-        //! 
+        //!
         //! struct MyStruct {
         //!     float3x3 m_mat;
         //!     float m_value;
         //! }
-        //! 
+        //!
         //! After the Fix:
-        //! 
+        //!
         //! struct MyStruct {
         //!     float3x3 m_mat;
         //!     float2 __pad__;  //<-- Suggested FIX
@@ -281,30 +281,30 @@ namespace AZ::ShaderCompiler
         //!
         //! ////////////////////////////////////////////////////////////
         //! Example 2:
-        //! 
+        //!
         //! struct MyStructA {
         //!     float4 m_vec;
         //!     float4x2 m_mat;
         //! }
-        //! 
+        //!
         //! struct MyStructB {
         //!     MyStructA m_a;
         //!     float2 m_value;
         //! }
-        //! 
+        //!
         //! After the Fix:
-        //! 
+        //!
         //! struct MyStructA {
         //!     float4 m_vec;
         //!     float4x2 m_mat;
         //! }
-        //! 
+        //!
         //! struct MyStructB {
         //!     MyStructA m_a;
         //!     float3 __pad__; //<-- Suggested FIX
         //!     float2 m_value;
         //! }
-        //!  
+        //!
         void ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration,
                                                                       PreprocessorLineDirectiveFinder* lineFinder);
 

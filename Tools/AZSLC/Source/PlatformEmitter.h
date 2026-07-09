@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include "AzslcBackend.h"
+#include "Backend.h"
 
 namespace AZ::ShaderCompiler
 {

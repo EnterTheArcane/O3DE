@@ -1,13 +1,13 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
-#include "AzslcReflection.h"
-#include "AzslcPlatformEmitter.h"
+#include "Reflection.h"
+#include "PlatformEmitter.h"
 
 #include <cmath>
 #include <filesystem>
@@ -284,7 +284,7 @@ namespace AZ::ShaderCompiler
                 {
                     if (!holds_alternative<ConstNumericVal>(arg))
                     {
-                        continue;                        
+                        continue;
                     }
 
                     const auto& constVal = get<ConstNumericVal>(arg);
@@ -316,7 +316,7 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        return inputLayouts;        
+        return inputLayouts;
     }
 
     Json::Value CodeReflection::GetOutputMergerLayout(const char * const psEntry) const
@@ -370,7 +370,7 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        return outputLayouts;        
+        return outputLayouts;
     }
 
     void CodeReflection::DumpOutputMergerLayout(const char * const psEntry) const
@@ -392,7 +392,7 @@ namespace AZ::ShaderCompiler
         entries["material"] = "Unknown material";
 
         entries["inputLayouts"] = GetShaderEntries(nullptr);
-        m_out << entries;                
+        m_out << entries;
     }
 
     uint32_t CodeReflection::GetViewStride(const IdentifierUID& memberId, const AZ::ShaderCompiler::Packing::Layout& layoutPacking, const Options& options) const
@@ -456,7 +456,7 @@ namespace AZ::ShaderCompiler
         tempOffset = Packing::AlignOffset(layoutPacking, tempOffset, Packing::Alignment::asStructEnd, 0, 0);
 
         // Total size equals the end offset less the starting address
-        return tempOffset - startAt;   
+        return tempOffset - startAt;
     }
 
     uint32_t CodeReflection::BuildMemberLayout(Json::Value& membersContainer,
@@ -494,7 +494,7 @@ namespace AZ::ShaderCompiler
             memberLayout["qualifiedName"]    = memberId.m_name;
             memberLayout["typeKind"]         = isPrefedined ? "Predefined" :
                 IsProductType(varClass) ? "Struct"    : TypeClass::ToStr(varClass).data();
-            memberLayout["typeName"]         = varInfo.GetTypeId().m_name;         
+            memberLayout["typeName"]         = varInfo.GetTypeId().m_name;
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, options.m_forceMatrixRowMajor);
             auto startAt = offset;
@@ -573,7 +573,7 @@ namespace AZ::ShaderCompiler
             }
             else if (IsProductType(varClass))
             {
-                size = BuildUserDefinedMemberLayout(membersContainer, exportedType.m_typeId, options, layoutPacking, startAt, 
+                size = BuildUserDefinedMemberLayout(membersContainer, exportedType.m_typeId, options, layoutPacking, startAt,
                                           (namePrefix.data() + shortName + "."));
 
                 // Add packing into array

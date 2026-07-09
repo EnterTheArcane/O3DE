@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "AzslcListener.h"
+#include "Listener.h"
 
 namespace AZ::ShaderCompiler
 {

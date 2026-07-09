@@ -1,14 +1,14 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
-#include "AzslcListener.h"
-#include "AzslcRegisters.h"
+#include "Listener.h"
+#include "Registers.h"
 #include "NewLineCounterStream.h"
 
 #include "json/json.h"
@@ -120,7 +120,7 @@ namespace AZ::ShaderCompiler
         void SignalIncrementSpace(std::function<void(int, int)> warningMessageFunctionForMinDescOvershoot);
 
         void SignalUnifyIndices();
-        
+
         void SignalIncrementRegister(BindingType regType, int count);
 
         BindingPair GetCurrent(BindingType regType);
@@ -187,7 +187,7 @@ namespace AZ::ShaderCompiler
 
         IntermediateRepresentation*      m_ir;
         TokenStream*                     m_tokens;
-        
+
         // On some platforms (DX12), descriptor arrays occupy an individual register slot, and spaces are used
         // to prevent overlapping ranges. When an unbounded array is encountered, we immediately assign it to
         // the value of this member variable and increment. This is initialized in the constructor because the

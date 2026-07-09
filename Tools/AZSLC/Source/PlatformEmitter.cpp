@@ -1,15 +1,15 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
 #include <mutex>
 
-#include "AzslcEmitter.h"
-#include "AzslcPlatformEmitter.h"
+#include "Emitter.h"
+#include "PlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -29,12 +29,12 @@ namespace AZ::ShaderCompiler
 
         try
         {
-            return (*s_emitters)[key];            
+            return (*s_emitters)[key];
         }
         catch (...)
         {   // We should never return a default emitter here. This method searches by name only
             return nullptr;
-        }        
+        }
     }
 
     void PlatformEmitter::SetEmitter(const string& key, const PlatformEmitter* const platformEmitter) noexcept(false)
@@ -48,7 +48,7 @@ namespace AZ::ShaderCompiler
 
         if (s_emitters->find(key) != s_emitters->end())
         {
-            throw std::runtime_error{ "PlatformEmitter::RegisterEmitter cannot register two platforms with the same key!" };            
+            throw std::runtime_error{ "PlatformEmitter::RegisterEmitter cannot register two platforms with the same key!" };
         }
         s_emitters->try_emplace(key, platformEmitter);
     }
@@ -79,8 +79,8 @@ namespace AZ::ShaderCompiler
     std::pair<string, string> PlatformEmitter::GetDataViewHeaderFooter(
         const CodeEmitter& codeEmitter,
         const IdentifierUID& symbol,
-        uint32_t bindInfoRegisterIndex, 
-        string_view registerTypeLetter, 
+        uint32_t bindInfoRegisterIndex,
+        string_view registerTypeLetter,
         optional<string> stringifiedLogicalSpace,
         const Options& options) const
     {

@@ -1,23 +1,23 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
 #include "GenericUtils.h"
-#include "AzslcUtils.h"
-#include "AzslcCodeEmissionMutator.h"
-#include "AzslcIntermediateRepresentation.h"
+#include "Utils.h"
+#include "CodeEmissionMutator.h"
+#include "IntermediateRepresentation.h"
 
 namespace AZ::ShaderCompiler
 {
     //! This is the main class that handles coversion of MultiSampling related
     //! variables, function calls and system semantics to their non-MultiSampling
     //! versions.
-    //! 
+    //!
     //! This class is only active if --no-ms compiler flag is specified. Only if the --no-ms
     //! compiler flag is active then the following events are true:
     //!     - As a first step, it implements azslParserBaseListener::enterFunctionCallExpression() so
@@ -26,7 +26,7 @@ namespace AZ::ShaderCompiler
     //!      calculate further code mutations.
     //!     - During code emission, the CodeEmitter invokes the ICodeEmissionMutator interface to see if token
     //!       variables or lines of codes have mutations available.
-    struct Texture2DMSto2DCodeMutator 
+    struct Texture2DMSto2DCodeMutator
         : public azslParserBaseListener
         , public ICodeEmissionMutator
     {
@@ -51,7 +51,7 @@ namespace AZ::ShaderCompiler
         //! Called when parsing a function call expression of type
         //! Texture2DMS.Load(...)
         void OnEnterLoad(azslParser::FunctionCallExpressionContext* ctx);
-        
+
         //! Called when parsing a function call expression of type
         //! Texture2DMS.GetSamplePosition(...)
         void OnEnterGetSamplePosition(azslParser::FunctionCallExpressionContext* ctx);
@@ -62,7 +62,7 @@ namespace AZ::ShaderCompiler
 
         //! Changes the variable types:
         //!     Texture2DMS to Texture2D.
-        //!     Texture2DMSArray to Texture2DArray. 
+        //!     Texture2DMSArray to Texture2DArray.
         //! Returns the number of variables whose type was mutated
         size_t MutateTypeOfMultiSampleVariables();
 
@@ -81,11 +81,11 @@ namespace AZ::ShaderCompiler
         //! with the system semantics SV_SampleIndex or SV_Coverage. When converting to no-MultiSampling
         //! the variable must be mutated into an initialized "static const" of the same type as
         //! the semantic.
-        //! See Texture2DMSto2DCodeMutator.cpp for mutation examples. 
+        //! See Texture2DMSto2DCodeMutator.cpp for mutation examples.
         void MutateMultiSamplingSystemSemanticInStruct(const IdentifierUID& varUid, const VarInfo* varInfo, const string& systemSemanticName, const IdentifierUID& structUid);
 
         //! Given an unqualified symbol name, checks within the current parsing scope
-        //! if the symbol is a MultiSampling type of variable. 
+        //! if the symbol is a MultiSampling type of variable.
         enum class TextureMSType { None, Texture2DMS, Texture2DMSArray };
         TextureMSType GetMultiSampledTextureClass(const UnqualifiedName& uqSymbolName);
 

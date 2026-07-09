@@ -7,7 +7,7 @@
  */
 #pragma once
 
-#include "AzslcTypes.h"
+#include "Types.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -227,7 +227,7 @@ namespace AZ::ShaderCompiler
         vector< IdentifierUID >        m_ordered;      //!< Ordered. all contained symbols
         vector< IdentifierUID >        m_bases;
     };
-    
+
     //! an extended type information gathers:
     //!  + core type info (immutable and limited amount, all stored in the fixed symbol table)
     //!  + array dimensions
@@ -388,7 +388,7 @@ namespace AZ::ShaderCompiler
         // access array dimensions. think of it as it they apply on the whole variable's type. (so not the generic type)
         // returns an ArrayDimensions struct const ref.
         inline const auto&         GetArrayDimensions() const;
-        // Returns the line number, in the AZSL file, where this symbol is declared. 
+        // Returns the line number, in the AZSL file, where this symbol is declared.
         inline size_t              GetOriginalLineNumber () const;
 
         AstUnnamedVarDecl*         m_declNode = nullptr;
@@ -851,7 +851,7 @@ namespace AZ::ShaderCompiler
         // There can not be more than 4 unbounded arrays per SRG. For a small
         // amount of items a linear search in a vector is faster than Set/Map searching.
         // Later, during emission, we can easily change the order of appearance of these
-        // variables. 
+        // variables.
         vector< IdentifierUID >   m_unboundedArrays;
     };
 

@@ -6,7 +6,7 @@
  *
  */
 
-#include "AzslcEmitter.h"
+#include "Emitter.h"
 
 #include <cmath>
 #include <filesystem>
@@ -14,7 +14,7 @@
 
 // We should only include the base platform emitter
 // Every specific implementation is supplied via a factory get method
-#include "AzslcPlatformEmitter.h"
+#include "PlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -79,7 +79,7 @@ namespace AZ::ShaderCompiler
         {
             EmitAttribute(attr);
         }
-        
+
         EmitGetterFunctionDeclarationsForRootConstants(m_ir->m_rootConstantStructUID);
 
         // loop on the (mostly) user-defined order of code entities, and emit
@@ -230,7 +230,7 @@ namespace AZ::ShaderCompiler
                                             });
 
         auto globalScope = QualifiedNameView{ "/" };
-        
+
         // Global root constant custom behavior
         for (auto&[uid, info] : m_ir->GetOrderedSymbolsOfSubType_2<VarInfo>())
         {
@@ -829,7 +829,7 @@ namespace AZ::ShaderCompiler
         {
             const auto tokenIndex = varInfo.m_declNode->start->getTokenIndex();
             codeMutation = GetCodeMutation(tokenIndex);
-        }   
+        }
 
         if (codeMutation && codeMutation->m_prepend)
         {
@@ -1276,7 +1276,7 @@ namespace AZ::ShaderCompiler
         while (ii <= interval.b)
         {
             auto* token = GetNextToken(ii /*inout*/);
-            
+
             const auto tokenIndex = token->getTokenIndex();
 
             const CodeMutation* codeMutation = GetCodeMutation(tokenIndex);
@@ -1329,7 +1329,7 @@ namespace AZ::ShaderCompiler
                 if (emitAsIs)
                 {
                     IfIsSrgMemberValidateIsDefined(token, astNode);
-                    
+
                     // do minimal reformatting to have a pseudo-readable emitted code
                     auto str = token->getText();
                     bool lineFeed = str == ";" || str == "{";

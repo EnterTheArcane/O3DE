@@ -6,53 +6,24 @@
 #
 
 set(FILES
-    Source/AzslcBackend.cpp
-    Source/AzslcBackend.h
-    Source/AzslcCodeEmissionMutator.h
-    Source/AzslcCommon.h
-    Source/AzslcEmitter.cpp
-    Source/AzslcEmitter.h
-    Source/AzslcException.h
-    Source/AzslcHomonymVisitor.h
-    Source/AzslcIntermediateRepresentation.cpp
-    Source/AzslcIntermediateRepresentation.h
-    Source/AzslcKindInfo.h
-    Source/AzslcListener.cpp
-    Source/AzslcListener.h
-    Source/AzslcMain.cpp
-    Source/AzslcMangling.h
-    Source/AzslcPlatformEmitter.cpp
-    Source/AzslcPlatformEmitter.h
-    Source/AzslcPredefinedTypes.h
-    Source/AzslcReflection.cpp
-    Source/AzslcReflection.h
-    Source/AzslcRegisters.h
-    Source/AzslcScopeTracker.cpp
-    Source/AzslcScopeTracker.h
-    Source/AzslcSemanticOrchestrator.cpp
-    Source/AzslcSemanticOrchestrator.h
-    Source/AzslcSymbolAggregator.cpp
-    Source/AzslcSymbolAggregator.h
-    Source/AzslcSymbolTable.cpp
-    Source/AzslcSymbolTable.h
-    Source/AzslcSymbolTranslation.cpp
-    Source/AzslcSymbolTranslation.h
-    Source/AzslcTokenToAst.h
-    Source/AzslcTypes.h
-    Source/AzslcUnboundedArraysValidator.cpp
-    Source/AzslcUnboundedArraysValidator.h
-    Source/AzslcUtils.h
+    Source/Backend.cpp
+    Source/Backend.h
+    Source/CodeEmissionMutator.h
+    Source/Common.h
     Source/CommonVulkanPlatformEmitter.cpp
     Source/CommonVulkanPlatformEmitter.h
     Source/DependencySolver.h
     Source/DependencySolver.tpl
     Source/DiagnosticStream.h
+    Source/Emitter.cpp
+    Source/Emitter.h
     Source/Emitters/DirectX12PlatformEmitter.cpp
     Source/Emitters/DirectX12PlatformEmitter.h
     Source/Emitters/MetalPlatformEmitter.cpp
     Source/Emitters/MetalPlatformEmitter.h
     Source/Emitters/VulkanPlatformEmitter.cpp
     Source/Emitters/VulkanPlatformEmitter.h
+    Source/Exception.h
     Source/GenericUtils.h
     Source/Grammar/azslLexer.cpp
     Source/Grammar/azslLexer.g4
@@ -69,17 +40,46 @@ set(FILES
     Source/Grammar/azslParserVisitor.cpp
     Source/Grammar/azslParserVisitor.h
     Source/Grammar/Generate.ps1
+    Source/HomonymVisitor.h
+    Source/IntermediateRepresentation.cpp
+    Source/IntermediateRepresentation.h
+    Source/KindInfo.h
+    Source/Listener.cpp
+    Source/Listener.h
+    Source/Main.cpp
+    Source/Mangling.h
     Source/MetaUtils.h
     Source/NewLineCounterStream.h
     Source/PadToAttributeMutator.cpp
     Source/PadToAttributeMutator.h
+    Source/PlatformEmitter.cpp
+    Source/PlatformEmitter.h
+    Source/PredefinedTypes.h
     Source/PreprocessorLineDirectiveFinder.h
     Source/ReflectableEnums.h
     Source/ReflectableEnumsUtils.h
+    Source/Reflection.cpp
+    Source/Reflection.h
+    Source/Registers.h
+    Source/ScopeTracker.cpp
+    Source/ScopeTracker.h
+    Source/SemanticOrchestrator.cpp
+    Source/SemanticOrchestrator.h
     Source/StdUtils.h
     Source/StreamableInterface.h
     Source/SubpassInputToTexture2DCodeMutator.cpp
     Source/SubpassInputToTexture2DCodeMutator.h
+    Source/SymbolAggregator.cpp
+    Source/SymbolAggregator.h
+    Source/SymbolTable.cpp
+    Source/SymbolTable.h
+    Source/SymbolTranslation.cpp
+    Source/SymbolTranslation.h
     Source/Texture2DMSto2DCodeMutator.cpp
     Source/Texture2DMSto2DCodeMutator.h
+    Source/TokenToAst.h
+    Source/Types.h
+    Source/UnboundedArraysValidator.cpp
+    Source/UnboundedArraysValidator.h
+    Source/Utils.h
 )

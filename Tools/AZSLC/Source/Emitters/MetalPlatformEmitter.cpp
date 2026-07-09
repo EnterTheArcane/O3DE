@@ -1,12 +1,12 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
-#include <AzslcEmitter.h>
+#include <Emitter.h>
 #include "MetalPlatformEmitter.h"
 
 namespace AZ::ShaderCompiler
@@ -42,7 +42,7 @@ namespace AZ::ShaderCompiler
         strOut << "ConstantBuffer<" << rootConstClassForEmission << "> " << rootCBForEmission << " : register(b" << bindInfo.m_registerBinding.m_pair[signatureQuery].m_registerIndex << spaceX << ");\n\n";
         return strOut.str();
     }
-	
+
     uint32_t MetalPlatformEmitter::AlignRootConstants(uint32_t size) const
     {
         return Packing::AlignUp(size, Packing::s_bytesPerRegister);

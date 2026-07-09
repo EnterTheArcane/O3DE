@@ -6,7 +6,7 @@
  *
  */
 
-#include "AzslcSymbolAggregator.h"
+#include "SymbolAggregator.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -239,7 +239,7 @@ namespace AZ::ShaderCompiler
         }
 
         m_idToAttributeMap.try_emplace(uid, std::move(m_orphanAttributesList[AttributeScope::Attached]));
-        m_orphanAttributesList[AttributeScope::Attached].clear();        
+        m_orphanAttributesList[AttributeScope::Attached].clear();
     }
 
     void SymbolAggregator::ReorderBySymbolDependency()

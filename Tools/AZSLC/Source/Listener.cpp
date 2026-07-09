@@ -1,12 +1,12 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
-#include "AzslcListener.h"
+#include "Listener.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -71,7 +71,7 @@ namespace AZ::ShaderCompiler
     }
 
     void SemaCheckListener::enterEnumDefinition(azslParser::EnumDefinitionContext* ctx)
-    {        
+    {
         m_ir->m_sema.RegisterEnum(ctx);
         auto* scopedCtx = As<azslParser::ScopedEnumContext*>(ctx->enumKey());
         if (scopedCtx != nullptr)

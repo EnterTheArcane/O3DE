@@ -1,14 +1,14 @@
 ﻿/*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
 
 #include "PadToAttributeMutator.h"
-#include "AzslcIntermediateRepresentation.h"
+#include "IntermediateRepresentation.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -102,7 +102,7 @@ namespace AZ::ShaderCompiler
                 auto srgInfo = m_ir.GetSymbolSubAs<SRGInfo>(scopeUid.GetName());
                 classInfo = &srgInfo->m_implicitStruct;
             }
-            
+
             if (!classInfo)
             {
                 auto errorMsg = FormatString("Error during struct padding: couldn't find ClassInfo for scope %.*s", scopeUid.GetName().size(), scopeUid.GetName().data());
@@ -122,7 +122,7 @@ namespace AZ::ShaderCompiler
         {
             unvisitedStructs.insert(item.first);
         }
-        
+
         while (!unvisitedStructs.empty())
         {
             const IdentifierUID unvisitedStructUid = *unvisitedStructs.begin();
@@ -140,7 +140,7 @@ namespace AZ::ShaderCompiler
         {
             return;
         }
-        
+
         ClassInfo* classInfo = nullptr;
         auto kind = m_ir.GetKind(scopeUid);
         if (kind.IsOneOf(Kind::Struct, Kind::Class))
@@ -158,7 +158,7 @@ namespace AZ::ShaderCompiler
         {
             ScopeUidSortVisitFunction(typeUid, visitedScopes, sortedList);
         }
-        
+
         visitedScopes.insert(scopeUid);
         sortedList.push_back(scopeUid);
     }
@@ -273,7 +273,7 @@ namespace AZ::ShaderCompiler
                     + memberId.m_name};
             }
             TypeClass varClass = exportedType.m_typeClass;
-            bool isPrefedined  = IsPredefinedType(varClass); 
+            bool isPrefedined  = IsPredefinedType(varClass);
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, emitRowMajor);
             auto startAt = offset;
@@ -405,7 +405,7 @@ namespace AZ::ShaderCompiler
         tempOffset = Packing::AlignOffset(layoutPacking, tempOffset, Packing::Alignment::asStructEnd, 0, 0);
 
         // Total size equals the end offset less the starting address
-        return tempOffset - startAt;   
+        return tempOffset - startAt;
     }
 
 
