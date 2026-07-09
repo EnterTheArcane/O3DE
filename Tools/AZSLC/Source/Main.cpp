@@ -26,6 +26,27 @@ namespace AZ::ShaderCompiler
 
     using MapOfStringViewToSetOfString = map<string_view, set<string>>;
 
+    template <typename SetType>
+    void SetMerge(SetType& dest, SetType& src)
+    {
+#ifdef __APPLE__
+        for (auto it = src.begin(); it != src.end(); )
+        {
+            if (dest.find(*it) == dest.end())
+            {
+                dest.insert(std::move(*it));
+                it = src.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+#else
+        dest.merge(src); // when you have correct libraries.
+#endif
+    }
+
     template <typename TypeClassFilterPredicate = std::nullptr_t>
     void VisitTokens(const antlr4::Recognizer* recognizer,
                      MapOfStringViewToSetOfString& acceptedToken, set<string>& notTypes1,  // out
@@ -452,11 +473,10 @@ int main(int argc, const char* argv[])
     {
         CLI11_PARSE(cli, argc, argv);
 
+        constexpr std::string_view AzslcVersion = "1.9.0";
         auto versionString = std::format(
-            "AZSL Compiler {}.{}.{} {}",
-            AZSLC_MAJOR,
-            AZSLC_MINOR,
-            AZSLC_PATCH,
+            "AZSL Compiler {} {}",
+            AzslcVersion,
             GetCurrentOsName());
 
         if (printVersion)

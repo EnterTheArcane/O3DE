@@ -50,7 +50,7 @@ function(azslc_add_simple_tests label compiler_flag expect_fail)
 
         set(cmd_args
             "${AZSLC_CTEST_RUNNER}"
-            --compiler "$<TARGET_FILE:azslc>"
+            --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode simple
         )
@@ -94,7 +94,7 @@ block() # Advanced
         add_test(
             NAME "${test_name}"
             COMMAND ${AZSLC_PYTHON_COMMAND} "${AZSLC_CTEST_RUNNER}"
-            --compiler "$<TARGET_FILE:azslc>"
+            --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode advanced
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -116,7 +116,7 @@ block() # Emission
         add_test(
             NAME "${test_name}"
             COMMAND ${AZSLC_PYTHON_COMMAND} "${AZSLC_CTEST_RUNNER}"
-            --compiler "$<TARGET_FILE:azslc>"
+            --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode emission
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -138,7 +138,7 @@ block() # Emission Error
         add_test(
             NAME "${test_name}"
             COMMAND ${AZSLC_PYTHON_COMMAND} "${AZSLC_CTEST_RUNNER}"
-            --compiler "$<TARGET_FILE:azslc>"
+            --compiler "$<TARGET_FILE:AZ::AZSLC>"
             --file "${test_file}"
             --mode emission-error
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"

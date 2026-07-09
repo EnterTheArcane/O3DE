@@ -7,28 +7,28 @@
  */
 
 #include <Emitter.h>
-#include "DirectX12PlatformEmitter.h"
+#include "PlatformEmitter_DX12.h"
 
 namespace AZ::ShaderCompiler
 {
-    static constexpr char DirectX12PlatformEmitterName[] = "dx";
-    static const PlatformEmitter* s_platformEmitter = DirectX12PlatformEmitter::RegisterPlatformEmitter();
+    static constexpr char PlatformEmitter_DX12Name[] = "dx";
+    static const PlatformEmitter* s_platformEmitter = PlatformEmitter_DX12::RegisterPlatformEmitter();
 
-    const PlatformEmitter* DirectX12PlatformEmitter::RegisterPlatformEmitter() noexcept(false)
+    const PlatformEmitter* PlatformEmitter_DX12::RegisterPlatformEmitter() noexcept(false)
     {
-        static DirectX12PlatformEmitter platformEmitter; // Static linkage, will be destroyed
+        static PlatformEmitter_DX12 platformEmitter; // Static linkage, will be destroyed
 
         static bool alreadyRegistered = false;
         if (!alreadyRegistered)
         {
-            PlatformEmitter::SetEmitter(DirectX12PlatformEmitterName, &platformEmitter);
+            PlatformEmitter::SetEmitter(PlatformEmitter_DX12Name, &platformEmitter);
             alreadyRegistered = true;
         }
 
         return &platformEmitter;
     }
 
-    string DirectX12PlatformEmitter::GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options&, BindingPair::Set querySet) const
+    string PlatformEmitter_DX12::GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options&, BindingPair::Set querySet) const
     {
         vector<string> rootAttrList;
         // SRG Constants are emitted as one CB per SRG, bound to the RootSignature as RootDescriptor
@@ -127,7 +127,7 @@ namespace AZ::ShaderCompiler
         return Decorate("#define sig ", Join(rootAttrList, ", \" \\\n"), "\"\n\n");
     }
 
-    string DirectX12PlatformEmitter::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
+    string PlatformEmitter_DX12::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
     {
         // Specialization constants will be represented by a volatile variable that will be patched later.
         std::stringstream stream;

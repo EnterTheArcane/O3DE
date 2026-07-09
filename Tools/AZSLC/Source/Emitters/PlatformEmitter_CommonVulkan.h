@@ -12,7 +12,7 @@
 namespace AZ::ShaderCompiler
 {
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement
-    struct CommonVulkanPlatformEmitter : PlatformEmitter
+    struct PlatformEmitter_CommonVulkan : PlatformEmitter
     {
     public:
         [[nodiscard]]
@@ -28,6 +28,6 @@ namespace AZ::ShaderCompiler
             const Options& options) const override;
 
     protected:
-        CommonVulkanPlatformEmitter() : PlatformEmitter {} {};
+        PlatformEmitter_CommonVulkan() : PlatformEmitter {} {};
     };
 }

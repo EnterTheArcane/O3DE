@@ -17,5 +17,5 @@ FetchContent_Declare(cli11
 
 FetchContent_MakeAvailable(cli11)
 
-add_library(External::cli11 ALIAS CLI11)
-set_target_properties(CLI11 PROPERTIES FOLDER External)
+add_library(3rdParty::cli11 ALIAS CLI11)
+set_target_properties(CLI11 PROPERTIES FOLDER 3rdParty)

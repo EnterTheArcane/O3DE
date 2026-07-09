@@ -1,25 +1,23 @@
 # Amazon Shading Language Compiler
 
 AZSLC is O3DE's command-line compiler for the Amazon Shading Language (AZSL).
-It transpiles AZSL shaders into High Level Shading Language Shader Model 6+
-(HLSL) shaders.
+It transpiles AZSL shaders into High Level Shading Language Shader Model 6+ (HLSL) shaders.
 
 ## Build
 
-AZSLC is registered as an O3DE host tool. Configure O3DE normally, then build the
-`azslc` target with the build directory and configuration for your platform:
+AZSLC is registered as an O3DE host tool.
+Configure O3DE normally, then build the `azslc` target with the build directory and configuration for your platform:
 
 ```powershell
 cmake --build <build-directory> --target azslc --config Profile
 ```
 
-The executable is written to O3DE's normal configuration-specific runtime
-output directory. Building and configuring AZSLC does not require Java.
+The executable is written to O3DE's normal configuration-specific runtime output directory.
+Building and configuring AZSLC does not require Java.
 
 ## Test
 
-AZSLC tests are registered individually with CTest when O3DE host tests and
-`BUILD_TESTING` are enabled:
+AZSLC tests are registered individually with CTest when O3DE host tests and `BUILD_TESTING` are enabled:
 
 ```powershell
 ctest --test-dir <build-directory> -C Profile -L Syntax
@@ -32,9 +30,8 @@ Run CTest with `--output-on-failure` for compiler and test-runner diagnostics.
 
 ## Regenerate the ANTLR sources
 
-The generated ANTLR C++ lexer and parser are checked in under
-`Source/Grammar`. They should only be regenerated when `azslLexer.g4` or
-`azslParser.g4` changes.
+The generated ANTLR C++ lexer and parser are checked in under `Source/Grammar`.
+They should only be regenerated when `azslLexer.g4` or `azslParser.g4` changes.
 
 Regeneration requires PowerShell 7 and a Java runtime available on `PATH`:
 
@@ -42,9 +39,7 @@ Regeneration requires PowerShell 7 and a Java runtime available on `PATH`:
 pwsh Tools/AZSLC/Source/Grammar/Generate.ps1
 ```
 
-The script uses the pinned JAR in `External/antlr4`, writes the C++ sources
-directly into `Source/Grammar`, and removes ANTLR's intermediate token and
-interpreter files. Commit grammar and generated-source changes together.
+The script uses the pinned JAR in `3rdParty/antlr4`, writes the C++ sources directly into `Source/Grammar`, and removes ANTLR's intermediate token and interpreter files.
+Commit grammar and generated-source changes together.
 
-The generated C++ must remain compatible with the pinned ANTLR C++ runtime in
-`External/antlr4/CMakeLists.txt`.
+The generated C++ must remain compatible with the pinned ANTLR C++ runtime in `3rdParty/antlr4/CMakeLists.txt`.

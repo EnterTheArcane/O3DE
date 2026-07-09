@@ -10,19 +10,19 @@ set(FILES
     Source/Backend.h
     Source/CodeEmissionMutator.h
     Source/Common.h
-    Source/CommonVulkanPlatformEmitter.cpp
-    Source/CommonVulkanPlatformEmitter.h
     Source/DependencySolver.h
     Source/DependencySolver.tpl
     Source/DiagnosticStream.h
     Source/Emitter.cpp
     Source/Emitter.h
-    Source/Emitters/DirectX12PlatformEmitter.cpp
-    Source/Emitters/DirectX12PlatformEmitter.h
-    Source/Emitters/MetalPlatformEmitter.cpp
-    Source/Emitters/MetalPlatformEmitter.h
-    Source/Emitters/VulkanPlatformEmitter.cpp
-    Source/Emitters/VulkanPlatformEmitter.h
+    Source/Emitters/PlatformEmitter_CommonVulkan.cpp
+    Source/Emitters/PlatformEmitter_CommonVulkan.h
+    Source/Emitters/PlatformEmitter_DX12.cpp
+    Source/Emitters/PlatformEmitter_DX12.h
+    Source/Emitters/PlatformEmitter_Metal.cpp
+    Source/Emitters/PlatformEmitter_Metal.h
+    Source/Emitters/PlatformEmitter_Vulkan.cpp
+    Source/Emitters/PlatformEmitter_Vulkan.h
     Source/Exception.h
     Source/GenericUtils.h
     Source/Grammar/azslLexer.cpp

@@ -8,12 +8,12 @@
 #pragma once
 
 #include <PlatformEmitter.h>
-#include <CommonVulkanPlatformEmitter.h>
+#include "PlatformEmitter_CommonVulkan.h"
 
 namespace AZ::ShaderCompiler
 {
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement
-    struct VulkanPlatformEmitter : CommonVulkanPlatformEmitter
+    struct PlatformEmitter_Vulkan : PlatformEmitter_CommonVulkan
     {
     public:
         //! This method will be called once and only once when the platform emitter registers itself to the system.
@@ -26,6 +26,6 @@ namespace AZ::ShaderCompiler
         SubpassInputSupportFlag GetSubpassInputSupport() const override;
 
     private:
-        VulkanPlatformEmitter() : CommonVulkanPlatformEmitter {} {};
+        PlatformEmitter_Vulkan() : PlatformEmitter_CommonVulkan {} {};
     };
 }

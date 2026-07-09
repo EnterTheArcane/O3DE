@@ -12,7 +12,7 @@
 namespace AZ::ShaderCompiler
 {
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement
-    struct DirectX12PlatformEmitter : PlatformEmitter
+    struct PlatformEmitter_DX12 : PlatformEmitter
     {
     public:
         //! This method will be called once and only once when the platform emitter registers itself to the system.
@@ -28,6 +28,6 @@ namespace AZ::ShaderCompiler
         string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const override;
 
     private:
-        DirectX12PlatformEmitter() : PlatformEmitter {} {};
+        PlatformEmitter_DX12() : PlatformEmitter {} {};
     };
 }

@@ -21,9 +21,9 @@ FetchContent_Declare(antlr4
 
 FetchContent_MakeAvailable(antlr4)
 
-add_library(External::antlr4 ALIAS antlr4_static)
+add_library(3rdParty::antlr4 ALIAS antlr4_static)
 set_target_properties(antlr4_static PROPERTIES
-    FOLDER External
+    FOLDER 3rdParty
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
 )
 

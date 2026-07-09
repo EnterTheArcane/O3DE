@@ -61,25 +61,4 @@ namespace AZ
     using std::unordered_map;
     using std::unordered_set;
     using std::vector;
-
-    template <typename SetType>
-    void SetMerge(SetType& dest, SetType& src)
-    {
-#ifdef __APPLE__
-        for (auto it = src.begin(); it != src.end(); )
-        {
-            if (dest.find(*it) == dest.end())
-            {
-                dest.insert(std::move(*it));
-                it = src.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-#else
-		dest.merge(src); // when you have correct libraries.
-#endif
-    }
 }

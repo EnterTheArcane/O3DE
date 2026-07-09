@@ -7,11 +7,11 @@
  */
 
 #include "Emitter.h"
-#include "CommonVulkanPlatformEmitter.h"
+#include "PlatformEmitter_CommonVulkan.h"
 
 namespace AZ::ShaderCompiler
 {
-    string CommonVulkanPlatformEmitter::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
+    string PlatformEmitter_CommonVulkan::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
     {
         std::stringstream stream;
         auto* ir = codeEmitter.GetIR();
@@ -45,7 +45,7 @@ namespace AZ::ShaderCompiler
         return stream.str();
     }
 
-    std::pair<string, string> CommonVulkanPlatformEmitter::GetDataViewHeaderFooter(
+    std::pair<string, string> PlatformEmitter_CommonVulkan::GetDataViewHeaderFooter(
         const CodeEmitter& codeEmitter,
         const IdentifierUID& symbol,
         uint32_t bindInfoRegisterIndex,

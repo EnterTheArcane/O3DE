@@ -7,28 +7,28 @@
  */
 
 #include <Emitter.h>
-#include "MetalPlatformEmitter.h"
+#include "PlatformEmitter_Metal.h"
 
 namespace AZ::ShaderCompiler
 {
-    static constexpr char MetalPlatformEmitterName[] = "mt";
-    static const PlatformEmitter* s_platformEmitter = MetalPlatformEmitter::RegisterPlatformEmitter();
+    static constexpr char PlatformEmitter_MetalName[] = "mt";
+    static const PlatformEmitter* s_platformEmitter = PlatformEmitter_Metal::RegisterPlatformEmitter();
 
-    const PlatformEmitter* MetalPlatformEmitter::RegisterPlatformEmitter() noexcept(false)
+    const PlatformEmitter* PlatformEmitter_Metal::RegisterPlatformEmitter() noexcept(false)
     {
-        static MetalPlatformEmitter platformEmitter; // Static linkage, will be destroyed
+        static PlatformEmitter_Metal platformEmitter; // Static linkage, will be destroyed
 
         static bool alreadyRegistered = false;
         if (!alreadyRegistered)
         {
-            PlatformEmitter::SetEmitter(MetalPlatformEmitterName, &platformEmitter);
+            PlatformEmitter::SetEmitter(PlatformEmitter_MetalName, &platformEmitter);
             alreadyRegistered = true;
         }
 
         return &platformEmitter;
     }
 
-    std::string MetalPlatformEmitter::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const
+    std::string PlatformEmitter_Metal::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const
     {
         std::stringstream strOut;
 
@@ -43,12 +43,12 @@ namespace AZ::ShaderCompiler
         return strOut.str();
     }
 
-    uint32_t MetalPlatformEmitter::AlignRootConstants(uint32_t size) const
+    uint32_t PlatformEmitter_Metal::AlignRootConstants(uint32_t size) const
     {
         return Packing::AlignUp(size, Packing::s_bytesPerRegister);
 	}
 
-    SubpassInputSupportFlag MetalPlatformEmitter::GetSubpassInputSupport() const
+    SubpassInputSupportFlag PlatformEmitter_Metal::GetSubpassInputSupport() const
     {
         // Metal doesn't support reading from a depth/stencil attachment, only color.
         return SubpassInputSupportFlag::Color;

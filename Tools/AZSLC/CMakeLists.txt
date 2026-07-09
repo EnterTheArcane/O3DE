@@ -15,7 +15,7 @@ set(azslc_VERSION_MINOR 9)
 set(azslc_VERSION_PATCH 0)
 set(azslc_VERSION "${azslc_VERSION_MAJOR}.${azslc_VERSION_MINOR}.${azslc_VERSION_PATCH}")
 
-add_subdirectory(External)
+add_subdirectory(3rdParty)
 
 set(azslc_generated_files)
 if(WIN32)
@@ -28,8 +28,9 @@ if(WIN32)
 endif()
 
 ly_add_target(
-    NAME azslc EXECUTABLE
+    NAME AZSLC EXECUTABLE
     NAMESPACE AZ
+    OUTPUT_NAME azslc
     NO_UNITY
     FILES_CMAKE
         azslc_files.cmake
@@ -39,27 +40,21 @@ ly_add_target(
         PRIVATE
             Source
             Source/Grammar
-    COMPILE_DEFINITIONS
-        PRIVATE
-            $<$<CONFIG:Debug>:AZSLC_DEBUG>
-            AZSLC_MAJOR=${azslc_VERSION_MAJOR}
-            AZSLC_MINOR=${azslc_VERSION_MINOR}
-            AZSLC_PATCH=${azslc_VERSION_PATCH}
     BUILD_DEPENDENCIES
         PRIVATE
-            External::antlr4
-            External::cli11
-            External::jsoncpp
+            3rdParty::antlr4
+            3rdParty::cli11
+            3rdParty::jsoncpp
 )
 
 if(MSVC)
-    target_compile_options(azslc PRIVATE
+    target_compile_options(AZSLC PRIVATE
         /EHsc
         /U_HAS_EXCEPTIONS
         /D_HAS_EXCEPTIONS=1
     )
 else()
-    target_compile_options(azslc PRIVATE
+    target_compile_options(AZSLC PRIVATE
         -fexceptions
         -Wno-deprecated-literal-operator
         -Wno-language-extension-token
@@ -70,7 +65,7 @@ else()
         -Wno-unused-variable
     )
     if(WIN32)
-        target_compile_options(azslc PRIVATE
+        target_compile_options(AZSLC PRIVATE
             -U_HAS_EXCEPTIONS
             -D_HAS_EXCEPTIONS=1
         )

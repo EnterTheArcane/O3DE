@@ -24,8 +24,8 @@ FetchContent_Declare(jsoncpp
 
 FetchContent_MakeAvailable(jsoncpp)
 
-add_library(External::jsoncpp ALIAS jsoncpp_static)
-set_target_properties(jsoncpp_static PROPERTIES FOLDER External)
+add_library(3rdParty::jsoncpp ALIAS jsoncpp_static)
+set_target_properties(jsoncpp_static PROPERTIES FOLDER 3rdParty)
 
 # JsonCpp throws its public exception types when operations fail.
 if(MSVC)

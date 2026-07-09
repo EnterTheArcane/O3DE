@@ -7,28 +7,28 @@
  */
 
 #include <Emitter.h>
-#include "VulkanPlatformEmitter.h"
+#include "PlatformEmitter_Vulkan.h"
 
 namespace AZ::ShaderCompiler
 {
-    static constexpr char VulkanPlatformEmitterName[] = "vk";
-    static const PlatformEmitter* s_platformEmitter = VulkanPlatformEmitter::RegisterPlatformEmitter();
+    static constexpr char PlatformEmitter_VulkanName[] = "vk";
+    static const PlatformEmitter* s_platformEmitter = PlatformEmitter_Vulkan::RegisterPlatformEmitter();
 
-    const PlatformEmitter* VulkanPlatformEmitter::RegisterPlatformEmitter() noexcept(false)
+    const PlatformEmitter* PlatformEmitter_Vulkan::RegisterPlatformEmitter() noexcept(false)
     {
-        static VulkanPlatformEmitter platformEmitter; // Static linkage, will be destroyed
+        static PlatformEmitter_Vulkan platformEmitter; // Static linkage, will be destroyed
 
         static bool alreadyRegistered = false;
         if (!alreadyRegistered)
         {
-            PlatformEmitter::SetEmitter(VulkanPlatformEmitterName, &platformEmitter);
+            PlatformEmitter::SetEmitter(PlatformEmitter_VulkanName, &platformEmitter);
             alreadyRegistered = true;
         }
 
         return &platformEmitter;
     }
 
-    string VulkanPlatformEmitter::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc&, const Options&, BindingPair::Set) const
+    string PlatformEmitter_Vulkan::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc&, const Options&, BindingPair::Set) const
     {
         std::stringstream strOut;
 
@@ -40,7 +40,7 @@ namespace AZ::ShaderCompiler
         return strOut.str();
     }
 
-    SubpassInputSupportFlag VulkanPlatformEmitter::GetSubpassInputSupport() const
+    SubpassInputSupportFlag PlatformEmitter_Vulkan::GetSubpassInputSupport() const
     {
         return SubpassInputSupportFlag::All;
     }
