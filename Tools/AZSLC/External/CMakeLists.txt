@@ -6,7 +6,7 @@
 #
 #
 
-add_subdirectory(AZSLC)
-add_subdirectory(LyTestTools)
-add_subdirectory(RemoteConsole)
-add_subdirectory(ClassCreationWizard)
+include(FetchContent)
+add_subdirectory(antlr4)
+add_subdirectory(cli11)
+add_subdirectory(jsoncpp)

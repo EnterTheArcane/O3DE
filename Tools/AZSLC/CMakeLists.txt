@@ -1,0 +1,80 @@
+#
+# Copyright (c) Contributors to the Open 3D Engine Project.
+# For complete copyright and license terms please see the LICENSE at the root of this distribution.
+#
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+#
+
+if(NOT PAL_TRAIT_BUILD_HOST_TOOLS)
+    return()
+endif()
+
+set(azslc_VERSION_MAJOR 1)
+set(azslc_VERSION_MINOR 9)
+set(azslc_VERSION_PATCH 0)
+set(azslc_VERSION "${azslc_VERSION_MAJOR}.${azslc_VERSION_MINOR}.${azslc_VERSION_PATCH}")
+
+add_subdirectory(External)
+
+set(azslc_generated_files)
+if(WIN32)
+    configure_file(
+        Platform/Windows/Source/azslc.rc.in
+        ${CMAKE_CURRENT_BINARY_DIR}/azslc.rc
+        @ONLY
+    )
+    list(APPEND azslc_generated_files ${CMAKE_CURRENT_BINARY_DIR}/azslc.rc)
+endif()
+
+ly_add_target(
+    NAME azslc EXECUTABLE
+    NAMESPACE AZ
+    NO_UNITY
+    FILES_CMAKE
+        azslc_files.cmake
+    GENERATED_FILES
+        ${azslc_generated_files}
+    INCLUDE_DIRECTORIES
+        PRIVATE
+            Source
+            Source/Grammar
+    COMPILE_DEFINITIONS
+        PRIVATE
+            $<$<CONFIG:Debug>:AZSLC_DEBUG>
+            AZSLC_MAJOR=${azslc_VERSION_MAJOR}
+            AZSLC_MINOR=${azslc_VERSION_MINOR}
+            AZSLC_PATCH=${azslc_VERSION_PATCH}
+    BUILD_DEPENDENCIES
+        PRIVATE
+            External::antlr4
+            External::cli11
+            External::jsoncpp
+)
+
+if(MSVC)
+    target_compile_options(azslc PRIVATE
+        /EHsc
+        /U_HAS_EXCEPTIONS
+        /D_HAS_EXCEPTIONS=1
+    )
+else()
+    target_compile_options(azslc PRIVATE
+        -fexceptions
+        -Wno-deprecated-literal-operator
+        -Wno-language-extension-token
+        -Wno-missing-braces
+        -Wno-range-loop-construct
+        -Wno-unused-lambda-capture
+        -Wno-unused-function
+        -Wno-unused-variable
+    )
+    if(WIN32)
+        target_compile_options(azslc PRIVATE
+            -U_HAS_EXCEPTIONS
+            -D_HAS_EXCEPTIONS=1
+        )
+    endif()
+endif()
+
+add_subdirectory(Tests)
