@@ -128,12 +128,12 @@ namespace AZ::ShaderCompiler
         return std::string{};
     }
 
-    inline std::string DiagLine(antlr4::Token* token)
+    inline std::string DiagLine(const antlr4::Token* token)
     {
         return DiagLine(token->getLine());
     }
 
-    inline std::string DiagLine(tree::TerminalNode* astNode)
+    inline std::string DiagLine(const tree::TerminalNode* astNode)
     {
         return DiagLine(astNode->getSymbol());
     }
@@ -1122,7 +1122,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! Verify filiation of an AST rule
-    inline bool IsParentOf(tree::ParseTree* assumedParent, tree::ParseTree* assumedChild)
+    inline bool IsParentOf(const tree::ParseTree* assumedParent, const tree::ParseTree* assumedChild)
     {
         const tree::ParseTree* parent = assumedChild->parent;
         while (parent)
@@ -1172,7 +1172,7 @@ namespace AZ::ShaderCompiler
         return Is3ParentRuleOfType<azslParser::HlslFunctionDeclarationContext*>(ctx);
     }
 
-    inline bool IsRHSOfMemberAccess(tree::ParseTree* ctx)
+    inline bool IsRHSOfMemberAccess(const tree::ParseTree* ctx)
     {
         const auto* asMemberAccess = As<AstMemberAccess*>(ctx->parent);
         return asMemberAccess && asMemberAccess->Member == ctx;
@@ -1282,12 +1282,12 @@ namespace AZ::ShaderCompiler
         return ExtractSpecificParent<AstVarInitializer>(ctx);
     }
 
-    inline azslParser::FunctionParamContext* ParamContextOverUnnamedVariableDeclarator(AstUnnamedVarDecl* ctx)
+    inline azslParser::FunctionParamContext* ParamContextOverUnnamedVariableDeclarator(const AstUnnamedVarDecl* ctx)
     {
         return As<azslParser::FunctionParamContext*>(ctx->parent);
     }
 
-    inline azslParser::VariableDeclarationContext* VarDeclContextOverVariableDeclarator(AstNamedVarDecl* ctx)
+    inline azslParser::VariableDeclarationContext* VarDeclContextOverVariableDeclarator(const AstNamedVarDecl* ctx)
     {
         return As<azslParser::VariableDeclarationContext*>(ctx->parent->parent);
     }
@@ -1312,7 +1312,7 @@ namespace AZ::ShaderCompiler
     }
 
     /// move up the AST into parent rules to ry to get a name. in case of function parameters, name can be omitted so this function may return null
-    inline Token* ExtractVariableNameIdentifier(AstUnnamedVarDecl* ctx)
+    inline Token* ExtractVariableNameIdentifier(const AstUnnamedVarDecl* ctx)
     {
         if (Is<AstNamedVarDecl>(ctx->parent))
         {
@@ -1331,7 +1331,7 @@ namespace AZ::ShaderCompiler
         return polymorphic_downcast<AstNamedVarDecl*>(ctx->parent);
     }
 
-    inline std::string ExtractVariableNameSamplerBodyDeclaration(azslParser::SamplerBodyDeclarationContext* ctx)
+    inline std::string ExtractVariableNameSamplerBodyDeclaration(const azslParser::SamplerBodyDeclarationContext* ctx)
     {
         // parent1 is variableInitializer ; parent2 is unnamedVariableDeclarator
         return ExtractVariableNameIdentifier(polymorphic_downcast<AstUnnamedVarDecl*>(ctx->parent->parent))->getText();

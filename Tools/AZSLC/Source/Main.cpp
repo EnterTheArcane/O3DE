@@ -178,7 +178,7 @@ namespace AZ::ShaderCompiler
         } // end for
     }
 
-    bool IsKeyword(const antlr4::Recognizer* r, antlr4::Token* token)
+    bool IsKeyword(const antlr4::Recognizer* r, const antlr4::Token* token)
     {
         MapOfStringViewToSetOfString byTypeClass;
         std::set<std::string> notTypes;
@@ -865,31 +865,31 @@ int main(int argc, const char* argv[])
 
                     prepareOutputAndCall(
                         "ia",
-                        [&](CodeReflection& r)
+                        [&](const CodeReflection& r)
                         {
                             r.DumpShaderEntries();
                         });
                     prepareOutputAndCall(
                         "om",
-                        [&](CodeReflection& r)
+                        [&](const CodeReflection& r)
                         {
                             r.DumpOutputMergerLayout();
                         });
                     prepareOutputAndCall(
                         "srg",
-                        [&](CodeReflection& r)
+                        [&](const CodeReflection& r)
                         {
                             r.DumpSRGLayout(emitOptions, &lineFinder);
                         });
                     prepareOutputAndCall(
                         "options",
-                        [&](CodeReflection& r)
+                        [&](const CodeReflection& r)
                         {
                             r.DumpVariantList(emitOptions);
                         });
                     prepareOutputAndCall(
                         "bindingdep",
-                        [&](CodeReflection& r)
+                        [&](const CodeReflection& r)
                         {
                             r.DumpResourceBindingDependencies(emitOptions);
                         });

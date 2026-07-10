@@ -175,7 +175,7 @@ namespace AZ::ShaderCompiler
         std::string GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const;
 
         //! Returns the Platform Emitter that is registered to the namespace in the "ir".
-        static const PlatformEmitter& GetPlatformEmitter(IntermediateRepresentation* ir);
+        static const PlatformEmitter& GetPlatformEmitter(const IntermediateRepresentation* ir);
 
     protected:
         //! Obtains a supplement emitter which provides per-platform emission functionality.

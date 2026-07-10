@@ -665,7 +665,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    static void PrintWarningsRelatedToSpecOvershoots(MultiBindingLocationMaker& bindInfo, const Options& options, const SRGInfo* srgInfo, const IdentifierUID& srgUid)
+    static void PrintWarningsRelatedToSpecOvershoots(const MultiBindingLocationMaker& bindInfo, const Options& options, const SRGInfo* srgInfo, const IdentifierUID& srgUid)
     {
         int numSamplerUsed = bindInfo.m_untainted.GetAccumulated(BindingType::S);
         if (options.m_minAvailableDescriptors.m_samplers >= 0
@@ -1050,7 +1050,7 @@ namespace AZ::ShaderCompiler
         return hlslString;
     }
 
-    const PlatformEmitter& Backend::GetPlatformEmitter(IntermediateRepresentation* ir)
+    const PlatformEmitter& Backend::GetPlatformEmitter(const IntermediateRepresentation* ir)
     {
         const auto p = PlatformEmitter::GetEmitter(ir->m_metaData.m_platformEmitterNamespace);
         if (p)

@@ -185,13 +185,13 @@ namespace AZ::ShaderCompiler
 
         void RegisterNamelessFunctionParameter(azslParser::FunctionParamContext* ctx);
 
-        void FillOutSrgField(AstNamedVarDecl* ctx, VarInfo& varInfo, IdentifierUID varUid, ArrayDimensions& arrayDims);
+        void FillOutSrgField(const AstNamedVarDecl* ctx, VarInfo& varInfo, IdentifierUID varUid, const ArrayDimensions& arrayDims);
 
         SamplerStateDesc ExtractSamplerState(AstVarInitializer* ctx);
 
         IdAndKind& RegisterSRG(AstSRGDeclNode* ctx);
 
-        void RegisterSRGSemanticMember(AstSRGSemanticMemberDeclNode* ctx);
+        void RegisterSRGSemanticMember(const AstSRGSemanticMemberDeclNode* ctx);
 
         void RegisterEnumerator(azslParser::EnumeratorDeclaratorContext* ctx);
 
@@ -210,7 +210,7 @@ namespace AZ::ShaderCompiler
         //! Check that the type of LHS expression (in a member access expression context) satisfies well-formed semantics
         //! returns .first==true if is valid, and .first==false if the semantic fails to check.
         //!         .second is the typeof(LHS)
-        std::pair<bool, QualifiedName> VerifyLHSExprOfMAExprIsValid(azslParser::MemberAccessExpressionContext* ctx) const;
+        std::pair<bool, QualifiedName> VerifyLHSExprOfMAExprIsValid(const azslParser::MemberAccessExpressionContext* ctx) const;
 
         //! Resolve the type from the expression, look it up, and verify that it is a kind that may hold sub-members.
         std::pair<bool, QualifiedName> VerifyTypeIsScopeComposable(azslParser::ExpressionContext* typeScope) const;
@@ -228,7 +228,7 @@ namespace AZ::ShaderCompiler
 
         QualifiedName TypeofExpr(azslParser::ExpressionExtContext* ctx) const;
 
-        QualifiedName TypeofExpr(azslParser::OtherExpressionContext* ctx) const;
+        QualifiedName TypeofExpr(const azslParser::OtherExpressionContext* ctx) const;
 
         QualifiedName TypeofExpr(AstType* ctx) const;
 
@@ -240,15 +240,15 @@ namespace AZ::ShaderCompiler
 
         QualifiedName TypeofExpr(azslParser::FunctionCallExpressionContext* ctx) const;
 
-        QualifiedName TypeofExpr(azslParser::ArrayAccessExpressionContext* ctx) const;
+        QualifiedName TypeofExpr(const azslParser::ArrayAccessExpressionContext* ctx) const;
 
-        QualifiedName TypeofExpr(azslParser::ParenthesizedExpressionContext* ctx) const;
+        QualifiedName TypeofExpr(const azslParser::ParenthesizedExpressionContext* ctx) const;
 
         QualifiedName TypeofExpr(azslParser::CastExpressionContext* ctx) const;
 
-        QualifiedName TypeofExpr(azslParser::ConditionalExpressionContext* ctx) const;
+        QualifiedName TypeofExpr(const azslParser::ConditionalExpressionContext* ctx) const;
 
-        QualifiedName TypeofExpr(azslParser::AssignmentExpressionContext* ctx) const;
+        QualifiedName TypeofExpr(const azslParser::AssignmentExpressionContext* ctx) const;
 
         QualifiedName TypeofExpr(azslParser::NumericConstructorExpressionContext* ctx) const;
 
@@ -258,9 +258,9 @@ namespace AZ::ShaderCompiler
 
         QualifiedName TypeofExpr(azslParser::LiteralContext* ctx) const;
 
-        QualifiedName TypeofExpr(azslParser::CommaExpressionContext* ctx) const;
+        QualifiedName TypeofExpr(const azslParser::CommaExpressionContext* ctx) const;
 
-        QualifiedName TypeofExpr(azslParser::PostfixUnaryExpressionContext* ctx) const;
+        QualifiedName TypeofExpr(const azslParser::PostfixUnaryExpressionContext* ctx) const;
 
         QualifiedName TypeofExpr(azslParser::PrefixUnaryExpressionContext* ctx) const;
 
@@ -268,7 +268,7 @@ namespace AZ::ShaderCompiler
 
         //! Parse the AST from a variable declaration and attempt to extract array dimensions integer constants [dim1][dim2]...
         //! Return: <true> on success, <false> otherwise
-        bool TryFoldArrayDimensions(AstUnnamedVarDecl* ctx, ArrayDimensions& arrayDimensions);
+        bool TryFoldArrayDimensions(const AstUnnamedVarDecl* ctx, ArrayDimensions& arrayDimensions);
 
         void ValidateClass(azslParser::ClassDefinitionContext* ctx) noexcept(false);
 
@@ -301,7 +301,7 @@ namespace AZ::ShaderCompiler
         //  - an empty monostate (no evaluable value detected, could be: unsupported expression, float, overflow, or non static-const..)
         //  - signed int64
         //  - unsigned int64
-        ConstNumericVal FoldEvalStaticConstExprNumericValue(VarInfo& varInfo) const;
+        ConstNumericVal FoldEvalStaticConstExprNumericValue(const VarInfo& varInfo) const;
 
         ConstNumericVal FoldEvalStaticConstExprNumericValue(AstExpr* expr) const;
 
@@ -408,7 +408,7 @@ namespace AZ::ShaderCompiler
         ExtendedTypeInfo CreateExtendedTypeInfo(AstType* ctx, ArrayDimensions dims) const;
 
         // Helper func which folds any possible generic dimensions into the extracted composed type
-        bool TryFoldGenericArrayDimensions(ExtractedComposedType& extType, std::vector<tree::TerminalNode*>& genericDims) const;
+        bool TryFoldGenericArrayDimensions(ExtractedComposedType& extType, const std::vector<tree::TerminalNode*>& genericDims) const;
 
         // another helper to streamline what to do directly with the result from ExtractTypeNameFromAstContext function families.
         ExtendedTypeInfo CreateExtendedTypeInfo(const ExtractedComposedType&, const TypeQualifiers&, ArrayDimensions) const;
@@ -425,13 +425,13 @@ namespace AZ::ShaderCompiler
         IdAndKind* ResolveOverload(IdAndKind* maybeOverloadSet, azslParser::ArgumentListContext* argumentListCtx) const;
 
         //! Generate a unique name, create a corresponding namespace symbol, and enter its scope
-        void MakeAndEnterAnonymousScope(std::string_view decorationPrefix, Token* scopeFirstToken);
+        void MakeAndEnterAnonymousScope(std::string_view decorationPrefix, const Token* scopeFirstToken);
 
     private:
         //! for internal use when encountering unresolved symbols by lookup.
         void DiagnoseUndeclaredSub(Token* atToken, QualifiedNameView startupScope, std::string partialName) const;
 
-        std::optional<int64_t> TryFoldSRGSemantic(azslParser::SrgSemanticContext* ctx, size_t semanticTokenType, bool required = false);
+        std::optional<int64_t> TryFoldSRGSemantic(const azslParser::SrgSemanticContext* ctx, size_t semanticTokenType, bool required = false);
 
         std::string CreateDecorationOfFunction(azslParser::FunctionParamsContext* parametersContext) const;
 

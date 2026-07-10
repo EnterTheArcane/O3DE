@@ -1424,7 +1424,7 @@ namespace AZ::ShaderCompiler
                     auto idExpr = m_translations.GetIdExpression(token);
                     if (!idExpr.IsEmpty())
                     {
-                        auto getToken = [this](ssize_t& tokenId) -> std::string
+                        auto getToken = [this](const ssize_t& tokenId) -> std::string
                         {
                             assert(tokenId >= 0);
                             const auto* token = m_tokens->get(static_cast<size_t>(tokenId));

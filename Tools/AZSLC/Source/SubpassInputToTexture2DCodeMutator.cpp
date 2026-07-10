@@ -60,7 +60,7 @@ namespace AZ::ShaderCompiler
 
     ///////////////////////////////////////////////////////////////////////
 
-    static UnqualifiedName GetSymbolName(azslParser::ExpressionContext* expressionCtx)
+    static UnqualifiedName GetSymbolName(const azslParser::ExpressionContext* expressionCtx)
     {
         const auto& children = expressionCtx->children;
         // We only care for cases with three children:

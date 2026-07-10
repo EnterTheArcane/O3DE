@@ -543,7 +543,7 @@ namespace AZ::ShaderCompiler
         enumInfo.PushMember(uid, Kind::Variable);
     }
 
-    void SemanticOrchestrator::RegisterSRGSemanticMember(AstSRGSemanticMemberDeclNode* ctx)
+    void SemanticOrchestrator::RegisterSRGSemanticMember(const AstSRGSemanticMemberDeclNode* ctx)
     {
         // access SRGSemanticInfo and add a member:
         auto& srgSemanticInfo = GetCurrentScopeSubInfoAs<ClassInfo>();
@@ -882,7 +882,7 @@ namespace AZ::ShaderCompiler
             " ) in external resource declaration");
     }
 
-    void SemanticOrchestrator::FillOutSrgField(AstNamedVarDecl* ctx, VarInfo& varInfo, IdentifierUID varUid, ArrayDimensions& arrayDims)
+    void SemanticOrchestrator::FillOutSrgField(const AstNamedVarDecl* ctx, VarInfo& varInfo, IdentifierUID varUid, const ArrayDimensions& arrayDims)
     {
         const bool isUnboundedArray = arrayDims.IsUnbounded();
         if (!isUnboundedArray && !arrayDims.AreAllDimsFullyConstantFolded())
@@ -1407,7 +1407,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyLHSExprOfMAExprIsValid(azslParser::MemberAccessExpressionContext* ctx) const
+    std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyLHSExprOfMAExprIsValid(const azslParser::MemberAccessExpressionContext* ctx) const
     {
         return VerifyTypeIsScopeComposable(ctx->LHSExpr);
     }
@@ -1537,7 +1537,7 @@ namespace AZ::ShaderCompiler
                    : TypeofExpr(ctx->Expr);
     }
 
-    QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::PostfixUnaryExpressionContext* ctx) const
+    QualifiedName SemanticOrchestrator::TypeofExpr(const azslParser::PostfixUnaryExpressionContext* ctx) const
     {
         return TypeofExpr(ctx->Expr); // in case of x++ or x-- the type is the type of x.
     }
@@ -1583,7 +1583,7 @@ namespace AZ::ShaderCompiler
             As<azslParser::CommaExpressionContext*>(ctx));
     }
 
-    QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::OtherExpressionContext* ctx) const
+    QualifiedName SemanticOrchestrator::TypeofExpr(const azslParser::OtherExpressionContext* ctx) const
     {
         return TypeofExpr(ctx->Expr);
     }
@@ -1644,7 +1644,7 @@ namespace AZ::ShaderCompiler
         return GetTypeName(symbol, ForFunctionGetType::Returned);
     }
 
-    QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::ArrayAccessExpressionContext* ctx) const
+    QualifiedName SemanticOrchestrator::TypeofExpr(const azslParser::ArrayAccessExpressionContext* ctx) const
     {
         // typeof(myvariable[3]) is typeof(myvariable) minus brackets.  (e.g. int[] -> int)
         // But because of a limitation, today the type of array variable is not described as type[], but only type
@@ -1654,7 +1654,7 @@ namespace AZ::ShaderCompiler
         return TypeofExpr(ctx->Expr);
     }
 
-    QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::ParenthesizedExpressionContext* ctx) const
+    QualifiedName SemanticOrchestrator::TypeofExpr(const azslParser::ParenthesizedExpressionContext* ctx) const
     {
         // parenthesis don't change the type, it's just a syntax precedence thing. so just forward to the inner expression.
         return TypeofExpr(ctx->Expr);
@@ -1667,13 +1667,13 @@ namespace AZ::ShaderCompiler
         return TypeofExpr(ctx->type());
     }
 
-    QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::ConditionalExpressionContext* ctx) const
+    QualifiedName SemanticOrchestrator::TypeofExpr(const azslParser::ConditionalExpressionContext* ctx) const
     {
         // typeof(a ? b : c) is typeof(b) because b and c are forbidden to differ in type. DXC/clang is going to see to it.
         return TypeofExpr(ctx->TrueExpr);
     }
 
-    QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::AssignmentExpressionContext* ctx) const
+    QualifiedName SemanticOrchestrator::TypeofExpr(const azslParser::AssignmentExpressionContext* ctx) const
     {
         // typeof(a = b) is typeof(a) because an assignment returns a reference to the left-hand-side as rvalue for the enclosing expression.
         return TypeofExpr(ctx->Left);
@@ -1740,13 +1740,13 @@ namespace AZ::ShaderCompiler
         return {"<fail>"};
     }
 
-    QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::CommaExpressionContext* ctx) const
+    QualifiedName SemanticOrchestrator::TypeofExpr(const azslParser::CommaExpressionContext* ctx) const
     {
         // comma returns whatever is last
         return TypeofExpr(ctx->Right);
     }
 
-    bool SemanticOrchestrator::TryFoldArrayDimensions(AstUnnamedVarDecl* ctx, ArrayDimensions& arrayDimensions)
+    bool SemanticOrchestrator::TryFoldArrayDimensions(const AstUnnamedVarDecl* ctx, ArrayDimensions& arrayDimensions)
     {
         for (const auto arrayDecl : ctx->ArrayRankSpecifiers)
         {
@@ -2127,7 +2127,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::optional<int64_t> SemanticOrchestrator::TryFoldSRGSemantic(azslParser::SrgSemanticContext* ctx, const size_t semanticTokenType, const bool required)
+    std::optional<int64_t> SemanticOrchestrator::TryFoldSRGSemantic(const azslParser::SrgSemanticContext* ctx, const size_t semanticTokenType, const bool required)
     {
         // const ref used, to extend the returned object's temporary life
         const auto stdIntrinsicVarNameFromLexer = m_lexer->getVocabulary().getLiteralName(semanticTokenType);
@@ -2237,7 +2237,7 @@ namespace AZ::ShaderCompiler
 
     namespace
     {
-        DiagnosticStream FoldFailedCommonMessage(Token* tok, std::optional<std::string_view> identifier = std::nullopt)
+        DiagnosticStream FoldFailedCommonMessage(const Token* tok, std::optional<std::string_view> identifier = std::nullopt)
         {
             verboseCout << tok->getLine();
             if (identifier)
@@ -2252,7 +2252,7 @@ namespace AZ::ShaderCompiler
         };
     }
 
-    ConstNumericVal SemanticOrchestrator::FoldEvalStaticConstExprNumericValue(VarInfo& varInfo) const
+    ConstNumericVal SemanticOrchestrator::FoldEvalStaticConstExprNumericValue(const VarInfo& varInfo) const
     {
         auto* declNode = varInfo.m_declNode;
         // first thing: constraint storage-class and type modifiers:
@@ -2408,7 +2408,7 @@ namespace AZ::ShaderCompiler
         return {type->first};
     }
 
-    bool SemanticOrchestrator::TryFoldGenericArrayDimensions(ExtractedComposedType& extType, std::vector<tree::TerminalNode*>& genericDims) const
+    bool SemanticOrchestrator::TryFoldGenericArrayDimensions(ExtractedComposedType& extType, const std::vector<tree::TerminalNode*>& genericDims) const
     {
         for (const auto dim : genericDims)
         {
@@ -2519,7 +2519,7 @@ namespace AZ::ShaderCompiler
         return scopeKind.IsKindOneOf(Kind::Struct, Kind::Class, Kind::Interface);
     }
 
-    void SemanticOrchestrator::MakeAndEnterAnonymousScope(std::string_view decorationPrefix, Token* scopeFirstToken)
+    void SemanticOrchestrator::MakeAndEnterAnonymousScope(std::string_view decorationPrefix, const Token* scopeFirstToken)
     {
         const UnqualifiedName unnamedBlockCode{ConcatString("$", decorationPrefix, m_anonymousCounter)};
         AddIdentifier(unnamedBlockCode, Kind::Namespace, scopeFirstToken->getLine());

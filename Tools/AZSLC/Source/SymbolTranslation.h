@@ -99,7 +99,7 @@ namespace AZ::ShaderCompiler
         //! Query whether this token belongs to an idExpression, and retrieve a descriptor to it
         IDExpressionDesc GetIdExpression(ssize_t tokenId) const;
 
-        IDExpressionDesc GetIdExpression(Token* token) const
+        IDExpressionDesc GetIdExpression(const Token* token) const
         {
             return GetIdExpression(static_cast<ssize_t>(token->getTokenIndex()));
         }

@@ -68,7 +68,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! A helper function that returns the symbol name contained in @expressionCtx.
-    static UnqualifiedName GetSymbolName(azslParser::ExpressionContext* expressionCtx)
+    static UnqualifiedName GetSymbolName(const azslParser::ExpressionContext* expressionCtx)
     {
         const auto& children = expressionCtx->children;
         // We only care for cases with three children:
@@ -349,7 +349,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    static std::vector<Token*> NodeTokens(ParserRuleContext* node, TokenStream* stream)
+    static std::vector<Token*> NodeTokens(ParserRuleContext* node, const TokenStream* stream)
     {
         std::vector<Token*> tokens;
         const misc::Interval src = node->getSourceInterval();
@@ -371,7 +371,7 @@ namespace AZ::ShaderCompiler
         std::ranges::transform(
             tokens,
             std::back_inserter(stringlets),
-            [&](Token* t)
+            [&](const Token* t)
             {
                 return t->getText();
             });

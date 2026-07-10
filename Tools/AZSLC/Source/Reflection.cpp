@@ -169,7 +169,7 @@ namespace AZ::ShaderCompiler
         return (semanticIndex == 0);
     }
 
-    bool IsValidPSOutput(std::string_view& semanticOverride, int& semanticIndex, Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef)
+    bool IsValidPSOutput(const std::string_view& semanticOverride, const int& semanticIndex, Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef)
     {
         if (semanticOverride.empty())
         {
@@ -1232,7 +1232,7 @@ namespace AZ::ShaderCompiler
         return score * complexityFactor;
     }
 
-    void CodeReflection::AnalyzeImpact(ParserRuleContext* astNode, int& scoreAccumulator) const
+    void CodeReflection::AnalyzeImpact(const ParserRuleContext* astNode, int& scoreAccumulator) const
     {
         for (const auto& c : astNode->children)
         {

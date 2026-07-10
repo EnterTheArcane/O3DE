@@ -92,7 +92,7 @@ namespace AZ::ShaderCompiler
         int AnalyzeImpact(const TokensLocation& location) const;
 
         // Recursive internal detail version
-        void AnalyzeImpact(ParserRuleContext* astNode, int& scoreAccumulator) const;
+        void AnalyzeImpact(const ParserRuleContext* astNode, int& scoreAccumulator) const;
 
         // Function-call specific
         void AnalyzeImpact(azslParser::FunctionCallExpressionContext* callNode, int& scoreAccumulator) const;

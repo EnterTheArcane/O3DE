@@ -345,7 +345,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    static AttributeCategory GetAttributeCategory(antlr4::ParserRuleContext* ctx)
+    static AttributeCategory GetAttributeCategory(const antlr4::ParserRuleContext* ctx)
     {
         if (Is<azslParser::AttributeSpecifierContext*>(ctx->parent))
         {

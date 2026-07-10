@@ -101,7 +101,7 @@ namespace AZ
             return *this;
         }
 
-        Self& operator<<(Warn::EnumType& level)
+        Self& operator<<(const Warn::EnumType& level)
         {
             return operator<<(Warn::EnumType{level}); // create an xvalue
         }
@@ -114,7 +114,7 @@ namespace AZ
             return *this;
         }
 
-        Self& operator<<(PushLevel& level)
+        Self& operator<<(const PushLevel& level)
         {
             return operator<<(PushLevel{level});
         }
@@ -125,7 +125,7 @@ namespace AZ
             return *this;
         }
 
-        Self& operator<<(PopLevel& level)
+        Self& operator<<(const PopLevel& level)
         {
             return operator<<(PopLevel{level});
         }

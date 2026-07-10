@@ -130,7 +130,7 @@ namespace AZ::ShaderCompiler
             BakeErrorMessage();
         }
 
-        AzslcException(const uint32_t errorCode, const std::string_view errorType, Token* token, const std::string& message)
+        AzslcException(const uint32_t errorCode, const std::string_view errorType, const Token* token, const std::string& message)
             : RuntimeException(std::string(message.c_str(), message.size()))
             , m_errorCode(errorCode)
             , m_errorType(errorType)
@@ -168,7 +168,7 @@ namespace AZ::ShaderCompiler
             return m_errorMessage.c_str();
         }
 
-        inline uint16_t GetErrorCode() const
+        uint16_t GetErrorCode() const
         {
             return m_errorCode;
         }
@@ -428,4 +428,4 @@ namespace AZ::ShaderCompiler
             std::cerr << "Unknown exception" << std::endl;
         }
     }
-};
+}
