@@ -180,7 +180,11 @@ namespace AZ::ShaderCompiler
                     auto* funcSub = m_ir->GetSymbolSubAs<FunctionInfo>(iteratedSymbolName);
                     const bool alreadyDeclared = AlreadyEmittedFunctionDeclaration(iteratedSymbolUid);
                     assert(!funcSub->IsEmpty());
-                    const EmitFunctionAs form = (funcSub->HasUniqueDeclarationThroughDefinition() || alreadyDeclared) ? EmitFunctionAs::Definition : EmitFunctionAs::Declaration;
+                    EmitFunctionAs form = EmitFunctionAs::Declaration;
+                    if (funcSub->HasUniqueDeclarationThroughDefinition() || alreadyDeclared)
+                    {
+                        form = EmitFunctionAs::Definition;
+                    }
                     EmitFunction(*funcSub, iteratedSymbolUid, form, options);
                     break;
                 }
@@ -300,7 +304,12 @@ namespace AZ::ShaderCompiler
             {
                 auto globalScope = QualifiedNameView{"/"};
                 auto constantsStruct = MakeSrgConstantsStructName(srgUID);
-                MigrateASTSubTree(member, options.m_emitConstantBufferBody ? globalScope : QualifiedNameView{constantsStruct});
+                QualifiedNameView landingScope = QualifiedNameView{constantsStruct};
+                if (options.m_emitConstantBufferBody)
+                {
+                    landingScope = globalScope;
+                }
+                MigrateASTSubTree(member, landingScope);
             }
 
             // add a special behavior for CB, because under cb-body switch, CBs are views, thus must be indexed.
@@ -324,7 +333,12 @@ namespace AZ::ShaderCompiler
                                 // but since we can have arrays of constant buffers in SRG, the user may have already subscripted
                                 // the access, in that case we can't double the subscript or we'll emit an ill-formed program.
                                 auto* ast = m_ir->m_tokenMap.GetNode(tokenId);
-                                return proposition + (IsNextToArrayAccessExpression(ast) ? "" : "[0]");
+                                if (IsNextToArrayAccessExpression(ast))
+                                {
+                                    return proposition;
+                                }
+
+                                return proposition + "[0]";
                             });
                     });
             }
@@ -520,7 +534,11 @@ namespace AZ::ShaderCompiler
 
     std::string CodeEmitter::EmitInheritanceList(const ClassInfo& clInfo)
     {
-        std::string hlsl = clInfo.HasAnyBases() ? " : " : "";
+        std::string hlsl;
+        if (clInfo.HasAnyBases())
+        {
+            hlsl = " : ";
+        }
         std::vector<std::string> mutatedBaseNames;
         std::ranges::transform(
             clInfo.GetBases(),
@@ -590,7 +608,11 @@ namespace AZ::ShaderCompiler
                     assert(func);
 
                     m_out << tabs;
-                    EmitFunctionAs form = func->HasUniqueDeclarationThroughDefinition() ? EmitFunctionAs::Definition : EmitFunctionAs::Declaration;
+                    EmitFunctionAs form = EmitFunctionAs::Declaration;
+                    if (func->HasUniqueDeclarationThroughDefinition())
+                    {
+                        form = EmitFunctionAs::Definition;
+                    }
                     EmitFunction(*func, uid, form, options);
                 }
                 else
@@ -669,7 +691,10 @@ namespace AZ::ShaderCompiler
     {
         if (attrInfo.m_attribute == "verbatim")
         {
-            outstream << (attrInfo.m_argList.begin() == attrInfo.m_argList.end() ? "" : Unescape(Undecorate("\"", *attrInfo.m_argList.begin())));
+            if (attrInfo.m_argList.begin() != attrInfo.m_argList.end())
+            {
+                outstream << Unescape(Undecorate("\"", *attrInfo.m_argList.begin()));
+            }
             auto outVer = [&](const AttributeInfo::Argument& arg)
             {
                 outstream << " " << Unescape(Undecorate("\"", arg));
@@ -721,10 +746,14 @@ namespace AZ::ShaderCompiler
         else
         {
             // We don't block any attributes we don't understand - pass them through
-            outstream << ((attrInfo.m_category == AttributeCategory::Single) ? "[" : "[[")
-                << attrInfo
-                << ((attrInfo.m_category == AttributeCategory::Single) ? "]" : "]]")
-                << "\n";
+            if (attrInfo.m_category == AttributeCategory::Single)
+            {
+                outstream << "[" << attrInfo << "]\n";
+            }
+            else
+            {
+                outstream << "[[" << attrInfo << "]]\n";
+            }
         }
     }
 
@@ -740,7 +769,14 @@ namespace AZ::ShaderCompiler
 
         EmitAllAttachedAttributes(uid);
 
-        m_out << "enum " << (enumInfo.m_isScoped ? "class " : "") << GetTranslatedName(uid.m_name, UsageContext::DeclarationSite) << "\n";
+        if (enumInfo.m_isScoped)
+        {
+            m_out << "enum class " << GetTranslatedName(uid.m_name, UsageContext::DeclarationSite) << "\n";
+        }
+        else
+        {
+            m_out << "enum " << GetTranslatedName(uid.m_name, UsageContext::DeclarationSite) << "\n";
+        }
         m_out << "{\n";
 
         for (const auto& memberUid : classInfo.GetMemberFields())
@@ -783,7 +819,11 @@ namespace AZ::ShaderCompiler
             return;
         }
 
-        AstFuncSig* node = funcSub.m_defNode ? funcSub.m_defNode : funcSub.m_declNode;
+        AstFuncSig* node = funcSub.m_declNode;
+        if (funcSub.m_defNode)
+        {
+            node = funcSub.m_defNode;
+        }
 
         EmitAllAttachedAttributes(uid);
 
@@ -890,7 +930,11 @@ namespace AZ::ShaderCompiler
             // type
             if (!(declOptions & VarDeclHas::NoType) || (declOptions & VarDeclHas::OptionDefine))
             {
-                auto bannedModifiers = (declOptions & VarDeclHas::NoModifiers) ? ~Modifiers{(StorageFlag::EnumType)0} : Modifiers{};
+                auto bannedModifiers = Modifiers{};
+                if (declOptions & VarDeclHas::NoModifiers)
+                {
+                    bannedModifiers = ~Modifiers{(StorageFlag::EnumType)0};
+                }
                 m_out << GetTranslatedName(varInfo.m_typeInfoExt, UsageContext::ReferenceSite, options, bannedModifiers) + " ";
             }
             // var name
@@ -931,7 +975,11 @@ namespace AZ::ShaderCompiler
             }
             else if (declOptions & VarDeclHas::Initializer)
             {
-                auto* initClause = varInfo.m_declNode ? varInfo.m_declNode->variableInitializer() : nullptr;
+                AstVarInitializer* initClause = nullptr;
+                if (varInfo.m_declNode)
+                {
+                    initClause = varInfo.m_declNode->variableInitializer();
+                }
                 if (initClause)
                 {
                     m_out << " ";
@@ -1066,8 +1114,15 @@ namespace AZ::ShaderCompiler
         const auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(sId.m_name);
 
         const std::string spaceX = ", space" + std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
-        m_out << (varInfo->m_samplerState->m_isComparison ? "SamplerComparisonState " : "SamplerState ")
-            << ReplaceSeparators(sId.m_name, Underscore);
+        if (varInfo->m_samplerState->m_isComparison)
+        {
+            m_out << "SamplerComparisonState ";
+        }
+        else
+        {
+            m_out << "SamplerState ";
+        }
+        m_out << ReplaceSeparators(sId.m_name, Underscore);
         if (bindInfo.m_isUnboundedArray)
         {
             m_out << "[]";
@@ -1249,7 +1304,12 @@ namespace AZ::ShaderCompiler
             // as it would be hard to diagnose for users. As a reasonable behavior, we can emit val = 0.
             std::string typeAsStr = GetTranslatedName(returnType, UsageContext::ReferenceSite);
             // "<type> val = (cast expr to <type>) 0 or default;"
-            m_out << "    " << typeAsStr << " val = (" << typeAsStr << ")" << (defaultValue.empty() ? "0" : defaultValue) << ";\n";
+            std::string fallbackValue = defaultValue.data();
+            if (defaultValue.empty())
+            {
+                fallbackValue = "0";
+            }
+            m_out << "    " << typeAsStr << " val = (" << typeAsStr << ")" << fallbackValue << ";\n";
             m_out << "    return val;\n";
         }
         m_out << "}\n\n";
@@ -1369,7 +1429,12 @@ namespace AZ::ShaderCompiler
                         {
                             assert(tokenId >= 0);
                             auto* token = m_tokens->get(static_cast<size_t>(tokenId));
-                            return token->getChannel() == Token::DEFAULT_CHANNEL ? token->getText() : std::string{};
+                            if (token->getChannel() == Token::DEFAULT_CHANNEL)
+                            {
+                                return token->getText();
+                            }
+
+                            return std::string{};
                         };
                         output << m_translations.TranslateIdExpression(idExpr, ii, getToken) << " ";
                         ii += idExpr.m_span.length() - 1;
@@ -1383,7 +1448,14 @@ namespace AZ::ShaderCompiler
                     // do minimal reformatting to have a pseudo-readable emitted code
                     auto str = token->getText();
                     bool lineFeed = str == ";" || str == "{";
-                    output << str << (lineFeed ? '\n' : ' ');
+                    if (lineFeed)
+                    {
+                        output << str << '\n';
+                    }
+                    else
+                    {
+                        output << str << ' ';
+                    }
                 }
             }
 

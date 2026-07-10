@@ -35,7 +35,12 @@ namespace AZ::ShaderCompiler
         const LineDirectiveInfo* GetNearestPreprocessorLineDirective(size_t physicalLine) const
         {
             auto it = Infimum(m_lineMap, physicalLine);
-            return it == m_lineMap.end() ? nullptr : &it->second;
+            if (it == m_lineMap.end())
+            {
+                return nullptr;
+            }
+
+            return &it->second;
         }
 
         //! The "virtual" line is the #line-directive adjusted line number, as opposed to a physical line (given by tokens)
@@ -57,17 +62,23 @@ namespace AZ::ShaderCompiler
         size_t GetVirtualLineNumber(size_t physicalLine) const
         {
             const LineDirectiveInfo* found = GetNearestPreprocessorLineDirective(physicalLine);
-            return found
-                       ? GetVirtualLineNumber(*found, physicalLine)
-                       : physicalLine; // Return unadjusted in case of abscence of a virtual space.
+            if (found)
+            {
+                return GetVirtualLineNumber(*found, physicalLine);
+            }
+
+            return physicalLine; // Return unadjusted in case of abscence of a virtual space.
         }
 
         const std::string& GetVirtualFileName(size_t physicalLine) const
         {
             const LineDirectiveInfo* found = GetNearestPreprocessorLineDirective(physicalLine);
-            return found
-                       ? found->m_containingFilename
-                       : m_physicalSourceFileName; // Return unadjusted in case of abscence of a virtual space.
+            if (found)
+            {
+                return found->m_containingFilename;
+            }
+
+            return m_physicalSourceFileName; // Return unadjusted in case of abscence of a virtual space.
         }
 
         void PushLineDirective(const LineDirectiveInfo& ldi)

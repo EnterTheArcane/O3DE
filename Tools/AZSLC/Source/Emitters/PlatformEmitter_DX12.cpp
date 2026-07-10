@@ -85,10 +85,14 @@ namespace AZ::ShaderCompiler
 
                     const auto* memberInfo = codeEmitter.GetIR()->GetSymbolSubAs<VarInfo>(param.m_uid.m_name);
                     bool isSampler = param.m_type == RootParamType::Sampler;
-                    auto& destinationVector = isSampler ? samplerTable : descriptorTable;
+                    std::vector<std::string>* destinationVector = &descriptorTable;
+                    if (isSampler)
+                    {
+                        destinationVector = &samplerTable;
+                    }
                     if (!isSampler || memberInfo->m_samplerState->m_isDynamic)
                     {
-                        destinationVector.push_back(rootParam.str());
+                        destinationVector->push_back(rootParam.str());
                     }
                 }
             }

@@ -201,10 +201,23 @@ namespace AZ::ShaderCompiler
         {
             bool close = *iter == '('; // since we go backward ( is the end of a group
             bool open = *iter == ')';
-            level = open ? level + 1 : (close ? level - 1 : level);
+            if (open)
+            {
+                ++level;
+            }
+            else if (close)
+            {
+                --level;
+            }
+
             if (level <= 0)
             {
-                startOfLastGroup = name.size() - std::distance(name.rbegin(), iter) - (close ? 1 : 0); // eat the closing '('
+                size_t closeOffset = 0;
+                if (close)
+                {
+                    closeOffset = 1;
+                }
+                startOfLastGroup = name.size() - std::distance(name.rbegin(), iter) - closeOffset; // eat the closing '('
                 break;
             }
         }
@@ -253,13 +266,23 @@ namespace AZ::ShaderCompiler
     inline std::string Flatten(std::string name, FlattenStrategy strategy)
     {
         name = std::regex_replace(name, std::regex("\\?"), "");
-        return ReplaceSeparators(strategy == PreserveArgumentsUnicity ? FlattenParenthesisGroups(name) : RemoveMatchedParenthesis(name), Underscore);
+        if (strategy == PreserveArgumentsUnicity)
+        {
+            return ReplaceSeparators(FlattenParenthesisGroups(name), Underscore);
+        }
+
+        return ReplaceSeparators(RemoveMatchedParenthesis(name), Underscore);
     }
 
     //! "?int" to "int" (partial unmangling)
     inline std::string_view RemoveFloatingMark(std::string_view name)
     {
-        return name.starts_with('?') ? Slice(name, 1, -1) : name;
+        if (name.starts_with('?'))
+        {
+            return Slice(name, 1, -1);
+        }
+
+        return name;
     }
 
     //! Change from AZIR form to AZSLang form
@@ -318,9 +341,12 @@ namespace AZ::ShaderCompiler
     inline size_t CountParameters(std::string_view mangledFunctionName)
     {
         auto leaf = ExtractLeaf(mangledFunctionName);
-        return leaf.ends_with("()") || !leaf.ends_with(')') // no-arg function or not-a-function
-                   ? 0
-                   : 1 + std::count(leaf.begin(), leaf.end(), ','); // this isn't robust if types may hold comma (and it's the case for generics and function-types)
+        if (leaf.ends_with("()") || !leaf.ends_with(')')) // no-arg function or not-a-function
+        {
+            return 0;
+        }
+
+        return 1 + std::count(leaf.begin(), leaf.end(), ','); // this isn't robust if types may hold comma (and it's the case for generics and function-types)
     }
 
     enum class JoinPolicy
@@ -339,7 +365,12 @@ namespace AZ::ShaderCompiler
     {
         if ((stem.empty() || leaf.empty()) && policy == JoinPolicy::EmptyMeansEmpty)
         {
-            return std::string{stem.empty() ? leaf : stem};
+            if (stem.empty())
+            {
+                return std::string{leaf};
+            }
+
+            return std::string{stem};
         }
 
         assert(!IsRooted(leaf)); // violation of contract that leaf must not be rooted.
@@ -438,7 +469,11 @@ namespace AZ::ShaderCompiler
             bool isSlash = path[cp] == '/' && !WithinMatchedParentheses(path, cp);
             if (isSlash || isLast)
             {
-                size_t count = cp - start + (isLast && !isSlash ? 1 : 0);
+                size_t count = cp - start;
+                if (isLast && !isSlash)
+                {
+                    ++count;
+                }
                 action(PathPart{path.substr(start, count), start, count});
                 start = cp + 1;
                 if (isSlash && isLast) // we need to call again for the end part, to signal it exists but is empty

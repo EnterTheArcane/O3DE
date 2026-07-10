@@ -98,14 +98,24 @@ namespace AZ::ShaderCompiler
         KindInfo* GetKindInfo(IdentifierUID uid)
         {
             auto* idKindPtr = m_symbols.GetIdAndKindInfo(uid.GetName());
-            return idKindPtr ? &idKindPtr->second : nullptr;
+            if (idKindPtr)
+            {
+                return &idKindPtr->second;
+            }
+
+            return nullptr;
         }
 
         //! Just query the kind of a symbol
         Kind GetKind(IdentifierUID symbol) const
         {
             auto* ptr = m_symbols.GetIdAndKindInfo(symbol.GetName());
-            return ptr ? ptr->second.GetKind() : Kind{Kind::EndEnumeratorSentinel_};
+            if (ptr)
+            {
+                return ptr->second.GetKind();
+            }
+
+            return Kind{Kind::EndEnumeratorSentinel_};
         }
 
         //! Query if a symbol is a structure/class/enum nested in a structure or class

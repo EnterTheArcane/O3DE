@@ -140,10 +140,10 @@ namespace AZ
 
     inline std::string_view GetFileNameWithoutExtension(std::string_view fileName)
     {
-        size_t lastIndex = fileName.find_last_of(".");
-        if (lastIndex == -1)
+        const size_t lastIndex = fileName.find_last_of(".");
+        if (lastIndex == std::string::npos)
         {
-            lastIndex = fileName.size();
+            return fileName.substr(0, fileName.size());
         }
 
         return fileName.substr(0, lastIndex);
@@ -180,8 +180,18 @@ namespace AZ
     //! reverse the effect of a symmetrical decoration
     inline std::string_view Undecorate(std::string_view decoration, std::string_view body)
     {
-        auto indexStart = body.starts_with(decoration) ? decoration.length() : 0;
-        auto indexEnd = body.ends_with(decoration) ? body.length() - decoration.length() : body.length();
+        size_t indexStart = 0;
+        if (body.starts_with(decoration))
+        {
+            indexStart = decoration.length();
+        }
+
+        size_t indexEnd = body.length();
+        if (body.ends_with(decoration))
+        {
+            indexEnd = body.length() - decoration.length();
+        }
+
         return Slice(body, indexStart, indexEnd);
     }
 
@@ -224,9 +234,14 @@ namespace AZ
         int nesting = 0;
         for (size_t pos = 0; pos <= charPosition && pos < hayLen; ++pos)
         {
-            nesting += haystack[pos] == '('
-                           ? 1
-                           : (haystack[pos] == ')' ? -1 : 0);
+            if (haystack[pos] == '(')
+            {
+                ++nesting;
+            }
+            else if (haystack[pos] == ')')
+            {
+                --nesting;
+            }
         }
         return nesting > 0;
     }
@@ -583,7 +598,13 @@ namespace AZ
     auto Infimum(const std::map<T, U>& ctr, T query)
     {
         auto it = ctr.upper_bound(query);
-        return it == ctr.begin() ? ctr.end() : --it;
+        if (it == ctr.begin())
+        {
+            return ctr.end();
+        }
+
+        --it;
+        return it;
     }
 
     //! Log(N) disjointed segments belong query
@@ -597,7 +618,12 @@ namespace AZ
     {
         auto inf = Infimum(ctr, query);
         bool isInInterval = inf != ctr.end() && isInIntervalPredicate(query, inf->second);
-        return isInInterval ? inf : ctr.end();
+        if (isInInterval)
+        {
+            return inf;
+        }
+
+        return ctr.end();
     }
 
     //! Log(N) disjointed segments belong query
@@ -717,7 +743,12 @@ namespace AZ
         IntervalT GetClosestIntervalSurrounding(T query) const
         {
             auto bag = GetIntervalsSurrounding(query);
-            return bag.empty() ? IntervalT{-1, -2} : *bag.rbegin();
+            if (bag.empty())
+            {
+                return IntervalT{-1, -2};
+            }
+
+            return *bag.rbegin();
         }
 
         std::vector<IntervalT> m_obfirsts; // ordered by "firsts"

@@ -145,7 +145,10 @@ namespace AZ::ShaderCompiler
                 if (varInfo)
                 {
                     auto flag = VarDeclHasFlag(VarDeclHas::InOutModifiers) | VarDeclHas::HlslSemantics;
-                    flag |= withInitializer ? VarDeclHas::Initializer : VarDeclHas::EnumType(0);
+                    if (withInitializer)
+                    {
+                        flag |= VarDeclHas::Initializer;
+                    }
                     EmitVariableDeclaration(*varInfo, param.m_varId, options, flag);
                 }
                 else

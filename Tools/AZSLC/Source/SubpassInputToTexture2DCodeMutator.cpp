@@ -150,9 +150,20 @@ namespace AZ::ShaderCompiler
 
         if (varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("MS"))
         {
-            return varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("DSMS") ? SubpassInputType::SubpassInputDSMS : SubpassInputType::SubpassInputMS;
+            if (varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("DSMS"))
+            {
+                return SubpassInputType::SubpassInputDSMS;
+            }
+
+            return SubpassInputType::SubpassInputMS;
         }
-        return varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("DS") ? SubpassInputType::SubpassInputDS : SubpassInputType::SubpassInput;
+
+        if (varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("DS"))
+        {
+            return SubpassInputType::SubpassInputDS;
+        }
+
+        return SubpassInputType::SubpassInput;
     }
 
     size_t SubpassInputToTexture2DCodeMutator::MutateTypeOfMultiSampleVariables(const std::vector<IdentifierUID>& subpassInputVariables)
@@ -168,11 +179,25 @@ namespace AZ::ShaderCompiler
             {
             case SubpassInputType::SubpassInput:
             case SubpassInputType::SubpassInputDS:
-                typeId.m_name = isSupported ? QualifiedName{"?SubpassInput"} : QualifiedName{"?Texture2D"};
+                if (isSupported)
+                {
+                    typeId.m_name = QualifiedName{"?SubpassInput"};
+                }
+                else
+                {
+                    typeId.m_name = QualifiedName{"?Texture2D"};
+                }
                 break;
             case SubpassInputType::SubpassInputMS:
             case SubpassInputType::SubpassInputDSMS:
-                typeId.m_name = isSupported ? QualifiedName{"?SubpassInputMS"} : QualifiedName{"?Texture2DMS"};
+                if (isSupported)
+                {
+                    typeId.m_name = QualifiedName{"?SubpassInputMS"};
+                }
+                else
+                {
+                    typeId.m_name = QualifiedName{"?Texture2DMS"};
+                }
                 break;
             default:
                 break;

@@ -178,6 +178,18 @@ namespace AZ::ShaderCompiler
             // global filename for error messages. visual studio standard build-tool error format is:
             // {filename(line# [, column#]) | toolname} : [ any text ] {error | warning} code+number:localizable string [ any text ]
             // so to respect this, we're going to simplify the API by setting the report file here.
+            const char* errorTypeText = " warning";
+            if (error)
+            {
+                errorTypeText = " error";
+            }
+
+            const char* codePrefix = "";
+            if (!code.empty())
+            {
+                codePrefix = " #";
+            }
+
             return ConcatString(
                 filename,
                 "(",
@@ -186,8 +198,8 @@ namespace AZ::ShaderCompiler
                 column,
                 ") : ",
                 errorType,
-                error ? " error" : " warning",
-                code.empty() ? "" : " #",
+                errorTypeText,
+                codePrefix,
                 code,
                 ": ",
                 message);
@@ -196,10 +208,28 @@ namespace AZ::ShaderCompiler
     protected:
         void BakeErrorMessage()
         {
+            size_t lineNumber = 0;
+            if (m_line)
+            {
+                lineNumber = *m_line;
+            }
+
+            std::string virtualLine;
+            if (m_line)
+            {
+                virtualLine = ToString(s_lineFinder->GetVirtualLineNumber(*m_line));
+            }
+
+            std::string column;
+            if (m_column)
+            {
+                column = ToString(*m_column);
+            }
+
             m_errorMessage = MakeErrorMessage(
-                s_lineFinder->GetVirtualFileName(m_line ? *m_line : 0),
-                m_line ? ToString(s_lineFinder->GetVirtualLineNumber(*m_line)) : "",
-                m_column ? ToString(*m_column) : "",
+                s_lineFinder->GetVirtualFileName(lineNumber),
+                virtualLine,
+                column,
                 m_errorType,
                 m_errorCode != WX_WARNINGS_AS_ERRORS,
                 ToString(m_errorCode),
@@ -316,14 +346,29 @@ namespace AZ::ShaderCompiler
         {
             bool isKeyword = m_isKeywordPredicate(recognizer, offendingSymbol);
             using Ex = AzslcException;
-            std::string errorMessage = Ex::MakeErrorMessage(
-                Ex::s_lineFinder->GetVirtualFileName(line),
-                ToString(Ex::s_lineFinder->GetVirtualLineNumber(line)),
-                ToString(charPositionInLine + 1),
-                "syntax",
-                true,
-                ToString(PARSER_SYNTAX_ERROR),
-                ConcatString(msg, " (", offendingSymbol->getText(), isKeyword ? " is a keyword)" : " was unexpected)"));
+            std::string errorMessage;
+            if (isKeyword)
+            {
+                errorMessage = Ex::MakeErrorMessage(
+                    Ex::s_lineFinder->GetVirtualFileName(line),
+                    ToString(Ex::s_lineFinder->GetVirtualLineNumber(line)),
+                    ToString(charPositionInLine + 1),
+                    "syntax",
+                    true,
+                    ToString(PARSER_SYNTAX_ERROR),
+                    ConcatString(msg, " (", offendingSymbol->getText(), " is a keyword)"));
+            }
+            else
+            {
+                errorMessage = Ex::MakeErrorMessage(
+                    Ex::s_lineFinder->GetVirtualFileName(line),
+                    ToString(Ex::s_lineFinder->GetVirtualLineNumber(line)),
+                    ToString(charPositionInLine + 1),
+                    "syntax",
+                    true,
+                    ToString(PARSER_SYNTAX_ERROR),
+                    ConcatString(msg, " (", offendingSymbol->getText(), " was unexpected)"));
+            }
 
             antlr4::ParseCancellationException parseException(std::string(errorMessage.c_str(), errorMessage.size()));
             if (e)

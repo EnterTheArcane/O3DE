@@ -340,7 +340,11 @@ namespace AZ::ShaderCompiler
                 // the concept here, is to activate recursive lookup in case we have nested generics and/or typeof, in any combination.
                 // in practice for now, it will never recurse;
                 // because only generic parameters may be further AstNodes. And since we ignore them for now (collapsing behavior), we're set.
-                uqName = core.m_node ? UnqualifiedName{LookupType(core.m_node, policy).m_name} : core.m_name;
+                uqName = core.m_name;
+                if (core.m_node)
+                {
+                    uqName = UnqualifiedName{LookupType(core.m_node, policy).m_name};
+                }
             }
             IdAndKind* idkind = LookupSymbol(uqName);
             if (idkind)
@@ -380,14 +384,23 @@ namespace AZ::ShaderCompiler
         {
             auto typeId = LookupType(typeNameOrCtx, policy);
             auto tClass = GetTypeClass(typeId);
-            auto arithmetic = IsNonGenericArithmetic(tClass) ? CreateArithmeticTraits(typeId.GetName()) : ArithmeticTraits{}; // TODO: canonicalize generics
+            ArithmeticTraits arithmetic{};
+            if (IsNonGenericArithmetic(tClass))
+            {
+                arithmetic = CreateArithmeticTraits(typeId.GetName());
+            }
             return TypeRefInfo{typeId, arithmetic, tClass};
         }
 
         // shortcut helper, when we have a node ast, we use it in priority thanks to all the superior access it provides (for typeof)
         TypeRefInfo CreateTypeRefInfo(const ExtractedTypeExt& extractedType) const
         {
-            return extractedType.m_node ? CreateTypeRefInfo(extractedType.m_node) : CreateTypeRefInfo(extractedType.m_name);
+            if (extractedType.m_node)
+            {
+                return CreateTypeRefInfo(extractedType.m_node);
+            }
+
+            return CreateTypeRefInfo(extractedType.m_name);
         }
 
         // Just a helper function to compose the bigger version, that contains more data that can't be stored in the core type (TypeRefInfo).

@@ -136,7 +136,11 @@ namespace AZ::ShaderCompiler
         //    the third argument will remain as is.
         // For Texture2DMSArray it's the same as above, except that the first argument is of type int3.
         //    And it will be wrapped with an int4.
-        const std::string wrapperType = textureMSType == TextureMSType::Texture2DMSArray ? "int4(" : "int3(";
+        std::string wrapperType = "int3(";
+        if (textureMSType == TextureMSType::Texture2DMSArray)
+        {
+            wrapperType = "int4(";
+        }
         if (vectorOfArguments.size() >= 2)
         {
             {

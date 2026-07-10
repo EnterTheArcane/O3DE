@@ -85,7 +85,11 @@ namespace AZ::ShaderCompiler
         // the reason we treat functions differently is that some call sites are un-resolved, it's up to the target compiler to do the final overload resolution.
         // as long as we tolerate this loose semantics, we cannot uniquify function names, we need to preserve their "homonymous-ness".
         // however, there other kinds of symbols, like variables and types within function scopes, need to be unique to avoid collisions.
-        auto flatteningStrategy = kindIsFunction ? CollapseArguments : PreserveArgumentsUnicity;
+        auto flatteningStrategy = PreserveArgumentsUnicity;
+        if (kindIsFunction)
+        {
+            flatteningStrategy = CollapseArguments;
+        }
         // flatten will preserve the original qualification for unicity purposes. SRG::Inner::m_color becomes SRG_Inner_m_color
         std::string flattened = Flatten(originalSymbol.data(), flatteningStrategy);
         // check if the new symbol name is free in the desired scope
@@ -116,13 +120,22 @@ namespace AZ::ShaderCompiler
     QualifiedNameView SymbolTranslation::GetLandingScope(QualifiedNameView originalSymbol) const
     {
         auto it = m_landingScope.find(originalSymbol);
-        return it == m_landingScope.end() ? QualifiedNameView{GetParentName(originalSymbol)} : QualifiedNameView{it->second.m_landingScope};
+        if (it == m_landingScope.end())
+        {
+            return QualifiedNameView{GetParentName(originalSymbol)};
+        }
+
+        return QualifiedNameView{it->second.m_landingScope};
     }
 
     void SymbolTranslation::FindTranslation_(FindTranslation_Parameters& params) const
     {
         auto landingScopeIter = m_landingScope.find(params.m_originalPath);
-        params.m_foundMutation = (landingScopeIter == m_landingScope.end()) ? nullptr : &landingScopeIter->second;
+        params.m_foundMutation = nullptr;
+        if (landingScopeIter != m_landingScope.end())
+        {
+            params.m_foundMutation = &landingScopeIter->second;
+        }
         const auto cacheIter = m_renames.find(params.m_originalPath);
         if (cacheIter == m_renames.end()) // no translation-cache
         {
@@ -168,9 +181,11 @@ namespace AZ::ShaderCompiler
         // the ReferenceSite strategy is to emit the fully qualified HLSL all the time.
         //   we could try to reduce verbosity by using FindLeastQualifiedName but that'll be for later.
         // Unmangling by convention will un-decorate function names to strip them to their core name. So be consistent for both strategy.
-        auto translation = qualificationStrategy == UsageContext::DeclarationSite
-                               ? std::string{RemoveLastParenthesisGroup(ExtractLeaf(renamed))}
-                               : UnMangle(std::string{renamed});
+        auto translation = UnMangle(std::string{renamed});
+        if (qualificationStrategy == UsageContext::DeclarationSite)
+        {
+            translation = std::string{RemoveLastParenthesisGroup(ExtractLeaf(renamed))};
+        }
         // find a potential callback
         if (translationParams.m_foundMutation
             && translationParams.m_foundMutation->m_customBehavior
@@ -185,9 +200,12 @@ namespace AZ::ShaderCompiler
     std::pair<QualifiedNameView, ssize_t> SymbolTranslation::OverOriginalDefinitionOf(ssize_t tokenId) const
     {
         auto iterator = m_definitionCtxStartTokenOfMigratedSymbol.find(tokenId);
-        return iterator != m_definitionCtxStartTokenOfMigratedSymbol.end()
-                   ? std::make_pair(QualifiedNameView{iterator->second.first}, iterator->second.second)
-                   : std::make_pair(QualifiedNameView{}, -1_ssz);
+        if (iterator != m_definitionCtxStartTokenOfMigratedSymbol.end())
+        {
+            return std::make_pair(QualifiedNameView{iterator->second.first}, iterator->second.second);
+        }
+
+        return std::make_pair(QualifiedNameView{}, -1_ssz);
     }
 
     SymbolTranslation::IDExpressionDesc SymbolTranslation::GetIdExpression(ssize_t tokenId) const
@@ -202,10 +220,19 @@ namespace AZ::ShaderCompiler
         auto& ft2ide = m_firstTokenIdToIdExpression;
 
         auto ftIt = t2t.find(tokenId);
-        ssize_t tokenIdToSearch = ftIt == t2t.end() ? tokenId : ftIt->second;
+        ssize_t tokenIdToSearch = tokenId;
+        if (ftIt != t2t.end())
+        {
+            tokenIdToSearch = ftIt->second;
+        }
 
         auto idIt = ft2ide.find(tokenIdToSearch);
-        return idIt == ft2ide.end() ? IDExpressionDesc{} : idIt->second;
+        if (idIt == ft2ide.end())
+        {
+            return IDExpressionDesc{};
+        }
+
+        return idIt->second;
     }
 
     void SymbolTranslation::PreCacheTokenOfReference_(const Seenat& at)

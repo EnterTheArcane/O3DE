@@ -303,7 +303,11 @@ namespace AZ::ShaderCompiler
             {
                 const auto rows = exportedType.m_arithmeticInfo.m_rows;
                 const auto cols = exportedType.m_arithmeticInfo.m_cols;
-                const auto packAlignment = exportedType.m_arithmeticInfo.IsMatrix() ? Packing::Alignment::asMatrixStart : Packing::Alignment::asVectorStart;
+                auto packAlignment = Packing::Alignment::asVectorStart;
+                if (exportedType.m_arithmeticInfo.IsMatrix())
+                {
+                    packAlignment = Packing::Alignment::asMatrixStart;
+                }
                 startAt = offset = Packing::AlignOffset(layoutPacking, offset, packAlignment, rows, cols);
             }
 
@@ -384,7 +388,11 @@ namespace AZ::ShaderCompiler
             {
                 const auto rows = exportedType.m_arithmeticInfo.m_rows;
                 const auto cols = exportedType.m_arithmeticInfo.m_cols;
-                const auto packAlignment = exportedType.m_arithmeticInfo.IsMatrix() ? Packing::Alignment::asMatrixEnd : Packing::Alignment::asVectorEnd;
+                auto packAlignment = Packing::Alignment::asVectorEnd;
+                if (exportedType.m_arithmeticInfo.IsMatrix())
+                {
+                    packAlignment = Packing::Alignment::asMatrixEnd;
+                }
                 offset = Packing::AlignOffset(layoutPacking, offset, packAlignment, rows, cols);
             }
 

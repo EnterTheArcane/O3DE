@@ -46,7 +46,11 @@ namespace AZ::ShaderCompiler
                 // Semantic name and index
                 auto semanticName = semOpt->Name->getText();
                 const size_t index = semanticName.find_last_not_of("0123456789") + 1;
-                const uint32_t semanticIndex = (index == semanticName.length()) ? 0 : static_cast<uint32_t>(std::stoi(semanticName.substr(index)));
+                uint32_t semanticIndex = 0;
+                if (index != semanticName.length())
+                {
+                    semanticIndex = static_cast<uint32_t>(std::stoi(semanticName.substr(index)));
+                }
                 semanticName = semanticName.substr(0, index);
                 bool isSystemValue = (semOpt->Name->HLSLSemanticSystem() != nullptr);
 
@@ -227,7 +231,14 @@ namespace AZ::ShaderCompiler
 
         bool isVoid = returnTypeRef.m_coreType.m_typeClass == TypeClass::Void;
 
-        semStream["baseType"] = isVoid ? "void" : returnTypeRef.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr().data();
+        if (isVoid)
+        {
+            semStream["baseType"] = "void";
+        }
+        else
+        {
+            semStream["baseType"] = returnTypeRef.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr().data();
+        }
 
         auto numElements = returnTypeRef.m_coreType.m_arithmeticInfo.m_cols;
         semStream["cols"] = numElements;
@@ -235,7 +246,14 @@ namespace AZ::ShaderCompiler
 
         if (EqualNoCase(semanticOverride, "SV_Target"))
         {
-            semStream["format"] = isVoid ? "None" : OutputFormat::ToStr(m_ir->m_metaData.m_outputFormatHint[semanticIndex]).data();;
+            if (isVoid)
+            {
+                semStream["format"] = "None";
+            }
+            else
+            {
+                semStream["format"] = OutputFormat::ToStr(m_ir->m_metaData.m_outputFormatHint[semanticIndex]).data();
+            }
         }
         else if (StartsWithNoCase(semanticOverride, "SV_Depth"))
         {
@@ -516,9 +534,25 @@ namespace AZ::ShaderCompiler
             bool isPrefedined = IsPredefinedType(varClass);
             Json::Value memberLayout(Json::objectValue);
             const auto& shortName = memberId.GetNameLeaf();
-            memberLayout["constantId"] = std::string(isArrayItr ? std::string(namePrefix.data()) : namePrefix.data() + shortName).c_str();
+            std::string constantId = std::string(namePrefix.data()) + shortName;
+            if (isArrayItr)
+            {
+                constantId = std::string(namePrefix.data());
+            }
+            memberLayout["constantId"] = constantId.c_str();
             memberLayout["qualifiedName"] = memberId.m_name.c_str();
-            memberLayout["typeKind"] = isPrefedined ? "Predefined" : IsProductType(varClass) ? "Struct" : TypeClass::ToStr(varClass).data();
+            if (isPrefedined)
+            {
+                memberLayout["typeKind"] = "Predefined";
+            }
+            else if (IsProductType(varClass))
+            {
+                memberLayout["typeKind"] = "Struct";
+            }
+            else
+            {
+                memberLayout["typeKind"] = TypeClass::ToStr(varClass).data();
+            }
             memberLayout["typeName"] = varInfo.GetTypeId().m_name.c_str();
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, options.m_forceMatrixRowMajor);
@@ -529,7 +563,11 @@ namespace AZ::ShaderCompiler
             {
                 const auto rows = exportedType.m_arithmeticInfo.m_rows;
                 const auto cols = exportedType.m_arithmeticInfo.m_cols;
-                const auto packAlignment = exportedType.m_arithmeticInfo.IsMatrix() ? Packing::Alignment::asMatrixStart : Packing::Alignment::asVectorStart;
+                auto packAlignment = Packing::Alignment::asVectorStart;
+                if (exportedType.m_arithmeticInfo.IsMatrix())
+                {
+                    packAlignment = Packing::Alignment::asMatrixStart;
+                }
                 startAt = offset = Packing::AlignOffset(layoutPacking, offset, packAlignment, rows, cols);
             }
 
@@ -632,7 +670,11 @@ namespace AZ::ShaderCompiler
             {
                 const auto rows = exportedType.m_arithmeticInfo.m_rows;
                 const auto cols = exportedType.m_arithmeticInfo.m_cols;
-                const auto packAlignment = exportedType.m_arithmeticInfo.IsMatrix() ? Packing::Alignment::asMatrixEnd : Packing::Alignment::asVectorEnd;
+                auto packAlignment = Packing::Alignment::asVectorEnd;
+                if (exportedType.m_arithmeticInfo.IsMatrix())
+                {
+                    packAlignment = Packing::Alignment::asMatrixEnd;
+                }
                 offset = Packing::AlignOffset(layoutPacking, offset, packAlignment, rows, cols);
             }
 
@@ -670,7 +712,12 @@ namespace AZ::ShaderCompiler
 
     static void ReflectBinding(Json::Value& output, const RootSigDesc::SrgParamDesc& bindInfo)
     {
-        output["count"] = (bindInfo.m_isUnboundedArray) ? -1 : bindInfo.m_registerRange;
+        int count = bindInfo.m_registerRange;
+        if (bindInfo.m_isUnboundedArray)
+        {
+            count = -1;
+        }
+        output["count"] = count;
         output["index"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Untainted].m_registerIndex;
         output["space"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Untainted].m_logicalSpace;
         output["index-merged"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Merged].m_registerIndex;
@@ -754,7 +801,14 @@ namespace AZ::ShaderCompiler
                 Json::Value dataView(Json::objectValue);
                 dataView["id"] = ExtractLeaf(tId.m_name).data();
                 dataView["type"] = viewName.data();
-                dataView["usage"] = (isReadWriteView) ? "ReadWrite" : "Read";
+                if (isReadWriteView)
+                {
+                    dataView["usage"] = "ReadWrite";
+                }
+                else
+                {
+                    dataView["usage"] = "Read";
+                }
                 ReflectBinding(dataView, bindInfo);
                 dataView["stride"] = strideSize;
 
@@ -789,9 +843,32 @@ namespace AZ::ShaderCompiler
                     // Emit predefined enums for static sampler
                     samplerJson["anisotropyMax"] = samplerInfo.m_anisotropyMax;
                     samplerJson["anisotropyEnable"] = samplerInfo.m_anisotropyEnable;
-                    samplerJson["filterMin"] = (samplerInfo.m_filterMin == SamplerStateDesc::FilterMode::Linear) ? "Linear" : "Point";
-                    samplerJson["filterMag"] = (samplerInfo.m_filterMag == SamplerStateDesc::FilterMode::Linear) ? "Linear" : "Point";
-                    samplerJson["filterMip"] = (samplerInfo.m_filterMip == SamplerStateDesc::FilterMode::Linear) ? "Linear" : "Point";
+                    if (samplerInfo.m_filterMin == SamplerStateDesc::FilterMode::Linear)
+                    {
+                        samplerJson["filterMin"] = "Linear";
+                    }
+                    else
+                    {
+                        samplerJson["filterMin"] = "Point";
+                    }
+
+                    if (samplerInfo.m_filterMag == SamplerStateDesc::FilterMode::Linear)
+                    {
+                        samplerJson["filterMag"] = "Linear";
+                    }
+                    else
+                    {
+                        samplerJson["filterMag"] = "Point";
+                    }
+
+                    if (samplerInfo.m_filterMip == SamplerStateDesc::FilterMode::Linear)
+                    {
+                        samplerJson["filterMip"] = "Linear";
+                    }
+                    else
+                    {
+                        samplerJson["filterMip"] = "Point";
+                    }
                     samplerJson["reductionType"] = ToJson(samplerInfo.m_reductionType);
                     samplerJson["comparisonFunc"] = ToJson(samplerInfo.m_comparisonFunc);
                     samplerJson["addressU"] = ToJson(samplerInfo.m_addressU);

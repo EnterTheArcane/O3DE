@@ -189,7 +189,12 @@ namespace AZ::ShaderCompiler
                 {
                     return elem.GetNameLeaf() == uqName;
                 });
-            return (item != m_members.end()) ? std::optional<IdentifierUID>{*item} : std::nullopt;
+            if (item != m_members.end())
+            {
+                return std::optional<IdentifierUID>{*item};
+            }
+
+            return std::nullopt;
         }
 
         //! upcast to get a generic declaration context
@@ -238,13 +243,23 @@ namespace AZ::ShaderCompiler
         template <typename T>
         T* Get()
         {
-            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
+            if (std::holds_alternative<T>(m_subInfo))
+            {
+                return &std::get<T>(m_subInfo);
+            }
+
+            return (T*)nullptr;
         }
 
         template <typename T>
         const T* Get() const
         {
-            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
+            if (std::holds_alternative<T>(m_subInfo))
+            {
+                return &std::get<T>(m_subInfo);
+            }
+
+            return (T*)nullptr;
         }
 
         Kind m_kind; // which of class/struct/interface/srgsemantic ? (repetition of data in the upper KindInfo)
@@ -322,7 +337,12 @@ namespace AZ::ShaderCompiler
         //! because this function is the leaf of any type query, we can transform types at will :)
         QualifiedNameView GetMimickedType() const
         {
-            return IsChameleon(m_coreType.m_typeClass) ? m_genericParameter.m_typeId.GetName() : m_coreType.m_typeId.GetName();
+            if (IsChameleon(m_coreType.m_typeClass))
+            {
+                return m_genericParameter.m_typeId.GetName();
+            }
+
+            return m_coreType.m_typeId.GetName();
         }
 
         //! Check whether some type has been assigned or not (or plain not-initialized)
@@ -364,15 +384,25 @@ namespace AZ::ShaderCompiler
         //! this is not rigorous and does not constitute a mangling. the full feature is better served at emission side by GetExtendedTypeInfo function.
         std::string GetDisplayName() const
         {
-            return m_qualifiers.GetDisplayName() + " " + m_coreType.m_typeId.m_name +
-                (m_genericParameter.IsEmpty() ? "" : Decorate("<", m_genericParameter.m_typeId.m_name, ">"));
+            std::string generic;
+            if (!m_genericParameter.IsEmpty())
+            {
+                generic = Decorate("<", m_genericParameter.m_typeId.m_name, ">");
+            }
+
+            return m_qualifiers.GetDisplayName() + " " + m_coreType.m_typeId.m_name + generic;
         }
 
         //! only use leaf form of names to compose a displayable reconstituted name
         std::string GetDisplayShortName() const
         {
             std::string coreLeaf = m_coreType.m_typeId.GetNameLeaf();
-            return m_genericParameter.IsEmpty() ? coreLeaf : coreLeaf + Decorate("<", m_genericParameter.m_typeId.GetNameLeaf(), ">");
+            if (m_genericParameter.IsEmpty())
+            {
+                return coreLeaf;
+            }
+
+            return coreLeaf + Decorate("<", m_genericParameter.m_typeId.GetNameLeaf(), ">");
         }
 
         // Those can't be stored at the same place because of a problem of identity.
@@ -585,7 +615,12 @@ namespace AZ::ShaderCompiler
         IdentifierUID FindCandidateOfArity(size_t arity)
         {
             auto lookup = m_argCounts.find(arity);
-            return lookup != m_argCounts.end() ? lookup->second : IdentifierUID{};
+            if (lookup != m_argCounts.end())
+            {
+                return lookup->second;
+            }
+
+            return IdentifierUID{};
         }
 
         //! attempt a lookup within
@@ -798,7 +833,12 @@ namespace AZ::ShaderCompiler
         //! @param firstDeclaration get the list from the first signature site
         auto& GetParameters(bool firstDeclaration) const
         {
-            return m_parameters[std::min(m_currentList, firstDeclaration ? 0 : 1)];
+            if (firstDeclaration)
+            {
+                return m_parameters[std::min(m_currentList, 0)];
+            }
+
+            return m_parameters[std::min(m_currentList, 1)];
         }
 
         bool DeleteParameter(const IdentifierUID& varName)
@@ -924,12 +964,22 @@ namespace AZ::ShaderCompiler
 
         bool IsPartial() const
         {
-            return m_declNode ? !!m_declNode->Partial() : false;
+            if (m_declNode)
+            {
+                return !!m_declNode->Partial();
+            }
+
+            return false;
         }
 
         size_t GetOriginalLineNumber() const
         {
-            return m_declNode ? m_declNode->start->getLine() : 0;
+            if (m_declNode)
+            {
+                return m_declNode->start->getLine();
+            }
+
+            return 0;
         }
 
         AstSRGDeclNode* m_declNode = nullptr;
@@ -977,14 +1027,24 @@ namespace AZ::ShaderCompiler
         template <typename T>
         const T* GetSubAs() const
         {
-            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (const T*)nullptr;
+            if (std::holds_alternative<T>(m_subInfo))
+            {
+                return &std::get<T>(m_subInfo);
+            }
+
+            return (const T*)nullptr;
         }
 
         //! mutable version
         template <typename T>
         T* GetSubAs()
         {
-            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
+            if (std::holds_alternative<T>(m_subInfo))
+            {
+                return &std::get<T>(m_subInfo);
+            }
+
+            return (T*)nullptr;
         }
 
         //! Throwing version (bad_access) of above helper, gets a reference on success
@@ -1138,7 +1198,12 @@ namespace AZ::ShaderCompiler
             // maintenance note: historical behavior here was to collapse to return type.
             // today, in intermediate type-chains evaluations, we are going to distinguish between function and function call.
             // this change is introduced to be able to make informed decisions on function-call-expression sites, amidst the bigger picture of overloads support.
-            return m_forFunctionsGetReturnType ? func.m_returnType.GetMimickedType() : m_uid.GetName();
+            if (m_forFunctionsGetReturnType)
+            {
+                return func.m_returnType.GetMimickedType();
+            }
+
+            return m_uid.GetName();
         }
 
         QualifiedName operator()(const OverloadSetInfo& overloadSet) const
@@ -1203,7 +1268,12 @@ namespace AZ::ShaderCompiler
     {
         size_t operator()(const VarInfo& var) const
         {
-            return var.m_declNode ? var.m_declNode->start->getLine() : NoLine;
+            if (var.m_declNode)
+            {
+                return var.m_declNode->start->getLine();
+            }
+
+            return NoLine;
         }
 
         size_t operator()(const FunctionInfo& func) const
@@ -1223,7 +1293,12 @@ namespace AZ::ShaderCompiler
 
         size_t operator()(const TypeAliasInfo& tai) const
         {
-            return tai.m_declNode ? tai.m_declNode->start->getLine() : NoLine;
+            if (tai.m_declNode)
+            {
+                return tai.m_declNode->start->getLine();
+            }
+
+            return NoLine;
         }
 
         template <typename AnyNonCovered>
@@ -1263,16 +1338,27 @@ namespace AZ::ShaderCompiler
         const TokensLocation operator()(const VarInfo& var) const
         {
             ParserRuleContext* node = GetParentIfIsNamedVarDecl_OtherwiseIdentity(var.m_declNode);
-            return node
-                       ? MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode))
-                       : TokensLocation{{}, -1, 0, 0};
+            if (node)
+            {
+                return MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode));
+            }
+
+            return TokensLocation{{}, -1, 0, 0};
         }
 
         const TokensLocation operator()(const FunctionInfo& func) const
         {
+            AstFuncSig* node = func.m_declNode;
+            auto* name = func.m_declNode->Name;
+            if (func.m_defNode)
+            {
+                node = func.m_defNode;
+                name = func.m_defNode->Name;
+            }
+
             return MakeTokensLocation(
-                func.m_defNode ? func.m_defNode : func.m_declNode,
-                func.m_defNode ? func.m_defNode->Name : func.m_declNode->Name);
+                node,
+                name);
         }
 
         const TokensLocation operator()(const ClassInfo& clInfo) const

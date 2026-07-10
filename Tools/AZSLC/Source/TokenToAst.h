@@ -25,7 +25,12 @@ namespace AZ::ShaderCompiler
         AstNode* GetNode(ssize_t tokenId)
         {
             auto iterator = m_tokenToAst.find(tokenId);
-            return iterator == m_tokenToAst.end() ? nullptr : iterator->second;
+            if (iterator == m_tokenToAst.end())
+            {
+                return nullptr;
+            }
+
+            return iterator->second;
         }
 
         void SetAssociation(ssize_t tokenId, AstNode* node)

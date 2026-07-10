@@ -344,11 +344,16 @@ namespace AZ::ShaderCompiler
                 {getIndex("double"), 13 << 5},
             };
             // `basesize` getter, but 1 for bool: (physical size of extern bool is considered 32bits in HLSL)
-            auto getRankSizeof = [&](int scalarId)
+            auto getRankSizeof = [&](int scalarId) -> uint32_t
             {
                 assert(std::string_view{"bool"} == Predefined::Scalar[0]); // verify that 0 is the hard index of bool.
                 bool isBool = scalarId == 0;
-                return isBool ? 1 : m_baseSize;
+                if (isBool)
+                {
+                    return 1u;
+                }
+
+                return m_baseSize;
             };
             // The shift method is taken from clang, I suppose it's a multi-parameter order cramed into bits.
             // so because 10 is the largest subrank, shift by 4 should separate sizeof space and subrank space.
@@ -358,7 +363,19 @@ namespace AZ::ShaderCompiler
         //! Get the size of the whole type considering dimensions
         uint32_t GetTotalSize() const
         {
-            return m_baseSize * (m_cols > 0 ? m_cols : 1) * (m_rows > 0 ? m_rows : 1);
+            uint32_t cols = 1;
+            if (m_cols > 0)
+            {
+                cols = m_cols;
+            }
+
+            uint32_t rows = 1;
+            if (m_rows > 0)
+            {
+                rows = m_rows;
+            }
+
+            return m_baseSize * cols * rows;
         }
 
         //! True if the type is a vector type. If it's a vector type it cannot be a matrix as well.
@@ -392,9 +409,12 @@ namespace AZ::ShaderCompiler
         //! For pretty print
         std::string_view UnderlyingScalarToStr() const
         {
-            return m_underlyingScalar >= 0 && m_underlyingScalar < AZ::ShaderCompiler::Predefined::Scalar.size()
-                ? AZ::ShaderCompiler::Predefined::Scalar[m_underlyingScalar]
-                : "<NA>";
+            if (m_underlyingScalar >= 0 && m_underlyingScalar < AZ::ShaderCompiler::Predefined::Scalar.size())
+            {
+                return AZ::ShaderCompiler::Predefined::Scalar[m_underlyingScalar];
+            }
+
+            return "<NA>";
         }
 
         //! Create a canonicalized mangled name that should represent the identity of this arithmetic type.
@@ -406,7 +426,13 @@ namespace AZ::ShaderCompiler
             }
             else if (IsVector())
             {
-                return QualifiedName{MangleScalarType(UnderlyingScalarToStr()) + (m_rows > 0 ? ToString(m_rows) : ToString(m_cols))};
+                std::string dim = ToString(m_cols);
+                if (m_rows > 0)
+                {
+                    dim = ToString(m_rows);
+                }
+
+                return QualifiedName{MangleScalarType(UnderlyingScalarToStr()) + dim};
             }
             else
             {

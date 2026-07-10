@@ -34,7 +34,11 @@ namespace AZ::ShaderCompiler
             auto& [uid, kindInfo] = st.AddIdentifier(azirName, Kind::Type); // the kind is Type because all predefined are stored as such.
             auto& typeInfo = kindInfo.GetSubAfterInitAs<Kind::Type>();
             auto typeClass = TypeClass::FromStr(bag.m_name);
-            auto arithmetic = IsNonGenericArithmetic(typeClass) ? CreateArithmeticTraits(azirName) : ArithmeticTraits{}; // TODO: canonicalize generics
+            ArithmeticTraits arithmetic{};
+            if (IsNonGenericArithmetic(typeClass))
+            {
+                arithmetic = CreateArithmeticTraits(azirName);
+            }
             typeInfo = TypeRefInfo{uid, arithmetic, typeClass};
         }
     }
@@ -79,24 +83,26 @@ namespace AZ::ShaderCompiler
 
     IdAndKind* SymbolAggregator::GetIdAndKindInfo(QualifiedNameView symbol)
     {
-        auto toReturn = m_elastic.GetIdAndKindInfo(symbol);
-        if (!toReturn)
+        IdAndKind* idAndKind = m_elastic.GetIdAndKindInfo(symbol);
+        if (idAndKind)
         {
-            // I am going to go ahead and tolerate returning of non const data to the fixed table.
-            // Not ideal, but will cause much lost time and pondering, if we don't consider it through non-const Gets.
-            toReturn = const_cast<std::remove_const_t<decltype(m_fixed)>&>(m_fixed).GetIdAndKindInfo(symbol);
+            return idAndKind;
         }
-        return toReturn;
+
+        // I am going to go ahead and tolerate returning of non const data to the fixed table.
+        // Not ideal, but will cause much lost time and pondering, if we don't consider it through non-const Gets.
+        return const_cast<std::remove_const_t<decltype(m_fixed)>&>(m_fixed).GetIdAndKindInfo(symbol);
     }
 
     const IdAndKind* SymbolAggregator::GetIdAndKindInfo(QualifiedNameView symbol) const
     {
-        auto toReturn = m_elastic.GetIdAndKindInfo(symbol);
-        if (!toReturn)
+        const IdAndKind* idAndKind = m_elastic.GetIdAndKindInfo(symbol);
+        if (idAndKind)
         {
-            toReturn = m_fixed.GetIdAndKindInfo(symbol);
+            return idAndKind;
         }
-        return toReturn;
+
+        return m_fixed.GetIdAndKindInfo(symbol);
     }
 
     IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber /*=std::nullopt*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
@@ -226,9 +232,12 @@ namespace AZ::ShaderCompiler
     const std::vector<AttributeInfo>* SymbolAggregator::GetAttributeList(const IdentifierUID& uid) const
     {
         auto attrList = m_idToAttributeMap.find(uid);
-        return attrList == m_idToAttributeMap.end()
-                   ? nullptr
-                   : &attrList->second;
+        if (attrList == m_idToAttributeMap.end())
+        {
+            return nullptr;
+        }
+
+        return &attrList->second;
     }
 
     static std::optional<AttributeInfo> FindAttributeByNameInList(const std::vector<AttributeInfo>& attrList, const std::string& attributeName)
@@ -241,9 +250,12 @@ namespace AZ::ShaderCompiler
                 return attrInfo.m_attribute == attributeName;
             });
 
-        return iter == attrList.end()
-                   ? std::nullopt
-                   : std::optional{*iter};
+        if (iter == attrList.end())
+        {
+            return std::nullopt;
+        }
+
+        return std::optional{*iter};
     }
 
     std::optional<AttributeInfo> SymbolAggregator::GetAttribute(const IdentifierUID& uid, const std::string& attributeName) const

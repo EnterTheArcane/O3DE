@@ -96,7 +96,12 @@ namespace AZ::ShaderCompiler
                 return true;
             }
 
-            OutputFormat hint = OutputFormat::FromStr(Trim(std::get<std::string>(attrInfo.m_argList[isDefault ? 0 : 1]), "\""));
+            size_t hintIndex = 1;
+            if (isDefault)
+            {
+                hintIndex = 0;
+            }
+            OutputFormat hint = OutputFormat::FromStr(Trim(std::get<std::string>(attrInfo.m_argList[hintIndex]), "\""));
 
             if (isDefault)
             {
@@ -319,7 +324,14 @@ namespace AZ::ShaderCompiler
         std::string r;
         r += "{name: \"" + tref.m_typeId.m_name + "\", ";
         r += "validity: ";
-        r += ir.m_symbols.HasIdentifier(tref.m_typeId.m_name) ? "found, " : "undeclared, ";
+        if (ir.m_symbols.HasIdentifier(tref.m_typeId.m_name))
+        {
+            r += "found, ";
+        }
+        else
+        {
+            r += "undeclared, ";
+        }
         r += "tclass: ";
         r += TypeClass::ToStr(tref.m_typeClass);
         r += ", ";
@@ -366,11 +378,25 @@ namespace AZ::ShaderCompiler
                     auto& sub = sym.GetSubRefAs<VarInfo>();
                     // We treat some attributes as static const-s for consistency with the grammar and rest of the code,
                     //  but they don't have actual type or declaration line, so we skip them here.
-                    cout << "  line: " << (sub.m_declNode ? std::to_string(sub.m_declNode->start->getLine()) : "NA") << "\n";
+                    if (sub.m_declNode)
+                    {
+                        cout << "  line: " << std::to_string(sub.m_declNode->start->getLine()) << "\n";
+                    }
+                    else
+                    {
+                        cout << "  line: NA\n";
+                    }
                     cout << "  type:\n" << ToYaml(sub.m_typeInfoExt, ir, "    ") << "\n";
                     cout << "  storage: " << sub.m_typeInfoExt.m_qualifiers.GetDisplayName() << "\n";
                     cout << "  array dim: \"" << sub.m_typeInfoExt.m_arrayDims.ToString() << "\"\n";
-                    cout << "  has sampler state: " << (sub.m_samplerState ? "yes\n" : "no\n");
+                    if (sub.m_samplerState)
+                    {
+                        cout << "  has sampler state: yes\n";
+                    }
+                    else
+                    {
+                        cout << "  has sampler state: no\n";
+                    }
                     if (!std::holds_alternative<std::monostate>(sub.m_constVal))
                     {
                         cout << "  val: " << ExtractValueAsInt64(sub.m_constVal) << "\n";
@@ -397,21 +423,36 @@ namespace AZ::ShaderCompiler
                 {
                     auto& sub = sym.GetSubRefAs<FunctionInfo>();
                     cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
-                    cout << "  def line: " << (sub.IsUndefinedFunction() ? "undef" : std::to_string(sub.m_defNode->start->getLine())) << "\n";
+                    std::string defLine = std::to_string(sub.m_defNode->start->getLine());
+                    if (sub.IsUndefinedFunction())
+                    {
+                        defLine = "undef";
+                    }
+                    cout << "  def line: " << defLine << "\n";
                     cout << "  must override: " << sub.m_mustOverride << "\n";
                     cout << "  is method: " << sub.m_isMethod << "\n";
                     cout << "  is virtual: " << sub.m_isVirtual << "\n";
                     cout << "  return type:\n" << ToYaml(sub.m_returnType, ir, "    ") << "\n";
                     cout << "  storage: " << sub.m_returnType.m_qualifiers.GetDisplayName() << "\n";
                     cout << "  has overriding children:\n" << ToYaml(sub.m_overrides.begin(), sub.m_overrides.end(), "    ");
-                    cout << "  is hiding base symbol: '" << (sub.m_base ? sub.m_base->m_name.c_str() : "") << "'\n";
+                    std::string baseName;
+                    if (sub.m_base)
+                    {
+                        baseName = sub.m_base->m_name.c_str();
+                    }
+                    cout << "  is hiding base symbol: '" << baseName << "'\n";
                     cout << "  parameters:\n";
                     for (auto& param : sub.GetParameters(1))
                     {
                         auto* varInfo = ir.GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
                         if (varInfo)
                         {
-                            cout << "    - name: '" << (varInfo->m_identifier.empty() ? "<unnamed>" : static_cast<std::string&>(varInfo->m_identifier)) << "'\n"
+                            std::string parameterName = static_cast<std::string&>(varInfo->m_identifier);
+                            if (varInfo->m_identifier.empty())
+                            {
+                                parameterName = "<unnamed>";
+                            }
+                            cout << "    - name: '" << parameterName << "'\n"
                                 << "      type:\n" << ToYaml(varInfo->m_typeInfoExt, ir, "        ") << "\n";
                         }
                         else
@@ -586,7 +627,11 @@ namespace AZ::ShaderCompiler
             {
                 const auto rows = exportedType.m_arithmeticInfo.m_rows;
                 const auto cols = exportedType.m_arithmeticInfo.m_cols;
-                const auto packAlignment = exportedType.m_arithmeticInfo.IsMatrix() ? Packing::Alignment::asMatrixStart : Packing::Alignment::asVectorStart;
+                auto packAlignment = Packing::Alignment::asVectorStart;
+                if (exportedType.m_arithmeticInfo.IsMatrix())
+                {
+                    packAlignment = Packing::Alignment::asMatrixStart;
+                }
                 startAt = nextMemberStartingOffset = Packing::AlignOffset(layoutPacking, nextMemberStartingOffset, packAlignment, rows, cols);
             }
 
@@ -606,7 +651,11 @@ namespace AZ::ShaderCompiler
             {
                 const auto rows = exportedType.m_arithmeticInfo.m_rows;
                 const auto cols = exportedType.m_arithmeticInfo.m_cols;
-                const auto packAlignment = exportedType.m_arithmeticInfo.IsMatrix() ? Packing::Alignment::asMatrixEnd : Packing::Alignment::asVectorEnd;
+                auto packAlignment = Packing::Alignment::asVectorEnd;
+                if (exportedType.m_arithmeticInfo.IsMatrix())
+                {
+                    packAlignment = Packing::Alignment::asMatrixEnd;
+                }
                 nextMemberStartingOffset = Packing::AlignOffset(layoutPacking, nextMemberStartingOffset, packAlignment, rows, cols);
             }
 
@@ -982,9 +1031,15 @@ namespace AZ::ShaderCompiler
                 return {};
             }
             const auto virtualLine = lineFinder->GetVirtualLineNumber(*lineInfo, lineOfDeclaration);
+            int prepadComponents = 3;
+            if (prepadType == PrepadType::Float2)
+            {
+                prepadComponents = 2;
+            }
+
             std::string solution = FormatString(
                 "- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
-                prepadType == PrepadType::Float2 ? 2 : 3,
+                prepadComponents,
                 insertBeforeThisUid.GetNameLeaf().c_str(),
                 typeName.c_str(),
                 parentName.data(),

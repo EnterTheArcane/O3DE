@@ -84,43 +84,72 @@ namespace AZ::ShaderCompiler
 
     Streamable& operator <<(Streamable& out, const SamplerStateDesc::AddressMode& addressMode)
     {
-        return out << ((addressMode == SamplerStateDesc::AddressMode::Wrap)
-                           ? "TEXTURE_ADDRESS_WRAP"
-                           : (addressMode == SamplerStateDesc::AddressMode::Clamp)
-                           ? "TEXTURE_ADDRESS_CLAMP"
-                           : (addressMode == SamplerStateDesc::AddressMode::Border)
-                           ? "TEXTURE_ADDRESS_BORDER"
-                           : (addressMode == SamplerStateDesc::AddressMode::Mirror)
-                           ? "TEXTURE_ADDRESS_MIRROR"
-                           : "TEXTURE_ADDRESS_MIRROR_ONCE");
+        if (addressMode == SamplerStateDesc::AddressMode::Wrap)
+        {
+            return out << "TEXTURE_ADDRESS_WRAP";
+        }
+        else if (addressMode == SamplerStateDesc::AddressMode::Clamp)
+        {
+            return out << "TEXTURE_ADDRESS_CLAMP";
+        }
+        else if (addressMode == SamplerStateDesc::AddressMode::Border)
+        {
+            return out << "TEXTURE_ADDRESS_BORDER";
+        }
+        else if (addressMode == SamplerStateDesc::AddressMode::Mirror)
+        {
+            return out << "TEXTURE_ADDRESS_MIRROR";
+        }
+
+        return out << "TEXTURE_ADDRESS_MIRROR_ONCE";
     }
 
     Streamable& operator <<(Streamable& out, const SamplerStateDesc::ComparisonFunc& compFunc)
     {
-        return out << ((compFunc == SamplerStateDesc::ComparisonFunc::Never)
-                           ? "COMPARISON_NEVER"
-                           : (compFunc == SamplerStateDesc::ComparisonFunc::Less)
-                           ? "COMPARISON_LESS"
-                           : (compFunc == SamplerStateDesc::ComparisonFunc::Equal)
-                           ? "COMPARISON_EQUAL"
-                           : (compFunc == SamplerStateDesc::ComparisonFunc::LessEqual)
-                           ? "COMPARISON_LESS_EQUAL"
-                           : (compFunc == SamplerStateDesc::ComparisonFunc::Greater)
-                           ? "COMPARISON_GREATER"
-                           : (compFunc == SamplerStateDesc::ComparisonFunc::NotEqual)
-                           ? "COMPARISON_NOT_EQUAL"
-                           : (compFunc == SamplerStateDesc::ComparisonFunc::GreaterEqual)
-                           ? "COMPARISON_GREATER_EQUAL"
-                           : "COMPARISON_ALWAYS");
+        if (compFunc == SamplerStateDesc::ComparisonFunc::Never)
+        {
+            return out << "COMPARISON_NEVER";
+        }
+        else if (compFunc == SamplerStateDesc::ComparisonFunc::Less)
+        {
+            return out << "COMPARISON_LESS";
+        }
+        else if (compFunc == SamplerStateDesc::ComparisonFunc::Equal)
+        {
+            return out << "COMPARISON_EQUAL";
+        }
+        else if (compFunc == SamplerStateDesc::ComparisonFunc::LessEqual)
+        {
+            return out << "COMPARISON_LESS_EQUAL";
+        }
+        else if (compFunc == SamplerStateDesc::ComparisonFunc::Greater)
+        {
+            return out << "COMPARISON_GREATER";
+        }
+        else if (compFunc == SamplerStateDesc::ComparisonFunc::NotEqual)
+        {
+            return out << "COMPARISON_NOT_EQUAL";
+        }
+        else if (compFunc == SamplerStateDesc::ComparisonFunc::GreaterEqual)
+        {
+            return out << "COMPARISON_GREATER_EQUAL";
+        }
+
+        return out << "COMPARISON_ALWAYS";
     }
 
     Streamable& operator <<(Streamable& out, const SamplerStateDesc::BorderColor& borderColor)
     {
-        return out << ((borderColor == SamplerStateDesc::BorderColor::OpaqueBlack)
-                           ? "STATIC_BORDER_COLOR_OPAQUE_BLACK"
-                           : (borderColor == SamplerStateDesc::BorderColor::OpaqueWhite)
-                           ? "STATIC_BORDER_COLOR_OPAQUE_WHITE"
-                           : "STATIC_BORDER_COLOR_TRANSPARENT_BLACK");
+        if (borderColor == SamplerStateDesc::BorderColor::OpaqueBlack)
+        {
+            return out << "STATIC_BORDER_COLOR_OPAQUE_BLACK";
+        }
+        else if (borderColor == SamplerStateDesc::BorderColor::OpaqueWhite)
+        {
+            return out << "STATIC_BORDER_COLOR_OPAQUE_WHITE";
+        }
+
+        return out << "STATIC_BORDER_COLOR_TRANSPARENT_BLACK";
     }
 
     Streamable& operator <<(Streamable& out, const SamplerStateDesc& samplerDesc)
@@ -128,32 +157,70 @@ namespace AZ::ShaderCompiler
         // Resolving the filter is the hardest part of the emission
         out << ", filter = FILTER_";
 
-        out << ((samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Comparison)
-                    ? "COMPARISON_"
-                    : (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Maximum)
-                    ? "MAXIMUM_"
-                    : (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Minimum)
-                    ? "MINIMUM_"
-                    : "");
+        if (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Comparison)
+        {
+            out << "COMPARISON_";
+        }
+        else if (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Maximum)
+        {
+            out << "MAXIMUM_";
+        }
+        else if (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Minimum)
+        {
+            out << "MINIMUM_";
+        }
 
         // The correct order is MIN -> MAG -> MIP
         // Reference: https://github.com/Microsoft/DirectXShaderCompiler/blob/master/tools/clang/unittests/HLSL/FunctionTest.cpp
-        out << "MIN_"
-            << (samplerDesc.m_filterMin == samplerDesc.m_filterMag ? "MAG_" : "")
-            << (samplerDesc.m_filterMin == samplerDesc.m_filterMag && samplerDesc.m_filterMag == samplerDesc.m_filterMip ? "MIP_" : "")
-            << (samplerDesc.m_filterMin == SamplerStateDesc::FilterMode::Point ? "POINT" : "LINEAR");
+        out << "MIN_";
+        if (samplerDesc.m_filterMin == samplerDesc.m_filterMag)
+        {
+            out << "MAG_";
+        }
+
+        if (samplerDesc.m_filterMin == samplerDesc.m_filterMag && samplerDesc.m_filterMag == samplerDesc.m_filterMip)
+        {
+            out << "MIP_";
+        }
+
+        if (samplerDesc.m_filterMin == SamplerStateDesc::FilterMode::Point)
+        {
+            out << "POINT";
+        }
+        else
+        {
+            out << "LINEAR";
+        }
 
         if (samplerDesc.m_filterMin != samplerDesc.m_filterMag)
         {
-            out << "_MAG_"
-                << (samplerDesc.m_filterMag == samplerDesc.m_filterMip ? "MIP_" : "")
-                << (samplerDesc.m_filterMag == SamplerStateDesc::FilterMode::Point ? "POINT" : "LINEAR");
+            out << "_MAG_";
+            if (samplerDesc.m_filterMag == samplerDesc.m_filterMip)
+            {
+                out << "MIP_";
+            }
+
+            if (samplerDesc.m_filterMag == SamplerStateDesc::FilterMode::Point)
+            {
+                out << "POINT";
+            }
+            else
+            {
+                out << "LINEAR";
+            }
         }
 
         if (samplerDesc.m_filterMag != samplerDesc.m_filterMip)
         {
-            out << "_MIP_"
-                << (samplerDesc.m_filterMip == SamplerStateDesc::FilterMode::Point ? "POINT" : "LINEAR");
+            out << "_MIP_";
+            if (samplerDesc.m_filterMip == SamplerStateDesc::FilterMode::Point)
+            {
+                out << "POINT";
+            }
+            else
+            {
+                out << "LINEAR";
+            }
         }
         // ^ The filter should be resolved
 
@@ -173,7 +240,12 @@ namespace AZ::ShaderCompiler
     {
         // the 2 enum orders are arranged the same for this to work
         const auto paramBindingType = static_cast<BindingType::EnumType>(paramType.m_value);
-        return paramBindingType < BindingType::EndEnumeratorSentinel_ ? paramBindingType : BindingType::B;
+        if (paramBindingType < BindingType::EndEnumeratorSentinel_)
+        {
+            return paramBindingType;
+        }
+
+        return BindingType::B;
     }
 
     RootParamType FindParamType(const ExtendedTypeInfo& typeInfoExt)
@@ -189,7 +261,12 @@ namespace AZ::ShaderCompiler
         }
         if (IsViewType(coreTypeClass))
         {
-            return IsReadWriteView(typeInfoExt.m_coreType.m_typeId.GetNameLeaf()) ? RootParamType::UAV : RootParamType::SRV;
+            if (IsReadWriteView(typeInfoExt.m_coreType.m_typeId.GetNameLeaf()))
+            {
+                return RootParamType::UAV;
+            }
+
+            return RootParamType::SRV;
         }
         return RootParamType::EndEnumeratorSentinel_;
     }
@@ -273,13 +350,20 @@ namespace AZ::ShaderCompiler
 
     Streamable& operator <<(Streamable& out, const SamplerStateDesc::ReductionType& redcType)
     {
-        return out << ((redcType == SamplerStateDesc::ReductionType::Comparison)
-                           ? "Comparison"
-                           : (redcType == SamplerStateDesc::ReductionType::Filter)
-                           ? "Filter"
-                           : (redcType == SamplerStateDesc::ReductionType::Minimum)
-                           ? "Minimum"
-                           : "Maximum");
+        if (redcType == SamplerStateDesc::ReductionType::Comparison)
+        {
+            return out << "Comparison";
+        }
+        else if (redcType == SamplerStateDesc::ReductionType::Filter)
+        {
+            return out << "Filter";
+        }
+        else if (redcType == SamplerStateDesc::ReductionType::Minimum)
+        {
+            return out << "Minimum";
+        }
+
+        return out << "Maximum";
     }
 
     const PlatformEmitter& Backend::GetPlatformEmitter() const
@@ -309,7 +393,12 @@ namespace AZ::ShaderCompiler
         {
             auto* token = GetNextToken(ii /*inout*/);
             auto str = token->getText();
-            output << str << ((str == ";" || str == "{") ? '\n' : ' ');
+            char separator = ' ';
+            if (str == ";" || str == "{")
+            {
+                separator = '\n';
+            }
+            output << str << separator;
         }
     }
 
@@ -347,7 +436,11 @@ namespace AZ::ShaderCompiler
         if (info.IsKindOneOf(Kind::Enum))
         {
             auto isScoped = std::get<EnumerationInfo>(info.GetSubRefAs<ClassInfo>().m_subInfo).m_isScoped;
-            auto prefix = isScoped ? UnmangleTrimedName(uid.m_name) + "::" : "";
+            std::string prefix;
+            if (isScoped)
+            {
+                prefix = UnmangleTrimedName(uid.m_name) + "::";
+            }
 
             auto& list = info.GetSubRefAs<ClassInfo>().GetMemberFields();
             std::for_each(
@@ -499,7 +592,14 @@ namespace AZ::ShaderCompiler
 
             bool isUdt = IsUserDefined(varInfo->GetTypeClass());
             assert(isUdt || IsPredefinedType(varInfo->GetTypeClass()));
-            shaderOption["kind"] = isUdt ? "user-defined" : "predefined";
+            if (isUdt)
+            {
+                shaderOption["kind"] = "user-defined";
+            }
+            else
+            {
+                shaderOption["kind"] = "predefined";
+            }
             shaderOption["specializationId"] = varInfo->m_specializationId;
             useSpecializationConstants |= varInfo->m_specializationId >= 0;
 
@@ -659,7 +759,11 @@ namespace AZ::ShaderCompiler
             {
                 CheckHasOneFoldedDimensionOrThrow(memberInfo->GetArrayDimensions(), "CodeEmitter::BuildSignatureDescription");
             }
-            count = isUnboundedArray ? 1 : memberInfo->GetArrayDimensions().GetDimensionAt_OrDefault(0, 1);
+            count = memberInfo->GetArrayDimensions().GetDimensionAt_OrDefault(0, 1);
+            if (isUnboundedArray)
+            {
+                count = 1;
+            }
             paramType = FindParamType(memberInfo->m_typeInfoExt);
         }
 
@@ -832,11 +936,22 @@ namespace AZ::ShaderCompiler
         const bool in = TypeHasStorageFlag(typeQualifier, StorageFlag::In);
         const bool out = TypeHasStorageFlag(typeQualifier, StorageFlag::Out);
         const bool inout = (in && out) || TypeHasStorageFlag(typeQualifier, StorageFlag::InOut);
-        return inout
-                   ? "inout"
-                   : (in
-                          ? "in"
-                          : (out ? "out" : ""));
+        if (inout)
+        {
+            return "inout";
+        }
+
+        if (in)
+        {
+            return "in";
+        }
+
+        if (out)
+        {
+            return "out";
+        }
+
+        return "";
     }
 
     // static
@@ -855,12 +970,24 @@ namespace AZ::ShaderCompiler
         }
         else if (options.m_forceEmitMajor && isMatrix)
         {
-            modifiers = options.m_forceMatrixRowMajor ? "row_major" : "column_major";
+            if (options.m_forceMatrixRowMajor)
+            {
+                modifiers = "row_major";
+            }
+            else
+            {
+                modifiers = "column_major";
+            }
         }
 
         auto maybeSpace = [&modifiers]()
         {
-            return modifiers.empty() ? "" : " ";
+            if (modifiers.empty())
+            {
+                return "";
+            }
+
+            return " ";
         };
         using SF = StorageFlag;
         static constexpr std::array toReEmit = {
@@ -897,7 +1024,10 @@ namespace AZ::ShaderCompiler
     std::string Backend::GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const
     {
         std::string hlslString = GetTypeModifier(extTypeInfo, options, banned);
-        hlslString += hlslString.empty() ? "" : " ";
+        if (!hlslString.empty())
+        {
+            hlslString += " ";
+        }
         if (extTypeInfo.m_coreType.m_typeClass == TypeClass::Alias)
         {
             hlslString += GetExtendedTypeInfo(m_ir->GetSymbolSubAs<TypeAliasInfo>(extTypeInfo.m_coreType.m_typeId.GetName())->m_canonicalType, options, banned, translator);

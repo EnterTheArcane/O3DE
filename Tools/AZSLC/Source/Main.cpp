@@ -555,8 +555,12 @@ int main(int argc, const char* argv[])
             ifs = std::ifstream{inputFile}; // try to open as file
         }
 
-        std::istream& in{useStdin ? std::cin : ifs};
-        if (!in.good())
+        std::istream* in = &ifs;
+        if (useStdin)
+        {
+            in = &std::cin;
+        }
+        if (!in->good())
         {
             throw std::runtime_error("input file could not be opened");
         }
@@ -566,16 +570,27 @@ int main(int argc, const char* argv[])
             throw std::runtime_error("--root-sig requested but no API was selected. Use a --namespace option as well.");
         }
 
-        const std::string inputFileName = useStdin ? "" : inputFile;
+        std::string inputFileName;
+        if (!useStdin)
+        {
+            inputFileName = inputFile;
+        }
         PreprocessorLineDirectiveFinder lineFinder;
-        lineFinder.m_physicalSourceFileName = useStdin ? "stdin" : inputFile;
+        if (useStdin)
+        {
+            lineFinder.m_physicalSourceFileName = "stdin";
+        }
+        else
+        {
+            lineFinder.m_physicalSourceFileName = inputFile;
+        }
         // setup the line finder address on the exception system so that errors are canonically mutated to "virtual line space"
         AzslcException::s_lineFinder = &lineFinder;
 
         bool useOutputFile = !output.empty();
         const std::string outputFileName = output;
 
-        ANTLRInputStream input(in);
+        ANTLRInputStream input(*in);
         azslLexer lexer(&input);
         CommonTokenStream tokens(&lexer);
         IntermediateRepresentation ir(&lexer);
@@ -778,7 +793,10 @@ int main(int argc, const char* argv[])
                 };
                 for (auto&& possibleOption : optToRelation)
                 {
-                    visitOptions |= possibleOption.first ? possibleOption.second : RE::EnumType(0);
+                    if (possibleOption.first)
+                    {
+                        visitOptions |= possibleOption.second;
+                    }
                 }
                 PrintVisitSymbol(ir, visitName, visitOptions);
             }
@@ -796,9 +814,13 @@ int main(int argc, const char* argv[])
                     }
                 }
 
-                std::ostream& out{useOutputFile ? mainOutFile : std::cout};
+                std::ostream* out = &std::cout;
+                if (useOutputFile)
+                {
+                    out = &mainOutFile;
+                }
 
-                CodeReflection reflecter{&ir, &tokens, out};
+                CodeReflection reflecter{&ir, &tokens, *out};
 
                 // Lambda to create an output stream and perform an output action
                 auto prepareOutputAndCall = [&](const std::string& suffix, std::function<void(CodeReflection&)> action)
@@ -829,7 +851,7 @@ int main(int argc, const char* argv[])
                 if (full)
                 {
                     // Combine the default emission and the ia, om, srg, options, bindingdep commands
-                    CodeEmitter emitter{&ir, &tokens, out, &lineFinder};
+                    CodeEmitter emitter{&ir, &tokens, *out, &lineFinder};
                     if (noMS)
                     {
                         emitter.AddCodeMutator(&texture2DMSto2DCodeMutator);
@@ -899,7 +921,7 @@ int main(int argc, const char* argv[])
                 else
                 {
                     // Emit the shader source code
-                    CodeEmitter emitter{&ir, &tokens, out, &lineFinder};
+                    CodeEmitter emitter{&ir, &tokens, *out, &lineFinder};
                     if (noMS)
                     {
                         emitter.AddCodeMutator(&texture2DMSto2DCodeMutator);

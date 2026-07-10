@@ -110,12 +110,22 @@ namespace AZ::ShaderCompiler
 
     inline std::string DiagLine(std::optional<int> line)
     {
-        return line ? DiagLine(static_cast<size_t>(*line)) : std::string{};
+        if (line)
+        {
+            return DiagLine(static_cast<size_t>(*line));
+        }
+
+        return std::string{};
     }
 
     inline std::string DiagLine(std::optional<size_t> line)
     {
-        return line ? DiagLine(*line) : std::string{};
+        if (line)
+        {
+            return DiagLine(*line);
+        }
+
+        return std::string{};
     }
 
     inline std::string DiagLine(antlr4::Token* token)
@@ -132,11 +142,26 @@ namespace AZ::ShaderCompiler
     template <typename... Types>
     inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, std::optional<size_t> lineNumber, std::optional<size_t> column, Types&&... messageBits)
     {
+        std::string fileName;
+        std::string virtualLine;
+        std::string columnText;
+
+        if (lineNumber)
+        {
+            fileName = AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber);
+            virtualLine = ToString(AzslcException::s_lineFinder->GetVirtualLineNumber(*lineNumber));
+        }
+
+        if (column)
+        {
+            columnText = ToString(*column);
+        }
+
         stream << PushLevel{} << level
             << AzslcException::MakeErrorMessage(
-                lineNumber ? AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber) : "",
-                lineNumber ? ToString(AzslcException::s_lineFinder->GetVirtualLineNumber(*lineNumber)) : "",
-                column ? ToString(*column) : "",
+                fileName,
+                virtualLine,
+                columnText,
                 "",
                 false,
                 "",
@@ -369,7 +394,12 @@ namespace AZ::ShaderCompiler
 
         int GetDimensionAt_OrDefault(int dimensionIndex, int defaultValueIfNoSuchDim) const
         {
-            return m_dimensions.size() > dimensionIndex ? m_dimensions[dimensionIndex] : defaultValueIfNoSuchDim;
+            if (m_dimensions.size() > dimensionIndex)
+            {
+                return m_dimensions[dimensionIndex];
+            }
+
+            return defaultValueIfNoSuchDim;
         }
 
         //! pretty print a representation of an array variable declarator suffix in C-like form
@@ -385,9 +415,24 @@ namespace AZ::ShaderCompiler
                 std::back_inserter(asStrs),
                 [](int d) -> std::string
                 {
-                    return d == Unknown ? "<unrecognized-expr>" : d == Unbounded ? "" : std::to_string(d);
+                    if (d == Unknown)
+                    {
+                        return "<unrecognized-expr>";
+                    }
+
+                    if (d == Unbounded)
+                    {
+                        return "";
+                    }
+
+                    return std::to_string(d);
                 });
-            return asStrs.empty() ? "" : prefix + Join(asStrs.begin(), asStrs.end(), separator) + suffix;
+            if (asStrs.empty())
+            {
+                return "";
+            }
+
+            return prefix + Join(asStrs.begin(), asStrs.end(), separator) + suffix;
         }
 
         void PushBack(int newDimension)
@@ -768,9 +813,23 @@ namespace AZ::ShaderCompiler
             switch (layout)
             {
             case Layout::CStylePacking:
+            {
+                uint32_t packedCols = cols;
+                if (cols == 0)
+                {
+                    packedCols = 1;
+                }
+
+                uint32_t packedRows = rows;
+                if (rows == 0)
+                {
+                    packedRows = 1;
+                }
+
                 return baseSize
-                    * (cols == 0 ? 1 : cols)
-                    * (rows == 0 ? 1 : rows);
+                    * packedCols
+                    * packedRows;
+            }
 
             case Layout::DirectXPacking:
                 if (rows > 0)
@@ -784,10 +843,20 @@ namespace AZ::ShaderCompiler
                         throw std::runtime_error{"PackAsVectorMatrix: row_major packing for 2x1, 3x1 and 4x1 matrix types is not allowed!"};
                     }
 
-                    const auto fullSize = ((rowMajor) ? rows : cols) * s_bytesPerRegister; // Use Rows or Cols to calculate the size
+                    uint32_t majorAxis = cols;
+                    if (rowMajor)
+                    {
+                        majorAxis = rows;
+                    }
+                    const auto fullSize = majorAxis * s_bytesPerRegister; // Use Rows or Cols to calculate the size
 
                     // Note! A matrix does not occupy the entire last register if its number of elements is less than 4
-                    const auto adjustSize = (4 - ((rowMajor) ? cols : rows)) * s_bytesPerComponent; // Use the opposite (Cols or Rows)
+                    uint32_t minorAxis = rows;
+                    if (rowMajor)
+                    {
+                        minorAxis = cols;
+                    }
+                    const auto adjustSize = (4 - minorAxis) * s_bytesPerComponent; // Use the opposite (Cols or Rows)
                     return fullSize - adjustSize;
                 }
 
@@ -798,8 +867,7 @@ namespace AZ::ShaderCompiler
                 if (rows > 0)
                 {
                     // It's a matrix
-                    auto major = (rows < cols) ? rows : cols; // Take the smaller fit
-                    return major * s_bytesPerRegister;
+                    return std::min(rows, cols) * s_bytesPerRegister;
                 }
 
                 // It's a vector
@@ -825,8 +893,18 @@ namespace AZ::ShaderCompiler
                         return rows * s_bytesPerComponent;
                     }
 
-                    auto matrixStride = (layout == Layout::RelaxedStd430Packing && rows == 2) ? 2 * s_bytesPerComponent : s_bytesPerRegister;
-                    auto matrixElements = rowMajor ? rows : cols;
+                    auto matrixStride = s_bytesPerRegister;
+                    if (layout == Layout::RelaxedStd430Packing && rows == 2)
+                    {
+                        matrixStride = 2 * s_bytesPerComponent;
+                    }
+
+                    auto matrixElements = cols;
+                    if (rowMajor)
+                    {
+                        matrixElements = rows;
+                    }
+
                     if (rowMajor)
                     {
                         std::swap(matrixStride, matrixElements);
@@ -961,7 +1039,12 @@ namespace AZ::ShaderCompiler
         // This function can help constructing internal "mangled" forms of qualified symbol names
         std::string GetAZIRMangledText() const
         {
-            return IsScopeToken() ? "/" : GetText();
+            if (IsScopeToken())
+            {
+                return "/";
+            }
+
+            return GetText();
         }
 
         enum Type
@@ -1071,7 +1154,13 @@ namespace AZ::ShaderCompiler
         {
             return searchTypeNode;
         }
-        return maxDepth <= 0 || !ctx ? nullptr : DeepParentAs<SearchType>(ctx->parent, maxDepth - 1);
+
+        if (maxDepth <= 0 || !ctx)
+        {
+            return nullptr;
+        }
+
+        return DeepParentAs<SearchType>(ctx->parent, maxDepth - 1);
     }
 
     template <typename ParentType>
@@ -1122,7 +1211,12 @@ namespace AZ::ShaderCompiler
         {
             return nullptr;
         }
-        if (TargetRule* callCtx = Is<TargetRule*>(ctx) ? As<TargetRule*>(ctx) : As<TargetRule*>(ctx->parent)) // goal
+        TargetRule* callCtx = As<TargetRule*>(ctx->parent);
+        if (Is<TargetRule*>(ctx))
+        {
+            callCtx = As<TargetRule*>(ctx);
+        }
+        if (callCtx) // goal
         {
             return callCtx;
         }
@@ -1149,14 +1243,24 @@ namespace AZ::ShaderCompiler
     {
         using Call = azslParser::FunctionCallExpressionContext; // end condition
         Call* found = FindRuleInAstThatIs0AwayWrtPointerDistance<Call>(ctx);
-        return found ? found->argumentList() : nullptr;
+        if (!found)
+        {
+            return nullptr;
+        }
+
+        return found->argumentList();
     }
 
     //! access the argument count at a function call site (from the AST)
     inline size_t NumArgs(azslParser::FunctionCallExpressionContext* callCtx)
     {
         azslParser::ArgumentsContext* argsNode = callCtx->argumentList()->arguments();
-        return argsNode ? argsNode->expression().size() : 0;
+        if (!argsNode)
+        {
+            return 0;
+        }
+
+        return argsNode->expression().size();
     }
 
     //! try to find a specific context type that this context would be a child of.
@@ -1172,7 +1276,13 @@ namespace AZ::ShaderCompiler
         {
             return asCtx;
         }
-        return ctx->parent == nullptr ? nullptr : ExtractSpecificParent<LookedUp>(polymorphic_downcast<ParserRuleContext*>(ctx->parent));
+
+        if (ctx->parent == nullptr)
+        {
+            return nullptr;
+        }
+
+        return ExtractSpecificParent<LookedUp>(polymorphic_downcast<ParserRuleContext*>(ctx->parent));
     }
 
     //! try to find a variable initializer that this context would be a child of.
@@ -1213,9 +1323,12 @@ namespace AZ::ShaderCompiler
     /// move up the AST into parent rules to ry to get a name. in case of function parameters, name can be omitted so this function may return null
     inline Token* ExtractVariableNameIdentifier(AstUnnamedVarDecl* ctx)
     {
-        return Is<AstNamedVarDecl>(ctx->parent)
-                   ? polymorphic_downcast<AstNamedVarDecl*>(ctx->parent)->Name
-                   : polymorphic_downcast<azslParser::FunctionParamContext*>(ctx->parent)->Name;
+        if (Is<AstNamedVarDecl>(ctx->parent))
+        {
+            return polymorphic_downcast<AstNamedVarDecl*>(ctx->parent)->Name;
+        }
+
+        return polymorphic_downcast<azslParser::FunctionParamContext*>(ctx->parent)->Name;
     }
 
     inline ParserRuleContext* GetParentIfIsNamedVarDecl_OtherwiseIdentity(AstUnnamedVarDecl* ctx)
@@ -1248,43 +1361,94 @@ namespace AZ::ShaderCompiler
 
     inline StorageFlag AsFlag(azslParser::StorageFlagContext* ctx)
     {
-        return ctx->Const()
-                   ? StorageFlag::Const
-                   : ctx->Extern()
-                   ? StorageFlag::Extern
-                   : ctx->Groupshared()
-                   ? StorageFlag::Groupshared
-                   : ctx->Precise()
-                   ? StorageFlag::Precise
-                   : ctx->Static()
-                   ? StorageFlag::Static
-                   : ctx->Uniform()
-                   ? StorageFlag::Uniform
-                   : ctx->Volatile()
-                   ? StorageFlag::Volatile
-                   : ctx->Globallycoherent()
-                   ? StorageFlag::Globallycoherent
-                   : ctx->RowMajor()
-                   ? StorageFlag::RowMajor
-                   : ctx->ColumnMajor()
-                   ? StorageFlag::ColumnMajor
-                   : ctx->In()
-                   ? StorageFlag::In
-                   : ctx->Out()
-                   ? StorageFlag::Out
-                   : ctx->Inout()
-                   ? StorageFlag::InOut
-                   : ctx->Inline()
-                   ? StorageFlag::Inline
-                   : ctx->Option()
-                   ? StorageFlag::Option
-                   : ctx->Rootconstant()
-                   ? StorageFlag::Rootconstant
-                   : ctx->Unsigned()
-                   ? StorageFlag::Unsigned
-                   // Everything else can still be stored, but won't be checked in any special way:
-                   // linear, centroid, noninterpolation, noperspective, sample, point, line, triangle, lineadk, triangleadj, indices, vertices, etc...
-                   : StorageFlag::Other;
+        if (ctx->Const())
+        {
+            return StorageFlag::Const;
+        }
+
+        if (ctx->Extern())
+        {
+            return StorageFlag::Extern;
+        }
+
+        if (ctx->Groupshared())
+        {
+            return StorageFlag::Groupshared;
+        }
+
+        if (ctx->Precise())
+        {
+            return StorageFlag::Precise;
+        }
+
+        if (ctx->Static())
+        {
+            return StorageFlag::Static;
+        }
+
+        if (ctx->Uniform())
+        {
+            return StorageFlag::Uniform;
+        }
+
+        if (ctx->Volatile())
+        {
+            return StorageFlag::Volatile;
+        }
+
+        if (ctx->Globallycoherent())
+        {
+            return StorageFlag::Globallycoherent;
+        }
+
+        if (ctx->RowMajor())
+        {
+            return StorageFlag::RowMajor;
+        }
+
+        if (ctx->ColumnMajor())
+        {
+            return StorageFlag::ColumnMajor;
+        }
+
+        if (ctx->In())
+        {
+            return StorageFlag::In;
+        }
+
+        if (ctx->Out())
+        {
+            return StorageFlag::Out;
+        }
+
+        if (ctx->Inout())
+        {
+            return StorageFlag::InOut;
+        }
+
+        if (ctx->Inline())
+        {
+            return StorageFlag::Inline;
+        }
+
+        if (ctx->Option())
+        {
+            return StorageFlag::Option;
+        }
+
+        if (ctx->Rootconstant())
+        {
+            return StorageFlag::Rootconstant;
+        }
+
+        if (ctx->Unsigned())
+        {
+            return StorageFlag::Unsigned;
+        }
+
+        // Everything else can still be stored, but won't be checked in any special way:
+        // linear, centroid, noninterpolation, noperspective, sample, point, line, triangle, lineadk, triangleadj, indices, vertices, etc...
+        return StorageFlag::Other;
     }
 
     inline bool IsFlag(azslParser::StorageFlagContext* ctx, StorageFlag flag)
@@ -1481,10 +1645,18 @@ namespace AZ::ShaderCompiler
         // Semantic name and index
         auto semanticName = hlslSemantic->getText();
         size_t index = semanticName.find_last_not_of("0123456789") + 1;
-        int semanticIndex = (index == semanticName.length()) ? 0 : std::stoi(semanticName.substr(index));
+        int semanticIndex = 0;
+        if (index != semanticName.length())
+        {
+            semanticIndex = std::stoi(semanticName.substr(index));
+        }
 
         auto colon = semanticName.find_first_of(":");
-        auto firstChar = (colon == std::string::npos) ? 0 : colon + 1;
+        size_t firstChar = 0;
+        if (colon != std::string::npos)
+        {
+            firstChar = colon + 1;
+        }
         firstChar = semanticName.find_first_not_of(" ", firstChar);
         semanticName = semanticName.substr(firstChar, index - firstChar);
 

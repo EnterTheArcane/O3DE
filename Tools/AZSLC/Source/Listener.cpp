@@ -365,7 +365,11 @@ namespace AZ::ShaderCompiler
     {
         // Attributes can be filtered out by namespace.
         // Attributes without a namespace are always valid and attributes in the 'void' namespace are always filtered out
-        auto Namespace = (ctx->Namespace) ? ctx->Namespace->getText() : "";
+        std::string Namespace;
+        if (ctx->Namespace)
+        {
+            Namespace = ctx->Namespace->getText();
+        }
         if (!Namespace.empty() && (Namespace == "void" || !ir->IsAttributeNamespaceActivated(Namespace)))
         {
             return;

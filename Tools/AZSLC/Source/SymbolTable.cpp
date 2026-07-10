@@ -22,13 +22,23 @@ namespace AZ::ShaderCompiler
     IdAndKind* SymbolTable::GetIdAndKindInfo(QualifiedNameView symbol)
     {
         auto iter = m_symbols.find(IdentifierUID{symbol});
-        return iter == m_symbols.end() ? nullptr : &(*iter);
+        if (iter == m_symbols.end())
+        {
+            return nullptr;
+        }
+
+        return &(*iter);
     }
 
     const IdAndKind* SymbolTable::GetIdAndKindInfo(QualifiedNameView symbol) const
     {
         auto iter = m_symbols.find(IdentifierUID{symbol});
-        return iter == m_symbols.end() ? nullptr : &(*iter);
+        if (iter == m_symbols.end())
+        {
+            return nullptr;
+        }
+
+        return &(*iter);
     }
 
     bool SymbolTable::DeleteIdentifier(const IdentifierUID& name)

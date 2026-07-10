@@ -96,7 +96,11 @@ namespace AZ::ShaderCompiler
     {
         // in the general case, we output normal HLSL `var decl : register(b0, space0);`
         // no special header, but the post colon part is the footer
-        std::string bindingSpaceStringlet{stringifiedLogicalSpace ? ", space" + *stringifiedLogicalSpace : ""};
+        std::string bindingSpaceStringlet;
+        if (stringifiedLogicalSpace)
+        {
+            bindingSpaceStringlet = ", space" + *stringifiedLogicalSpace;
+        }
         std::string footer{ConcatString(" : register(", registerTypeLetter, bindInfoRegisterIndex, bindingSpaceStringlet, ")")};
         return {{}, footer};
     }

@@ -59,11 +59,17 @@ namespace AZ
     //! recover the level (as integer) value of an enumerator
     inline int ExtractLevel(Warn level)
     {
-        return level == Warn::Wx
-                   ? -1
-                   : (level >= Warn::Wx1
-                          ? level - Warn::Wx1 + 1
-                          : level);
+        if (level == Warn::Wx)
+        {
+            return -1;
+        }
+
+        if (level >= Warn::Wx1)
+        {
+            return level - Warn::Wx1 + 1;
+        }
+
+        return level;
     }
 
     struct DiagnosticStream
@@ -165,8 +171,17 @@ namespace AZ
         int CurrentErrorLevel() const
         {
             int asInt = ExtractLevel(m_warningAsErrorLevel);
-            asInt = asInt == -1 ? ExtractLevel(m_warningLevel) : asInt;
-            return m_warningAsErrorLevel == Warn::EndEnumeratorSentinel_ ? -1 : asInt;
+            if (asInt == -1)
+            {
+                asInt = ExtractLevel(m_warningLevel);
+            }
+
+            if (m_warningAsErrorLevel == Warn::EndEnumeratorSentinel_)
+            {
+                return -1;
+            }
+
+            return asInt;
         }
 
         // active level is an error according to settings

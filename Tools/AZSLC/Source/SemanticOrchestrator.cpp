@@ -57,13 +57,23 @@ namespace AZ::ShaderCompiler
 
         TypeQualifiers ExtractTypeQualifiers(AstType* ctx)
         {
-            return ctx->storageFlags() ? ExtractTypeQualifiers(ctx->storageFlags()) : TypeQualifiers{};
+            if (ctx->storageFlags())
+            {
+                return ExtractTypeQualifiers(ctx->storageFlags());
+            }
+
+            return TypeQualifiers{};
         }
 
         TypeQualifiers ExtractTypeQualifiers(AstUnnamedVarDecl* ctx)
         {
             azslParser::StorageFlagsContext* flags = ExtractStorageFlagsFromUnnamedVariableDeclarator(ctx);
-            return flags ? ExtractTypeQualifiers(flags) : TypeQualifiers{};
+            if (flags)
+            {
+                return ExtractTypeQualifiers(flags);
+            }
+
+            return TypeQualifiers{};
         }
 
         void CheckFunctionReturnTypeModifierNotOptionNorRootconstant(const TypeQualifiers& qualifier, size_t line)
@@ -172,18 +182,33 @@ namespace AZ::ShaderCompiler
 
         bool scopeIsClass = scopeKind.GetKind() == Kind::Class;
         // now let's check if that method was pre-declared in the class/SRG:
-        std::optional<IdentifierUID> optionalIdentifier = scopeIsClass
-                                                              ? scopeKind.GetSubRefAs<ClassInfo>().FindMemberFromLeafName(decoratedUqName)
-                                                              : scopeKind.GetSubRefAs<SRGInfo>().FindMemberFromLeafName(decoratedUqName);
+        std::optional<IdentifierUID> optionalIdentifier;
+        if (scopeIsClass)
+        {
+            optionalIdentifier = scopeKind.GetSubRefAs<ClassInfo>().FindMemberFromLeafName(decoratedUqName);
+        }
+        else
+        {
+            optionalIdentifier = scopeKind.GetSubRefAs<SRGInfo>().FindMemberFromLeafName(decoratedUqName);
+        }
         // note that if the method is not found, we could accept to add it anyway to provide an extension-method feature a la C#.
         // it would be great to require an attribute or a keyword for that though (like [[extends]])
         // for now, it will be forbidden to inject methods in classes from outside.
         if (!optionalIdentifier)
         {
+            if (scopeIsClass)
+            {
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_NO_DECLERATION,
+                    ctx->start,
+                    ConcatString("class ", scopeUid.m_name, " doesn't have a declaration for ", decoratedUqName)
+                };
+            }
+
             throw AzslcOrchestratorException{
                 ORCHESTRATOR_NO_DECLERATION,
                 ctx->start,
-                ConcatString((scopeIsClass ? "class " : "SRG "), scopeUid.m_name, " doesn't have a declaration for ", decoratedUqName)
+                ConcatString("SRG ", scopeUid.m_name, " doesn't have a declaration for ", decoratedUqName)
             };
         }
         // verify also the kind of the member
@@ -191,11 +216,28 @@ namespace AZ::ShaderCompiler
         if (!originalDeclarationAsFunc)
         {
             Kind realKindOfOriginallyDeclaredMember = m_symbols->GetIdAndKindInfo(optionalIdentifier->GetName())->second.GetKind();
+            if (scopeIsClass)
+            {
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_UNEXPECTED_KIND,
+                    ctx->start,
+                    ConcatString(
+                        "class ",
+                        scopeUid.m_name,
+                        " holds a member ",
+                        optionalIdentifier->m_name,
+                        " but it is of kind ",
+                        std::string{Kind::ToStr(realKindOfOriginallyDeclaredMember)},
+                        " instead of expected ",
+                        std::string{Kind::ToStr(Kind::Function)})
+                };
+            }
+
             throw AzslcOrchestratorException{
                 ORCHESTRATOR_UNEXPECTED_KIND,
                 ctx->start,
                 ConcatString(
-                    (scopeIsClass ? "class " : "SRG "),
+                    "SRG ",
                     scopeUid.m_name,
                     " holds a member ",
                     optionalIdentifier->m_name,
@@ -279,10 +321,14 @@ namespace AZ::ShaderCompiler
             }
         }
         IdAndKind* symbol = m_symbols->GetIdAndKindInfo(decoratedName);
-        auto* funcInfo = symbol ? symbol->second.GetSubAs<FunctionInfo>() : nullptr;
+        FunctionInfo* funcInfo = nullptr;
+        if (symbol)
+        {
+            funcInfo = symbol->second.GetSubAs<FunctionInfo>();
+        }
 
         bool alreadyDeclared = !!symbol;
-        bool alreadyDefined = funcInfo ? !!funcInfo->m_defNode : false;
+        bool alreadyDefined = funcInfo && !!funcInfo->m_defNode;
         if (!alreadyDeclared) // brand new function
         {
             symbol = &m_symbols->AddIdentifier(decoratedName, Kind::Function, line);
@@ -406,7 +452,11 @@ namespace AZ::ShaderCompiler
 
         // try to fetch the overload-set:
         IdAndKind* overloadSetIdKind = m_symbols->GetIdAndKindInfo(fqUndecoratedName);
-        OverloadSetInfo* overloadSet = overloadSetIdKind ? overloadSetIdKind->second.GetSubAs<OverloadSetInfo>() : nullptr;
+        OverloadSetInfo* overloadSet = nullptr;
+        if (overloadSetIdKind)
+        {
+            overloadSet = overloadSetIdKind->second.GetSubAs<OverloadSetInfo>();
+        }
         if (!overloadSet) // don't exist yet. it must be the first occurrence of this function's core name.
         {
             // create and prepare a brand new overload-set
@@ -930,61 +980,100 @@ namespace AZ::ShaderCompiler
 
         auto GetAddressMode = [](azslParser::AddressModeEnumContext* ctx) -> SamplerStateDesc::AddressMode
         {
-            return ctx->ADDRESS_MODE_WRAP()
-                       ? SamplerStateDesc::AddressMode::Wrap
-                       : ctx->ADDRESS_MODE_CLAMP()
-                       ? SamplerStateDesc::AddressMode::Clamp
-                       : ctx->ADDRESS_MODE_MIRROR()
-                       ? SamplerStateDesc::AddressMode::Mirror
-                       : ctx->ADDRESS_MODE_BORDER()
-                       ? SamplerStateDesc::AddressMode::Border
-                       : SamplerStateDesc::AddressMode::MirrorOnce;
+            if (ctx->ADDRESS_MODE_WRAP())
+            {
+                return SamplerStateDesc::AddressMode::Wrap;
+            }
+            if (ctx->ADDRESS_MODE_CLAMP())
+            {
+                return SamplerStateDesc::AddressMode::Clamp;
+            }
+            if (ctx->ADDRESS_MODE_MIRROR())
+            {
+                return SamplerStateDesc::AddressMode::Mirror;
+            }
+            if (ctx->ADDRESS_MODE_BORDER())
+            {
+                return SamplerStateDesc::AddressMode::Border;
+            }
+
+            return SamplerStateDesc::AddressMode::MirrorOnce;
         };
 
         auto GetCompFunc = [](azslParser::ComparisonFunctionEnumContext* ctx) -> SamplerStateDesc::ComparisonFunc
         {
-            return ctx->COMPARISON_FUNCTION_NEVER()
-                       ? SamplerStateDesc::ComparisonFunc::Never
-                       : ctx->COMPARISON_FUNCTION_NEVER()
-                       ? SamplerStateDesc::ComparisonFunc::Never
-                       : ctx->COMPARISON_FUNCTION_LESS()
-                       ? SamplerStateDesc::ComparisonFunc::Less
-                       : ctx->COMPARISON_FUNCTION_EQUAL()
-                       ? SamplerStateDesc::ComparisonFunc::Equal
-                       : ctx->COMPARISON_FUNCTION_LESS_EQUAL()
-                       ? SamplerStateDesc::ComparisonFunc::LessEqual
-                       : ctx->COMPARISON_FUNCTION_GREATER()
-                       ? SamplerStateDesc::ComparisonFunc::Greater
-                       : ctx->COMPARISON_FUNCTION_NOT_EQUAL()
-                       ? SamplerStateDesc::ComparisonFunc::NotEqual
-                       : ctx->COMPARISON_FUNCTION_GREATER_EQUAL()
-                       ? SamplerStateDesc::ComparisonFunc::GreaterEqual
-                       : SamplerStateDesc::ComparisonFunc::Always;
+            if (ctx->COMPARISON_FUNCTION_NEVER())
+            {
+                return SamplerStateDesc::ComparisonFunc::Never;
+            }
+            if (ctx->COMPARISON_FUNCTION_LESS())
+            {
+                return SamplerStateDesc::ComparisonFunc::Less;
+            }
+            if (ctx->COMPARISON_FUNCTION_EQUAL())
+            {
+                return SamplerStateDesc::ComparisonFunc::Equal;
+            }
+            if (ctx->COMPARISON_FUNCTION_LESS_EQUAL())
+            {
+                return SamplerStateDesc::ComparisonFunc::LessEqual;
+            }
+            if (ctx->COMPARISON_FUNCTION_GREATER())
+            {
+                return SamplerStateDesc::ComparisonFunc::Greater;
+            }
+            if (ctx->COMPARISON_FUNCTION_NOT_EQUAL())
+            {
+                return SamplerStateDesc::ComparisonFunc::NotEqual;
+            }
+            if (ctx->COMPARISON_FUNCTION_GREATER_EQUAL())
+            {
+                return SamplerStateDesc::ComparisonFunc::GreaterEqual;
+            }
+
+            return SamplerStateDesc::ComparisonFunc::Always;
         };
 
         auto GetRedcType = [](azslParser::ReductionTypeEnumContext* ctx) -> SamplerStateDesc::ReductionType
         {
-            return ctx->REDUCTION_TYPE_FILTER()
-                       ? SamplerStateDesc::ReductionType::Filter
-                       : ctx->REDUCTION_TYPE_COMPARISON()
-                       ? SamplerStateDesc::ReductionType::Comparison
-                       : ctx->REDUCTION_TYPE_MINIMUM()
-                       ? SamplerStateDesc::ReductionType::Minimum
-                       : SamplerStateDesc::ReductionType::Maximum;
+            if (ctx->REDUCTION_TYPE_FILTER())
+            {
+                return SamplerStateDesc::ReductionType::Filter;
+            }
+            if (ctx->REDUCTION_TYPE_COMPARISON())
+            {
+                return SamplerStateDesc::ReductionType::Comparison;
+            }
+            if (ctx->REDUCTION_TYPE_MINIMUM())
+            {
+                return SamplerStateDesc::ReductionType::Minimum;
+            }
+
+            return SamplerStateDesc::ReductionType::Maximum;
         };
 
         auto GetFilterType = [](azslParser::FilterModeEnumContext* ctx) -> SamplerStateDesc::FilterMode
         {
-            return ctx->FILTER_MODE_LINEAR() ? SamplerStateDesc::FilterMode::Linear : SamplerStateDesc::FilterMode::Point;
+            if (ctx->FILTER_MODE_LINEAR())
+            {
+                return SamplerStateDesc::FilterMode::Linear;
+            }
+
+            return SamplerStateDesc::FilterMode::Point;
         };
 
         auto GetBorderColor = [](azslParser::BorderColorEnumContext* ctx) -> SamplerStateDesc::BorderColor
         {
-            return ctx->BORDER_COLOR_OPAQUE_BLACK()
-                       ? SamplerStateDesc::BorderColor::OpaqueBlack
-                       : ctx->BORDER_COLOR_TRANSPARENT_BLACK()
-                       ? SamplerStateDesc::BorderColor::TransparentBlack
-                       : SamplerStateDesc::BorderColor::OpaqueWhite;
+            if (ctx->BORDER_COLOR_OPAQUE_BLACK())
+            {
+                return SamplerStateDesc::BorderColor::OpaqueBlack;
+            }
+            if (ctx->BORDER_COLOR_TRANSPARENT_BLACK())
+            {
+                return SamplerStateDesc::BorderColor::TransparentBlack;
+            }
+
+            return SamplerStateDesc::BorderColor::OpaqueWhite;
         };
 
         // Now proceed with resolving the sampler state
@@ -1169,7 +1258,11 @@ namespace AZ::ShaderCompiler
     {
         // resolve all argument types.
         std::vector<QualifiedName> resolvedArguments;
-        std::vector<AstExpr*> antlrExpressions = ctx->arguments() ? ctx->arguments()->expression() : std::vector<AstExpr*>{};
+        std::vector<AstExpr*> antlrExpressions;
+        if (ctx->arguments())
+        {
+            antlrExpressions = ctx->arguments()->expression();
+        }
         std::vector<AstExpr*> vectorOfExpressions(antlrExpressions.begin(), antlrExpressions.end());
         resolvedArguments.reserve(vectorOfExpressions.size());
         for (AstExpr* expression : vectorOfExpressions)
@@ -1183,7 +1276,12 @@ namespace AZ::ShaderCompiler
     bool SemanticOrchestrator::HasAnyDefaultParameterValue(const IdentifierUID& functionUid) const
     {
         auto* funcInfo = m_symbols->GetAsSub<FunctionInfo>(functionUid);
-        return funcInfo ? funcInfo->HasAnyDefaultParameterValue() : false;
+        if (funcInfo)
+        {
+            return funcInfo->HasAnyDefaultParameterValue();
+        }
+
+        return false;
     }
 
     IdAndKind* SemanticOrchestrator::ResolveOverload(IdAndKind* maybeOverloadSet, azslParser::ArgumentListContext* argumentListCtx) const
@@ -1191,7 +1289,11 @@ namespace AZ::ShaderCompiler
         IdAndKind* toReturn = maybeOverloadSet;
         if (maybeOverloadSet && maybeOverloadSet->second.GetKind() == Kind::OverloadSet)
         {
-            std::string mangledArgList = argumentListCtx ? MangleArgumentList(argumentListCtx) : "";
+            std::string mangledArgList;
+            if (argumentListCtx)
+            {
+                mangledArgList = MangleArgumentList(argumentListCtx);
+            }
             auto& setInfo = maybeOverloadSet->second.GetSubRefAs<OverloadSetInfo>();
             // attempt direct matching or arity matching
             IdentifierUID concrete = setInfo.GetConcreteFunctionThatMatchesArgumentList(mangledArgList);
@@ -1206,14 +1308,24 @@ namespace AZ::ShaderCompiler
                     });
                 if (setInfo.HasHomogeneousReturnType())
                 {
-                    verboseCout << (argumentListCtx ? std::to_string(argumentListCtx->start->getLine()) : "")
+                    std::string overloadLine;
+                    if (argumentListCtx)
+                    {
+                        overloadLine = std::to_string(argumentListCtx->start->getLine());
+                    }
+                    verboseCout << overloadLine
                         << message.str() << " It is not an error since that overload-set has homogeneous return type\n"; // at this point of the source. further declaration can change that.
                 }
                 else
                 {
+                    antlr4::Token* startToken = nullptr;
+                    if (argumentListCtx)
+                    {
+                        startToken = argumentListCtx->start;
+                    }
                     throw AzslcOrchestratorException{
                         ORCHESTRATOR_OVERLOAD_RESOLUTION_HARD_FAILURE,
-                        argumentListCtx ? argumentListCtx->start : nullptr,
+                        startToken,
                         ConcatString(
                             message.str(),
                             " This is an error because functions belonging to this overload-set have heterogeneous return types.\n",
@@ -1320,13 +1432,18 @@ namespace AZ::ShaderCompiler
         bool valid = true;
         if (!lhsSymbol)
         {
+            std::string expressionMessage;
+            if (lhsExpressionText)
+            {
+                expressionMessage = " (of expression " + *lhsExpressionText + ")";
+            }
             PrintWarning(
                 Warn::W2,
                 line,
                 "unresolved member access ",
                 "on undeclared type ",
                 lhsTypeName,
-                (lhsExpressionText ? " (of expression " + *lhsExpressionText + ")" : ""),
+                expressionMessage,
                 ")");
             valid = false;
         }
@@ -1335,10 +1452,19 @@ namespace AZ::ShaderCompiler
             const KindInfo& lhsKindInfo = lhsSymbol->second;
             if (!lhsKindInfo.IsKindOneOf(Kind::Namespace, Kind::Class, Kind::Struct, Kind::Enum, Kind::Interface, Kind::ShaderResourceGroup, Kind::Function))
             {
-                auto outputStream = lhsKindInfo.GetKind() == Kind::Type ? verboseCout : warningCout;
+                DiagnosticStream* outputStream = &warningCout;
+                if (lhsKindInfo.GetKind() == Kind::Type)
+                {
+                    outputStream = &verboseCout;
+                }
+                std::string expressionMessage;
+                if (lhsExpressionText)
+                {
+                    expressionMessage = " from expression " + *lhsExpressionText;
+                }
                 // registered predefined types can have members, but we don't know them -> not important. But anything else is very likely an ill-formed source.
                 PrintWarning(
-                    outputStream,
+                    *outputStream,
                     Warn::W1,
                     line,
                     std::nullopt,
@@ -1347,7 +1473,7 @@ namespace AZ::ShaderCompiler
                     Kind::ToStr(lhsKindInfo.GetKind()),
                     " (of believed type ",
                     lhsSymbol->first.GetName(),
-                    (lhsExpressionText ? " from expression " + *lhsExpressionText : ""),
+                    expressionMessage,
                     ")");
                 valid = false;
             }
@@ -2126,7 +2252,14 @@ namespace AZ::ShaderCompiler
         DiagnosticStream FoldFailedCommonMessage(Token* tok, std::optional<std::string_view> identifier = std::nullopt)
         {
             verboseCout << tok->getLine();
-            verboseCout << ": constant folding failed for " << (identifier ? *identifier : std::string_view(tok->getText()));
+            if (identifier)
+            {
+                verboseCout << ": constant folding failed for " << *identifier;
+            }
+            else
+            {
+                verboseCout << ": constant folding failed for " << std::string_view(tok->getText());
+            }
             return verboseCout;
         };
     }
@@ -2251,7 +2384,12 @@ namespace AZ::ShaderCompiler
     {
         auto getErrorIUID = [policy, typeName]()
         {
-            return policy == OnNotFoundOrWrongKind::Empty ? IdentifierUID{} : IdentifierUID{QualifiedName{typeName}};
+            if (policy == OnNotFoundOrWrongKind::Empty)
+            {
+                return IdentifierUID{};
+            }
+
+            return IdentifierUID{QualifiedName{typeName}};
         };
         IdAndKind* type = LookupSymbol(UnqualifiedNameView{typeName});
         if (!type)

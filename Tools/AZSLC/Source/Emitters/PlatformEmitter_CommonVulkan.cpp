@@ -49,7 +49,13 @@ namespace AZ::ShaderCompiler
         }
         stream << codeEmitter.GetTranslatedName(varInfo->m_typeInfoExt, UsageContext::ReferenceSite, options, forbidden) + " ";
         stream << codeEmitter.GetTranslatedName(symbolUid.m_name, UsageContext::DeclarationSite) + " = ";
-        stream << "(" << typeAsStr << ")" << (defaultValue.empty() ? "0" : defaultValue) << "; \n";
+        std::string emittedDefaultValue = defaultValue;
+        if (defaultValue.empty())
+        {
+            emittedDefaultValue = "0";
+        }
+
+        stream << "(" << typeAsStr << ")" << emittedDefaultValue << "; \n";
         return stream.str();
     }
 
