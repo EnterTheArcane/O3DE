@@ -6,13 +6,12 @@
 #
 #
 
-if(NOT PAL_TRAIT_BUILD_HOST_TOOLS)
+if (NOT PAL_TRAIT_BUILD_HOST_TOOLS)
     return()
-endif()
+endif ()
 
 add_subdirectory(3rdParty/antlr4)
 add_subdirectory(3rdParty/cli11)
-add_subdirectory(3rdParty/jsoncpp)
 
 ly_add_target(
     NAME AZSLC EXECUTABLE
@@ -30,19 +29,11 @@ ly_add_target(
             AZ::AzCore
             3rdParty::antlr4
             3rdParty::cli11
-            3rdParty::jsoncpp
 )
 
 target_compile_options(AZSLC PRIVATE ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS})
 
-if(WIN32)
-    target_compile_options(AZSLC PRIVATE
-        -U_HAS_EXCEPTIONS
-        -D_HAS_EXCEPTIONS=1
-    )
-endif()
-
-if(NOT MSVC)
+if (NOT MSVC)
     target_compile_options(AZSLC PRIVATE
         -Wno-deprecated-literal-operator
         -Wno-language-extension-token
@@ -52,6 +43,6 @@ if(NOT MSVC)
         -Wno-unused-function
         -Wno-unused-variable
     )
-endif()
+endif ()
 
 add_subdirectory(Tests)

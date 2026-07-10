@@ -8,11 +8,10 @@
 
 #pragma once
 
+#include "JsonBuilder.h"
 #include "Listener.h"
-#include "Registers.h"
 #include "NewLineCounterStream.h"
-
-#include "json/json.h"
+#include "Registers.h"
 
 #include <array>
 #include <cstdint>
@@ -207,12 +206,13 @@ namespace AZ::ShaderCompiler
             RootSigDesc& rootSig) const;
 
         void AppendOptionRange(
-            Json::Value& varOption,
+            rapidjson::Value& varOption,
             const IdentifierUID& varUid,
             const AZ::ShaderCompiler::VarInfo* varInfo,
-            const Options& options) const;
+            const Options& options,
+            JsonBuilder& json) const;
 
-        Json::Value GetVariantList(const Options& options, bool includeEmpty = false) const;
+        rapidjson::Document GetVariantList(const Options& options, bool includeEmpty = false) const;
 
         void SetupOptionsSpecializationId(const Options& options) const;
 

@@ -440,11 +440,11 @@ namespace AZ::ShaderCompiler
                     continue;
                 }
 
-                const auto keySizeInBits = shaderOptions["ShaderOptions"][shaderOptionIndex]["keySize"].asUInt();
-                const auto keyOffsetBits = shaderOptions["ShaderOptions"][shaderOptionIndex]["keyOffset"].asUInt();
-                const auto defaultValue = shaderOptions["ShaderOptions"][shaderOptionIndex]["defaultValue"].asString();
+                const rapidjson::Value& shaderOption = shaderOptions["ShaderOptions"][shaderOptionIndex];
+                const auto keySizeInBits = shaderOption["keySize"].GetUint();
+                const auto keyOffsetBits = shaderOption["keyOffset"].GetUint();
 
-                EmitGetShaderKeyFunction(m_shaderVariantFallbackUid, uid, keySizeInBits, keyOffsetBits, defaultValue, varInfo->GetTypeRefInfo());
+                EmitGetShaderKeyFunction(m_shaderVariantFallbackUid, uid, keySizeInBits, keyOffsetBits, shaderOption["defaultValue"].GetString(), varInfo->GetTypeRefInfo());
             }
         }
     }

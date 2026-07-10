@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cstdint>
 #include <functional>
 #include <iterator>
 #include <optional>
@@ -20,6 +19,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 
 namespace AZ::ShaderCompiler
@@ -428,12 +428,13 @@ namespace AZ::ShaderCompiler
     }
 
     void Backend::AppendOptionRange(
-        Json::Value& varOption,
+        rapidjson::Value& varOption,
         const IdentifierUID& varUid,
         const VarInfo* varInfo,
-        const Options& options) const
+        const Options& options,
+        JsonBuilder& json) const
     {
-        Json::Value optValues(Json::arrayValue);
+        rapidjson::Value optValues = json.MakeArray();
         bool isRange = false;
         uint32_t numberOfOptions = 0;
 
@@ -452,12 +453,12 @@ namespace AZ::ShaderCompiler
             std::for_each(
                 list.begin(),
                 list.end(),
-                [&optValues, &prefix](const IdentifierUID& member)
+                [&optValues, &prefix, &json](const IdentifierUID& member)
                 {
-                    optValues.append((prefix + member.GetNameLeaf()).c_str());
+                    json.PushString(optValues, (prefix + member.GetNameLeaf()));
                 });
 
-            numberOfOptions = optValues.size();
+            numberOfOptions = optValues.Size();
         }
         else if (info.GetKind() == Kind::Type)
         {
@@ -465,8 +466,8 @@ namespace AZ::ShaderCompiler
 
             if (typeRef.m_typeId.m_name.find("bool") != std::string::npos)
             {
-                optValues.append("false");
-                optValues.append("true");
+                json.PushString(optValues, "false");
+                json.PushString(optValues, "true");
                 numberOfOptions = 2;
             }
             else if (typeRef.m_typeId.m_name.find("int") != std::string::npos)
@@ -535,8 +536,8 @@ namespace AZ::ShaderCompiler
                     PrintWarning(Warn::W1, std::nullopt, "Option (", varUid.m_name, ") must specify a range of values smaller than ", kIntegerMaxShaderVariantValues);
                 }
 
-                optValues.append(std::to_string(rangeMinValue));
-                optValues.append(std::to_string(rangeMaxValue));
+                json.PushString(optValues, std::to_string(rangeMinValue));
+                json.PushString(optValues, std::to_string(rangeMaxValue));
                 numberOfOptions = static_cast<uint32_t>(rangeMaxValue - rangeMinValue + 1);
             }
             else
@@ -559,21 +560,23 @@ namespace AZ::ShaderCompiler
                 maxNumberOfOptions *= 2;
                 keySizeInBits++;
             }
-            varOption["keySize"] = keySizeInBits;
+            json.AddValue(varOption, "keySize", keySizeInBits);
         }
 
-        varOption["values"] = optValues;
-        varOption["range"] = isRange;
+        json.AddValue(varOption, "values", std::move(optValues));
+        json.AddValue(varOption, "range", isRange);
     }
 
-    Json::Value Backend::GetVariantList(const Options& options, const bool includeEmpty) const
+    rapidjson::Document Backend::GetVariantList(const Options& options, const bool includeEmpty) const
     {
-        Json::Value varRoot(Json::objectValue);
-        varRoot["meta"] = "Variant options list exported by AZSLC";
+        rapidjson::Document varRoot;
+        varRoot.SetObject();
+        JsonBuilder json(varRoot);
+        json.AddString(varRoot, "meta", "Variant options list exported by AZSLC");
 
         bool useSpecializationConstants = false;
 
-        Json::Value shaderOptions(Json::arrayValue);
+        rapidjson::Value shaderOptions = json.MakeArray();
         uint32_t keyOffsetBits = 0;
 
         uint32_t optionOrder = 0;
@@ -585,37 +588,37 @@ namespace AZ::ShaderCompiler
                 continue;
             }
 
-            Json::Value shaderOption(Json::objectValue);
-            shaderOption["name"] = UnmangleTrimedName(uid.m_name).c_str();
-            shaderOption["type"] = UnmangleTrimedName(varInfo->m_typeInfoExt).c_str();
-            shaderOption["defaultValue"] = GetInitializerClause(varInfo).c_str();
+            rapidjson::Value shaderOption = json.MakeObject();
+            json.AddString(shaderOption, "name", UnmangleTrimedName(uid.m_name));
+            json.AddString(shaderOption, "type", UnmangleTrimedName(varInfo->m_typeInfoExt));
+            json.AddString(shaderOption, "defaultValue", GetInitializerClause(varInfo));
 
             // The order (or rank) of the option matches the order of declaration
             // We reserve the right to change it in the future so we make it explicit attribute here
-            shaderOption["order"] = optionOrder;
+            json.AddValue(shaderOption, "order", optionOrder);
             optionOrder++;
-            shaderOption["costImpact"] = varInfo->m_estimatedCostImpact;
+            json.AddValue(shaderOption, "costImpact", varInfo->m_estimatedCostImpact);
 
             const bool isUdt = IsUserDefined(varInfo->GetTypeClass());
             assert(isUdt || IsPredefinedType(varInfo->GetTypeClass()));
             if (isUdt)
             {
-                shaderOption["kind"] = "user-defined";
+                json.AddString(shaderOption, "kind", "user-defined");
             }
             else
             {
-                shaderOption["kind"] = "predefined";
+                json.AddString(shaderOption, "kind", "predefined");
             }
-            shaderOption["specializationId"] = varInfo->m_specializationId;
+            json.AddValue(shaderOption, "specializationId", varInfo->m_specializationId);
             useSpecializationConstants |= varInfo->m_specializationId >= 0;
 
-            AppendOptionRange(shaderOption, uid, varInfo, options);
+            AppendOptionRange(shaderOption, uid, varInfo, options, json);
 
-            if (includeEmpty || (shaderOption["values"].isArray() && shaderOption["values"].size() > 0))
+            if (includeEmpty || (shaderOption.HasMember("values") && shaderOption["values"].IsArray() && shaderOption["values"].Size() > 0))
             {
                 // We only emit variant options which have positive number of valid values
                 // Because we use uint on the shader source side no shader option can cross the 32-bit boundary
-                const uint32_t keySizeInBits = shaderOption["keySize"].asUInt();
+                const uint32_t keySizeInBits = shaderOption["keySize"].GetUint();
 
                 if (keySizeInBits > kShaderVariantKeyElementSize)
                 {
@@ -634,15 +637,15 @@ namespace AZ::ShaderCompiler
                     keyOffsetBits += remainingBitsAfterOffset;
                 }
 
-                shaderOption["keyOffset"] = keyOffsetBits;
+                json.AddValue(shaderOption, "keyOffset", keyOffsetBits);
                 keyOffsetBits += keySizeInBits;
 
-                shaderOptions.append(shaderOption);
+                json.PushValue(shaderOptions, std::move(shaderOption));
             }
         }
 
-        varRoot["specializationConstants"] = options.m_useSpecializationConstantsForOptions && useSpecializationConstants;
-        varRoot["ShaderOptions"] = shaderOptions;
+        json.AddValue(varRoot, "specializationConstants", options.m_useSpecializationConstantsForOptions && useSpecializationConstants);
+        json.AddValue(varRoot, "ShaderOptions", std::move(shaderOptions));
 
         return varRoot;
     }

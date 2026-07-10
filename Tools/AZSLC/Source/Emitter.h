@@ -9,8 +9,8 @@
 #pragma once
 
 #include "Backend.h"
-#include "SymbolTranslation.h"
 #include "CodeEmissionMutator.h"
+#include "SymbolTranslation.h"
 
 #include <cstdint>
 #include <initializer_list>
@@ -19,11 +19,6 @@
 #include <string_view>
 #include <unordered_set>
 #include <vector>
-
-namespace Json
-{
-    class Value;
-}
 
 namespace AZ::ShaderCompiler
 {

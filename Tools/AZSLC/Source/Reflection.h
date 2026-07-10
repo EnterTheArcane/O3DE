@@ -33,10 +33,10 @@ namespace AZ::ShaderCompiler
         // bring all non code emitting features here.
 
         //! Reflect information about vertex and compute stage inputs
-        Json::Value GetShaderEntries(std::string_view sEntry = {}) const;
+        rapidjson::Value GetShaderEntries(std::string_view sEntry, JsonBuilder& json) const;
 
         //! Reflect information about fragment stage outputs
-        Json::Value GetOutputMergerLayout(std::string_view psEntry = {}) const;
+        rapidjson::Value GetOutputMergerLayout(std::string_view psEntry, JsonBuilder& json) const;
 
         //! Dumps reflected information about fragment stage outputs
         void DumpOutputMergerLayout(std::string_view psEntry = {}) const;
@@ -63,47 +63,53 @@ namespace AZ::ShaderCompiler
     private:
         //! Builds member variable packing information and adds it to the membersContainer
         uint32_t BuildMemberLayout(
-            Json::Value& membersContainer,
+            rapidjson::Value& membersContainer,
             std::string_view namePrefix,
             const IdentifierUID& memberId,
             const bool isArrayItr,
             const Options& options,
             const AZ::ShaderCompiler::Packing::Layout layoutPacking,
-            uint32_t& offset) const;
+            uint32_t& offset,
+            JsonBuilder& json) const;
 
         //! Gets the stride for a resource view based on its generic type
         uint32_t GetViewStride(
             const IdentifierUID& memberId,
             const AZ::ShaderCompiler::Packing::Layout& layoutPacking,
-            const Options& options) const;
+            const Options& options,
+            JsonBuilder& json) const;
 
         //! Gets the stride for a user defined type containing member variables
         [[nodiscard]]
         uint32_t BuildUserDefinedMemberLayout(
-            Json::Value& membersContainer,
+            rapidjson::Value& membersContainer,
             const IdentifierUID& exportedTypeId,
             const Options& options,
             const AZ::ShaderCompiler::Packing::Layout layoutPacking,
             uint32_t& startAt,
-            std::string_view namePrefix) const;
+            std::string_view namePrefix,
+            JsonBuilder& json) const;
 
         bool BuildIAElement(
-            Json::Value& jsonVal,
+            rapidjson::Value& jsonVal,
             const IdentifierUID& uid,
-            bool allowStruct) const;
+            bool allowStruct,
+            JsonBuilder& json) const;
 
         bool BuildOMElement(
-            Json::Value& jsonVal,
+            rapidjson::Value& jsonVal,
             const ExtendedTypeInfo& returnTypeRef,
             std::string_view semanticOverride,
             int& semanticIndex,
-            bool systemValue) const;
+            bool systemValue,
+            JsonBuilder& json) const;
 
         bool BuildOMStruct(
             const ExtendedTypeInfo& returnTypeRef,
             std::string_view semanticOverride,
-            Json::Value& jsonVal,
-            int& semanticIndex) const;
+            rapidjson::Value& jsonVal,
+            int& semanticIndex,
+            JsonBuilder& json) const;
 
         //! Populate a list of functions where a symbol appear as potentially used
         //! @param uid      The symbol to start the dependency analysis on

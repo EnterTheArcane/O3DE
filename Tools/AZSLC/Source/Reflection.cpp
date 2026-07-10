@@ -16,7 +16,6 @@
 #include <limits>
 #include <optional>
 #include <set>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -25,16 +24,11 @@
 
 namespace AZ::ShaderCompiler
 {
-    template <typename OStreamable>
-    Json::Value ToJson(const OStreamable& streamableObj)
-    {
-        std::ostringstream baseStr;
-        Streamable&& s{MakeOStreamStreamable{baseStr}};
-        s << streamableObj;
-        return baseStr.str();
-    }
-
-    bool CodeReflection::BuildIAElement(Json::Value& jsonVal, const IdentifierUID& uid, const bool allowStruct) const
+    bool CodeReflection::BuildIAElement(
+        rapidjson::Value& jsonVal,
+        const IdentifierUID& uid,
+        const bool allowStruct,
+        JsonBuilder& json) const
     {
         const auto& varInfo = *m_ir->GetSymbolSubAs<VarInfo>(uid.m_name);
 
@@ -54,24 +48,24 @@ namespace AZ::ShaderCompiler
                 const bool isSystemValue = (semOpt->Name->HLSLSemanticSystem() != nullptr);
 
                 // Array dimensions
-                Json::Value varArrayDimensions(Json::arrayValue);
+                rapidjson::Value varArrayDimensions = json.MakeArray();
                 for (const auto dim : varInfo.m_typeInfoExt.GetDimensions())
                 {
-                    varArrayDimensions.append(Json::Value(dim));
+                    json.PushValue(varArrayDimensions, dim);
                 }
 
-                Json::Value semStream(Json::objectValue);
-                semStream["name"] = ExtractLeaf(uid.m_name).data();
-                semStream["fullType"] = varInfo.GetTypeId().m_name.c_str();
-                semStream["baseType"] = varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr().data();
-                semStream["semanticName"] = semanticName;
-                semStream["semanticIndex"] = semanticIndex;
-                semStream["systemValue"] = isSystemValue;
-                semStream["dimensions"] = varArrayDimensions;
-                semStream["rows"] = varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.m_rows;
-                semStream["cols"] = varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.m_cols;
+                rapidjson::Value semStream = json.MakeObject();
+                json.AddString(semStream, "name", ExtractLeaf(uid.m_name));
+                json.AddString(semStream, "fullType", varInfo.GetTypeId().m_name);
+                json.AddString(semStream, "baseType", varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr());
+                json.AddString(semStream, "semanticName", semanticName);
+                json.AddValue(semStream, "semanticIndex", semanticIndex);
+                json.AddValue(semStream, "systemValue", isSystemValue);
+                json.AddValue(semStream, "dimensions", std::move(varArrayDimensions));
+                json.AddValue(semStream, "rows", varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.m_rows);
+                json.AddValue(semStream, "cols", varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.m_cols);
 
-                jsonVal.append(semStream);
+                json.PushValue(jsonVal, std::move(semStream));
 
                 return true;
             }
@@ -101,20 +95,21 @@ namespace AZ::ShaderCompiler
         const auto& classInfo = typeKind.GetSubRefAs<ClassInfo>();
         for (const auto& memberVar : classInfo.GetMemberFields())
         {
-            if (!BuildIAElement(jsonVal, memberVar, false)) // Second pass prevents structs in structs
+            if (!BuildIAElement(jsonVal, memberVar, false, json)) // Second pass prevents structs in structs
             {
                 return false;
             }
         }
 
-        return jsonVal.size() > 0;
+        return jsonVal.Size() > 0;
     }
 
     bool CodeReflection::BuildOMStruct(
         const ExtendedTypeInfo& returnTypeRef,
         const std::string_view semanticOverride,
-        Json::Value& jsonVal,
-        int& semanticIndex) const
+        rapidjson::Value& jsonVal,
+        int& semanticIndex,
+        JsonBuilder& json) const
     {
         auto idKind = m_ir->GetIdAndKindInfo(returnTypeRef.m_coreType.m_typeId.GetName());
         if (!idKind)
@@ -138,7 +133,7 @@ namespace AZ::ShaderCompiler
             bool buildOMResult = false;
             if (!semanticOverride.empty())
             {
-                if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticOverride, semanticIndex, false))
+                if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticOverride, semanticIndex, false, json))
                 {
                     return false;
                 }
@@ -152,14 +147,14 @@ namespace AZ::ShaderCompiler
                     return false;
                 }
                 auto [semanticName, semanticIndex, isSystemValue] = ExtractHlslSemantic(hlslSemantic);
-                if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticName.c_str(), semanticIndex, isSystemValue))
+                if (!BuildOMElement(jsonVal, attrVarInfo.m_typeInfoExt, semanticName.c_str(), semanticIndex, isSystemValue, json))
                 {
                     return false;
                 }
             }
         }
 
-        return jsonVal.size() > 0;
+        return jsonVal.Size() > 0;
     }
 
     bool ValidOutputSemanticIndex(const std::string_view semanticName, const int semanticIndex)
@@ -175,7 +170,7 @@ namespace AZ::ShaderCompiler
     bool IsValidPSOutput(
         const std::string_view& semanticOverride,
         const int& semanticIndex,
-        Json::Value& jsonVal,
+        rapidjson::Value& jsonVal,
         const ExtendedTypeInfo& returnTypeRef)
     {
         if (semanticOverride.empty())
@@ -190,10 +185,10 @@ namespace AZ::ShaderCompiler
             return false;
         }
 
-        for (auto existingSemantic : jsonVal)
+        for (const rapidjson::Value& existingSemantic : jsonVal.GetArray())
         {
-            if (semanticOverride.find(existingSemantic["semanticName"].asCString()) != std::string::npos &&
-                semanticIndex == existingSemantic["semanticIndex"].asInt())
+            if (semanticOverride.find(existingSemantic["semanticName"].GetString()) != std::string::npos &&
+                semanticIndex == existingSemantic["semanticIndex"].GetInt())
             {
                 // dxc error: Parameter with semantic [semanticName] has overlapping semantic index at [semanticIndex]
                 return false;
@@ -217,16 +212,17 @@ namespace AZ::ShaderCompiler
     }
 
     bool CodeReflection::BuildOMElement(
-        Json::Value& jsonVal,
+        rapidjson::Value& jsonVal,
         const ExtendedTypeInfo& returnTypeRef,
         std::string_view semanticOverride,
         int& semanticIndex,
-        const bool isSystemValue) const
+        const bool isSystemValue,
+        JsonBuilder& json) const
     {
         // Structs are allowed as pixel shader output, if the type is registered walk over its attributes here
         if (!IsPredefinedType(returnTypeRef.m_coreType.m_typeClass))
         {
-            return BuildOMStruct(returnTypeRef, semanticOverride, jsonVal, semanticIndex);
+            return BuildOMStruct(returnTypeRef, semanticOverride, jsonVal, semanticIndex, json);
         }
 
         if (!IsValidPSOutput(semanticOverride, semanticIndex, jsonVal, returnTypeRef))
@@ -236,41 +232,41 @@ namespace AZ::ShaderCompiler
             return false;
         }
 
-        Json::Value semStream(Json::objectValue);
+        rapidjson::Value semStream = json.MakeObject();
 
         const bool isVoid = returnTypeRef.m_coreType.m_typeClass == TypeClass::Void;
 
         if (isVoid)
         {
-            semStream["baseType"] = "void";
+            json.AddString(semStream, "baseType", "void");
         }
         else
         {
-            semStream["baseType"] = returnTypeRef.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr().data();
+            json.AddString(semStream, "baseType", returnTypeRef.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr());
         }
 
         const auto numElements = returnTypeRef.m_coreType.m_arithmeticInfo.m_cols;
-        semStream["cols"] = numElements;
-        semStream["semanticName"] = semanticOverride.data();
+        json.AddValue(semStream, "cols", numElements);
+        json.AddString(semStream, "semanticName", semanticOverride);
 
         if (EqualNoCase(semanticOverride, "SV_Target"))
         {
             if (isVoid)
             {
-                semStream["format"] = "None";
+                json.AddString(semStream, "format", "None");
             }
             else
             {
-                semStream["format"] = OutputFormat::ToStr(m_ir->m_metaData.m_outputFormatHint[semanticIndex]).data();
+                json.AddString(semStream, "format", OutputFormat::ToStr(m_ir->m_metaData.m_outputFormatHint[semanticIndex]));
             }
         }
         else if (StartsWithNoCase(semanticOverride, "SV_Depth"))
         {
-            semStream["format"] = OutputFormat::ToStr(OutputFormat::R32).data();
+            json.AddString(semStream, "format", OutputFormat::ToStr(OutputFormat::R32));
         }
         else if (EqualNoCase(semanticOverride, "SV_Coverage") || EqualNoCase(semanticOverride, "SV_StencilRef"))
         {
-            semStream["format"] = OutputFormat::ToStr(OutputFormat::R32).data();
+            json.AddString(semStream, "format", OutputFormat::ToStr(OutputFormat::R32));
         }
         else if (!(StartsWithNoCase(semanticOverride, "SV_")))
         {
@@ -281,18 +277,18 @@ namespace AZ::ShaderCompiler
         // This behavior conforms to how dxc and fxc layout output semantics.
         // Any output semantic declaration in a structure will override any member variable declarations recursively.
         // The end result is semantic index in order of declaration rather than what is specified per member variable.
-        semStream["semanticIndex"] = semanticIndex++;
+        json.AddValue(semStream, "semanticIndex", semanticIndex++);
 
-        semStream["systemValue"] = isSystemValue;
+        json.AddValue(semStream, "systemValue", isSystemValue);
 
-        jsonVal.append(semStream);
+        json.PushValue(jsonVal, std::move(semStream));
 
         return true;
     }
 
-    Json::Value CodeReflection::GetShaderEntries(std::string_view sEntry) const
+    rapidjson::Value CodeReflection::GetShaderEntries(std::string_view sEntry, JsonBuilder& json) const
     {
-        Json::Value inputLayouts(Json::arrayValue);
+        rapidjson::Value inputLayouts = json.MakeArray();
 
         // Emit all vertex and compute shader entry functions
         for (const auto& symId : m_ir->m_symbols.GetOrderedSymbols())
@@ -308,16 +304,16 @@ namespace AZ::ShaderCompiler
                 continue;
             }
 
-            Json::Value functionEntry(Json::objectValue);
-            functionEntry["entry"] = std::string{RemoveLastParenthesisGroup(funcName)}.c_str();
+            rapidjson::Value functionEntry = json.MakeObject();
+            json.AddString(functionEntry, "entry", RemoveLastParenthesisGroup(funcName));
 
-            Json::Value semanticStreams(Json::arrayValue);
+            rapidjson::Value semanticStreams = json.MakeArray();
             const auto& funcSubInfo = sym.GetSubRefAs<FunctionInfo>();
             for (const auto it : funcSubInfo.GetParameters(false))
             {
                 if (!it.m_varId.IsEmpty())
                 {
-                    validFunc &= BuildIAElement(semanticStreams, it.m_varId, true/*Allow structs on the first level*/);
+                    validFunc &= BuildIAElement(semanticStreams, it.m_varId, true/*Allow structs on the first level*/, json);
                 }
             }
 
@@ -325,7 +321,7 @@ namespace AZ::ShaderCompiler
             auto attrInfo = m_ir->m_symbols.GetAttribute(uid, "numthreads");
             if (attrInfo)
             {
-                Json::Value numThreads(Json::arrayValue);
+                rapidjson::Value numThreads = json.MakeArray();
                 for (auto arg : attrInfo->m_argList)
                 {
                     if (!std::holds_alternative<ConstNumericVal>(arg))
@@ -345,30 +341,30 @@ namespace AZ::ShaderCompiler
                         continue;
                     }
 
-                    numThreads.append(Json::Value(static_cast<int>(threadCount)));
+                    json.PushValue(numThreads, static_cast<int>(threadCount));
                 }
 
-                if (numThreads.size() == 3)
+                if (numThreads.Size() == 3)
                 {
                     // We expect exactly 3 numbers that specify the ThreadGroup dimensions
-                    functionEntry["numthreads"] = numThreads;
+                    json.AddValue(functionEntry, "numthreads", std::move(numThreads));
                 }
             }
 
             // the shader attribute is the way to declare raytracing entrypoints so they are valid entries
             if (validFunc || m_ir->m_symbols.GetAttribute(uid, "shader"))
             {
-                functionEntry["streams"] = semanticStreams;
-                inputLayouts.append(functionEntry);
+                json.AddValue(functionEntry, "streams", std::move(semanticStreams));
+                json.PushValue(inputLayouts, std::move(functionEntry));
             }
         }
 
         return inputLayouts;
     }
 
-    Json::Value CodeReflection::GetOutputMergerLayout(const std::string_view psEntry) const
+    rapidjson::Value CodeReflection::GetOutputMergerLayout(const std::string_view psEntry, JsonBuilder& json) const
     {
-        Json::Value outputLayouts(Json::arrayValue);
+        rapidjson::Value outputLayouts = json.MakeArray();
 
         // Emit all pixel shader entry functions
         for (const auto& [uid, sym] : m_ir->GetOrderedSymbolsOfSubType_2<FunctionInfo>())
@@ -384,10 +380,10 @@ namespace AZ::ShaderCompiler
                 continue;
             }
 
-            Json::Value functionEntry(Json::objectValue);
-            functionEntry["entry"] = std::string{RemoveLastParenthesisGroup(funcName)}.c_str();
+            rapidjson::Value functionEntry = json.MakeObject();
+            json.AddString(functionEntry, "entry", RemoveLastParenthesisGroup(funcName));
 
-            Json::Value renderTargets(Json::arrayValue);
+            rapidjson::Value renderTargets = json.MakeArray();
             const auto& funcSubInfo = *sym;
 
             std::string semanticName("");
@@ -403,12 +399,17 @@ namespace AZ::ShaderCompiler
                 funcSubInfo.m_returnType,
                 semanticName,
                 semanticIndex,
-                isSystemValue);
+                isSystemValue,
+                json);
 
             int depthFoundNTimes = 0;
-            for (auto existingSemantic : renderTargets)
+            for (const rapidjson::Value& existingSemantic : renderTargets.GetArray())
             {
-                if (existingSemantic["semanticName"].asString().find("Depth") != std::string::npos)
+                std::string_view semanticNameView{
+                    existingSemantic["semanticName"].GetString(),
+                    existingSemantic["semanticName"].GetStringLength()
+                };
+                if (semanticNameView.find("Depth") != std::string::npos)
                 {
                     depthFoundNTimes++;
                 }
@@ -418,8 +419,8 @@ namespace AZ::ShaderCompiler
 
             if (validFunc)
             {
-                functionEntry["renderTargets"] = renderTargets;
-                outputLayouts.append(functionEntry);
+                json.AddValue(functionEntry, "renderTargets", std::move(renderTargets));
+                json.PushValue(outputLayouts, std::move(functionEntry));
             }
         }
 
@@ -428,30 +429,35 @@ namespace AZ::ShaderCompiler
 
     void CodeReflection::DumpOutputMergerLayout(const std::string_view psEntry) const
     {
-        Json::Value iaRoot(Json::objectValue);
-        iaRoot["meta"] = "Output Merger Layout exported by AZSLC";
-        iaRoot["source"] = m_ir->OriginalSource().c_str();
-        iaRoot["material"] = "Output Merger Layout exported by AZSLC";
+        rapidjson::Document iaRoot;
+        iaRoot.SetObject();
+        JsonBuilder json(iaRoot);
+        json.AddString(iaRoot, "meta", "Output Merger Layout exported by AZSLC");
+        json.AddString(iaRoot, "source", m_ir->OriginalSource());
+        json.AddString(iaRoot, "material", "Output Merger Layout exported by AZSLC");
 
-        iaRoot["outputLayouts"] = GetOutputMergerLayout(psEntry);
-        m_out << iaRoot;
+        json.AddValue(iaRoot, "outputLayouts", GetOutputMergerLayout(psEntry, json));
+        m_out << json.Serialize(iaRoot);
     }
 
     void CodeReflection::DumpShaderEntries() const
     {
-        Json::Value entries(Json::objectValue);
-        entries["meta"] = "Shader entries exported by AZSLC";
-        entries["source"] = m_ir->OriginalSource().c_str();
-        entries["material"] = "Unknown material";
+        rapidjson::Document entries;
+        entries.SetObject();
+        JsonBuilder json(entries);
+        json.AddString(entries, "meta", "Shader entries exported by AZSLC");
+        json.AddString(entries, "source", m_ir->OriginalSource());
+        json.AddString(entries, "material", "Unknown material");
 
-        entries["inputLayouts"] = GetShaderEntries();
-        m_out << entries;
+        json.AddValue(entries, "inputLayouts", GetShaderEntries({}, json));
+        m_out << json.Serialize(entries);
     }
 
     uint32_t CodeReflection::GetViewStride(
         const IdentifierUID& memberId,
         const AZ::ShaderCompiler::Packing::Layout& layoutPacking,
-        const Options& options) const
+        const Options& options,
+        JsonBuilder& json) const
     {
         const auto* varInfoPtr = m_ir->GetSymbolSubAs<VarInfo>(memberId.m_name);
         if (!varInfoPtr)
@@ -478,19 +484,20 @@ namespace AZ::ShaderCompiler
             return genericType.m_arithmeticInfo.GetTotalSize();
         }
 
-        Json::Value emptyLayout(Json::arrayValue);
+        rapidjson::Value emptyLayout = json.MakeArray();
         const auto& structMember = genericType.m_typeId;
         uint32_t startAt = 0;
-        return BuildUserDefinedMemberLayout(emptyLayout, structMember, options, layoutPacking, startAt, "");
+        return BuildUserDefinedMemberLayout(emptyLayout, structMember, options, layoutPacking, startAt, "", json);
     }
 
     uint32_t CodeReflection::BuildUserDefinedMemberLayout(
-        Json::Value& membersContainer,
+        rapidjson::Value& membersContainer,
         const IdentifierUID& exportedTypeId,
         const Options& options,
         const AZ::ShaderCompiler::Packing::Layout layoutPacking,
         uint32_t& startAt,
-        const std::string_view namePrefix) const
+        const std::string_view namePrefix,
+        JsonBuilder& json) const
     {
         // Alignment start
         uint32_t tempOffset = startAt = Packing::AlignOffset(layoutPacking, startAt, Packing::Alignment::asStructStart, 0, 0);
@@ -501,7 +508,7 @@ namespace AZ::ShaderCompiler
         for (const auto& memberField : classInfo->GetMemberFields())
         {
             const auto currentStride = tempOffset;
-            BuildMemberLayout(membersContainer, namePrefix, memberField, false, options, GetExtendedLayout(layoutPacking), tempOffset);
+            BuildMemberLayout(membersContainer, namePrefix, memberField, false, options, GetExtendedLayout(layoutPacking), tempOffset, json);
             largestMemberSize = std::max(largestMemberSize, tempOffset - currentStride);
         }
 
@@ -515,13 +522,14 @@ namespace AZ::ShaderCompiler
     }
 
     uint32_t CodeReflection::BuildMemberLayout(
-        Json::Value& membersContainer,
+        rapidjson::Value& membersContainer,
         std::string_view namePrefix,
         const IdentifierUID& memberId,
         const bool isArrayItr,
         const Options& options,
         const AZ::ShaderCompiler::Packing::Layout layoutPacking,
-        uint32_t& offset) const
+        uint32_t& offset,
+        JsonBuilder& json) const
     {
         const auto* varInfoPtr = m_ir->GetSymbolSubAs<VarInfo>(memberId.m_name);
         uint32_t size = 0;
@@ -546,28 +554,28 @@ namespace AZ::ShaderCompiler
             }
             TypeClass varClass = exportedType.m_typeClass;
             bool isPrefedined = IsPredefinedType(varClass);
-            Json::Value memberLayout(Json::objectValue);
+            rapidjson::Value memberLayout = json.MakeObject();
             const auto& shortName = memberId.GetNameLeaf();
-            std::string constantId = std::string(namePrefix.data()) + shortName;
+            std::string constantId = std::string(namePrefix) + shortName;
             if (isArrayItr)
             {
-                constantId = std::string(namePrefix.data());
+                constantId = std::string(namePrefix);
             }
-            memberLayout["constantId"] = constantId.c_str();
-            memberLayout["qualifiedName"] = memberId.m_name.c_str();
+            json.AddString(memberLayout, "constantId", constantId);
+            json.AddString(memberLayout, "qualifiedName", memberId.m_name);
             if (isPrefedined)
             {
-                memberLayout["typeKind"] = "Predefined";
+                json.AddString(memberLayout, "typeKind", "Predefined");
             }
             else if (IsProductType(varClass))
             {
-                memberLayout["typeKind"] = "Struct";
+                json.AddString(memberLayout, "typeKind", "Struct");
             }
             else
             {
-                memberLayout["typeKind"] = TypeClass::ToStr(varClass).data();
+                json.AddString(memberLayout, "typeKind", TypeClass::ToStr(varClass));
             }
-            memberLayout["typeName"] = varInfo.GetTypeId().m_name.c_str();
+            json.AddString(memberLayout, "typeName", varInfo.GetTypeId().m_name);
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, options.m_forceMatrixRowMajor);
             auto startAt = offset;
@@ -624,7 +632,8 @@ namespace AZ::ShaderCompiler
                             options,
                             layoutPacking,
                             startAt,
-                            (namePrefix.data() + shortName + strDimIndex + "."));
+                            (std::string(namePrefix) + shortName + strDimIndex + "."),
+                            json);
 
                         offset = Packing::PackNextChunk(layoutPacking, size, startAt);
 
@@ -639,7 +648,7 @@ namespace AZ::ShaderCompiler
                         // We want to calculate the offset for each array element
                         uint32_t tempOffset = startAt;
 
-                        BuildMemberLayout(membersContainer, (namePrefix.data() + shortName + strDimIndex), memberId, true, options, layoutPacking, tempOffset);
+                        BuildMemberLayout(membersContainer, (std::string(namePrefix) + shortName + strDimIndex), memberId, true, options, layoutPacking, tempOffset, json);
 
                         // Alignment end
                         tempOffset = Packing::AlignOffset(layoutPacking, tempOffset, Packing::Alignment::asArrayEnd, 0, 0);
@@ -661,7 +670,8 @@ namespace AZ::ShaderCompiler
                     options,
                     layoutPacking,
                     startAt,
-                    (namePrefix.data() + shortName + "."));
+                    (std::string(namePrefix) + shortName + "."),
+                    json);
 
                 // Add packing into array
                 size = Packing::PackIntoArray(layoutPacking, size, varInfo.m_typeInfoExt.GetDimensions());
@@ -700,17 +710,17 @@ namespace AZ::ShaderCompiler
             size = offset - startAt;
 
             // Array dimensions
-            Json::Value varArrayDimensions(Json::arrayValue);
+            rapidjson::Value varArrayDimensions = json.MakeArray();
             for (const auto dim : varInfo.m_typeInfoExt.GetDimensions())
             {
-                varArrayDimensions.append(Json::Value(dim));
+                json.PushValue(varArrayDimensions, dim);
             }
 
-            memberLayout["constantByteOffset"] = startAt;
-            memberLayout["constantByteSize"] = size;
-            memberLayout["typeDimensions"] = varArrayDimensions;
+            json.AddValue(memberLayout, "constantByteOffset", startAt);
+            json.AddValue(memberLayout, "constantByteSize", size);
+            json.AddValue(memberLayout, "typeDimensions", std::move(varArrayDimensions));
 
-            membersContainer.append(memberLayout);
+            json.PushValue(membersContainer, std::move(memberLayout));
         }
 
         return size;
@@ -720,22 +730,24 @@ namespace AZ::ShaderCompiler
     {
         AnalyzeOptionRanks();
         SetupOptionsSpecializationId(options);
-        m_out << GetVariantList(options);
+        auto variantList = GetVariantList(options);
+        JsonBuilder json(variantList);
+        m_out << json.Serialize(variantList);
         m_out << "\n";
     }
 
-    static void ReflectBinding(Json::Value& output, const RootSigDesc::SrgParamDesc& bindInfo)
+    static void ReflectBinding(rapidjson::Value& output, const RootSigDesc::SrgParamDesc& bindInfo, JsonBuilder& json)
     {
         int count = bindInfo.m_registerRange;
         if (bindInfo.m_isUnboundedArray)
         {
             count = -1;
         }
-        output["count"] = count;
-        output["index"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Untainted].m_registerIndex;
-        output["space"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Untainted].m_logicalSpace;
-        output["index-merged"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Merged].m_registerIndex;
-        output["space-merged"] = bindInfo.m_registerBinding.m_pair[BindingPair::Set::Merged].m_logicalSpace;
+        json.AddValue(output, "count", count);
+        json.AddValue(output, "index", bindInfo.m_registerBinding.m_pair[BindingPair::Set::Untainted].m_registerIndex);
+        json.AddValue(output, "space", bindInfo.m_registerBinding.m_pair[BindingPair::Set::Untainted].m_logicalSpace);
+        json.AddValue(output, "index-merged", bindInfo.m_registerBinding.m_pair[BindingPair::Set::Merged].m_registerIndex);
+        json.AddValue(output, "space-merged", bindInfo.m_registerBinding.m_pair[BindingPair::Set::Merged].m_logicalSpace);
     }
 
     void CodeReflection::DumpSRGLayout(const Options& options, PreprocessorLineDirectiveFinder* lineFinder) const
@@ -743,55 +755,56 @@ namespace AZ::ShaderCompiler
         uint32_t numOf32bitConst = GetNumberOf32BitConstants(options, m_ir->m_rootConstantStructUID);
         RootSigDesc rootSig = BuildSignatureDescription(options, numOf32bitConst);
 
-        Json::Value srgRoot(Json::objectValue);
-        srgRoot["meta"] = "SRGs layout exported by AZSLC";
-        srgRoot["source"] = m_ir->OriginalSource().c_str();
+        rapidjson::Document srgRoot;
+        srgRoot.SetObject();
+        JsonBuilder json(srgRoot);
+        json.AddString(srgRoot, "meta", "SRGs layout exported by AZSLC");
+        json.AddString(srgRoot, "source", m_ir->OriginalSource());
 
-        Json::Value srgLayouts(Json::arrayValue);
+        rapidjson::Value srgLayouts = json.MakeArray();
 
         // Reflect all SRGs
         for (auto& [srgUid, srgInfo] : m_ir->GetOrderedSymbolsOfSubType_2<SRGInfo>())
         {
-            Json::Value srgLayout(Json::objectValue);
-            srgLayout["id"] = srgInfo->m_declNode->Name->getText();
+            rapidjson::Value srgLayout = json.MakeObject();
+            json.AddString(srgLayout, "id", srgInfo->m_declNode->Name->getText());
 
             // Try to locate the original filename where this SRG is declared
             size_t physical = srgInfo->m_declNode->getStart()->getLine();
-            srgLayout["originalFileName"] = std::filesystem::absolute(std::filesystem::path(lineFinder->GetVirtualFileName(physical).c_str())).lexically_normal().generic_string();
-            srgLayout["originalLineNumber"] = static_cast<Json::Value::UInt64>(lineFinder->GetVirtualLineNumber(physical));
+            json.AddString(srgLayout, "originalFileName", std::filesystem::absolute(std::filesystem::path(lineFinder->GetVirtualFileName(physical).c_str())).lexically_normal().generic_string());
+            json.AddValue(srgLayout, "originalLineNumber", static_cast<uint64_t>(lineFinder->GetVirtualLineNumber(physical)));
 
             auto semantic = m_ir->GetSymbolSubAs<ClassInfo>(srgInfo->m_semantic->GetName())->Get<SRGSemanticInfo>();
 
-            srgLayout["bindingSlot"] = static_cast<Json::Value::Int64>(*semantic->m_frequencyId); // Semantic check has asserted that we have it, so we can dereference here.
+            json.AddValue(srgLayout, "bindingSlot", static_cast<int64_t>(*semantic->m_frequencyId)); // Semantic check has asserted that we have it, so we can dereference here.
 
             if (srgInfo->m_shaderVariantFallback)
             {
-                srgLayout["fallbackSize"] = static_cast<Json::Value::Int64>(*semantic->m_variantFallback);
-                srgLayout["fallbackName"] = srgInfo->m_shaderVariantFallback->GetNameLeaf().data();
+                json.AddValue(srgLayout, "fallbackSize", static_cast<int64_t>(*semantic->m_variantFallback));
+                json.AddString(srgLayout, "fallbackName", srgInfo->m_shaderVariantFallback->GetNameLeaf());
             }
 
-            Json::Value buffersList(Json::arrayValue);
-            Json::Value imagesList(Json::arrayValue);
+            rapidjson::Value buffersList = json.MakeArray();
+            rapidjson::Value imagesList = json.MakeArray();
 
             // External CBVs
             for (const auto& cId : srgInfo->m_CBs)
             {
                 const auto& bindInfo = rootSig.Get(cId);
 
-                uint32_t strideSize = GetViewStride(cId, options.m_packConstantBuffers, options);
+                uint32_t strideSize = GetViewStride(cId, options.m_packConstantBuffers, options, json);
 
                 auto& srgMemberInfo = *m_ir->GetSymbolSubAs<VarInfo>(cId.m_name);
                 assert(srgMemberInfo.IsConstantBuffer());
-                std::string typeNameLeaf = srgMemberInfo.m_typeInfoExt.GetDisplayShortName();
 
-                Json::Value dataView(Json::objectValue);
-                dataView["id"] = ExtractLeaf(cId.m_name).data();
-                dataView["type"] = typeNameLeaf.c_str();
-                dataView["usage"] = "Read";
-                dataView["stride"] = strideSize;
-                ReflectBinding(dataView, bindInfo);
+                rapidjson::Value dataView = json.MakeObject();
+                json.AddString(dataView, "id", ExtractLeaf(cId.m_name));
+                json.AddString(dataView, "type", srgMemberInfo.m_typeInfoExt.GetDisplayShortName());
+                json.AddString(dataView, "usage", "Read");
+                json.AddValue(dataView, "stride", strideSize);
+                ReflectBinding(dataView, bindInfo, json);
 
-                buffersList.append(dataView);
+                json.PushValue(buffersList, std::move(dataView));
             }
 
             // SRVs and UAVs
@@ -799,7 +812,7 @@ namespace AZ::ShaderCompiler
             {
                 const auto& bindInfo = rootSig.Get(tId);
 
-                uint32_t strideSize = GetViewStride(tId, options.m_packDataBuffers, options);
+                uint32_t strideSize = GetViewStride(tId, options.m_packDataBuffers, options, json);
 
                 auto& srgMemberInfo = *m_ir->GetSymbolSubAs<VarInfo>(tId.m_name);
                 auto viewName = srgMemberInfo.m_typeInfoExt.GetDisplayShortName();
@@ -812,34 +825,34 @@ namespace AZ::ShaderCompiler
                     strideSize = Packing::AlignUp(strideSize, Packing::s_bytesPerRegister);
                 }
 
-                Json::Value dataView(Json::objectValue);
-                dataView["id"] = ExtractLeaf(tId.m_name).data();
-                dataView["type"] = viewName.data();
+                rapidjson::Value dataView = json.MakeObject();
+                json.AddString(dataView, "id", ExtractLeaf(tId.m_name));
+                json.AddString(dataView, "type", viewName);
                 if (isReadWriteView)
                 {
-                    dataView["usage"] = "ReadWrite";
+                    json.AddString(dataView, "usage", "ReadWrite");
                 }
                 else
                 {
-                    dataView["usage"] = "Read";
+                    json.AddString(dataView, "usage", "Read");
                 }
-                ReflectBinding(dataView, bindInfo);
-                dataView["stride"] = strideSize;
+                ReflectBinding(dataView, bindInfo, json);
+                json.AddValue(dataView, "stride", strideSize);
 
                 if (isBufferView)
                 {
-                    buffersList.append(dataView);
+                    json.PushValue(buffersList, std::move(dataView));
                 }
                 else
                 {
-                    imagesList.append(dataView);
+                    json.PushValue(imagesList, std::move(dataView));
                 }
             }
 
-            srgLayout["inputsForBufferViews"] = buffersList;
-            srgLayout["inputsForImageViews"] = imagesList;
+            json.AddValue(srgLayout, "inputsForBufferViews", std::move(buffersList));
+            json.AddValue(srgLayout, "inputsForImageViews", std::move(imagesList));
 
-            Json::Value samplersList(Json::arrayValue);
+            rapidjson::Value samplersList = json.MakeArray();
             for (const auto& sId : srgInfo->m_samplers)
             {
                 const auto& bindInfo = rootSig.Get(sId);
@@ -847,57 +860,57 @@ namespace AZ::ShaderCompiler
                 const auto* srgMemberInfo = m_ir->GetSymbolSubAs<VarInfo>(sId.m_name);
                 const auto& samplerInfo = *srgMemberInfo->m_samplerState;
 
-                Json::Value samplerJson(Json::objectValue);
-                samplerJson["id"] = sId.GetNameLeaf().data();
-                samplerJson["isDynamic"] = samplerInfo.m_isDynamic;
-                ReflectBinding(samplerJson, bindInfo);
+                rapidjson::Value samplerJson = json.MakeObject();
+                json.AddString(samplerJson, "id", sId.GetNameLeaf());
+                json.AddValue(samplerJson, "isDynamic", samplerInfo.m_isDynamic);
+                ReflectBinding(samplerJson, bindInfo, json);
 
                 if (!samplerInfo.m_isDynamic)
                 {
                     // Emit predefined enums for static sampler
-                    samplerJson["anisotropyMax"] = samplerInfo.m_anisotropyMax;
-                    samplerJson["anisotropyEnable"] = samplerInfo.m_anisotropyEnable;
+                    json.AddValue(samplerJson, "anisotropyMax", samplerInfo.m_anisotropyMax);
+                    json.AddValue(samplerJson, "anisotropyEnable", samplerInfo.m_anisotropyEnable);
                     if (samplerInfo.m_filterMin == SamplerStateDesc::FilterMode::Linear)
                     {
-                        samplerJson["filterMin"] = "Linear";
+                        json.AddString(samplerJson, "filterMin", "Linear");
                     }
                     else
                     {
-                        samplerJson["filterMin"] = "Point";
+                        json.AddString(samplerJson, "filterMin", "Point");
                     }
 
                     if (samplerInfo.m_filterMag == SamplerStateDesc::FilterMode::Linear)
                     {
-                        samplerJson["filterMag"] = "Linear";
+                        json.AddString(samplerJson, "filterMag", "Linear");
                     }
                     else
                     {
-                        samplerJson["filterMag"] = "Point";
+                        json.AddString(samplerJson, "filterMag", "Point");
                     }
 
                     if (samplerInfo.m_filterMip == SamplerStateDesc::FilterMode::Linear)
                     {
-                        samplerJson["filterMip"] = "Linear";
+                        json.AddString(samplerJson, "filterMip", "Linear");
                     }
                     else
                     {
-                        samplerJson["filterMip"] = "Point";
+                        json.AddString(samplerJson, "filterMip", "Point");
                     }
-                    samplerJson["reductionType"] = ToJson(samplerInfo.m_reductionType);
-                    samplerJson["comparisonFunc"] = ToJson(samplerInfo.m_comparisonFunc);
-                    samplerJson["addressU"] = ToJson(samplerInfo.m_addressU);
-                    samplerJson["addressV"] = ToJson(samplerInfo.m_addressV);
-                    samplerJson["addressW"] = ToJson(samplerInfo.m_addressW);
-                    samplerJson["mipLodMin"] = samplerInfo.m_mipLodMin;
-                    samplerJson["mipLodMax"] = samplerInfo.m_mipLodMax;
-                    samplerJson["mipLodBias"] = samplerInfo.m_mipLodBias;
-                    samplerJson["borderColor"] = ToJson(samplerInfo.m_borderColor);
-                    samplerJson["isComparison"] = samplerInfo.m_isComparison;
+                    json.AddStreamableString(samplerJson, "reductionType", samplerInfo.m_reductionType);
+                    json.AddStreamableString(samplerJson, "comparisonFunc", samplerInfo.m_comparisonFunc);
+                    json.AddStreamableString(samplerJson, "addressU", samplerInfo.m_addressU);
+                    json.AddStreamableString(samplerJson, "addressV", samplerInfo.m_addressV);
+                    json.AddStreamableString(samplerJson, "addressW", samplerInfo.m_addressW);
+                    json.AddValue(samplerJson, "mipLodMin", samplerInfo.m_mipLodMin);
+                    json.AddValue(samplerJson, "mipLodMax", samplerInfo.m_mipLodMax);
+                    json.AddValue(samplerJson, "mipLodBias", samplerInfo.m_mipLodBias);
+                    json.AddStreamableString(samplerJson, "borderColor", samplerInfo.m_borderColor);
+                    json.AddValue(samplerJson, "isComparison", samplerInfo.m_isComparison);
                 }
 
-                samplersList.append(samplerJson);
+                json.PushValue(samplersList, std::move(samplerJson));
             }
-            srgLayout["inputsForSamplers"] = samplersList;
+            json.AddValue(srgLayout, "inputsForSamplers", std::move(samplersList));
 
             // SRG Constants
             // Call extracted func for rgInfo->m_implicitStruct
@@ -905,58 +918,65 @@ namespace AZ::ShaderCompiler
             {
                 const auto& layoutPacking = options.m_packConstantBuffers;
                 uint32_t offset = 0;
-                Json::Value structLayout(Json::arrayValue);
+                rapidjson::Value structLayout = json.MakeArray();
 
                 for (const auto& srgConst : srgInfo->m_implicitStruct.GetMemberFields())
                 {
-                    BuildMemberLayout(structLayout, "", srgConst, false, options, layoutPacking, offset);
+                    BuildMemberLayout(structLayout, "", srgConst, false, options, layoutPacking, offset, json);
                 }
 
-                srgLayout["inputsForSRGConstants"] = structLayout;
+                json.AddValue(srgLayout, "inputsForSRGConstants", std::move(structLayout));
 
                 // CBuffer for SRG Constants
                 {
                     const auto& bindInfo = rootSig.Get(srgUid);
 
-                    Json::Value dataView(Json::objectValue);
-                    dataView["id"] = ExtractLeaf(srgUid.m_name).data();
-                    dataView["usage"] = "Read";
-                    ReflectBinding(dataView, bindInfo);
+                    rapidjson::Value dataView = json.MakeObject();
+                    json.AddString(dataView, "id", ExtractLeaf(srgUid.m_name));
+                    json.AddString(dataView, "usage", "Read");
+                    ReflectBinding(dataView, bindInfo, json);
 
-                    srgLayout["bufferForSRGConstants"] = dataView;
+                    json.AddValue(srgLayout, "bufferForSRGConstants", std::move(dataView));
                 }
             }
 
-            srgLayouts.append(srgLayout);
+            json.PushValue(srgLayouts, std::move(srgLayout));
         }
-        srgRoot["ShaderResourceGroups"] = srgLayouts;
+        json.AddValue(srgRoot, "ShaderResourceGroups", std::move(srgLayouts));
 
-        Json::Value rootConstantLayout(Json::objectValue);
+        rapidjson::Value rootConstantLayout = json.MakeObject();
 
         if (options.m_rootConstantsMaxSize > 0)
         {
             const auto& layoutPacking = options.m_packConstantBuffers;
-            Json::Value structLayout(Json::arrayValue);
+            rapidjson::Value structLayout = json.MakeArray();
             uint32_t startAt = 0;
-            uint32_t strideSize = BuildUserDefinedMemberLayout(structLayout, m_ir->m_rootConstantStructUID, options, options.m_packConstantBuffers, startAt, "");
+            uint32_t strideSize = BuildUserDefinedMemberLayout(
+                structLayout,
+                m_ir->m_rootConstantStructUID,
+                options,
+                options.m_packConstantBuffers,
+                startAt,
+                "",
+                json);
             strideSize = GetPlatformEmitter().AlignRootConstants(strideSize);
 
-            rootConstantLayout["inputsForRootConstants"] = structLayout;
+            json.AddValue(rootConstantLayout, "inputsForRootConstants", std::move(structLayout));
 
             const auto& bindInfo = rootSig.Get(m_ir->m_rootConstantStructUID);
-            Json::Value dataView(Json::objectValue);
-            dataView["id"] = ExtractLeaf(m_ir->m_rootConstantStructUID.m_name).data();
-            dataView["usage"] = "Read";
-            ReflectBinding(dataView, bindInfo);
-            dataView["sizeInBytes"] = strideSize;
+            rapidjson::Value dataView = json.MakeObject();
+            json.AddString(dataView, "id", ExtractLeaf(m_ir->m_rootConstantStructUID.m_name));
+            json.AddString(dataView, "usage", "Read");
+            ReflectBinding(dataView, bindInfo, json);
+            json.AddValue(dataView, "sizeInBytes", strideSize);
 
-            rootConstantLayout["bufferForRootConstants"] = dataView;
+            json.AddValue(rootConstantLayout, "bufferForRootConstants", std::move(dataView));
 
             // Add the layout to Root node
-            srgRoot["RootConstantBuffer"] = rootConstantLayout;
+            json.AddValue(srgRoot, "RootConstantBuffer", std::move(rootConstantLayout));
         }
 
-        m_out << srgRoot;
+        m_out << json.Serialize(srgRoot);
     }
 
     bool CodeReflection::IsNonOverloaded(const IdentifierUID& uid) const
@@ -1047,7 +1067,9 @@ namespace AZ::ShaderCompiler
         // (truth: we need a set of disjoint intervals as an invariant for the following algorithm)
         GenerateTokenScopeIntervalToUidReverseMap();
 
-        Json::Value srgRoot(Json::objectValue);
+        rapidjson::Document srgRoot;
+        srgRoot.SetObject();
+        JsonBuilder json(srgRoot);
         // Order the reflection by SRG for convenience
         for (const RootSigDesc::SrgDesc& srgDesc : rootSignature.m_srGroups)
         {
@@ -1055,36 +1077,39 @@ namespace AZ::ShaderCompiler
             if (uid.m_name != m_ir->m_rootConstantStructUID.m_name) // Since root constant isn't part of SRG resource, and just an alias of SRG members, skip for now.
             {
                 auto* srgInfo = m_ir->GetKindInfo(uid)->GetSubAs<SRGInfo>();
-                Json::Value srgMember(Json::objectValue);
+                rapidjson::Value srgMember = json.MakeObject();
 
                 // functions to factorize node output
-                auto dependencyListToJson = [](const std::set<IdentifierUID>& dependencyList) -> Json::Value
+                auto dependencyListToJson = [&json](const std::set<IdentifierUID>& dependencyList) -> rapidjson::Value
                 {
-                    Json::Value allEntriesJson(Json::arrayValue);
+                    rapidjson::Value allEntriesJson = json.MakeArray();
                     for_each(
                         dependencyList.begin(),
                         dependencyList.end(),
-                        [&allEntriesJson](const IdentifierUID& id)
+                        [&allEntriesJson, &json](const IdentifierUID& id)
                         {
-                            allEntriesJson.append(std::string{RemoveLastParenthesisGroup(id.GetNameLeaf())}.c_str());
+                            json.PushString(allEntriesJson, RemoveLastParenthesisGroup(id.GetNameLeaf()));
                         });
                     return allEntriesJson;
                 };
 
-                auto makeJsonNodeForOneResource = [&dependencyListToJson](
+                auto makeJsonNodeForOneResource = [&dependencyListToJson, &json](
                     const std::set<IdentifierUID>& dependencyList,
                     const RootSigDesc::SrgParamDesc& binding,
-                    const Json::Value& allConstants)
+                    const rapidjson::Value* allConstants = nullptr)
                 {
-                    Json::Value resourceJsonValue(Json::objectValue);
-                    resourceJsonValue["dependentFunctions"] = dependencyListToJson(dependencyList);
-                    if (!allConstants.empty())
+                    rapidjson::Value resourceJsonValue = json.MakeObject();
+                    json.AddValue(resourceJsonValue, "dependentFunctions", dependencyListToJson(dependencyList));
+                    if (allConstants && !allConstants->Empty())
                     {
-                        resourceJsonValue["participantConstants"] = allConstants;
+                        rapidjson::Value allConstantsCopy;
+                        allConstantsCopy.CopyFrom(*allConstants, json.GetAllocator());
+                        json.AddValue(resourceJsonValue, "participantConstants", std::move(allConstantsCopy));
                     }
-                    BindingPair::Set bindingQuery = BindingPair::Set::Untainted;
-                    resourceJsonValue["binding"]["type"] = RootParamType::ToStr(binding.m_type).data();
-                    ReflectBinding(resourceJsonValue["binding"], binding);
+                    rapidjson::Value bindingJson = json.MakeObject();
+                    json.AddString(bindingJson, "type", RootParamType::ToStr(binding.m_type));
+                    ReflectBinding(bindingJson, binding, json);
+                    json.AddValue(resourceJsonValue, "binding", std::move(bindingJson));
                     return resourceJsonValue;
                 };
 
@@ -1100,18 +1125,18 @@ namespace AZ::ShaderCompiler
                     {
                         std::set<IdentifierUID> dependencyList;
                         DiscoverTopLevelFunctionDependencies(srgParam.m_uid, dependencyList, m_functionIntervals);
-                        srgMember[srgParam.m_uid.GetNameLeaf().data()] = makeJsonNodeForOneResource(dependencyList, srgParam, {});
+                        json.AddValue(srgMember, srgParam.m_uid.GetNameLeaf(), makeJsonNodeForOneResource(dependencyList, srgParam));
                     }
                 }
                 // SRG constants (and the variant-fallback) are in one special constant buffer
                 if (srgConstants || srgInfo->m_shaderVariantFallback)
                 {
-                    Json::Value allConstants(Json::arrayValue);
+                    rapidjson::Value allConstants = json.MakeArray();
                     // make a merged list of dependencies, shared by all individual constants.
                     std::set<IdentifierUID> dependencyList;
                     for (auto& srgConstant : srgInfo->m_implicitStruct.GetMemberFields())
                     {
-                        allConstants.append(srgConstant.GetNameLeaf().data());
+                        json.PushString(allConstants, srgConstant.GetNameLeaf());
                         DiscoverTopLevelFunctionDependencies(srgConstant, dependencyList, m_functionIntervals);
                     }
                     // variant fallback support
@@ -1127,13 +1152,16 @@ namespace AZ::ShaderCompiler
                             }
                         }
                     }
-                    srgMember[std::string{ExtractLeaf(MakeSrgConstantsCBName(uid))}.c_str()] = makeJsonNodeForOneResource(dependencyList, *srgConstants, allConstants);
+                    json.AddValue(
+                        srgMember,
+                        ExtractLeaf(MakeSrgConstantsCBName(uid)),
+                        makeJsonNodeForOneResource(dependencyList, *srgConstants, &allConstants));
                 }
-                srgRoot[uid.GetNameLeaf().data()] = srgMember;
+                json.AddValue(srgRoot, uid.GetNameLeaf(), std::move(srgMember));
             }
         }
 
-        m_out << srgRoot;
+        m_out << json.Serialize(srgRoot);
     }
 
     // Helper routine for option rank analysis
