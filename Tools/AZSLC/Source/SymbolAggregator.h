@@ -12,7 +12,6 @@
 #include "DependencySolver.tpl"
 
 #include <array>
-#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>

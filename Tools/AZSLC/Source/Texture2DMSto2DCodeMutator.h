@@ -13,7 +13,6 @@
 #include "CodeEmissionMutator.h"
 #include "IntermediateRepresentation.h"
 
-#include <cstdint>
 #include <string>
 #include <unordered_map>
 

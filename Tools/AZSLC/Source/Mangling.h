@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cstdint>
 #include <functional>
 #include <iterator>
 #include <ostream>

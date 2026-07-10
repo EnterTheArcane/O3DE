@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cmath>
 #include <cstdint>
 #include <initializer_list>
 #include <optional>

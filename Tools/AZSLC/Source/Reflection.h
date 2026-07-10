@@ -12,7 +12,6 @@
 
 #include <cstdint>
 #include <map>
-#include <ostream>
 #include <set>
 #include <string_view>
 #include <utility>

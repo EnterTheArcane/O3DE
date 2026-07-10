@@ -9,7 +9,6 @@
 #pragma once
 
 #include "ScopeTracker.h"
-#include "PreprocessorLineDirectiveFinder.h"
 #include "UnboundedArraysValidator.h"
 #include "KindInfo.h"
 

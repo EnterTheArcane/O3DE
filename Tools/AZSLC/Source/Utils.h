@@ -9,14 +9,11 @@
 #pragma once
 
 #include "Mangling.h"
-#include "Common.h"
 #include "Exception.h"
 #include "DiagnosticStream.h"
 
 #include "antlr4-runtime.h"
 
-#include "azslLexer.h"
-#include "azslParserBaseListener.h"
 #include "azslParser.h"
 
 #include "PredefinedTypes.h"
@@ -27,7 +24,6 @@
 #include <algorithm>
 #include <cassert>
 #include <concepts>
-#include <cmath>
 #include <cstdint>
 #include <iterator>
 #include <memory>

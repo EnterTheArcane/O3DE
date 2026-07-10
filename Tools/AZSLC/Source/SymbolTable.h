@@ -10,7 +10,6 @@
 
 #include "GenericUtils.h"
 #include "KindInfo.h"
-#include "DiagnosticStream.h"
 
 #include <cstdint>
 #include <optional>

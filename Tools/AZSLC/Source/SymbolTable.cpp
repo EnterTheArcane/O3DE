@@ -9,7 +9,6 @@
 #include "SymbolTable.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <optional>
 
 namespace AZ::ShaderCompiler

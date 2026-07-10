@@ -28,7 +28,6 @@ namespace AZ
 }
 
 #ifndef NDEBUG
-#include <tuple>
 
 namespace AZ::Tests
 {
