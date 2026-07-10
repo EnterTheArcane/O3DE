@@ -259,7 +259,7 @@ namespace AZ::ShaderCompiler
                 return &std::get<T>(m_subInfo);
             }
 
-            return (T*)nullptr;
+            return static_cast<T*>(nullptr);
         }
 
         Kind m_kind; // which of class/struct/interface/srgsemantic ? (repetition of data in the upper KindInfo)

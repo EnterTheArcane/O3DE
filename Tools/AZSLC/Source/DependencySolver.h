@@ -21,7 +21,7 @@ namespace AZ::ShaderCompiler
 
     constexpr EasyToReadMaxDepCountInteger operator ""_maxdep_pernode(unsigned long long n)
     {
-        return EasyToReadMaxDepCountInteger(n);
+        return static_cast<EasyToReadMaxDepCountInteger>(n);
     }
 
     namespace detail

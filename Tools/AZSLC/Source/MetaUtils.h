@@ -420,13 +420,13 @@ namespace AZ::Tests
 {
     inline void DoAsserts3()
     {
-        ForEachValue<ValueTplList<1, 2, (size_t)3>>(
+        ForEachValue<ValueTplList<1, 2, static_cast<size_t>(3)>>(
             [](auto t, auto)
             {
                 static_assert(std::is_same_v<decltype(t), int> || std::is_same_v<decltype(t), size_t>);
             });
 
-        ForEachValue<ValueTplList<(long)1, (long)2>>(
+        ForEachValue<ValueTplList<static_cast<long>(1), static_cast<long>(2)>>(
             [](auto t, auto)
             {
                 static_assert(std::is_same_v<decltype(t), long>);

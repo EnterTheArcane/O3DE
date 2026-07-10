@@ -932,7 +932,7 @@ namespace AZ::ShaderCompiler
                 auto bannedModifiers = Modifiers{};
                 if (declOptions & VarDeclHas::NoModifiers)
                 {
-                    bannedModifiers = ~Modifiers{(StorageFlag::EnumType)0};
+                    bannedModifiers = ~Modifiers{static_cast<StorageFlag::EnumType>(0)};
                 }
                 m_out << GetTranslatedName(varInfo.m_typeInfoExt, UsageContext::ReferenceSite, options, bannedModifiers) + " ";
             }

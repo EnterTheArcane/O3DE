@@ -751,7 +751,7 @@ namespace AZ::ShaderCompiler
             if (varInfo.CheckHasStorageFlag(StorageFlag::Const))
             {
                 PrintWarning(Warn::W2, ctx->start, "const ignored in conjunction with rootconstant or option (because already immutable).");
-                varInfo.m_typeInfoExt.m_qualifiers.m_flag &= StorageFlag::EnumType(~StorageFlag::Const);
+                varInfo.m_typeInfoExt.m_qualifiers.m_flag &= static_cast<StorageFlag::EnumType>(~StorageFlag::Const);
             }
         }
 

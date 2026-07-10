@@ -38,7 +38,7 @@ namespace AZ::ShaderCompiler
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         // Read the integral.
-        auto pad_to_value = ExtractValueAs<uint32_t>(std::get<ConstNumericVal>(attrInfo.m_argList[0]), uint32_t(0));
+        auto pad_to_value = ExtractValueAs<uint32_t>(std::get<ConstNumericVal>(attrInfo.m_argList[0]), static_cast<uint32_t>(0));
         if (!pad_to_value)
         {
             std::string errorMsg("Failed to read input integral to [[pad_to(N)]].");

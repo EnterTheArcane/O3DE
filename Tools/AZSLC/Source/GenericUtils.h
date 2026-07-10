@@ -71,7 +71,7 @@ namespace AZ
     //! http://ericniebler.com/2014/12/07/a-slice-of-python-in-c/
     inline constexpr std::string_view Slice(const std::string_view& in, int64_t st, int64_t end)
     {
-        auto inSSize = (int64_t)in.size();
+        auto inSSize = static_cast<int64_t>(in.size());
         if (inSSize == 0)
         {
             return in;
@@ -656,8 +656,8 @@ namespace AZ
             return a < rhs.a || (a == rhs.a && b < rhs.b);
         }
 
-        T a = (T)0;
-        T b = (T)-1;
+        T a = static_cast<T>(0);
+        T b = static_cast<T>(-1);
     };
 
     //! In case of potential overlaps (not disjointed), this structure can support "is in" queries
