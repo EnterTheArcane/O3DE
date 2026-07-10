@@ -103,7 +103,7 @@ namespace AZ::ShaderCompiler
         {
             return TextureMSType::None;
         }
-        if (EndsWith(varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName(), "Array"))
+        if (varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("Array"))
         {
             return TextureMSType::Texture2DMSArray;
         }
@@ -364,9 +364,9 @@ namespace AZ::ShaderCompiler
         auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
         auto tokens = NodeTokens(typeCtx, stream);
         std::vector<std::string> stringlets;
-        TransformCopy(
+        std::ranges::transform(
             tokens,
-            stringlets,
+            std::back_inserter(stringlets),
             [&](Token* t)
             {
                 return t->getText();

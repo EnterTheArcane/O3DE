@@ -35,13 +35,13 @@ namespace AZ::ShaderCompiler
             using Base::operator[];
             using Base::begin;
 
-            decltype(Base::end()) end();
+            typename Base::iterator end();
 
-            decltype(Base::end()) end() const;
+            typename Base::const_iterator end() const;
 
-            auto at(size_t n) -> decltype(Base::at(n));
+            typename Base::reference at(size_t n);
 
-            auto at(size_t n) const -> decltype(Base::at(n));
+            typename Base::const_reference at(size_t n) const;
 
             T& push_back(const T& t);
 

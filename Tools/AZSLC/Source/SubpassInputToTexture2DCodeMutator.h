@@ -65,7 +65,14 @@ namespace AZ::ShaderCompiler
 
         //! Given an unqualified symbol name, checks within the current parsing scope
         //! if the symbol is a SubpassInput type of variable.
-        enum class SubpassInputType { None, SubpassInput, SubpassInputMS, SubpassInputDS, SubpassInputDSMS, };
+        enum class SubpassInputType
+        {
+            None,
+            SubpassInput,
+            SubpassInputMS,
+            SubpassInputDS,
+            SubpassInputDSMS,
+        };
 
         SubpassInputType GetSubpassInputClass(const UnqualifiedName& uqSymbolName);
 

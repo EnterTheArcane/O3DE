@@ -111,21 +111,6 @@ namespace AZ
     //static_assert(Slice("0123", -2, -1) == "3");
     static_assert(Slice("0123", -1, -0) == "");
 
-    // waiting for C++20
-    inline bool StartsWith(std::string_view haystack, std::string_view needle)
-    {
-        return Slice(haystack, 0, needle.size()).find(needle, 0) != std::string::npos;
-        // visual studio bug prevents us from using constexpr here
-        //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
-    }
-
-    inline bool EndsWith(std::string_view haystack, std::string_view needle)
-    {
-        return Slice(haystack, haystack.size() - needle.size(), haystack.size()).find(needle, 0) != std::string::npos;
-        // visual studio bug prevents us from using constexpr here
-        //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
-    }
-
     //! ability to create size_t literals
     //! waiting for Working Group to get their stuff together https://groups.google.com/a/isocpp.org/forum/#!topic/std-proposals/tGoPjUeHlKo
     inline constexpr std::size_t operator ""_sz(unsigned long long n)
@@ -195,23 +180,20 @@ namespace AZ
     //! reverse the effect of a symmetrical decoration
     inline std::string_view Undecorate(std::string_view decoration, std::string_view body)
     {
-        auto indexStart = StartsWith(body, decoration) ? decoration.length() : 0;
-        auto indexEnd = EndsWith(body, decoration) ? body.length() - decoration.length() : body.length();
+        auto indexStart = body.starts_with(decoration) ? decoration.length() : 0;
+        auto indexEnd = body.ends_with(decoration) ? body.length() - decoration.length() : body.length();
         return Slice(body, indexStart, indexEnd);
     }
 
     //! Erase-Remove algorithm which removes all whitespaces from a string.
     inline std::string RemoveWhitespaces(std::string haystack)
     {
-        haystack.erase(
-            std::remove_if(
-                haystack.begin(),
-                haystack.end(),
-                [](unsigned char c)
-                {
-                    return std::isspace(c);
-                }),
-            haystack.end());
+        std::erase_if(
+            haystack,
+            [](unsigned char c)
+            {
+                return std::isspace(c);
+            });
         return haystack;
     }
 
@@ -301,24 +283,11 @@ namespace AZ
         return ss.str();
     }
 
-    template <typename Iterator, typename Predicate>
-    bool Contains(Iterator begin, Iterator end, Predicate p)
-    {
-        return std::find_if(begin, end, p) != end;
-    }
-
     //! argument in rangeV3-style version:
     template <typename Container>
     std::string Join(const Container& c, std::string_view separator = "")
     {
         return Join(c.begin(), c.end(), separator);
-    }
-
-    //! argument in rangeV3-style version:
-    template <typename Container, typename Predicate>
-    bool Contains(const Container& c, Predicate p)
-    {
-        return Contains(c.begin(), c.end(), p);
     }
 
     //! closest possible form of python's `in` keyword
@@ -328,14 +297,11 @@ namespace AZ
         return std::find(container.begin(), container.end(), element) != container.end();
     }
 
-    //! generate a new container with copy-and-mutated elements
-    template <typename Container, typename ContainerOut, typename Functor>
-    void TransformCopy(const Container& in, ContainerOut& out, Functor mutator)
+    enum class CopyIfPolicy
     {
-        std::transform(in.begin(), in.end(), std::back_inserter(out), mutator);
-    }
-
-    enum class CopyIfPolicy { ForAll, InterruptAtFirstFalse, };
+        ForAll,
+        InterruptAtFirstFalse,
+    };
 
     //! inserts elements into the output iterator if they pass a predicate
     template <typename InputIterator, typename Predicate, typename OutputIterator>
@@ -858,20 +824,20 @@ namespace AZ::Tests
         assert(Unescape(R"(at end\)") == R"(at end\)");
         assert(Unescape(R"(with \"quotes\")") == R"(with "quotes")");
 
-        assert(StartsWith("bleu", "bl"));
-        assert(!StartsWith("0bleu", "bl"));
-        assert(StartsWith("bleu", ""));
-        assert(!StartsWith("", "0"));
+        assert("bleu"sv.starts_with("bl"));
+        assert(!"0bleu"sv.starts_with("bl"));
+        assert("bleu"sv.starts_with(""sv));
+        assert(!""sv.starts_with("0"));
 
-        assert(!EndsWith("", "0"));
-        assert(!EndsWith("stuff", "0"));
-        assert(EndsWith("", ""));
-        assert(EndsWith("0", "0"));
-        assert(EndsWith("00", "0"));
-        assert(EndsWith("nice", ""));
-        assert(EndsWith("nice", "e"));
-        assert(EndsWith("nice", "ce"));
-        assert(EndsWith("nice", "nice"));
+        assert(!""sv.ends_with("0"));
+        assert(!"stuff"sv.ends_with("0"));
+        assert(""sv.ends_with(""sv));
+        assert("0"sv.ends_with("0"));
+        assert("00"sv.ends_with("0"));
+        assert("nice"sv.ends_with(""sv));
+        assert("nice"sv.ends_with("e"));
+        assert("nice"sv.ends_with("ce"));
+        assert("nice"sv.ends_with("nice"));
 
         // initializer list
         auto list = {"nice", "things", "come", "to", "an", "end"};

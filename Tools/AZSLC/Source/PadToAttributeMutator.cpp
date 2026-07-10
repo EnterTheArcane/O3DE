@@ -439,7 +439,7 @@ namespace AZ::ShaderCompiler
                 "float",
                 "float2",
                 "float3",
-                "float4"
+                "float4",
             };
             const uint32_t idx = (sizeInBytes >> 2) - 1;
             return floatNames[idx];
@@ -464,7 +464,7 @@ namespace AZ::ShaderCompiler
                     {},
                     {},
                     {},
-                    Packing::MatrixMajor::Default
+                    Packing::MatrixMajor::Default,
                 };
             }
             else
@@ -475,7 +475,7 @@ namespace AZ::ShaderCompiler
                     {},
                     {{itemsCount}},
                     {},
-                    Packing::MatrixMajor::Default
+                    Packing::MatrixMajor::Default,
                 };
             }
             newVarKind.GetSubRefAs<VarInfo>() = newVarInfo;

@@ -712,7 +712,7 @@ namespace AZ::ShaderCompiler
                     {},
                     {},
                     {},
-                    Packing::MatrixMajor::Default
+                    Packing::MatrixMajor::Default,
                 };
 
                 newVarKind.GetSubRefAs<VarInfo>() = varInfo;

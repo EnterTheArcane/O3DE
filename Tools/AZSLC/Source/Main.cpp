@@ -122,7 +122,10 @@ namespace AZ::ShaderCompiler
         // now we'll use it to construct parseable generic type expressions
         enum class RetryStateMachine
         {
-            OneTypeGenericParameter, OneTypeAndDimensionGenericParameters, OneTypeAndTwoDimensionsGenericParameters, End,
+            OneTypeGenericParameter,
+            OneTypeAndDimensionGenericParameters,
+            OneTypeAndTwoDimensionsGenericParameters,
+            End,
         };
 
         constexpr auto isNotTypeKey = TypeClass::ToStr(TypeClass::IsNotType);
@@ -637,7 +640,7 @@ int main(int argc, const char* argv[])
                 throw AzslcException{WX_WARNINGS_AS_ERRORS, "as-error", std::string{message}};
             };
             ParseWarningLevel(warningOpts, warningCout);
-            bool nonValidativeOptions[] = {full, ia, om, srg, options, dumpsym, ast, bindingdep, !visitName.empty(), stripUnusedSrgs};
+            bool nonValidativeOptions[] = {full, ia, om, srg, options, dumpsym, ast, bindingdep, !visitName.empty(), stripUnusedSrgs,};
             bool anyNonValidativeOption = std::any_of(
                 std::begin(nonValidativeOptions),
                 std::end(nonValidativeOptions),
@@ -735,7 +738,7 @@ int main(int argc, const char* argv[])
                 emitOptions.m_packDataBuffers,
                 emitOptions.m_forceMatrixRowMajor,
                 emitOptions.m_padRootConstantCB,
-                emitOptions.m_skipAlignmentValidation
+                emitOptions.m_skipAlignmentValidation,
             };
             ir.MiddleEnd(middleEndConfigration, &lineFinder);
             if (noMS)
@@ -770,8 +773,8 @@ int main(int argc, const char* argv[])
                         {visitDirectReferences, RE::Reference},
                         {visitFamily, RE::Family},
                         {visitOverloadSet, RE::OverloadSet},
-                        {visitRecursively, RE::Recursive}
-                    }
+                        {visitRecursively, RE::Recursive},
+                    },
                 };
                 for (auto&& possibleOption : optToRelation)
                 {

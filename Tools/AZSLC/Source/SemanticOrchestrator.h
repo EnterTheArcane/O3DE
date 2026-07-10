@@ -311,7 +311,12 @@ namespace AZ::ShaderCompiler
         // helper to query a type class from an ID
         TypeClass GetTypeClass(IdentifierUID typeId) const;
 
-        enum class OnNotFoundOrWrongKind { Diagnose, Empty, CopeByCopy, };
+        enum class OnNotFoundOrWrongKind
+        {
+            Diagnose,
+            Empty,
+            CopeByCopy,
+        };
 
         //! Shorthand for symbol lookup, but with supplementary checks, specifics to types.
         //! throws if: the found symbol is not a type, or no found symbol and policy is Diagnose.

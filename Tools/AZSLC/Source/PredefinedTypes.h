@@ -18,18 +18,18 @@ namespace AZ::ShaderCompiler::Predefined
     static constexpr std::array<const char*, 3> Buffer = {
         "Buffer",
         "RWBuffer",
-        "RasterizerOrderedBuffer"
+        "RasterizerOrderedBuffer",
     };
 
     static constexpr std::array<const char*, 3> ByteAddressBuffer = {
         "ByteAddressBuffer",
         "RWByteAddressBuffer",
-        "RasterizerOrderedByteAddressBuffer"
+        "RasterizerOrderedByteAddressBuffer",
     };
 
     static constexpr std::array<const char*, 2> ConstantBuffer = {
         "ConstantBuffer",
-        "constantbuffer"
+        "constantbuffer",
     };
 
     static constexpr std::array<const char*, 9> LibrarySubobject = {
@@ -41,7 +41,7 @@ namespace AZ::ShaderCompiler::Predefined
         "RaytracingShaderConfig",
         "StateObjectConfig",
         "SubobjectToExportsAssociation",
-        "TriangleHitGroup"
+        "TriangleHitGroup",
     };
 
     static constexpr std::array<const char*, 113> Matrix = {
@@ -157,21 +157,21 @@ namespace AZ::ShaderCompiler::Predefined
         "uint4x1",
         "uint4x2",
         "uint4x3",
-        "uint4x4"
+        "uint4x4",
     };
 
     static constexpr std::array<const char*, 2> MultisampledTexture = {
         "Texture2DMS",
-        "Texture2DMSArray"
+        "Texture2DMSArray",
     };
 
     static constexpr std::array<const char*, 2> OtherPredefined = {
         "BuiltInTriangleIntersectionAttributes",
-        "RayDesc"
+        "RayDesc",
     };
 
     static constexpr std::array<const char*, 1> OtherViewBufferType = {
-        "RaytracingAccelerationStructure"
+        "RaytracingAccelerationStructure",
     };
 
     static constexpr std::array<const char*, 5> Sampler = {
@@ -179,7 +179,7 @@ namespace AZ::ShaderCompiler::Predefined
         "SamplerComparisonState",
         "SamplerState",
         "sampler",
-        "sampler_state"
+        "sampler_state",
     };
 
     static constexpr std::array<const char*, 13> Scalar = {
@@ -195,13 +195,13 @@ namespace AZ::ShaderCompiler::Predefined
         "uint",
         "uint16_t",
         "uint32_t",
-        "uint64_t"
+        "uint64_t",
     };
 
     static constexpr std::array<const char*, 3> StreamOutput = {
         "LineStream",
         "PointStream",
-        "TriangleStream"
+        "TriangleStream",
     };
 
     static constexpr std::array<const char*, 5> StructuredBuffer = {
@@ -209,14 +209,14 @@ namespace AZ::ShaderCompiler::Predefined
         "ConsumeStructuredBuffer",
         "RWStructuredBuffer",
         "RasterizerOrderedStructuredBuffer",
-        "StructuredBuffer"
+        "StructuredBuffer",
     };
 
     static constexpr std::array<const char*, 4> SubpassInput = {
         "SubpassInput",
         "SubpassInputDS",
         "SubpassInputDSMS",
-        "SubpassInputMS"
+        "SubpassInputMS",
     };
 
     static constexpr std::array<const char*, 17> Texture = {
@@ -236,7 +236,7 @@ namespace AZ::ShaderCompiler::Predefined
         "Texture2DArray",
         "Texture3D",
         "TextureCube",
-        "TextureCubeArray"
+        "TextureCubeArray",
     };
 
     static constexpr std::array<const char*, 29> Vector = {
@@ -268,11 +268,11 @@ namespace AZ::ShaderCompiler::Predefined
         "uint2",
         "uint3",
         "uint4",
-        "vector"
+        "vector",
     };
 
     static constexpr std::array<const char*, 1> Void = {
-        "void"
+        "void",
     };
 
     template <size_t N>
@@ -283,20 +283,20 @@ namespace AZ::ShaderCompiler::Predefined
     };
 
     static constexpr auto All = std::make_tuple(
-        Bag<3>{"Buffer", Buffer},
-        Bag<3>{"ByteAddressBuffer", ByteAddressBuffer},
-        Bag<2>{"ConstantBuffer", ConstantBuffer},
-        Bag<9>{"LibrarySubobject", LibrarySubobject},
-        Bag<113>{"Matrix", Matrix},
-        Bag<2>{"MultisampledTexture", MultisampledTexture},
-        Bag<2>{"OtherPredefined", OtherPredefined},
-        Bag<1>{"OtherViewBufferType", OtherViewBufferType},
-        Bag<5>{"Sampler", Sampler},
-        Bag<13>{"Scalar", Scalar},
-        Bag<3>{"StreamOutput", StreamOutput},
-        Bag<5>{"StructuredBuffer", StructuredBuffer},
-        Bag<4>{"SubpassInput", SubpassInput},
-        Bag<17>{"Texture", Texture},
-        Bag<29>{"Vector", Vector},
-        Bag<1>{"Void", Void});
+        Bag{"Buffer", Buffer},
+        Bag{"ByteAddressBuffer", ByteAddressBuffer},
+        Bag{"ConstantBuffer", ConstantBuffer},
+        Bag{"LibrarySubobject", LibrarySubobject},
+        Bag{"Matrix", Matrix},
+        Bag{"MultisampledTexture", MultisampledTexture},
+        Bag{"OtherPredefined", OtherPredefined},
+        Bag{"OtherViewBufferType", OtherViewBufferType},
+        Bag{"Sampler", Sampler},
+        Bag{"Scalar", Scalar},
+        Bag{"StreamOutput", StreamOutput},
+        Bag{"StructuredBuffer", StructuredBuffer},
+        Bag{"SubpassInput", SubpassInput},
+        Bag{"Texture", Texture},
+        Bag{"Vector", Vector},
+        Bag{"Void", Void});
 };

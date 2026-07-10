@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <cmath>
 #include <cstdint>
 #include <iterator>
@@ -379,9 +380,9 @@ namespace AZ::ShaderCompiler
         std::string ToString(const std::string& prefix = "[", const std::string& separator = "][", const std::string& suffix = "]") const
         {
             std::vector<std::string> asStrs;
-            TransformCopy(
+            std::ranges::transform(
                 m_dimensions,
-                asStrs,
+                std::back_inserter(asStrs),
                 [](int d) -> std::string
                 {
                     return d == Unknown ? "<unrecognized-expr>" : d == Unbounded ? "" : std::to_string(d);
@@ -471,20 +472,35 @@ namespace AZ::ShaderCompiler
 
         enum class Layout : uint32_t
         {
-            CStylePacking, //!< Dense packing with no padding. Also known as Scalar. Default for structured buffers in DirectX.
-            DirectXPacking, //!< DirectX style packing, default for cbuffer layouts in DirectX
-            RelaxedDirectXPacking, //!< As DirectX standard, but assumes dense array packing and invariant to row-column major (best fit)
-            RelaxedStd140Packing, //!< Vector-relaxed OpenGL std140, default for Uniform buffer packing for Vulkan (base alignment)
-            RelaxedStd430Packing, //!< Vector-relaxed OpenGL std430, default for Storage buffer packing for Vulkan (scalar alignment)
-            StrictStd140Packing, //!< Strict OpenGL std140, default for Uniform buffer packing for OpenGL
-            StrictStd430Packing, //!< Strict OpenGL std430, default for Storage buffer packing for OpenGL
-            DirectXStoragePacking = CStylePacking, //!< DirectX style packing for Storage buffers. That's actually Scalar
+            //!< Dense packing with no padding. Also known as Scalar. Default for structured buffers in DirectX.
+            CStylePacking,
+            //!< DirectX style packing, default for cbuffer layouts in DirectX
+            DirectXPacking,
+            //!< As DirectX standard, but assumes dense array packing and invariant to row-column major (best fit)
+            RelaxedDirectXPacking,
+            //!< Vector-relaxed OpenGL std140, default for Uniform buffer packing for Vulkan (base alignment)
+            RelaxedStd140Packing,
+            //!< Vector-relaxed OpenGL std430, default for Storage buffer packing for Vulkan (scalar alignment)
+            RelaxedStd430Packing,
+            //!< Strict OpenGL std140, default for Uniform buffer packing for OpenGL
+            StrictStd140Packing,
+            //!< Strict OpenGL std430, default for Storage buffer packing for OpenGL
+            StrictStd430Packing,
+            //!< DirectX style packing for Storage buffers. That's actually Scalar
+            DirectXStoragePacking = CStylePacking,
         };
 
         //! Used together with Layout. Defines what alignment rules the next chunk should follow
         enum class Alignment : uint32_t
         {
-            asVectorStart, asVectorEnd, asMatrixStart, asMatrixEnd, asStructStart, asStructEnd, asArrayStart, asArrayEnd,
+            asVectorStart,
+            asVectorEnd,
+            asMatrixStart,
+            asMatrixEnd,
+            asStructStart,
+            asStructEnd,
+            asArrayStart,
+            asArrayEnd,
         };
 
         // Some standards (std140/std430) have extended alignment rules for structures, which dictate that
@@ -897,13 +913,10 @@ namespace AZ::ShaderCompiler
         // (it's an interval because of nested-name-specifiers)
     };
 
-    // before being able to clean that up with C++20 concepts, let's factorize the SFINAE expression to filter the accepted iterator types by an expected trait
-#define SFINAE_IS_SAME(DependentTypeToCompare, ExpectedType)\
-    std::enable_if_t< std::is_same_v<typename DependentTypeToCompare, ExpectedType> >* = nullptr
-
     // Create a yaml element list for 'any collection' of Seenat (passed as a pseudo range)
     // - {line: x, col: y}
-    template <typename SeenatRangeIter, SFINAE_IS_SAME(std::iterator_traits<SeenatRangeIter>::value_type, Seenat)>
+    template <typename SeenatRangeIter>
+        requires std::same_as<typename std::iterator_traits<SeenatRangeIter>::value_type, Seenat>
     std::string ToYaml(SeenatRangeIter begin, SeenatRangeIter end, std::string_view indent)
     {
         std::string s;
@@ -918,7 +931,8 @@ namespace AZ::ShaderCompiler
     }
 
     // version for pseudo-range of IdentifierUID elements
-    template <typename UIDRangeIter, SFINAE_IS_SAME(std::iterator_traits<UIDRangeIter>::value_type, IdentifierUID)>
+    template <typename UIDRangeIter>
+        requires std::same_as<typename std::iterator_traits<UIDRangeIter>::value_type, IdentifierUID>
     std::string ToYaml(UIDRangeIter begin, UIDRangeIter end, std::string_view indent)
     {
         std::string s;
@@ -929,7 +943,6 @@ namespace AZ::ShaderCompiler
         }
         return s;
     }
-#undef SFINAE_IS_SAME
 
     // like PathPart but more specialized for grammatical elements specificity of an idExpression
     struct IdExpressionPart
@@ -953,11 +966,16 @@ namespace AZ::ShaderCompiler
 
         enum Type
         {
-            NestedNameSpecifier, //  nns::leaf    (nns)
-            ScopeResolutionOperator, //  nns::leaf    (::)
-            GlobalScopeOperator, //  ::leaf       (leading ::)
-            LoneUnqualifiedId, //  leaf         (leaf)
-            QualifiedLeaf, //  nns::leaf    (leaf)
+            //  nns::leaf    (nns)
+            NestedNameSpecifier,
+            //  nns::leaf    (::)
+            ScopeResolutionOperator,
+            //  ::leaf       (leading ::)
+            GlobalScopeOperator,
+            //  leaf         (leaf)
+            LoneUnqualifiedId,
+            //  nns::leaf    (leaf)
+            QualifiedLeaf,
         };
 
         Token* m_token;
@@ -1173,7 +1191,7 @@ namespace AZ::ShaderCompiler
         return As<azslParser::VariableDeclarationContext*>(ctx->parent->parent);
     }
 
-    inline azslParser::TypeContext* ExtractTypeFromUnnamedVariableDeclarator(AstUnnamedVarDecl * ctx, azslParser::FunctionParamContext * *funcParamContextOut = nullptr)
+    inline azslParser::TypeContext* ExtractTypeFromUnnamedVariableDeclarator(AstUnnamedVarDecl* ctx, azslParser::FunctionParamContext* * funcParamContextOut = nullptr)
     {
         auto* paramCtx = ParamContextOverUnnamedVariableDeclarator(ctx);
         if (paramCtx != nullptr)
@@ -1410,14 +1428,14 @@ namespace AZ::ShaderCompiler
     }
 
     //! from a special rule: scalarOrVectorOrMatrixType
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::ScalarOrVectorOrMatrixTypeContext * ctx, std::vector<tree::TerminalNode*> * genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::ScalarOrVectorOrMatrixTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}}};
         // for now there is no generic part, but mind it when you fix the grammar to support generic vector.
     }
 
     //! from userDefinedType context
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::UserDefinedTypeContext * ctx, std::vector<tree::TerminalNode*> * genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::UserDefinedTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         if (ctx->idExpression())
         {

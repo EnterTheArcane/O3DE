@@ -64,7 +64,7 @@ namespace AZ::ShaderCompiler
         std::stringstream stream;
         std::optional<AttributeInfo> inputAttachmentIndexAttribute;
         auto varInfo = codeEmitter.GetIR()->GetSymbolSubAs<VarInfo>(symbol.GetName());
-        bool isSubpassInput = StartsWith(varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName(), "?SubpassInput");
+        bool isSubpassInput = varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().starts_with("?SubpassInput");
         if (isSubpassInput)
         {
             inputAttachmentIndexAttribute = codeEmitter.GetIR()->m_symbols.GetAttribute(symbol, "input_attachment_index");

@@ -20,7 +20,7 @@ namespace AZ::ShaderCompiler
     namespace detail
     {
         template<typename T, size_t N>
-        auto ElasticArray<T,N>::end() -> decltype(Base::end())
+        typename ElasticArray<T, N>::Base::iterator ElasticArray<T, N>::end()
         {
             auto realEnd = begin();
             std::advance(realEnd, m_end);
@@ -28,7 +28,7 @@ namespace AZ::ShaderCompiler
         }
 
         template<typename T, size_t N>
-        auto ElasticArray<T,N>::end() const -> decltype(Base::end())
+        typename ElasticArray<T, N>::Base::const_iterator ElasticArray<T, N>::end() const
         {
             auto realEnd = begin();
             std::advance(realEnd, m_end);
@@ -36,7 +36,7 @@ namespace AZ::ShaderCompiler
         }
 
         template<typename T, size_t N>
-        auto ElasticArray<T,N>::at(size_t n) -> decltype(Base::at(n))
+        typename ElasticArray<T, N>::Base::reference ElasticArray<T, N>::at(size_t n)
         {
             if (n >= m_end)
             {
@@ -46,7 +46,7 @@ namespace AZ::ShaderCompiler
         }
 
         template<typename T, size_t N>
-        auto ElasticArray<T,N>::at(size_t n) const -> decltype(Base::at(n))
+        typename ElasticArray<T, N>::Base::const_reference ElasticArray<T, N>::at(size_t n) const
         {
             if (n >= m_end)
             {

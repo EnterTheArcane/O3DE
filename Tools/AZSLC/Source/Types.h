@@ -161,7 +161,7 @@ namespace AZ::ShaderCompiler
             TypeClass::ConstantBuffer,
             TypeClass::StreamOutput,
             TypeClass::OtherViewBufferType,
-            TypeClass::LibrarySubobject
+            TypeClass::LibrarySubobject,
         };
         // create a constexpr valuelist of member function pointers
         using FunctionList = ValueTplList<&PredefinedNodeT::scalarType,

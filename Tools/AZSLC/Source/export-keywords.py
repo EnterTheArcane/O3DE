@@ -59,7 +59,7 @@ namespace AZ::ShaderCompiler::Predefined
             outfile.write(categ)
             outfile.write(" = {\n")
             outfile.write(',\n'.join(['"' + w + '"' for w in words]))
-            outfile.write("};\n\n")
+            outfile.write(",\n};\n\n")
 
         outfile.write("template<size_t N> struct Bag { const char* m_name = nullptr; const std::array<const char*, N> m_bag; };\n\n");
         tupdecl = "static constexpr auto All = std::make_tuple("

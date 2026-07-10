@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <regex>
 #include <stdexcept>
 #include <string>
@@ -25,6 +26,26 @@
 
 namespace AZ::ShaderCompiler
 {
+    struct TransparentStringHash
+    {
+        using is_transparent = void;
+
+        size_t operator()(std::string_view value) const noexcept
+        {
+            return std::hash<std::string_view>{}(value);
+        }
+
+        size_t operator()(const std::string& value) const noexcept
+        {
+            return (*this)(std::string_view{value});
+        }
+
+        size_t operator()(const char* value) const noexcept
+        {
+            return (*this)(std::string_view{value});
+        }
+    };
+
     //! We limit the maximum number of render targets to 8, with indices in the range [0..7]
     static const uint32_t kMaxRenderTargets = 8;
 
@@ -34,7 +55,7 @@ namespace AZ::ShaderCompiler
         std::string m_insource = "Stdin";
 
         //! the activated namespaces on the command line
-        std::unordered_set<std::string> m_attributeNamespaceFilters;
+        std::unordered_set<std::string, TransparentStringHash, std::equal_to<>> m_attributeNamespaceFilters;
         //! The namespace for the platform code emitter
         std::string m_platformEmitterNamespace;
 
@@ -142,10 +163,9 @@ namespace AZ::ShaderCompiler
             return m_metaData.m_insource;
         }
 
-        bool IsAttributeNamespaceActivated(const std::string& attr)
+        bool IsAttributeNamespaceActivated(std::string_view attr)
         {
-            // while we don't have C++20, we can't benefit from heterogeneous key search in unordered container.
-            return (m_metaData.m_attributeNamespaceFilters.find(attr) != m_metaData.m_attributeNamespaceFilters.end());
+            return m_metaData.m_attributeNamespaceFilters.contains(attr);
         }
 
         void AddAttributeNamespaceFilter(const std::string& attr)

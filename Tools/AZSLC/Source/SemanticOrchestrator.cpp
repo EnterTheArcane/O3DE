@@ -518,7 +518,7 @@ namespace AZ::ShaderCompiler
                     {},
                     {},
                     {},
-                    Packing::MatrixMajor::Default
+                    Packing::MatrixMajor::Default,
                 };
                 srgSemanticInfo.PushMember(uid, Kind::Variable);
             }
@@ -540,7 +540,7 @@ namespace AZ::ShaderCompiler
                     {},
                     {},
                     {},
-                    Packing::MatrixMajor::Default
+                    Packing::MatrixMajor::Default,
                 };
                 srgSemanticInfo.PushMember(uid, Kind::Variable);
             }
@@ -1932,7 +1932,7 @@ namespace AZ::ShaderCompiler
                     {},
                     arrayDims,
                     {},
-                    Packing::MatrixMajor::Default
+                    Packing::MatrixMajor::Default,
                 };
 
                 srgInfo.m_implicitStruct.PushMember(uid, Kind::Variable);
@@ -2074,7 +2074,7 @@ namespace AZ::ShaderCompiler
         std::string text = numericLiteralToken->getText();
         if (hintAsInt)
         {
-            if (EndsWith(text, "u") || EndsWith(text, "U"))
+            if (text.ends_with('u') || text.ends_with('U'))
             {
                 return static_cast<uint32_t>(std::stoul(text, nullptr, 0/*auto base to support 0#,0x# prefixes*/));
             }

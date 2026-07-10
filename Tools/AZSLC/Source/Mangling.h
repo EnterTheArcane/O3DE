@@ -164,7 +164,7 @@ namespace AZ::ShaderCompiler
 {
     inline bool IsRooted(std::string_view path)
     {
-        return StartsWith(path, "/") || StartsWith(path, "?");
+        return path.starts_with('/') || path.starts_with('?');
     }
 
     //! from "/func(/f2(?int), ?float)" return "/func"
@@ -240,8 +240,10 @@ namespace AZ::ShaderCompiler
 
     enum FlattenStrategy
     {
-        PreserveArgumentsUnicity, //!< x(a) will be x_a
-        CollapseArguments, //!< x(a) will be x
+        //!< x(a) will be x_a
+        PreserveArgumentsUnicity,
+        //!< x(a) will be x
+        CollapseArguments,
     };
 
     //! can be used at emission to flatten symbols into the global scope.
@@ -257,7 +259,7 @@ namespace AZ::ShaderCompiler
     //! "?int" to "int" (partial unmangling)
     inline std::string_view RemoveFloatingMark(std::string_view name)
     {
-        return StartsWith(name, "?") ? Slice(name, 1, -1) : name;
+        return name.starts_with('?') ? Slice(name, 1, -1) : name;
     }
 
     //! Change from AZIR form to AZSLang form
@@ -316,15 +318,17 @@ namespace AZ::ShaderCompiler
     inline size_t CountParameters(std::string_view mangledFunctionName)
     {
         auto leaf = ExtractLeaf(mangledFunctionName);
-        return EndsWith(leaf, "()") || !EndsWith(leaf, ")") // no-arg function or not-a-function
+        return leaf.ends_with("()") || !leaf.ends_with(')') // no-arg function or not-a-function
                    ? 0
                    : 1 + std::count(leaf.begin(), leaf.end(), ','); // this isn't robust if types may hold comma (and it's the case for generics and function-types)
     }
 
     enum class JoinPolicy
     {
-        EmptyMeansRoot, // empty stem is joined as a root
-        EmptyMeansEmpty, // empty stem is nil and doesn't participate in join
+        // empty stem is joined as a root
+        EmptyMeansRoot,
+        // empty stem is nil and doesn't participate in join
+        EmptyMeansEmpty,
     };
 
     //! return "A/B" if passed stem="A/" and leaf="B"
@@ -339,7 +343,7 @@ namespace AZ::ShaderCompiler
         }
 
         assert(!IsRooted(leaf)); // violation of contract that leaf must not be rooted.
-        if (EndsWith(stem, "/"))
+        if (stem.ends_with('/'))
         {
             return std::string{stem}.append(leaf);
         }
@@ -364,7 +368,7 @@ namespace AZ::ShaderCompiler
             return "/";
         }
 
-        if (EndsWith(path, "/"))
+        if (path.ends_with('/'))
         {
             // remove this nuisance early, to canonicalize input.
             // -1 is the end, -2 is 1 earlier than end. (think python slices)
@@ -388,7 +392,7 @@ namespace AZ::ShaderCompiler
     inline std::string_view GetParentName(std::string_view path)
     {
         auto oneUp = LevelUp(path);
-        if (oneUp != "/" && EndsWith(oneUp, "/"))
+        if (oneUp != "/" && oneUp.ends_with('/'))
         {
             return Slice(oneUp, 0, oneUp.length() - 1);
         }
@@ -474,7 +478,7 @@ namespace AZ::ShaderCompiler
     //! however "/" and "/ns/" are invalid input. because they are ambiguous. fix your input first.
     inline size_t GetSymbolDepth(std::string_view mangledName)
     {
-        assert(!EndsWith(mangledName, "/")); // principle of least astonishment -> make an error of this case
+        assert(!mangledName.ends_with('/')); // principle of least astonishment -> make an error of this case
         return std::count(mangledName.begin(), mangledName.end(), '/');
     }
 
@@ -591,10 +595,9 @@ namespace AZ::ShaderCompiler
     bool ContainsSameLeafName(const ContainerOfIdUID& ctr, UnqualifiedNameView uqName)
     {
         assert(!IsRooted(uqName));
-        return Contains(
-            ctr.begin(),
-            ctr.end(),
-            [&](decltype(*ctr.begin()) elem)
+        return std::ranges::any_of(
+            ctr,
+            [&](const auto& elem)
             {
                 return elem.GetNameLeaf() == uqName;
             });

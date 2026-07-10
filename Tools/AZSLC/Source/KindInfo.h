@@ -714,9 +714,12 @@ namespace AZ::ShaderCompiler
     //! This is a small state machine for function registration step tracking (e.g. decl, decl, def)
     enum FunctionMultiForwards
     {
-        FMF_None, // no redundant declarators
-        FMF_FwdDeclRedundancy, // at least one redundant declarators (warning has been produced)
-        FMF_SeenDef, // now encountered definition block
+        // no redundant declarators
+        FMF_None,
+        // at least one redundant declarators (warning has been produced)
+        FMF_FwdDeclRedundancy,
+        // now encountered definition block
+        FMF_SeenDef,
     };
 
     struct FunctionInfo

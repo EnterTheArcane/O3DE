@@ -14,16 +14,6 @@ add_subdirectory(3rdParty/antlr4)
 add_subdirectory(3rdParty/cli11)
 add_subdirectory(3rdParty/jsoncpp)
 
-set(azslc_generated_files)
-if(WIN32)
-    configure_file(
-        Platform/Windows/Source/azslc.rc.in
-        ${CMAKE_CURRENT_BINARY_DIR}/azslc.rc
-        @ONLY
-    )
-    list(APPEND azslc_generated_files ${CMAKE_CURRENT_BINARY_DIR}/azslc.rc)
-endif()
-
 ly_add_target(
     NAME AZSLC EXECUTABLE
     NAMESPACE AZ
@@ -31,8 +21,6 @@ ly_add_target(
     NO_UNITY
     FILES_CMAKE
         azslc_files.cmake
-    GENERATED_FILES
-        ${azslc_generated_files}
     INCLUDE_DIRECTORIES
         PRIVATE
             Source

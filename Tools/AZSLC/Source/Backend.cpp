@@ -26,8 +26,10 @@ namespace AZ::ShaderCompiler
 {
     bool IsReadWriteView(std::string_view viewName)
     {
-        return (StartsWith(viewName, "RW") || StartsWith(viewName, "RasterizerOrdered") ||
-            StartsWith(viewName, "Append") || StartsWith(viewName, "Consume"));
+        return viewName.starts_with("RW")
+            || viewName.starts_with("RasterizerOrdered")
+            || viewName.starts_with("Append")
+            || viewName.starts_with("Consume");
     }
 
     QualifiedName MakeSrgConstantsStructName(IdentifierUID srg)
@@ -812,7 +814,7 @@ namespace AZ::ShaderCompiler
                 RootParamType::RootConstantCB,
                 bindInfo.GetCurrent(BindingType::B),
                 1,
-                num32BitConst
+                num32BitConst,
             };
 
             rootConstDesc.m_parameters.push_back(desc);
@@ -870,7 +872,7 @@ namespace AZ::ShaderCompiler
             SF::Groupshared,
             SF::Uniform,
             SF::Globallycoherent,
-            SF::Unsigned
+            SF::Unsigned,
         };
         for (int i = 0; i < std::size(toReEmit); ++i)
         {

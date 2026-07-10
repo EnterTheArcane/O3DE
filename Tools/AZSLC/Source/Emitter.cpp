@@ -284,7 +284,7 @@ namespace AZ::ShaderCompiler
                 &srgInfo->m_samplers,
                 &srgInfo->m_CBs,
                 &srgInfo->m_nonexternVariables,
-                &srgInfo->m_functions
+                &srgInfo->m_functions,
             };
             for (auto& array : allSrgMembersUidArrays)
             {
@@ -522,9 +522,9 @@ namespace AZ::ShaderCompiler
     {
         std::string hlsl = clInfo.HasAnyBases() ? " : " : "";
         std::vector<std::string> mutatedBaseNames;
-        TransformCopy(
+        std::ranges::transform(
             clInfo.GetBases(),
-            mutatedBaseNames,
+            std::back_inserter(mutatedBaseNames),
             [&](const IdentifierUID& uid)
             {
                 return GetTranslatedName(uid, UsageContext::ReferenceSite);

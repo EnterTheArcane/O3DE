@@ -16,9 +16,12 @@ namespace AZ::ShaderCompiler
     {
         enum class MatrixMajor : uint32_t
         {
-            Default, // If unspecified, it uses the default for the code emission (specified by -Zpc or -Zpr at build time)
-            ColumnMajor, // Use column_major explicitly
-            RowMajor, // Use row_major explicitly
+            // If unspecified, it uses the default for the code emission (specified by -Zpc or -Zpr at build time)
+            Default,
+            // Use column_major explicitly
+            ColumnMajor,
+            // Use row_major explicitly
+            RowMajor,
         };
     }
 
@@ -31,20 +34,35 @@ namespace AZ::ShaderCompiler
 
         enum class ReductionType : uint32_t
         {
-            Filter = 0, /// Performs filtering on samples.
-            Comparison, /// Performs comparison of samples using the supplied comparison function.
-            Minimum, /// Returns minimum of samples.
-            Maximum, /// Returns maximum of samples.
+            /// Performs filtering on samples.
+            Filter = 0,
+            /// Performs comparison of samples using the supplied comparison function.
+            Comparison,
+            /// Returns minimum of samples.
+            Minimum,
+            /// Returns maximum of samples.
+            Maximum,
         };
 
         enum class AddressMode : uint32_t
         {
-            Wrap = 0, Mirror, Clamp, Border, MirrorOnce,
+            Wrap = 0,
+            Mirror,
+            Clamp,
+            Border,
+            MirrorOnce,
         };
 
         enum class ComparisonFunc : uint32_t
         {
-            Never = 0, Less, Equal, LessEqual, Greater, NotEqual, GreaterEqual, Always,
+            Never = 0,
+            Less,
+            Equal,
+            LessEqual,
+            Greater,
+            NotEqual,
+            GreaterEqual,
+            Always,
         };
 
         enum class BorderColor : uint32_t

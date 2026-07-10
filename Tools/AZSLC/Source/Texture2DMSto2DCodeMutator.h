@@ -99,7 +99,12 @@ namespace AZ::ShaderCompiler
 
         //! Given an unqualified symbol name, checks within the current parsing scope
         //! if the symbol is a MultiSampling type of variable.
-        enum class TextureMSType { None, Texture2DMS, Texture2DMSArray, };
+        enum class TextureMSType
+        {
+            None,
+            Texture2DMS,
+            Texture2DMSArray,
+        };
 
         TextureMSType GetMultiSampledTextureClass(const UnqualifiedName& uqSymbolName);
 

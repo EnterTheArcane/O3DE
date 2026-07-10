@@ -148,11 +148,11 @@ namespace AZ::ShaderCompiler
             return SubpassInputType::None;
         }
 
-        if (EndsWith(varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName(), "MS"))
+        if (varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("MS"))
         {
-            return EndsWith(varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName(), "DSMS") ? SubpassInputType::SubpassInputDSMS : SubpassInputType::SubpassInputMS;
+            return varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("DSMS") ? SubpassInputType::SubpassInputDSMS : SubpassInputType::SubpassInputMS;
         }
-        return EndsWith(varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName(), "DS") ? SubpassInputType::SubpassInputDS : SubpassInputType::SubpassInput;
+        return varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName().ends_with("DS") ? SubpassInputType::SubpassInputDS : SubpassInputType::SubpassInput;
     }
 
     size_t SubpassInputToTexture2DCodeMutator::MutateTypeOfMultiSampleVariables(const std::vector<IdentifierUID>& subpassInputVariables)
