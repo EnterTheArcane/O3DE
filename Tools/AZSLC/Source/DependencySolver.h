@@ -5,10 +5,10 @@
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
+
 #pragma once
 
 #include <array>
-#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>

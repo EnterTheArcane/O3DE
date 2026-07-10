@@ -27,8 +27,6 @@ set_target_properties(antlr4_static PROPERTIES
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
 )
 
-# O3DE disables exceptions globally, but ANTLR's parsing and error-recovery API
-# is exception-based. Keep the override local to the third-party runtime.
 if(MSVC)
     target_compile_options(antlr4_static PRIVATE
         /EHsc

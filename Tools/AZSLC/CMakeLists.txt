@@ -10,12 +10,9 @@ if(NOT PAL_TRAIT_BUILD_HOST_TOOLS)
     return()
 endif()
 
-set(azslc_VERSION_MAJOR 1)
-set(azslc_VERSION_MINOR 9)
-set(azslc_VERSION_PATCH 0)
-set(azslc_VERSION "${azslc_VERSION_MAJOR}.${azslc_VERSION_MINOR}.${azslc_VERSION_PATCH}")
-
-add_subdirectory(3rdParty)
+add_subdirectory(3rdParty/antlr4)
+add_subdirectory(3rdParty/cli11)
+add_subdirectory(3rdParty/jsoncpp)
 
 set(azslc_generated_files)
 if(WIN32)

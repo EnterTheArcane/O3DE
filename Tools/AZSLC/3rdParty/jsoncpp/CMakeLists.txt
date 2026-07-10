@@ -27,7 +27,6 @@ FetchContent_MakeAvailable(jsoncpp)
 add_library(3rdParty::jsoncpp ALIAS jsoncpp_static)
 set_target_properties(jsoncpp_static PROPERTIES FOLDER 3rdParty)
 
-# JsonCpp throws its public exception types when operations fail.
 if(MSVC)
     target_compile_options(jsoncpp_static PRIVATE
         /EHsc
@@ -37,9 +36,6 @@ if(MSVC)
 else()
     target_compile_options(jsoncpp_static PRIVATE -fexceptions)
     if(WIN32)
-        target_compile_options(jsoncpp_static PRIVATE
-            -U_HAS_EXCEPTIONS
-            -D_HAS_EXCEPTIONS=1
-        )
+        target_compile_options(jsoncpp_static PRIVATE -U_HAS_EXCEPTIONS -D_HAS_EXCEPTIONS=1)
     endif()
 endif()
