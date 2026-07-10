@@ -11,28 +11,29 @@
 
 #include <array>
 #include <cstdint>
+#include <string_view>
 #include <tuple>
 
 namespace AZ::ShaderCompiler::Predefined
 {
-    static constexpr std::array<const char*, 3> Buffer = {
+    static constexpr std::array<std::string_view, 3> Buffer = {
         "Buffer",
         "RWBuffer",
         "RasterizerOrderedBuffer",
     };
 
-    static constexpr std::array<const char*, 3> ByteAddressBuffer = {
+    static constexpr std::array<std::string_view, 3> ByteAddressBuffer = {
         "ByteAddressBuffer",
         "RWByteAddressBuffer",
         "RasterizerOrderedByteAddressBuffer",
     };
 
-    static constexpr std::array<const char*, 2> ConstantBuffer = {
+    static constexpr std::array<std::string_view, 2> ConstantBuffer = {
         "ConstantBuffer",
         "constantbuffer",
     };
 
-    static constexpr std::array<const char*, 9> LibrarySubobject = {
+    static constexpr std::array<std::string_view, 9> LibrarySubobject = {
         "GlobalRootSignature",
         "LocalRootSignature",
         "ProceduralPrimitiveHitGroup",
@@ -44,7 +45,7 @@ namespace AZ::ShaderCompiler::Predefined
         "TriangleHitGroup",
     };
 
-    static constexpr std::array<const char*, 113> Matrix = {
+    static constexpr std::array<std::string_view, 113> Matrix = {
         "bool1x1",
         "bool1x2",
         "bool1x3",
@@ -160,21 +161,21 @@ namespace AZ::ShaderCompiler::Predefined
         "uint4x4",
     };
 
-    static constexpr std::array<const char*, 2> MultisampledTexture = {
+    static constexpr std::array<std::string_view, 2> MultisampledTexture = {
         "Texture2DMS",
         "Texture2DMSArray",
     };
 
-    static constexpr std::array<const char*, 2> OtherPredefined = {
+    static constexpr std::array<std::string_view, 2> OtherPredefined = {
         "BuiltInTriangleIntersectionAttributes",
         "RayDesc",
     };
 
-    static constexpr std::array<const char*, 1> OtherViewBufferType = {
+    static constexpr std::array<std::string_view, 1> OtherViewBufferType = {
         "RaytracingAccelerationStructure",
     };
 
-    static constexpr std::array<const char*, 5> Sampler = {
+    static constexpr std::array<std::string_view, 5> Sampler = {
         "Sampler",
         "SamplerComparisonState",
         "SamplerState",
@@ -182,7 +183,7 @@ namespace AZ::ShaderCompiler::Predefined
         "sampler_state",
     };
 
-    static constexpr std::array<const char*, 13> Scalar = {
+    static constexpr std::array<std::string_view, 13> Scalar = {
         "bool",
         "double",
         "dword",
@@ -198,13 +199,13 @@ namespace AZ::ShaderCompiler::Predefined
         "uint64_t",
     };
 
-    static constexpr std::array<const char*, 3> StreamOutput = {
+    static constexpr std::array<std::string_view, 3> StreamOutput = {
         "LineStream",
         "PointStream",
         "TriangleStream",
     };
 
-    static constexpr std::array<const char*, 5> StructuredBuffer = {
+    static constexpr std::array<std::string_view, 5> StructuredBuffer = {
         "AppendStructuredBuffer",
         "ConsumeStructuredBuffer",
         "RWStructuredBuffer",
@@ -212,14 +213,14 @@ namespace AZ::ShaderCompiler::Predefined
         "StructuredBuffer",
     };
 
-    static constexpr std::array<const char*, 4> SubpassInput = {
+    static constexpr std::array<std::string_view, 4> SubpassInput = {
         "SubpassInput",
         "SubpassInputDS",
         "SubpassInputDSMS",
         "SubpassInputMS",
     };
 
-    static constexpr std::array<const char*, 17> Texture = {
+    static constexpr std::array<std::string_view, 17> Texture = {
         "RWTexture1D",
         "RWTexture1DArray",
         "RWTexture2D",
@@ -239,7 +240,7 @@ namespace AZ::ShaderCompiler::Predefined
         "TextureCubeArray",
     };
 
-    static constexpr std::array<const char*, 29> Vector = {
+    static constexpr std::array<std::string_view, 29> Vector = {
         "bool1",
         "bool2",
         "bool3",
@@ -271,15 +272,15 @@ namespace AZ::ShaderCompiler::Predefined
         "vector",
     };
 
-    static constexpr std::array<const char*, 1> Void = {
+    static constexpr std::array<std::string_view, 1> Void = {
         "void",
     };
 
     template <size_t N>
     struct Bag
     {
-        const char* m_name = nullptr;
-        const std::array<const char*, N> m_bag;
+        std::string_view m_name;
+        const std::array<std::string_view, N> m_bag;
     };
 
     static constexpr auto All = std::make_tuple(

@@ -33,13 +33,13 @@ namespace AZ::ShaderCompiler
         // bring all non code emitting features here.
 
         //! Reflect information about vertex and compute stage inputs
-        Json::Value GetShaderEntries(const char* const sEntry = nullptr) const;
+        Json::Value GetShaderEntries(std::string_view sEntry = {}) const;
 
         //! Reflect information about fragment stage outputs
-        Json::Value GetOutputMergerLayout(const char* const psEntry = nullptr) const;
+        Json::Value GetOutputMergerLayout(std::string_view psEntry = {}) const;
 
         //! Dumps reflected information about fragment stage outputs
-        void DumpOutputMergerLayout(const char* const psEntry = nullptr) const;
+        void DumpOutputMergerLayout(std::string_view psEntry = {}) const;
 
         //! Dumps reflected information about vertex and compute shader entries
         void DumpShaderEntries() const;

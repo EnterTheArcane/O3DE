@@ -165,7 +165,7 @@ namespace AZ::ShaderCompiler
         static std::string GetTypeModifier(const ExtendedTypeInfo&, const Options& options, Modifiers bannedFlags = {});
 
         //! Get HLSL form of in/out modifiers
-        static const char* GetInputModifier(const TypeQualifiers& typeQualifier);
+        static std::string_view GetInputModifier(const TypeQualifiers& typeQualifier);
 
         //! Get the initialization clause as a string. Returns an empty string if it doesn't have any initialization.
         std::string GetInitializerClause(const AZ::ShaderCompiler::VarInfo* varInfo) const;

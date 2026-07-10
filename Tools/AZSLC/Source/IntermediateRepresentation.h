@@ -47,7 +47,7 @@ namespace AZ::ShaderCompiler
     };
 
     //! We limit the maximum number of render targets to 8, with indices in the range [0..7]
-    static const uint32_t kMaxRenderTargets = 8;
+    static constexpr uint32_t kMaxRenderTargets = 8;
 
     struct IRMetaData
     {

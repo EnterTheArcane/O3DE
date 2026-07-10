@@ -390,9 +390,11 @@ namespace AZ::ShaderCompiler
         }
 
         //! For pretty print
-        std::string UnderlyingScalarToStr() const
+        std::string_view UnderlyingScalarToStr() const
         {
-            return m_underlyingScalar >= 0 && m_underlyingScalar < AZ::ShaderCompiler::Predefined::Scalar.size() ? AZ::ShaderCompiler::Predefined::Scalar[m_underlyingScalar] : "<NA>";
+            return m_underlyingScalar >= 0 && m_underlyingScalar < AZ::ShaderCompiler::Predefined::Scalar.size()
+                ? AZ::ShaderCompiler::Predefined::Scalar[m_underlyingScalar]
+                : "<NA>";
         }
 
         //! Create a canonicalized mangled name that should represent the identity of this arithmetic type.

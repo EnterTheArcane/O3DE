@@ -323,7 +323,9 @@ namespace AZ::ShaderCompiler
         r += "tclass: ";
         r += TypeClass::ToStr(tref.m_typeClass);
         r += ", ";
-        r += "underlying_scalar: " + tref.m_arithmeticInfo.UnderlyingScalarToStr() + "}";
+        r += "underlying_scalar: ";
+        r += tref.m_arithmeticInfo.UnderlyingScalarToStr();
+        r += "}";
         return r;
     }
 

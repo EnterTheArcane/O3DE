@@ -10,6 +10,7 @@
 #include "PlatformEmitter.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -826,7 +827,7 @@ namespace AZ::ShaderCompiler
     }
 
     //static
-    const char* Backend::GetInputModifier(const TypeQualifiers& typeQualifier)
+    std::string_view Backend::GetInputModifier(const TypeQualifiers& typeQualifier)
     {
         const bool in = TypeHasStorageFlag(typeQualifier, StorageFlag::In);
         const bool out = TypeHasStorageFlag(typeQualifier, StorageFlag::Out);
@@ -862,7 +863,7 @@ namespace AZ::ShaderCompiler
             return modifiers.empty() ? "" : " ";
         };
         using SF = StorageFlag;
-        static const StorageFlag toReEmit[] = {
+        static constexpr std::array toReEmit = {
             SF::Static,
             SF::Extern,
             SF::Inline,

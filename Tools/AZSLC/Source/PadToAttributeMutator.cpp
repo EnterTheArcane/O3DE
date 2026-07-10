@@ -10,6 +10,7 @@
 #include "IntermediateRepresentation.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
@@ -44,7 +45,7 @@ namespace AZ::ShaderCompiler
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         // Must be a multiple of 4.
-        static const uint32_t MultipleOf = 4;
+        static constexpr uint32_t MultipleOf = 4;
         if (pad_to_value & (MultipleOf - 1))
         {
             auto errorMsg = FormatString("Invalid integral in [[pad_to(N)]]. %u is not a multiple of %u", pad_to_value, MultipleOf);
@@ -433,9 +434,9 @@ namespace AZ::ShaderCompiler
         uint32_t startingOffset,
         uint32_t numBytesToAdd)
     {
-        auto getFloatTypeNameOfSize = +[](uint32_t sizeInBytes) -> const char*
+        auto getFloatTypeNameOfSize = +[](uint32_t sizeInBytes) -> std::string_view
         {
-            static const char* floatNames[4] = {
+            static constexpr std::array floatNames = {
                 "float",
                 "float2",
                 "float3",
@@ -445,7 +446,7 @@ namespace AZ::ShaderCompiler
             return floatNames[idx];
         };
 
-        auto createVariableInSymbolTable = [&](QualifiedNameView parentName, const std::string& typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
+        auto createVariableInSymbolTable = [&](QualifiedNameView parentName, std::string_view typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
         {
             QualifiedName dummySymbolFieldName{JoinPath(parentName, varName)};
 
@@ -515,7 +516,7 @@ namespace AZ::ShaderCompiler
             const auto deltaBytes = alignedOffset - startingOffset;
             if (deltaBytes < numBytesToAdd && deltaBytes != 0)
             {
-                std::string typeName = getFloatTypeNameOfSize(deltaBytes);
+                auto typeName = getFloatTypeNameOfSize(deltaBytes);
                 auto variableName = FormatString("__pad_at%u", startingOffset);
                 IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
                 if (insertBeforeThisUid.IsEmpty())
@@ -559,7 +560,7 @@ namespace AZ::ShaderCompiler
         if (numBytesToAdd > 0)
         {
             auto variableName = FormatString("__pad_at%u", startingOffset);
-            std::string typeName = getFloatTypeNameOfSize(numBytesToAdd);
+            auto typeName = getFloatTypeNameOfSize(numBytesToAdd);
             IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
             if (insertBeforeThisUid.IsEmpty())
             {

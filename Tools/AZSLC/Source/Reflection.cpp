@@ -263,7 +263,7 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    Json::Value CodeReflection::GetShaderEntries(const char* const sEntry) const
+    Json::Value CodeReflection::GetShaderEntries(std::string_view sEntry) const
     {
         Json::Value inputLayouts(Json::arrayValue);
 
@@ -274,7 +274,7 @@ namespace AZ::ShaderCompiler
             const UnqualifiedName funcName{ExtractLeaf(uid.m_name)};
 
             bool validFunc = ((sym.GetKind() == Kind::Function) && IsGlobal(uid.m_name) &&
-                (sEntry == nullptr || funcName == sEntry));
+                (sEntry.empty() || funcName == sEntry));
             if (!validFunc)
             {
                 // It's not a function or at least not the function we are looking for
@@ -339,7 +339,7 @@ namespace AZ::ShaderCompiler
         return inputLayouts;
     }
 
-    Json::Value CodeReflection::GetOutputMergerLayout(const char* const psEntry) const
+    Json::Value CodeReflection::GetOutputMergerLayout(std::string_view psEntry) const
     {
         Json::Value outputLayouts(Json::arrayValue);
 
@@ -349,7 +349,7 @@ namespace AZ::ShaderCompiler
             UnqualifiedNameView funcName = ExtractLeaf(uid.m_name);
 
             bool validFunc = (IsGlobal(uid.m_name)
-                && (psEntry == nullptr || strcmp(psEntry, funcName.data()) == 0)
+                && (psEntry.empty() || funcName == psEntry)
                 && sym->m_defNode); // Regarding OM data, only defined functions are relevant.
             if (!validFunc)
             {
@@ -394,7 +394,7 @@ namespace AZ::ShaderCompiler
         return outputLayouts;
     }
 
-    void CodeReflection::DumpOutputMergerLayout(const char* const psEntry) const
+    void CodeReflection::DumpOutputMergerLayout(std::string_view psEntry) const
     {
         Json::Value iaRoot(Json::objectValue);
         iaRoot["meta"] = "Output Merger Layout exported by AZSLC";
@@ -412,7 +412,7 @@ namespace AZ::ShaderCompiler
         entries["source"] = m_ir->OriginalSource().c_str();
         entries["material"] = "Unknown material";
 
-        entries["inputLayouts"] = GetShaderEntries(nullptr);
+        entries["inputLayouts"] = GetShaderEntries();
         m_out << entries;
     }
 

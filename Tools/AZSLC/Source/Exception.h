@@ -119,7 +119,7 @@ namespace AZ::ShaderCompiler
     class AzslcException : public antlr4::RuntimeException
     {
     public:
-        AzslcException(uint32_t errorCode, const char* const errorType, std::optional<size_t> line, std::optional<size_t> column, const std::string& message)
+        AzslcException(uint32_t errorCode, std::string_view errorType, std::optional<size_t> line, std::optional<size_t> column, const std::string& message)
             : antlr4::RuntimeException(std::string(message.c_str(), message.size()))
             , m_errorCode(errorCode)
             , m_errorType(errorType)
@@ -130,7 +130,7 @@ namespace AZ::ShaderCompiler
             BakeErrorMessage();
         }
 
-        AzslcException(uint32_t errorCode, const char* const errorType, Token* token, const std::string& message)
+        AzslcException(uint32_t errorCode, std::string_view errorType, Token* token, const std::string& message)
             : RuntimeException(std::string(message.c_str(), message.size()))
             , m_errorCode(errorCode)
             , m_errorType(errorType)
@@ -151,7 +151,7 @@ namespace AZ::ShaderCompiler
             BakeErrorMessage();
         }
 
-        AzslcException(uint32_t errorCode, const char* const errorType, const std::string& message)
+        AzslcException(uint32_t errorCode, std::string_view errorType, const std::string& message)
             : RuntimeException(std::string(message.c_str(), message.size()))
             , m_errorCode(errorCode)
             , m_errorType(errorType)
@@ -200,7 +200,7 @@ namespace AZ::ShaderCompiler
                 s_lineFinder->GetVirtualFileName(m_line ? *m_line : 0),
                 m_line ? ToString(s_lineFinder->GetVirtualLineNumber(*m_line)) : "",
                 m_column ? ToString(*m_column) : "",
-                m_errorType ? m_errorType : "",
+                m_errorType,
                 m_errorCode != WX_WARNINGS_AS_ERRORS,
                 ToString(m_errorCode),
                 RuntimeException::what());
@@ -211,7 +211,7 @@ namespace AZ::ShaderCompiler
 
     protected:
         const uint16_t m_errorCode;
-        const char* const m_errorType;
+        const std::string_view m_errorType;
         const Token* m_token;
         std::string m_errorMessage;
         std::optional<size_t> m_line;
@@ -221,7 +221,7 @@ namespace AZ::ShaderCompiler
     class AzslcOrchestratorException final : public AzslcException
     {
     private:
-        inline static const char* const ErrorType = "Semantic";
+        inline static constexpr std::string_view ErrorType = "Semantic";
 
     public:
         AzslcOrchestratorException(uint32_t errorCode, std::optional<size_t> line, std::optional<size_t> column, const std::string& message)
@@ -255,7 +255,7 @@ namespace AZ::ShaderCompiler
     class AzslcIrException final : public AzslcException
     {
     private:
-        inline static const char* const ErrorType = "IR";
+        inline static constexpr std::string_view ErrorType = "IR";
 
     public:
         AzslcIrException(uint32_t errorCode, const std::string& message, std::optional<size_t> line = std::nullopt)
@@ -272,7 +272,7 @@ namespace AZ::ShaderCompiler
     class AzslcEmitterException final : public AzslcException
     {
     private:
-        inline static const char* const ErrorType = "Emitter";
+        inline static constexpr std::string_view ErrorType = "Emitter";
 
     public:
         AzslcEmitterException(uint32_t errorCode, std::optional<size_t> line, std::optional<size_t> column, const std::string& message)

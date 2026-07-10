@@ -951,7 +951,7 @@ namespace AZ::ShaderCompiler
         std::vector<IdentifierUID> m_unboundedArrays;
     };
 
-    static const uint32_t SRGSemanticInfo_MaxAllowedFrequency = 15; // Maximum CB slots for all graphics API we support (common minimum)
+    static constexpr uint32_t SRGSemanticInfo_MaxAllowedFrequency = 15; // Maximum CB slots for all graphics API we support (common minimum)
 
     //! store data about code semantics for any sort of thing in the language. (a "sort of thing in the language" is a Kind)
     struct KindInfo
@@ -1197,7 +1197,7 @@ namespace AZ::ShaderCompiler
         return kind.VisitSub(GetSubKindInfoTypeName_Visitor{uid, getStrategy == ForFunctionGetType::Returned});
     }
 
-    static const size_t NoLine = 0_sz;
+    static constexpr size_t NoLine = 0_sz;
 
     struct GetOrigSourceLine_Visitor
     {

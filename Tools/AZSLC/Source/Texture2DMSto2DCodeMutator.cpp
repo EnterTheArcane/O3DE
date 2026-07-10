@@ -318,7 +318,7 @@ namespace AZ::ShaderCompiler
             // Get the semantic name.
             auto systemSemanticName = varInfo->m_declNode->SemanticOpt->hlslSemanticName()->HLSLSemanticSystem()->getText();
 
-            static const std::array<std::string_view, 2> SystemSemanticsNames =
+            static constexpr std::array<std::string_view, 2> SystemSemanticsNames =
             {
                 "SV_SampleIndex",
                 "SV_Coverage",
@@ -381,7 +381,7 @@ namespace AZ::ShaderCompiler
                 return subtok != "in" && subtok != "out" && subtok != "inout" && !IsAllWhitespaces(subtok);
             });
         std::string typeHlsl = Join(filtered, " ");
-        if (initializationValue)
+        if (initializationValue && initializationValue[0] != '\0')
         {
             return FormatString("%s %s = (%s)%s;\n", typeHlsl.c_str(), uqName.c_str(), typeHlsl.c_str(), initializationValue);
         }

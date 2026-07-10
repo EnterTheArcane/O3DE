@@ -9,6 +9,7 @@
 #include "SymbolAggregator.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <optional>
@@ -26,7 +27,7 @@ namespace AZ::ShaderCompiler
     template <auto N>
     void AddTypeBag(const AZ::ShaderCompiler::Predefined::Bag<N>& bag, SymbolTable& st)
     {
-        for (const char* symbol : bag.m_bag)
+        for (std::string_view symbol : bag.m_bag)
         {
             QualifiedName azirName{"?"}; // AZIR prefix for predefined types
             azirName += symbol;
@@ -101,10 +102,9 @@ namespace AZ::ShaderCompiler
     IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber /*=std::nullopt*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
     {
         // check against reserved names
-        static const std::unordered_set<std::string_view> ReservedNames =
-        {
+        static constexpr std::array<std::string_view, 2> ReservedNames = {
             "/Root_Constants",
-            RootConstantsViewName
+            RootConstantsViewName,
         };
 
         if (checkPolicy == AddIdentifierChecks::ReservedNames && (

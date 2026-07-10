@@ -182,7 +182,7 @@ namespace AZ::ShaderCompiler
         }
 
         //! NotOverToken is for procedurally generated code, that doesn't have an original source in terms of token.
-        static const ssize_t NotOverToken = -1;
+        static constexpr ssize_t NotOverToken = -1;
 
         void EmitSRGCBUnified(const SRGInfo& srgInfo, IdentifierUID srgId, const Options& options, const RootSigDesc& rootSig);
 

@@ -236,7 +236,7 @@ namespace AZ::ShaderCompiler
         return std::regex_replace(name, std::regex("\\/"), replacement.data());
     }
 
-    static inline const char* Underscore = "_";
+    static inline constexpr std::string_view Underscore = "_";
 
     enum FlattenStrategy
     {
