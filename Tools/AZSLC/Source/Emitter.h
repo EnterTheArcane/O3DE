@@ -11,6 +11,15 @@
 #include "SymbolTranslation.h"
 #include "CodeEmissionMutator.h"
 
+#include <cstdint>
+#include <initializer_list>
+#include <map>
+#include <ostream>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
+
 namespace Json
 {
     class Value;
@@ -43,13 +52,13 @@ namespace AZ::ShaderCompiler
         void Run(const Options& options);
 
         //! For scope-migration-aware name emission of symbol names
-        string GetTranslatedName(QualifiedNameView mangledName, UsageContext context, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(QualifiedNameView mangledName, UsageContext context, ssize_t tokenId = NotOverToken) const;
 
-        string GetTranslatedName(const IdentifierUID& uid, UsageContext context, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(const IdentifierUID& uid, UsageContext context, ssize_t tokenId = NotOverToken) const;
 
-        string GetTranslatedName(const TypeRefInfo& typeRef, UsageContext context, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(const TypeRefInfo& typeRef, UsageContext context, ssize_t tokenId = NotOverToken) const;
 
-        string GetTranslatedName(const ExtendedTypeInfo& extType, UsageContext context, const Options& options, Modifiers banned = {}, ssize_t tokenId = NotOverToken) const;
+        std::string GetTranslatedName(const ExtendedTypeInfo& extType, UsageContext context, const Options& options, Modifiers banned = {}, ssize_t tokenId = NotOverToken) const;
 
         //! Write the HLSL formatted shape of an attribute into a stream
         static void EmitAttribute(const AttributeInfo& attrInfo, Streamable& outstream);
@@ -75,7 +84,7 @@ namespace AZ::ShaderCompiler
         //! @symbolName. See above, EmitPreprocessorLineDirective (size_t), for more details.
         void EmitPreprocessorLineDirective(QualifiedNameView symbolName);
 
-        void EmitStruct(const ClassInfo& classInfo, string_view structName, const Options& options);
+        void EmitStruct(const ClassInfo& classInfo, std::string_view structName, const Options& options);
 
         void EmitAttribute(const AttributeInfo& attrInfo) const;
 
@@ -91,13 +100,13 @@ namespace AZ::ShaderCompiler
 		//! Emits get function declarations for root constant members
         void EmitGetterFunctionDeclarationsForRootConstants(const IdentifierUID& uid) const;
 
-        struct Except : std::initializer_list<string>
+        struct Except : std::initializer_list<std::string>
         {};
         //! Emit all attributes accumulated over a symbol. Omit an optional list of attributes passed as 2nd argument.
         void EmitAllAttachedAttributes(const IdentifierUID& uid, Except = {}) const;
 
         //! Emits get function definitions for root constants
-        void EmitGetFunctionsForRootConstants(const ClassInfo& classInfo, string_view bufferName) const;
+        void EmitGetFunctionsForRootConstants(const ClassInfo& classInfo, std::string_view bufferName) const;
 
         //! That is a list of code elements we possibly want to emit (e.g when we emit a variable declaration)
         MAKE_REFLECTABLE_ENUM_POWER( VarDeclHas,
@@ -175,7 +184,7 @@ namespace AZ::ShaderCompiler
 
         void EmitGetShaderKeyFunctionDeclaration(const IdentifierUID& getterUid, const TypeRefInfo& returnType) const;
 
-        void EmitGetShaderKeyFunction(const IdentifierUID& shaderKeyUid, const IdentifierUID& getterUid, uint32_t size, uint32_t offset, string_view defaultValue, const TypeRefInfo& returnType) const;
+        void EmitGetShaderKeyFunction(const IdentifierUID& shaderKeyUid, const IdentifierUID& getterUid, uint32_t size, uint32_t offset, std::string_view defaultValue, const TypeRefInfo& returnType) const;
 
         //! Will emit SRG content in the shape of HLSL transformed resource, e.g a constant buffer struct for the SRG variables.
         void EmitSRG(const SRGInfo& srgInfo, const IdentifierUID& srgId, const Options& options, const RootSigDesc& rootSig);
@@ -210,15 +219,15 @@ namespace AZ::ShaderCompiler
         void IfIsSrgMemberValidateIsDefined(antlr4::Token* token, TokenToAst::AstNode* nodeFromToken) const;
 
         SymbolTranslation m_translations;
-        unordered_set<IdentifierUID> m_alreadyEmittedFunctionDeclarations;
-        unordered_set<IdentifierUID> m_alreadyEmittedFunctionDefinitions;
-        map<size_t, size_t> m_alreadyEmittedPreprocessorLineDirectives;
+        std::unordered_set<IdentifierUID> m_alreadyEmittedFunctionDeclarations;
+        std::unordered_set<IdentifierUID> m_alreadyEmittedFunctionDefinitions;
+        std::map<size_t, size_t> m_alreadyEmittedPreprocessorLineDirectives;
 
         IdentifierUID m_shaderVariantFallbackUid;
 
         //! If not null it will be used during code emission to produce
         //! the mutations.
-        vector<ICodeEmissionMutator*> m_codeMutators;
+        std::vector<ICodeEmissionMutator*> m_codeMutators;
 
         //! We keep track here of the number of lines that have been emitted.
         //! Each symbol has an original line number (virtual and physical) where it appeared,
@@ -229,10 +238,8 @@ namespace AZ::ShaderCompiler
 
         PreprocessorLineDirectiveFinder* m_lineFinder;
 
-
-
         //! This is a readability function for class emission code. Serves for HLSL declarator of classes
-        string EmitInheritanceList(const ClassInfo& clInfo);
+        std::string EmitInheritanceList(const ClassInfo& clInfo);
 
         //! Given an SRG parameter, determines the space it belongs to based on the platform
         int ResolveBindingSpace(const RootSigDesc::SrgParamDesc& bindInfo, BindingPair::Set bindSet) const;

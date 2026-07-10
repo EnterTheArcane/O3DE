@@ -1,21 +1,38 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
-#include "StdUtils.h"
 #include "MetaUtils.h"
 
 #include "StreamableInterface.h"
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <cstdint>
+#include <initializer_list>
+#include <iterator>
+#include <map>
+#include <memory>
+#include <set>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #define AZ_STRINGIFY(x) #x
 #define AZ_TOSTRING(x) AZ_STRINGIFY(x)
 #define AZ_FILELINE __FILE__ ":" AZ_TOSTRING(__LINE__)
+
+using namespace std::literals::string_view_literals;
 
 namespace AZ
 {
@@ -53,7 +70,7 @@ namespace AZ
     //! Create substring views of views. Works like python slicing operator [n:m] with limited modulo semantics.
     //! what I ultimately desire is the range v.3 feature eg `letters[{2,end-2}]`
     //! http://ericniebler.com/2014/12/07/a-slice-of-python-in-c/
-    inline constexpr string_view Slice(const string_view& in, int64_t st, int64_t end)
+    inline constexpr std::string_view Slice(const std::string_view& in, int64_t st, int64_t end)
     {
         auto inSSize = (int64_t)in.size();
         if (inSSize == 0)
@@ -93,16 +110,16 @@ namespace AZ
     static_assert(Slice("0123", -1, -0) == "");
 
     // waiting for C++20
-    inline bool StartsWith(string_view haystack, string_view needle)
+    inline bool StartsWith(std::string_view haystack, std::string_view needle)
     {
-        return Slice(haystack, 0, needle.size()).find(needle, 0) != string::npos;
+        return Slice(haystack, 0, needle.size()).find(needle, 0) != std::string::npos;
         // visual studio bug prevents us from using constexpr here
     //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
     }
 
-    inline bool EndsWith(string_view haystack, string_view needle)
+    inline bool EndsWith(std::string_view haystack, std::string_view needle)
     {
-        return Slice(haystack, haystack.size() - needle.size(), haystack.size()).find(needle, 0) != string::npos;
+        return Slice(haystack, haystack.size() - needle.size(), haystack.size()).find(needle, 0) != std::string::npos;
         // visual studio bug prevents us from using constexpr here
     //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
     }
@@ -115,13 +132,13 @@ namespace AZ
     }
 
     template <class Container>
-    Container Split(const string& str, string_view delims = " ")
+    Container Split(const std::string& str, std::string_view delims = " ")
     {
         Container cont;
 
         std::size_t current, previous = 0;
         current = str.find_first_of(delims);
-        while (current != string::npos)
+        while (current != std::string::npos)
         {
             if (current > previous)
             {
@@ -134,7 +151,7 @@ namespace AZ
         return cont;
     }
 
-    inline string_view GetFileNameWithoutExtension(string_view fileName)
+    inline std::string_view GetFileNameWithoutExtension(std::string_view fileName)
     {
         size_t lastIndex = fileName.find_last_of(".");
         if (lastIndex == -1)
@@ -158,7 +175,7 @@ namespace AZ
     }
 
     //! surround a string with a prefix and a suffix
-    inline string Decorate(string_view prefix, string_view body, string_view suffix)
+    inline std::string Decorate(std::string_view prefix, std::string_view body, std::string_view suffix)
     {
         std::stringstream ss;
         ss << prefix.data();
@@ -168,13 +185,13 @@ namespace AZ
     }
 
     //! 2 arguments version in case both sides are the same
-    inline string Decorate(string_view prefixAndSuffix, string_view body)
+    inline std::string Decorate(std::string_view prefixAndSuffix, std::string_view body)
     {
         return Decorate(prefixAndSuffix, body, prefixAndSuffix);
     }
 
     //! reverse the effect of a symmetrical decoration
-    inline string_view Undecorate(string_view decoration, string_view body)
+    inline std::string_view Undecorate(std::string_view decoration, std::string_view body)
     {
         auto indexStart = StartsWith(body, decoration) ? decoration.length() : 0;
         auto indexEnd = EndsWith(body, decoration) ? body.length() - decoration.length() : body.length();
@@ -182,13 +199,13 @@ namespace AZ
     }
 
     //! Erase-Remove algorithm which removes all whitespaces from a string.
-    inline string RemoveWhitespaces(string haystack)
+    inline std::string RemoveWhitespaces(std::string haystack)
     {
         haystack.erase(std::remove_if(haystack.begin(), haystack.end(), [](unsigned char c) {return std::isspace(c); }), haystack.end());
         return haystack;
     }
 
-    inline bool IsAllWhitespaces(string_view s)
+    inline bool IsAllWhitespaces(std::string_view s)
     {
         return std::all_of(s.begin(), s.end(), [&](char c) { return std::isspace(c); });
     }
@@ -201,7 +218,7 @@ namespace AZ
     //! e.g. false for arguments {"a(b)c", 4}
     //! e.g. false for arguments {"a(b)c(d)", 4}
     //! e.g. true  for arguments {"a((b)c(d))", 5}
-    inline bool WithinMatchedParentheses(string_view haystack, size_t charPosition)
+    inline bool WithinMatchedParentheses(std::string_view haystack, size_t charPosition)
     {
         const auto hayLen = haystack.length();
         // we don't even need to be looking at the left side, we suppose balanced construction.
@@ -217,12 +234,12 @@ namespace AZ
 
     //! replace all occurrences of substring `sub` with substring `to` within haystack.
     //!  e.g: Replace("aaa#aaa", "#", "_") gives-> "aaa_aaa"
-    inline string Replace(string haystack, string_view sub, string_view to)
+    inline std::string Replace(std::string haystack, std::string_view sub, std::string_view to)
     {
         decltype(sub.length()) pos = 0;
         auto lFrom = sub.length();
         auto lTo = to.length();
-        while (((pos = haystack.find(sub, pos)) != string::npos))
+        while (((pos = haystack.find(sub, pos)) != std::string::npos))
         {
             haystack.replace(pos, lFrom, to);
             pos += lTo;
@@ -231,10 +248,10 @@ namespace AZ
     }
 
     //! this one is inspired by the docopt utilities. trims whitespace by default, but can be used to trim quotes.
-    constexpr inline string_view Trim(string_view haystack, string_view toTrim = " \t\n")
+    constexpr inline std::string_view Trim(std::string_view haystack, std::string_view toTrim = " \t\n")
     {
         const auto strEnd = haystack.find_last_not_of(toTrim);
-        if (strEnd == string::npos)
+        if (strEnd == std::string::npos)
         {
             return {};
         }
@@ -247,7 +264,7 @@ namespace AZ
     }
 
     template< typename Iter >
-    string Join(Iter begin, Iter end, string_view separator = "")
+    std::string Join(Iter begin, Iter end, std::string_view separator = "")
     {
         if (!(begin != end))
             return "";
@@ -270,7 +287,7 @@ namespace AZ
 
     //! argument in rangeV3-style version:
     template< typename Container >
-    string Join(const Container& c, string_view separator = "")
+    std::string Join(const Container& c, std::string_view separator = "")
     {
         return Join(c.begin(), c.end(), separator);
     }
@@ -318,7 +335,7 @@ namespace AZ
         }
     }
 
-    inline string Unescape(string_view escapedText)
+    inline std::string Unescape(std::string_view escapedText)
     {
         std::stringstream out;
         auto it = escapedText.begin();
@@ -353,49 +370,49 @@ namespace AZ
     }
 
     template< typename T >
-    inline string ToString(T anything)
+    inline std::string ToString(T anything)
     {
         std::ostringstream oss;
         oss << anything;
         return oss.str();
     }
 
-    inline string&& ToString(string&& s)
+    inline std::string&& ToString(std::string&& s)
     {
-        return std::forward<string&&>(s);
+        return std::forward<std::string&&>(s);
     }
 
-    inline const string& ToString(const string& s)
+    inline const std::string& ToString(const std::string& s)
     {
         return s;
     }
 
-    inline string ToString(const char* const  s)
+    inline std::string ToString(const char* const  s)
     {
         return s;
     }
 
-    inline string ToString(string_view sv)
+    inline std::string ToString(std::string_view sv)
     {
-        return string{ sv };
+        return std::string{ sv };
     }
 
     template<typename... Types>
-    string ConcatString(Types&&... args)
+    std::string ConcatString(Types&&... args)
     {
-        string ret;
+        std::string ret;
         (ret += ... += ToString(args));
         return ret;
     }
 
     template<typename... Args>
-    string FormatString(const char* format, Args... args)
+    std::string FormatString(const char* format, Args... args)
     {
         int size = snprintf(nullptr, 0, format, args...) + 1; // Extra space for '\0'
         assert(size > 0);
         std::unique_ptr<char[]> buf(new char[size]);
         snprintf(buf.get(), size, format, args...);
-        return string(buf.get());
+        return std::string(buf.get());
     }
 
     // Is-One-Of will check if a variable is equal to any of the values listed on the other parameters.
@@ -542,7 +559,7 @@ namespace AZ
         UnderlyingT m_value = 0;
     };
 
-    inline string_view GetCurrentOsName()
+    inline std::string_view GetCurrentOsName()
     {
 #if defined(_WIN64) || defined(_WIN32)
         return "Windows"sv;
@@ -559,10 +576,10 @@ namespace AZ
 
     //! Log(N) query to find the first immediately lower or equal element in a map's keys
     template< typename T, typename U >
-    auto Infimum(map<T, U> const& ctr, T query)
+    auto Infimum(std::map<T, U> const& ctr, T query)
     {
         auto it = ctr.upper_bound(query);
-        return it == ctr.begin() ? ctr.cend() : --it;
+        return it == ctr.begin() ? ctr.end() : --it;
     }
 
     //! Log(N) disjointed segments belong query
@@ -572,18 +589,18 @@ namespace AZ
     //!   segments don't overlap.
     //! returns: iterator to found interval key, or cend()
     template< typename T, typename U, typename IntervalCheckPredicate >
-    auto FindIntervalInDisjointSet(const map<T, U>& ctr, const T& query, IntervalCheckPredicate&& isInIntervalPredicate)
+    auto FindIntervalInDisjointSet(const std::map<T, U>& ctr, const T& query, IntervalCheckPredicate&& isInIntervalPredicate)
     {
         auto inf = Infimum(ctr, query);
-        bool isInInterval = inf != ctr.cend() && isInIntervalPredicate(query, inf->second);
-        return isInInterval ? inf : ctr.cend();
+        bool isInInterval = inf != ctr.end() && isInIntervalPredicate(query, inf->second);
+        return isInInterval ? inf : ctr.end();
     }
 
     //! Log(N) disjointed segments belong query
     //! segments are represented by their start points in the key, and last point in values. segments can't overlap.
     //! returns: iterator to found interval key, or cend()
     template< typename T, typename U>
-    auto FindIntervalInDisjointSet(const map<T, U>& ctr, const T& query)
+    auto FindIntervalInDisjointSet(const std::map<T, U>& ctr, const T& query)
     {
         return FindIntervalInDisjointSet(ctr, query, [](T q, U last) {return q <= last; });
     }
@@ -625,7 +642,7 @@ namespace AZ
         }
 
         //! Retrieve the subset of intervals activated by a point (query)
-        set<IntervalT> GetIntervalsSurrounding(T query) const
+        std::set<IntervalT> GetIntervalsSurrounding(T query) const
         {
             assert(m_sealed);
             // find the "set" of intervals starting before:
@@ -634,7 +651,7 @@ namespace AZ
                                                  [=](auto interv, T q) { return interv.a <= q; });
 
             // find the "set" of intervals ending after:
-            static vector<IntervalT> endAfter;
+            static std::vector<IntervalT> endAfter;
             endAfter.clear();
             CopyIf(m_oblasts.rbegin(), m_oblasts.rend(),  // reverse iteration
                    [=](auto interv) { return interv.b >= query; },
@@ -643,7 +660,7 @@ namespace AZ
             // for set_intersection to work, the less<> predicate has to work for both ranges
             std::sort(endAfter.begin(), endAfter.end());
 
-            set<IntervalT> result;
+            std::set<IntervalT> result;
             std::set_intersection(m_obfirsts.begin(), firstsSubEnd,
                                   endAfter.begin(), endAfter.end(),
                                   std::inserter(result, result.end()));
@@ -661,8 +678,8 @@ namespace AZ
             return bag.empty() ? IntervalT{-1, -2} : *bag.rbegin();
         }
 
-        vector<IntervalT> m_obfirsts;  // ordered by "firsts"
-        vector<IntervalT> m_oblasts;   // ordered by "lasts"
+        std::vector<IntervalT> m_obfirsts;  // ordered by "firsts"
+        std::vector<IntervalT> m_oblasts;   // ordered by "lasts"
         bool m_sealed = false;
     };
 
@@ -673,14 +690,14 @@ namespace AZ
     }
 
     //! add a missing operator for convenience and shortness of code
-    inline bool operator == (string_view lhs, char rhs)
+    inline bool operator == (std::string_view lhs, char rhs)
     {
         return lhs.length() == 1 && lhs[0] == rhs;
     }
 
-    inline string ToLower(string_view original)
+    inline std::string ToLower(std::string_view original)
     {
-        string result;
+        std::string result;
         auto len = original.length();
         result.resize(len);
         for (int i = 0; i < len; ++i)
@@ -697,7 +714,7 @@ namespace AZ
 
     //! Insert rhs at the end of lhs
     template<typename T>
-    void AppendVector(vector<T>& lhs, vector<T> const& rhs)
+    void AppendVector(std::vector<T>& lhs, std::vector<T> const& rhs)
     {
         using std::begin, std::end;
         lhs.insert(end(lhs), begin(rhs), end(rhs));
@@ -706,9 +723,9 @@ namespace AZ
     //! Stable algorithm to uniquify elements of a vector (preserving order).
     //! Solution Mohammed Hossain/Yuri https://stackoverflow.com/a/34341344/893406
     template<typename T>
-    size_t RemoveDuplicatesKeepOrder(vector<T>& vec)
+    size_t RemoveDuplicatesKeepOrder(std::vector<T>& vec)
     {
-        unordered_set<T> seen;
+        std::unordered_set<T> seen;
         auto newEnd = std::remove_if(vec.begin(), vec.end(), [&seen](const T& value)
                                      {
                                          if (seen.find(value) != std::end(seen))
@@ -723,7 +740,7 @@ namespace AZ
 
     //! Append rhs to lhs and remove duplicates
     template<typename T>
-    void StableMerge(vector<T>& lhs, vector<T> const& rhs)
+    void StableMerge(std::vector<T>& lhs, std::vector<T> const& rhs)
     {
         AppendVector(lhs, rhs);
         RemoveDuplicatesKeepOrder(lhs);
@@ -741,7 +758,6 @@ namespace AZ
 }
 
 #ifndef NDEBUG
-#include <set>
 
 namespace AZ::Tests
 {
@@ -785,7 +801,7 @@ namespace AZ::Tests
         assert(Undecorate("\"", "\"decorated\"") == "decorated"sv);
 
         // or collection
-        set<string> myset = { "zz", "mm", "aa", "bb" };
+        std::set<std::string> myset = { "zz", "mm", "aa", "bb" };
         assert(Join(myset.begin(), myset.end()) == "aabbmmzz");
 
         assert(Trim("\"stuff\"", "\"") == "stuff"sv);
@@ -793,17 +809,17 @@ namespace AZ::Tests
         assert(Trim(" stuff ", ".") == " stuff "sv);
         assert(Trim("  ", " ") == ""sv);
 
-        auto unevenSplit = Split<vector<string>>("A, BB, CCC, DDDD", ", ");
-        assert(Split<vector<string>>("A, BB, CCC, DDDD", ", ")[0] == "A");
-        assert(Split<vector<string>>("A, BB, CCC, DDDD", ", ")[1] == "BB");
-        assert(Split<vector<string>>("A, BB, CCC, DDDD", ", ")[2] == "CCC");
-        assert(Split<vector<string>>("A, BB, CCC, DDDD", ", ")[3] == "DDDD");
-        auto halfSplit = Split<vector<string>>("A, BB, CCC, DDDD", "C");
+        auto unevenSplit = Split<std::vector<std::string>>("A, BB, CCC, DDDD", ", ");
+        assert(Split<std::vector<std::string>>("A, BB, CCC, DDDD", ", ")[0] == "A");
+        assert(Split<std::vector<std::string>>("A, BB, CCC, DDDD", ", ")[1] == "BB");
+        assert(Split<std::vector<std::string>>("A, BB, CCC, DDDD", ", ")[2] == "CCC");
+        assert(Split<std::vector<std::string>>("A, BB, CCC, DDDD", ", ")[3] == "DDDD");
+        auto halfSplit = Split<std::vector<std::string>>("A, BB, CCC, DDDD", "C");
         assert(halfSplit[0] == "A, BB, ");
         assert(halfSplit[1] == ", DDDD");
 
         {
-            using Map = map<int, int>;
+            using Map = std::map<int, int>;
             Map intervals{ {2,5}, {8,9} };
 
             auto red = Infimum(intervals, 4);
@@ -813,13 +829,13 @@ namespace AZ::Tests
             auto pink = Infimum(intervals, 8);
             assert(pink->first == 8);
             auto yellow = Infimum(intervals, 1);
-            assert(yellow == intervals.cend());
+            assert(yellow == intervals.end());
             auto larger_than_all = Infimum(intervals, 15);
             assert(larger_than_all->first == 8);
-            assert(FindIntervalInDisjointSet(intervals, 4) != intervals.cend());
-            assert(FindIntervalInDisjointSet(intervals, 6) == intervals.cend());
-            assert(FindIntervalInDisjointSet(intervals, 8) != intervals.cend());
-            assert(FindIntervalInDisjointSet(intervals, 1) == intervals.cend());
+            assert(FindIntervalInDisjointSet(intervals, 4) != intervals.end());
+            assert(FindIntervalInDisjointSet(intervals, 6) == intervals.end());
+            assert(FindIntervalInDisjointSet(intervals, 8) != intervals.end());
+            assert(FindIntervalInDisjointSet(intervals, 1) == intervals.end());
 
             auto high = Infimum(intervals, 20);
             assert(high->first == 8);

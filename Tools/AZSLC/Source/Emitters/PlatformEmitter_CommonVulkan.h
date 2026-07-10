@@ -9,6 +9,12 @@
 
 #include "PlatformEmitter.h"
 
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+
 namespace AZ::ShaderCompiler
 {
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement
@@ -16,15 +22,15 @@ namespace AZ::ShaderCompiler
     {
     public:
         [[nodiscard]]
-        string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const override;
+        std::string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const override;
 
         [[nodiscard]]
-        std::pair<string, string> GetDataViewHeaderFooter(
+        std::pair<std::string, std::string> GetDataViewHeaderFooter(
             const CodeEmitter& codeEmitter,
             const IdentifierUID& symbol,
             uint32_t bindInfoRegisterIndex,
-            string_view registerTypeLetter,
-            optional<string> stringifiedLogicalSpace,
+            std::string_view registerTypeLetter,
+            std::optional<std::string> stringifiedLogicalSpace,
             const Options& options) const override;
 
     protected:

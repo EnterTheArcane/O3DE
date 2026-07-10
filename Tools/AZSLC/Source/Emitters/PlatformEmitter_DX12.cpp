@@ -9,6 +9,11 @@
 #include <Emitter.h>
 #include "PlatformEmitter_DX12.h"
 
+#include <cassert>
+#include <sstream>
+#include <string>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     static constexpr char PlatformEmitter_DX12Name[] = "dx";
@@ -28,9 +33,9 @@ namespace AZ::ShaderCompiler
         return &platformEmitter;
     }
 
-    string PlatformEmitter_DX12::GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options&, BindingPair::Set querySet) const
+    std::string PlatformEmitter_DX12::GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options&, BindingPair::Set querySet) const
     {
-        vector<string> rootAttrList;
+        std::vector<std::string> rootAttrList;
         // SRG Constants are emitted as one CB per SRG, bound to the RootSignature as RootDescriptor
         for (auto& srg : rootSig.m_srGroups)
         {
@@ -65,7 +70,7 @@ namespace AZ::ShaderCompiler
         // Next, process the remaining descriptor tables by frequency.
         for (auto& srg : rootSig.m_srGroups)
         {
-            vector<string> descriptorTable, samplerTable;
+            std::vector<std::string> descriptorTable, samplerTable;
 
             for (auto& param : srg.m_parameters)
             {
@@ -127,7 +132,7 @@ namespace AZ::ShaderCompiler
         return Decorate("#define sig ", Join(rootAttrList, ", \" \\\n"), "\"\n\n");
     }
 
-    string PlatformEmitter_DX12::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
+    std::string PlatformEmitter_DX12::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
     {
         // Specialization constants will be represented by a volatile variable that will be patched later.
         std::stringstream stream;

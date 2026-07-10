@@ -65,7 +65,6 @@ set(FILES
     Source/ScopeTracker.h
     Source/SemanticOrchestrator.cpp
     Source/SemanticOrchestrator.h
-    Source/StdUtils.h
     Source/StreamableInterface.h
     Source/SubpassInputToTexture2DCodeMutator.cpp
     Source/SubpassInputToTexture2DCodeMutator.h

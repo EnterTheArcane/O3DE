@@ -12,6 +12,16 @@
 #include "KindInfo.h"
 #include "PadToAttributeMutator.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <regex>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     //! We limit the maximum number of render targets to 8, with indices in the range [0..7]
@@ -20,12 +30,12 @@ namespace AZ::ShaderCompiler
     struct IRMetaData
     {
         //! the input source file path
-        string m_insource = "Stdin";
+        std::string m_insource = "Stdin";
 
         //! the activated namespaces on the command line
-        unordered_set<string> m_attributeNamespaceFilters;
+        std::unordered_set<std::string> m_attributeNamespaceFilters;
         //! The namespace for the platform code emitter
-        string m_platformEmitterNamespace;
+        std::string m_platformEmitterNamespace;
 
         //! some platforms require source-coded target formats
         OutputFormat m_outputFormatHint[kMaxRenderTargets] = { OutputFormat::R16G16B16A16_FLOAT };
@@ -113,35 +123,35 @@ namespace AZ::ShaderCompiler
 
         //! Returns a copy of the Ordered list filtered by SubInfo (of type `Sub`) only. elements are only the subinfo.
         template<typename Sub>
-        const vector<Sub*> GetOrderedSubInfosOfSubType()
+        const std::vector<Sub*> GetOrderedSubInfosOfSubType()
         {
             return m_symbols.GetOrderedSubInfosOfSubType<Sub>();
         }
 
         //! Returns a copy of the Ordered list filtered by SubInfo (of type `Sub`) only. elements are pairs (uid, sub)
         template<typename Sub>
-        vector<pair<IdentifierUID, Sub*>> GetOrderedSymbolsOfSubType_2()
+        std::vector<std::pair<IdentifierUID, Sub*>> GetOrderedSymbolsOfSubType_2()
         {
             return m_symbols.GetOrderedSymbolsOfSubType_2<Sub>();
         }
 
-        const string& OriginalSource() const
+        const std::string& OriginalSource() const
         {
             return m_metaData.m_insource;
         }
 
-        bool IsAttributeNamespaceActivated(const string& attr)
+        bool IsAttributeNamespaceActivated(const std::string& attr)
         {
             // while we don't have C++20, we can't benefit from heterogeneous key search in unordered container.
             return (m_metaData.m_attributeNamespaceFilters.find(attr) != m_metaData.m_attributeNamespaceFilters.end());
         }
 
-        void AddAttributeNamespaceFilter(const string& attr)
+        void AddAttributeNamespaceFilter(const std::string& attr)
         {
             std::regex validNamespace(R"__([a-zA-Z_]+)__");
             if (!std::regex_match(attr, validNamespace))
             {
-                throw std::runtime_error("Invalid namespace '" + attr + "'");
+                throw std::runtime_error(("Invalid namespace '" + attr + "'").c_str());
             }
 
             m_metaData.m_attributeNamespaceFilters.emplace(attr);
@@ -156,8 +166,8 @@ namespace AZ::ShaderCompiler
         void RegisterAttributeSpecifier(AttributeScope scope,
                                         AttributeCategory category,
                                         size_t declarationLine,
-                                        string_view space,
-                                        string_view name,
+                                        std::string_view space,
+                                        std::string_view name,
                                         azslParser::AttributeArgumentListContext* argList);
 
         //! called internally after a new attribute is registered
@@ -200,7 +210,7 @@ namespace AZ::ShaderCompiler
 
         //! Returns a list with all symbols that have their QualifiedName starting with
         //! the QualifiedName of parentIdUid.
-        vector<IdentifierUID> GetChildren(const IdentifierUID& parentUid) const;
+        std::vector<IdentifierUID> GetChildren(const IdentifierUID& parentUid) const;
 
         //! Removes all unused SRGs from the symbol table.
         void RemoveUnusedSrgs();
@@ -208,9 +218,9 @@ namespace AZ::ShaderCompiler
         //! Helper function that returns a filtered list of identifiers for symbols
         //! of a specific KindInfo Subtype. The LambdaFilter should return true when it finds a match.
         template<typename Sub, typename LambdaFilter>
-        vector<IdentifierUID> GetFilteredSymbolsOfSubType(LambdaFilter filterFunc)
+        std::vector<IdentifierUID> GetFilteredSymbolsOfSubType(LambdaFilter filterFunc)
         {
-            vector<IdentifierUID> filteredSymbols;
+            std::vector<IdentifierUID> filteredSymbols;
 
             for (const auto& pairUidSym : GetOrderedSymbolsOfSubType_2<Sub>())
             {
@@ -331,9 +341,9 @@ namespace AZ::ShaderCompiler
         PadToAttributeMutator m_padToAttributeMutator;
     };
 
-    string ToYaml(const TypeRefInfo& tref, const IntermediateRepresentation& ir, string_view indent);
+    std::string ToYaml(const TypeRefInfo& tref, const IntermediateRepresentation& ir, std::string_view indent);
 
-    string ToYaml(const ExtendedTypeInfo& ext, const IntermediateRepresentation& ir, string_view indent);
+    std::string ToYaml(const ExtendedTypeInfo& ext, const IntermediateRepresentation& ir, std::string_view indent);
 
     void DumpSymbols(IntermediateRepresentation& ir);
 }

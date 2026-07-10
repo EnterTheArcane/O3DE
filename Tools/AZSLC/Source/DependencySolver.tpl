@@ -8,6 +8,13 @@
 
 #include "DependencySolver.h"
 
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <exception>
+#include <iterator>
+#include <stdexcept>
+
 namespace AZ::ShaderCompiler
 {
     namespace detail
@@ -244,7 +251,7 @@ namespace AZ::Tests
             ds.Solve();
             assert(ds.CheckAllDepSatisfied());
         }
-        catch (exception&)
+        catch (std::exception&)
         {
             assert(false);
         }

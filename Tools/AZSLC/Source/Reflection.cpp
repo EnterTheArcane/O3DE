@@ -9,9 +9,20 @@
 #include "Reflection.h"
 #include "PlatformEmitter.h"
 
+#include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
-#include <tuple>
+#include <limits>
+#include <optional>
+#include <set>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <variant>
 
 namespace AZ::ShaderCompiler
 {
@@ -49,8 +60,8 @@ namespace AZ::ShaderCompiler
 
                 Json::Value semStream(Json::objectValue);
                 semStream["name"]           = ExtractLeaf(uid.m_name).data();
-                semStream["fullType"]       = varInfo.GetTypeId().m_name;
-                semStream["baseType"]       = varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr();
+                semStream["fullType"]       = varInfo.GetTypeId().m_name.c_str();
+                semStream["baseType"]       = varInfo.m_typeInfoExt.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr().data();
                 semStream["semanticName"]   = semanticName;
                 semStream["semanticIndex"]  = semanticIndex;
                 semStream["systemValue"]    = isSystemValue;
@@ -99,7 +110,7 @@ namespace AZ::ShaderCompiler
         return jsonVal.size() > 0;
     }
 
-    bool CodeReflection::BuildOMStruct(const ExtendedTypeInfo& returnTypeRef, string_view semanticOverride, Json::Value& jsonVal, int& semanticIndex) const
+    bool CodeReflection::BuildOMStruct(const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, Json::Value& jsonVal, int& semanticIndex) const
     {
         auto idKind = m_ir->GetIdAndKindInfo(returnTypeRef.m_coreType.m_typeId.GetName());
         if (!idKind)
@@ -146,7 +157,7 @@ namespace AZ::ShaderCompiler
         return jsonVal.size() > 0;
     }
 
-    bool ValidOutputSemanticIndex(string_view semanticName, const int semanticIndex)
+    bool ValidOutputSemanticIndex(std::string_view semanticName, const int semanticIndex)
     {
         if (EqualNoCase(semanticName, "SV_Target"))
         {
@@ -156,7 +167,7 @@ namespace AZ::ShaderCompiler
         return (semanticIndex == 0);
     }
 
-    bool IsValidPSOutput(string_view &semanticOverride, int& semanticIndex, Json::Value& jsonVal, const ExtendedTypeInfo &returnTypeRef)
+    bool IsValidPSOutput(std::string_view &semanticOverride, int& semanticIndex, Json::Value& jsonVal, const ExtendedTypeInfo &returnTypeRef)
     {
         if (semanticOverride.empty())
         {   // dxc error: Semantic must be defined for all parameters of an entry function or patch constant function
@@ -170,7 +181,7 @@ namespace AZ::ShaderCompiler
 
         for (auto existingSemantic : jsonVal)
         {
-            if (semanticOverride.find(existingSemantic["semanticName"].asCString()) != string::npos &&
+            if (semanticOverride.find(existingSemantic["semanticName"].asCString()) != std::string::npos &&
                 semanticIndex == existingSemantic["semanticIndex"].asInt())
             {   // dxc error: Parameter with semantic [semanticName] has overlapping semantic index at [semanticIndex]
                 return false;
@@ -191,7 +202,7 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    bool CodeReflection::BuildOMElement(Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef, string_view semanticOverride, int& semanticIndex, bool isSystemValue) const
+    bool CodeReflection::BuildOMElement(Json::Value& jsonVal, const ExtendedTypeInfo& returnTypeRef, std::string_view semanticOverride, int& semanticIndex, bool isSystemValue) const
     {
         // Structs are allowed as pixel shader output, if the type is registered walk over its attributes here
         if (!IsPredefinedType(returnTypeRef.m_coreType.m_typeClass))
@@ -209,7 +220,7 @@ namespace AZ::ShaderCompiler
 
         bool isVoid = returnTypeRef.m_coreType.m_typeClass == TypeClass::Void;
 
-        semStream["baseType"] = isVoid ? "void" : returnTypeRef.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr();
+        semStream["baseType"] = isVoid ? "void" : returnTypeRef.m_coreType.m_arithmeticInfo.UnderlyingScalarToStr().data();
 
         auto numElements = returnTypeRef.m_coreType.m_arithmeticInfo.m_cols;
         semStream["cols"] = numElements;
@@ -263,7 +274,7 @@ namespace AZ::ShaderCompiler
             }
 
             Json::Value functionEntry(Json::objectValue);
-            functionEntry["entry"] = string{RemoveLastParenthesisGroup(funcName)};
+            functionEntry["entry"] = std::string{RemoveLastParenthesisGroup(funcName)}.c_str();
 
             Json::Value semanticStreams(Json::arrayValue);
             const auto& funcSubInfo = sym.GetSubRefAs<FunctionInfo>();
@@ -282,13 +293,13 @@ namespace AZ::ShaderCompiler
                 Json::Value numThreads(Json::arrayValue);
                 for (auto arg : attrInfo->m_argList)
                 {
-                    if (!holds_alternative<ConstNumericVal>(arg))
+                    if (!std::holds_alternative<ConstNumericVal>(arg))
                     {
                         continue;
                     }
 
-                    const auto& constVal = get<ConstNumericVal>(arg);
-                    if (!holds_alternative<int32_t>(constVal) && !holds_alternative<uint32_t>(constVal))
+                    const auto& constVal = std::get<ConstNumericVal>(arg);
+                    if (!std::holds_alternative<int32_t>(constVal) && !std::holds_alternative<uint32_t>(constVal))
                     {
                         continue;
                     }
@@ -337,12 +348,12 @@ namespace AZ::ShaderCompiler
             }
 
             Json::Value functionEntry(Json::objectValue);
-            functionEntry["entry"] = string{RemoveLastParenthesisGroup(funcName)};
+            functionEntry["entry"] = std::string{RemoveLastParenthesisGroup(funcName)}.c_str();
 
             Json::Value renderTargets(Json::arrayValue);
             const auto& funcSubInfo = *sym;
 
-            string semanticName("");
+            std::string semanticName("");
             int semanticIndex = 0;
             bool isSystemValue = false;
             if (funcSubInfo.m_defNode->hlslSemantic())
@@ -355,7 +366,7 @@ namespace AZ::ShaderCompiler
             int depthFoundNTimes = 0;
             for (auto existingSemantic : renderTargets)
             {
-                if (existingSemantic["semanticName"].asString().find("Depth") != string::npos)
+                if (existingSemantic["semanticName"].asString().find("Depth") != std::string::npos)
                 {
                     depthFoundNTimes++;
                 }
@@ -377,7 +388,7 @@ namespace AZ::ShaderCompiler
     {
         Json::Value iaRoot(Json::objectValue);
         iaRoot["meta"] = "Output Merger Layout exported by AZSLC";
-        iaRoot["source"] = m_ir->OriginalSource();
+        iaRoot["source"] = m_ir->OriginalSource().c_str();
         iaRoot["material"] = "Output Merger Layout exported by AZSLC";
 
         iaRoot["outputLayouts"] = GetOutputMergerLayout(psEntry);
@@ -388,7 +399,7 @@ namespace AZ::ShaderCompiler
     {
         Json::Value entries(Json::objectValue);
         entries["meta"] = "Shader entries exported by AZSLC";
-        entries["source"] = m_ir->OriginalSource();
+        entries["source"] = m_ir->OriginalSource().c_str();
         entries["material"] = "Unknown material";
 
         entries["inputLayouts"] = GetShaderEntries(nullptr);
@@ -435,7 +446,7 @@ namespace AZ::ShaderCompiler
                                                           const IdentifierUID& exportedTypeId,
                                                           const Options& options,
                                                           const AZ::ShaderCompiler::Packing::Layout layoutPacking,
-                                                          uint32_t& startAt, string_view namePrefix) const
+                                                          uint32_t& startAt, std::string_view namePrefix) const
     {
         // Alignment start
         uint32_t tempOffset = startAt = Packing::AlignOffset(layoutPacking, startAt, Packing::Alignment::asStructStart, 0, 0);
@@ -460,7 +471,7 @@ namespace AZ::ShaderCompiler
     }
 
     uint32_t CodeReflection::BuildMemberLayout(Json::Value& membersContainer,
-                                               string_view namePrefix,
+                                               std::string_view namePrefix,
                                                const IdentifierUID& memberId,
                                                const bool isArrayItr,
                                                const Options& options,
@@ -481,20 +492,20 @@ namespace AZ::ShaderCompiler
 
             if (!exportedType.IsPackable())
             {
-                throw std::logic_error{"reflection error: unpackable type ("
+                throw std::logic_error{(std::string("reflection error: unpackable type (")
                     + exportedType.m_typeId.m_name
                     + ") in layout member "
-                    + memberId.m_name};
+                    + memberId.m_name).c_str()};
             }
             TypeClass varClass = exportedType.m_typeClass;
             bool isPrefedined  = IsPredefinedType(varClass);
             Json::Value memberLayout(Json::objectValue);
             const auto& shortName = memberId.GetNameLeaf();
-            memberLayout["constantId"]       = isArrayItr ? namePrefix.data() : namePrefix.data() + shortName;
-            memberLayout["qualifiedName"]    = memberId.m_name;
+            memberLayout["constantId"]       = std::string(isArrayItr ? std::string(namePrefix.data()) : namePrefix.data() + shortName).c_str();
+            memberLayout["qualifiedName"]    = memberId.m_name.c_str();
             memberLayout["typeKind"]         = isPrefedined ? "Predefined" :
                 IsProductType(varClass) ? "Struct"    : TypeClass::ToStr(varClass).data();
-            memberLayout["typeName"]         = varInfo.GetTypeId().m_name;
+            memberLayout["typeName"]         = varInfo.GetTypeId().m_name.c_str();
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, options.m_forceMatrixRowMajor);
             auto startAt = offset;
@@ -523,7 +534,7 @@ namespace AZ::ShaderCompiler
                 for (uint32_t i = 0; i < totalArraySize; i++)
                 {
                     // Construct dimension, [m][n], [p][q][r], etc
-                    string strDimIndex = "";
+                    std::string strDimIndex = "";
                     int prevDim = 1;
                     for (const auto dim : listOfArrayDim)
                     {
@@ -649,7 +660,7 @@ namespace AZ::ShaderCompiler
 
         Json::Value srgRoot(Json::objectValue);
         srgRoot["meta"] = "SRGs layout exported by AZSLC";
-        srgRoot["source"] = m_ir->OriginalSource();
+        srgRoot["source"] = m_ir->OriginalSource().c_str();
 
         Json::Value srgLayouts(Json::arrayValue);
 
@@ -661,7 +672,7 @@ namespace AZ::ShaderCompiler
 
             // Try to locate the original filename where this SRG is declared
             size_t physical = srgInfo->m_declNode->getStart()->getLine();
-            srgLayout["originalFileName"]   = std::filesystem::absolute(lineFinder->GetVirtualFileName(physical)).lexically_normal().generic_string();
+            srgLayout["originalFileName"]   = std::filesystem::absolute(std::filesystem::path(lineFinder->GetVirtualFileName(physical).c_str())).lexically_normal().generic_string();
             srgLayout["originalLineNumber"] = static_cast<Json::Value::UInt64>(lineFinder->GetVirtualLineNumber(physical));
 
             auto semantic = m_ir->GetSymbolSubAs<ClassInfo>(srgInfo->m_semantic->GetName())->Get<SRGSemanticInfo>();
@@ -671,7 +682,7 @@ namespace AZ::ShaderCompiler
             if (srgInfo->m_shaderVariantFallback)
             {
                 srgLayout["fallbackSize"] = static_cast<Json::Value::Int64>(*semantic->m_variantFallback);
-                srgLayout["fallbackName"] = srgInfo->m_shaderVariantFallback->GetNameLeaf();
+                srgLayout["fallbackName"] = srgInfo->m_shaderVariantFallback->GetNameLeaf().data();
             }
 
             Json::Value buffersList(Json::arrayValue);
@@ -686,11 +697,11 @@ namespace AZ::ShaderCompiler
 
                 auto& srgMemberInfo = *m_ir->GetSymbolSubAs<VarInfo>(cId.m_name);
                 assert(srgMemberInfo.IsConstantBuffer());
-                string typeNameLeaf = srgMemberInfo.m_typeInfoExt.GetDisplayShortName();
+                std::string typeNameLeaf = srgMemberInfo.m_typeInfoExt.GetDisplayShortName();
 
                 Json::Value dataView(Json::objectValue);
                 dataView["id"] = ExtractLeaf(cId.m_name).data();
-                dataView["type"] = typeNameLeaf;
+                dataView["type"] = typeNameLeaf.c_str();
                 dataView["usage"] = "Read";
                 dataView["stride"] = strideSize;
                 ReflectBinding(dataView, bindInfo);
@@ -718,7 +729,7 @@ namespace AZ::ShaderCompiler
 
                 Json::Value dataView(Json::objectValue);
                 dataView["id"]     = ExtractLeaf(tId.m_name).data();
-                dataView["type"]   = viewName;
+                dataView["type"]   = viewName.data();
                 dataView["usage"]  = (isReadWriteView) ? "ReadWrite" : "Read";
                 ReflectBinding(dataView, bindInfo);
                 dataView["stride"] = strideSize;
@@ -745,7 +756,7 @@ namespace AZ::ShaderCompiler
                 const auto& samplerInfo = *srgMemberInfo->m_samplerState;
 
                 Json::Value samplerJson(Json::objectValue);
-                samplerJson["id"] = sId.GetNameLeaf();
+                samplerJson["id"] = sId.GetNameLeaf().data();
                 samplerJson["isDynamic"] = samplerInfo.m_isDynamic;
                 ReflectBinding(samplerJson, bindInfo);
 
@@ -837,7 +848,7 @@ namespace AZ::ShaderCompiler
     bool CodeReflection::IsNonOverloaded(const IdentifierUID& uid) const
     {                      // func() to func
                            // because in AZIR mangling scheme, the parenthesized name is the concrete function name, and the core name is the overload-set name.
-        string_view core = RemoveLastParenthesisGroup(uid.GetName());
+        std::string_view core = RemoveLastParenthesisGroup(uid.GetName());
         auto* coreSymbol = m_ir->GetSymbolSubAs<OverloadSetInfo>(QualifiedNameView{core});
         return !coreSymbol || !coreSymbol->HasOverloads();
     }
@@ -849,9 +860,9 @@ namespace AZ::ShaderCompiler
     }
 
     void CodeReflection::DiscoverTopLevelFunctionDependencies(const IdentifierUID& uid,
-                                                              set<IdentifierUID>& output,
+                                                              std::set<IdentifierUID>& output,
                                                               const MapOfBeginToSpanAndUid& scopes,
-                                                              set<IdentifierUID>&& funcStack_ = {}) const
+                                                              std::set<IdentifierUID>&& funcStack_ = {}) const
     {
         // discover references:
         auto* kindInfo = m_ir->GetKindInfo(uid);
@@ -864,7 +875,7 @@ namespace AZ::ShaderCompiler
                                                           {
                                                               return value.first.properlyContains({key, key});
                                                           });
-            if (intervalIter != scopes.cend())
+            if (intervalIter != scopes.end())
             {
                 const IdentifierUID& encloser = intervalIter->second.second;
                 if (m_ir->GetKind(encloser) == Kind::Function)
@@ -926,17 +937,17 @@ namespace AZ::ShaderCompiler
                 Json::Value srgMember(Json::objectValue);
 
                 // functions to factorize node output
-                auto dependencyListToJson = [](const set<IdentifierUID>& dependencyList) -> Json::Value
+                auto dependencyListToJson = [](const std::set<IdentifierUID>& dependencyList) -> Json::Value
                 {
                     Json::Value allEntriesJson(Json::arrayValue);
                     for_each(dependencyList.begin(), dependencyList.end(), [&allEntriesJson](const IdentifierUID& id)
                                                                            {
-                                                                               allEntriesJson.append(string{RemoveLastParenthesisGroup(id.GetNameLeaf())});
+                                                                               allEntriesJson.append(std::string{RemoveLastParenthesisGroup(id.GetNameLeaf())}.c_str());
                                                                            });
                     return allEntriesJson;
                 };
 
-                auto makeJsonNodeForOneResource = [&dependencyListToJson](const set<IdentifierUID>& dependencyList,
+                auto makeJsonNodeForOneResource = [&dependencyListToJson](const std::set<IdentifierUID>& dependencyList,
                     const RootSigDesc::SrgParamDesc& binding,
                     const Json::Value& allConstants)
                 {
@@ -952,7 +963,7 @@ namespace AZ::ShaderCompiler
                     return resourceJsonValue;
                 };
 
-                optional<RootSigDesc::SrgParamDesc> srgConstants;  // if we have SRG Constants we treat them later
+                std::optional<RootSigDesc::SrgParamDesc> srgConstants;  // if we have SRG Constants we treat them later
                 for (auto& srgParam : srgDesc.m_parameters)
                 {
                     if (srgParam.m_type == RootParamType::SrgConstantCB)
@@ -962,9 +973,9 @@ namespace AZ::ShaderCompiler
                     }
                     else
                     {
-                        set<IdentifierUID> dependencyList;
+                        std::set<IdentifierUID> dependencyList;
                         DiscoverTopLevelFunctionDependencies(srgParam.m_uid, dependencyList, m_functionIntervals);
-                        srgMember[srgParam.m_uid.GetNameLeaf()] = makeJsonNodeForOneResource(dependencyList, srgParam, {});
+                        srgMember[srgParam.m_uid.GetNameLeaf().data()] = makeJsonNodeForOneResource(dependencyList, srgParam, {});
                     }
                 }
                 // SRG constants (and the variant-fallback) are in one special constant buffer
@@ -972,10 +983,10 @@ namespace AZ::ShaderCompiler
                 {
                     Json::Value allConstants(Json::arrayValue);
                     // make a merged list of dependencies, shared by all individual constants.
-                    set<IdentifierUID> dependencyList;
+                    std::set<IdentifierUID> dependencyList;
                     for (auto& srgConstant : srgInfo->m_implicitStruct.GetMemberFields())
                     {
-                        allConstants.append({ srgConstant.GetNameLeaf() });
+                        allConstants.append(srgConstant.GetNameLeaf().data());
                         DiscoverTopLevelFunctionDependencies(srgConstant, dependencyList, m_functionIntervals);
                     }
                     // variant fallback support
@@ -991,9 +1002,9 @@ namespace AZ::ShaderCompiler
                             }
                         }
                     }
-                    srgMember[string{ ExtractLeaf(MakeSrgConstantsCBName(uid)) }] = makeJsonNodeForOneResource(dependencyList, *srgConstants, allConstants);
+                    srgMember[std::string{ ExtractLeaf(MakeSrgConstantsCBName(uid)) }.c_str()] = makeJsonNodeForOneResource(dependencyList, *srgConstants, allConstants);
                 }
-                srgRoot[uid.GetNameLeaf()] = srgMember;
+                srgRoot[uid.GetNameLeaf().data()] = srgMember;
             }
         }
 
@@ -1001,7 +1012,7 @@ namespace AZ::ShaderCompiler
     }
 
     // Helper routine for option rank analysis
-    static int GuesstimateIntrinsicFunctionCost(string_view funcName)
+    static int GuesstimateIntrinsicFunctionCost(std::string_view funcName)
     {
         if (IsOneOf(funcName, "CallShader", "TraceRay"))
         { // non measurable but assumed high

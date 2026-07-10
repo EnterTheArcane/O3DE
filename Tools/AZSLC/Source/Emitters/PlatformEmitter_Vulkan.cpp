@@ -9,6 +9,9 @@
 #include <Emitter.h>
 #include "PlatformEmitter_Vulkan.h"
 
+#include <sstream>
+#include <string>
+
 namespace AZ::ShaderCompiler
 {
     static constexpr char PlatformEmitter_VulkanName[] = "vk";
@@ -28,7 +31,7 @@ namespace AZ::ShaderCompiler
         return &platformEmitter;
     }
 
-    string PlatformEmitter_Vulkan::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc&, const Options&, BindingPair::Set) const
+    std::string PlatformEmitter_Vulkan::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc&, const Options&, BindingPair::Set) const
     {
         std::stringstream strOut;
 

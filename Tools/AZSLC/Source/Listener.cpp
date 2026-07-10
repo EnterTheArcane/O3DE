@@ -8,6 +8,12 @@
 
 #include "Listener.h"
 
+#include <cassert>
+#include <cstdint>
+#include <exception>
+#include <iostream>
+#include <stdexcept>
+
 namespace AZ::ShaderCompiler
 {
     void SemaCheckListener::enterIdExpression(azslParser::IdExpressionContext* ctx)
@@ -302,7 +308,7 @@ namespace AZ::ShaderCompiler
                                 int64_t asInt = ExtractValueAsInt64(var.m_constVal);
                                 std::cout << asInt;
                             }
-                            catch (exception e)
+                            catch (std::exception e)
                             {
                                 std::cout << "<folding_failed>";
                             }

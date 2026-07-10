@@ -9,6 +9,9 @@
 
 #include "Utils.h"
 
+#include <optional>
+#include <string>
+
 namespace AZ::ShaderCompiler
 {
     //! In this struct we store text mutations

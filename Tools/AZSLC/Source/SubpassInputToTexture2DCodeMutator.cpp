@@ -1,13 +1,16 @@
 ﻿/*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
 #include "SubpassInputToTexture2DCodeMutator.h"
 
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace AZ::ShaderCompiler
 {
@@ -26,7 +29,6 @@ namespace AZ::ShaderCompiler
         }
     }
     ///////////////////////////////////////////////////////////////////////
-
 
     ///////////////////////////////////////////////////////////////////////
     // ICodeEmissionMutator Overrides ...
@@ -49,7 +51,7 @@ namespace AZ::ShaderCompiler
             return varInfo->m_typeInfoExt.m_coreType.m_typeClass == TypeClass::SubpassInput;
             };
 
-        vector<IdentifierUID> subpassInputVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(subpassInputFilterFunc);
+        std::vector<IdentifierUID> subpassInputVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(subpassInputFilterFunc);
         MutateTypeOfMultiSampleVariables(subpassInputVariables);
         return !subpassInputVariables.empty();
     }
@@ -63,7 +65,7 @@ namespace AZ::ShaderCompiler
         // "<Symbol>", ".", "<funcName>"
         if (children.size() == 3)
         {
-            string symbolName = Replace(children[0]->getText(), "::", "/");
+            std::string symbolName = Replace(children[0]->getText(), "::", "/");
             return UnqualifiedName{ symbolName };
         }
         return UnqualifiedName();
@@ -79,7 +81,7 @@ namespace AZ::ShaderCompiler
         {
             return;
         }
-        
+
         // Define the mutations.
         if (IsSubpassInputSupported(subpassInputType))
         {
@@ -151,7 +153,7 @@ namespace AZ::ShaderCompiler
         return EndsWith(varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName(), "DS") ? SubpassInputType::SubpassInputDS : SubpassInputType::SubpassInput;
     }
 
-    size_t SubpassInputToTexture2DCodeMutator::MutateTypeOfMultiSampleVariables(const vector<IdentifierUID>& subpassInputVariables)
+    size_t SubpassInputToTexture2DCodeMutator::MutateTypeOfMultiSampleVariables(const std::vector<IdentifierUID>& subpassInputVariables)
     {
         size_t mutationCount = 0;
         for (const auto& uid : subpassInputVariables)

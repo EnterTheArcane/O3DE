@@ -13,6 +13,15 @@
 
 #include "json/json.h"
 
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <limits>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     struct PlatformEmitter;
@@ -77,7 +86,7 @@ namespace AZ::ShaderCompiler
         struct SrgDesc
         {
             IdentifierUID m_uid;
-            vector<SrgParamDesc> m_parameters;
+            std::vector<SrgParamDesc> m_parameters;
         };
 
         const SrgParamDesc& Get(const IdentifierUID& uid) const
@@ -85,8 +94,8 @@ namespace AZ::ShaderCompiler
             return m_descriptorMap.at(uid);
         }
 
-        vector<SrgDesc> m_srGroups;
-        unordered_map<IdentifierUID, SrgParamDesc> m_descriptorMap;
+        std::vector<SrgDesc> m_srGroups;
+        std::unordered_map<IdentifierUID, SrgParamDesc> m_descriptorMap;
     };
 
     //! Stateful tracker that helps to construct binding points, by counting up
@@ -145,17 +154,17 @@ namespace AZ::ShaderCompiler
         const IntermediateRepresentation* GetIR() const { return m_ir; }
 
         //! Make a string that lists all type qualifiers/modifiers in HLSL format
-        static string GetTypeModifier(const ExtendedTypeInfo&, const Options& options, Modifiers bannedFlags = {});
+        static std::string GetTypeModifier(const ExtendedTypeInfo&, const Options& options, Modifiers bannedFlags = {});
 
         //! Get HLSL form of in/out modifiers
         static const char* GetInputModifier(const TypeQualifiers& typeQualifier);
 
         //! Get the initialization clause as a string. Returns an empty string if it doesn't have any initialization.
-        string GetInitializerClause(const AZ::ShaderCompiler::VarInfo* varInfo) const;
+        std::string GetInitializerClause(const AZ::ShaderCompiler::VarInfo* varInfo) const;
 
         //! Fabricate a HLSL snippet that represents the type stored in typeInfo. Relevant options relate to matrix qualifiers.
         //! \param banned is the Flag you can setup to list a collection of type qualifiers you don't want to reproduce.
-        string GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<string(const TypeRefInfo&)> translator) const;
+        std::string GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const;
 
         //! Returns the Platform Emitter that is registered to the namespace in the "ir".
         static const PlatformEmitter& GetPlatformEmitter(IntermediateRepresentation* ir);
@@ -169,7 +178,7 @@ namespace AZ::ShaderCompiler
 
         virtual void EmitTranspiledTokens(misc::Interval interval, Streamable& output) const;
 
-        string GetTranspiledTokens(misc::Interval interval) const;
+        std::string GetTranspiledTokens(misc::Interval interval) const;
 
         uint32_t GetNumberOf32BitConstants(const Options& options, const IdentifierUID& uid) const;
 
@@ -196,25 +205,25 @@ namespace AZ::ShaderCompiler
     };
 
     // independent utility functions
-    bool IsReadWriteView(string_view viewName);
+    bool IsReadWriteView(std::string_view viewName);
 
     QualifiedName MakeSrgConstantsStructName(IdentifierUID srg);
 
     QualifiedName MakeSrgConstantsCBName(IdentifierUID srg);
 
     /// don't use for HLSL emission (this doesn't go through translation)
-    string UnmangleTrimedName(const QualifiedNameView name);
+    std::string UnmangleTrimedName(const QualifiedNameView name);
 
-    string JoinAllNestedNamesWithUnderscore(const QualifiedNameView name);
+    std::string JoinAllNestedNamesWithUnderscore(const QualifiedNameView name);
 
-    string GetGlobalRootConstantVarName(const QualifiedNameView name);
+    std::string GetGlobalRootConstantVarName(const QualifiedNameView name);
 
-    string GetShaderKeyFunctionName(const IdentifierUID& uid);
+    std::string GetShaderKeyFunctionName(const IdentifierUID& uid);
 
-    string GetRootConstFunctionName(const IdentifierUID& uid);
+    std::string GetRootConstFunctionName(const IdentifierUID& uid);
 
     // don't use for HLSL emission (this doesn't go through translation)
-    string UnmangleTrimedName(const ExtendedTypeInfo& extTypeInfo);
+    std::string UnmangleTrimedName(const ExtendedTypeInfo& extTypeInfo);
 
     Streamable& operator << (Streamable& out, const SamplerStateDesc::AddressMode& addressMode);
     Streamable& operator << (Streamable& out, const SamplerStateDesc::ComparisonFunc& compFunc);

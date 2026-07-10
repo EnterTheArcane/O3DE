@@ -12,6 +12,10 @@
 #include "CodeEmissionMutator.h"
 #include "IntermediateRepresentation.h"
 
+#include <cstdint>
+#include <string>
+#include <unordered_map>
+
 namespace AZ::ShaderCompiler
 {
     //! This is the main class that handles coversion of MultiSampling related
@@ -75,14 +79,14 @@ namespace AZ::ShaderCompiler
         //! with the system semantics SV_SampleIndex or SV_Coverage. When converting to no-MultiSampling
         //! the variable must be removed from the input arguments of the function.
         //! See Texture2DMSto2DCodeMutator.cpp for mutation examples.
-        void DropMultiSamplingSystemSemanticFromFunction(const IdentifierUID& varUid, const VarInfo* varInfo, const string& systemSemanticName, const IdentifierUID& functionUid);
+        void DropMultiSamplingSystemSemanticFromFunction(const IdentifierUID& varUid, const VarInfo* varInfo, const std::string& systemSemanticName, const IdentifierUID& functionUid);
 
         //! Called when a member variable, in a struct definition, is a variable qualified
         //! with the system semantics SV_SampleIndex or SV_Coverage. When converting to no-MultiSampling
         //! the variable must be mutated into an initialized "static const" of the same type as
         //! the semantic.
         //! See Texture2DMSto2DCodeMutator.cpp for mutation examples.
-        void MutateMultiSamplingSystemSemanticInStruct(const IdentifierUID& varUid, const VarInfo* varInfo, const string& systemSemanticName, const IdentifierUID& structUid);
+        void MutateMultiSamplingSystemSemanticInStruct(const IdentifierUID& varUid, const VarInfo* varInfo, const std::string& systemSemanticName, const IdentifierUID& structUid);
 
         //! Given an unqualified symbol name, checks within the current parsing scope
         //! if the symbol is a MultiSampling type of variable.
@@ -96,6 +100,6 @@ namespace AZ::ShaderCompiler
 
         //! A map of TokenIndex to Mutation. If a TokenIndex is present,
         //! it means it should produce mutated text during emission.
-        unordered_map< ssize_t, CodeMutation > m_mutations;
+        std::unordered_map< ssize_t, CodeMutation > m_mutations;
     };
 } // namespace AZ::ShaderCompiler

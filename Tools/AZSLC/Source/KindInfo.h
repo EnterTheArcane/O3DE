@@ -9,6 +9,24 @@
 
 #include "Types.h"
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <initializer_list>
+#include <optional>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <variant>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     // This randomly generated GUID has less chance to collide with a user-defined variable, for example m_shaderVariantKey
@@ -41,8 +59,8 @@ namespace AZ::ShaderCompiler
 
     struct SRGSemanticInfo
     {
-        optional<int64_t> m_frequencyId;
-        optional<int64_t> m_variantFallback;
+        std::optional<int64_t> m_frequencyId;
+        std::optional<int64_t> m_variantFallback;
     };
 
     struct EnumerationInfo
@@ -67,14 +85,14 @@ namespace AZ::ShaderCompiler
         AttributeScope    m_scope;
         AttributeCategory m_category;
         size_t            m_lineNumber;
-        string            m_namespace;
-        string            m_attribute;
+        std::string            m_namespace;
+        std::string            m_attribute;
 
-        struct Argument : variant< monostate, bool, ConstNumericVal, string >
+        struct Argument : std::variant< std::monostate, bool, ConstNumericVal, std::string >
         {
             using variant::variant;
         };
-        vector<Argument>  m_argList;
+        std::vector<Argument>  m_argList;
     };
 
     static bool TypeHasStorageFlag(const TypeQualifiers& typeQualifier, StorageFlag flag)
@@ -129,17 +147,17 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        const vector<IdentifierUID>& GetBases() const
+        const std::vector<IdentifierUID>& GetBases() const
         {
             return m_bases;
         }
 
-        const vector<IdentifierUID>& GetMemberFields() const
+        const std::vector<IdentifierUID>& GetMemberFields() const
         {
             return m_memberFields;
         }
 
-        const vector<IdentifierUID>& GetOrderedMembers() const
+        const std::vector<IdentifierUID>& GetOrderedMembers() const
         {
             return m_ordered;
         }
@@ -151,15 +169,15 @@ namespace AZ::ShaderCompiler
 
         bool HasMember(UnqualifiedNameView uqName) const
         {
-            return FindMemberFromLeafName(uqName) != none;
+            return FindMemberFromLeafName(uqName) != std::nullopt;
         }
 
         //! To help for method name comparison (when doing overrides), only the leaf name needs to match
-        optional<IdentifierUID> FindMemberFromLeafName(UnqualifiedNameView uqName) const
+        std::optional<IdentifierUID> FindMemberFromLeafName(UnqualifiedNameView uqName) const
         {
             assert(IsLeaf(uqName));
-            auto item = std::find_if(m_members.cbegin(), m_members.cend(), [&](decltype(*m_members.cbegin()) elem) {return elem.GetNameLeaf() == uqName; });
-            return (item != m_members.cend()) ? optional<IdentifierUID>{*item} : none;
+            auto item = std::find_if(m_members.begin(), m_members.end(), [&](decltype(*m_members.begin()) elem) {return elem.GetNameLeaf() == uqName; });
+            return (item != m_members.end()) ? std::optional<IdentifierUID>{*item} : std::nullopt;
         }
 
         //! upcast to get a generic declaration context
@@ -204,28 +222,28 @@ namespace AZ::ShaderCompiler
         template<typename T>
         T* Get()
         {
-            return (holds_alternative<T>(m_subInfo)) ? &get<T>(m_subInfo) : (T*)nullptr;
+            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
         }
 
         template<typename T>
         const T* Get() const
         {
-            return (holds_alternative<T>(m_subInfo)) ? &get<T>(m_subInfo) : (T*)nullptr;
+            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
         }
 
         Kind                           m_kind;   // which of class/struct/interface/srgsemantic ? (repetition of data in the upper KindInfo)
 
-        using DeclNode = variant< AstClassDeclNode*, AstStructDeclNode*, AstEnumDeclNode*, AstInterfaceDeclNode*, AstSRGSemanticDeclNode* >;
+        using DeclNode = std::variant< AstClassDeclNode*, AstStructDeclNode*, AstEnumDeclNode*, AstInterfaceDeclNode*, AstSRGSemanticDeclNode* >;
         DeclNode                       m_declNodeVt;
 
-        using SubKind  = variant< monostate, SRGSemanticInfo, EnumerationInfo >;
+        using SubKind  = std::variant< std::monostate, SRGSemanticInfo, EnumerationInfo >;
         SubKind                        m_subInfo;
 
     private:
-        unordered_set< IdentifierUID > m_members;      //!< Fast lookup
-        vector< IdentifierUID >        m_memberFields; //!< Only the member fields, in order of declaration. All member fields are members.
-        vector< IdentifierUID >        m_ordered;      //!< Ordered. all contained symbols
-        vector< IdentifierUID >        m_bases;
+        std::unordered_set< IdentifierUID > m_members;      //!< Fast lookup
+        std::vector< IdentifierUID >        m_memberFields; //!< Only the member fields, in order of declaration. All member fields are members.
+        std::vector< IdentifierUID >        m_ordered;      //!< Ordered. all contained symbols
+        std::vector< IdentifierUID >        m_bases;
     };
 
     //! an extended type information gathers:
@@ -327,16 +345,16 @@ namespace AZ::ShaderCompiler
 
         //! recreate a user-readable mangled name of the whole type, for diagnostic purposes
         //! this is not rigorous and does not constitute a mangling. the full feature is better served at emission side by GetExtendedTypeInfo function.
-        string GetDisplayName() const
+        std::string GetDisplayName() const
         {
              return m_qualifiers.GetDisplayName() + " " + m_coreType.m_typeId.m_name +
                  (m_genericParameter.IsEmpty() ? "" : Decorate("<", m_genericParameter.m_typeId.m_name, ">"));
         }
 
         //! only use leaf form of names to compose a displayable reconstituted name
-        string GetDisplayShortName() const
+        std::string GetDisplayShortName() const
         {
-            string coreLeaf = m_coreType.m_typeId.GetNameLeaf();
+            std::string coreLeaf = m_coreType.m_typeId.GetNameLeaf();
             return m_genericParameter.IsEmpty() ? coreLeaf : coreLeaf + Decorate("<", m_genericParameter.m_typeId.GetNameLeaf(), ">");
         }
 
@@ -397,7 +415,7 @@ namespace AZ::ShaderCompiler
         bool                       m_srgMember = false;
         bool                       m_isPublic = true;  // this isn't class access visibility, this is for generated fields
         ConstNumericVal            m_constVal;   // (attempted folded) initializer value for simple scalars
-        optional<SamplerStateDesc> m_samplerState;
+        std::optional<SamplerStateDesc> m_samplerState;
         ExtendedTypeInfo           m_typeInfoExt;
         int                        m_estimatedCostImpact = -1;  //!< Cached value calculated by AnalyzeOptionRanks
         int                        m_specializationId= -1; //< id of the specialization. -1 means no specialization.
@@ -502,7 +520,7 @@ namespace AZ::ShaderCompiler
                 || m_returnTypeSet.m_state == ReturnTypeSet::NonInit;
         }
 
-        string GetUniformReturnTypeDisplayName() const
+        std::string GetUniformReturnTypeDisplayName() const
         {
             if (!HasHomogeneousReturnType())
             {
@@ -529,7 +547,7 @@ namespace AZ::ShaderCompiler
         }
 
         //! attempt a lookup within
-        IdentifierUID GetConcreteFunctionThatMatchesArgumentList(string_view mangledArgumentList)
+        IdentifierUID GetConcreteFunctionThatMatchesArgumentList(std::string_view mangledArgumentList)
         {
             if (m_functions.size() == 1)
             {
@@ -561,11 +579,11 @@ namespace AZ::ShaderCompiler
         void PushConcreteFunction(IdentifierUID functionBelongingToTheOverloadSet, ExtendedTypeInfo thatFunctionsReturnType)
         {
             assert(IsLeafDecoratedByArguments(functionBelongingToTheOverloadSet.GetName()));
-            string_view core = RemoveLastParenthesisGroup(functionBelongingToTheOverloadSet.GetName());
+            std::string_view core = RemoveLastParenthesisGroup(functionBelongingToTheOverloadSet.GetName());
             if (core != m_setFullName.m_name)
             {
                 throw std::logic_error{ConcatString("Impossible to add function ", functionBelongingToTheOverloadSet.m_name,
-                                                    " to an overload-set that doesn't have the same core name or scope")};
+                                                    " to an overload-set that doesn't have the same core name or scope").c_str()};
             }
             if (m_returnTypeSet.m_state != ReturnTypeSet::HeterogeneousUserDefinedType)
             {
@@ -628,12 +646,12 @@ namespace AZ::ShaderCompiler
                         {
                             m_state = HeterogeneousUserDefinedType;
                         }
-                        m_type = none; // in case of a difference the cache becomes useless.
+                        m_type = std::nullopt; // in case of a difference the cache becomes useless.
                     }
                 }
                 return m_state == Homogeneous;
             }
-            optional<ExtendedTypeInfo> m_type;
+            std::optional<ExtendedTypeInfo> m_type;
             enum State
             {
                 NonInit,
@@ -642,8 +660,8 @@ namespace AZ::ShaderCompiler
             } m_state = NonInit;
         } m_returnTypeSet;                //!< if the returnType is uniform across all overloads, it'll be cached here.
         IdentifierUID m_setFullName;      //!< stores our own ID to be able to check that added functions share the scope and name.
-        set<IdentifierUID> m_functions;   //!< IDs of functions participating to an overload set.
-        unordered_map<size_t, IdentifierUID> m_argCounts; //!< number of parameters as keys to a unique candidate that has this count.
+        std::set<IdentifierUID> m_functions;   //!< IDs of functions participating to an overload set.
+        std::unordered_map<size_t, IdentifierUID> m_argCounts; //!< number of parameters as keys to a unique candidate that has this count.
     };
 
     //! This is a small state machine for function registration step tracking (e.g. decl, decl, def)
@@ -748,7 +766,7 @@ namespace AZ::ShaderCompiler
             {
                 if (m_parameters[0].size() != m_parameters[1].size())
                 {   // not a mainstreamed EC diagnostic, because this is probably an internal error. because functions identity incorporate arguments.
-                    throw std::runtime_error{ConcatString(DiagLine(m_declNode->start), " function redeclaration not matching earlier appearance, during validation of parameters. Look for earlier warnings?")};
+                    throw std::runtime_error{ConcatString(DiagLine(m_declNode->start), " function redeclaration not matching earlier appearance, during validation of parameters. Look for earlier warnings?").c_str()};
                 }
                 // merge all default values to first declaration
                 for (size_t i = 0; i < m_parameters[0].size(); ++i)
@@ -790,8 +808,8 @@ namespace AZ::ShaderCompiler
         bool                      m_isMethod     = false;
         bool                      m_mustOverride = false;     //!< means is required to override, by override specifier keyword.
         bool                      m_isVirtual    = false;     //!< is a method from an interface
-        vector< IdentifierUID >   m_overrides;                //!< list of implementing functions in child classes
-        optional< IdentifierUID > m_base;   //!< points to the overridden function in the base interface, if applies. only supports one base
+        std::vector< IdentifierUID >   m_overrides;                //!< list of implementing functions in child classes
+        std::optional< IdentifierUID > m_base;   //!< points to the overridden function in the base interface, if applies. only supports one base
         FunctionMultiForwards     m_multiFwds    = FMF_None;  //!< presence of redundant prototype-only declarations
         int                       m_costScore    = -1;        //!< heuristical static analysis of the amount of instructions contained
         struct Parameter
@@ -802,22 +820,22 @@ namespace AZ::ShaderCompiler
             std::vector<azslParser::ArrayRankSpecifierContext*> m_arrayRankSpecifiers;
             AstVarInitializer* m_defaultValueExpression = nullptr;
         };
-        using ParameterList = vector<Parameter>;
+        using ParameterList = std::vector<Parameter>;
     private:
-        array<ParameterList, 2> m_parameters;  //!< two lists. one for the original declaration site, and one for an eventual second site for deported definition
+        std::array<ParameterList, 2> m_parameters;  //!< two lists. one for the original declaration site, and one for an eventual second site for deported definition
         int m_currentList = 0; //!< store index in m_parameters of currently edited list
     };
 
     struct SRGInfo
     {
-        optional< IdentifierUID > FindMemberFromLeafName(UnqualifiedNameView member) const
+        std::optional< IdentifierUID > FindMemberFromLeafName(UnqualifiedNameView member) const
         {
             auto inImplicit = m_implicitStruct.FindMemberFromLeafName(member);
             if (inImplicit)
             {
                 return inImplicit;
             }
-            const vector< IdentifierUID >* memberArrays[] = {&m_structs, &m_srViews, &m_samplers, &m_CBs, &m_nonexternVariables, &m_functions};
+            const std::vector< IdentifierUID >* memberArrays[] = {&m_structs, &m_srViews, &m_samplers, &m_CBs, &m_nonexternVariables, &m_functions};
             for (auto* vector : memberArrays)
             {
                 auto iterator = std::find_if(vector->begin(), vector->end(), [&member](const IdentifierUID& uid) { return uid.GetNameLeaf() == member; });
@@ -826,7 +844,7 @@ namespace AZ::ShaderCompiler
                     return *iterator;
                 }
             }
-            return none;
+            return std::nullopt;
         }
 
         bool IsPartial() const { return m_declNode ? !!m_declNode->Partial() : false; }
@@ -838,21 +856,21 @@ namespace AZ::ShaderCompiler
 
         AstSRGDeclNode*           m_declNode = nullptr;
         ClassInfo                 m_implicitStruct;           // Implicit holding struct for SRG Constants
-        optional< IdentifierUID > m_shaderVariantFallback;
-        optional< IdentifierUID > m_semantic;
-        vector< IdentifierUID >   m_structs;
-        vector< IdentifierUID >   m_srViews;
-        vector< IdentifierUID >   m_samplers;
-        vector< IdentifierUID >   m_CBs;
-        vector< IdentifierUID >   m_nonexternVariables;
-        vector< IdentifierUID >   m_functions;
+        std::optional< IdentifierUID > m_shaderVariantFallback;
+        std::optional< IdentifierUID > m_semantic;
+        std::vector< IdentifierUID >   m_structs;
+        std::vector< IdentifierUID >   m_srViews;
+        std::vector< IdentifierUID >   m_samplers;
+        std::vector< IdentifierUID >   m_CBs;
+        std::vector< IdentifierUID >   m_nonexternVariables;
+        std::vector< IdentifierUID >   m_functions;
         // We will cache here the unbounded arrays as the Semantic Orchestrator
         // discovers them. We are using a vector, instead of a Set/Map because
         // There can not be more than 4 unbounded arrays per SRG. For a small
         // amount of items a linear search in a vector is faster than Set/Map searching.
         // Later, during emission, we can easily change the order of appearance of these
         // variables.
-        vector< IdentifierUID >   m_unboundedArrays;
+        std::vector< IdentifierUID >   m_unboundedArrays;
     };
 
     static const uint32_t SRGSemanticInfo_MaxAllowedFrequency = 15;  // Maximum CB slots for all graphics API we support (common minimum)
@@ -860,7 +878,7 @@ namespace AZ::ShaderCompiler
     //! store data about code semantics for any sort of thing in the language. (a "sort of thing in the language" is a Kind)
     struct KindInfo
     {
-        using AnyKind = variant< monostate, VarInfo, FunctionInfo, OverloadSetInfo, ClassInfo, SRGInfo, TypeRefInfo, TypeAliasInfo >;
+        using AnyKind = std::variant< std::monostate, VarInfo, FunctionInfo, OverloadSetInfo, ClassInfo, SRGInfo, TypeRefInfo, TypeAliasInfo >;
 
         using MapKindToTypesT = TypeList<
             ConstVal< Kind::Type >,                        TypeRefInfo,
@@ -881,28 +899,28 @@ namespace AZ::ShaderCompiler
         template<typename T>
         const T* GetSubAs() const
         {
-            return (holds_alternative<T>(m_subInfo)) ? &get<T>(m_subInfo) : (const T*)nullptr;
+            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (const T*)nullptr;
         }
 
         //! mutable version
         template<typename T>
         T* GetSubAs()
         {
-            return (holds_alternative<T>(m_subInfo)) ? &get<T>(m_subInfo) : (T*)nullptr;
+            return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
         }
 
         //! Throwing version (bad_access) of above helper, gets a reference on success
         template<typename T>
         const T& GetSubRefAs() const noexcept(false)
         {
-            return get<T>(m_subInfo);
+            return std::get<T>(m_subInfo);
         }
 
         //! mutable version
         template<typename T>
         T& GetSubRefAs() noexcept(false)
         {
-            return get<T>(m_subInfo);
+            return std::get<T>(m_subInfo);
         }
 
         //! Set the kind from a runtime value
@@ -954,7 +972,7 @@ namespace AZ::ShaderCompiler
 
             // lookup the concrete type from the kind since they can be mapped surjectively
             using SubT = MetaFindValueNextToKey_t< ConstVal<k>, MapKindToTypesT >;
-            static_assert( !is_same_v<SubT, NotFoundT>, "did you pass a k value out of the Kind enum ?" );
+            static_assert( !std::is_same_v<SubT, NotFoundT>, "did you pass a k value out of the Kind enum ?" );
             // initialize the variant with an default constructed sub type:
             m_subInfo = SubT{};
             return GetSubRefAs<SubT>();
@@ -1004,7 +1022,7 @@ namespace AZ::ShaderCompiler
         //! Meat of the data for this symbol will have many specific attributes, so it goes in a variant
         AnyKind          m_subInfo;
         //! all reference (use) sites for this symbol
-        vector< Seenat > m_seenAt;
+        std::vector< Seenat > m_seenAt;
 
     public:
         // Meta API. query "type is alternative?" of subinfo variant
@@ -1013,9 +1031,8 @@ namespace AZ::ShaderCompiler
     };
 
     // usings for data model. of particular relevance for the SymbolTable.
-    using IdToKindMap            = unordered_map< IdentifierUID, KindInfo >;
+    using IdToKindMap            = std::unordered_map< IdentifierUID, KindInfo >;
     using IdAndKind              = IdToKindMap::value_type;  // nicely destructurable! assign it like this: `auto& [uid, kind] = GetIdAndKind..`
-
 
     struct GetSubKindInfoTypeName_Visitor
     {
@@ -1024,7 +1041,7 @@ namespace AZ::ShaderCompiler
               m_forFunctionsGetReturnType(forFunctionsGetReturnType)
         {}
 
-        QualifiedName operator()(monostate) const
+        QualifiedName operator()(std::monostate) const
         {
             return QualifiedName{"<fail>"};
         }
@@ -1129,7 +1146,7 @@ namespace AZ::ShaderCompiler
         }
     };
 
-    inline string GetFirstSeenLineMessage(const KindInfo& kindInfo)
+    inline std::string GetFirstSeenLineMessage(const KindInfo& kindInfo)
     {
         size_t firstSeen = kindInfo.VisitSub(GetOrigSourceLine_Visitor{});
         if (firstSeen != NoLine)
@@ -1140,12 +1157,12 @@ namespace AZ::ShaderCompiler
     }
 
     //! helper for fatal semantic error of ODR violation
-    inline void ThrowRedeclarationAsDifferentKind(string_view symbolName, Kind newKind, const KindInfo& kindInfo, optional<size_t> lineNumber = none)
+    inline void ThrowRedeclarationAsDifferentKind(std::string_view symbolName, Kind newKind, const KindInfo& kindInfo, std::optional<size_t> lineNumber = std::nullopt)
     {
-        const string errorMessage = ConcatString(
+        const std::string errorMessage = ConcatString(
             "redeclaration of ", symbolName, " with a different kind: ", Kind::ToStr(newKind),
             " but was ", Kind::ToStr(kindInfo.GetKind()), ", ", GetFirstSeenLineMessage(kindInfo));
-        throw AzslcOrchestratorException(ORCHESTRATOR_ODR_VIOLATION, lineNumber, none, errorMessage);
+        throw AzslcOrchestratorException(ORCHESTRATOR_ODR_VIOLATION, lineNumber, std::nullopt, errorMessage);
     }
 
     struct GetDefinitionNodeTokensLocation_Visitor

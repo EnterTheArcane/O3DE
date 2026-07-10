@@ -1,13 +1,20 @@
 ﻿/*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 
 #include "Texture2DMSto2DCodeMutator.h"
 
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <iterator>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace AZ::ShaderCompiler
 {
@@ -36,7 +43,6 @@ namespace AZ::ShaderCompiler
         }
     }
     ///////////////////////////////////////////////////////////////////////
-
 
     ///////////////////////////////////////////////////////////////////////
     // ICodeEmissionMutator Overrides ...
@@ -67,7 +73,7 @@ namespace AZ::ShaderCompiler
         // "<Symbol>", ".", "<funcName>"
         if (children.size() == 3)
         {
-            string symbolName = Replace(children[0]->getText(), "::", "/");
+            std::string symbolName = Replace(children[0]->getText(), "::", "/");
             return UnqualifiedName{ symbolName };
         }
         return UnqualifiedName();
@@ -118,7 +124,6 @@ namespace AZ::ShaderCompiler
         const auto argumentsCtx = argumentListCtx->arguments();
         auto vectorOfArguments = argumentsCtx->expression();
 
-
         // For Texture2DMS Load has two variants:
         // 1- Two arguments: int2 location, int sampleIndex
         //    When mutating this variant to Texture2D the first argument will be prepended
@@ -129,7 +134,7 @@ namespace AZ::ShaderCompiler
         //    the third argument will remain as is.
         // For Texture2DMSArray it's the same as above, except that the first argument is of type int3.
         //    And it will be wrapped with an int4.
-        const string wrapperType = textureMSType == TextureMSType::Texture2DMSArray ? "int4(" : "int3(";
+        const std::string wrapperType = textureMSType == TextureMSType::Texture2DMSArray ? "int4(" : "int3(";
         if (vectorOfArguments.size() >= 2)
         {
             {
@@ -229,7 +234,7 @@ namespace AZ::ShaderCompiler
         auto lastArgumentCtx = vectorOfArguments[lastArgumentIndex];
         // Capture the name of the variable that gets the number of samples because
         // it will be assigned the value 1.
-        string lastArgumentName = lastArgumentCtx->getText();
+        std::string lastArgumentName = lastArgumentCtx->getText();
         {
             const ssize_t startingTokenIndex = lastArgumentCtx->start->getTokenIndex();
             const ssize_t stoppingTokenIndex = lastArgumentCtx->stop->getTokenIndex();
@@ -247,7 +252,7 @@ namespace AZ::ShaderCompiler
         {
             const ssize_t parenthesisTokenIndex = rightParenthesisNode->getSymbol()->getTokenIndex();
             CodeMutation codeMutation;
-            string samplesExpression = AZ::FormatString("; %s = 1 ", lastArgumentName.c_str());
+            std::string samplesExpression = AZ::FormatString("; %s = 1 ", lastArgumentName.c_str());
             codeMutation.m_append.emplace(samplesExpression);
             m_mutations.emplace(parenthesisTokenIndex, codeMutation);
         }
@@ -264,7 +269,7 @@ namespace AZ::ShaderCompiler
             return varInfo->m_typeInfoExt.m_coreType.m_typeClass == TypeClass::MultisampledTexture;
         };
 
-        vector<IdentifierUID> texture2DMSVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(texture2DMSFilterFunc);
+        std::vector<IdentifierUID> texture2DMSVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(texture2DMSFilterFunc);
         for (const auto& uid : texture2DMSVariables)
         {
             auto varInfo = m_ir->GetSymbolSubAs<VarInfo>(uid.GetName());
@@ -301,7 +306,7 @@ namespace AZ::ShaderCompiler
             return semanticOption->hlslSemanticName()->HLSLSemanticSystem() != nullptr;
         };
 
-        vector<IdentifierUID> systemSemanticVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(variablesWithSystemSemanticFilterFunc);
+        std::vector<IdentifierUID> systemSemanticVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(variablesWithSystemSemanticFilterFunc);
         for (const auto& uid : systemSemanticVariables)
         {
             auto varInfo = m_ir->GetSymbolSubAs<VarInfo>(uid.GetName());
@@ -309,7 +314,7 @@ namespace AZ::ShaderCompiler
             // Get the semantic name.
             auto systemSemanticName = varInfo->m_declNode->SemanticOpt->hlslSemanticName()->HLSLSemanticSystem()->getText();
 
-            static const std::array<string_view, 2> SystemSemanticsNames =
+            static const std::array<std::string_view, 2> SystemSemanticsNames =
             {
                 "SV_SampleIndex",
                 "SV_Coverage",
@@ -336,9 +341,9 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    static vector<Token*> NodeTokens(ParserRuleContext* node, TokenStream* stream)
+    static std::vector<Token*> NodeTokens(ParserRuleContext* node, TokenStream* stream)
     {
-        vector<Token*> tokens;
+        std::vector<Token*> tokens;
         misc::Interval src = node->getSourceInterval();
         for (ssize_t i = src.a; i <= src.b; ++i)
         {
@@ -349,17 +354,17 @@ namespace AZ::ShaderCompiler
 
     //! A helper method that figures out how a function argument should look like
     //! when mutated into a local variable.
-    static string GetLocalVariableStringFromFunctionArgument(TokenStream* stream, const UnqualifiedName& uqName, AstUnnamedVarDecl* ctx, const char * initializationValue)
+    static std::string GetLocalVariableStringFromFunctionArgument(TokenStream* stream, const UnqualifiedName& uqName, AstUnnamedVarDecl* ctx, const char * initializationValue)
     {
         azslParser::FunctionParamContext* paramCtx = nullptr;
         auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
         auto tokens = NodeTokens(typeCtx, stream);
-        vector<string> stringlets;
+        std::vector<std::string> stringlets;
         TransformCopy(tokens, stringlets, [&](Token* t) { return t->getText(); });
-        vector<string> filtered;
+        std::vector<std::string> filtered;
         std::copy_if(stringlets.begin(), stringlets.end(), std::back_inserter(filtered), [&](auto subtok)
                      { return subtok != "in" && subtok != "out" && subtok != "inout" && !IsAllWhitespaces(subtok); });
-        string typeHlsl = Join(filtered, " ");
+        std::string typeHlsl = Join(filtered, " ");
         if (initializationValue)
         {
             return FormatString("%s %s = (%s)%s;\n", typeHlsl.c_str(), uqName.c_str(), typeHlsl.c_str(), initializationValue);
@@ -367,7 +372,7 @@ namespace AZ::ShaderCompiler
         return FormatString("%s %s;\n", typeHlsl.c_str(), uqName.c_str());
     }
 
-    void Texture2DMSto2DCodeMutator::DropMultiSamplingSystemSemanticFromFunction(const IdentifierUID& varUid, const VarInfo* varInfo, const string& systemSemanticName, const IdentifierUID& functionUid)
+    void Texture2DMSto2DCodeMutator::DropMultiSamplingSystemSemanticFromFunction(const IdentifierUID& varUid, const VarInfo* varInfo, const std::string& systemSemanticName, const IdentifierUID& functionUid)
     {
         // Let's get the FunctionInfo object and report this variable, which will be dropped from the
         // input arguments and will be re-emitted as a local variable to avoid compiler errors from other
@@ -390,7 +395,7 @@ namespace AZ::ShaderCompiler
         FunctionInfo* functionInfo = m_ir->GetSymbolSubAs<FunctionInfo>(functionUid.GetName());
         functionInfo->DeleteParameter(varUid);
 
-        string initializationValue = "0";
+        std::string initializationValue = "0";
         if (systemSemanticName == "SV_Coverage")
         {
             // SV_Coverage is a mask where each bit represents active sample indices.
@@ -421,12 +426,12 @@ namespace AZ::ShaderCompiler
         else
         {
             CodeMutation& mutation = itor->second;
-            string prevCode = mutation.m_append.value();
+            std::string prevCode = mutation.m_append.value();
             mutation.m_append.emplace(prevCode + newCode);
         }
     }
 
-    void Texture2DMSto2DCodeMutator::MutateMultiSamplingSystemSemanticInStruct(const IdentifierUID& varUid, const VarInfo* varInfo, const string& systemSemanticName, const IdentifierUID& structUid)
+    void Texture2DMSto2DCodeMutator::MutateMultiSamplingSystemSemanticInStruct(const IdentifierUID& varUid, const VarInfo* varInfo, const std::string& systemSemanticName, const IdentifierUID& structUid)
     {
         // This is the case of member variable of a struct, but it is a system semantic.
         // Example:
@@ -444,7 +449,7 @@ namespace AZ::ShaderCompiler
         //     static const uint   m_sampleIndex = 0; <-- Became a static const, and of course, the semantic is removed.
         //     ...
         // }
-        string initializationValue = "0";
+        std::string initializationValue = "0";
         if (systemSemanticName == "SV_Coverage")
         {
             initializationValue = "-1";

@@ -10,6 +10,15 @@
 #include "SymbolTable.h"
 #include "DependencySolver.tpl"
 
+#include <array>
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     // mangled symbol path of the rootconstant constant buffer
@@ -37,7 +46,7 @@ namespace AZ::ShaderCompiler
         /// Register a fresh entry in the symbol map. No KindInfo filled up, the client must do it.
         /// Will return a reference to the newly inserted data.
         /// Will throw in case of ODR violation.
-        auto AddIdentifier(QualifiedNameView symbol, Kind kind, optional<size_t> lineNumber = none, AddIdentifierChecks = AddIdentifierChecks::ReservedNames) -> IdAndKind&;
+        auto AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber = std::nullopt, AddIdentifierChecks = AddIdentifierChecks::ReservedNames) -> IdAndKind&;
 
         bool DeleteIdentifier(IdentifierUID name);
 
@@ -78,13 +87,13 @@ namespace AZ::ShaderCompiler
         }
 
         template <typename Sub>
-        using Id_Sub_Kind = tuple<IdentifierUID, Sub*, KindInfo*>;
+        using Id_Sub_Kind = std::tuple<IdentifierUID, Sub*, KindInfo*>;
 
         /// list of pre-gotten subinfo of type Sub, filtered from GetOrderedSymbols()
         template<typename Sub>
-        vector<Sub*> GetOrderedSubInfosOfSubType()
+        std::vector<Sub*> GetOrderedSubInfosOfSubType()
         {
-            vector<Sub*> filteredList;
+            std::vector<Sub*> filteredList;
             for (const auto& srg : GetOrderedSymbols())
             {
                 auto* sub = GetAsSub<Sub>(srg);
@@ -99,9 +108,9 @@ namespace AZ::ShaderCompiler
         /// Ordered symbol list, filtered by subinfo of type Sub
         /// each element is a pair (id, Sub*)
         template<typename Sub>
-        vector<pair<IdentifierUID, Sub*>> GetOrderedSymbolsOfSubType_2()
+        std::vector<std::pair<IdentifierUID, Sub*>> GetOrderedSymbolsOfSubType_2()
         {
-            vector<pair<IdentifierUID, Sub*>> filteredList;
+            std::vector<std::pair<IdentifierUID, Sub*>> filteredList;
             for (const auto& srg : GetOrderedSymbols())
             {
                 auto& [uid, info] = *m_elastic.GetIdAndKindInfo(srg.m_name);
@@ -117,9 +126,9 @@ namespace AZ::ShaderCompiler
         /// Ordered symbol list, filtered by subinfo of type Sub
         /// each element is a tuple (id, Sub*, KindInfo*)
         template<typename Sub>
-        vector<Id_Sub_Kind<Sub>> GetOrderedSymbolsOfSubType_3()
+        std::vector<Id_Sub_Kind<Sub>> GetOrderedSymbolsOfSubType_3()
         {
-            vector<Id_Sub_Kind<Sub>> filteredList;
+            std::vector<Id_Sub_Kind<Sub>> filteredList;
             for (const auto& srg : GetOrderedSymbols())
             {
                 auto& [uid, info] = *m_elastic.GetIdAndKindInfo(srg.m_name);
@@ -135,14 +144,14 @@ namespace AZ::ShaderCompiler
         //! Adds a new attribute either to the global or attached attribute list
         void PushPendingAttribute(const AttributeInfo& attrInfo, AttributeScope scope);
 
-        //! Gets the list of attributes attached to the identifier, if any. nullptr if none
-        const vector<AttributeInfo>* GetAttributeList(const IdentifierUID& uid) const;
+        //! Gets the list of attributes attached to the identifier, if any. nullptr if std::nullopt
+        const std::vector<AttributeInfo>* GetAttributeList(const IdentifierUID& uid) const;
 
         //! Gets the attribute with the matching name attached to the identifier, if any
-        optional<AttributeInfo> GetAttribute(const IdentifierUID& uid, const string& attributeName) const;
+        std::optional<AttributeInfo> GetAttribute(const IdentifierUID& uid, const std::string& attributeName) const;
 
         //! Gets the list of global (unattached) attributes
-        const vector<AttributeInfo>& GetGlobalAttributeList() const;
+        const std::vector<AttributeInfo>& GetGlobalAttributeList() const;
 
         //! Change (in-place) the elastic.m_order vector to shuffle the symbol IDs so that they
         //! get ordered to respect dependencies on each other.
@@ -156,8 +165,8 @@ namespace AZ::ShaderCompiler
         void AttachAccumulatedAttributes(const IdentifierUID& uid);
 
         //! List of encountered, but pending, attributes
-        array< vector<AttributeInfo>, AttributeScope::EndEnumeratorSentinel_ > m_orphanAttributesList;
+        std::array< std::vector<AttributeInfo>, AttributeScope::EndEnumeratorSentinel_ > m_orphanAttributesList;
         //! List of attached attributes (during parsing, encountered attributes accumulates, then flow to their definitive place)
-        map< IdentifierUID, vector<AttributeInfo> > m_idToAttributeMap;
+        std::map< IdentifierUID, std::vector<AttributeInfo> > m_idToAttributeMap;
     };
 }

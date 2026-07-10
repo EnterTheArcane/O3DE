@@ -10,6 +10,12 @@
 #include "GenericUtils.h"
 #include "KindInfo.h"
 
+#include <cstdint>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     struct IntermediateRepresentation;
@@ -43,8 +49,8 @@ namespace AZ::ShaderCompiler
 
     private:
 
-        using MapOfVarInfoUidToPadding = unordered_map<IdentifierUID, uint32_t>;
-        using MapOfScopeUidToPaddingMap = unordered_map<IdentifierUID, MapOfVarInfoUidToPadding>;
+        using MapOfVarInfoUidToPadding = std::unordered_map<IdentifierUID, uint32_t>;
+        using MapOfScopeUidToPaddingMap = std::unordered_map<IdentifierUID, MapOfVarInfoUidToPadding>;
 
         ///////////////////////////////////////////////////////////////////////
         // Functions used for sorting START
@@ -53,15 +59,15 @@ namespace AZ::ShaderCompiler
         // This function runs a classical depth-first search topological sort.
         // The idea is that the IdentifierUID at the end of the returned vector represent scopes that
         // need padding but they depend on scopes at the beginnning of the vector to be padded first.
-        vector<IdentifierUID> GetSortedScopeUidList(const MapOfScopeUidToPaddingMap& scopesToPad) const;
+        std::vector<IdentifierUID> GetSortedScopeUidList(const MapOfScopeUidToPaddingMap& scopesToPad) const;
 
         // Helper Recursive function for depth-search topological sorting of the Scope Uids that require padding.
-        void ScopeUidSortVisitFunction(const IdentifierUID& scopeUid, unordered_set<IdentifierUID>& visitedScopes, vector<IdentifierUID>& sortedList) const;
+        void ScopeUidSortVisitFunction(const IdentifierUID& scopeUid, std::unordered_set<IdentifierUID>& visitedScopes, std::vector<IdentifierUID>& sortedList) const;
 
         // Helper function used during ScopeUidSortVisitFunction()
         // pair.first is the struct type IdentifierUID.
         // pair.second is the variable IdentifierUID.
-        vector<pair<IdentifierUID, IdentifierUID>> GetVariablesOfScopeTypeThatRequirePadding(const ClassInfo* classInfo) const;
+        std::vector<std::pair<IdentifierUID, IdentifierUID>> GetVariablesOfScopeTypeThatRequirePadding(const ClassInfo* classInfo) const;
 
         // Functions used for sorting END
         ///////////////////////////////////////////////////////////////////////

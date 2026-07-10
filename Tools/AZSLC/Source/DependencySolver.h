@@ -1,13 +1,17 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
-#include <iterator>
+#include <array>
+#include <cstdint>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace AZ::ShaderCompiler
 {
@@ -22,9 +26,9 @@ namespace AZ::ShaderCompiler
     namespace detail
     {
         template< typename T, size_t N >
-        struct ElasticArray : array<T, N>
+        struct ElasticArray : std::array<T, N>
         {
-            using Base = array<T, N>;
+            using Base = std::array<T, N>;
             using Base::array;
             using Base::operator=;
             using Base::operator[];
@@ -68,8 +72,8 @@ namespace AZ::ShaderCompiler
 
         bool Has(ID node) const;
 
-        unordered_map< ID, Node > m_nodes;
-        vector< ID > m_order;
+        std::unordered_map< ID, Node > m_nodes;
+        std::vector< ID > m_order;
 
     private:
         // Tarjan Topological-Sort 1976
@@ -85,9 +89,9 @@ namespace AZ::ShaderCompiler
         // get any node that is not marked
         ID SelectUnmarked();
 
-        unordered_set<ID> m_permMarks;
-        unordered_set<ID> m_tempMarks;
-        vector<ID> m_result; // L
+        std::unordered_set<ID> m_permMarks;
+        std::unordered_set<ID> m_tempMarks;
+        std::vector<ID> m_result; // L
     };
 }
 

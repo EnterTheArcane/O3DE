@@ -7,7 +7,10 @@
  */
 #pragma once
 
-#include "StdUtils.h"
+
+#include <cstdint>
+#include <map>
+#include <string>
 
 namespace AZ::ShaderCompiler
 {
@@ -17,7 +20,7 @@ namespace AZ::ShaderCompiler
     {
         size_t m_physicalTokenLine;  //!< line where the preprocessor token appears
         size_t m_forcedLineNumber;   //!< the line number as specified (parsed from syntax input)
-        string m_containingFilename;
+        std::string m_containingFilename;
     };
 
     //! A helper capable of finding the original line in the source file
@@ -32,7 +35,7 @@ namespace AZ::ShaderCompiler
         const LineDirectiveInfo* GetNearestPreprocessorLineDirective(size_t physicalLine) const
         {
             auto it = Infimum(m_lineMap, physicalLine);
-            return it == m_lineMap.cend() ? nullptr : &it->second;
+            return it == m_lineMap.end() ? nullptr : &it->second;
         }
 
         //! The "virtual" line is the #line-directive adjusted line number, as opposed to a physical line (given by tokens)
@@ -58,7 +61,7 @@ namespace AZ::ShaderCompiler
                          : physicalLine;  // Return unadjusted in case of abscence of a virtual space.
         }
 
-        const string& GetVirtualFileName(size_t physicalLine) const
+        const std::string& GetVirtualFileName(size_t physicalLine) const
         {
             const LineDirectiveInfo* found = GetNearestPreprocessorLineDirective(physicalLine);
             return found ? found->m_containingFilename
@@ -75,7 +78,7 @@ namespace AZ::ShaderCompiler
             m_lineMap.emplace(ldi.m_physicalTokenLine, ldi);
         }
 
-        map<size_t, LineDirectiveInfo> m_lineMap;
-        string                         m_physicalSourceFileName;
+        std::map<size_t, LineDirectiveInfo> m_lineMap;
+        std::string                         m_physicalSourceFileName;
     };
 }

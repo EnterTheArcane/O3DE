@@ -9,6 +9,11 @@
 #include <Emitter.h>
 #include "PlatformEmitter_Metal.h"
 
+#include <cassert>
+#include <cstdint>
+#include <sstream>
+#include <string>
+
 namespace AZ::ShaderCompiler
 {
     static constexpr char PlatformEmitter_MetalName[] = "mt";

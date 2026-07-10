@@ -12,6 +12,15 @@
 #include "UnboundedArraysValidator.h"
 #include "KindInfo.h"
 
+#include <cstdint>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     //! For argument of RegisterFunction
@@ -41,7 +50,7 @@ namespace AZ::ShaderCompiler
         //! Does this symbol resolves to an existing ID from the current scope ?
         //! Helper shortcut: will concatenate your symbol name to current scope before passing to SymbolAggregator
         //! Returns whatever SymbolAggretator's eponymous returns.
-        decltype(auto) AddIdentifier(UnqualifiedNameView usym, Kind kind, optional<size_t> lineNumber = none)
+        decltype(auto) AddIdentifier(UnqualifiedNameView usym, Kind kind, std::optional<size_t> lineNumber = std::nullopt)
         {
             return m_symbols->AddIdentifier(MakeFullyQualified(usym), kind, lineNumber);
         }
@@ -90,7 +99,7 @@ namespace AZ::ShaderCompiler
         template< typename ContextType >
         auto RegisterStructuredType(ContextType* ctx, Kind kind) -> IdAndKind&
         {
-            auto const& idText     = ctx->Name->getText();
+            auto idText            = ctx->Name->getText();
             size_t line            = ctx->Name->getLine();
             verboseCout << line << ": " << Kind::ToStr(kind) << " decl: " << idText << "\n";
             auto uqNameView        = UnqualifiedNameView{idText};
@@ -150,7 +159,7 @@ namespace AZ::ShaderCompiler
             return symbol;
         }
 
-        auto RegisterTypeAlias(string_view newIdentifier, AstType* existingTypeCtx, azslParser::TypeAliasingDefinitionStatementContext* ctx) -> IdAndKind&;
+        auto RegisterTypeAlias(std::string_view newIdentifier, AstType* existingTypeCtx, azslParser::TypeAliasingDefinitionStatementContext* ctx) -> IdAndKind&;
 
         auto RegisterSRGSemantic(AstSRGSemanticDeclNode* ctx) -> IdAndKind&;
 
@@ -190,14 +199,14 @@ namespace AZ::ShaderCompiler
         //! Check that the type of LHS expression (in a member access expression context) satisfies well-formed semantics
         //! returns .first==true if is valid, and .first==false if the semantic fails to check.
         //!         .second is the typeof(LHS)
-        auto VerifyLHSExprOfMAExprIsValid(azslParser::MemberAccessExpressionContext* ctx) const -> pair<bool, QualifiedName>;
+        auto VerifyLHSExprOfMAExprIsValid(azslParser::MemberAccessExpressionContext* ctx) const -> std::pair<bool, QualifiedName>;
 
         //! Resolve the type from the expression, look it up, and verify that it is a kind that may hold sub-members.
-        auto VerifyTypeIsScopeComposable(azslParser::ExpressionContext* typeScope) const -> pair<bool, QualifiedName>;
+        auto VerifyTypeIsScopeComposable(azslParser::ExpressionContext* typeScope) const -> std::pair<bool, QualifiedName>;
 
         //! look up the type, verify that it exists and is a kind that may hold sub-members.
         //! takes supplementary parameters for better verbose or warning diagnostics.
-        auto VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, optional<string> lhsExpressionText = none, optional<size_t> line = none) const -> pair<bool, QualifiedName>;
+        auto VerifyTypeIsScopeComposable(QualifiedNameView lhsTypeName, std::optional<std::string> lhsExpressionText = std::nullopt, std::optional<size_t> line = std::nullopt) const -> std::pair<bool, QualifiedName>;
 
         //! assemble a type (left) and an idexpr (right) to see if it forms a symbol that exists, and extracts its type.
         auto ComposeMemberNameWithScopeAndGetType(QualifiedName scopingType, AstIdExpr* rhsMember) const -> QualifiedName;
@@ -274,7 +283,7 @@ namespace AZ::ShaderCompiler
         enum class OnNotFoundOrWrongKind { Diagnose, Empty, CopeByCopy };
         //! Shorthand for symbol lookup, but with supplementary checks, specifics to types.
         //! throws if: the found symbol is not a type, or no found symbol and policy is Diagnose.
-        auto LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy, optional<size_t> sourceline = none) const noexcept(false) -> IdentifierUID;
+        auto LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy = OnNotFoundOrWrongKind::CopeByCopy, std::optional<size_t> sourceline = std::nullopt) const noexcept(false) -> IdentifierUID;
 
         //! Find and return a registered type from an AST node. Will also resolve typeof expressions.
         //! could work from any sort of context that has an ExtractTypeNameFromAstContext override
@@ -315,7 +324,7 @@ namespace AZ::ShaderCompiler
                 // TODO: if it is a matrix<float,3,4> it needs to be canonicalized to float3x4
                 if (policy == OnNotFoundOrWrongKind::Diagnose)
                 {
-                    throw std::runtime_error(DiagLine(ctx->start) + uqName + " is not a supported type expression ?");
+                    throw std::runtime_error((DiagLine(ctx->start) + uqName + " is not a supported type expression ?").c_str());
                 }
                 PrintWarning(Warn::W3, ctx->start, "unidentified name ", uqName, " in type expression");
                 if (policy == OnNotFoundOrWrongKind::CopeByCopy)
@@ -348,7 +357,7 @@ namespace AZ::ShaderCompiler
         auto CreateExtendedTypeInfo(AstType* ctx, ArrayDimensions dims) const -> ExtendedTypeInfo;
 
         // Helper func which folds any possible generic dimensions into the extracted composed type
-        bool TryFoldGenericArrayDimensions(ExtractedComposedType& extType, vector<tree::TerminalNode*>& genericDims) const;
+        bool TryFoldGenericArrayDimensions(ExtractedComposedType& extType, std::vector<tree::TerminalNode*>& genericDims) const;
 
         // another helper to streamline what to do directly with the result from ExtractTypeNameFromAstContext function families.
         auto CreateExtendedTypeInfo(const ExtractedComposedType&, const TypeQualifiers&, ArrayDimensions) const -> ExtendedTypeInfo;
@@ -365,20 +374,20 @@ namespace AZ::ShaderCompiler
         auto ResolveOverload(IdAndKind* maybeOverloadSet, azslParser::ArgumentListContext* argumentListCtx) const -> IdAndKind*;
 
         //! Generate a unique name, create a corresponding namespace symbol, and enter its scope
-        void MakeAndEnterAnonymousScope(string_view decorationPrefix, Token* scopeFirstToken);
+        void MakeAndEnterAnonymousScope(std::string_view decorationPrefix, Token* scopeFirstToken);
 
     private:
         //! for internal use when encountering unresolved symbols by lookup.
-        void DiagnoseUndeclaredSub(Token* atToken, QualifiedNameView startupScope, string partialName) const;
+        void DiagnoseUndeclaredSub(Token* atToken, QualifiedNameView startupScope, std::string partialName) const;
 
-        auto TryFoldSRGSemantic(azslParser::SrgSemanticContext* ctx, size_t semanticTokenType, bool required = false) -> optional<int64_t>;
+        auto TryFoldSRGSemantic(azslParser::SrgSemanticContext* ctx, size_t semanticTokenType, bool required = false) -> std::optional<int64_t>;
 
-        auto CreateDecorationOfFunction(azslParser::FunctionParamsContext* parametersContext) const -> string;
+        auto CreateDecorationOfFunction(azslParser::FunctionParamsContext* parametersContext) const -> std::string;
 
         auto CreateDecoratedIdentityOfFunction(QualifiedNameView name, azslParser::FunctionParamsContext* parametersContext) const -> QualifiedName;
 
         //! e.g. provided "int a; X GetX(int);" then from expression "(a, GetX(2), true)" MangleArgumentList returns "(?int,/X,?bool)"
-        auto MangleArgumentList(azslParser::ArgumentListContext* ctx) const -> string;
+        auto MangleArgumentList(azslParser::ArgumentListContext* ctx) const -> std::string;
 
         //! queries whether a function has default parameters
         bool HasAnyDefaultParameterValue(const IdentifierUID& functionUid) const;
@@ -391,7 +400,7 @@ namespace AZ::ShaderCompiler
 
     private:
         // remember frequencyId to srg association, for semantic validation
-        unordered_map<int64_t, IdentifierUID> m_frequencyToSrg;
+        std::unordered_map<int64_t, IdentifierUID> m_frequencyToSrg;
         int m_anonymousCounter;
     };
 }

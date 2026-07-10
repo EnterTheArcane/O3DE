@@ -9,6 +9,11 @@
 
 #include "SymbolAggregator.h"
 
+#include <functional>
+#include <stack>
+#include <string_view>
+#include <unordered_map>
+
 namespace AZ::ShaderCompiler
 {
     using SymbolGetterFunctorT = std::function< IdAndKind* (QualifiedNameView) >;
@@ -19,7 +24,7 @@ namespace AZ::ShaderCompiler
         explicit ScopeTracker(SymbolGetterFunctorT symbolFinder);
 
         /// relative descent into a normal scope tree
-        void EnterScope(string_view scopeName, ssize_t tokenStreamPosition);
+        void EnterScope(std::string_view scopeName, ssize_t tokenStreamPosition);
 
         /// jump to unrelated scope
         void EnterScope(QualifiedNameView scopeName, ssize_t tokenStreamPosition);
@@ -38,9 +43,9 @@ namespace AZ::ShaderCompiler
         SymbolGetterFunctorT  m_symFinder;
         QualifiedName         m_currentScopePath; // example: "/sisdk3/gfx/"
         IdentifierUID         m_currentScopeUID;
-        stack<QualifiedName>  m_oldScopePaths;
+        std::stack<QualifiedName>  m_oldScopePaths;
         // Store each scopes begin/end in the original source
-        using MapOfScopeIntervals = unordered_map<IdentifierUID, misc::Interval>;
+        using MapOfScopeIntervals = std::unordered_map<IdentifierUID, misc::Interval>;
         MapOfScopeIntervals   m_scopeIntervals;
     };
 }

@@ -6,7 +6,16 @@
  *
  */
 
+#include <cassert>
+#include <cstdint>
 #include <mutex>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
 
 #include "Emitter.h"
 #include "PlatformEmitter.h"
@@ -20,10 +29,10 @@ namespace AZ::ShaderCompiler
         return &platformEmitter;
     }
 
-    unordered_map<string, const PlatformEmitter*>* s_emitters = nullptr;
+    std::unordered_map<std::string, const PlatformEmitter*>* s_emitters = nullptr;
     std::mutex emitterListMutex;
 
-    const PlatformEmitter* PlatformEmitter::GetEmitter(const string& key) noexcept(true)
+    const PlatformEmitter* PlatformEmitter::GetEmitter(const std::string& key) noexcept(true)
     {
         std::lock_guard<std::mutex> lock(emitterListMutex);
 
@@ -37,13 +46,13 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void PlatformEmitter::SetEmitter(const string& key, const PlatformEmitter* const platformEmitter) noexcept(false)
+    void PlatformEmitter::SetEmitter(const std::string& key, const PlatformEmitter* const platformEmitter) noexcept(false)
     {
         std::lock_guard<std::mutex> lock(emitterListMutex);
 
         if (!s_emitters)
         {
-            s_emitters = new unordered_map<string, const PlatformEmitter*>();
+            s_emitters = new std::unordered_map<std::string, const PlatformEmitter*>();
         }
 
         if (s_emitters->find(key) != s_emitters->end())
@@ -55,13 +64,13 @@ namespace AZ::ShaderCompiler
 
     // Virtual methods to be overridden
 
-    string PlatformEmitter::GetRootSig(const CodeEmitter&, const RootSigDesc&, const Options&, BindingPair::Set) const
+    std::string PlatformEmitter::GetRootSig(const CodeEmitter&, const RootSigDesc&, const Options&, BindingPair::Set) const
     {
         // The default implementation of most emission methods does nothing
         return "";
     }
 
-    string PlatformEmitter::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const
+    std::string PlatformEmitter::GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const
     {
         std::stringstream strOut;
 
@@ -76,18 +85,18 @@ namespace AZ::ShaderCompiler
         return strOut.str();
     }
 
-    std::pair<string, string> PlatformEmitter::GetDataViewHeaderFooter(
+    std::pair<std::string, std::string> PlatformEmitter::GetDataViewHeaderFooter(
         const CodeEmitter& codeEmitter,
         const IdentifierUID& symbol,
         uint32_t bindInfoRegisterIndex,
-        string_view registerTypeLetter,
-        optional<string> stringifiedLogicalSpace,
+        std::string_view registerTypeLetter,
+        std::optional<std::string> stringifiedLogicalSpace,
         const Options& options) const
     {
         // in the general case, we output normal HLSL `var decl : register(b0, space0);`
         // no special header, but the post colon part is the footer
-        string bindingSpaceStringlet { stringifiedLogicalSpace ? ", space" + *stringifiedLogicalSpace : "" };
-        string footer {ConcatString(" : register(", registerTypeLetter, bindInfoRegisterIndex, bindingSpaceStringlet, ")")};
+        std::string bindingSpaceStringlet { stringifiedLogicalSpace ? ", space" + *stringifiedLogicalSpace : "" };
+        std::string footer {ConcatString(" : register(", registerTypeLetter, bindInfoRegisterIndex, bindingSpaceStringlet, ")")};
         return { {}, footer };
     }
 
@@ -96,7 +105,7 @@ namespace AZ::ShaderCompiler
         return size;
     }
 
-    string PlatformEmitter::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const
+    std::string PlatformEmitter::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const
     {
         return "";
     }

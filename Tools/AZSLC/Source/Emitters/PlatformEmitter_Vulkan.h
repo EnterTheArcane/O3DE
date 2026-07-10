@@ -10,6 +10,8 @@
 #include <PlatformEmitter.h>
 #include "PlatformEmitter_CommonVulkan.h"
 
+#include <string>
+
 namespace AZ::ShaderCompiler
 {
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement
@@ -21,7 +23,7 @@ namespace AZ::ShaderCompiler
         static const PlatformEmitter* RegisterPlatformEmitter() noexcept(false);
 
         [[nodiscard]]
-        string GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const override final;
+        std::string GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const override final;
 
         SubpassInputSupportFlag GetSubpassInputSupport() const override;
 

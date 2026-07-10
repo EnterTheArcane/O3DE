@@ -8,6 +8,19 @@
 
 #include "SymbolAggregator.h"
 
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <stack>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <type_traits>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     template <auto N>
@@ -79,10 +92,10 @@ namespace AZ::ShaderCompiler
         return toReturn;
     }
 
-    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<size_t> lineNumber /*=none*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
+    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber /*=std::nullopt*/, AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
     {
         // check against reserved names
-        static const std::unordered_set<string_view> ReservedNames =
+        static const std::unordered_set<std::string_view> ReservedNames =
         {
             "/Root_Constants",
             RootConstantsViewName
@@ -91,7 +104,7 @@ namespace AZ::ShaderCompiler
         if (checkPolicy == AddIdentifierChecks::ReservedNames && (
                 IsIn(symbol, ReservedNames) || IsIn(ExtractLeaf(symbol), ReservedNames) ))
         {
-            throw AzslcException(ADVANCED_RESERVED_NAME_USED, "Symbol", lineNumber, none,
+            throw AzslcException(ADVANCED_RESERVED_NAME_USED, "Symbol", lineNumber, std::nullopt,
                                  ConcatString(symbol, " is a reserved name"));
         }
         auto& symAndKind = m_elastic.AddIdentifier(symbol, kind, lineNumber);
@@ -133,7 +146,7 @@ namespace AZ::ShaderCompiler
         //          int a;
         //          void f() { a; }  // refers to /C/a  but would refer to /a if `C` didn't have a member a. /C/a shadows /a
         //      };
-        string_view path = scope;
+        std::string_view path = scope;
         bool exit = false;
         do
         {
@@ -164,7 +177,7 @@ namespace AZ::ShaderCompiler
         UnqualifiedName     name;
         QualifiedName       target = RemoveLastParenthesisGroup(uid.GetName());
         UnqualifiedName     nextname = ExtractLeaf(target);
-        vector<string_view> split = SplitPath(uid.m_name);
+        std::vector<std::string_view> split = SplitPath(uid.m_name);
         bool                found = false;
         int                 numsplits = static_cast<int>(split.size());
         for (int i = numsplits - 2;  // start from leaf-1 (e.g. from "/A/B/Leaf", name is already Leaf, we need to prepend "B", then "A")
@@ -198,7 +211,7 @@ namespace AZ::ShaderCompiler
         m_orphanAttributesList[scope].push_back(attrInfo);
     }
 
-    const vector<AttributeInfo>* SymbolAggregator::GetAttributeList(const IdentifierUID& uid) const
+    const std::vector<AttributeInfo>* SymbolAggregator::GetAttributeList(const IdentifierUID& uid) const
     {
         auto attrList = m_idToAttributeMap.find(uid);
         return attrList == m_idToAttributeMap.end() ?
@@ -206,19 +219,19 @@ namespace AZ::ShaderCompiler
             : &attrList->second;
     }
 
-    static optional<AttributeInfo> FindAttributeByNameInList(const vector<AttributeInfo>& attrList, const string& attributeName)
+    static std::optional<AttributeInfo> FindAttributeByNameInList(const std::vector<AttributeInfo>& attrList, const std::string& attributeName)
     {
-        auto iter = std::find_if(attrList.cbegin(), attrList.cend(),
+        auto iter = std::find_if(attrList.begin(), attrList.end(),
             [=](const auto& attrInfo) { return attrInfo.m_attribute == attributeName; });
 
         return iter == attrList.end() ?
-              none
-            : optional{ *iter };
+              std::nullopt
+            : std::optional{ *iter };
     }
 
-    optional<AttributeInfo> SymbolAggregator::GetAttribute(const IdentifierUID& uid, const string& attributeName) const
+    std::optional<AttributeInfo> SymbolAggregator::GetAttribute(const IdentifierUID& uid, const std::string& attributeName) const
     {
-        optional<AttributeInfo> result;
+        std::optional<AttributeInfo> result;
         if (const auto attrList = GetAttributeList(uid))
         {
             result = FindAttributeByNameInList(*attrList, attributeName);
@@ -226,7 +239,7 @@ namespace AZ::ShaderCompiler
         return result;
     }
 
-    const vector<AttributeInfo>& SymbolAggregator::GetGlobalAttributeList() const
+    const std::vector<AttributeInfo>& SymbolAggregator::GetGlobalAttributeList() const
     {
         return m_orphanAttributesList[AttributeScope::Global];
     }
@@ -246,7 +259,7 @@ namespace AZ::ShaderCompiler
     {
         auto disambiguatorChar = '#';
         // query for symbol kind; because that function is specific to this algorithm, it's ok locally only.
-        auto isFunctionOrVariableOrType = [this, disambiguatorChar](string_view name)
+        auto isFunctionOrVariableOrType = [this, disambiguatorChar](std::string_view name)
         {
             name = Slice(name, 0, name.find_first_of(disambiguatorChar));
             KindInfo& ki = GetIdAndKindInfo(QualifiedNameView{name})->second;
@@ -257,7 +270,7 @@ namespace AZ::ShaderCompiler
         // instanciate an empty solver and fill it up with the elastic symbols from the aggregator to reorder them
         DependencySolver<IdentifierUID, 50_maxdep_pernode> solver;
         // state variable that remembers the last iterated symbol that was of a specific nesting depth
-        stack<IdentifierUID> lastSymbolAtCurrentLevel;
+        std::stack<IdentifierUID> lastSymbolAtCurrentLevel;
         size_t curDepth = 0;
         for (const IdentifierUID& id : m_elastic.m_order)
         {
@@ -303,7 +316,7 @@ namespace AZ::ShaderCompiler
             if (!IsGlobal(disambiguated.GetName()))
             {
                 // establish vertical links
-                string path;
+                std::string path;
                 IdentifierUID parent;
                 ForEachPathPart(disambiguated.GetName(), [this, &solver, &path, &parent, &isFunctionOrVariableOrType](PathPart part)
                                 {

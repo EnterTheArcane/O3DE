@@ -9,12 +9,22 @@
 #include "Backend.h"
 #include "PlatformEmitter.h"
 
-#include <tuple>
+#include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <cstdint>
+#include <functional>
+#include <iterator>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <variant>
 
 namespace AZ::ShaderCompiler
 {
-    bool IsReadWriteView(string_view viewName)
+    bool IsReadWriteView(std::string_view viewName)
     {
         return (StartsWith(viewName, "RW") || StartsWith(viewName, "RasterizerOrdered") ||
                 StartsWith(viewName, "Append") || StartsWith(viewName, "Consume"));
@@ -30,33 +40,33 @@ namespace AZ::ShaderCompiler
         return QualifiedName{srg.m_name + "_SRGConstantBuffer"};
     }
 
-    string UnmangleTrimedName(const QualifiedNameView name)
+    std::string UnmangleTrimedName(const QualifiedNameView name)
     {
-        return Replace(string{Trim(name.data(), "/")}, "/", "::");
+        return Replace(std::string{Trim(name.data(), "/")}, "/", "::");
     }
 
-    string JoinAllNestedNamesWithUnderscore(const QualifiedNameView name)
+    std::string JoinAllNestedNamesWithUnderscore(const QualifiedNameView name)
     {
         return Replace(UnmangleTrimedName(name), "::", "_");
     }
 
-    string GetGlobalRootConstantVarName(const QualifiedNameView name)
+    std::string GetGlobalRootConstantVarName(const QualifiedNameView name)
     {
         return "_g_" + Replace(UnmangleTrimedName(name), "::", Underscore);
     }
 
-    string GetShaderKeyFunctionName(const IdentifierUID& uid)
+    std::string GetShaderKeyFunctionName(const IdentifierUID& uid)
     {
         return "GetShaderVariantKey_" + JoinAllNestedNamesWithUnderscore(uid.m_name) + "()";
     }
 
-    string GetRootConstFunctionName(const IdentifierUID& uid)
+    std::string GetRootConstFunctionName(const IdentifierUID& uid)
     {
         return "GetShaderRootConst_" + JoinAllNestedNamesWithUnderscore(uid.m_name) + "()";
     }
 
     // this doesn't go through translation because now it's not as risky as before considering the name is clear
-    string UnmangleTrimedName(const ExtendedTypeInfo& extTypeInfo)
+    std::string UnmangleTrimedName(const ExtendedTypeInfo& extTypeInfo)
     {
         auto fullName = UnmangleTrimedName(extTypeInfo.m_coreType.m_typeId.m_name);
         if (HasGenericParameter(extTypeInfo.m_coreType.m_typeClass))
@@ -281,7 +291,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    string Backend::GetTranspiledTokens(misc::Interval interval) const
+    std::string Backend::GetTranspiledTokens(misc::Interval interval) const
     {
         static std::stringstream ss;
         ss.str({});
@@ -291,7 +301,7 @@ namespace AZ::ShaderCompiler
         return ss.str();
     }
 
-    string Backend::GetInitializerClause(const VarInfo* varInfo) const
+    std::string Backend::GetInitializerClause(const VarInfo* varInfo) const
     {
         if (!varInfo->m_declNode ||
             !varInfo->m_declNode->variableInitializer() ||
@@ -314,12 +324,12 @@ namespace AZ::ShaderCompiler
 
         if (info.IsKindOneOf(Kind::Enum))
         {
-            auto isScoped = get<EnumerationInfo>(info.GetSubRefAs<ClassInfo>().m_subInfo).m_isScoped;
+            auto isScoped = std::get<EnumerationInfo>(info.GetSubRefAs<ClassInfo>().m_subInfo).m_isScoped;
             auto prefix = isScoped ? UnmangleTrimedName(uid.m_name) + "::" : "";
 
             auto& list = info.GetSubRefAs<ClassInfo>().GetMemberFields();
             std::for_each(list.begin(), list.end(),
-                          [&optValues, &prefix](const IdentifierUID& member) { optValues.append(prefix + member.GetNameLeaf()); });
+                          [&optValues, &prefix](const IdentifierUID& member) { optValues.append((prefix + member.GetNameLeaf()).c_str()); });
 
             numberOfOptions = optValues.size();
         }
@@ -327,13 +337,13 @@ namespace AZ::ShaderCompiler
         {
             auto typeRef = info.GetSubRefAs<TypeRefInfo>();
 
-            if (typeRef.m_typeId.m_name.find("bool") != string::npos)
+            if (typeRef.m_typeId.m_name.find("bool") != std::string::npos)
             {
                 optValues.append("false");
                 optValues.append("true");
                 numberOfOptions = 2;
             }
-            else if (typeRef.m_typeId.m_name.find("int") != string::npos)
+            else if (typeRef.m_typeId.m_name.find("int") != std::string::npos)
             {
                 // Not adding anything to optValues means we have no valid options
                 // This is intentional, but it means the variable won't be exported as an option
@@ -346,42 +356,42 @@ namespace AZ::ShaderCompiler
                 if (!rangeAttribute)
                 {
                     throw AzslcEmitterException(EMITTER_INTEGER_HAS_NO_RANGE,
-                                                none, none, ConcatString("Option (", varUid.m_name, ") must decorate declaration with an attribute [range(minimum value, maximum value)]"));
+                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must decorate declaration with an attribute [range(minimum value, maximum value)]"));
                 }
 
                 if (rangeAttribute->m_argList.size() != 2)
                 {
                     throw AzslcEmitterException(EMITTER_INTEGER_RANGE_NEEDS_ATTRIBUTE,
-                                                none, none, ConcatString("Option (", varUid.m_name, ") must specify a range with exactly 2 values, min & max - [range(min, max)]"));
+                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must specify a range with exactly 2 values, min & max - [range(min, max)]"));
                 }
 
                 const auto rangeMin = rangeAttribute->m_argList[0];
-                if (!holds_alternative<ConstNumericVal>(rangeMin))
+                if (!std::holds_alternative<ConstNumericVal>(rangeMin))
                 {
                     throw AzslcEmitterException(EMITTER_INTEGER_RANGE_MIN_IS_NOT_CONST,
-                                                none, none, ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's minimum!"));
+                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's minimum!"));
                 }
 
                 const auto rangeMax = rangeAttribute->m_argList[1];
-                if (!holds_alternative<ConstNumericVal>(rangeMax))
+                if (!std::holds_alternative<ConstNumericVal>(rangeMax))
                 {
                     throw AzslcEmitterException(EMITTER_INTEGER_RANGE_MAX_IS_NOT_CONST,
-                                                none, none, ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's maximum!"));
+                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's maximum!"));
                 }
 
-                const auto rangeMinValue = ExtractValueAsInt64(get<ConstNumericVal>(rangeMin));
-                const auto rangeMaxValue = ExtractValueAsInt64(get<ConstNumericVal>(rangeMax));
+                const auto rangeMinValue = ExtractValueAsInt64(std::get<ConstNumericVal>(rangeMin));
+                const auto rangeMaxValue = ExtractValueAsInt64(std::get<ConstNumericVal>(rangeMax));
                 const auto rangeCount = (rangeMaxValue - rangeMinValue + 1);
 
                 if (rangeMinValue > rangeMaxValue)
                 {
                     throw AzslcEmitterException(EMITTER_INTEGER_RANGE_MIN_IS_BIGGER_THAN_MAX,
-                                                none, none, ConcatString("Option (", varUid.m_name, ") cannot specify a minimum for its range that is greater than its maximum!"));
+                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") cannot specify a minimum for its range that is greater than its maximum!"));
                 }
 
                 if (rangeCount > kIntegerMaxShaderVariantValues)
                 {
-                    PrintWarning(Warn::W1, none, "Option (", varUid.m_name, ") must specify a range of values smaller than ", kIntegerMaxShaderVariantValues);
+                    PrintWarning(Warn::W1, std::nullopt, "Option (", varUid.m_name, ") must specify a range of values smaller than ", kIntegerMaxShaderVariantValues);
                 }
 
                 optValues.append(std::to_string(rangeMinValue));
@@ -392,7 +402,7 @@ namespace AZ::ShaderCompiler
             {
                 // There is no immediate plan to support floats or more complex structures
                 throw AzslcEmitterException(EMITTER_OPTION_HAS_UNSUPPORTED_TYPE,
-                                            none, none, ConcatString("Option (", varUid.m_name, ") must be of type bool, int, or enum"));
+                                            std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must be of type bool, int, or enum"));
             }
         }
 
@@ -433,9 +443,9 @@ namespace AZ::ShaderCompiler
             }
 
             Json::Value shaderOption(Json::objectValue);
-            shaderOption["name"] = UnmangleTrimedName(uid.m_name);
-            shaderOption["type"] = UnmangleTrimedName(varInfo->m_typeInfoExt);
-            shaderOption["defaultValue"] = GetInitializerClause(varInfo);
+            shaderOption["name"] = UnmangleTrimedName(uid.m_name).c_str();
+            shaderOption["type"] = UnmangleTrimedName(varInfo->m_typeInfoExt).c_str();
+            shaderOption["defaultValue"] = GetInitializerClause(varInfo).c_str();
 
             // The order (or rank) of the option matches the order of declaration
             // We reserve the right to change it in the future so we make it explicit attribute here
@@ -458,7 +468,7 @@ namespace AZ::ShaderCompiler
 
                 if (keySizeInBits > kShaderVariantKeyElementSize)
                 {
-                    const string errorMessage = ConcatString("Shader option {", UnmangleTrimedName(uid.m_name), "} uses a bitmask which crosses the ",
+                    const std::string errorMessage = ConcatString("Shader option {", UnmangleTrimedName(uid.m_name), "} uses a bitmask which crosses the ",
                                                              kShaderVariantKeyElementSize, "-bit boundary!");
                     throw AzslcEmitterException(EMITTER_OVERFLOW_BIT_BOUNDARY, errorMessage);
                 }
@@ -496,7 +506,7 @@ namespace AZ::ShaderCompiler
     }
 
     // little check utility
-    static void CheckHasOneFoldedDimensionOrThrow(const ArrayDimensions& dims, string_view callSite)
+    static void CheckHasOneFoldedDimensionOrThrow(const ArrayDimensions& dims, std::string_view callSite)
     {
         if (!dims.AreAllDimsFullyConstantFolded())
         {
@@ -742,10 +752,10 @@ namespace AZ::ShaderCompiler
     }
 
     // static
-    string Backend::GetTypeModifier(const ExtendedTypeInfo& typeInfo, const Options& options, Modifiers bannedFlags /*= {}*/)
+    std::string Backend::GetTypeModifier(const ExtendedTypeInfo& typeInfo, const Options& options, Modifiers bannedFlags /*= {}*/)
     {
         using namespace std::string_literals;
-        string modifiers;
+        std::string modifiers;
         bool isMatrix = typeInfo.m_coreType.m_arithmeticInfo.IsMatrix();
         if (typeInfo.CheckHasStorageFlag(StorageFlag::ColumnMajor) && !(bannedFlags & StorageFlag::ColumnMajor))
         {
@@ -784,9 +794,9 @@ namespace AZ::ShaderCompiler
         return modifiers;
     }
 
-    string Backend::GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<string(const TypeRefInfo&)> translator) const
+    std::string Backend::GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const
     {
-        string hlslString = GetTypeModifier(extTypeInfo, options, banned);
+        std::string hlslString = GetTypeModifier(extTypeInfo, options, banned);
         hlslString += hlslString.empty() ? "" : " ";
         if (extTypeInfo.m_coreType.m_typeClass == TypeClass::Alias)
         {
@@ -836,10 +846,10 @@ namespace AZ::ShaderCompiler
 
                 if (!exportedType.IsPackable())
                 {
-                    throw std::logic_error{ " internal error: unpackable type ("
+                    throw std::logic_error{ (std::string(" internal error: unpackable type (")
                         + exportedType.m_typeId.m_name
                         + ") found its way in layout member "
-                        + memberVar.m_name };
+                        + memberVar.m_name).c_str() };
                 }
 
                 // GetTotalSize of each member of the structure

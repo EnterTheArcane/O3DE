@@ -10,6 +10,9 @@
 #include <PlatformEmitter.h>
 #include "PlatformEmitter_CommonVulkan.h"
 
+#include <cstdint>
+#include <string>
+
 namespace AZ::ShaderCompiler
 {
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement

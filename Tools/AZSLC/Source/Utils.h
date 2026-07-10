@@ -7,7 +7,6 @@
  */
 #pragma once
 
-
 #include "Mangling.h"
 #include "Common.h"
 #include "Exception.h"
@@ -23,6 +22,23 @@
 
 #include "ReflectableEnums.h"
 #include "ReflectableEnumsUtils.h"
+
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <variant>
+#include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
 # define AzslcStrnicmp _strnicmp
@@ -64,7 +80,7 @@ namespace AZ::ShaderCompiler
         return n;
     }
 
-    inline bool EqualNoCase(string_view str1, string_view str2)
+    inline bool EqualNoCase(std::string_view str1, std::string_view str2)
     {
         if (str1.length() != str2.length())
         {
@@ -74,7 +90,7 @@ namespace AZ::ShaderCompiler
         return AzslcStrnicmp(str1.data(), str2.data(), str2.length()) == 0;
     }
 
-    inline bool StartsWithNoCase(string_view str1, string_view str2)
+    inline bool StartsWithNoCase(std::string_view str1, std::string_view str2)
     {
         if (str1.length() < str2.length())
         {
@@ -85,35 +101,34 @@ namespace AZ::ShaderCompiler
     }
 
     // this format is the Microsoft standard for error list parsing "file(line,column): message"
-    inline string DiagLine(size_t line)
+    inline std::string DiagLine(size_t line)
     {
-        using namespace std::string_literals;
-        return AzslcException::s_lineFinder->GetVirtualFileName(line) + "("s + std::to_string(line) + "):";
+        return AzslcException::s_lineFinder->GetVirtualFileName(line) + "(" + std::to_string(line) + "):";
     }
 
-    inline string DiagLine(optional<int> line)
+    inline std::string DiagLine(std::optional<int> line)
     {
-        return line ? DiagLine(static_cast<size_t>(*line)) : string{};
+        return line ? DiagLine(static_cast<size_t>(*line)) : std::string{};
     }
 
-    inline string DiagLine(optional<size_t> line)
+    inline std::string DiagLine(std::optional<size_t> line)
     {
-        return line ? DiagLine(*line) : string{};
+        return line ? DiagLine(*line) : std::string{};
     }
 
-    inline string DiagLine(antlr4::Token* token)
+    inline std::string DiagLine(antlr4::Token* token)
     {
         return DiagLine(token->getLine());
     }
 
-    inline string DiagLine(tree::TerminalNode* astNode)
+    inline std::string DiagLine(tree::TerminalNode* astNode)
     {
         return DiagLine(astNode->getSymbol());
     }
 
     //! low level version with everything parameterizable
     template<typename... Types>
-    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, optional<size_t> lineNumber, optional<size_t> column, Types&&... messageBits)
+    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, std::optional<size_t> lineNumber, std::optional<size_t> column, Types&&... messageBits)
     {
         stream << PushLevel{} << level
                << AzslcException::MakeErrorMessage(lineNumber ? AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber) : "",
@@ -124,9 +139,9 @@ namespace AZ::ShaderCompiler
 
     //! version for clients with only, maybe, a line number
     template<typename... Types>
-    inline void PrintWarning(Warn::EnumType level, optional<size_t> line, Types&&... messageBits)
+    inline void PrintWarning(Warn::EnumType level, std::optional<size_t> line, Types&&... messageBits)
     {
-        PrintWarning(warningCout, level, line, none, messageBits...);
+        PrintWarning(warningCout, level, line, std::nullopt, messageBits...);
     }
 
     //! version for clients with a token (richest, preferred way)
@@ -147,15 +162,14 @@ namespace AZ::ShaderCompiler
         return nullptr;
     }
 
-    using ConstNumericVal = variant<monostate, int32_t, uint32_t, float>;
-
+    using ConstNumericVal = std::variant<std::monostate, int32_t, uint32_t, float>;
 
     //! Extracts <float> from <ConstNumericVal>. When not possible it will throw if <defval> is not set or fall back to <defval> if set.
-    inline float ExtractValueAsFloat(const ConstNumericVal& var, optional<float> defval = none)
+    inline float ExtractValueAsFloat(const ConstNumericVal& var, std::optional<float> defval = std::nullopt)
     {
-        if (holds_alternative<monostate>(var))
+        if (std::holds_alternative<std::monostate>(var))
         {
-            if (defval == none)
+            if (defval == std::nullopt)
             {
                 throw std::logic_error{ "Constant value did not hold anything. Set defval if you want a fallback option." };
             }
@@ -164,36 +178,36 @@ namespace AZ::ShaderCompiler
                 return *defval;
             }
         }
-        else if (holds_alternative<int32_t>(var))
+        else if (std::holds_alternative<int32_t>(var))
         {
-            auto intVal = get<int32_t>(var);
+            auto intVal = std::get<int32_t>(var);
             // Casting to float has precision loss: https://onlinegdb.com/By0AJTUVE
             if (intVal > 16777216 || intVal < -16777216)
             {
-                PrintWarning(Warn::W3, none, "warning: Casting integer ", intVal, " to float, will result in ", static_cast<float>(intVal));
+                PrintWarning(Warn::W3, std::nullopt, "warning: Casting integer ", intVal, " to float, will result in ", static_cast<float>(intVal));
             }
             return static_cast<float>(intVal);
         }
-        else if (holds_alternative<uint32_t>(var))
+        else if (std::holds_alternative<uint32_t>(var))
         {
-            auto uintVal = get<uint32_t>(var);
+            auto uintVal = std::get<uint32_t>(var);
             // Same comment
             if (uintVal > 16777216)
             {
-                PrintWarning(Warn::W3, none, "warning: Casting integer ", uintVal, " to float, will result in ", static_cast<float>(uintVal));
+                PrintWarning(Warn::W3, std::nullopt, "warning: Casting integer ", uintVal, " to float, will result in ", static_cast<float>(uintVal));
             }
             return static_cast<float>(uintVal);
         }
 
-        assert(holds_alternative<float>(var));
-        return get<float>(var);
+        assert(std::holds_alternative<float>(var));
+        return std::get<float>(var);
     }
 
-    inline int64_t ExtractValueAsInt64(const ConstNumericVal& var, optional<int64_t> defval = none)
+    inline int64_t ExtractValueAsInt64(const ConstNumericVal& var, std::optional<int64_t> defval = std::nullopt)
     {
-        if (holds_alternative<monostate>(var))
+        if (std::holds_alternative<std::monostate>(var))
         {
-            if (defval == none)
+            if (defval == std::nullopt)
             {
                 throw std::logic_error{ "Constant value did not hold anything. Set defval if you want a fallback option." };
             }
@@ -202,27 +216,27 @@ namespace AZ::ShaderCompiler
                 return *defval;
             }
         }
-        else if (holds_alternative<float>(var))
+        else if (std::holds_alternative<float>(var))
         {
             // Casting from float has precision loss: https://onlinegdb.com/By0AJTUVE
-            auto floatVal = get<float>(var);
+            auto floatVal = std::get<float>(var);
             auto intVal = static_cast<int64_t>(floatVal);
-            PrintWarning(Warn::W3, none, "warning: Casting float ", floatVal, " to integer, will result in ", intVal);
+            PrintWarning(Warn::W3, std::nullopt, "warning: Casting float ", floatVal, " to integer, will result in ", intVal);
             return intVal;
         }
-        else if (holds_alternative<int32_t>(var))
+        else if (std::holds_alternative<int32_t>(var))
         {
-            return get<int32_t>(var);
+            return std::get<int32_t>(var);
         }
-        return static_cast<int64_t>(get<uint32_t>(var));
+        return static_cast<int64_t>(std::get<uint32_t>(var));
     }
 
     template<class T>
-    inline T ExtractValueAs(const ConstNumericVal& var, optional<T> defval = none)
+    inline T ExtractValueAs(const ConstNumericVal& var, std::optional<T> defval = std::nullopt)
     {
-        if (holds_alternative<monostate>(var))
+        if (std::holds_alternative<std::monostate>(var))
         {
-            if (defval == none)
+            if (defval == std::nullopt)
             {
                 throw std::logic_error{ "Constant value did not hold anything. Set defval if you want a fallback option." };
             }
@@ -231,26 +245,25 @@ namespace AZ::ShaderCompiler
                 return *defval;
             }
         }
-        else if (holds_alternative<float>(var))
+        else if (std::holds_alternative<float>(var))
         {
             // Casting from float has precision loss: https://onlinegdb.com/By0AJTUVE
-            auto floatVal = get<float>(var);
+            auto floatVal = std::get<float>(var);
             auto intVal = static_cast<int64_t>(floatVal);
-            PrintWarning(Warn::W3, none, "warning: Casting float ", floatVal, " to integer, will result in ", intVal);
+            PrintWarning(Warn::W3, std::nullopt, "warning: Casting float ", floatVal, " to integer, will result in ", intVal);
             return static_cast<T>(intVal);
         }
-        else if (holds_alternative<int32_t>(var))
+        else if (std::holds_alternative<int32_t>(var))
         {
-            return static_cast<T>(get<int32_t>(var));
+            return static_cast<T>(std::get<int32_t>(var));
         }
-        return static_cast<T>(get<uint32_t>(var));
+        return static_cast<T>(std::get<uint32_t>(var));
     }
-
 
     //! Safe way to call ExtractValueAsInt64 which returns false instead of throwing
     inline bool TryGetConstExprValueAsInt64(const ConstNumericVal& foldedIdentifier, int64_t& returnValue) noexcept(true)
     {
-        if (holds_alternative<monostate>(foldedIdentifier))
+        if (std::holds_alternative<std::monostate>(foldedIdentifier))
         {
             return false;
         }
@@ -277,15 +290,15 @@ namespace AZ::ShaderCompiler
     struct TypeQualifiers
     {
         Modifiers      m_flag;
-        vector<string> m_others;    // For qualifiers we didn't add to the enum
+        std::vector<std::string> m_others;    // For qualifiers we didn't add to the enum
 
-        string GetDisplayName() const
+        std::string GetDisplayName() const
         {
-            vector<StorageFlag> bag;
+            std::vector<StorageFlag> bag;
             auto end = std::copy_if(StorageFlag::Enumerate{}.begin(), StorageFlag::Enumerate{}.end(), std::back_inserter(bag),
                                     [&](auto sf) -> bool { return (m_flag & sf) && (sf & ~StorageFlag::Other); });
             // Join will call operator<< on StorageFlag::EnumType for stringification
-            return string{Trim(Join(bag.begin(), bag.end(), " ") + " " + Join(m_others.begin(), m_others.end(), " "))};
+            return std::string{Trim(Join(bag.begin(), bag.end(), " ") + " " + Join(m_others.begin(), m_others.end(), " "))};
         }
 
         void OrMerge(const TypeQualifiers& src)
@@ -325,11 +338,11 @@ namespace AZ::ShaderCompiler
         //! {unbounded} is "[]"
         //! {unknown} is "[?]"
         //! {1,2} is "[1][2]"
-        string ToString(const string& prefix = "[", const string& separator = "][", const string& suffix = "]") const
+        std::string ToString(const std::string& prefix = "[", const std::string& separator = "][", const std::string& suffix = "]") const
         {
-            vector<string> asStrs;
+            std::vector<std::string> asStrs;
             TransformCopy(m_dimensions, asStrs,
-                          [](int d) -> string { return d == Unknown ? "<unrecognized-expr>" : d == Unbounded ? "" : std::to_string(d); });
+                          [](int d) -> std::string { return d == Unknown ? "<unrecognized-expr>" : d == Unbounded ? "" : std::to_string(d); });
             return asStrs.empty() ? "" : prefix + Join(asStrs.begin(), asStrs.end(), separator) + suffix;
         }
 
@@ -376,7 +389,7 @@ namespace AZ::ShaderCompiler
         //! a[][3] (or a[var][3]) will be a vector of {unknown,3}
         //!  (note: if `var` is a statically foldable const expression, then it has a chance to resolved to its initial value)
         //! empty {} means "not an array"
-        vector<int> m_dimensions;
+        std::vector<int> m_dimensions;
     };
 
     //! OutputFormat
@@ -769,9 +782,9 @@ namespace AZ::ShaderCompiler
             // just update that code if it changes one day, the assert will pop.
             if (indexInAzslPredefined_Scalar == 1 || indexInAzslPredefined_Scalar == 8 || indexInAzslPredefined_Scalar == 12)
             {
-                assert(string_view{"double"} == AZ::ShaderCompiler::Predefined::Scalar[1]);
-				assert(string_view{"int64_t"} == AZ::ShaderCompiler::Predefined::Scalar[8]);
-				assert(string_view{"uint64_t"} == AZ::ShaderCompiler::Predefined::Scalar[12]);
+                assert(std::string_view{"double"} == AZ::ShaderCompiler::Predefined::Scalar[1]);
+				assert(std::string_view{"int64_t"} == AZ::ShaderCompiler::Predefined::Scalar[8]);
+				assert(std::string_view{"uint64_t"} == AZ::ShaderCompiler::Predefined::Scalar[12]);
                 // Shader packing reference:
                 // https://docs.microsoft.com/en-us/windows/desktop/direct3dhlsl/dx-graphics-hlsl-packing-rules
                 return 8;
@@ -781,9 +794,9 @@ namespace AZ::ShaderCompiler
                 // https://github.com/microsoft/DirectXShaderCompiler/wiki/Buffer-Packing
                 //   extract: "with -enable-16bit-types: HLSL half type maps to native 16-bit float16_t type"
                 //            "native 16-bit types have storage size of 16-bits (as expected)"
-                assert(string_view{"half"} == AZ::ShaderCompiler::Predefined::Scalar[4]);
-                assert(string_view{"int16_t"} == AZ::ShaderCompiler::Predefined::Scalar[6]);
-                assert(string_view{"uint16_t"} == AZ::ShaderCompiler::Predefined::Scalar[10]);
+                assert(std::string_view{"half"} == AZ::ShaderCompiler::Predefined::Scalar[4]);
+                assert(std::string_view{"int16_t"} == AZ::ShaderCompiler::Predefined::Scalar[6]);
+                assert(std::string_view{"uint16_t"} == AZ::ShaderCompiler::Predefined::Scalar[10]);
                 return 2;
             }
             else if (indexInAzslPredefined_Scalar < 0)
@@ -835,14 +848,14 @@ namespace AZ::ShaderCompiler
 
 // before being able to clean that up with C++20 concepts, let's factorize the SFINAE expression to filter the accepted iterator types by an expected trait
 #define SFINAE_IS_SAME(DependentTypeToCompare, ExpectedType)\
-    enable_if_t< is_same_v<typename DependentTypeToCompare, ExpectedType> >* = nullptr
+    std::enable_if_t< std::is_same_v<typename DependentTypeToCompare, ExpectedType> >* = nullptr
 
     // Create a yaml element list for 'any collection' of Seenat (passed as a pseudo range)
     // - {line: x, col: y}
-    template <typename SeenatRangeIter, SFINAE_IS_SAME(SeenatRangeIter::value_type, Seenat) >
-    string ToYaml(SeenatRangeIter begin, SeenatRangeIter end, string_view indent)
+    template <typename SeenatRangeIter, SFINAE_IS_SAME(std::iterator_traits<SeenatRangeIter>::value_type, Seenat) >
+    std::string ToYaml(SeenatRangeIter begin, SeenatRangeIter end, std::string_view indent)
     {
-        string s;
+        std::string s;
         for (SeenatRangeIter it = begin; it != end; ++it)
         {
             s += indent;
@@ -854,10 +867,10 @@ namespace AZ::ShaderCompiler
     }
 
     // version for pseudo-range of IdentifierUID elements
-    template <typename UIDRangeIter, SFINAE_IS_SAME(UIDRangeIter::value_type, IdentifierUID) >
-    string ToYaml(UIDRangeIter begin, UIDRangeIter end, string_view indent)
+    template <typename UIDRangeIter, SFINAE_IS_SAME(std::iterator_traits<UIDRangeIter>::value_type, IdentifierUID) >
+    std::string ToYaml(UIDRangeIter begin, UIDRangeIter end, std::string_view indent)
     {
-        string s;
+        std::string s;
         for (UIDRangeIter it = begin; it != end; ++it)
         {
             s += indent;
@@ -870,7 +883,7 @@ namespace AZ::ShaderCompiler
     // like PathPart but more specialized for grammatical elements specificity of an idExpression
     struct IdExpressionPart
     {
-        string GetText() const
+        std::string GetText() const
         {
             return m_token->getText();
         }
@@ -882,7 +895,7 @@ namespace AZ::ShaderCompiler
 
         // Azslc Intermediate Representation uses slash separators for scopes
         // This function can help constructing internal "mangled" forms of qualified symbol names
-        string GetAZIRMangledText() const
+        std::string GetAZIRMangledText() const
         {
             return IsScopeToken() ? "/" : GetText();
         }
@@ -949,7 +962,7 @@ namespace AZ::ShaderCompiler
     inline UnqualifiedName ExtractNameFromIdExpression(azslParser::IdExpressionContext* ctx)
     {
         std::stringstream ss;  // accumulator
-        ForEachIdExpressionPart(ctx, [&ss](const IdExpressionPart& part) { ss << part.GetAZIRMangledText(); });
+        ForEachIdExpressionPart(ctx, [&ss](const IdExpressionPart& part) { ss << part.GetAZIRMangledText().c_str(); });
         return UnqualifiedName{ss.str()};
     }
 
@@ -1137,7 +1150,7 @@ namespace AZ::ShaderCompiler
         return polymorphic_downcast<AstNamedVarDecl*>(ctx->parent);
     }
 
-    inline string ExtractVariableNameSamplerBodyDeclaration(azslParser::SamplerBodyDeclarationContext* ctx)
+    inline std::string ExtractVariableNameSamplerBodyDeclaration(azslParser::SamplerBodyDeclarationContext* ctx)
     {
         // parent1 is variableInitializer ; parent2 is unnamedVariableDeclarator
         return ExtractVariableNameIdentifier(polymorphic_downcast<AstUnnamedVarDecl*>(ctx->parent->parent))->getText();
@@ -1212,12 +1225,12 @@ namespace AZ::ShaderCompiler
         bool m_skipAlignmentValidation;
     };
 
-    ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstType* ctx, vector<tree::TerminalNode*>* genericDims = nullptr);
+    ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstType* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr);
 
     // Oftentimes a type rule looks like: `genericTexture: TextureKeyword '<' type '>'` , this function extracts `type`.
     // Types parent of that ctx should have an AnalyzeClass that returns HasGenericParameter
     // for more power, this function can return an AstPointer to a type rule directly in case of availability.
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstPredefinedTypeNode* ctx, vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstPredefinedTypeNode* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         if (ctx->bufferPredefinedType())
         {   // use aggregate initialization syntax to construct the return type (tops 4 elements, but here we fillup 2 only)
@@ -1279,7 +1292,7 @@ namespace AZ::ShaderCompiler
         {
             auto coreName = ctx->constantBufferTemplated()->CBCoreType->getText();
             AstType* genericCtx = ctx->constantBufferTemplated()->GenericTypeName;
-            return {ExtractedTypeExt{UnqualifiedName{coreName}},                           // m_core
+            return {ExtractedTypeExt{UnqualifiedName{coreName}},                                       // m_core
                     ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}};  // same as previous 2 comments above
         }
         else if (ctx->genericSubpassInputPredefinedType())
@@ -1292,14 +1305,14 @@ namespace AZ::ShaderCompiler
     }
 
     //! from a special rule: scalarOrVectorOrMatrixType
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::ScalarOrVectorOrMatrixTypeContext* ctx, vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::ScalarOrVectorOrMatrixTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}}};
                 // for now there is no generic part, but mind it when you fix the grammar to support generic vector.
     }
 
     //! from userDefinedType context
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::UserDefinedTypeContext* ctx, vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::UserDefinedTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         if (ctx->idExpression())
         {
@@ -1316,7 +1329,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! from type context (next to highest level)
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstType* ctx, vector<tree::TerminalNode*>* genericDims /*= nullptr*/)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstType* ctx, std::vector<tree::TerminalNode*>* genericDims /*= nullptr*/)
     {
         if (ctx->userDefinedType())
         {
@@ -1328,7 +1341,7 @@ namespace AZ::ShaderCompiler
         }
         else if (ctx->Void())
         {
-            assert(string_view{AZ::ShaderCompiler::Predefined::Void[0]} == ctx->Void()->getText());
+            assert(std::string_view{AZ::ShaderCompiler::Predefined::Void[0]} == ctx->Void()->getText());
             return {UnqualifiedName{ctx->Void()->getText()}}; // "void"
         }
         // this could be a typeof, let's return the node for further resolve!
@@ -1336,7 +1349,7 @@ namespace AZ::ShaderCompiler
     }
 
     //! Parse an HLSL semantic from a context into (semantic name, semantic index, is system value)
-    inline tuple<string, int, bool> ExtractHlslSemantic(azslParser::HlslSemanticContext* hlslSemantic)
+    inline std::tuple<std::string, int, bool> ExtractHlslSemantic(azslParser::HlslSemanticContext* hlslSemantic)
     {
         // Semantic name and index
         auto semanticName = hlslSemantic->getText();
@@ -1345,7 +1358,7 @@ namespace AZ::ShaderCompiler
                             0 : std::stoi(semanticName.substr(index));
 
         auto colon = semanticName.find_first_of(":");
-        auto firstChar = (colon == string::npos) ? 0 : colon + 1;
+        auto firstChar = (colon == std::string::npos) ? 0 : colon + 1;
         firstChar = semanticName.find_first_not_of(" ", firstChar);
         semanticName = semanticName.substr(firstChar, index - firstChar);
 

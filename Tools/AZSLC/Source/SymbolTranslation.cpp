@@ -9,6 +9,13 @@
 #include "SymbolTranslation.h"
 #include "HomonymVisitor.h"
 
+#include <cassert>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     void SymbolTranslation::SetAccessSymbolQueryFunctor(std::function<KindInfo*(QualifiedNameView)> accessSymbol)
@@ -16,7 +23,7 @@ namespace AZ::ShaderCompiler
         m_accessSymbol = accessSymbol;
     }
 
-    void SymbolTranslation::SetGetSeenatFunctor(std::function< vector<Seenat>& (QualifiedNameView) > getSeenats)
+    void SymbolTranslation::SetGetSeenatFunctor(std::function< std::vector<Seenat>& (QualifiedNameView) > getSeenats)
     {
         m_getSeenats = getSeenats;
     }
@@ -77,7 +84,7 @@ namespace AZ::ShaderCompiler
         // however, there other kinds of symbols, like variables and types within function scopes, need to be unique to avoid collisions.
         auto flatteningStrategy = kindIsFunction ? CollapseArguments : PreserveArgumentsUnicity;
         // flatten will preserve the original qualification for unicity purposes. SRG::Inner::m_color becomes SRG_Inner_m_color
-        string flattened = Flatten(originalSymbol.data(), flatteningStrategy);
+        std::string flattened = Flatten(originalSymbol.data(), flatteningStrategy);
         // check if the new symbol name is free in the desired scope
         QualifiedName collisionCandidate{JoinPath(landingScope.m_landingScope, flattened)};
         int counter = 1;
@@ -143,7 +150,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    string SymbolTranslation::GetTranslatedName(QualifiedNameView originalSymbol, UsageContext qualificationStrategy, ssize_t tokenId) const
+    std::string SymbolTranslation::GetTranslatedName(QualifiedNameView originalSymbol, UsageContext qualificationStrategy, ssize_t tokenId) const
     {
         FindTranslation_Parameters translationParams{originalSymbol};
         FindTranslation_(translationParams);
@@ -152,8 +159,8 @@ namespace AZ::ShaderCompiler
         // the ReferenceSite strategy is to emit the fully qualified HLSL all the time.
         //   we could try to reduce verbosity by using FindLeastQualifiedName but that'll be for later.
         // Unmangling by convention will un-decorate function names to strip them to their core name. So be consistent for both strategy.
-        auto translation = qualificationStrategy == UsageContext::DeclarationSite ? string{RemoveLastParenthesisGroup(ExtractLeaf(renamed))}
-                                                                                  : UnMangle(string{renamed});
+        auto translation = qualificationStrategy == UsageContext::DeclarationSite ? std::string{RemoveLastParenthesisGroup(ExtractLeaf(renamed))}
+                                                                                  : UnMangle(std::string{renamed});
         // find a potential callback
         if (translationParams.m_foundMutation
             && translationParams.m_foundMutation->m_customBehavior
@@ -165,7 +172,7 @@ namespace AZ::ShaderCompiler
         return translation;
     }
 
-    pair<QualifiedNameView, ssize_t> SymbolTranslation::OverOriginalDefinitionOf(ssize_t tokenId) const
+    std::pair<QualifiedNameView, ssize_t> SymbolTranslation::OverOriginalDefinitionOf(ssize_t tokenId) const
     {
         auto iterator = m_definitionCtxStartTokenOfMigratedSymbol.find(tokenId);
         return iterator != m_definitionCtxStartTokenOfMigratedSymbol.end() ? std::make_pair(QualifiedNameView{iterator->second.first}, iterator->second.second)
@@ -211,7 +218,7 @@ namespace AZ::ShaderCompiler
     // checks whether 2 functions are overloads
     bool SymbolTranslation::BelongsToOverloadSet_(QualifiedNameView originalName1, QualifiedNameView originalName2) const
     {
-        string_view core = RemoveLastParenthesisGroup(originalName1);
+        std::string_view core = RemoveLastParenthesisGroup(originalName1);
         auto* coreSymbol = m_accessSymbol(QualifiedNameView{core});
         return coreSymbol &&   // not nullptr (the set exists), and...
             (core == originalName2    // either the overload-set itself is directly the same symbol, or...

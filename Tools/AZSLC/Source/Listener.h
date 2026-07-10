@@ -9,6 +9,8 @@
 
 #include "IntermediateRepresentation.h"
 
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     struct SemaCheckListener : azslParserBaseListener
@@ -69,6 +71,6 @@ namespace AZ::ShaderCompiler
         //! enterFunctionCallExpression(), its data type is azslParserBaseListener because
         //! in the future it can be convenient to do mutations at different stages of parsing
         //! the AST.
-        vector<azslParserBaseListener*> m_functionCallMutators;
+        std::vector<azslParserBaseListener*> m_functionCallMutators;
     };
 }

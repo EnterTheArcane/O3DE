@@ -1,16 +1,20 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
-#include "StdUtils.h"
 
+#include <cassert>
+#include <cstdint>
+#include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 namespace AZ
 {
@@ -35,7 +39,7 @@ namespace AZ
     template<template <typename...> class TL, typename... Ts>
     struct TypeListAsTuple<TL<Ts...>>
     {
-        using type = tuple<Ts...>;
+        using type = std::tuple<Ts...>;
     };
     template<typename TL>
     using TypeListAsTuple_t = typename TypeListAsTuple<TL>::type;
@@ -306,10 +310,10 @@ namespace AZ
     constexpr bool isContainedIn_v = metaFind_v<T, TemplInst> != -1;
 
     // example use:
-    static_assert(isContainedIn_v< bool, pair<bool, int> >);
-    static_assert(!isContainedIn_v< float, pair<bool, int> >);
+    static_assert(isContainedIn_v< bool, std::pair<bool, int> >);
+    static_assert(!isContainedIn_v< float, std::pair<bool, int> >);
     // it works with variant too... anything with a template type list.
-    static_assert(isContainedIn_v< int, tuple<bool, int, float> >);
+    static_assert(isContainedIn_v< int, std::tuple<bool, int, float> >);
     static_assert(isContainedIn_v< int, TypeList<bool, int, float> >);
     static_assert(!isContainedIn_v< long, TypeList<bool, int, float> >);
 
@@ -373,9 +377,6 @@ namespace AZ
 }
 
 #ifndef NDEBUG
-#include <cassert>
-#include <variant>
-#include <string>
 
 namespace AZ::Tests
 {
@@ -407,23 +408,23 @@ namespace AZ::Tests
             using std::holds_alternative;
 
             struct S { bool b = true; };
-            using V = variant<monostate, int, string, S>;
+            using V = std::variant<std::monostate, int, std::string, S>;
             V v;
 
-            assert(holds_alternative<monostate>(v));
+            assert(std::holds_alternative<std::monostate>(v));
 
             IndexedFactory(v, 1);
-            assert(holds_alternative<int>(v));
+            assert(std::holds_alternative<int>(v));
 
             IndexedFactory(v, 2);
-            assert(holds_alternative<string>(v));
+            assert(std::holds_alternative<std::string>(v));
 
             IndexedFactory(v, 0);
-            assert(holds_alternative<monostate>(v));
+            assert(std::holds_alternative<std::monostate>(v));
 
             IndexedFactory(v, 3);
-            assert(holds_alternative<S>(v));
-            assert(get<3>(v).b == true);
+            assert(std::holds_alternative<S>(v));
+            assert(std::get<3>(v).b == true);
         }
     }
 }

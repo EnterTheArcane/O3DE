@@ -8,23 +8,27 @@
 
 #include "SymbolTable.h"
 
+#include <algorithm>
+#include <cstdint>
+#include <optional>
+
 namespace AZ::ShaderCompiler
 {
     bool SymbolTable::HasIdentifier(QualifiedNameView symbol) const
     {
-        return m_symbols.find({symbol}) != m_symbols.cend();
+        return m_symbols.find(IdentifierUID{symbol}) != m_symbols.end();
     }
 
     IdAndKind* SymbolTable::GetIdAndKindInfo(QualifiedNameView symbol)
     {
-        auto iter = m_symbols.find({symbol});
-        return iter == m_symbols.cend() ? nullptr : &(*iter);
+        auto iter = m_symbols.find(IdentifierUID{symbol});
+        return iter == m_symbols.end() ? nullptr : &(*iter);
     }
 
     const IdAndKind* SymbolTable::GetIdAndKindInfo(QualifiedNameView symbol) const
     {
-        auto iter = m_symbols.find({symbol});
-        return iter == m_symbols.cend() ? nullptr : &(*iter);
+        auto iter = m_symbols.find(IdentifierUID{symbol});
+        return iter == m_symbols.end() ? nullptr : &(*iter);
     }
 
     bool SymbolTable::DeleteIdentifier(const IdentifierUID& name)
@@ -51,7 +55,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    IdAndKind& SymbolTable::AddIdentifier(QualifiedNameView symbol, Kind kind, optional<size_t> lineNumber /*= none*/)
+    IdAndKind& SymbolTable::AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber /*= std::nullopt*/)
     {
         IdentifierUID idUID{symbol};
         auto fetchedIdIt = m_symbols.find(idUID);
@@ -63,7 +67,7 @@ namespace AZ::ShaderCompiler
             }
             else
             {
-                throw AzslcException(ORCHESTRATOR_ODR_VIOLATION, "Semantic", lineNumber, none,
+                throw AzslcException(ORCHESTRATOR_ODR_VIOLATION, "Semantic", lineNumber, std::nullopt,
                                      ConcatString("ODR (One Definition Rule) violation. Redeclaration of ",
                                                   Kind::ToStr(kind), " ", ExtractLeaf(symbol), " in ", LevelUp(symbol), "  ",
                                                   GetFirstSeenLineMessage(fetchedIdIt->second), "\n"));

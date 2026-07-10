@@ -8,9 +8,20 @@
 
 #include "Emitter.h"
 
-#include <cmath>
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdint>
 #include <filesystem>
-#include <tuple>
+#include <iterator>
+#include <limits>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <variant>
+#include <vector>
 
 // We should only include the base platform emitter
 // Every specific implementation is supplied via a factory get method
@@ -21,28 +32,28 @@ namespace AZ::ShaderCompiler
     // to activate argument dependent lookup from template utilities in AzslcUtils, this must be in a reachable namespace
     Streamable& operator << (Streamable& out, const AttributeInfo::Argument& arg)
     {
-        if (holds_alternative<string>(arg))
+        if (std::holds_alternative<std::string>(arg))
         {
-            return out << get<string>(arg);
+            return out << std::get<std::string>(arg);
         }
 
-        else if (holds_alternative<ConstNumericVal>(arg))
+        else if (std::holds_alternative<ConstNumericVal>(arg))
         {
-            const auto& constVal = get<ConstNumericVal>(arg);
+            const auto& constVal = std::get<ConstNumericVal>(arg);
 
-            if (holds_alternative<int32_t>(constVal) || holds_alternative<uint32_t>(constVal))
+            if (std::holds_alternative<int32_t>(constVal) || std::holds_alternative<uint32_t>(constVal))
             {
                 return out << ExtractValueAsInt64(constVal, std::numeric_limits<int64_t>::min());
             }
-            else if (holds_alternative<float>(constVal))
+            else if (std::holds_alternative<float>(constVal))
             {
                 return out << ExtractValueAsFloat(constVal, std::numeric_limits<float>::infinity());
             }
         }
 
-        else if (holds_alternative<bool>(arg))
+        else if (std::holds_alternative<bool>(arg))
         {
-            return out << get<bool>(arg);
+            return out << std::get<bool>(arg);
         }
 
         return out;
@@ -218,14 +229,14 @@ namespace AZ::ShaderCompiler
     void CodeEmitter::SetupScopeMigrations(const Options& options)
     {
         m_translations.SetAccessSymbolQueryFunctor([this](QualifiedNameView qnv){return m_ir->GetKindInfo(IdentifierUID{qnv});});
-        m_translations.SetGetSeenatFunctor([this](QualifiedNameView qnv) -> vector<Seenat>&
+        m_translations.SetGetSeenatFunctor([this](QualifiedNameView qnv) -> std::vector<Seenat>&
                                             {
                                                 auto* uidkind = m_ir->GetIdAndKindInfo(qnv);
                                                 if (uidkind)
                                                 {
                                                     return uidkind->second.GetSeenats();
                                                 }
-                                                static vector<Seenat> s_empty;
+                                                static std::vector<Seenat> s_empty;
                                                 return s_empty;
                                             });
 
@@ -248,7 +259,7 @@ namespace AZ::ShaderCompiler
                     m_translations.RegisterLandingScope(uid, m_ir->m_rootConstantStructUID.GetName());
                     m_translations.AddCustomBehavior(uid.GetName(),
                         BehaviorEvent::OnReference,
-                        [constructRootconstantReference](QualifiedNameView, UsageContext, string proposition, ssize_t)
+                        [constructRootconstantReference](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
                     {
                         // Construct the rootconstant member name which is declared as global variable with the use of get functions.
                         // Type _g_MyRootConstVar = GetShaderRootConst_Member(); So now we just return _g_MyRootConstVar;
@@ -261,7 +272,7 @@ namespace AZ::ShaderCompiler
         // all SRGs -> erased. Migrate all their contents to global.
         for (auto& [srgUID, srgInfo] : m_ir->GetOrderedSymbolsOfSubType_2<SRGInfo>())
         {
-            array<decltype(srgInfo->m_structs)*, 6> allSrgMembersUidArrays = {&srgInfo->m_structs,
+            std::array<decltype(srgInfo->m_structs)*, 6> allSrgMembersUidArrays = {&srgInfo->m_structs,
                                                                               &srgInfo->m_srViews,
                                                                               &srgInfo->m_samplers,
                                                                               &srgInfo->m_CBs,
@@ -294,7 +305,7 @@ namespace AZ::ShaderCompiler
                              assert(varInfo->GetTypeClass() == TypeClass::ConstantBuffer);
                              m_translations.AddCustomBehavior(viewUid.GetName(),
                                                               BehaviorEvent::OnReference,
-                                                              [this](QualifiedNameView, UsageContext, const string& proposition, ssize_t tokenId)
+                                                              [this](QualifiedNameView, UsageContext, const std::string& proposition, ssize_t tokenId)
                                                               {
                                                                   // in cb-body mode, CB are converted to views, a non-subscripted expression
                                                                   // needs to be abstracted away (by adding [0]) to feel like a constant buffer access.
@@ -315,10 +326,10 @@ namespace AZ::ShaderCompiler
                             // we need to mutate this to MyRsc_SRGConstantBuffer.MyRsc_m_f4
                             m_translations.AddCustomBehavior(fieldUid.GetName(),
                                                             BehaviorEvent::OnReference,
-                                                            [this, srgUID=srgUID](QualifiedNameView, UsageContext, string proposition, ssize_t)
+                                                            [this, srgUID=srgUID](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
                                                             {
-                                                                string constantBufferId = UnMangle(MakeSrgConstantsCBName(srgUID));
-                                                                string translatedFieldId = UnMangle(string{ExtractLeaf(ReMangle(proposition))});
+                                                                std::string constantBufferId = UnMangle(MakeSrgConstantsCBName(srgUID));
+                                                                std::string translatedFieldId = UnMangle(std::string{ExtractLeaf(ReMangle(proposition))});
                                                                 return constantBufferId + "." + translatedFieldId;
                                                             });
                          });
@@ -372,7 +383,7 @@ namespace AZ::ShaderCompiler
 
     void CodeEmitter::EmitShaderVariantOptionGetters(const Options& options) const
     {
-        vector<pair<IdentifierUID, VarInfo*>> symbols;
+        std::vector<std::pair<IdentifierUID, VarInfo*>> symbols;
 
         // browse all variables
         for (const auto& [uid, varInfo] : m_ir->m_symbols.GetOrderedSymbolsOfSubType_2<VarInfo>())
@@ -408,7 +419,7 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void CodeEmitter::EmitGetFunctionsForRootConstants(const ClassInfo& rootConstInfo, string_view bufferName) const
+    void CodeEmitter::EmitGetFunctionsForRootConstants(const ClassInfo& rootConstInfo, std::string_view bufferName) const
     {
         for (const auto& memberVar : rootConstInfo.GetMemberFields())
         {
@@ -454,7 +465,7 @@ namespace AZ::ShaderCompiler
         size_t supposedVirtualLine = m_lineFinder->GetVirtualLineNumber(azslLineNumber);
         size_t curHlslLine = m_out.GetLineCount() + 1;  // "lines" is a space that is 1-based indexed.
         auto lastEmitted = Infimum(m_alreadyEmittedPreprocessorLineDirectives, curHlslLine);
-        if (lastEmitted != m_alreadyEmittedPreprocessorLineDirectives.cend())
+        if (lastEmitted != m_alreadyEmittedPreprocessorLineDirectives.end())
         {
             // verify if we can skip the line emission if current stream line feed is still in sync with expectations
             //  image:
@@ -472,7 +483,7 @@ namespace AZ::ShaderCompiler
                 return; // no need to emit. we can skip
         }
         // get the original file as absolute path:
-        const string& originalFileName = std::filesystem::absolute( m_lineFinder->GetVirtualFileName(azslLineNumber) ).lexically_normal().generic_string();
+        const std::string originalFileName = std::filesystem::absolute( std::filesystem::path(m_lineFinder->GetVirtualFileName(azslLineNumber).c_str()) ).lexically_normal().generic_string();
         // emit the line:
         m_out << "#line " << supposedVirtualLine << " \"" << originalFileName << "\"\n";
         // remember it:
@@ -487,10 +498,10 @@ namespace AZ::ShaderCompiler
         EmitPreprocessorLineDirective(origSourceLine);
     }
 
-    string CodeEmitter::EmitInheritanceList(const ClassInfo& clInfo)
+    std::string CodeEmitter::EmitInheritanceList(const ClassInfo& clInfo)
     {
-        string hlsl = clInfo.HasAnyBases() ? " : " : "";
-        vector<string> mutatedBaseNames;
+        std::string hlsl = clInfo.HasAnyBases() ? " : " : "";
+        std::vector<std::string> mutatedBaseNames;
         TransformCopy(clInfo.GetBases(), mutatedBaseNames,
                       [&](const IdentifierUID& uid)
                       {
@@ -500,7 +511,7 @@ namespace AZ::ShaderCompiler
         return hlsl;
     }
 
-    void CodeEmitter::EmitStruct(const ClassInfo& classInfo, string_view structuredSymName, const Options& options)
+    void CodeEmitter::EmitStruct(const ClassInfo& classInfo, std::string_view structuredSymName, const Options& options)
     {
         auto HlslStructuredDelcTagFromKind = [](Kind k)
         {
@@ -617,12 +628,12 @@ namespace AZ::ShaderCompiler
     }
 
     // special adapter version for AttributeInfo argument
-    static string Undecorate(string_view decoration, const AttributeInfo::Argument& arg)
+    static std::string Undecorate(std::string_view decoration, const AttributeInfo::Argument& arg)
     {
         std::stringstream ss;
         MakeOStreamStreamable soss(ss);
         (Streamable&)soss << arg;
-        return string{AZ::Undecorate(decoration, ss.str())};
+        return std::string{AZ::Undecorate(decoration, ss.str())};
     }
 
     void CodeEmitter::EmitAttribute(const AttributeInfo& attrInfo) const
@@ -636,7 +647,7 @@ namespace AZ::ShaderCompiler
         {
             outstream << (attrInfo.m_argList.begin() == attrInfo.m_argList.end() ? "" : Unescape(Undecorate("\"", *attrInfo.m_argList.begin())));
             auto outVer = [&](const AttributeInfo::Argument& arg) { outstream << " " << Unescape(Undecorate("\"", arg)); };
-            for_each(std::next(attrInfo.m_argList.begin()), attrInfo.m_argList.end(), outVer);
+            std::for_each(std::next(attrInfo.m_argList.begin()), attrInfo.m_argList.end(), outVer);
             outstream << '\n';
         }
 
@@ -644,19 +655,19 @@ namespace AZ::ShaderCompiler
         {
             if (!attrInfo.m_argList.empty())
             {
-                if (holds_alternative<string>(attrInfo.m_argList[0]))
+                if (std::holds_alternative<std::string>(attrInfo.m_argList[0]))
                 {
-                    string poFormat{ Trim(get<string>(attrInfo.m_argList[0]), "\"") };
+                    std::string poFormat{ Trim(std::get<std::string>(attrInfo.m_argList[0]), "\"") };
                     outstream << "#pragma OutputFormatHint(default " << poFormat << ")\n";
                 }
                 else if (attrInfo.m_argList.size() > 1 &&
-                         holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]) &&
-                         holds_alternative<string>(attrInfo.m_argList[1]))
+                         std::holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]) &&
+                         std::holds_alternative<std::string>(attrInfo.m_argList[1]))
                 {
-                    const auto rtIndex = ExtractValueAsInt64(get<ConstNumericVal>(attrInfo.m_argList[0]), std::numeric_limits<int64_t>::min());
+                    const auto rtIndex = ExtractValueAsInt64(std::get<ConstNumericVal>(attrInfo.m_argList[0]), std::numeric_limits<int64_t>::min());
                     if (rtIndex >= 0 && rtIndex <= 7)
                     {
-                        string poFormat{ Trim(get<string>(attrInfo.m_argList[1]), "\"") };
+                        std::string poFormat{ Trim(std::get<std::string>(attrInfo.m_argList[1]), "\"") };
                         outstream << "#pragma OutputFormatHint(target " << rtIndex << " " << poFormat << ")\n";
                     }
                 }
@@ -698,7 +709,7 @@ namespace AZ::ShaderCompiler
 
     void CodeEmitter::EmitEnum(const IdentifierUID& uid, const ClassInfo& classInfo, const Options& options)
     {
-        const auto& enumInfo = get<EnumerationInfo>(classInfo.m_subInfo);
+        const auto& enumInfo = std::get<EnumerationInfo>(classInfo.m_subInfo);
 
         EmitAllAttachedAttributes(uid);
 
@@ -1006,7 +1017,7 @@ namespace AZ::ShaderCompiler
         // note: instead of redoing this work ad-hoc, EmitText could be used directly on the ext type.
         const auto genericType = "<" + GetTranslatedName(varInfo->m_typeInfoExt.m_genericParameter, UsageContext::ReferenceSite) + ">";
 
-        const string spaceX = ", space" + std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
+        const std::string spaceX = ", space" + std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
         m_out << "ConstantBuffer " << genericType << " " << cbName;
         if (bindInfo.m_isUnboundedArray)
         {
@@ -1027,7 +1038,7 @@ namespace AZ::ShaderCompiler
         const auto& bindInfo = rootSig.Get(sId);
         const auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(sId.m_name);
 
-        const string spaceX = ", space" + std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
+        const std::string spaceX = ", space" + std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
         m_out << (varInfo->m_samplerState->m_isComparison ? "SamplerComparisonState " : "SamplerState ")
               << ReplaceSeparators(sId.m_name, Underscore);
         if (bindInfo.m_isUnboundedArray)
@@ -1043,22 +1054,22 @@ namespace AZ::ShaderCompiler
     }
 
     //! For scope-migration-aware name emission of symbol names
-    string CodeEmitter::GetTranslatedName(QualifiedNameView mangledName, UsageContext context, ssize_t tokenId /*= NotOverToken*/) const
+    std::string CodeEmitter::GetTranslatedName(QualifiedNameView mangledName, UsageContext context, ssize_t tokenId /*= NotOverToken*/) const
     {
         return m_translations.GetTranslatedName(mangledName, context, tokenId);
     }
 
-    string CodeEmitter::GetTranslatedName(const IdentifierUID& uid, UsageContext context, ssize_t tokenId /*= NotOverToken*/) const
+    std::string CodeEmitter::GetTranslatedName(const IdentifierUID& uid, UsageContext context, ssize_t tokenId /*= NotOverToken*/) const
     {
         return GetTranslatedName(uid.m_name, context, tokenId);
     }
 
-    string CodeEmitter::GetTranslatedName(const TypeRefInfo& typeRef, UsageContext context, ssize_t tokenId /*= NotOverToken*/) const
+    std::string CodeEmitter::GetTranslatedName(const TypeRefInfo& typeRef, UsageContext context, ssize_t tokenId /*= NotOverToken*/) const
     {
         return GetTranslatedName(typeRef.m_typeId, context, tokenId);
     }
 
-    string CodeEmitter::GetTranslatedName(const ExtendedTypeInfo& extTypeInfo, UsageContext context, const Options& options, Modifiers forbidden /*= {}*/, ssize_t tokenId /*= NotOverToken*/) const
+    std::string CodeEmitter::GetTranslatedName(const ExtendedTypeInfo& extTypeInfo, UsageContext context, const Options& options, Modifiers forbidden /*= {}*/, ssize_t tokenId /*= NotOverToken*/) const
     {
         return GetExtendedTypeInfo(extTypeInfo, options, forbidden,
                                    [this, context, tokenId](const TypeRefInfo& tri){ return GetTranslatedName(tri, context, tokenId); });
@@ -1070,9 +1081,9 @@ namespace AZ::ShaderCompiler
         auto   bindSet = BindingPair::Set::Merged;
         auto&  bindInfo = rootSig.Get(tId);
         auto*  varInfo = m_ir->GetSymbolSubAs<VarInfo>(tId.m_name);
-        string varType = GetTranslatedName(varInfo->m_typeInfoExt, UsageContext::DeclarationSite, options);
+        std::string varType = GetTranslatedName(varInfo->m_typeInfoExt, UsageContext::DeclarationSite, options);
         auto   registerTypeLetter = ToLower(BindingType::ToStr(RootParamTypeToBindingType(bindInfo.m_type)));
-        optional<string> stringifiedLogicalSpace = std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
+        std::optional<std::string> stringifiedLogicalSpace = std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
 
         // depending on platforms we may have supplementary attributes or/and type modifier.
         auto [prefix, suffix] = GetPlatformEmitter().GetDataViewHeaderFooter(*this, tId, bindInfo.m_registerBinding.m_pair[bindSet].m_registerIndex, registerTypeLetter, stringifiedLogicalSpace, options);
@@ -1102,7 +1113,7 @@ namespace AZ::ShaderCompiler
         m_out << GetShaderKeyFunctionName(getterUid);
     }
 
-    void CodeEmitter::EmitGetShaderKeyFunction(const IdentifierUID& shaderKeyUid, const IdentifierUID& getterUid, uint32_t keySizeInBits, uint32_t keyOffsetBits, string_view defaultValue, const TypeRefInfo& returnType) const
+    void CodeEmitter::EmitGetShaderKeyFunction(const IdentifierUID& shaderKeyUid, const IdentifierUID& getterUid, uint32_t keySizeInBits, uint32_t keyOffsetBits, std::string_view defaultValue, const TypeRefInfo& returnType) const
     {
         // Because we use uint on the shader source side no shader option can cross the 32-bit boundary
         // This is already ensured by the emission side, in Json::Value CodeEmitter::GetVariantList(...)
@@ -1118,7 +1129,7 @@ namespace AZ::ShaderCompiler
             assert(dims.m_dimensions.size() == 1); // This is generated variable, it must have exactly 1 array dimension
             if (arraySlot >= dims.m_dimensions[0])
             {
-                const string errorMessage = ConcatString("The option {", UnmangleTrimedName(getterUid.m_name), "} exceeds the number of bits (",
+                const std::string errorMessage = ConcatString("The option {", UnmangleTrimedName(getterUid.m_name), "} exceeds the number of bits (",
                     AZ::ShaderCompiler::kShaderVariantKeyRegisterSize * dims.m_dimensions[0], ") allowed by the ShaderVariantFallback.\n",
                     "Either increase the limit or remove some options!");
                 throw AzslcEmitterException(EMITTER_OPTION_EXCEEDING_BITS_COUNT, errorMessage);
@@ -1145,12 +1156,12 @@ namespace AZ::ShaderCompiler
             // Also we need to reproduce the "range minimal" value as an addition post big-field extraction.
             // because the CB compact storage into bits of an uint4 does not incorporate the offset of the range
             // because they are "useless" (compressable) entropy bits that would take space in the key.
-            if (returnType.m_typeId.m_name.find("int") != string::npos)  // if type int/uint/int16_t... then it's an integer range.
+            if (returnType.m_typeId.m_name.find("int") != std::string::npos)  // if type int/uint/int16_t... then it's an integer range.
             {
                 if (auto attrInfo = m_ir->m_symbols.GetAttribute(getterUid, "range"))
                 {
                     // Presence of the correct arglist has already been verified in Backend::AppendOptionRange
-                    m_out << " + " << ExtractValueAsInt64(get<ConstNumericVal>(attrInfo->m_argList[0]));
+                    m_out << " + " << ExtractValueAsInt64(std::get<ConstNumericVal>(attrInfo->m_argList[0]));
                 }
             }
             else if (returnType.m_typeClass == TypeClass::Enum)
@@ -1197,7 +1208,7 @@ namespace AZ::ShaderCompiler
             // and this if-branch will be taken. if the programmer specified no initializer clause,
             // this would produce unbuildable HLSL and error in generatored code. We really don't want that
             // as it would be hard to diagnose for users. As a reasonable behavior, we can emit val = 0.
-            string typeAsStr = GetTranslatedName(returnType, UsageContext::ReferenceSite);
+            std::string typeAsStr = GetTranslatedName(returnType, UsageContext::ReferenceSite);
             // "<type> val = (cast expr to <type>) 0 or default;"
             m_out << "    " << typeAsStr << " val = (" << typeAsStr << ")" << (defaultValue.empty() ? "0" : defaultValue) << ";\n";
             m_out << "    return val;\n";
@@ -1252,7 +1263,7 @@ namespace AZ::ShaderCompiler
             auto qualifiedIdCtx = As<azslParser::QualifiedIdContext*>(nestedNameSpecifierCtx->parent);
             if (!qualifiedIdCtx)
             {
-                const string errorMessage = FormatString("Unexpected expression '%s'", token->getText().c_str());
+                const std::string errorMessage = FormatString("Unexpected expression '%s'", token->getText().c_str());
                 throw AzslcEmitterException(EMITTER_UNEXPECTED_EXPRESSION, token, errorMessage);
             }
             // We only care to call out the error if the token has the name of an SRG.
@@ -1262,7 +1273,7 @@ namespace AZ::ShaderCompiler
                 const auto& [uid, kindInfo] = *idAndKind;
                 if (kindInfo.IsKindOneOf(Kind::ShaderResourceGroup))
                 {
-                    const string errorMessage = FormatString("Undefined ShaderResourceGroup member '%s'", qualifiedIdCtx->getText().c_str());
+                    const std::string errorMessage = FormatString("Undefined ShaderResourceGroup member '%s'", qualifiedIdCtx->getText().c_str());
                     throw AzslcEmitterException(EMITTER_UNDEFINED_SRG_MEMBER, qualifiedIdCtx->getStart(), errorMessage);
                 }
             }
@@ -1315,11 +1326,11 @@ namespace AZ::ShaderCompiler
                     auto idExpr = m_translations.GetIdExpression(token);
                     if (!idExpr.IsEmpty())
                     {
-                        auto getToken = [this](ssize_t& tokenId) -> string
+                        auto getToken = [this](ssize_t& tokenId) -> std::string
                         {
                             assert(tokenId >= 0);
                             auto* token = m_tokens->get(static_cast<size_t>(tokenId));
-                            return token->getChannel() == Token::DEFAULT_CHANNEL ? token->getText() : string{};
+                            return token->getChannel() == Token::DEFAULT_CHANNEL ? token->getText() : std::string{};
                         };
                         output << m_translations.TranslateIdExpression(idExpr, ii, getToken) << " ";
                         ii += idExpr.m_span.length() - 1;

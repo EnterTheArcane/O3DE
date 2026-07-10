@@ -42,20 +42,23 @@ ly_add_target(
             Source/Grammar
     BUILD_DEPENDENCIES
         PRIVATE
+            AZ::AzCore
             3rdParty::antlr4
             3rdParty::cli11
             3rdParty::jsoncpp
 )
 
-if(MSVC)
+target_compile_options(AZSLC PRIVATE ${O3DE_COMPILE_OPTION_ENABLE_EXCEPTIONS})
+
+if(WIN32)
     target_compile_options(AZSLC PRIVATE
-        /EHsc
-        /U_HAS_EXCEPTIONS
-        /D_HAS_EXCEPTIONS=1
+        -U_HAS_EXCEPTIONS
+        -D_HAS_EXCEPTIONS=1
     )
-else()
+endif()
+
+if(NOT MSVC)
     target_compile_options(AZSLC PRIVATE
-        -fexceptions
         -Wno-deprecated-literal-operator
         -Wno-language-extension-token
         -Wno-missing-braces
@@ -64,12 +67,6 @@ else()
         -Wno-unused-function
         -Wno-unused-variable
     )
-    if(WIN32)
-        target_compile_options(AZSLC PRIVATE
-            -U_HAS_EXCEPTIONS
-            -D_HAS_EXCEPTIONS=1
-        )
-    endif()
 endif()
 
 add_subdirectory(Tests)

@@ -8,6 +8,10 @@
 
 #include "ScopeTracker.h"
 
+#include <cassert>
+#include <iostream>
+#include <string_view>
+
 namespace AZ::ShaderCompiler
 {
     ScopeTracker::ScopeTracker(SymbolGetterFunctorT symbolFinder)
@@ -31,7 +35,7 @@ namespace AZ::ShaderCompiler
     }
 
     // classic variation that takes a cumulative leaf
-    void ScopeTracker::EnterScope(string_view scopeName, ssize_t tokenStreamPosition)
+    void ScopeTracker::EnterScope(std::string_view scopeName, ssize_t tokenStreamPosition)
     {
         auto accumulatedPath = JoinPath(m_currentScopePath, scopeName, JoinPolicy::EmptyMeansEmpty);
         EnterScope(QualifiedNameView{accumulatedPath}, tokenStreamPosition);

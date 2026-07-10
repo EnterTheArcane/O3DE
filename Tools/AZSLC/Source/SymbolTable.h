@@ -11,6 +11,10 @@
 #include "KindInfo.h"
 #include "DiagnosticStream.h"
 
+#include <cstdint>
+#include <optional>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     // A symbol database
@@ -26,7 +30,7 @@ namespace AZ::ShaderCompiler
         //! Register a fresh entry in the symbol map. No KindInfo filled up, the client must do it.
         //! Will return a reference to the newly inserted data.
         //! Will throw in case of ODR violation.
-        auto AddIdentifier(QualifiedNameView symbol, Kind kind, optional<size_t> lineNumber = none) -> IdAndKind&;
+        auto AddIdentifier(QualifiedNameView symbol, Kind kind, std::optional<size_t> lineNumber = std::nullopt) -> IdAndKind&;
 
         //! Can be used to hack the position of a symbol added late, after the phase of semantic check.
         //! Typically hidden symbols added by the compiler such as implicit structs or padding fields.
@@ -37,7 +41,7 @@ namespace AZ::ShaderCompiler
 
         // [GFX TODO]2: use densemap/oahm to avoid fragmentation (depends on [Task 5])
         IdToKindMap           m_symbols;   // declarations of any kind and attached information (unordered bag, but O(1+) lookup)
-        vector<IdentifierUID> m_order;     // remember order of apparition in the original source (useful for iteration during dump or emission)
+        std::vector<IdentifierUID> m_order;     // remember order of apparition in the original source (useful for iteration during dump or emission)
                                            // the order gets altered during Mid-end treatment, by the SymbolAggregator to be arranged in the head-visit AST order instead.
     };
 }

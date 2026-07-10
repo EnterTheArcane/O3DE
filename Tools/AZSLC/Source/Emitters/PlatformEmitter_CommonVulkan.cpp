@@ -9,16 +9,24 @@
 #include "Emitter.h"
 #include "PlatformEmitter_CommonVulkan.h"
 
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
+
 namespace AZ::ShaderCompiler
 {
-    string PlatformEmitter_CommonVulkan::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
+    std::string PlatformEmitter_CommonVulkan::GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbolUid, const Options& options) const
     {
         std::stringstream stream;
         auto* ir = codeEmitter.GetIR();
         auto* varInfo = ir->GetSymbolSubAs<VarInfo>(symbolUid.GetName());
         auto retInfo = varInfo->GetTypeRefInfo();
-        string typeAsStr = codeEmitter.GetTranslatedName(retInfo, UsageContext::ReferenceSite);
-        string defaultValue = codeEmitter.GetInitializerClause(varInfo);
+        std::string typeAsStr = codeEmitter.GetTranslatedName(retInfo, UsageContext::ReferenceSite);
+        std::string defaultValue = codeEmitter.GetInitializerClause(varInfo);
         Modifiers forbidden = StorageFlag::Static;
         assert(varInfo->m_specializationId >= 0);
         stream << "[[vk::constant_id(" << varInfo->m_specializationId << ")]]\n";
@@ -29,7 +37,7 @@ namespace AZ::ShaderCompiler
             auto* enumClassInfo = ir->GetSymbolSubAs<ClassInfo>(retInfo.m_typeId.GetName());
             auto& enumerators = enumClassInfo->GetOrderedMembers();
             auto scalarType = enumClassInfo->Get<EnumerationInfo>()->m_underlyingType.m_arithmeticInfo.UnderlyingScalarToStr();
-            string scName = JoinAllNestedNamesWithUnderscore(symbolUid.m_name) + "_SC_OPTION";
+            std::string scName = JoinAllNestedNamesWithUnderscore(symbolUid.m_name) + "_SC_OPTION";
             stream << "const " << scalarType << " " << scName;
             // TODO: if using a default value, emit it as the underlying scalar type, since enums are not valid default values for
             // specialization constants (casting is also not allowed). We set default values for shader options at runtime so it's not
@@ -45,16 +53,16 @@ namespace AZ::ShaderCompiler
         return stream.str();
     }
 
-    std::pair<string, string> PlatformEmitter_CommonVulkan::GetDataViewHeaderFooter(
+    std::pair<std::string, std::string> PlatformEmitter_CommonVulkan::GetDataViewHeaderFooter(
         const CodeEmitter& codeEmitter,
         const IdentifierUID& symbol,
         uint32_t bindInfoRegisterIndex,
-        string_view registerTypeLetter,
-        optional<string> stringifiedLogicalSpace,
+        std::string_view registerTypeLetter,
+        std::optional<std::string> stringifiedLogicalSpace,
         const Options& options) const
     {
         std::stringstream stream;
-        optional<AttributeInfo> inputAttachmentIndexAttribute;
+        std::optional<AttributeInfo> inputAttachmentIndexAttribute;
         auto varInfo = codeEmitter.GetIR()->GetSymbolSubAs<VarInfo>(symbol.GetName());
         bool isSubpassInput = StartsWith(varInfo->m_typeInfoExt.m_coreType.m_typeId.GetName(), "?SubpassInput");
         if (isSubpassInput)
@@ -64,7 +72,7 @@ namespace AZ::ShaderCompiler
             {
                 inputAttachmentIndexAttribute->m_namespace = "vk";
                 inputAttachmentIndexAttribute->m_category = AttributeCategory::Sequence;
-                inputAttachmentIndexAttribute->m_argList[0] = static_cast<ConstNumericVal>(ExtractValueAs<int32_t>(get<ConstNumericVal>(inputAttachmentIndexAttribute->m_argList[0]), 0) + options.m_subpassInputsOffset);
+                inputAttachmentIndexAttribute->m_argList[0] = static_cast<ConstNumericVal>(ExtractValueAs<int32_t>(std::get<ConstNumericVal>(inputAttachmentIndexAttribute->m_argList[0]), 0) + options.m_subpassInputsOffset);
                 MakeOStreamStreamable soss(stream);
                 CodeEmitter::EmitAttribute(*inputAttachmentIndexAttribute, soss);
                 stream << "[[vk::binding(" << bindInfoRegisterIndex;
@@ -76,7 +84,7 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        string registerString;
+        std::string registerString;
         if (!inputAttachmentIndexAttribute)
         {   // fallback to the base behavior in non-input-attachment cases for the `.. : register();` syntax.
             registerString = PlatformEmitter::GetDataViewHeaderFooter(codeEmitter,

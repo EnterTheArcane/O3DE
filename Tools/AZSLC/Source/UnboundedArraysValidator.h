@@ -11,6 +11,11 @@
 #include "KindInfo.h"
 #include "Registers.h"
 
+#include <cstdint>
+#include <limits>
+#include <string>
+#include <unordered_map>
+
 namespace AZ::ShaderCompiler
 {
     //! Helper class for validation of all possible use cases for unbounded arrays.
@@ -35,13 +40,13 @@ namespace AZ::ShaderCompiler
 
         //! Validates, semantically speaking, if a variable/field can be added to a SRG.
         bool CheckFieldCanBeAddedToSrg(bool isUnboundedArray, const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
-            string* errorMessage = nullptr);
+            std::string* errorMessage = nullptr);
 
     private:
         //! Helper for CheckFieldCanBeAddedToSrg. Only called if @varUid was declared as an unbounded array.
         //! If it returns false, *errorMessage will have the details.
         bool CheckUnboundedArrayFieldCanBeAddedToSrg(const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
-            string* errorMessage = nullptr);
+            std::string* errorMessage = nullptr);
 
         //! Returns the space index that corresponds to the given SRG.
         //! The calculated space index is stored in m_srgToSpaceIndex the first time
@@ -52,7 +57,7 @@ namespace AZ::ShaderCompiler
         Options m_options;
 
         //! Key is an SRG Uid, value is its space index.
-        unordered_map<IdentifierUID, SpaceIndex> m_srgToSpaceIndex;
+        std::unordered_map<IdentifierUID, SpaceIndex> m_srgToSpaceIndex;
         //! Keeps track of max SpaceIndex value in m_srgToSpaceIndex.
         SpaceIndex m_maxSpaceIndex = 0;
 

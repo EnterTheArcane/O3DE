@@ -7,7 +7,11 @@
  */
 #pragma once
 
+#include <cstdint>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <utility>
 
 #include "Backend.h"
 
@@ -36,7 +40,7 @@ namespace AZ::ShaderCompiler
         //! If no such key is registered, returns nullptr instead.
         //! It never returns the default platform emitter.
         //! @param key  The key used to search the platform emitter
-        static const PlatformEmitter* GetEmitter(const string& key) noexcept(true);
+        static const PlatformEmitter* GetEmitter(const std::string& key) noexcept(true);
 
         PlatformEmitter(PlatformEmitter const&) = delete;
         PlatformEmitter& operator=(PlatformEmitter const&) = delete;
@@ -52,7 +56,7 @@ namespace AZ::ShaderCompiler
         //! The only intended use of this method is by the platform emitter itself. No other entity should register emitters.
         //! @param key  The key used to search. The platform emitter will be registered under this key.
         //! @param platformEmitter  An emitter to register, which must be of a class derived from this PlatformEmitter
-        static void SetEmitter(const string& key, const PlatformEmitter* const platformEmitter) noexcept(false);
+        static void SetEmitter(const std::string& key, const PlatformEmitter* const platformEmitter) noexcept(false);
 
     public:
         //! Gets the string emission for the root signature for this platform
@@ -60,14 +64,14 @@ namespace AZ::ShaderCompiler
         //! @param rootSig      Root signature description which should be emitted as shader code
         //! @param options      Emission options
         [[nodiscard]]
-        virtual string GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const;
+        virtual std::string GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const;
 
         //! Gets the string emission for the data view containing the root constants
         //! @param codeEmitter  Reference to the calling code emitter
         //! @param rootSig      Root signature description which should be emitted as shader code
         //! @param options      Emission options
         [[nodiscard]]
-        virtual string GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const;
+        virtual std::string GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const;
 
         //! Gets the string emission for the surroundings of an extern data view variable
         //! @param codeEmitter              Reference to the calling code emitter
@@ -77,12 +81,12 @@ namespace AZ::ShaderCompiler
         //! @param options                  Emission options
         //! \return                         first: header to emit before the dataview declaration.   second: footer to emit after the dataview declaration
         [[nodiscard]]
-        virtual std::pair<string, string> GetDataViewHeaderFooter(
+        virtual std::pair<std::string, std::string> GetDataViewHeaderFooter(
             const CodeEmitter& codeEmitter,
             const IdentifierUID& symbol,
             uint32_t bindInfoRegisterIndex,
-            string_view registerTypeLetter,
-            optional<string> stringifiedLogicalSpace,
+            std::string_view registerTypeLetter,
+            std::optional<std::string> stringifiedLogicalSpace,
             const Options& options) const;
 
         //! Aligns the size for the data containing the root constants.
@@ -92,7 +96,7 @@ namespace AZ::ShaderCompiler
         virtual bool RequiresUniqueSpaceForUnboundedArrays() const {return false;}
 
         [[nodiscard]]
-        virtual string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const;
+        virtual std::string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const;
 
         //! Returns the subpass input that the platform emitter supports.
         virtual SubpassInputSupportFlag GetSubpassInputSupport() const;

@@ -9,6 +9,17 @@
 
 #include "Utils.h"
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cctype>
+#include <cstdint>
+#include <iterator>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <unordered_map>
+
 namespace AZ::ShaderCompiler
 {
     // type classes before canonicalization.
@@ -124,7 +135,7 @@ namespace AZ::ShaderCompiler
         TypeClass toReturn = TypeClass::OtherPredefined;  // default value if nothing of the under was non null.
         using PredefinedNodeT = std::remove_pointer_t<decltype(predefinedNode)>;  // DRY
         // map TypeClasses to the same indexes than the context functions list
-        array<TypeClass, 18> contextClasses = { TypeClass::Scalar,
+        std::array<TypeClass, 18> contextClasses = { TypeClass::Scalar,
                                                 TypeClass::Vector,
                                                 TypeClass::GenericVector,
                                                 TypeClass::Matrix,
@@ -216,14 +227,14 @@ namespace AZ::ShaderCompiler
 
     // Analyze a type (by parsing it) and return what class it belongs to.
     // Don't let too wild uncontrolled input sneak in there, there may be vectors of attack.
-    inline TypeClass AnalyzeTypeClass(string_view typeName)
+    inline TypeClass AnalyzeTypeClass(std::string_view typeName)
     {
-        assert(typeName.find("/") == string::npos);  // forgot to unmangle ? use the TentativeName overload in these cases
+        assert(typeName.find("/") == std::string::npos);  // forgot to unmangle ? use the TentativeName overload in these cases
         // Construct a mini program of the form "type a();" and check the AST.
         // Deduce the type class from the node.
-        string miniprogram { typeName };
+        std::string miniprogram { typeName };
         miniprogram += " a();";
-        ANTLRInputStream input(miniprogram);
+        ANTLRInputStream input(miniprogram.c_str(), miniprogram.size());
         azslLexer lexer(&input);
         lexer.removeErrorListeners();
         CommonTokenStream tokens(&lexer);
@@ -250,24 +261,24 @@ namespace AZ::ShaderCompiler
 
     struct TentativeName
     {
-        string mangled;
+        std::string mangled;
     };
     // try to analyze a type with a few iterations to remove mangling while the result is NotAType
     inline TypeClass AnalyzeTypeClass(TentativeName typeName)
     {
-        string try1 = UnMangle(typeName.mangled);
+        std::string try1 = UnMangle(typeName.mangled);
         TypeClass result = AnalyzeTypeClass(try1);
         if (result == TypeClass::IsNotType)
         {
             // this version does not preserve the global one, this can help for fundamentals
-            string try2 = ReplaceSeparators(typeName.mangled, "::");
+            std::string try2 = ReplaceSeparators(typeName.mangled, "::");
             result = AnalyzeTypeClass(try2);
         }
         return result;
     }
 
     /// Verifies that our hardcoded strings don't have typo, by checking against the lexer-extracted keywords stored in the Scalar array.
-    inline bool CheckExistScalarType(string_view scalarName)
+    inline bool CheckExistScalarType(std::string_view scalarName)
     {
         return std::find(Predefined::Scalar.begin(),
                          Predefined::Scalar.end(),
@@ -275,10 +286,10 @@ namespace AZ::ShaderCompiler
     };
 
     /// Assert validity of the type string, and form a "?<type>" tainted string to host a scalar type
-    inline QualifiedName MangleScalarType(string_view typeName)
+    inline QualifiedName MangleScalarType(std::string_view typeName)
     {
         assert(CheckExistScalarType(typeName));
-        return QualifiedName{"?" + string{typeName}};
+        return QualifiedName{"?" + std::string{typeName}};
     };
 
     //! Holds arithmetic-type-class information in small pieces (row, cols, base, size, rank...)
@@ -288,7 +299,7 @@ namespace AZ::ShaderCompiler
         {
             m_baseSize = Packing::PackedSizeof(m_underlyingScalar);
             // establish the conversion rank:
-            auto getIndex = [](string_view s) -> int
+            auto getIndex = [](std::string_view s) -> int
             {
                 auto const& Scalars = Predefined::Scalar;
                 return ::std::distance(Scalars.begin(),
@@ -300,7 +311,7 @@ namespace AZ::ShaderCompiler
             //   - "standard" is > "extended" of same sizeof
             //   - The rank of bool is the smallest
             // That said, we will take inspiration from ASTContext::getIntegerRank of clang
-            static const unordered_map<int, int> subranks =
+            static const std::unordered_map<int, int> subranks =
             {
                 {getIndex("bool"), 1},
                 {getIndex("int16_t"), 2},
@@ -319,7 +330,7 @@ namespace AZ::ShaderCompiler
             // `basesize` getter, but 1 for bool: (physical size of extern bool is considered 32bits in HLSL)
             auto getRankSizeof = [&](int scalarId)
             {
-                assert(string_view{"bool"} == Predefined::Scalar[0]);  // verify that 0 is the hard index of bool.
+                assert(std::string_view{"bool"} == Predefined::Scalar[0]);  // verify that 0 is the hard index of bool.
                 bool isBool = scalarId == 0;
                 return isBool ? 1 : m_baseSize;
             };
@@ -363,7 +374,7 @@ namespace AZ::ShaderCompiler
         }
 
         //! For pretty print
-        string UnderlyingScalarToStr() const
+        std::string UnderlyingScalarToStr() const
         {
             return m_underlyingScalar >= 0 && m_underlyingScalar < AZ::ShaderCompiler::Predefined::Scalar.size() ?
                 AZ::ShaderCompiler::Predefined::Scalar[m_underlyingScalar] : "<NA>";
@@ -422,11 +433,12 @@ namespace AZ::ShaderCompiler
         //! if the type is a SubpassInput, it's an input attachment
         bool IsInputAttachment(const azslLexer* lexer) const
         {
+            auto stdSvToAzSv = [](std::string_view sv) { return std::string_view(sv.data(), sv.size()); };
             return IsViewType(m_typeClass)
-                 && (  m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInput), "\'")
-                    || m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputMS), "\'")
-                    || m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDS), "\'")
-                    || m_typeId.GetNameLeaf() == Trim(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDSMS), "\'"));
+                 && (  m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInput)), "\'")
+                    || m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputMS)), "\'")
+                    || m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDS)), "\'")
+                    || m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDSMS)), "\'"));
         }
 
         friend bool operator == (const TypeRefInfo& lhs, const TypeRefInfo& rhs)
@@ -452,7 +464,7 @@ namespace AZ::ShaderCompiler
 
         ArithmeticTraits toReturn;
 
-        string typeName = UnMangle(a_typeName);
+        std::string typeName = UnMangle(a_typeName);
         size_t baseTypeLen = typeName.length();
 
         // In shading languages we have vector and matrix types which use number of columns and possibly rows (for matrices)
@@ -488,7 +500,7 @@ namespace AZ::ShaderCompiler
         }
 
         // In any case baseTypeLen gives us our base type without vector or matrix information
-        string baseType = typeName.substr(0, baseTypeLen);
+        std::string baseType = typeName.substr(0, baseTypeLen);
 
         // 2 special cases: generic vector and matrix with no generic parameter -> they default to float, 4, 4.
         // https://github.com/Microsoft/DirectXShaderCompiler/issues/2034

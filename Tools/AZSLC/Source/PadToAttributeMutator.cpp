@@ -6,9 +6,19 @@
  *
  */
 
-
 #include "PadToAttributeMutator.h"
 #include "IntermediateRepresentation.h"
+
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <variant>
+#include <vector>
 
 namespace AZ::ShaderCompiler
 {
@@ -21,16 +31,16 @@ namespace AZ::ShaderCompiler
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         //Is the argument integral?
-        if (!holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]))
+        if (!std::holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]))
         {
-            string errorMsg("The [[pad_to(N)]] attribute only accepts one argument of integral type. A non integral argument was given.");
+            std::string errorMsg("The [[pad_to(N)]] attribute only accepts one argument of integral type. A non integral argument was given.");
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         // Read the integral.
-        auto pad_to_value = ExtractValueAs<uint32_t>(get<ConstNumericVal>(attrInfo.m_argList[0]), uint32_t(0));
+        auto pad_to_value = ExtractValueAs<uint32_t>(std::get<ConstNumericVal>(attrInfo.m_argList[0]), uint32_t(0));
         if (!pad_to_value)
         {
-            string errorMsg("Failed to read input integral to [[pad_to(N)]].");
+            std::string errorMsg("Failed to read input integral to [[pad_to(N)]].");
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
         }
         // Must be a multiple of 4.
@@ -63,7 +73,7 @@ namespace AZ::ShaderCompiler
             if (varInfoItor != varInfoUidToPadMap.end())
             {
                 // It appears that there are two consecutive [[pad_to(N)]] attributes. This is an error.
-                auto errorMsg = string("Two consecutive [[pad_to(N)]] attributes are not allowed inside 'struct'.");
+                auto errorMsg = std::string("Two consecutive [[pad_to(N)]] attributes are not allowed inside 'struct'.");
                 throw AzslcIrException{IR_INVALID_PAD_TO_LOCATION, errorMsg, attrInfo.m_lineNumber};
             }
             varInfoUidToPadMap[varUid] = pad_to_value;
@@ -106,18 +116,18 @@ namespace AZ::ShaderCompiler
             if (!classInfo)
             {
                 auto errorMsg = FormatString("Error during struct padding: couldn't find ClassInfo for scope %.*s", scopeUid.GetName().size(), scopeUid.GetName().data());
-                throw std::logic_error(errorMsg);
+                throw std::logic_error(errorMsg.c_str());
             }
             InsertScopePaddings(classInfo, scopeUid, varInfoUidToPadMap, middleEndconfigration);
         }
     }
 
-    vector<IdentifierUID> PadToAttributeMutator::GetSortedScopeUidList(const MapOfScopeUidToPaddingMap& scopesToPad) const
+    std::vector<IdentifierUID> PadToAttributeMutator::GetSortedScopeUidList(const MapOfScopeUidToPaddingMap& scopesToPad) const
     {
-        vector<IdentifierUID> sortedList;
+        std::vector<IdentifierUID> sortedList;
 
-        unordered_set<IdentifierUID> visitedStructs;
-        unordered_set<IdentifierUID> unvisitedStructs;
+        std::unordered_set<IdentifierUID> visitedStructs;
+        std::unordered_set<IdentifierUID> unvisitedStructs;
         for (const auto &item : scopesToPad)
         {
             unvisitedStructs.insert(item.first);
@@ -133,8 +143,7 @@ namespace AZ::ShaderCompiler
         return sortedList;
     }
 
-
-    void PadToAttributeMutator::ScopeUidSortVisitFunction(const IdentifierUID& scopeUid, unordered_set<IdentifierUID>& visitedScopes, vector<IdentifierUID>& sortedList) const
+    void PadToAttributeMutator::ScopeUidSortVisitFunction(const IdentifierUID& scopeUid, std::unordered_set<IdentifierUID>& visitedScopes, std::vector<IdentifierUID>& sortedList) const
     {
         if (visitedScopes.count(scopeUid))
         {
@@ -163,10 +172,9 @@ namespace AZ::ShaderCompiler
         sortedList.push_back(scopeUid);
     }
 
-
-    vector<pair<IdentifierUID, IdentifierUID>> PadToAttributeMutator::GetVariablesOfScopeTypeThatRequirePadding(const ClassInfo* classInfo) const
+    std::vector<std::pair<IdentifierUID, IdentifierUID>> PadToAttributeMutator::GetVariablesOfScopeTypeThatRequirePadding(const ClassInfo* classInfo) const
     {
-        vector<pair<IdentifierUID, IdentifierUID>> retList;
+        std::vector<std::pair<IdentifierUID, IdentifierUID>> retList;
         const auto& memberFields = classInfo->GetMemberFields();
         for (const auto &memberUid : memberFields)
         {
@@ -219,7 +227,7 @@ namespace AZ::ShaderCompiler
                 if (!IsPowerOfTwo(padToBoundary))
                 {
                     //Runtime error.
-                    const string errorMsg = FormatString("Offset %u after Member variable %.*s of struct %.*s "
+                    const std::string errorMsg = FormatString("Offset %u after Member variable %.*s of struct %.*s "
                                                          "is bigger than requested boundary = [[pad_to(%u)]], and this case requires a power of two boundary.",
                                                           nextMemberOffset,
                                                           static_cast<int>(varUid.m_name.size()), varUid.m_name.data(),
@@ -267,10 +275,10 @@ namespace AZ::ShaderCompiler
 
             if (!exportedType.IsPackable())
             {
-                throw std::logic_error{"reflection error: unpackable type ("
+                throw std::logic_error{(std::string("reflection error: unpackable type (")
                     + exportedType.m_typeId.m_name
                     + ") in layout member "
-                    + memberId.m_name};
+                    + memberId.m_name).c_str()};
             }
             TypeClass varClass = exportedType.m_typeClass;
             bool isPrefedined  = IsPredefinedType(varClass);
@@ -379,7 +387,6 @@ namespace AZ::ShaderCompiler
         return size;
     }
 
-
     uint32_t PadToAttributeMutator::CalculateUserDefinedMemberLayout(
                                                           const IdentifierUID& exportedTypeId,
                                                           const bool emitRowMajors,
@@ -408,7 +415,6 @@ namespace AZ::ShaderCompiler
         return tempOffset - startAt;
     }
 
-
     size_t PadToAttributeMutator::InsertPaddingVariables(ClassInfo* classInfo, const IdentifierUID& scopeUid,
                                                          size_t insertionIndex, uint32_t startingOffset, uint32_t numBytesToAdd)
     {
@@ -421,7 +427,7 @@ namespace AZ::ShaderCompiler
             return floatNames[idx];
         };
 
-        auto createVariableInSymbolTable = [&](QualifiedNameView parentName, const string& typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
+        auto createVariableInSymbolTable = [&](QualifiedNameView parentName, const std::string& typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
         {
             QualifiedName dummySymbolFieldName{ JoinPath(parentName, varName) };
 
@@ -479,7 +485,7 @@ namespace AZ::ShaderCompiler
             const auto deltaBytes = alignedOffset - startingOffset;
             if (deltaBytes < numBytesToAdd && deltaBytes != 0)
             {
-                string typeName = getFloatTypeNameOfSize(deltaBytes);
+                std::string typeName = getFloatTypeNameOfSize(deltaBytes);
                 auto variableName = FormatString("__pad_at%u", startingOffset);
                 IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
                 if (insertBeforeThisUid.IsEmpty())
@@ -523,7 +529,7 @@ namespace AZ::ShaderCompiler
         if (numBytesToAdd > 0)
         {
             auto variableName = FormatString("__pad_at%u", startingOffset);
-            string typeName = getFloatTypeNameOfSize(numBytesToAdd);
+            std::string typeName = getFloatTypeNameOfSize(numBytesToAdd);
             IdentifierUID newVarUid = createVariableInSymbolTable(scopeUid.GetName(), typeName, UnqualifiedName{variableName});
             if (insertBeforeThisUid.IsEmpty())
             {

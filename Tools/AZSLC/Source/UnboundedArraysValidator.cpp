@@ -8,6 +8,10 @@
 
 #include "UnboundedArraysValidator.h"
 
+#include <algorithm>
+#include <stdexcept>
+#include <string>
+
 namespace AZ::ShaderCompiler
 {
     void UnboundedArraysValidator::SetOptions(const Options& options)
@@ -20,7 +24,7 @@ namespace AZ::ShaderCompiler
     }
 
     bool UnboundedArraysValidator::CheckUnboundedArrayFieldCanBeAddedToSrg(const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
-        string* errorMessage)
+        std::string* errorMessage)
     {
         if (!CanBeDeclaredAsUnboundedArray(typeClass))
         {
@@ -35,7 +39,7 @@ namespace AZ::ShaderCompiler
     }
 
     bool UnboundedArraysValidator::CheckFieldCanBeAddedToSrg(bool isUnboundedArray, const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
-        string* errorMessage)
+        std::string* errorMessage)
     {
         if (isUnboundedArray)
         {
@@ -79,6 +83,5 @@ namespace AZ::ShaderCompiler
         }
         return spaceIndex;
     }
-
 
 } // namespace AZ::ShaderCompiler

@@ -8,6 +8,21 @@
 
 #include "IntermediateRepresentation.h"
 
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <iostream>
+#include <limits>
+#include <optional>
+#include <ostream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <variant>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     using std::cout;
@@ -16,8 +31,8 @@ namespace AZ::ShaderCompiler
     void IntermediateRepresentation::RegisterAttributeSpecifier(AttributeScope scope,
                                                                 AttributeCategory category,
                                                                 size_t declarationLine,
-                                                                string_view space,
-                                                                string_view name,
+                                                                std::string_view space,
+                                                                std::string_view name,
                                                                 azslParser::AttributeArgumentListContext* argList)
     {
         AttributeInfo attrInfo;
@@ -73,14 +88,14 @@ namespace AZ::ShaderCompiler
         // Hint for the pixel output format for all or one of the render targets
         if (attrInfo.m_attribute == "output_format")
         {
-            bool isDefault = (attrInfo.m_argList.size() == 1 && holds_alternative<string>(attrInfo.m_argList[0]));
-            bool isIndexed = (attrInfo.m_argList.size() == 2 && holds_alternative<string>(attrInfo.m_argList[1]) && holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]));
+            bool isDefault = (attrInfo.m_argList.size() == 1 && std::holds_alternative<std::string>(attrInfo.m_argList[0]));
+            bool isIndexed = (attrInfo.m_argList.size() == 2 && std::holds_alternative<std::string>(attrInfo.m_argList[1]) && std::holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]));
             if (!isDefault && !isIndexed)
             {
                 return true;
             }
 
-            OutputFormat hint = OutputFormat::FromStr(Trim(get<string>(attrInfo.m_argList[isDefault ? 0 : 1]), "\""));
+            OutputFormat hint = OutputFormat::FromStr(Trim(std::get<std::string>(attrInfo.m_argList[isDefault ? 0 : 1]), "\""));
 
             if (isDefault)
             {
@@ -88,7 +103,7 @@ namespace AZ::ShaderCompiler
             }
             else
             {
-                auto rtIndex = ExtractValueAsInt64(get<ConstNumericVal>(attrInfo.m_argList[0]), std::numeric_limits<int64_t>::min());
+                auto rtIndex = ExtractValueAsInt64(std::get<ConstNumericVal>(attrInfo.m_argList[0]), std::numeric_limits<int64_t>::min());
                 if (rtIndex >= 0 && rtIndex <= 7)
                 {
                     m_metaData.m_outputFormatHint[rtIndex] = hint;
@@ -157,7 +172,7 @@ namespace AZ::ShaderCompiler
             }
 
             auto* semanticAsClassInfo = GetSymbolSubAs<ClassInfo>(srgInfo->m_semantic->GetName());
-            optional<int64_t>& variantFallback = semanticAsClassInfo->Get<SRGSemanticInfo>()->m_variantFallback;
+            std::optional<int64_t>& variantFallback = semanticAsClassInfo->Get<SRGSemanticInfo>()->m_variantFallback;
             if (variantFallback)
             {
                 variantFallbackGroups++;
@@ -166,7 +181,7 @@ namespace AZ::ShaderCompiler
                 {
                     PrintWarning(Warn::W1, semanticAsClassInfo->GetDeclNode()->start,
                                  "If you have no options, SRG do not need a ShaderVariantFallback");
-                    variantFallback = none;
+                    variantFallback = std::nullopt;
                 }
             }
         }
@@ -184,9 +199,9 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    vector<IdentifierUID> IntermediateRepresentation::GetChildren(const IdentifierUID& parentUid) const
+    std::vector<IdentifierUID> IntermediateRepresentation::GetChildren(const IdentifierUID& parentUid) const
     {
-        vector<IdentifierUID> results;
+        std::vector<IdentifierUID> results;
         for (const auto& uid : m_symbols.GetOrderedSymbols())
         {
             if (uid.IsParent(parentUid))
@@ -206,13 +221,13 @@ namespace AZ::ShaderCompiler
             return !isFallbackSrg && (kindInfo->GetSeenats().size() == 0);
         };
 
-        vector<IdentifierUID> unusedSrgs = GetFilteredSymbolsOfSubType<SRGInfo>(unreferencedSymbolFilterFunc);
+        std::vector<IdentifierUID> unusedSrgs = GetFilteredSymbolsOfSubType<SRGInfo>(unreferencedSymbolFilterFunc);
         while (!unusedSrgs.empty())
         {
             // For any given symbol, collects all the scope intervals owned by the symbol or any of its children.
-            auto getSymbolScopesFunc = [&](const IdentifierUID& srgId) -> vector<misc::Interval>
+            auto getSymbolScopesFunc = [&](const IdentifierUID& srgId) -> std::vector<misc::Interval>
             {
-                vector<misc::Interval> intervals;
+                std::vector<misc::Interval> intervals;
                 for (const auto & [symId, interval] : m_scope.m_scopeIntervals)
                 {
                     if ((symId.m_name == srgId.m_name) || symId.IsParent(srgId))
@@ -238,11 +253,11 @@ namespace AZ::ShaderCompiler
                 // the symbols table, we will loop through the used SRGs and check if their Seenats
                 // fall within an unused SRG scope interval. The matching Seenats will be removed from the used SRGs.
                 // In turn if all Seenats for any given used SRG are removed then the SRG becomes unused.
-                vector<misc::Interval> unusedSrgScopes = getSymbolScopesFunc(srgUid);
+                std::vector<misc::Interval> unusedSrgScopes = getSymbolScopesFunc(srgUid);
 
                 SRGInfo* srgInfo = GetSymbolSubAs<SRGInfo>(srgUid.GetName());
 
-                vector<IdentifierUID> symbolsToDelete = GetChildren(srgUid);
+                std::vector<IdentifierUID> symbolsToDelete = GetChildren(srgUid);
                 for (const auto& uid : symbolsToDelete)
                 {
                     // Before removing the symbol let's remove it from the Seenat of the Srgs
@@ -256,7 +271,7 @@ namespace AZ::ShaderCompiler
                 for (const auto& usedSrgId : usedSrgs)
                 {
                     KindInfo* usedSrgKindInfo = GetKindInfo(usedSrgId);
-                    vector<Seenat>& seenAts = usedSrgKindInfo->GetSeenats();
+                    std::vector<Seenat>& seenAts = usedSrgKindInfo->GetSeenats();
                     seenAts.erase(std::remove_if(seenAts.begin(), seenAts.end(), [&](const Seenat& seenAt) -> bool {
                         return std::any_of(unusedSrgScopes.begin(), unusedSrgScopes.end(), [&](const misc::Interval& interval) -> bool {
                             return (seenAt.m_where.m_focusedTokenId >= interval.a) && (seenAt.m_where.m_focusedTokenId <= interval.b);
@@ -274,13 +289,13 @@ namespace AZ::ShaderCompiler
 
     }
 
-    string ToYaml(const TypeRefInfo& tref, const IntermediateRepresentation& ir, string_view indent)
+    std::string ToYaml(const TypeRefInfo& tref, const IntermediateRepresentation& ir, std::string_view indent)
     {
         if (tref.IsEmpty())
         {
             return "<NA>";
         }
-        string r;
+        std::string r;
         r += "{name: \"" + tref.m_typeId.m_name + "\", ";
         r += "validity: ";
         r += ir.m_symbols.HasIdentifier(tref.m_typeId.m_name) ? "found, " : "undeclared, ";
@@ -291,17 +306,17 @@ namespace AZ::ShaderCompiler
         return r;
     }
 
-    string ToYaml(const ExtendedTypeInfo& ext, const IntermediateRepresentation& ir, string_view indent)
+    std::string ToYaml(const ExtendedTypeInfo& ext, const IntermediateRepresentation& ir, std::string_view indent)
     {
         auto coreName = ext.m_coreType;
         auto gnicName = ext.m_genericParameter;
-        string r{indent};
+        std::string r{indent};
         r += "core: ";
-        r += ToYaml(coreName, ir, string{indent} + "  ");
+        r += ToYaml(coreName, ir, std::string{indent} + "  ");
         r += "\n";
         r += indent.data();
         r += "generic: ";
-        r += ToYaml(gnicName, ir, string{indent} + "  ");
+        r += ToYaml(gnicName, ir, std::string{indent} + "  ");
         return r;
     }
 
@@ -333,7 +348,7 @@ namespace AZ::ShaderCompiler
                 cout << "  storage: " << sub.m_typeInfoExt.m_qualifiers.GetDisplayName() << "\n";
                 cout << "  array dim: \"" << sub.m_typeInfoExt.m_arrayDims.ToString() << "\"\n";
                 cout << "  has sampler state: " << (sub.m_samplerState ? "yes\n" : "no\n");
-                if (!holds_alternative<monostate>(sub.m_constVal))
+                if (!std::holds_alternative<std::monostate>(sub.m_constVal))
                 {
                     cout << "  val: " << ExtractValueAsInt64(sub.m_constVal) << "\n";
                 }
@@ -373,7 +388,7 @@ namespace AZ::ShaderCompiler
                     auto* varInfo = ir.GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
                     if (varInfo)
                     {
-                        cout << "    - name: '" << (varInfo->m_identifier.empty() ? "<unnamed>" : static_cast<string&>(varInfo->m_identifier)) << "'\n"
+                        cout << "    - name: '" << (varInfo->m_identifier.empty() ? "<unnamed>" : static_cast<std::string&>(varInfo->m_identifier)) << "'\n"
                              << "      type:\n" << ToYaml(varInfo->m_typeInfoExt, ir, "        ") << "\n";
                     }
                     else
@@ -439,11 +454,11 @@ namespace AZ::ShaderCompiler
                 auto exportedType = varInfo->m_typeInfoExt.m_coreType;
                 if (!exportedType.IsPackable())
                 {
-                    throw std::logic_error{ "Internal Error: The type '"
+                    throw std::logic_error{ (std::string("Internal Error: The type '")
                         + exportedType.m_typeId.m_name
                         + "' in layout member '"
                         + uid.m_name
-                        + "' cannot be packed." };
+                        + "' cannot be packed.").c_str() };
                 }
 
                 // GetTotalSize of each member of the structure
@@ -454,18 +469,18 @@ namespace AZ::ShaderCompiler
         // We have a limited space for rootconstant (specified by --root-const=N) check that we're not going over
         if (rootConstantsSize > middleEndconfigration.m_rootConstantsMaxSize)
         {
-            throw std::runtime_error{ "The rootconstants size of "
+            throw std::runtime_error{ (std::string("The rootconstants size of ")
                 + ToString(rootConstantsSize)
                 + " bytes exceeds the limit of "
                 + ToString(middleEndconfigration.m_rootConstantsMaxSize)
-                + "bytes supported on the target platform." };
+                + "bytes supported on the target platform.").c_str() };
         }
 
         // Spec requires at least 128 bytes of block, bigger values (>128 bytes) need to be checked against support by implementation
         constexpr int MinByteSizeRequired = 128;
         if (rootConstantsSize > MinByteSizeRequired)
         {
-            PrintWarning(Warn::W2, none, "The root constant size ", rootConstantsSize, " is greater than 128 bytes. ",
+            PrintWarning(Warn::W2, std::nullopt, "The root constant size ", rootConstantsSize, " is greater than 128 bytes. ",
                 "Large root constant size may not be supported by the implementation.");
         }
 
@@ -493,10 +508,10 @@ namespace AZ::ShaderCompiler
 
             if (!exportedType.IsPackable())
             {
-                throw std::logic_error{ "error: unpackable type ("
+                throw std::logic_error{ (std::string("error: unpackable type (")
                     + exportedType.m_typeId.m_name
                     + ") in layout member "
-                    + memberId.m_name };
+                    + memberId.m_name).c_str() };
             }
             TypeClass varClass = exportedType.m_typeClass;
 
@@ -573,7 +588,7 @@ namespace AZ::ShaderCompiler
         }
 
         // Register a struct Root_Constants and its members to ir
-        auto& [rootConstantStructUid, rootConstantStructKindInfo] = m_symbols.AddIdentifier(name, Kind::Struct, none, AddIdentifierChecks::None);
+        auto& [rootConstantStructUid, rootConstantStructKindInfo] = m_symbols.AddIdentifier(name, Kind::Struct, std::nullopt, AddIdentifierChecks::None);
         rootConstantStructKindInfo.GetSubRefAs<ClassInfo>().m_kind = Kind::Struct;
 
         for (auto& [uid, varInfo] : m_symbols.GetOrderedSymbolsOfSubType_2<VarInfo>())
@@ -628,7 +643,7 @@ namespace AZ::ShaderCompiler
                 varInfo.m_isPublic = false;
 
                 assert(padSize == 16 || padSize == 12 || padSize == 8 || padSize == 4);
-                string typeName = FormatString("uint%d", padSize / 4);
+                std::string typeName = FormatString("uint%d", padSize / 4);
 
                 ExtractedTypeExt padType = { UnqualifiedNameView(typeName), nullptr };
                 varInfo.m_typeInfoExt = ExtendedTypeInfo{m_sema.CreateTypeRefInfo(padType), {},
@@ -667,7 +682,7 @@ namespace AZ::ShaderCompiler
                 return false;
             }
             numColumns = arithmeticInfo->m_cols;
-            if (symbolUid.GetName().find("(") != string::npos)
+            if (symbolUid.GetName().find("(") != std::string::npos)
             {
                 // It's the return value of a function or a function argument. Skip.
                 return false;
@@ -699,9 +714,9 @@ namespace AZ::ShaderCompiler
         // We'll loop through all symbols.
         const auto& orderedSymbols = m_symbols.m_elastic.m_order;
         // Keep record of the structs that end in float2x2, float3x2, float4x2
-        unordered_set<IdentifierUID> structsWithMatrixRx2AsLastField;
+        std::unordered_set<IdentifierUID> structsWithMatrixRx2AsLastField;
         // and also the structs that end in float2x3, float3x3, float4x3
-        unordered_set<IdentifierUID> structsWithMatrixRx3AsLastField;
+        std::unordered_set<IdentifierUID> structsWithMatrixRx3AsLastField;
 
         enum class PrepadType
         {
@@ -714,7 +729,7 @@ namespace AZ::ShaderCompiler
             PrepadType m_prepadType;
             IdentifierUID m_uid;
         };
-        vector<UidWithPrepadType> symbolsToPrepad;
+        std::vector<UidWithPrepadType> symbolsToPrepad;
         for (size_t symbolIndex = 0; symbolIndex < orderedSymbols.size(); ++symbolIndex)
         {
             const IdentifierUID uid = orderedSymbols[symbolIndex];
@@ -765,7 +780,7 @@ namespace AZ::ShaderCompiler
                 continue;
             }
 
-            if (uid.GetName().find("(") != string::npos)
+            if (uid.GetName().find("(") != std::string::npos)
             {
                 // It's a function argument. Skip.
                 continue;
@@ -778,7 +793,7 @@ namespace AZ::ShaderCompiler
             // 2- a float2x2, float3x2, float4x2,
             //    float2x3, float3x3, float4x3.
             //! Helper lambda to get the previously declared variable.
-            auto getPreviousVarInfo = [&](ssize_t& startSearchSymbolIndex /*in out*/, string_view scope) -> VarInfo*
+            auto getPreviousVarInfo = [&](ssize_t& startSearchSymbolIndex /*in out*/, std::string_view scope) -> VarInfo*
             {
                 while (startSearchSymbolIndex >= 0)
                 {
@@ -836,7 +851,7 @@ namespace AZ::ShaderCompiler
         } // for loop end.
 
         //! Helper function that returns a string suggesting padding solution
-        auto getPaddingSolutionMessage = [&](PrepadType prepadType, IdentifierUID insertBeforeThisUid) -> string
+        auto getPaddingSolutionMessage = [&](PrepadType prepadType, IdentifierUID insertBeforeThisUid) -> std::string
         {
             // We can deduce the name of parent struct, class or SRG from the name of the field that should come AFTER
             // the dummy float2/float3.
@@ -868,11 +883,11 @@ namespace AZ::ShaderCompiler
             }
             else
             {
-                throw std::logic_error{ "error: Was expecting " + string(parentName) +
-                    + " to be struct, class or ShaderResourceGroup" };
+                throw std::logic_error{ ("error: Was expecting " + std::string(parentName) +
+                    + " to be struct, class or ShaderResourceGroup").c_str() };
             }
 
-            string typeName;
+            std::string typeName;
             if (isClass)
             {
                 typeName = "class";
@@ -899,13 +914,13 @@ namespace AZ::ShaderCompiler
                 return {};
             }
             const auto virtualLine = lineFinder->GetVirtualLineNumber(*lineInfo, lineOfDeclaration);
-            string solution = FormatString("- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
+            std::string solution = FormatString("- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
                                            prepadType == PrepadType::Float2 ? 2 : 3, insertBeforeThisUid.GetNameLeaf().c_str(), typeName.c_str(), parentName.data(),
                                            virtualLine, lineInfo->m_containingFilename.c_str());
             return solution;
         };
 
-        string solutionsReport;
+        std::string solutionsReport;
         for (const auto& uidAndPrepadType : symbolsToPrepad)
         {
             solutionsReport += getPaddingSolutionMessage(uidAndPrepadType.m_prepadType, uidAndPrepadType.m_uid);
@@ -916,7 +931,7 @@ namespace AZ::ShaderCompiler
             return;
         }
 
-        string errorMessage(
+        std::string errorMessage(
             "Detected potential alignment issues related with DXC flag '-fvk-use-dx-layout'.\n"
             "Alternatively you can use the option '--no-alignment-validation' to void this error and compile as is.:\n");
         errorMessage += solutionsReport;

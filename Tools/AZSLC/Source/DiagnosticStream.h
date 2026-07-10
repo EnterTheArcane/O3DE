@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
@@ -9,7 +9,13 @@
 
 #include "ReflectableEnums.h"
 
+#include <cassert>
+#include <functional>
 #include <iostream>
+#include <ostream>
+#include <stack>
+#include <string_view>
+#include <utility>
 
 namespace AZ
 {
@@ -157,11 +163,11 @@ namespace AZ
     public:
         bool m_on = true;
         decltype(std::cout)& m_wrappedStream;
-        std::function< void(string_view) > m_onErrorCallback;  //!< receive a message in case of a streamed element of a warning level enough to trigger an error
+        std::function< void(std::string_view) > m_onErrorCallback;  //!< receive a message in case of a streamed element of a warning level enough to trigger an error
 
     private:
         Warn m_warningAsErrorLevel = Warn::EndEnumeratorSentinel_;  //!< no warning is an error by default
         Warn m_warningLevel = Warn::W1;                             //!< current activated level setting. default warning is W1
-        stack<Warn> m_activeManipulator{ {Warn::W1} };              //!< store manipulators. start with an initial value corresponding to the default filter.
+        std::stack<Warn> m_activeManipulator{ {Warn::W1} };              //!< store manipulators. start with an initial value corresponding to the default filter.
     };
 }

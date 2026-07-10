@@ -15,8 +15,32 @@
 #include "Texture2DMSto2DCodeMutator.h"
 #include "SubpassInputToTexture2DCodeMutator.h"
 
+#include <algorithm>
+#include <array>
+#include <cctype>
 #include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <exception>
 #include <filesystem>
+#include <format>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <istream>
+#include <iterator>
+#include <limits>
+#include <map>
+#include <memory>
+#include <ostream>
+#include <regex>
+#include <set>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace AZ::ShaderCompiler
 {
@@ -24,12 +48,12 @@ namespace AZ::ShaderCompiler
     DiagnosticStream warningCout(std::cerr);
     Endl azEndl;
 
-    using MapOfStringViewToSetOfString = map<string_view, set<string>>;
+    using MapOfStringViewToSetOfString = std::map<std::string_view, std::set<std::string>>;
 
     template <typename SetType>
     void SetMerge(SetType& dest, SetType& src)
     {
-#ifdef __APPLE__
+        // set has no C++17 merge(), unlike std::set.
         for (auto it = src.begin(); it != src.end(); )
         {
             if (dest.find(*it) == dest.end())
@@ -42,14 +66,11 @@ namespace AZ::ShaderCompiler
                 ++it;
             }
         }
-#else
-        dest.merge(src); // when you have correct libraries.
-#endif
     }
 
     template <typename TypeClassFilterPredicate = std::nullptr_t>
     void VisitTokens(const antlr4::Recognizer* recognizer,
-                     MapOfStringViewToSetOfString& acceptedToken, set<string>& notTypes1,  // out
+                     MapOfStringViewToSetOfString& acceptedToken, std::set<std::string>& notTypes1,  // out
                      TypeClassFilterPredicate tcFilter = nullptr)
     {
         // loop over all keywords
@@ -57,20 +78,21 @@ namespace AZ::ShaderCompiler
         size_t maxToken = vocabulary.getMaxTokenType();
         for (size_t ii = 0; ii < maxToken; ++ii)
         {
-            string_view token = vocabulary.getLiteralName(ii);
+            auto stdToken = vocabulary.getLiteralName(ii);
+            std::string_view token(stdToken.data(), stdToken.size());
             token = Trim(token, "\"'"); // because AntlR gives us e.g "'float'"
             if (!token.empty())         // empty when there is a complex rule (not a straight unconditional keyword)
             {
-                TypeClass tc = AnalyzeTypeClass(TentativeName{string{token}});
+                TypeClass tc = AnalyzeTypeClass(TentativeName{std::string{token}});
                 bool accept = true;
-                if constexpr (!is_same_v<std::nullptr_t, std::remove_reference_t<decltype(tcFilter)>>)
+                if constexpr (!std::is_same_v<std::nullptr_t, std::remove_reference_t<decltype(tcFilter)>>)
                 {
                     accept = tcFilter(tc);
                 }
 
                 if (tc == TypeClass::IsNotType)
                 {
-                    notTypes1.insert(string{token});
+                    notTypes1.insert(std::string{token});
                 }
 
                 if (accept)
@@ -86,13 +108,13 @@ namespace AZ::ShaderCompiler
     template <typename FilterFunction>
     void ClassifyAllTokens(const azslLexer* lexer, MapOfStringViewToSetOfString& classifiedTokens, FilterFunction filter)
     {
-        set<string> notTypes1;
+        std::set<std::string> notTypes1;
         VisitTokens(lexer, classifiedTokens, notTypes1, filter);
         // now. because of names such as StructuredBuffer or matrix, need to have a generic appendix to mean something,
         // they will be classified as IsNotType. So we need to re-attempt analysis by appending something parseable.
 
         // get a scalar typename from the scalar class:
-        string someScalar = *classifiedTokens[TypeClass::ToStr(TypeClass::Scalar)].begin();
+        std::string someScalar = *classifiedTokens[TypeClass::ToStr(TypeClass::Scalar)].begin();
 
         // now we'll use it to construct parseable generic type expressions
         enum class RetryStateMachine
@@ -105,17 +127,17 @@ namespace AZ::ShaderCompiler
 
         constexpr auto isNotTypeKey = TypeClass::ToStr(TypeClass::IsNotType);
         // completely delete all IsNotType from the classification, and redo it all over.
-        set<string> notTypes = std::move(classifiedTokens[isNotTypeKey]);
+        std::set<std::string> notTypes = std::move(classifiedTokens[isNotTypeKey]);
         classifiedTokens.erase(isNotTypeKey);
         SetMerge(notTypes, notTypes1);
 
-        for (const string& token : notTypes)
+        for (const std::string& token : notTypes)
         {
             RetryStateMachine state = RetryStateMachine::OneTypeGenericParameter;
             TypeClass tc;
             do
             {
-                string attemptedTypeName = token;
+                std::string attemptedTypeName = token;
                 switch (state)
                 {
                 case RetryStateMachine::OneTypeGenericParameter:
@@ -140,7 +162,7 @@ namespace AZ::ShaderCompiler
 
             // re-register at the correct place (if passes filter):
             bool accept = true;
-            if constexpr (!is_same_v<std::nullptr_t, std::remove_reference_t<decltype(filter)>>)
+            if constexpr (!std::is_same_v<std::nullptr_t, std::remove_reference_t<decltype(filter)>>)
             {
                 accept = filter(tc);
             }
@@ -155,7 +177,7 @@ namespace AZ::ShaderCompiler
     bool IsKeyword(const antlr4::Recognizer* r, antlr4::Token* token)
     {
         MapOfStringViewToSetOfString byTypeClass;
-        set<string> notTypes;
+        std::set<std::string> notTypes;
         VisitTokens(r, byTypeClass, notTypes);
         bool notType = notTypes.find(token->getText()) != notTypes.end();
         bool notIdentifier = r->getVocabulary().getSymbolicName(token->getType()) != "Identifier";
@@ -168,7 +190,7 @@ namespace AZ::ShaderCompiler
         for (const auto& [category, tokens] : classifiedTokens)
         {
             std::cout << category << ":\n";
-            for (const string& tokenName : tokens)
+            for (const std::string& tokenName : tokens)
             {
                 std::cout << "  - \"" << tokenName << "\"\n";
             }
@@ -184,9 +206,9 @@ namespace AZ::ShaderCompiler
     }
 
     //! iterates on tokens and build the line number mapping (from preprocessor line directives)
-    void ConstructLineMap(vector<std::unique_ptr<Token>>* allTokens, PreprocessorLineDirectiveFinder* lineFinder)
+    void ConstructLineMap(std::vector<std::unique_ptr<Token>>* allTokens, PreprocessorLineDirectiveFinder* lineFinder)
     {
-        string lastNonEmptyFileName = lineFinder->m_physicalSourceFileName;
+        std::string lastNonEmptyFileName = lineFinder->m_physicalSourceFileName;
         for (auto& token : *allTokens) // auto& because each element is a unique_ptr we can't copy
         {
             if (token->getType() == azslLexer::LineDirective)
@@ -205,7 +227,7 @@ namespace AZ::ShaderCompiler
                 auto& groups = *matchBegin; // 4 groups: [0] is the whole line. [1] is the first parenthesized group, [2] the 2nd etc
                 directiveInfo.m_physicalTokenLine = token->getLine();
                 directiveInfo.m_forcedLineNumber = std::atoi(groups[2].str().c_str());
-                directiveInfo.m_containingFilename = groups[4];
+                directiveInfo.m_containingFilename = groups[4].str();
                 if (directiveInfo.m_containingFilename.empty())
                 {
                     // if we don't have a filename specified on the line, it means the last seen filename is still active.
@@ -261,7 +283,7 @@ namespace AZ::ShaderCompiler::Main
 
     /// this function supports the --visitsym option
     // @symbolMqn   starting point of symbol homonyms graph discovery. Mqn: mangled qualified name
-    void PrintVisitSymbol(IntermediateRepresentation& ir, string_view symbolMqn, RelationshipExtentFlag visitOptions)
+    void PrintVisitSymbol(IntermediateRepresentation& ir, std::string_view symbolMqn, RelationshipExtentFlag visitOptions)
     {
         IdAndKind* symbol = ir.GetIdAndKindInfo(QualifiedNameView{symbolMqn});
         if (!symbol)
@@ -304,7 +326,7 @@ namespace AZ::ShaderCompiler::Main
 
 namespace AZ
 {
-    string_view GetFileLeafName(string_view path)
+    std::string_view GetFileLeafName(std::string_view path)
     {
         return Slice(path, path.find_last_of("/\\") + 1, -1);
     }
@@ -474,10 +496,11 @@ int main(int argc, const char* argv[])
         CLI11_PARSE(cli, argc, argv);
 
         constexpr std::string_view AzslcVersion = "1.9.0";
+        auto osName = GetCurrentOsName();
         auto versionString = std::format(
             "AZSL Compiler {} {}",
             AzslcVersion,
-            GetCurrentOsName());
+            std::string_view(osName.data(), osName.size()));
 
         if (printVersion)
         {
@@ -496,7 +519,7 @@ int main(int argc, const char* argv[])
 
         verboseCout.m_on = verbose;
 
-        bool useStdin = inputFile == '-';
+        bool useStdin = inputFile == "-";
         // we need to scope a stream object here, to be able to bind a polymorphic reference to it
         std::ifstream ifs;
         if (!useStdin)
@@ -515,14 +538,14 @@ int main(int argc, const char* argv[])
             throw std::runtime_error("--root-sig requested but no API was selected. Use a --namespace option as well.");
         }
 
-        const string inputFileName = useStdin ? "" : inputFile;
+        const std::string inputFileName = useStdin ? "" : inputFile;
         PreprocessorLineDirectiveFinder lineFinder;
         lineFinder.m_physicalSourceFileName = useStdin ? "stdin" : inputFile;
         // setup the line finder address on the exception system so that errors are canonically mutated to "virtual line space"
         AzslcException::s_lineFinder = &lineFinder;
 
         bool useOutputFile = !output.empty();
-        const string outputFileName = output;
+        const std::string outputFileName = output;
 
         ANTLRInputStream input(in);
         azslLexer lexer(&input);
@@ -566,7 +589,7 @@ int main(int argc, const char* argv[])
 
             // Enable attribute namespaces
             std::for_each(namespaces.begin(), namespaces.end(),
-                [&](const string& space) { ir.AddAttributeNamespaceFilter(space); });
+                [&](const std::string& space) { ir.AddAttributeNamespaceFilter(space); });
 
             SubpassInputSupportFlag subpassInputSupport = Backend::GetPlatformEmitter(&ir).GetSubpassInputSupport();
             if (noSubpassInput)
@@ -578,8 +601,8 @@ int main(int argc, const char* argv[])
             Texture2DMSto2DCodeMutator texture2DMSto2DCodeMutator(&ir, &tokens);
             SubpassInputToTexture2DCodeMutator subpassInputToTexture2DCodeMutator(&ir, &tokens, subpassInputSupport);
             SemaCheckListener semanticListener{&ir};
-            warningCout.m_onErrorCallback = [](string_view message) {
-                throw AzslcException{WX_WARNINGS_AS_ERRORS, "as-error", string{message}};
+            warningCout.m_onErrorCallback = [](std::string_view message) {
+                throw AzslcException{WX_WARNINGS_AS_ERRORS, "as-error", std::string{message}};
             };
             ParseWarningLevel(warningOpts, warningCout);
             bool nonValidativeOptions[] = {full, ia, om, srg, options, dumpsym, ast, bindingdep, !visitName.empty(), stripUnusedSrgs};
@@ -700,7 +723,7 @@ int main(int argc, const char* argv[])
             {
                 using RE = RelationshipExtent;
                 RelationshipExtentFlag visitOptions{RE::Self}; // at least self.  + optional things as listed here-under
-                array<pair<bool, RE::EnumType>, 4> optToRelation = {{{visitDirectReferences, RE::Reference},
+                std::array<std::pair<bool, RE::EnumType>, 4> optToRelation = {{{visitDirectReferences, RE::Reference},
                     {visitFamily, RE::Family},
                     {visitOverloadSet, RE::OverloadSet},
                     {visitRecursively, RE::Recursive}}};
@@ -717,7 +740,7 @@ int main(int argc, const char* argv[])
 
                 if (useOutputFile)
                 {
-                    mainOutFile = std::ofstream(outputFileName);
+                    mainOutFile = std::ofstream(outputFileName.c_str());
                     if (!mainOutFile.good())
                     {
                         throw std::runtime_error("output file could not be opened");
@@ -729,23 +752,23 @@ int main(int argc, const char* argv[])
                 CodeReflection reflecter{&ir, &tokens, out};
 
                 // Lambda to create an output stream and perform an output action
-                auto prepareOutputAndCall = [&](const string &suffix, std::function<void(CodeReflection&)> action)
+                auto prepareOutputAndCall = [&](const std::string &suffix, std::function<void(CodeReflection&)> action)
                 {
-                    string outputName;
+                    std::string outputName;
                     if (useOutputFile)
                     {
-                        outputName = string(GetFileNameWithoutExtension(outputFileName));
+                        outputName = std::string(GetFileNameWithoutExtension(outputFileName));
                     }
                     else
                     {
-                        outputName = string(GetFileNameWithoutExtension(inputFileName));
+                        outputName = std::string(GetFileNameWithoutExtension(inputFileName));
                     }
                     outputName = outputName + "." + suffix + ".json";
 
-                    std::ofstream outFile = std::ofstream(outputName);
+                    std::ofstream outFile = std::ofstream(outputName.c_str());
                     if (!outFile.good())
                     {
-                        throw std::runtime_error("output file '" + outputName + "' could not be opened");
+                        throw std::runtime_error(("output file '" + outputName + "' could not be opened").c_str());
                     }
 
                     std::ostream& out{outFile};
@@ -811,7 +834,7 @@ int main(int argc, const char* argv[])
             }
         }
     }
-    catch (const exception& e)
+    catch (const std::exception& e)
     {
         OutputNestedAndException(e);
         processReturnCode = 1;

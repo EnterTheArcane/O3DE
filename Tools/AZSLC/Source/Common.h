@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 
+#include <cstdint>
+
 namespace AZ::ShaderCompiler
 {
     namespace Packing

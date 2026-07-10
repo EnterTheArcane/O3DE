@@ -27,7 +27,7 @@ namespace AZ
 }
 
 #ifndef NDEBUG
-#include <cassert>
+#include <tuple>
 
 namespace AZ::Tests
 {

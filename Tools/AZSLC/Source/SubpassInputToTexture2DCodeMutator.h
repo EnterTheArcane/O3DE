@@ -13,6 +13,10 @@
 #include "IntermediateRepresentation.h"
 #include "PlatformEmitter.h"
 
+#include <cstdint>
+#include <unordered_map>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     //! This is the main class that handles coversion of SubpassInput related
@@ -62,7 +66,7 @@ namespace AZ::ShaderCompiler
         //!     SubpassInput to Texture2D.
         //!     SubpassInputMS to Texture2DMS.
         //! Returns the number of variables whose type was mutated
-        size_t MutateTypeOfMultiSampleVariables(const vector<IdentifierUID>& subpassInputVariables);
+        size_t MutateTypeOfMultiSampleVariables(const std::vector<IdentifierUID>& subpassInputVariables);
 
         //! Returns true if the SubpassInput is supported by the platform emitter.
         bool IsSubpassInputSupported(const SubpassInputType type);
@@ -72,7 +76,7 @@ namespace AZ::ShaderCompiler
 
         //! A map of TokenIndex to Mutation. If a TokenIndex is present,
         //! it means it should produce mutated text during emission.
-        unordered_map<ssize_t, CodeMutation > m_mutations;
+        std::unordered_map<ssize_t, CodeMutation > m_mutations;
 
         //! Subpass Input support.
         SubpassInputSupportFlag m_subpassInputSupport = SubpassInputSupportFlag::None;

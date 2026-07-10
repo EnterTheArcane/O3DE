@@ -9,6 +9,13 @@
 
 #include "KindInfo.h"
 
+#include <cassert>
+#include <functional>
+#include <string_view>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
 namespace AZ::ShaderCompiler
 {
     //! Strategy for the visitation extent of relationship
@@ -45,7 +52,7 @@ namespace AZ::ShaderCompiler
         {
             KindInfo* info = m_getInfo(symbol.GetName());
             assert(info);
-            unordered_set<IdentifierUID> visited;
+            std::unordered_set<IdentifierUID> visited;
             // visit self if requested
             if (walkConfiguration & RelationshipExtent::Self)
             {
@@ -57,7 +64,7 @@ namespace AZ::ShaderCompiler
     private:
 
         template< typename FunctorType >
-        void Walk(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, unordered_set<IdentifierUID>& visitedSet) const
+        void Walk(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
         {
             if (visitedSet.find(symbol) != visitedSet.end())
             {
@@ -84,12 +91,12 @@ namespace AZ::ShaderCompiler
         }
 
         template< typename FunctorType >
-        void VisitOverloadSet(const IdentifierUID &symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, unordered_set<IdentifierUID>& visitedSet) const
+        void VisitOverloadSet(const IdentifierUID &symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
         {
             KindInfo& kind = *m_getInfo(symbol.GetName());
             if (kind.GetKind() == Kind::Function)
             {
-                string_view core = RemoveLastParenthesisGroup(symbol.GetName());  // strip the function decoration to find the symbol
+                std::string_view core = RemoveLastParenthesisGroup(symbol.GetName());  // strip the function decoration to find the symbol
                 // visit itself (it's interesting to report the naked set itself, and its references are all the unresolved call sites)
                 VisitDefinitionIdentifier(IdentifierUID{core}, functor, RelationshipExtent::OverloadSet, walkConfiguration, visitedSet);
                 KindInfo* overloadSet = m_getInfo(QualifiedNameView{core});
@@ -103,7 +110,7 @@ namespace AZ::ShaderCompiler
         }
 
         template< typename FunctorType >
-        void VisitFamily(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, unordered_set<IdentifierUID>& visitedSet) const
+        void VisitFamily(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
         {
             KindInfo& kind = *m_getInfo(symbol.GetName());
             if (kind.GetKind() == Kind::Function)  // for now only functions have families. we'll have to abstract family access if we implement properties.
@@ -135,7 +142,7 @@ namespace AZ::ShaderCompiler
         //! This function is named this way because of the opposition with "direct references" which already have seenats.
         //! definition locations don't register a seenat, so we need to re-synthesize one.
         template< typename FunctorType >
-        void VisitDefinitionIdentifier(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtent visitCategory, RelationshipExtentFlag walkConfiguration, unordered_set<IdentifierUID>& visitedSet) const
+        void VisitDefinitionIdentifier(const IdentifierUID& symbol, FunctorType&& functor, RelationshipExtent visitCategory, RelationshipExtentFlag walkConfiguration, std::unordered_set<IdentifierUID>& visitedSet) const
         {
             if (visitedSet.find(symbol) == visitedSet.end())
             {
@@ -153,7 +160,7 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        const vector<Seenat>& GetSeenats(const IdentifierUID& uid) const
+        const std::vector<Seenat>& GetSeenats(const IdentifierUID& uid) const
         {
             auto& kind = *m_getInfo(uid.GetName());
             return kind.GetSeenats();

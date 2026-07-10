@@ -1,13 +1,27 @@
 /*
  * Copyright (c) Contributors to the Open 3D Engine Project.
  * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  */
 #pragma once
 
-#include "StdUtils.h"
+
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <functional>
+#include <iterator>
+#include <ostream>
+#include <regex>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+using namespace std::literals::string_view_literals;
 
 namespace AZ::ShaderCompiler
 {
@@ -16,26 +30,26 @@ namespace AZ::ShaderCompiler
     //! Instead of using strings for naked name storage, we use these structures to store symbols.
     //! This way, we have a sort of "tainted string" concept, that will prevent us to break contract invariants in many places.
     //! Picture a sort of BOOST_STRONG_TYPEDEF. But that keeps compatibility with a 'view' type
-    struct QualifiedName : string
+    struct QualifiedName : std::string
     {
         // Need to declare explicitly a default constructor, since the declaration of a copy constructor hereunder would otherwise delete it.
         QualifiedName() = default;
 
         // Provide implicit compatibility from string_view for sheer convenience
-        QualifiedName(string_view sv) : string(sv) {}
+        QualifiedName(std::string_view sv) : std::string(sv) {}
 
-        friend size_t hash_value(const QualifiedName& arg) { return std::hash<string>{}(arg); }
+        friend size_t hash_value(const QualifiedName& arg) { return std::hash<std::string>{}(arg); }
     };
 
     //! In AZSL, Unqualified is a relative symbol. (can have some scope resolution operator, but not starting from global)
     //! Please refer to the comments in QualifiedName struct. They apply the same.
-    struct UnqualifiedName : string
+    struct UnqualifiedName : std::string
     {
         UnqualifiedName() = default;
 
-        UnqualifiedName(string_view sv) : string(sv) {}
+        UnqualifiedName(std::string_view sv) : std::string(sv) {}
 
-        friend size_t hash_value(const UnqualifiedName& arg) { return std::hash<string>{}(arg); }
+        friend size_t hash_value(const UnqualifiedName& arg) { return std::hash<std::string>{}(arg); }
     };
 
     // These 2 asserts verify that the whole exercise is functioning
@@ -70,28 +84,28 @@ struct std::hash<AZ::ShaderCompiler::UnqualifiedName>
 namespace AZ::ShaderCompiler
 {
     // Please refer to the comments around the struct QualifiedName, for explanation about its raison d'etre.
-    struct QualifiedNameView : string_view
+    struct QualifiedNameView : std::string_view
     {
         constexpr QualifiedNameView() = default;
 
         template <typename... Args>
-        explicit constexpr QualifiedNameView(Args&&... args) : string_view(std::forward<Args>(args)...) {}
+        explicit constexpr QualifiedNameView(Args&&... args) : std::string_view(std::forward<Args>(args)...) {}
 
-        QualifiedNameView(const QualifiedName& qn) : string_view(static_cast<const string&>(qn)) {}
+        QualifiedNameView(const QualifiedName& qn) : std::string_view(static_cast<const std::string&>(qn)) {}
 
-        friend size_t hash_value(const QualifiedNameView& arg) { return std::hash<string_view>{}(arg); }
+        friend size_t hash_value(const QualifiedNameView& arg) { return std::hash<std::string_view>{}(arg); }
     };
 
-    struct UnqualifiedNameView : string_view
+    struct UnqualifiedNameView : std::string_view
     {
         constexpr UnqualifiedNameView() = default;
 
         template <typename... Args>
-        explicit constexpr UnqualifiedNameView(Args&&... args) : string_view(std::forward<Args>(args)...) {}
+        explicit constexpr UnqualifiedNameView(Args&&... args) : std::string_view(std::forward<Args>(args)...) {}
 
-        UnqualifiedNameView(const UnqualifiedName& qn) : string_view(static_cast<const string&>(qn)) {}
+        UnqualifiedNameView(const UnqualifiedName& qn) : std::string_view(static_cast<const std::string&>(qn)) {}
 
-        friend size_t hash_value(const UnqualifiedNameView& arg) { return std::hash<string_view>{}(arg); }
+        friend size_t hash_value(const UnqualifiedNameView& arg) { return std::hash<std::string_view>{}(arg); }
     };
 
     static_assert(!std::is_convertible< QualifiedNameView, UnqualifiedNameView >::value);
@@ -118,15 +132,15 @@ struct std::hash<AZ::ShaderCompiler::UnqualifiedNameView>
 
 namespace AZ::ShaderCompiler
 {
-    inline bool IsRooted(string_view path)
+    inline bool IsRooted(std::string_view path)
     {
         return StartsWith(path, "/") || StartsWith(path, "?");
     }
 
     //! from "/func(/f2(?int), ?float)" return "/func"
-    inline string RemoveMatchedParenthesis(string_view name)
+    inline std::string RemoveMatchedParenthesis(std::string_view name)
     {
-        string result;
+        std::string result;
         int level = 0;
         for (auto character : name)
         {
@@ -148,7 +162,7 @@ namespace AZ::ShaderCompiler
 
     //! "thing()more" will be untouched.
     //! "thing()" will become "thing"
-    inline string_view RemoveLastParenthesisGroup(string_view name)
+    inline std::string_view RemoveLastParenthesisGroup(std::string_view name)
     {
         int level = 0;
         size_t startOfLastGroup = name.size();
@@ -169,27 +183,26 @@ namespace AZ::ShaderCompiler
 
     //! Mutate "stuff()" to "stuff_vd_"
     //"        "thing(?int)" to "thing_?int_"
-    inline string FlattenParenthesisGroups(string_view name)
+    inline std::string FlattenParenthesisGroups(std::string_view name)
     {
-        auto ret = std::regex_replace(string{name}, std::regex("\\(\\)"), "_vd");
+        auto ret = std::regex_replace(std::string(name.data(), name.size()), std::regex("\\(\\)"), "_vd");
         ret = std::regex_replace(ret, std::regex("[\\(\\)]"), "_");
         return ret;
     }
 
-    inline bool IsLeaf(string_view name)
+    inline bool IsLeaf(std::string_view name)
     {
-        return RemoveMatchedParenthesis(name).find("/") == string::npos;
+        return RemoveMatchedParenthesis(name).find("/") == std::string::npos;
     }
 
     //! String replace of AZIR separators (mangled scope separators)
-    inline string ReplaceSeparators(string name, string_view replacement)
+    inline std::string ReplaceSeparators(std::string name, std::string_view replacement)
     {
         if (IsRooted(name))
         {   // remove leading slash/questionmark to lighten output
             name = Slice(name, 1, -1);
         }
-        name = std::regex_replace(name, std::regex("\\/"), replacement.data());
-        return name;
+        return std::regex_replace(name, std::regex("\\/"), replacement.data());
     }
 
     static inline const char* Underscore = "_";
@@ -203,35 +216,34 @@ namespace AZ::ShaderCompiler
     //! symbol names are stored with path separators. like such:
     //! name = "/MyStruct/m_myVar"
     //! returns: "MyStruct_m_myVar"
-    inline string Flatten(string name, FlattenStrategy strategy)
+    inline std::string Flatten(std::string name, FlattenStrategy strategy)
     {
         name = std::regex_replace(name, std::regex("\\?"), "");
         return ReplaceSeparators(strategy == PreserveArgumentsUnicity ? FlattenParenthesisGroups(name) : RemoveMatchedParenthesis(name), Underscore);
     }
 
     //! "?int" to "int" (partial unmangling)
-    inline string_view RemoveFloatingMark(string_view name)
+    inline std::string_view RemoveFloatingMark(std::string_view name)
     {
         return StartsWith(name, "?") ? Slice(name, 1, -1) : name;
     }
 
     //! Change from AZIR form to AZSLang form
     //! eg "/SRG/mem" to "::SRG::mem"
-    inline string UnMangle(string name)
+    inline std::string UnMangle(std::string name)
     {
-        name = std::regex_replace(name, std::regex("/"), "::");
-        name = std::regex_replace(name, std::regex("\\?"), "");
-        name = RemoveMatchedParenthesis(name);
+        std::string stdName = std::regex_replace(name, std::regex("/"), "::");
+        stdName = std::regex_replace(stdName, std::regex("\\?"), "");
+        name = RemoveMatchedParenthesis(stdName);
         return name;
     }
 
     //! Attempt to re-mangle a text-form idExpression but no guarantee about validity as an IdentifierUID. Notably predefined won't get their '?'
     //! If you have a proper AST context, use ExtractNameFromIdExpression instead.
     //! eg "SRG::mem" to "SRG/mem"
-    inline string ReMangle(string name)
+    inline std::string ReMangle(std::string name)
     {
-        name = std::regex_replace(name, std::regex("::"), "/");
-        return name;
+        return std::regex_replace(name, std::regex("::"), "/");
     }
 
     //! in: `anyname` in AzIR format
@@ -240,14 +252,14 @@ namespace AZ::ShaderCompiler
     //! Important note: This does not provide a valid unqualified name, lookup-able from a given scope.
     //!                 It is merely a string based chopping, that can be used for leaf name comparisons when useful.
     //! If you want the correct context-valid unqualifying feature, use the SymbolAggregator's FindLeastQualifiedName
-    inline UnqualifiedNameView ExtractLeaf(string_view anyname)
+    inline UnqualifiedNameView ExtractLeaf(std::string_view anyname)
     {
         auto lastSlash = anyname.rfind("/");
         while (WithinMatchedParentheses(anyname, lastSlash))
         {
             lastSlash = anyname.rfind("/", lastSlash-1);
         }
-        if (lastSlash == string::npos)
+        if (lastSlash == std::string::npos)
         {   // if there is no slash at all, or is not rooted
             return UnqualifiedNameView{RemoveFloatingMark(anyname)};
         }
@@ -256,19 +268,19 @@ namespace AZ::ShaderCompiler
 
     //! true  if anywhere in the input, a parenthesis appear
     //!       even in the middle, e.g:  "/A/f(/?int)/b"
-    inline bool ArgumentDecorationExists(string_view name)
+    inline bool ArgumentDecorationExists(std::string_view name)
     {
-        return name.find("(") != string::npos;
+        return name.find("(") != std::string::npos;
     }
 
     //! true  if the leaf of the input has this sort of form "fun(/T,?int)"
     //! false if e.g "/X"; e.g "/F(/T)/a"
-    inline bool IsLeafDecoratedByArguments(string_view name)
+    inline bool IsLeafDecoratedByArguments(std::string_view name)
     {
         return !name.empty() && (name.back() == ')' || ArgumentDecorationExists({ExtractLeaf(name)}));
     }
 
-    inline size_t CountParameters(string_view mangledFunctionName)
+    inline size_t CountParameters(std::string_view mangledFunctionName)
     {
         auto leaf = ExtractLeaf(mangledFunctionName);
         return EndsWith(leaf, "()") || !EndsWith(leaf, ")")  // no-arg function or not-a-function
@@ -285,21 +297,21 @@ namespace AZ::ShaderCompiler
     //!        "A/B" if passed stem="A"  and leaf="B"
     //!        "/A"  if passed stem=""   and leaf="A" (if policy is EmptyMeansRoot)
     //!        "A"   if passed stem=""   and leaf="A" (if policy is EmptyMeansEmpty)
-    inline string JoinPath(string_view stem, string_view leaf, JoinPolicy policy = JoinPolicy::EmptyMeansRoot)
+    inline std::string JoinPath(std::string_view stem, std::string_view leaf, JoinPolicy policy = JoinPolicy::EmptyMeansRoot)
     {
         if ((stem.empty() || leaf.empty() ) && policy == JoinPolicy::EmptyMeansEmpty)
         {
-            return string{stem.empty() ? leaf : stem};
+            return std::string{stem.empty() ? leaf : stem};
         }
 
         assert(!IsRooted(leaf)); // violation of contract that leaf must not be rooted.
         if (EndsWith(stem, "/"))
         {
-            return string{stem}.append(leaf);
+            return std::string{stem}.append(leaf);
         }
         else
         {
-            return string{stem}.append("/").append(leaf);
+            return std::string{stem}.append("/").append(leaf);
         }
     }
 
@@ -310,7 +322,7 @@ namespace AZ::ShaderCompiler
     //! or          "/X/"   from "/X/Get(/?int)"
     //! Note:       "/"     from "/"  (bump against the root)
     //! this function is fundamentally the dual of ExtractLeaf in the sense that it gets you the other side.
-    inline string_view LevelUp(string_view path)
+    inline std::string_view LevelUp(std::string_view path)
     {
         if (path == "/")
         {   // special case
@@ -327,7 +339,7 @@ namespace AZ::ShaderCompiler
         {
             lastSlash = path.rfind("/", lastSlash - 1);
         }
-        if (lastSlash == string::npos)
+        if (lastSlash == std::string::npos)
         {   // no slash at all
             return "";
         }
@@ -336,7 +348,7 @@ namespace AZ::ShaderCompiler
 
     //! Has the same semantics than LevelUp but cleans up the trailing slash when there is a name left other than root.
     //! example: "/dir" from "/dir/leaf"
-    inline string_view GetParentName(string_view path)
+    inline std::string_view GetParentName(std::string_view path)
     {
         auto oneUp = LevelUp(path);
         if (oneUp != "/" && EndsWith(oneUp, "/"))
@@ -349,7 +361,7 @@ namespace AZ::ShaderCompiler
     //! Overload for when you work with QualifiedNameView type
     inline QualifiedNameView GetParentName(QualifiedNameView path)
     {
-        return QualifiedNameView{GetParentName(string_view{path})};
+        return QualifiedNameView{GetParentName(std::string_view{path})};
     }
 
     //! Overload for when you work with QualifiedName type
@@ -360,7 +372,7 @@ namespace AZ::ShaderCompiler
 
     struct PathPart
     {
-        string_view m_slice;
+        std::string_view m_slice;
         size_t      m_sliceBegin;
         size_t      m_sliceLen;
     };
@@ -374,7 +386,7 @@ namespace AZ::ShaderCompiler
     //! FunctionObject will be fed a PathPart as parameter, and called for each part.
     //! The behavior is the same as SplitPath function, please refer to it for behavior document.
     template <typename FunctionObject>
-    void ForEachPathPart(string_view path, FunctionObject action)
+    void ForEachPathPart(std::string_view path, FunctionObject action)
     {
         size_t start = 0;
         size_t pathLen = path.length();
@@ -398,7 +410,7 @@ namespace AZ::ShaderCompiler
 
     //! returns true if supposedChild is contained in supposedParent
     //! example: IsParent("/ns/bag", "/ns/bag/member") == true
-    inline bool IsParent(string_view supposedParent, string_view supposedChild)
+    inline bool IsParent(std::string_view supposedParent, std::string_view supposedChild)
     {
         return supposedChild.size() > supposedParent.size() && supposedParent == supposedChild.substr(0, supposedParent.size());
     }
@@ -406,10 +418,10 @@ namespace AZ::ShaderCompiler
     //! examples ["", "A", "Leaf"] from "/A/Leaf"
     //!          ["A", "Leaf"] from "A/Leaf"
     //!          ["A", "Leaf", ""] from "A/Leaf/"
-    inline vector<string_view> SplitPath(string_view path)
+    inline std::vector<std::string_view> SplitPath(std::string_view path)
     {
-        const size_t numSlashes = count(path.begin(), path.end(), '/'); // in the case of "/X(/a)" numSlashes overshoots, so we only use it for reservation
-        vector<string_view> split;
+        const size_t numSlashes = std::count(path.begin(), path.end(), '/'); // in the case of "/X(/a)" numSlashes overshoots, so we only use it for reservation
+        std::vector<std::string_view> split;
         split.reserve(numSlashes);
         ForEachPathPart(path, [&split](const PathPart& ppart)
                         {
@@ -421,7 +433,7 @@ namespace AZ::ShaderCompiler
     //! counts the number of slashes.
     //! so "" is depth 0, "/sym" is depth 1, "/ns/x" is depth 2
     //! however "/" and "/ns/" are invalid input. because they are ambiguous. fix your input first.
-    inline size_t GetSymbolDepth(string_view mangledName)
+    inline size_t GetSymbolDepth(std::string_view mangledName)
     {
         assert(!EndsWith(mangledName, "/"));  // principle of least astonishment -> make an error of this case
         return std::count(mangledName.begin(), mangledName.end(), '/');
@@ -442,9 +454,9 @@ namespace AZ::ShaderCompiler
     //! produce a string of the form "(/t1,/t2,/t3)"
     //! where `begin` and `end` represents a range over resolved types fully qualified names (FQN)
     template< typename IteratorType >
-    inline string CreateDecorationOfFunction(IteratorType begin, IteratorType end)
+    inline std::string CreateDecorationOfFunction(IteratorType begin, IteratorType end)
     {
-        static_assert(std::is_same_v<typename IteratorType::value_type, QualifiedNameView> || std::is_same_v<typename IteratorType::value_type, QualifiedName>);
+        static_assert(std::is_same_v<typename std::iterator_traits<IteratorType>::value_type, QualifiedNameView> || std::is_same_v<typename std::iterator_traits<IteratorType>::value_type, QualifiedName>);
         return Decorate("(", Join(begin, end, ","), ")");
     }
 
@@ -507,7 +519,7 @@ namespace AZ::ShaderCompiler
 
         friend std::ostream& operator << (std::ostream& stream, const IdentifierUID& id)
         {
-            stream << id.m_name;
+            stream << id.m_name.c_str();
             return stream;
         }
 
@@ -540,7 +552,7 @@ namespace AZ::ShaderCompiler
     bool ContainsSameLeafName(const ContainerOfIdUID& ctr, UnqualifiedNameView uqName)
     {
         assert(!IsRooted(uqName));
-        return Contains(ctr.cbegin(), ctr.cend(), [&](decltype(*ctr.cbegin()) elem) {return elem.GetNameLeaf() == uqName; });
+        return Contains(ctr.begin(), ctr.end(), [&](decltype(*ctr.begin()) elem) {return elem.GetNameLeaf() == uqName; });
     }
 }
 
@@ -584,13 +596,13 @@ namespace AZ::Tests
 
 #if defined(_MSC_VER) && _MSC_VER >= 1910
         // Visual Studio passes the string views here, other compilers will not
-        assert(SplitPath("/A/Leaf") == (vector{ ""sv, "A"sv, "Leaf"sv }));
-        assert(SplitPath("A/Leaf") == (vector{ "A"sv, "Leaf"sv }));
-        assert(SplitPath("Leaf") == (vector{ "Leaf"sv }));
-        assert(SplitPath("A/Leaf/") == (vector{ "A"sv, "Leaf"sv, ""sv }));
-        assert(SplitPath("/") == (vector{ ""sv, ""sv }));
-        assert(SplitPath("/X(/a)/f") == (vector{ ""sv, "X(/a)"sv, "f"sv }));
-        assert(SplitPath("X(/f(/t))/g") == (vector{ "X(/f(/t))"sv, "g"sv }));
+        assert(SplitPath("/A/Leaf") == (std::vector{ ""sv, "A"sv, "Leaf"sv }));
+        assert(SplitPath("A/Leaf") == (std::vector{ "A"sv, "Leaf"sv }));
+        assert(SplitPath("Leaf") == (std::vector{ "Leaf"sv }));
+        assert(SplitPath("A/Leaf/") == (std::vector{ "A"sv, "Leaf"sv, ""sv }));
+        assert(SplitPath("/") == (std::vector{ ""sv, ""sv }));
+        assert(SplitPath("/X(/a)/f") == (std::vector{ ""sv, "X(/a)"sv, "f"sv }));
+        assert(SplitPath("X(/f(/t))/g") == (std::vector{ "X(/f(/t))"sv, "g"sv }));
 #endif
 
         assert(JoinPath("A/", "B") == "A/B");
