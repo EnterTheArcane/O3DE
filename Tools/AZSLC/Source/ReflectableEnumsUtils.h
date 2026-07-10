@@ -16,15 +16,15 @@ namespace AZ
     // GenratedEnum are enums made with the MAKE_REFLECTABLE_ENUM macro
 
     // get a std::make_tuple(Enumerator1, Enumerator2...);
-    template<typename GeneratedEnum>
-    constexpr auto enumeratorsAsTuple_v = valueListAsTuple_v< typename GeneratedEnum::MetaValueList >;
+    template <typename GeneratedEnum>
+    constexpr auto enumeratorsAsTuple_v = valueListAsTuple_v<typename GeneratedEnum::MetaValueList>;
 
     // get a tuple< T::EnumType, T::EnumType...>
-    template<typename GeneratedEnum>
-    using EnumeratorsAsTuple_t = ValueListAsTuple_t< typename GeneratedEnum::MetaValueList >;
+    template <typename GeneratedEnum>
+    using EnumeratorsAsTuple_t = ValueListAsTuple_t<typename GeneratedEnum::MetaValueList>;
 
-    template<typename GeneratedEnum>
-    constexpr auto enumeratorsCount_v = countTemplateParameters_v< typename GeneratedEnum::MetaValueList >;
+    template <typename GeneratedEnum>
+    constexpr auto enumeratorsCount_v = countTemplateParameters_v<typename GeneratedEnum::MetaValueList>;
 }
 
 #ifndef NDEBUG

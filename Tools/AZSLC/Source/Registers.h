@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+
 namespace AZ::ShaderCompiler
 {
     using SpaceIndex = uint32_t; // represents register space0, space1, ...

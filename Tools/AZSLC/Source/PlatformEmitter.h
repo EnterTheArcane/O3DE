@@ -23,10 +23,10 @@ namespace AZ::ShaderCompiler
     //! Modes of subpass input the emitter supports
     enum class SubpassInputSupportFlag : uint32_t
     {
-        None = 0,                   // No support
-        Color = 1 << 0,             // Support for color attachments
-        DepthStencil = 1 << 1,      // Support for depth/stencil attachment
-        All = Color | DepthStencil  // Support all modes
+        None = 0, // No support
+        Color = 1 << 0, // Support for color attachments
+        DepthStencil = 1 << 1, // Support for depth/stencil attachment
+        All = Color | DepthStencil, // Support all modes
     };
 
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement.
@@ -43,14 +43,22 @@ namespace AZ::ShaderCompiler
         //! @param key  The key used to search the platform emitter
         static const PlatformEmitter* GetEmitter(const std::string& key) noexcept(true);
 
-        PlatformEmitter(PlatformEmitter const&) = delete;
-        PlatformEmitter& operator=(PlatformEmitter const&) = delete;
+        PlatformEmitter(const PlatformEmitter&) = delete;
+
+        PlatformEmitter& operator=(const PlatformEmitter&) = delete;
+
         PlatformEmitter(PlatformEmitter&&) = delete;
+
         PlatformEmitter& operator=(PlatformEmitter&&) = delete;
 
     protected:
-        PlatformEmitter() {};
-        virtual ~PlatformEmitter() {}
+        PlatformEmitter()
+        {
+        };
+
+        virtual ~PlatformEmitter()
+        {
+        }
 
         //! Registers a new platform emitter with the specified name.
         //! In order to provide robust assertion it throws an exception if more than one emitters try to use the same key.
@@ -94,7 +102,10 @@ namespace AZ::ShaderCompiler
         //! @param size  The size of stride
         virtual uint32_t AlignRootConstants(uint32_t size) const;
 
-        virtual bool RequiresUniqueSpaceForUnboundedArrays() const {return false;}
+        virtual bool RequiresUniqueSpaceForUnboundedArrays() const
+        {
+            return false;
+        }
 
         [[nodiscard]]
         virtual std::string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const;

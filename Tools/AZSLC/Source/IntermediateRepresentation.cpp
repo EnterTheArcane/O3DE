@@ -28,19 +28,20 @@ namespace AZ::ShaderCompiler
     using std::cout;
     using std::endl;
 
-    void IntermediateRepresentation::RegisterAttributeSpecifier(AttributeScope scope,
-                                                                AttributeCategory category,
-                                                                size_t declarationLine,
-                                                                std::string_view space,
-                                                                std::string_view name,
-                                                                azslParser::AttributeArgumentListContext* argList)
+    void IntermediateRepresentation::RegisterAttributeSpecifier(
+        AttributeScope scope,
+        AttributeCategory category,
+        size_t declarationLine,
+        std::string_view space,
+        std::string_view name,
+        azslParser::AttributeArgumentListContext* argList)
     {
         AttributeInfo attrInfo;
-        attrInfo.m_scope      = scope;
-        attrInfo.m_category   = category;
+        attrInfo.m_scope = scope;
+        attrInfo.m_category = category;
         attrInfo.m_lineNumber = declarationLine;
-        attrInfo.m_namespace  = space;
-        attrInfo.m_attribute  = name;
+        attrInfo.m_namespace = space;
+        attrInfo.m_attribute = name;
 
         if (argList)
         {
@@ -99,7 +100,13 @@ namespace AZ::ShaderCompiler
 
             if (isDefault)
             {
-                std::for_each(m_metaData.m_outputFormatHint, m_metaData.m_outputFormatHint + 8, [&](OutputFormat& fmt) { fmt = hint; });
+                std::for_each(
+                    m_metaData.m_outputFormatHint,
+                    m_metaData.m_outputFormatHint + 8,
+                    [&](OutputFormat& fmt)
+                    {
+                        fmt = hint;
+                    });
             }
             else
             {
@@ -125,8 +132,9 @@ namespace AZ::ShaderCompiler
     }
 
     //! execute any logic that relates to intermediate treatment that would need to be done between front end and back end
-    void IntermediateRepresentation::MiddleEnd(const MiddleEndConfiguration& middleEndconfigration,
-                                               PreprocessorLineDirectiveFinder* lineFinder)
+    void IntermediateRepresentation::MiddleEnd(
+        const MiddleEndConfiguration& middleEndconfigration,
+        PreprocessorLineDirectiveFinder* lineFinder)
     {
         // At this point we have an order apparition vector that stores symbols in the immediate naive
         // order in which they are first seen in the source code.
@@ -179,8 +187,10 @@ namespace AZ::ShaderCompiler
 
                 if (!hasOptions)
                 {
-                    PrintWarning(Warn::W1, semanticAsClassInfo->GetDeclNode()->start,
-                                 "If you have no options, SRG do not need a ShaderVariantFallback");
+                    PrintWarning(
+                        Warn::W1,
+                        semanticAsClassInfo->GetDeclNode()->start,
+                        "If you have no options, SRG do not need a ShaderVariantFallback");
                     variantFallback = std::nullopt;
                 }
             }
@@ -215,7 +225,8 @@ namespace AZ::ShaderCompiler
     void IntermediateRepresentation::RemoveUnusedSrgs()
     {
         // We use this function pointer to find SRGs that have no references.
-        auto unreferencedSymbolFilterFunc = +[](KindInfo* kindInfo) {
+        auto unreferencedSymbolFilterFunc = +[](KindInfo* kindInfo)
+        {
             const SRGInfo* srgInfo = kindInfo->GetSubAs<SRGInfo>();
             const bool isFallbackSrg = !!srgInfo->m_shaderVariantFallback;
             return !isFallbackSrg && (kindInfo->GetSeenats().size() == 0);
@@ -228,7 +239,7 @@ namespace AZ::ShaderCompiler
             auto getSymbolScopesFunc = [&](const IdentifierUID& srgId) -> std::vector<misc::Interval>
             {
                 std::vector<misc::Interval> intervals;
-                for (const auto & [symId, interval] : m_scope.m_scopeIntervals)
+                for (const auto& [symId, interval] : m_scope.m_scopeIntervals)
                 {
                     if ((symId.m_name == srgId.m_name) || symId.IsParent(srgId))
                     {
@@ -239,7 +250,8 @@ namespace AZ::ShaderCompiler
             };
 
             // With this filter we can extract symbols that are being referenced.
-            auto referencedSymbolFilterFunc = +[](KindInfo* kindInfo) {
+            auto referencedSymbolFilterFunc = +[](KindInfo* kindInfo)
+            {
                 return !kindInfo->GetSeenats().empty();
             };
 
@@ -272,11 +284,21 @@ namespace AZ::ShaderCompiler
                 {
                     KindInfo* usedSrgKindInfo = GetKindInfo(usedSrgId);
                     std::vector<Seenat>& seenAts = usedSrgKindInfo->GetSeenats();
-                    seenAts.erase(std::remove_if(seenAts.begin(), seenAts.end(), [&](const Seenat& seenAt) -> bool {
-                        return std::any_of(unusedSrgScopes.begin(), unusedSrgScopes.end(), [&](const misc::Interval& interval) -> bool {
-                            return (seenAt.m_where.m_focusedTokenId >= interval.a) && (seenAt.m_where.m_focusedTokenId <= interval.b);
-                            });
-                    }), seenAts.end());
+                    seenAts.erase(
+                        std::remove_if(
+                            seenAts.begin(),
+                            seenAts.end(),
+                            [&](const Seenat& seenAt) -> bool
+                            {
+                                return std::any_of(
+                                    unusedSrgScopes.begin(),
+                                    unusedSrgScopes.end(),
+                                    [&](const misc::Interval& interval) -> bool
+                                    {
+                                        return (seenAt.m_where.m_focusedTokenId >= interval.a) && (seenAt.m_where.m_focusedTokenId <= interval.b);
+                                    });
+                            }),
+                        seenAts.end());
                 }
 
                 //Finally, remove the SRG.
@@ -286,7 +308,6 @@ namespace AZ::ShaderCompiler
             //Refresh, there could be new unused SRGs.
             unusedSrgs = GetFilteredSymbolsOfSubType<SRGInfo>(unreferencedSymbolFilterFunc);
         }
-
     }
 
     std::string ToYaml(const TypeRefInfo& tref, const IntermediateRepresentation& ir, std::string_view indent)
@@ -339,103 +360,131 @@ namespace AZ::ShaderCompiler
             switch (sym.GetKind())
             {
             case Kind::Variable:
-            {
-                auto& sub = sym.GetSubRefAs<VarInfo>();
-                // We treat some attributes as static const-s for consistency with the grammar and rest of the code,
-                //  but they don't have actual type or declaration line, so we skip them here.
-                cout << "  line: " << (sub.m_declNode ? std::to_string(sub.m_declNode->start->getLine()) : "NA") << "\n";
-                cout << "  type:\n" << ToYaml(sub.m_typeInfoExt, ir, "    ") << "\n";
-                cout << "  storage: " << sub.m_typeInfoExt.m_qualifiers.GetDisplayName() << "\n";
-                cout << "  array dim: \"" << sub.m_typeInfoExt.m_arrayDims.ToString() << "\"\n";
-                cout << "  has sampler state: " << (sub.m_samplerState ? "yes\n" : "no\n");
-                if (!std::holds_alternative<std::monostate>(sub.m_constVal))
                 {
-                    cout << "  val: " << ExtractValueAsInt64(sub.m_constVal) << "\n";
+                    auto& sub = sym.GetSubRefAs<VarInfo>();
+                    // We treat some attributes as static const-s for consistency with the grammar and rest of the code,
+                    //  but they don't have actual type or declaration line, so we skip them here.
+                    cout << "  line: " << (sub.m_declNode ? std::to_string(sub.m_declNode->start->getLine()) : "NA") << "\n";
+                    cout << "  type:\n" << ToYaml(sub.m_typeInfoExt, ir, "    ") << "\n";
+                    cout << "  storage: " << sub.m_typeInfoExt.m_qualifiers.GetDisplayName() << "\n";
+                    cout << "  array dim: \"" << sub.m_typeInfoExt.m_arrayDims.ToString() << "\"\n";
+                    cout << "  has sampler state: " << (sub.m_samplerState ? "yes\n" : "no\n");
+                    if (!std::holds_alternative<std::monostate>(sub.m_constVal))
+                    {
+                        cout << "  val: " << ExtractValueAsInt64(sub.m_constVal) << "\n";
+                    }
                 }
-            }
-            break;
+                break;
             case Kind::Interface:
             case Kind::Struct:
             case Kind::Class:
             case Kind::Enum:
-            {
-                auto& sub = sym.GetSubRefAs<ClassInfo>();
-                cout << "  line: " << sub.GetOriginalLineNumber() << "\n";
-                cout << "  members:\n";
-                for (auto&& member : sub.GetOrderedMembers())
                 {
-                    auto* subFieldSym = ir.m_symbols.GetIdAndKindInfo(member.m_name);
-                    cout << "    - {kind: " << Kind::ToStr(subFieldSym->second.GetKind())
-                        << ", name: " << Decorate("'", member.m_name) << "}\n";
+                    auto& sub = sym.GetSubRefAs<ClassInfo>();
+                    cout << "  line: " << sub.GetOriginalLineNumber() << "\n";
+                    cout << "  members:\n";
+                    for (auto&& member : sub.GetOrderedMembers())
+                    {
+                        auto* subFieldSym = ir.m_symbols.GetIdAndKindInfo(member.m_name);
+                        cout << "    - {kind: " << Kind::ToStr(subFieldSym->second.GetKind())
+                            << ", name: " << Decorate("'", member.m_name) << "}\n";
+                    }
                 }
-            }
-            break;
+                break;
             case Kind::Function:
-            {
-                auto& sub = sym.GetSubRefAs<FunctionInfo>();
-                cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
-                cout << "  def line: " << (sub.IsUndefinedFunction() ? "undef" : std::to_string(sub.m_defNode->start->getLine())) << "\n";
-                cout << "  must override: " << sub.m_mustOverride << "\n";
-                cout << "  is method: " << sub.m_isMethod << "\n";
-                cout << "  is virtual: " << sub.m_isVirtual << "\n";
-                cout << "  return type:\n" << ToYaml(sub.m_returnType, ir, "    ") << "\n";
-                cout << "  storage: " << sub.m_returnType.m_qualifiers.GetDisplayName() << "\n";
-                cout << "  has overriding children:\n" << ToYaml(sub.m_overrides.begin(), sub.m_overrides.end(), "    ");
-                cout << "  is hiding base symbol: '" << (sub.m_base ? sub.m_base->m_name.c_str() : "") << "'\n";
-                cout << "  parameters:\n";
-                for (auto& param : sub.GetParameters(1))
                 {
-                    auto* varInfo = ir.GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
-                    if (varInfo)
+                    auto& sub = sym.GetSubRefAs<FunctionInfo>();
+                    cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
+                    cout << "  def line: " << (sub.IsUndefinedFunction() ? "undef" : std::to_string(sub.m_defNode->start->getLine())) << "\n";
+                    cout << "  must override: " << sub.m_mustOverride << "\n";
+                    cout << "  is method: " << sub.m_isMethod << "\n";
+                    cout << "  is virtual: " << sub.m_isVirtual << "\n";
+                    cout << "  return type:\n" << ToYaml(sub.m_returnType, ir, "    ") << "\n";
+                    cout << "  storage: " << sub.m_returnType.m_qualifiers.GetDisplayName() << "\n";
+                    cout << "  has overriding children:\n" << ToYaml(sub.m_overrides.begin(), sub.m_overrides.end(), "    ");
+                    cout << "  is hiding base symbol: '" << (sub.m_base ? sub.m_base->m_name.c_str() : "") << "'\n";
+                    cout << "  parameters:\n";
+                    for (auto& param : sub.GetParameters(1))
                     {
-                        cout << "    - name: '" << (varInfo->m_identifier.empty() ? "<unnamed>" : static_cast<std::string&>(varInfo->m_identifier)) << "'\n"
-                             << "      type:\n" << ToYaml(varInfo->m_typeInfoExt, ir, "        ") << "\n";
-                    }
-                    else
-                    {
-                        cout << "    - non-var identifier (type?): '" << ToYaml(param.m_typeInfo, ir, "        ") << "'\n";
+                        auto* varInfo = ir.GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
+                        if (varInfo)
+                        {
+                            cout << "    - name: '" << (varInfo->m_identifier.empty() ? "<unnamed>" : static_cast<std::string&>(varInfo->m_identifier)) << "'\n"
+                                << "      type:\n" << ToYaml(varInfo->m_typeInfoExt, ir, "        ") << "\n";
+                        }
+                        else
+                        {
+                            cout << "    - non-var identifier (type?): '" << ToYaml(param.m_typeInfo, ir, "        ") << "'\n";
+                        }
                     }
                 }
-            }
-            break;
+                break;
             case Kind::OverloadSet:
-            {
-                auto& sub = sym.GetSubRefAs<OverloadSetInfo>();
-                cout << "  functions:\n";
-                sub.ForEach([](auto& uid2) {cout << "    - '" << uid2.GetName() << "'\n";});
-            }
-            break;
+                {
+                    auto& sub = sym.GetSubRefAs<OverloadSetInfo>();
+                    cout << "  functions:\n";
+                    sub.ForEach(
+                        [](auto& uid2)
+                        {
+                            cout << "    - '" << uid2.GetName() << "'\n";
+                        });
+                }
+                break;
             case Kind::ShaderResourceGroup:
-            {
-                auto& sub = sym.GetSubRefAs<SRGInfo>();
-                cout << "  line: " << sub.m_declNode->start->getLine() << "\n";
-                cout << "  structs: ";
-                std::for_each(sub.m_structs.begin(), sub.m_structs.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
-                cout << "  srViews: ";
-                std::for_each(sub.m_srViews.begin(), sub.m_srViews.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
-                cout << "  samplers: ";
-                std::for_each(sub.m_samplers.begin(), sub.m_samplers.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
-                cout << "  CBs: ";
-                std::for_each(sub.m_CBs.begin(), sub.m_CBs.end(), [](auto& uid2) {cout << uid2.GetNameLeaf() << ", ";});
-                cout << "\n";
-            }
-            break;
+                {
+                    auto& sub = sym.GetSubRefAs<SRGInfo>();
+                    cout << "  line: " << sub.m_declNode->start->getLine() << "\n";
+                    cout << "  structs: ";
+                    std::for_each(
+                        sub.m_structs.begin(),
+                        sub.m_structs.end(),
+                        [](auto& uid2)
+                        {
+                            cout << uid2.GetNameLeaf() << ", ";
+                        });
+                    cout << "\n";
+                    cout << "  srViews: ";
+                    std::for_each(
+                        sub.m_srViews.begin(),
+                        sub.m_srViews.end(),
+                        [](auto& uid2)
+                        {
+                            cout << uid2.GetNameLeaf() << ", ";
+                        });
+                    cout << "\n";
+                    cout << "  samplers: ";
+                    std::for_each(
+                        sub.m_samplers.begin(),
+                        sub.m_samplers.end(),
+                        [](auto& uid2)
+                        {
+                            cout << uid2.GetNameLeaf() << ", ";
+                        });
+                    cout << "\n";
+                    cout << "  CBs: ";
+                    std::for_each(
+                        sub.m_CBs.begin(),
+                        sub.m_CBs.end(),
+                        [](auto& uid2)
+                        {
+                            cout << uid2.GetNameLeaf() << ", ";
+                        });
+                    cout << "\n";
+                }
+                break;
             case Kind::Type:
-            {
-                auto& sub = sym.GetSubRefAs<TypeRefInfo>();
-                cout << ToYaml(sub, ir, "  ") << "\n";
-            }
-            break;
+                {
+                    auto& sub = sym.GetSubRefAs<TypeRefInfo>();
+                    cout << ToYaml(sub, ir, "  ") << "\n";
+                }
+                break;
             case Kind::TypeAlias:
-            {
-                auto& sub = sym.GetSubRefAs<TypeAliasInfo>();
-                cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
-                cout << "  canonical type:\n" << ToYaml(sub.m_canonicalType, ir, "    ") << "\n";
-            }
-            break;
+                {
+                    auto& sub = sym.GetSubRefAs<TypeAliasInfo>();
+                    cout << "  line: " << sym.VisitSub(GetOrigSourceLine_Visitor{}) << "\n";
+                    cout << "  canonical type:\n" << ToYaml(sub.m_canonicalType, ir, "    ") << "\n";
+                }
+                break;
             default:
                 break;
             }
@@ -447,18 +496,20 @@ namespace AZ::ShaderCompiler
         int rootConstantsSize = 0;
         for (auto& [uid, varInfo] : m_symbols.GetOrderedSymbolsOfSubType_2<VarInfo>())
         {
-            if (varInfo->CheckHasAnyStorageFlags({ StorageFlag::Rootconstant }) && IsGlobal(uid.GetName()))
+            if (varInfo->CheckHasAnyStorageFlags({StorageFlag::Rootconstant}) && IsGlobal(uid.GetName()))
             {
                 assert(!IsChameleon(varInfo->GetTypeClass()));
 
                 auto exportedType = varInfo->m_typeInfoExt.m_coreType;
                 if (!exportedType.IsPackable())
                 {
-                    throw std::logic_error{ (std::string("Internal Error: The type '")
-                        + exportedType.m_typeId.m_name
-                        + "' in layout member '"
-                        + uid.m_name
-                        + "' cannot be packed.").c_str() };
+                    throw std::logic_error{
+                        (std::string("Internal Error: The type '")
+                            + exportedType.m_typeId.m_name
+                            + "' in layout member '"
+                            + uid.m_name
+                            + "' cannot be packed.").c_str()
+                    };
                 }
 
                 // GetTotalSize of each member of the structure
@@ -469,18 +520,25 @@ namespace AZ::ShaderCompiler
         // We have a limited space for rootconstant (specified by --root-const=N) check that we're not going over
         if (rootConstantsSize > middleEndconfigration.m_rootConstantsMaxSize)
         {
-            throw std::runtime_error{ (std::string("The rootconstants size of ")
-                + ToString(rootConstantsSize)
-                + " bytes exceeds the limit of "
-                + ToString(middleEndconfigration.m_rootConstantsMaxSize)
-                + "bytes supported on the target platform.").c_str() };
+            throw std::runtime_error{
+                (std::string("The rootconstants size of ")
+                    + ToString(rootConstantsSize)
+                    + " bytes exceeds the limit of "
+                    + ToString(middleEndconfigration.m_rootConstantsMaxSize)
+                    + "bytes supported on the target platform.").c_str()
+            };
         }
 
         // Spec requires at least 128 bytes of block, bigger values (>128 bytes) need to be checked against support by implementation
         constexpr int MinByteSizeRequired = 128;
         if (rootConstantsSize > MinByteSizeRequired)
         {
-            PrintWarning(Warn::W2, std::nullopt, "The root constant size ", rootConstantsSize, " is greater than 128 bytes. ",
+            PrintWarning(
+                Warn::W2,
+                std::nullopt,
+                "The root constant size ",
+                rootConstantsSize,
+                " is greater than 128 bytes. ",
                 "Large root constant size may not be supported by the implementation.");
         }
 
@@ -508,10 +566,12 @@ namespace AZ::ShaderCompiler
 
             if (!exportedType.IsPackable())
             {
-                throw std::logic_error{ (std::string("error: unpackable type (")
-                    + exportedType.m_typeId.m_name
-                    + ") in layout member "
-                    + memberId.m_name).c_str() };
+                throw std::logic_error{
+                    (std::string("error: unpackable type (")
+                        + exportedType.m_typeId.m_name
+                        + ") in layout member "
+                        + memberId.m_name).c_str()
+                };
             }
             TypeClass varClass = exportedType.m_typeClass;
 
@@ -574,13 +634,13 @@ namespace AZ::ShaderCompiler
         return memberOffset;
     }
 
-	void IntermediateRepresentation::RegisterRootConstantStruct(const MiddleEndConfiguration& middleEndconfigration)
+    void IntermediateRepresentation::RegisterRootConstantStruct(const MiddleEndConfiguration& middleEndconfigration)
     {
         int rootConstantByteSize = ValidateRootConstantStruct(middleEndconfigration);
 
-        QualifiedName name{ "/Root_Constants" };
+        QualifiedName name{"/Root_Constants"};
 
-        assert(!m_symbols.HasIdentifier(name));  // reserved name semantic error must have prevented this state to happen.
+        assert(!m_symbols.HasIdentifier(name)); // reserved name semantic error must have prevented this state to happen.
 
         if (rootConstantByteSize == 0)
         {
@@ -593,7 +653,7 @@ namespace AZ::ShaderCompiler
 
         for (auto& [uid, varInfo] : m_symbols.GetOrderedSymbolsOfSubType_2<VarInfo>())
         {
-            if (varInfo->CheckHasAnyStorageFlags({ StorageFlag::Rootconstant })
+            if (varInfo->CheckHasAnyStorageFlags({StorageFlag::Rootconstant})
                 && IsGlobal(uid.GetName()))
             {
                 assert(!IsChameleon(varInfo->GetTypeClass()));
@@ -601,10 +661,10 @@ namespace AZ::ShaderCompiler
 
                 // copy the variable into a new symbol. so that its path can make sense
                 // as a child of the rootconstants struct.
-                QualifiedName copiedFieldName{ JoinPath(rootConstantStructUid.GetName(), ReplaceSeparators(uid.m_name, Underscore)) };
+                QualifiedName copiedFieldName{JoinPath(rootConstantStructUid.GetName(), ReplaceSeparators(uid.m_name, Underscore))};
                 auto& [newVarUid, newVarKind] = m_symbols.AddIdentifier(copiedFieldName, Kind::Variable);
                 newVarKind.GetSubRefAs<VarInfo>() = *varInfo;
-                newVarKind.GetSubRefAs<VarInfo>().m_declNode = nullptr;  // the original declaration in the AST isn't inherited by a copied symbol.
+                newVarKind.GetSubRefAs<VarInfo>().m_declNode = nullptr; // the original declaration in the AST isn't inherited by a copied symbol.
                 // Add root constants to the registered struct as member
                 rootConstantStructKindInfo.GetSubRefAs<ClassInfo>().PushMember(newVarUid, Kind::Variable);
             }
@@ -618,15 +678,15 @@ namespace AZ::ShaderCompiler
             uint32_t endOffset = 0;
             switch (layoutPacking)
             {
-                case Packing::Layout::DirectXPacking:
-                case Packing::Layout::RelaxedDirectXPacking:
-                    // asStructEnd does nothing in DirectX, but in case of padding the root constant We force
-                    // asStructStart in order to get 16byte alignment.
-                    endOffset = Packing::AlignOffset(layoutPacking, strideSize, Packing::Alignment::asStructStart, 0, 0);
-                    break;
-                default:
-                    endOffset = Packing::AlignOffset(layoutPacking, strideSize, Packing::Alignment::asStructEnd, 0, 0);
-                    break;
+            case Packing::Layout::DirectXPacking:
+            case Packing::Layout::RelaxedDirectXPacking:
+                // asStructEnd does nothing in DirectX, but in case of padding the root constant We force
+                // asStructStart in order to get 16byte alignment.
+                endOffset = Packing::AlignOffset(layoutPacking, strideSize, Packing::Alignment::asStructStart, 0, 0);
+                break;
+            default:
+                endOffset = Packing::AlignOffset(layoutPacking, strideSize, Packing::Alignment::asStructEnd, 0, 0);
+                break;
             }
 
             // If the structure is NOT aligned, we inject a 'pad' member to enforce that padding.
@@ -635,7 +695,7 @@ namespace AZ::ShaderCompiler
             {
                 uint32_t padSize = endOffset - strideSize;
 
-                QualifiedName padFieldName{ JoinPath(rootConstantStructUid.GetName(), "__pad__") };
+                QualifiedName padFieldName{JoinPath(rootConstantStructUid.GetName(), "__pad__")};
                 auto& [newVarUid, newVarKind] = m_symbols.AddIdentifier(padFieldName, Kind::Variable);
 
                 VarInfo varInfo;
@@ -645,9 +705,15 @@ namespace AZ::ShaderCompiler
                 assert(padSize == 16 || padSize == 12 || padSize == 8 || padSize == 4);
                 std::string typeName = FormatString("uint%d", padSize / 4);
 
-                ExtractedTypeExt padType = { UnqualifiedNameView(typeName), nullptr };
-                varInfo.m_typeInfoExt = ExtendedTypeInfo{m_sema.CreateTypeRefInfo(padType), {},
-                                                         {}, {}, {}, Packing::MatrixMajor::Default };
+                ExtractedTypeExt padType = {UnqualifiedNameView(typeName), nullptr};
+                varInfo.m_typeInfoExt = ExtendedTypeInfo{
+                    m_sema.CreateTypeRefInfo(padType),
+                    {},
+                    {},
+                    {},
+                    {},
+                    Packing::MatrixMajor::Default
+                };
 
                 newVarKind.GetSubRefAs<VarInfo>() = varInfo;
                 rootConstantStructKindInfo.GetSubRefAs<ClassInfo>().PushMember(newVarUid, Kind::Variable);
@@ -657,8 +723,9 @@ namespace AZ::ShaderCompiler
         m_rootConstantStructUID = rootConstantStructUid;
     }
 
-    void IntermediateRepresentation::ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration,
-                                                                                              PreprocessorLineDirectiveFinder* lineFinder)
+    void IntermediateRepresentation::ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(
+        const MiddleEndConfiguration& middleEndconfigration,
+        PreprocessorLineDirectiveFinder* lineFinder)
     {
         //! Helper lambda to check if a symbol is a matrix, it also returns
         //! the number of columns in @numColumns
@@ -720,9 +787,7 @@ namespace AZ::ShaderCompiler
 
         enum class PrepadType
         {
-            Float2,
-            Float3,
-            Unknown,
+            Float2, Float3, Unknown,
         };
         struct UidWithPrepadType
         {
@@ -737,7 +802,7 @@ namespace AZ::ShaderCompiler
             if (IsGlobal(uid.GetName()))
             {
                 continue; // no reason to align things in the global scope,
-                          // options and rootconstant will be align-checked through their implicit structs.
+                // options and rootconstant will be align-checked through their implicit structs.
             }
 
             // We need to keep track of the structs for which the last member is
@@ -800,7 +865,7 @@ namespace AZ::ShaderCompiler
                     const auto& prevSymbolUid = orderedSymbols[startSearchSymbolIndex];
                     if (GetParentName(prevSymbolUid.GetName()) != scope)
                     {
-                        return nullptr;  // we can't relate variables that don't even belong to same struct or srg
+                        return nullptr; // we can't relate variables that don't even belong to same struct or srg
                     }
                     KindInfo* prevKindInfo = GetKindInfo(prevSymbolUid);
                     VarInfo* prevVarInfo = prevKindInfo->GetSubAs<VarInfo>();
@@ -847,7 +912,6 @@ namespace AZ::ShaderCompiler
             {
                 symbolsToPrepad.push_back(UidWithPrepadType{PrepadType::Float2, uid});
             }
-
         } // for loop end.
 
         //! Helper function that returns a string suggesting padding solution
@@ -859,7 +923,7 @@ namespace AZ::ShaderCompiler
 
             // The padding is not needed if the variable @insertBeforeThisUid is the first member
             // of a struct/class/SRG
-            KindInfo* parentKindInfo = GetKindInfo({ parentName });
+            KindInfo* parentKindInfo = GetKindInfo({parentName});
             assert(parentKindInfo);
             const bool isClass = parentKindInfo->IsKindOneOf(Kind::Class);
             const bool isStruct = parentKindInfo->IsKindOneOf(Kind::Struct);
@@ -883,8 +947,10 @@ namespace AZ::ShaderCompiler
             }
             else
             {
-                throw std::logic_error{ ("error: Was expecting " + std::string(parentName) +
-                    + " to be struct, class or ShaderResourceGroup").c_str() };
+                throw std::logic_error{
+                    ("error: Was expecting " + std::string(parentName) +
+                        +" to be struct, class or ShaderResourceGroup").c_str()
+                };
             }
 
             std::string typeName;
@@ -914,9 +980,14 @@ namespace AZ::ShaderCompiler
                 return {};
             }
             const auto virtualLine = lineFinder->GetVirtualLineNumber(*lineInfo, lineOfDeclaration);
-            std::string solution = FormatString("- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
-                                           prepadType == PrepadType::Float2 ? 2 : 3, insertBeforeThisUid.GetNameLeaf().c_str(), typeName.c_str(), parentName.data(),
-                                           virtualLine, lineInfo->m_containingFilename.c_str());
+            std::string solution = FormatString(
+                "- A 'float%d' variable should be added before the variable '%s' in '%s %s' at Line number %zu of '%s'\n",
+                prepadType == PrepadType::Float2 ? 2 : 3,
+                insertBeforeThisUid.GetNameLeaf().c_str(),
+                typeName.c_str(),
+                parentName.data(),
+                virtualLine,
+                lineInfo->m_containingFilename.c_str());
             return solution;
         };
 
@@ -975,4 +1046,4 @@ namespace AZ::ShaderCompiler
         }
         return memberList[memberList.size() - 1];
     }
-}  // end of namespace AZ::ShaderCompiler
+} // end of namespace AZ::ShaderCompiler

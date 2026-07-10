@@ -45,7 +45,7 @@ namespace AZ::ShaderCompiler
         }
         // Must be a multiple of 4.
         static const uint32_t MultipleOf = 4;
-        if (pad_to_value & (MultipleOf-1))
+        if (pad_to_value & (MultipleOf - 1))
         {
             auto errorMsg = FormatString("Invalid integral in [[pad_to(N)]]. %u is not a multiple of %u", pad_to_value, MultipleOf);
             throw AzslcIrException{IR_INVALID_PAD_TO_ARGUMENTS, errorMsg, attrInfo.m_lineNumber};
@@ -58,9 +58,11 @@ namespace AZ::ShaderCompiler
             auto varUid = m_ir.GetLastMemberVariable(curScopeId);
             if (varUid.IsEmpty())
             {
-                auto errorMsg = FormatString("The [[pad_to(N)]] attribute must be added after a member variable."
-                                             " The current scope '%.*s' doesn't have a declared variable yet.",
-                                             static_cast<int>(curScopeId.GetName().size()), curScopeId.GetName().data());
+                auto errorMsg = FormatString(
+                    "The [[pad_to(N)]] attribute must be added after a member variable."
+                    " The current scope '%.*s' doesn't have a declared variable yet.",
+                    static_cast<int>(curScopeId.GetName().size()),
+                    curScopeId.GetName().data());
                 throw AzslcIrException{IR_INVALID_PAD_TO_LOCATION, errorMsg, attrInfo.m_lineNumber};
             }
             auto structItor = m_scopesToPad.find(curScopeId);
@@ -80,9 +82,11 @@ namespace AZ::ShaderCompiler
         }
         else
         {
-            auto errorMsg = FormatString("The [[pad_to(N)]] attribute is only supported inside  inside 'struct', 'class' or 'ShaderResourceGroup'."
-                                         " The current scope '%.*s' is not one of those scope types.",
-                static_cast<int>(curScopeId.GetName().size()), curScopeId.GetName().data());
+            auto errorMsg = FormatString(
+                "The [[pad_to(N)]] attribute is only supported inside  inside 'struct', 'class' or 'ShaderResourceGroup'."
+                " The current scope '%.*s' is not one of those scope types.",
+                static_cast<int>(curScopeId.GetName().size()),
+                curScopeId.GetName().data());
             throw AzslcIrException{IR_INVALID_PAD_TO_LOCATION, errorMsg, attrInfo.m_lineNumber};
         }
     }
@@ -128,7 +132,7 @@ namespace AZ::ShaderCompiler
 
         std::unordered_set<IdentifierUID> visitedStructs;
         std::unordered_set<IdentifierUID> unvisitedStructs;
-        for (const auto &item : scopesToPad)
+        for (const auto& item : scopesToPad)
         {
             unvisitedStructs.insert(item.first);
         }
@@ -176,7 +180,7 @@ namespace AZ::ShaderCompiler
     {
         std::vector<std::pair<IdentifierUID, IdentifierUID>> retList;
         const auto& memberFields = classInfo->GetMemberFields();
-        for (const auto &memberUid : memberFields)
+        for (const auto& memberUid : memberFields)
         {
             const auto* varInfoPtr = m_ir.GetSymbolSubAs<VarInfo>(memberUid.m_name);
             if (!varInfoPtr)
@@ -199,10 +203,11 @@ namespace AZ::ShaderCompiler
         return retList;
     }
 
-    void PadToAttributeMutator::InsertScopePaddings(ClassInfo* classInfo,
-                                                    const IdentifierUID& scopeUid,
-                                                    const MapOfVarInfoUidToPadding& varInfoUidToPadMap,
-                                                    const MiddleEndConfiguration& middleEndconfigration)
+    void PadToAttributeMutator::InsertScopePaddings(
+        ClassInfo* classInfo,
+        const IdentifierUID& scopeUid,
+        const MapOfVarInfoUidToPadding& varInfoUidToPadMap,
+        const MiddleEndConfiguration& middleEndconfigration)
     {
         uint32_t nextMemberOffset = 0;
         auto& memberFields = classInfo->GetMemberFields();
@@ -227,13 +232,16 @@ namespace AZ::ShaderCompiler
                 if (!IsPowerOfTwo(padToBoundary))
                 {
                     //Runtime error.
-                    const std::string errorMsg = FormatString("Offset %u after Member variable %.*s of struct %.*s "
-                                                         "is bigger than requested boundary = [[pad_to(%u)]], and this case requires a power of two boundary.",
-                                                          nextMemberOffset,
-                                                          static_cast<int>(varUid.m_name.size()), varUid.m_name.data(),
-                                                          static_cast<int>(scopeUid.m_name.size()), scopeUid.m_name.data(),
-                                                          padToBoundary);
-                    const auto * varInfoPtr= m_ir.GetSymbolSubAs<VarInfo>(varUid.m_name);
+                    const std::string errorMsg = FormatString(
+                        "Offset %u after Member variable %.*s of struct %.*s "
+                        "is bigger than requested boundary = [[pad_to(%u)]], and this case requires a power of two boundary.",
+                        nextMemberOffset,
+                        static_cast<int>(varUid.m_name.size()),
+                        varUid.m_name.data(),
+                        static_cast<int>(scopeUid.m_name.size()),
+                        scopeUid.m_name.data(),
+                        padToBoundary);
+                    const auto* varInfoPtr = m_ir.GetSymbolSubAs<VarInfo>(varUid.m_name);
                     throw AzslcIrException{IR_PAD_TO_CASE_REQUIRES_POWER_OF_TWO, errorMsg, varInfoPtr->GetOriginalLineNumber()};
                 }
                 const uint32_t alignedOffset = Packing::AlignUp(nextMemberOffset, padToBoundary);
@@ -250,16 +258,17 @@ namespace AZ::ShaderCompiler
                 continue;
             }
 
-            idx += InsertPaddingVariables(classInfo, scopeUid, idx+1, nextMemberOffset, bytesToAdd);
+            idx += InsertPaddingVariables(classInfo, scopeUid, idx + 1, nextMemberOffset, bytesToAdd);
             nextMemberOffset += bytesToAdd;
         }
     }
 
-    uint32_t PadToAttributeMutator::CalculateMemberLayout(const IdentifierUID& memberId,
-                                                       const bool isArrayItr,
-                                                       const bool emitRowMajor,
-                                                       const AZ::ShaderCompiler::Packing::Layout layoutPacking,
-                                                       uint32_t& offset) const
+    uint32_t PadToAttributeMutator::CalculateMemberLayout(
+        const IdentifierUID& memberId,
+        const bool isArrayItr,
+        const bool emitRowMajor,
+        const AZ::ShaderCompiler::Packing::Layout layoutPacking,
+        uint32_t& offset) const
     {
         const auto* varInfoPtr = m_ir.GetSymbolSubAs<VarInfo>(memberId.m_name);
         uint32_t size = 0;
@@ -275,13 +284,15 @@ namespace AZ::ShaderCompiler
 
             if (!exportedType.IsPackable())
             {
-                throw std::logic_error{(std::string("reflection error: unpackable type (")
-                    + exportedType.m_typeId.m_name
-                    + ") in layout member "
-                    + memberId.m_name).c_str()};
+                throw std::logic_error{
+                    (std::string("reflection error: unpackable type (")
+                        + exportedType.m_typeId.m_name
+                        + ") in layout member "
+                        + memberId.m_name).c_str()
+                };
             }
             TypeClass varClass = exportedType.m_typeClass;
-            bool isPrefedined  = IsPredefinedType(varClass);
+            bool isPrefedined = IsPredefinedType(varClass);
 
             size = varInfo.m_typeInfoExt.GetTotalSize(layoutPacking, emitRowMajor);
             auto startAt = offset;
@@ -388,10 +399,10 @@ namespace AZ::ShaderCompiler
     }
 
     uint32_t PadToAttributeMutator::CalculateUserDefinedMemberLayout(
-                                                          const IdentifierUID& exportedTypeId,
-                                                          const bool emitRowMajors,
-                                                          const AZ::ShaderCompiler::Packing::Layout layoutPacking,
-                                                          uint32_t& startAt) const
+        const IdentifierUID& exportedTypeId,
+        const bool emitRowMajors,
+        const AZ::ShaderCompiler::Packing::Layout layoutPacking,
+        uint32_t& startAt) const
     {
         // Alignment start
         uint32_t tempOffset = startAt = Packing::AlignOffset(layoutPacking, startAt, Packing::Alignment::asStructStart, 0, 0);
@@ -415,13 +426,20 @@ namespace AZ::ShaderCompiler
         return tempOffset - startAt;
     }
 
-    size_t PadToAttributeMutator::InsertPaddingVariables(ClassInfo* classInfo, const IdentifierUID& scopeUid,
-                                                         size_t insertionIndex, uint32_t startingOffset, uint32_t numBytesToAdd)
+    size_t PadToAttributeMutator::InsertPaddingVariables(
+        ClassInfo* classInfo,
+        const IdentifierUID& scopeUid,
+        size_t insertionIndex,
+        uint32_t startingOffset,
+        uint32_t numBytesToAdd)
     {
-        auto getFloatTypeNameOfSize = +[](uint32_t sizeInBytes) -> const char *
+        auto getFloatTypeNameOfSize = +[](uint32_t sizeInBytes) -> const char*
         {
-            static const char * floatNames[4] = {
-                "float", "float2", "float3", "float4"
+            static const char* floatNames[4] = {
+                "float",
+                "float2",
+                "float3",
+                "float4"
             };
             const uint32_t idx = (sizeInBytes >> 2) - 1;
             return floatNames[idx];
@@ -429,7 +447,7 @@ namespace AZ::ShaderCompiler
 
         auto createVariableInSymbolTable = [&](QualifiedNameView parentName, const std::string& typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
         {
-            QualifiedName dummySymbolFieldName{ JoinPath(parentName, varName) };
+            QualifiedName dummySymbolFieldName{JoinPath(parentName, varName)};
 
             // Add the dummy field to the symbol table.
             auto& [newVarUid, newVarKind] = m_ir.m_symbols.AddIdentifier(dummySymbolFieldName, Kind::Variable);
@@ -437,16 +455,28 @@ namespace AZ::ShaderCompiler
             VarInfo newVarInfo;
             newVarInfo.m_declNode = nullptr;
             newVarInfo.m_isPublic = false;
-            ExtractedTypeExt padType = { UnqualifiedNameView(typeName), nullptr };
+            ExtractedTypeExt padType = {UnqualifiedNameView(typeName), nullptr};
             if (itemsCount < 1)
             {
-                newVarInfo.m_typeInfoExt = ExtendedTypeInfo{m_ir.m_sema.CreateTypeRefInfo(padType), {},
-                                                            {}, {}, {}, Packing::MatrixMajor::Default };
+                newVarInfo.m_typeInfoExt = ExtendedTypeInfo{
+                    m_ir.m_sema.CreateTypeRefInfo(padType),
+                    {},
+                    {},
+                    {},
+                    {},
+                    Packing::MatrixMajor::Default
+                };
             }
             else
             {
-                newVarInfo.m_typeInfoExt = ExtendedTypeInfo{m_ir.m_sema.CreateTypeRefInfo(padType), {},
-                                                            {}, {{itemsCount}}, {}, Packing::MatrixMajor::Default };
+                newVarInfo.m_typeInfoExt = ExtendedTypeInfo{
+                    m_ir.m_sema.CreateTypeRefInfo(padType),
+                    {},
+                    {},
+                    {{itemsCount}},
+                    {},
+                    Packing::MatrixMajor::Default
+                };
             }
             newVarKind.GetSubRefAs<VarInfo>() = newVarInfo;
             return newVarUid;
@@ -545,5 +575,4 @@ namespace AZ::ShaderCompiler
 
         return numAddedVariables;
     }
-
 } //namespace AZ::ShaderCompiler

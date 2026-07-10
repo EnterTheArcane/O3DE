@@ -27,7 +27,7 @@ namespace AZ::ShaderCompiler
     bool IsReadWriteView(std::string_view viewName)
     {
         return (StartsWith(viewName, "RW") || StartsWith(viewName, "RasterizerOrdered") ||
-                StartsWith(viewName, "Append") || StartsWith(viewName, "Consume"));
+            StartsWith(viewName, "Append") || StartsWith(viewName, "Consume"));
     }
 
     QualifiedName MakeSrgConstantsStructName(IdentifierUID srg)
@@ -79,43 +79,59 @@ namespace AZ::ShaderCompiler
     // Define emission for sampler states
     // Reference: https://github.com/Microsoft/DirectXShaderCompiler/blob/master/tools/clang/unittests/HLSL/FunctionTest.cpp
 
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::AddressMode& addressMode)
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::AddressMode& addressMode)
     {
-        return out << ((addressMode == SamplerStateDesc::AddressMode::Wrap)   ? "TEXTURE_ADDRESS_WRAP"
-                     : (addressMode == SamplerStateDesc::AddressMode::Clamp)  ? "TEXTURE_ADDRESS_CLAMP"
-                     : (addressMode == SamplerStateDesc::AddressMode::Border) ? "TEXTURE_ADDRESS_BORDER"
-                     : (addressMode == SamplerStateDesc::AddressMode::Mirror) ? "TEXTURE_ADDRESS_MIRROR"
-                     :                                                          "TEXTURE_ADDRESS_MIRROR_ONCE");
+        return out << ((addressMode == SamplerStateDesc::AddressMode::Wrap)
+                           ? "TEXTURE_ADDRESS_WRAP"
+                           : (addressMode == SamplerStateDesc::AddressMode::Clamp)
+                           ? "TEXTURE_ADDRESS_CLAMP"
+                           : (addressMode == SamplerStateDesc::AddressMode::Border)
+                           ? "TEXTURE_ADDRESS_BORDER"
+                           : (addressMode == SamplerStateDesc::AddressMode::Mirror)
+                           ? "TEXTURE_ADDRESS_MIRROR"
+                           : "TEXTURE_ADDRESS_MIRROR_ONCE");
     }
 
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::ComparisonFunc& compFunc)
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::ComparisonFunc& compFunc)
     {
-        return out << ((compFunc == SamplerStateDesc::ComparisonFunc::Never)        ? "COMPARISON_NEVER"
-                     : (compFunc == SamplerStateDesc::ComparisonFunc::Less)         ? "COMPARISON_LESS"
-                     : (compFunc == SamplerStateDesc::ComparisonFunc::Equal)        ? "COMPARISON_EQUAL"
-                     : (compFunc == SamplerStateDesc::ComparisonFunc::LessEqual)    ? "COMPARISON_LESS_EQUAL"
-                     : (compFunc == SamplerStateDesc::ComparisonFunc::Greater)      ? "COMPARISON_GREATER"
-                     : (compFunc == SamplerStateDesc::ComparisonFunc::NotEqual)     ? "COMPARISON_NOT_EQUAL"
-                     : (compFunc == SamplerStateDesc::ComparisonFunc::GreaterEqual) ? "COMPARISON_GREATER_EQUAL"
-                     :                                                                "COMPARISON_ALWAYS");
+        return out << ((compFunc == SamplerStateDesc::ComparisonFunc::Never)
+                           ? "COMPARISON_NEVER"
+                           : (compFunc == SamplerStateDesc::ComparisonFunc::Less)
+                           ? "COMPARISON_LESS"
+                           : (compFunc == SamplerStateDesc::ComparisonFunc::Equal)
+                           ? "COMPARISON_EQUAL"
+                           : (compFunc == SamplerStateDesc::ComparisonFunc::LessEqual)
+                           ? "COMPARISON_LESS_EQUAL"
+                           : (compFunc == SamplerStateDesc::ComparisonFunc::Greater)
+                           ? "COMPARISON_GREATER"
+                           : (compFunc == SamplerStateDesc::ComparisonFunc::NotEqual)
+                           ? "COMPARISON_NOT_EQUAL"
+                           : (compFunc == SamplerStateDesc::ComparisonFunc::GreaterEqual)
+                           ? "COMPARISON_GREATER_EQUAL"
+                           : "COMPARISON_ALWAYS");
     }
 
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::BorderColor& borderColor)
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::BorderColor& borderColor)
     {
-        return out << ((borderColor == SamplerStateDesc::BorderColor::OpaqueBlack) ? "STATIC_BORDER_COLOR_OPAQUE_BLACK"
-                     : (borderColor == SamplerStateDesc::BorderColor::OpaqueWhite) ? "STATIC_BORDER_COLOR_OPAQUE_WHITE"
-                     :                                                               "STATIC_BORDER_COLOR_TRANSPARENT_BLACK");
+        return out << ((borderColor == SamplerStateDesc::BorderColor::OpaqueBlack)
+                           ? "STATIC_BORDER_COLOR_OPAQUE_BLACK"
+                           : (borderColor == SamplerStateDesc::BorderColor::OpaqueWhite)
+                           ? "STATIC_BORDER_COLOR_OPAQUE_WHITE"
+                           : "STATIC_BORDER_COLOR_TRANSPARENT_BLACK");
     }
 
-    Streamable& operator << (Streamable& out, const SamplerStateDesc& samplerDesc)
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc& samplerDesc)
     {
         // Resolving the filter is the hardest part of the emission
         out << ", filter = FILTER_";
 
-        out << ((samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Comparison) ? "COMPARISON_"
-              : (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Maximum)    ? "MAXIMUM_"
-              : (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Minimum)    ? "MINIMUM_"
-              :                                                                                "");
+        out << ((samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Comparison)
+                    ? "COMPARISON_"
+                    : (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Maximum)
+                    ? "MAXIMUM_"
+                    : (samplerDesc.m_reductionType == SamplerStateDesc::ReductionType::Minimum)
+                    ? "MINIMUM_"
+                    : "");
 
         // The correct order is MIN -> MAG -> MIP
         // Reference: https://github.com/Microsoft/DirectXShaderCompiler/blob/master/tools/clang/unittests/HLSL/FunctionTest.cpp
@@ -139,14 +155,14 @@ namespace AZ::ShaderCompiler
         // ^ The filter should be resolved
 
         return out << ", addressU = " << samplerDesc.m_addressU
-                   << ", addressV = " << samplerDesc.m_addressV
-                   << ", addressW = " << samplerDesc.m_addressW
-                   << ", minLOD = " << samplerDesc.m_mipLodMin
-                   << ", maxLOD = " << samplerDesc.m_mipLodMax
-                   << ", mipLODBias = " << samplerDesc.m_mipLodBias
-                   << ", BorderColor = " << samplerDesc.m_borderColor
-                   << ", maxAnisotropy = " << samplerDesc.m_anisotropyMax
-                   << ", ComparisonFunc  = " << samplerDesc.m_comparisonFunc;
+            << ", addressV = " << samplerDesc.m_addressV
+            << ", addressW = " << samplerDesc.m_addressW
+            << ", minLOD = " << samplerDesc.m_mipLodMin
+            << ", maxLOD = " << samplerDesc.m_mipLodMax
+            << ", mipLODBias = " << samplerDesc.m_mipLodBias
+            << ", BorderColor = " << samplerDesc.m_borderColor
+            << ", maxAnisotropy = " << samplerDesc.m_anisotropyMax
+            << ", ComparisonFunc  = " << samplerDesc.m_comparisonFunc;
     }
 
     // map root param type to register type
@@ -245,19 +261,22 @@ namespace AZ::ShaderCompiler
     BindingPair MultiBindingLocationMaker::GetCurrent(BindingType regType)
     {
         BindingPair pair;
-        pair.m_pair[BindingPair::Set::Merged   ].m_logicalSpace = m_merged.m_space;
+        pair.m_pair[BindingPair::Set::Merged].m_logicalSpace = m_merged.m_space;
         pair.m_pair[BindingPair::Set::Untainted].m_logicalSpace = m_untainted.m_space;
-        pair.m_pair[BindingPair::Set::Merged   ].m_registerIndex = m_merged.m_registerPos[regType];
+        pair.m_pair[BindingPair::Set::Merged].m_registerIndex = m_merged.m_registerPos[regType];
         pair.m_pair[BindingPair::Set::Untainted].m_registerIndex = m_untainted.m_registerPos[regType];
         return pair;
     }
 
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::ReductionType& redcType)
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::ReductionType& redcType)
     {
-        return out << ((redcType == SamplerStateDesc::ReductionType::Comparison)  ? "Comparison"
-                     : (redcType == SamplerStateDesc::ReductionType::Filter)      ? "Filter"
-                     : (redcType == SamplerStateDesc::ReductionType::Minimum)     ? "Minimum"
-                     :                                                              "Maximum");
+        return out << ((redcType == SamplerStateDesc::ReductionType::Comparison)
+                           ? "Comparison"
+                           : (redcType == SamplerStateDesc::ReductionType::Filter)
+                           ? "Filter"
+                           : (redcType == SamplerStateDesc::ReductionType::Minimum)
+                           ? "Minimum"
+                           : "Maximum");
     }
 
     const PlatformEmitter& Backend::GetPlatformEmitter() const
@@ -328,8 +347,13 @@ namespace AZ::ShaderCompiler
             auto prefix = isScoped ? UnmangleTrimedName(uid.m_name) + "::" : "";
 
             auto& list = info.GetSubRefAs<ClassInfo>().GetMemberFields();
-            std::for_each(list.begin(), list.end(),
-                          [&optValues, &prefix](const IdentifierUID& member) { optValues.append((prefix + member.GetNameLeaf()).c_str()); });
+            std::for_each(
+                list.begin(),
+                list.end(),
+                [&optValues, &prefix](const IdentifierUID& member)
+                {
+                    optValues.append((prefix + member.GetNameLeaf()).c_str());
+                });
 
             numberOfOptions = optValues.size();
         }
@@ -355,28 +379,40 @@ namespace AZ::ShaderCompiler
                 auto rangeAttribute = m_ir->m_symbols.GetAttribute(varUid, "range");
                 if (!rangeAttribute)
                 {
-                    throw AzslcEmitterException(EMITTER_INTEGER_HAS_NO_RANGE,
-                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must decorate declaration with an attribute [range(minimum value, maximum value)]"));
+                    throw AzslcEmitterException(
+                        EMITTER_INTEGER_HAS_NO_RANGE,
+                        std::nullopt,
+                        std::nullopt,
+                        ConcatString("Option (", varUid.m_name, ") must decorate declaration with an attribute [range(minimum value, maximum value)]"));
                 }
 
                 if (rangeAttribute->m_argList.size() != 2)
                 {
-                    throw AzslcEmitterException(EMITTER_INTEGER_RANGE_NEEDS_ATTRIBUTE,
-                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must specify a range with exactly 2 values, min & max - [range(min, max)]"));
+                    throw AzslcEmitterException(
+                        EMITTER_INTEGER_RANGE_NEEDS_ATTRIBUTE,
+                        std::nullopt,
+                        std::nullopt,
+                        ConcatString("Option (", varUid.m_name, ") must specify a range with exactly 2 values, min & max - [range(min, max)]"));
                 }
 
                 const auto rangeMin = rangeAttribute->m_argList[0];
                 if (!std::holds_alternative<ConstNumericVal>(rangeMin))
                 {
-                    throw AzslcEmitterException(EMITTER_INTEGER_RANGE_MIN_IS_NOT_CONST,
-                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's minimum!"));
+                    throw AzslcEmitterException(
+                        EMITTER_INTEGER_RANGE_MIN_IS_NOT_CONST,
+                        std::nullopt,
+                        std::nullopt,
+                        ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's minimum!"));
                 }
 
                 const auto rangeMax = rangeAttribute->m_argList[1];
                 if (!std::holds_alternative<ConstNumericVal>(rangeMax))
                 {
-                    throw AzslcEmitterException(EMITTER_INTEGER_RANGE_MAX_IS_NOT_CONST,
-                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's maximum!"));
+                    throw AzslcEmitterException(
+                        EMITTER_INTEGER_RANGE_MAX_IS_NOT_CONST,
+                        std::nullopt,
+                        std::nullopt,
+                        ConcatString("Option (", varUid.m_name, ") must specify a numeric const for its range's maximum!"));
                 }
 
                 const auto rangeMinValue = ExtractValueAsInt64(std::get<ConstNumericVal>(rangeMin));
@@ -385,8 +421,11 @@ namespace AZ::ShaderCompiler
 
                 if (rangeMinValue > rangeMaxValue)
                 {
-                    throw AzslcEmitterException(EMITTER_INTEGER_RANGE_MIN_IS_BIGGER_THAN_MAX,
-                                                std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") cannot specify a minimum for its range that is greater than its maximum!"));
+                    throw AzslcEmitterException(
+                        EMITTER_INTEGER_RANGE_MIN_IS_BIGGER_THAN_MAX,
+                        std::nullopt,
+                        std::nullopt,
+                        ConcatString("Option (", varUid.m_name, ") cannot specify a minimum for its range that is greater than its maximum!"));
                 }
 
                 if (rangeCount > kIntegerMaxShaderVariantValues)
@@ -401,8 +440,11 @@ namespace AZ::ShaderCompiler
             else
             {
                 // There is no immediate plan to support floats or more complex structures
-                throw AzslcEmitterException(EMITTER_OPTION_HAS_UNSUPPORTED_TYPE,
-                                            std::nullopt, std::nullopt, ConcatString("Option (", varUid.m_name, ") must be of type bool, int, or enum"));
+                throw AzslcEmitterException(
+                    EMITTER_OPTION_HAS_UNSUPPORTED_TYPE,
+                    std::nullopt,
+                    std::nullopt,
+                    ConcatString("Option (", varUid.m_name, ") must be of type bool, int, or enum"));
             }
         }
 
@@ -418,10 +460,9 @@ namespace AZ::ShaderCompiler
             varOption["keySize"] = keySizeInBits;
         }
 
-        varOption["values"]  = optValues;
-        varOption["range"]   = isRange;
+        varOption["values"] = optValues;
+        varOption["range"] = isRange;
     }
-
 
     Json::Value Backend::GetVariantList(const Options& options, bool includeEmpty) const
     {
@@ -462,14 +503,19 @@ namespace AZ::ShaderCompiler
             AppendOptionRange(shaderOption, uid, varInfo, options);
 
             if (includeEmpty || (shaderOption["values"].isArray() && shaderOption["values"].size() > 0))
-            {   // We only emit variant options which have positive number of valid values
+            {
+                // We only emit variant options which have positive number of valid values
                 // Because we use uint on the shader source side no shader option can cross the 32-bit boundary
                 uint32_t keySizeInBits = shaderOption["keySize"].asUInt();
 
                 if (keySizeInBits > kShaderVariantKeyElementSize)
                 {
-                    const std::string errorMessage = ConcatString("Shader option {", UnmangleTrimedName(uid.m_name), "} uses a bitmask which crosses the ",
-                                                             kShaderVariantKeyElementSize, "-bit boundary!");
+                    const std::string errorMessage = ConcatString(
+                        "Shader option {",
+                        UnmangleTrimedName(uid.m_name),
+                        "} uses a bitmask which crosses the ",
+                        kShaderVariantKeyElementSize,
+                        "-bit boundary!");
                     throw AzslcEmitterException(EMITTER_OVERFLOW_BIT_BOUNDARY, errorMessage);
                 }
 
@@ -510,8 +556,9 @@ namespace AZ::ShaderCompiler
     {
         if (!dims.AreAllDimsFullyConstantFolded())
         {
-            throw AzslcEmitterException(EMITTER_INVALID_ARRAY_DIMENSIONS,
-                                        ConcatString(callSite, " Invalid array dimensions (more than 1 or non constant size)"));
+            throw AzslcEmitterException(
+                EMITTER_INVALID_ARRAY_DIMENSIONS,
+                ConcatString(callSite, " Invalid array dimensions (more than 1 or non constant size)"));
         }
     }
 
@@ -521,40 +568,64 @@ namespace AZ::ShaderCompiler
         if (options.m_minAvailableDescriptors.m_samplers >= 0
             && numSamplerUsed > options.m_minAvailableDescriptors.m_samplers)
         {
-            PrintWarning(Warn::W1, srgInfo->m_declNode->start,
-                         "SRG ", srgUid.m_name,
-                         " bumped samplers to ", numSamplerUsed, " which overshoots the minimum supported sampler count guaranteed by the specification (from --min-descriptors argument currently set to ",
-                         options.m_minAvailableDescriptors.m_samplers, ")");
+            PrintWarning(
+                Warn::W1,
+                srgInfo->m_declNode->start,
+                "SRG ",
+                srgUid.m_name,
+                " bumped samplers to ",
+                numSamplerUsed,
+                " which overshoots the minimum supported sampler count guaranteed by the specification (from --min-descriptors argument currently set to ",
+                options.m_minAvailableDescriptors.m_samplers,
+                ")");
         }
 
         int numTextureUsed = bindInfo.m_untainted.GetAccumulated(BindingType::T);
         if (options.m_minAvailableDescriptors.m_textures >= 0
             && numTextureUsed > options.m_minAvailableDescriptors.m_textures)
         {
-            PrintWarning(Warn::W1, srgInfo->m_declNode->start,
-                         "SRG ", srgUid.m_name,
-                         " bumped textures to ", numTextureUsed, " which overshoots the minimum supported texture count guaranteed by the specification (from --min-descriptors argument currently set to ",
-                         options.m_minAvailableDescriptors.m_textures, ")");
+            PrintWarning(
+                Warn::W1,
+                srgInfo->m_declNode->start,
+                "SRG ",
+                srgUid.m_name,
+                " bumped textures to ",
+                numTextureUsed,
+                " which overshoots the minimum supported texture count guaranteed by the specification (from --min-descriptors argument currently set to ",
+                options.m_minAvailableDescriptors.m_textures,
+                ")");
         }
 
         int numViewUsed = bindInfo.m_untainted.GetAccumulated(BindingType::B) + bindInfo.m_untainted.GetAccumulated(BindingType::U);
         if (options.m_minAvailableDescriptors.m_buffers >= 0
             && numViewUsed > options.m_minAvailableDescriptors.m_buffers)
         {
-            PrintWarning(Warn::W1, srgInfo->m_declNode->start,
-                         "SRG ", srgUid.m_name,
-                         " bumped data views to ", numViewUsed, " which overshoots the minimum supported data views count guaranteed by the specification (from --min-descriptors argument currently set to ",
-                         options.m_minAvailableDescriptors.m_buffers, ")");
+            PrintWarning(
+                Warn::W1,
+                srgInfo->m_declNode->start,
+                "SRG ",
+                srgUid.m_name,
+                " bumped data views to ",
+                numViewUsed,
+                " which overshoots the minimum supported data views count guaranteed by the specification (from --min-descriptors argument currently set to ",
+                options.m_minAvailableDescriptors.m_buffers,
+                ")");
         }
 
         int totalUsed = numSamplerUsed + numTextureUsed + numViewUsed;
         if (options.m_minAvailableDescriptors.m_descriptorsTotal >= 0
             && totalUsed > options.m_minAvailableDescriptors.m_descriptorsTotal)
         {
-            PrintWarning(Warn::W1, srgInfo->m_declNode->start,
-                         "SRG ", srgUid.m_name,
-                         " bumped descriptors to ", totalUsed, " which overshoots the minimum supported descriptor count guaranteed by the specification (from --min-descriptors argument currently set to ",
-                         options.m_minAvailableDescriptors.m_descriptorsTotal, ")");
+            PrintWarning(
+                Warn::W1,
+                srgInfo->m_declNode->start,
+                "SRG ",
+                srgUid.m_name,
+                " bumped descriptors to ",
+                totalUsed,
+                " which overshoots the minimum supported descriptor count guaranteed by the specification (from --min-descriptors argument currently set to ",
+                options.m_minAvailableDescriptors.m_descriptorsTotal,
+                ")");
         }
     }
 
@@ -562,7 +633,7 @@ namespace AZ::ShaderCompiler
     {
         Kind kind = m_ir->GetKind(id);
         int count = 1;
-        RootParamType paramType = RootParamType::SrgConstantCB;  // this is the default because when "kind" is not "Variable", this function is used on symbols of "kind" "SRG"
+        RootParamType paramType = RootParamType::SrgConstantCB; // this is the default because when "kind" is not "Variable", this function is used on symbols of "kind" "SRG"
         bool isUnboundedArray = false;
         if (kind == Kind::Variable)
         {
@@ -575,7 +646,7 @@ namespace AZ::ShaderCompiler
             if (isUnboundedArray)
             {
                 TypeClass typeClass = memberInfo->GetTypeClass();
-                if ( CanBeDeclaredAsUnboundedArray(typeClass) )
+                if (CanBeDeclaredAsUnboundedArray(typeClass))
                 {
                     shouldCheckForValidArraySize = false;
                 }
@@ -593,7 +664,7 @@ namespace AZ::ShaderCompiler
 
         BindingPair binding = bindInfo.GetCurrent(regType);
         if (isUnboundedArray
-            && GetPlatformEmitter().RequiresUniqueSpaceForUnboundedArrays() /* refer to note¹ hereunder*/ )
+            && GetPlatformEmitter().RequiresUniqueSpaceForUnboundedArrays() /* refer to note¹ hereunder*/)
         {
             //  note¹: On o3de/Atom, the vulkan RHI assumes SRG binding IDs to be 0-7 as there are fixed data structures
             //         using a MaxSRGs of 8 in the code. Adapting the RHI to remove this assumption would have been costly,
@@ -615,7 +686,7 @@ namespace AZ::ShaderCompiler
 
         bindInfo.SignalIncrementRegister(regType, count);
 
-        auto srgElementDesc = RootSigDesc::SrgParamDesc{ id, paramType, binding, count, -1, isUnboundedArray};
+        auto srgElementDesc = RootSigDesc::SrgParamDesc{id, paramType, binding, count, -1, isUnboundedArray};
 
         rootSig.m_descriptorMap.emplace(id, srgElementDesc);
 
@@ -631,18 +702,18 @@ namespace AZ::ShaderCompiler
 
     RootSigDesc Backend::BuildSignatureDescription(const Options& options, int num32BitConst) const
     {
-        MultiBindingLocationMaker bindInfo{ options };
+        MultiBindingLocationMaker bindInfo{options};
         RootSigDesc rootSig;
 
         auto allSrgs = m_ir->m_symbols.GetOrderedSymbolsOfSubType_2<SRGInfo>();
         using Id_SrgInfo_Pair = decltype(allSrgs)::value_type;
         // let's order them by frequency:
         auto orderingFunction = [this](const Id_SrgInfo_Pair& srgSymbol1, const Id_SrgInfo_Pair& srgSymbol2)
-            {
-                auto srgSemantic1 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol1.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
-                auto srgSemantic2 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol2.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
-                return *srgSemantic1->m_frequencyId < *srgSemantic2->m_frequencyId;
-            };
+        {
+            auto srgSemantic1 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol1.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
+            auto srgSemantic2 = m_ir->GetSymbolSubAs<ClassInfo>(srgSymbol2.second->m_semantic->GetName())->Get<SRGSemanticInfo>();
+            return *srgSemantic1->m_frequencyId < *srgSemantic2->m_frequencyId;
+        };
         std::sort(allSrgs.begin(), allSrgs.end(), orderingFunction);
 
         const bool useUniqueIndices = options.m_useUniqueIndices;
@@ -662,7 +733,7 @@ namespace AZ::ShaderCompiler
                     continue;
                 }
                 srgDesc.m_parameters.push_back(
-                    ReflectOneExternalResourceAndWrapWithUnifyIndices(tId, bindInfo, rootSig) );
+                    ReflectOneExternalResourceAndWrapWithUnifyIndices(tId, bindInfo, rootSig));
             }
             for (const auto sId : srgInfo->m_samplers)
             {
@@ -673,7 +744,7 @@ namespace AZ::ShaderCompiler
                     continue;
                 }
                 srgDesc.m_parameters.push_back(
-                    ReflectOneExternalResourceAndWrapWithUnifyIndices(sId, bindInfo, rootSig) );
+                    ReflectOneExternalResourceAndWrapWithUnifyIndices(sId, bindInfo, rootSig));
             }
 
             bool hasSrgConstants = !srgInfo->m_implicitStruct.GetMemberFields().empty();
@@ -683,7 +754,7 @@ namespace AZ::ShaderCompiler
                 srgDesc.m_parameters.push_back(
                     ReflectOneExternalResourceAndWrapWithUnifyIndices(srgUid, bindInfo, rootSig));
             }
-            if (!options.m_emitConstantBufferBody)  // emitCB is the SM5- "cbufer{}" block syntax. !emitCB is the "ConstantBuffer<>" SM5.1+ syntax
+            if (!options.m_emitConstantBufferBody) // emitCB is the SM5- "cbufer{}" block syntax. !emitCB is the "ConstantBuffer<>" SM5.1+ syntax
             {
                 for (const auto cId : srgInfo->m_CBs)
                 {
@@ -707,12 +778,19 @@ namespace AZ::ShaderCompiler
                 }
             }
 
-            bindInfo.SignalIncrementSpace(/*overshoot callback:*/[&, srgInfo = srgInfo, srgUid = srgUid](int numSpaces, int spacesAvailable)
+            bindInfo.SignalIncrementSpace(
+                /*overshoot callback:*/[&, srgInfo = srgInfo, srgUid = srgUid](int numSpaces, int spacesAvailable)
                 {
-                    PrintWarning(Warn::W1, srgInfo->m_declNode->start,
-                                 "SRG ", srgUid.m_name, " on space ", numSpaces,
-                                 " overshoots the minimum supported logical register space count guaranteed by the specification (from --min-descriptors argument currently set to ",
-                                 spacesAvailable, ")");
+                    PrintWarning(
+                        Warn::W1,
+                        srgInfo->m_declNode->start,
+                        "SRG ",
+                        srgUid.m_name,
+                        " on space ",
+                        numSpaces,
+                        " overshoots the minimum supported logical register space count guaranteed by the specification (from --min-descriptors argument currently set to ",
+                        spacesAvailable,
+                        ")");
                 });
 
             bindInfo.SignalUnifyIndices();
@@ -729,8 +807,13 @@ namespace AZ::ShaderCompiler
             RootSigDesc::SrgDesc rootConstDesc;
             rootConstDesc.m_uid = m_ir->m_rootConstantStructUID;
 
-            auto desc = RootSigDesc::SrgParamDesc{ rootConstDesc.m_uid, RootParamType::RootConstantCB,
-                bindInfo.GetCurrent(BindingType::B), 1, num32BitConst };
+            auto desc = RootSigDesc::SrgParamDesc{
+                rootConstDesc.m_uid,
+                RootParamType::RootConstantCB,
+                bindInfo.GetCurrent(BindingType::B),
+                1,
+                num32BitConst
+            };
 
             rootConstDesc.m_parameters.push_back(desc);
             rootSig.m_descriptorMap.emplace(rootConstDesc.m_uid, desc);
@@ -746,9 +829,11 @@ namespace AZ::ShaderCompiler
         const bool in = TypeHasStorageFlag(typeQualifier, StorageFlag::In);
         const bool out = TypeHasStorageFlag(typeQualifier, StorageFlag::Out);
         const bool inout = (in && out) || TypeHasStorageFlag(typeQualifier, StorageFlag::InOut);
-        return inout ? "inout"
-                     : (in ? "in"
-                           : (out ? "out" : ""));
+        return inout
+                   ? "inout"
+                   : (in
+                          ? "in"
+                          : (out ? "out" : ""));
     }
 
     // static
@@ -770,11 +855,23 @@ namespace AZ::ShaderCompiler
             modifiers = options.m_forceMatrixRowMajor ? "row_major" : "column_major";
         }
 
-        auto maybeSpace = [&modifiers](){ return modifiers.empty() ? "" : " "; };
+        auto maybeSpace = [&modifiers]()
+        {
+            return modifiers.empty() ? "" : " ";
+        };
         using SF = StorageFlag;
-        static const StorageFlag toReEmit[] = {SF::Static, SF::Extern, SF::Inline,
-            SF::Const, SF::Volatile, SF::Precise, SF::Groupshared,
-            SF::Uniform, SF::Globallycoherent, SF::Unsigned};
+        static const StorageFlag toReEmit[] = {
+            SF::Static,
+            SF::Extern,
+            SF::Inline,
+            SF::Const,
+            SF::Volatile,
+            SF::Precise,
+            SF::Groupshared,
+            SF::Uniform,
+            SF::Globallycoherent,
+            SF::Unsigned
+        };
         for (int i = 0; i < std::size(toReEmit); ++i)
         {
             if (typeInfo.CheckHasStorageFlag(toReEmit[i]) && !(bannedFlags & toReEmit[i]))
@@ -846,10 +943,12 @@ namespace AZ::ShaderCompiler
 
                 if (!exportedType.IsPackable())
                 {
-                    throw std::logic_error{ (std::string(" internal error: unpackable type (")
-                        + exportedType.m_typeId.m_name
-                        + ") found its way in layout member "
-                        + memberVar.m_name).c_str() };
+                    throw std::logic_error{
+                        (std::string(" internal error: unpackable type (")
+                            + exportedType.m_typeId.m_name
+                            + ") found its way in layout member "
+                            + memberVar.m_name).c_str()
+                    };
                 }
 
                 // GetTotalSize of each member of the structure

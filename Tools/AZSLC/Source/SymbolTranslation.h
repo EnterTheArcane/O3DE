@@ -20,14 +20,14 @@
 namespace AZ::ShaderCompiler
 {
     MAKE_REFLECTABLE_ENUM_POWER(BehaviorEvent, OnDeclaration, OnReference);
+
     using BehaviorEventFlag = Flag<BehaviorEvent>;
 
     //! DeclarationSite is for usages like XX in "struct XX {};" or "int XX = 2;"
     //! ReferenceSite   is for usages in expressions
     enum class UsageContext
     {
-        DeclarationSite = BehaviorEvent::OnDeclaration,
-        ReferenceSite   = BehaviorEvent::OnReference,
+        DeclarationSite = BehaviorEvent::OnDeclaration, ReferenceSite = BehaviorEvent::OnReference,
     };
 
     //! store translated names (map of names to new names)
@@ -38,7 +38,7 @@ namespace AZ::ShaderCompiler
         //! accessSymbol    is a function to query a symbol in the symbol table. (it is recommend to bind it to SymbolAggregator::GetIdAndKindInfo())
         void SetAccessSymbolQueryFunctor(std::function<KindInfo*(QualifiedNameView)> accessSymbol);
 
-        void SetGetSeenatFunctor(std::function< std::vector<Seenat>& (QualifiedNameView) > getSeenats);
+        void SetGetSeenatFunctor(std::function<std::vector<Seenat>&(QualifiedNameView)> getSeenats);
 
         //! landingScope is the destination scope for the (translated) declaration of the symbol.
         void RegisterLandingScope(const IdentifierUID& originalSymbol, QualifiedNameView landingScope);
@@ -49,8 +49,8 @@ namespace AZ::ShaderCompiler
         //!   naturalRename         is the "otherwise produced" translation result, if you return it as is, that'd be an "identity" custom behavior.
         //!   tokenId               often unavailable (=NotOverToken ==-1) but when available it indicates which token index we're iterating over in the original stream
         using TranslationBehaviorDelegate =
-            std::function<
-                std::string (QualifiedNameView originalSymbol, UsageContext qualificationStrategy, std::string naturalRename, ssize_t tokenId) >;
+        std::function<
+            std::string (QualifiedNameView originalSymbol, UsageContext qualificationStrategy, std::string naturalRename, ssize_t tokenId)>;
 
         //! register specific behaviors to post-mutate names differently than the default algorithm.
         //! a behavior is for one original symbol. it can trigger on declaration or reference or both
@@ -81,12 +81,14 @@ namespace AZ::ShaderCompiler
             {
                 return m_mutatedRightMost.m_symbol.m_name.empty();
             }
+
             struct MutatedRightMostInfo
             {
-                IdentifierUID m_symbol;    // original name (un-mutated)
-                ssize_t       m_index = 0; // in the token stream (same space as m_span.a/b)
+                IdentifierUID m_symbol; // original name (un-mutated)
+                ssize_t m_index = 0; // in the token stream (same space as m_span.a/b)
             } m_mutatedRightMost;
-            misc::Interval m_span;  // nested::mut::most
+
+            misc::Interval m_span; // nested::mut::most
             //                         ^               ^
         };
 
@@ -104,7 +106,7 @@ namespace AZ::ShaderCompiler
         //! execute the logic explained in the comment above struct IDExpressionDesc
         //! that is: mutate intermediate symbols by rewriting the path.
         //! emit a fully qualified valid HLSL expression after mutations.
-        template< typename NextTokenFunctor >
+        template <typename NextTokenFunctor>
         std::string TranslateIdExpression(const IDExpressionDesc& idExprDesc, ssize_t tokenId, const NextTokenFunctor& getNext) const
         {
             std::string part1 = GetTranslatedName(idExprDesc.m_mutatedRightMost.m_symbol.m_name, UsageContext::ReferenceSite, tokenId);
@@ -122,6 +124,7 @@ namespace AZ::ShaderCompiler
             TranslationBehaviorDelegate m_action;
             BehaviorEventFlag m_when;
         };
+
         struct SymbolMutation
         {
             QualifiedName m_landingScope;
@@ -134,6 +137,7 @@ namespace AZ::ShaderCompiler
             QualifiedName m_result;
             const SymbolMutation* m_foundMutation = nullptr;
         };
+
         // recursive entry to be able to treat a parent migration at any level
         //  A/B/C/D will check for D first, but we need to check for the rightmost change.
         // if A has a migration and B has a migration too, only B counts.
@@ -147,25 +151,25 @@ namespace AZ::ShaderCompiler
         bool BelongsToOverloadSet_(QualifiedNameView originalName1, QualifiedNameView originalName2) const;
 
         // cache for renames (stateful rename that can store disambiguation attempts):
-        mutable std::unordered_map< QualifiedName, QualifiedName >        m_renames;
+        mutable std::unordered_map<QualifiedName, QualifiedName> m_renames;
         // database of registered mutations:
-        std::unordered_map< QualifiedName, SymbolMutation >               m_landingScope;
+        std::unordered_map<QualifiedName, SymbolMutation> m_landingScope;
         // quick query for "on top of migrated symbol original definition's first token"
         // also store the end token for easy jump-over
-        std::unordered_map< ssize_t, std::pair<QualifiedName, ssize_t> >       m_definitionCtxStartTokenOfMigratedSymbol;
+        std::unordered_map<ssize_t, std::pair<QualifiedName, ssize_t>> m_definitionCtxStartTokenOfMigratedSymbol;
         // example: tok1::tok3::tok5 (with tok2 and 4 being ::) -> 5 tokens 1 idexpr.
         // since IDExpression objects are not immutable (mutatedRightMostSymbol iteratively updated)
         // we can't tolerate data duplication. so we chose to store only the first token id (tok1) as key for an idexpression
-        std::unordered_map< ssize_t, IDExpressionDesc >                   m_firstTokenIdToIdExpression;
+        std::unordered_map<ssize_t, IDExpressionDesc> m_firstTokenIdToIdExpression;
         // to fill the gap we can map left out tokens 'tok2 tok3 tok4 tok5' to tok1
-        std::unordered_map< ssize_t, ssize_t >                            m_anyTokenIdToFirstTokenIdOfAnIdExpr;
+        std::unordered_map<ssize_t, ssize_t> m_anyTokenIdToFirstTokenIdOfAnIdExpr;
 
         // internal fast-lookup cache to help symbol disambiguation against renames
         // alternatively, boost::bimap could be used, or an equivalent.
-        mutable std::unordered_map< QualifiedName, QualifiedName >        m_mappedRenames;  // disambiguated rename to original-symbol
+        mutable std::unordered_map<QualifiedName, QualifiedName> m_mappedRenames; // disambiguated rename to original-symbol
 
         // external IR access functors
-        std::function< KindInfo* (QualifiedNameView) >               m_accessSymbol;
-        std::function< std::vector<Seenat>& (QualifiedNameView) >         m_getSeenats;
+        std::function<KindInfo*(QualifiedNameView)> m_accessSymbol;
+        std::function<std::vector<Seenat>&(QualifiedNameView)> m_getSeenats;
     };
 }

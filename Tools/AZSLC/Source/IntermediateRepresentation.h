@@ -39,7 +39,7 @@ namespace AZ::ShaderCompiler
         std::string m_platformEmitterNamespace;
 
         //! some platforms require source-coded target formats
-        OutputFormat m_outputFormatHint[kMaxRenderTargets] = { OutputFormat::R16G16B16A16_FLOAT };
+        OutputFormat m_outputFormatHint[kMaxRenderTargets] = {OutputFormat::R16G16B16A16_FLOAT};
     };
 
     // Holder responsible for owning post-parsed source data (in the form of an object graph).
@@ -47,13 +47,14 @@ namespace AZ::ShaderCompiler
     struct IntermediateRepresentation
     {
         IntermediateRepresentation(azslLexer* lexer)
-            : m_scope{[&](QualifiedNameView sym)  // Initialize the scope object with a decoupled identifier getter. (SOLID's D.I.P)
-                      {
-                          return m_symbols.GetIdAndKindInfo(sym);
-                      }
-                     }
-            , m_lexer{ lexer }
+            : m_scope{
+                [&](QualifiedNameView sym) // Initialize the scope object with a decoupled identifier getter. (SOLID's D.I.P)
+                {
+                    return m_symbols.GetIdAndKindInfo(sym);
+                }
+            }
             , m_sema{&m_symbols, &m_scope, lexer}
+            , m_lexer{lexer}
             , m_padToAttributeMutator(*this)
         {
             // Default output format for all targets
@@ -66,7 +67,7 @@ namespace AZ::ShaderCompiler
             return m_symbols.GetIdAndKindInfo(symbol);
         }
 
-         //! Shortcut helper to symbols
+        //! Shortcut helper to symbols
         auto GetIdAndKindInfo(QualifiedNameView symbol)
         {
             return m_symbols.GetIdAndKindInfo(symbol);
@@ -100,7 +101,7 @@ namespace AZ::ShaderCompiler
         }
 
         //! Extracts the contained SubInfo from a symbol lookup
-        template<typename T>
+        template <typename T>
         const T* GetSymbolSubAs(QualifiedNameView symbol) const
         {
             const auto* symbolLookUp = GetIdAndKindInfo(symbol);
@@ -111,7 +112,7 @@ namespace AZ::ShaderCompiler
             return symbolLookUp->second.GetSubAs<T>();
         }
 
-        template<typename T>
+        template <typename T>
         T* GetSymbolSubAs(QualifiedNameView symbol)
         {
             auto* symbolLookUp = GetIdAndKindInfo(symbol);
@@ -123,14 +124,14 @@ namespace AZ::ShaderCompiler
         }
 
         //! Returns a copy of the Ordered list filtered by SubInfo (of type `Sub`) only. elements are only the subinfo.
-        template<typename Sub>
+        template <typename Sub>
         const std::vector<Sub*> GetOrderedSubInfosOfSubType()
         {
             return m_symbols.GetOrderedSubInfosOfSubType<Sub>();
         }
 
         //! Returns a copy of the Ordered list filtered by SubInfo (of type `Sub`) only. elements are pairs (uid, sub)
-        template<typename Sub>
+        template <typename Sub>
         std::vector<std::pair<IdentifierUID, Sub*>> GetOrderedSymbolsOfSubType_2()
         {
             return m_symbols.GetOrderedSymbolsOfSubType_2<Sub>();
@@ -158,18 +159,19 @@ namespace AZ::ShaderCompiler
             m_metaData.m_attributeNamespaceFilters.emplace(attr);
             // We can have multiple attribute scopes enabled
             // By design only one can have associated platform emitter, so just use the first one.
-            if(m_metaData.m_platformEmitterNamespace.empty())
+            if (m_metaData.m_platformEmitterNamespace.empty())
             {
                 m_metaData.m_platformEmitterNamespace = attr;
             }
         }
 
-        void RegisterAttributeSpecifier(AttributeScope scope,
-                                        AttributeCategory category,
-                                        size_t declarationLine,
-                                        std::string_view space,
-                                        std::string_view name,
-                                        azslParser::AttributeArgumentListContext* argList);
+        void RegisterAttributeSpecifier(
+            AttributeScope scope,
+            AttributeCategory category,
+            size_t declarationLine,
+            std::string_view space,
+            std::string_view name,
+            azslParser::AttributeArgumentListContext* argList);
 
         //! called internally after a new attribute is registered
         //! Returns true if the attribute must be registered, otherwise
@@ -204,8 +206,9 @@ namespace AZ::ShaderCompiler
             const AZ::ShaderCompiler::Packing::Layout layoutPacking) const;
 
         //! execute any logic that relates to intermediate treatment that would need to be done between front end and back end
-        void MiddleEnd(const MiddleEndConfiguration& middleEndconfig,
-                       PreprocessorLineDirectiveFinder* lineFinder);
+        void MiddleEnd(
+            const MiddleEndConfiguration& middleEndconfig,
+            PreprocessorLineDirectiveFinder* lineFinder);
 
         bool Validate();
 
@@ -218,7 +221,7 @@ namespace AZ::ShaderCompiler
 
         //! Helper function that returns a filtered list of identifiers for symbols
         //! of a specific KindInfo Subtype. The LambdaFilter should return true when it finds a match.
-        template<typename Sub, typename LambdaFilter>
+        template <typename Sub, typename LambdaFilter>
         std::vector<IdentifierUID> GetFilteredSymbolsOfSubType(LambdaFilter filterFunc)
         {
             std::vector<IdentifierUID> filteredSymbols;
@@ -236,7 +239,7 @@ namespace AZ::ShaderCompiler
         }
 
         //! Same as above, only returns the first match.
-        template<typename Sub, typename LambdaFilter>
+        template <typename Sub, typename LambdaFilter>
         IdentifierUID GetFirstFilteredSymbolOfSubType(LambdaFilter filterFunc)
         {
             for (const auto& pairUidSym : GetOrderedSymbolsOfSubType_2<Sub>())
@@ -316,27 +319,28 @@ namespace AZ::ShaderCompiler
         //!     float2 m_value;
         //! }
         //!
-        void ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(const MiddleEndConfiguration& middleEndconfigration,
-                                                                      PreprocessorLineDirectiveFinder* lineFinder);
+        void ValidateAlignmentIssueWhenScalarOrFloat2PrecededByMatrix(
+            const MiddleEndConfiguration& middleEndconfigration,
+            PreprocessorLineDirectiveFinder* lineFinder);
 
         // Returns info for the last variable inside the struct or class named @structUid.
         // If @structUid is not struct or class, then it returns nullptr.
         IdentifierUID GetLastMemberVariable(const IdentifierUID& structUid);
 
         // the maps of all variables, functions, etc, from the source code (things with declarations and a name).
-        SymbolAggregator      m_symbols;
+        SymbolAggregator m_symbols;
         // stateful helper during parsing
-        ScopeTracker          m_scope;
+        ScopeTracker m_scope;
         // the orchestrator holds references to above objects, so for safety we can hold it in the same place.
         // yielding better guarantees about its lifetime wrt its references.
-        SemanticOrchestrator  m_sema;
+        SemanticOrchestrator m_sema;
         // object that allows reverse mapping of token pointers to AST rules
-        TokenToAst            m_tokenMap;
-        azslLexer*            m_lexer;
+        TokenToAst m_tokenMap;
+        azslLexer* m_lexer;
         // the structure that holds root constants (it's a generated thing, and there is only one)
-        IdentifierUID         m_rootConstantStructUID;
+        IdentifierUID m_rootConstantStructUID;
 
-        IRMetaData            m_metaData;
+        IRMetaData m_metaData;
 
         // Helper to deal with the [[pad_to(N)]] attribute.
         PadToAttributeMutator m_padToAttributeMutator;

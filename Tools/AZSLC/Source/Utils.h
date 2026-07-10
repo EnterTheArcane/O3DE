@@ -54,27 +54,27 @@ namespace AZ::ShaderCompiler
 {
     extern DiagnosticStream verboseCout;
     extern DiagnosticStream warningCout;
-    extern Endl             azEndl;
+    extern Endl azEndl;
 
-    using AstType                       = azslParser::TypeContext;                  // all usertypes and predefined, but cannot be Void
-    using AstTypeofNode                 = azslParser::TypeofExpressionContext;
-    using AstPredefinedTypeNode         = azslParser::PredefinedTypeContext;
-    using AstClassDeclNode              = azslParser::ClassDefinitionContext;
-    using AstStructDeclNode             = azslParser::StructDefinitionContext;
-    using AstEnumDeclNode               = azslParser::EnumDefinitionContext;
-    using AstEnumeratorDecl             = azslParser::EnumeratorDeclaratorContext;
-    using AstInterfaceDeclNode          = azslParser::InterfaceDefinitionContext;
-    using AstSRGSemanticDeclNode        = azslParser::SrgSemanticContext;
-    using AstSRGSemanticMemberDeclNode  = azslParser::SrgSemanticMemberDeclarationContext;
-    using AstSRGDeclNode                = azslParser::SrgDefinitionContext;
-    using AstSRGMemberNode              = azslParser::SrgMemberDeclarationContext;
-    using AstNamedVarDecl               = azslParser::NamedVariableDeclaratorContext;
-    using AstUnnamedVarDecl             = azslParser::UnnamedVariableDeclaratorContext;
-    using AstFuncSig                    = azslParser::LeadingTypeFunctionSignatureContext;
-    using AstIdExpr                     = azslParser::IdExpressionContext;
-    using AstExpr                       = azslParser::ExpressionContext;
-    using AstMemberAccess               = azslParser::MemberAccessExpressionContext;
-    using AstVarInitializer             = azslParser::VariableInitializerContext;
+    using AstType = azslParser::TypeContext; // all usertypes and predefined, but cannot be Void
+    using AstTypeofNode = azslParser::TypeofExpressionContext;
+    using AstPredefinedTypeNode = azslParser::PredefinedTypeContext;
+    using AstClassDeclNode = azslParser::ClassDefinitionContext;
+    using AstStructDeclNode = azslParser::StructDefinitionContext;
+    using AstEnumDeclNode = azslParser::EnumDefinitionContext;
+    using AstEnumeratorDecl = azslParser::EnumeratorDeclaratorContext;
+    using AstInterfaceDeclNode = azslParser::InterfaceDefinitionContext;
+    using AstSRGSemanticDeclNode = azslParser::SrgSemanticContext;
+    using AstSRGSemanticMemberDeclNode = azslParser::SrgSemanticMemberDeclarationContext;
+    using AstSRGDeclNode = azslParser::SrgDefinitionContext;
+    using AstSRGMemberNode = azslParser::SrgMemberDeclarationContext;
+    using AstNamedVarDecl = azslParser::NamedVariableDeclaratorContext;
+    using AstUnnamedVarDecl = azslParser::UnnamedVariableDeclaratorContext;
+    using AstFuncSig = azslParser::LeadingTypeFunctionSignatureContext;
+    using AstIdExpr = azslParser::IdExpressionContext;
+    using AstExpr = azslParser::ExpressionContext;
+    using AstMemberAccess = azslParser::MemberAccessExpressionContext;
+    using AstVarInitializer = azslParser::VariableInitializerContext;
 
     inline constexpr ssize_t operator ""_ssz(unsigned long long n)
     {
@@ -128,25 +128,30 @@ namespace AZ::ShaderCompiler
     }
 
     //! low level version with everything parameterizable
-    template<typename... Types>
+    template <typename... Types>
     inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, std::optional<size_t> lineNumber, std::optional<size_t> column, Types&&... messageBits)
     {
         stream << PushLevel{} << level
-               << AzslcException::MakeErrorMessage(lineNumber ? AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber) : "",
-                                                   lineNumber ? ToString(AzslcException::s_lineFinder->GetVirtualLineNumber(*lineNumber)) : "", column ? ToString(*column) : "",
-                                                   "", false, "", ConcatString(messageBits..., "\n"))
-               << PopLevel{};
+            << AzslcException::MakeErrorMessage(
+                lineNumber ? AzslcException::s_lineFinder->GetVirtualFileName(*lineNumber) : "",
+                lineNumber ? ToString(AzslcException::s_lineFinder->GetVirtualLineNumber(*lineNumber)) : "",
+                column ? ToString(*column) : "",
+                "",
+                false,
+                "",
+                ConcatString(messageBits..., "\n"))
+            << PopLevel{};
     }
 
     //! version for clients with only, maybe, a line number
-    template<typename... Types>
+    template <typename... Types>
     inline void PrintWarning(Warn::EnumType level, std::optional<size_t> line, Types&&... messageBits)
     {
         PrintWarning(warningCout, level, line, std::nullopt, messageBits...);
     }
 
     //! version for clients with a token (richest, preferred way)
-    template<typename... Types>
+    template <typename... Types>
     inline void PrintWarning(Warn::EnumType level, antlr4::Token* token, Types&&... messageBits)
     {
         PrintWarning(warningCout, level, token->getLine(), token->getCharPositionInLine() + 1, messageBits...);
@@ -157,7 +162,7 @@ namespace AZ::ShaderCompiler
         return ctx->typeofExpression();
     }
 
-    template<typename AnyOther>
+    template <typename AnyOther>
     inline AstTypeofNode* ExtractTypeofAstNode(AnyOther*)
     {
         return nullptr;
@@ -172,7 +177,7 @@ namespace AZ::ShaderCompiler
         {
             if (defval == std::nullopt)
             {
-                throw std::logic_error{ "Constant value did not hold anything. Set defval if you want a fallback option." };
+                throw std::logic_error{"Constant value did not hold anything. Set defval if you want a fallback option."};
             }
             else
             {
@@ -210,7 +215,7 @@ namespace AZ::ShaderCompiler
         {
             if (defval == std::nullopt)
             {
-                throw std::logic_error{ "Constant value did not hold anything. Set defval if you want a fallback option." };
+                throw std::logic_error{"Constant value did not hold anything. Set defval if you want a fallback option."};
             }
             else
             {
@@ -232,14 +237,14 @@ namespace AZ::ShaderCompiler
         return static_cast<int64_t>(std::get<uint32_t>(var));
     }
 
-    template<class T>
+    template <class T>
     inline T ExtractValueAs(const ConstNumericVal& var, std::optional<T> defval = std::nullopt)
     {
         if (std::holds_alternative<std::monostate>(var))
         {
             if (defval == std::nullopt)
             {
-                throw std::logic_error{ "Constant value did not hold anything. Set defval if you want a fallback option." };
+                throw std::logic_error{"Constant value did not hold anything. Set defval if you want a fallback option."};
             }
             else
             {
@@ -273,31 +278,57 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    MAKE_REFLECTABLE_ENUM_POWER (StorageFlag,
-        Static, Const, Unsigned, RowMajor, ColumnMajor, Extern, Inline, Rootconstant, Option, Precise, Groupshared, Uniform, Volatile, Globallycoherent, In, Out, InOut, Enumerator, Other
+    MAKE_REFLECTABLE_ENUM_POWER(
+        StorageFlag,
+        Static,
+        Const,
+        Unsigned,
+        RowMajor,
+        ColumnMajor,
+        Extern,
+        Inline,
+        Rootconstant,
+        Option,
+        Precise,
+        Groupshared,
+        Uniform,
+        Volatile,
+        Globallycoherent,
+        In,
+        Out,
+        InOut,
+        Enumerator,
+        Other
     );
 
-    inline Streamable& operator << (Streamable& out, StorageFlag::EnumType sf)
+    inline Streamable& operator <<(Streamable& out, StorageFlag::EnumType sf)
     {
         return out << ToLower(StorageFlag::ToStr(sf));
     }
 
-    inline Streamable& operator << (Streamable& out, StorageFlag sf)
+    inline Streamable& operator <<(Streamable& out, StorageFlag sf)
     {
         return out << sf.m_value;
     }
 
     using Modifiers = Flag<StorageFlag>;
+
     struct TypeQualifiers
     {
-        Modifiers      m_flag;
-        std::vector<std::string> m_others;    // For qualifiers we didn't add to the enum
+        Modifiers m_flag;
+        std::vector<std::string> m_others; // For qualifiers we didn't add to the enum
 
         std::string GetDisplayName() const
         {
             std::vector<StorageFlag> bag;
-            auto end = std::copy_if(StorageFlag::Enumerate{}.begin(), StorageFlag::Enumerate{}.end(), std::back_inserter(bag),
-                                    [&](auto sf) -> bool { return (m_flag & sf) && (sf & ~StorageFlag::Other); });
+            auto end = std::copy_if(
+                StorageFlag::Enumerate{}.begin(),
+                StorageFlag::Enumerate{}.end(),
+                std::back_inserter(bag),
+                [&](auto sf) -> bool
+                {
+                    return (m_flag & sf) && (sf & ~StorageFlag::Other);
+                });
             // Join will call operator<< on StorageFlag::EnumType for stringification
             return std::string{Trim(Join(bag.begin(), bag.end(), " ") + " " + Join(m_others.begin(), m_others.end(), " "))};
         }
@@ -305,7 +336,7 @@ namespace AZ::ShaderCompiler
         void OrMerge(const TypeQualifiers& src)
         {
             m_flag |= src.m_flag;
-            StableMerge(m_others, src.m_others);  // stable is key to not disturb emission tests accross platforms that could hash differently if using unordered_sets.
+            StableMerge(m_others, src.m_others); // stable is key to not disturb emission tests accross platforms that could hash differently if using unordered_sets.
         }
     };
 
@@ -326,7 +357,13 @@ namespace AZ::ShaderCompiler
         //! Have all dimensions been statically resolved ?
         const bool AreAllDimsFullyConstantFolded() const
         {
-            return std::all_of(m_dimensions.begin(), m_dimensions.end(), [](int d) { return (d >= 0); });
+            return std::all_of(
+                m_dimensions.begin(),
+                m_dimensions.end(),
+                [](int d)
+                {
+                    return (d >= 0);
+                });
         }
 
         int GetDimensionAt_OrDefault(int dimensionIndex, int defaultValueIfNoSuchDim) const
@@ -342,8 +379,13 @@ namespace AZ::ShaderCompiler
         std::string ToString(const std::string& prefix = "[", const std::string& separator = "][", const std::string& suffix = "]") const
         {
             std::vector<std::string> asStrs;
-            TransformCopy(m_dimensions, asStrs,
-                          [](int d) -> std::string { return d == Unknown ? "<unrecognized-expr>" : d == Unbounded ? "" : std::to_string(d); });
+            TransformCopy(
+                m_dimensions,
+                asStrs,
+                [](int d) -> std::string
+                {
+                    return d == Unknown ? "<unrecognized-expr>" : d == Unbounded ? "" : std::to_string(d);
+                });
             return asStrs.empty() ? "" : prefix + Join(asStrs.begin(), asStrs.end(), separator) + suffix;
         }
 
@@ -372,13 +414,14 @@ namespace AZ::ShaderCompiler
             return m_dimensions.end();
         }
 
-        friend bool operator == (const ArrayDimensions& lhs, const ArrayDimensions& rhs)
+        friend bool operator ==(const ArrayDimensions& lhs, const ArrayDimensions& rhs)
         {
             return lhs.m_dimensions == rhs.m_dimensions;
         }
-        friend bool operator != (const ArrayDimensions& lhs, const ArrayDimensions& rhs)
+
+        friend bool operator !=(const ArrayDimensions& lhs, const ArrayDimensions& rhs)
         {
-            return !operator==(lhs,rhs);
+            return !operator==(lhs, rhs);
         }
 
         //! value taken by dimensions that couldn't be constant-folded (variable initializer)
@@ -407,8 +450,18 @@ namespace AZ::ShaderCompiler
     //! R16G16B16A16_SINT - four or less channels (RGBA), Sint16
     //! R32G32B32A32 - four channels (RGBA), can be Float32, Uint32 or Sint32
 
-    MAKE_REFLECTABLE_ENUM(OutputFormat,
-        None, R32, R32G32, R32A32, R16G16B16A16_FLOAT, R16G16B16A16_UNORM, R16G16B16A16_SNORM, R16G16B16A16_UINT, R16G16B16A16_SINT, R32G32B32A32
+    MAKE_REFLECTABLE_ENUM(
+        OutputFormat,
+        None,
+        R32,
+        R32G32,
+        R32A32,
+        R16G16B16A16_FLOAT,
+        R16G16B16A16_UNORM,
+        R16G16B16A16_SNORM,
+        R16G16B16A16_UINT,
+        R16G16B16A16_SINT,
+        R32G32B32A32
     );
 
     namespace Packing
@@ -418,27 +471,20 @@ namespace AZ::ShaderCompiler
 
         enum class Layout : uint32_t
         {
-            CStylePacking,           //!< Dense packing with no padding. Also known as Scalar. Default for structured buffers in DirectX.
-            DirectXPacking,          //!< DirectX style packing, default for cbuffer layouts in DirectX
-            RelaxedDirectXPacking,   //!< As DirectX standard, but assumes dense array packing and invariant to row-column major (best fit)
-            RelaxedStd140Packing,    //!< Vector-relaxed OpenGL std140, default for Uniform buffer packing for Vulkan (base alignment)
-            RelaxedStd430Packing,    //!< Vector-relaxed OpenGL std430, default for Storage buffer packing for Vulkan (scalar alignment)
-            StrictStd140Packing,     //!< Strict OpenGL std140, default for Uniform buffer packing for OpenGL
-            StrictStd430Packing,     //!< Strict OpenGL std430, default for Storage buffer packing for OpenGL
-            DirectXStoragePacking = CStylePacking,   //!< DirectX style packing for Storage buffers. That's actually Scalar
+            CStylePacking, //!< Dense packing with no padding. Also known as Scalar. Default for structured buffers in DirectX.
+            DirectXPacking, //!< DirectX style packing, default for cbuffer layouts in DirectX
+            RelaxedDirectXPacking, //!< As DirectX standard, but assumes dense array packing and invariant to row-column major (best fit)
+            RelaxedStd140Packing, //!< Vector-relaxed OpenGL std140, default for Uniform buffer packing for Vulkan (base alignment)
+            RelaxedStd430Packing, //!< Vector-relaxed OpenGL std430, default for Storage buffer packing for Vulkan (scalar alignment)
+            StrictStd140Packing, //!< Strict OpenGL std140, default for Uniform buffer packing for OpenGL
+            StrictStd430Packing, //!< Strict OpenGL std430, default for Storage buffer packing for OpenGL
+            DirectXStoragePacking = CStylePacking, //!< DirectX style packing for Storage buffers. That's actually Scalar
         };
 
         //! Used together with Layout. Defines what alignment rules the next chunk should follow
         enum class Alignment : uint32_t
         {
-            asVectorStart,
-            asVectorEnd,
-            asMatrixStart,
-            asMatrixEnd,
-            asStructStart,
-            asStructEnd,
-            asArrayStart,
-            asArrayEnd,
+            asVectorStart, asVectorEnd, asMatrixStart, asMatrixEnd, asStructStart, asStructEnd, asArrayStart, asArrayEnd,
         };
 
         // Some standards (std140/std430) have extended alignment rules for structures, which dictate that
@@ -542,7 +588,7 @@ namespace AZ::ShaderCompiler
                 if (alignment == Alignment::asArrayStart ||
                     alignment == Alignment::asStructStart ||
                     alignment == Alignment::asArrayEnd ||
-                    alignment == Alignment::asStructEnd )
+                    alignment == Alignment::asStructEnd)
                 {
                     return AlignUp(currentSize, s_bytesPerRegister);
                 }
@@ -574,7 +620,7 @@ namespace AZ::ShaderCompiler
                 return currentSize;
 
             default:
-                throw std::runtime_error{ "PackNextChunk: Unknown format should be handled properly!" };
+                throw std::runtime_error{"PackNextChunk: Unknown format should be handled properly!"};
                 break;
             }
 
@@ -594,22 +640,22 @@ namespace AZ::ShaderCompiler
             case Layout::RelaxedDirectXPacking:
             case Layout::RelaxedStd140Packing:
             case Layout::StrictStd140Packing:
-            {
-                // Rule - sizes within 16 bytes should not cross the 16-byte boundary
-                const auto remaining = offset % s_bytesPerRegister;
-                if (remaining > 0 && remaining + nextChunkSize > s_bytesPerRegister)
                 {
-                    offset = AlignUp(offset, s_bytesPerRegister);
+                    // Rule - sizes within 16 bytes should not cross the 16-byte boundary
+                    const auto remaining = offset % s_bytesPerRegister;
+                    if (remaining > 0 && remaining + nextChunkSize > s_bytesPerRegister)
+                    {
+                        offset = AlignUp(offset, s_bytesPerRegister);
+                    }
+                    return offset + nextChunkSize;
                 }
-                return offset + nextChunkSize;
-            }
 
             case Layout::RelaxedStd430Packing:
             case Layout::StrictStd430Packing:
                 return offset + nextChunkSize;
 
             default:
-                throw std::runtime_error{ "PackNextChunk: Unknown format should be handled properly!" };
+                throw std::runtime_error{"PackNextChunk: Unknown format should be handled properly!"};
                 break;
             }
 
@@ -640,44 +686,44 @@ namespace AZ::ShaderCompiler
             case Layout::RelaxedStd430Packing:
             case Layout::StrictStd430Packing:
             case Layout::StrictStd140Packing:
-            {
-                uint32_t totalElements = 1;
-                for (auto dimension : dimensions)
                 {
-                    totalElements *= dimension;
-                }
+                    uint32_t totalElements = 1;
+                    for (auto dimension : dimensions)
+                    {
+                        totalElements *= dimension;
+                    }
 
-                return baseSize * totalElements;
-            }
+                    return baseSize * totalElements;
+                }
 
             case Layout::DirectXPacking:
-            {
-                // DirectX elements always start on a new register
-                const auto unalignedSize = baseSize;
-                baseSize = AlignUp(baseSize, s_bytesPerRegister);
-
-                uint32_t totalElements = 1;
-                for (auto dimension : dimensions)
                 {
-                    totalElements *= dimension;
+                    // DirectX elements always start on a new register
+                    const auto unalignedSize = baseSize;
+                    baseSize = AlignUp(baseSize, s_bytesPerRegister);
+
+                    uint32_t totalElements = 1;
+                    for (auto dimension : dimensions)
+                    {
+                        totalElements *= dimension;
+                    }
+                    return baseSize * (totalElements - 1) + unalignedSize; // The last element doesn't occupy its full register
                 }
-                return baseSize * (totalElements - 1) + unalignedSize; // The last element doesn't occupy its full register
-            }
 
             case Layout::RelaxedStd140Packing:
-            {
-                baseSize = AlignUp(baseSize, s_bytesPerRegister);
-
-                uint32_t totalElements = 1;
-                for (auto dimension : dimensions)
                 {
-                    totalElements *= dimension;
+                    baseSize = AlignUp(baseSize, s_bytesPerRegister);
+
+                    uint32_t totalElements = 1;
+                    for (auto dimension : dimensions)
+                    {
+                        totalElements *= dimension;
+                    }
+                    return baseSize * totalElements;
                 }
-                return baseSize * totalElements;
-            }
 
             default:
-                throw std::runtime_error{ "PackNextChunk: Unknown format should be handled properly!" };
+                throw std::runtime_error{"PackNextChunk: Unknown format should be handled properly!"};
                 break;
             }
 
@@ -690,7 +736,8 @@ namespace AZ::ShaderCompiler
         static uint32_t PackAsVectorMatrix(Layout layout, uint32_t baseSize, uint32_t rows, uint32_t cols, bool rowMajor)
         {
             if (cols <= 1 && rows <= 1)
-            {   // This is neither - return
+            {
+                // This is neither - return
                 return baseSize;
             }
 
@@ -711,19 +758,20 @@ namespace AZ::ShaderCompiler
 
             case Layout::DirectXPacking:
                 if (rows > 0)
-                {   // It's a matrix
+                {
+                    // It's a matrix
 
                     if (rowMajor && rows > 1 && cols == 1)
                     {
                         // This is a very special case which we can't replicate the same way dxc packs the data
                         // Additionally, this results in a lot of wasted space, so it's explicitly forbidden
-                        throw std::runtime_error{ "PackAsVectorMatrix: row_major packing for 2x1, 3x1 and 4x1 matrix types is not allowed!" };
+                        throw std::runtime_error{"PackAsVectorMatrix: row_major packing for 2x1, 3x1 and 4x1 matrix types is not allowed!"};
                     }
 
-                    const auto fullSize = ((rowMajor) ? rows : cols) * s_bytesPerRegister;           // Use Rows or Cols to calculate the size
+                    const auto fullSize = ((rowMajor) ? rows : cols) * s_bytesPerRegister; // Use Rows or Cols to calculate the size
 
                     // Note! A matrix does not occupy the entire last register if its number of elements is less than 4
-                    const auto adjustSize = (4 - ((rowMajor) ? cols : rows)) * s_bytesPerComponent;  // Use the opposite (Cols or Rows)
+                    const auto adjustSize = (4 - ((rowMajor) ? cols : rows)) * s_bytesPerComponent; // Use the opposite (Cols or Rows)
                     return fullSize - adjustSize;
                 }
 
@@ -732,7 +780,8 @@ namespace AZ::ShaderCompiler
 
             case Layout::RelaxedDirectXPacking:
                 if (rows > 0)
-                {   // It's a matrix
+                {
+                    // It's a matrix
                     auto major = (rows < cols) ? rows : cols; // Take the smaller fit
                     return major * s_bytesPerRegister;
                 }
@@ -745,7 +794,8 @@ namespace AZ::ShaderCompiler
             case Layout::StrictStd140Packing:
             case Layout::StrictStd430Packing:
                 if (rows > 0)
-                {   // It's a matrix
+                {
+                    // It's a matrix
 
                     if (rows == 1)
                     {
@@ -784,8 +834,8 @@ namespace AZ::ShaderCompiler
             if (indexInAzslPredefined_Scalar == 1 || indexInAzslPredefined_Scalar == 8 || indexInAzslPredefined_Scalar == 12)
             {
                 assert(std::string_view{"double"} == AZ::ShaderCompiler::Predefined::Scalar[1]);
-				assert(std::string_view{"int64_t"} == AZ::ShaderCompiler::Predefined::Scalar[8]);
-				assert(std::string_view{"uint64_t"} == AZ::ShaderCompiler::Predefined::Scalar[12]);
+                assert(std::string_view{"int64_t"} == AZ::ShaderCompiler::Predefined::Scalar[8]);
+                assert(std::string_view{"uint64_t"} == AZ::ShaderCompiler::Predefined::Scalar[12]);
                 // Shader packing reference:
                 // https://docs.microsoft.com/en-us/windows/desktop/direct3dhlsl/dx-graphics-hlsl-packing-rules
                 return 8;
@@ -802,19 +852,19 @@ namespace AZ::ShaderCompiler
             }
             else if (indexInAzslPredefined_Scalar < 0)
             {
-                return 0;  // non-predefined case, surely meaning UDT.
+                return 0; // non-predefined case, surely meaning UDT.
             }
             assert(indexInAzslPredefined_Scalar < AZ::ShaderCompiler::Predefined::Scalar.size()); // #craefulgang.
-            return 4;  // bool is 32 too.
+            return 4; // bool is 32 too.
         }
     };
 
     struct TokensLocation
     {
-        misc::Interval m_expressionSpan;  // eg for `void F()` -> type id-expr brace brace -> m_expressionSpan concerns id-expr. for `nested::leaf` -> all 3 tokens are in the span
-        ssize_t        m_focusedTokenId;  // eg for `void F()` -> `F` is the focused token. for id-expr, each nested identifier has a seenat. in `nested::leaf` -> 2 TokensLocation. one with 'nested' as focus, one with 'leaf' as focus; both with the same expression span.
-        size_t         m_line;
-        size_t         m_charPos;
+        misc::Interval m_expressionSpan; // eg for `void F()` -> type id-expr brace brace -> m_expressionSpan concerns id-expr. for `nested::leaf` -> all 3 tokens are in the span
+        ssize_t m_focusedTokenId; // eg for `void F()` -> `F` is the focused token. for id-expr, each nested identifier has a seenat. in `nested::leaf` -> 2 TokensLocation. one with 'nested' as focus, one with 'leaf' as focus; both with the same expression span.
+        size_t m_line;
+        size_t m_charPos;
     };
 
     // Most contexts (all?) will duck-type into this function
@@ -824,8 +874,8 @@ namespace AZ::ShaderCompiler
         TokensLocation tl;
         tl.m_expressionSpan = const_cast<std::remove_const_t<ContextT>*>(ctx)->getSourceInterval();
         tl.m_focusedTokenId = static_cast<ssize_t>(focusedToken->getTokenIndex());
-        tl.m_line           = focusedToken->getLine();
-        tl.m_charPos        = focusedToken->getCharPositionInLine();
+        tl.m_line = focusedToken->getLine();
+        tl.m_charPos = focusedToken->getCharPositionInLine();
         return tl;
     };
 
@@ -835,25 +885,25 @@ namespace AZ::ShaderCompiler
         TokensLocation tl;
         tl.m_expressionSpan = misc::Interval{tok->getTokenIndex(), tok->getTokenIndex()};
         tl.m_focusedTokenId = static_cast<ssize_t>(tok->getTokenIndex());
-        tl.m_line           = tok->getLine();
-        tl.m_charPos        = tok->getCharPositionInLine();
+        tl.m_line = tok->getLine();
+        tl.m_charPos = tok->getCharPositionInLine();
         return tl;
     };
 
     struct Seenat
     {
-        IdentifierUID  m_referredDefinition;
-        TokensLocation m_where;      // location in original stream, of a token group that can refer to a symbol.
-                                     // (it's an interval because of nested-name-specifiers)
+        IdentifierUID m_referredDefinition;
+        TokensLocation m_where; // location in original stream, of a token group that can refer to a symbol.
+        // (it's an interval because of nested-name-specifiers)
     };
 
-// before being able to clean that up with C++20 concepts, let's factorize the SFINAE expression to filter the accepted iterator types by an expected trait
+    // before being able to clean that up with C++20 concepts, let's factorize the SFINAE expression to filter the accepted iterator types by an expected trait
 #define SFINAE_IS_SAME(DependentTypeToCompare, ExpectedType)\
     std::enable_if_t< std::is_same_v<typename DependentTypeToCompare, ExpectedType> >* = nullptr
 
     // Create a yaml element list for 'any collection' of Seenat (passed as a pseudo range)
     // - {line: x, col: y}
-    template <typename SeenatRangeIter, SFINAE_IS_SAME(std::iterator_traits<SeenatRangeIter>::value_type, Seenat) >
+    template <typename SeenatRangeIter, SFINAE_IS_SAME(std::iterator_traits<SeenatRangeIter>::value_type, Seenat)>
     std::string ToYaml(SeenatRangeIter begin, SeenatRangeIter end, std::string_view indent)
     {
         std::string s;
@@ -861,14 +911,14 @@ namespace AZ::ShaderCompiler
         {
             s += indent;
             s += "- {line: " + std::to_string(it->m_where.m_line);
-            s += ", col: " + std::to_string(it->m_where.m_charPos + 1);  // +1 because charPos starts at 0. most editors start at 1
+            s += ", col: " + std::to_string(it->m_where.m_charPos + 1); // +1 because charPos starts at 0. most editors start at 1
             s += "}\n";
         }
         return s;
     }
 
     // version for pseudo-range of IdentifierUID elements
-    template <typename UIDRangeIter, SFINAE_IS_SAME(std::iterator_traits<UIDRangeIter>::value_type, IdentifierUID) >
+    template <typename UIDRangeIter, SFINAE_IS_SAME(std::iterator_traits<UIDRangeIter>::value_type, IdentifierUID)>
     std::string ToYaml(UIDRangeIter begin, UIDRangeIter end, std::string_view indent)
     {
         std::string s;
@@ -903,14 +953,15 @@ namespace AZ::ShaderCompiler
 
         enum Type
         {
-            NestedNameSpecifier,      //  nns::leaf    (nns)
-            ScopeResolutionOperator,  //  nns::leaf    (::)
-            GlobalScopeOperator,      //  ::leaf       (leading ::)
-            LoneUnqualifiedId,        //  leaf         (leaf)
-            QualifiedLeaf             //  nns::leaf    (leaf)
+            NestedNameSpecifier, //  nns::leaf    (nns)
+            ScopeResolutionOperator, //  nns::leaf    (::)
+            GlobalScopeOperator, //  ::leaf       (leading ::)
+            LoneUnqualifiedId, //  leaf         (leaf)
+            QualifiedLeaf, //  nns::leaf    (leaf)
         };
+
         Token* m_token;
-        Type   m_type;
+        Type m_type;
     };
 
     template <typename Functor>
@@ -962,8 +1013,13 @@ namespace AZ::ShaderCompiler
     // Making this choice, we streamline treatment of names and simplify code.
     inline UnqualifiedName ExtractNameFromIdExpression(azslParser::IdExpressionContext* ctx)
     {
-        std::stringstream ss;  // accumulator
-        ForEachIdExpressionPart(ctx, [&ss](const IdExpressionPart& part) { ss << part.GetAZIRMangledText().c_str(); });
+        std::stringstream ss; // accumulator
+        ForEachIdExpressionPart(
+            ctx,
+            [&ss](const IdExpressionPart& part)
+            {
+                ss << part.GetAZIRMangledText().c_str();
+            });
         return UnqualifiedName{ss.str()};
     }
 
@@ -976,7 +1032,7 @@ namespace AZ::ShaderCompiler
     //! Verify filiation of an AST rule
     inline bool IsParentOf(tree::ParseTree* assumedParent, tree::ParseTree* assumedChild)
     {
-        tree::ParseTree* parent =  assumedChild->parent;
+        tree::ParseTree* parent = assumedChild->parent;
         while (parent)
         {
             if (parent == assumedParent)
@@ -1032,16 +1088,16 @@ namespace AZ::ShaderCompiler
     //!                                stop here. because LHS of 'dot'. the "pointer-like" operation is offseted by RHS. thus -> return false
     //!     $ (c + d)[x]       from any of c or d: the link is broken here because '+' introduced a distance, the subscript applies on the temporary that results. thus -> return false
     //! returns:    the found target, or nullptr if not found or not 0-away
-    template< typename TargetRule >
+    template <typename TargetRule>
     inline TargetRule* FindRuleInAstThatIs0AwayWrtPointerDistance(antlr4::ParserRuleContext* ctx)
     {
         // possible intermediates (that don't introduce a distance):
-        using Nested    = azslParser::NestedNameSpecifierContext;
-        using Qualif    = azslParser::QualifiedIdContext;
-        using UnQualif  = azslParser::UnqualifiedIdContext;
-        using IdExpr    = azslParser::IdentifierExpressionContext;
+        using Nested = azslParser::NestedNameSpecifierContext;
+        using Qualif = azslParser::QualifiedIdContext;
+        using UnQualif = azslParser::UnqualifiedIdContext;
+        using IdExpr = azslParser::IdentifierExpressionContext;
         using BraceExpr = azslParser::ParenthesizedExpressionContext;
-        using Cast      = azslParser::CastExpressionContext;
+        using Cast = azslParser::CastExpressionContext;
         //and AstIdExpr, AstMemberAccess too
 
         if (ctx == nullptr)
@@ -1053,10 +1109,11 @@ namespace AZ::ShaderCompiler
             return callCtx;
         }
         bool zeroDist = DynamicTypeIsAnyOf<Nested, Qualif, UnQualif, IdExpr, BraceExpr, Cast, AstIdExpr>(ctx)
-                        || IsRHSOfMemberAccess(ctx);
+            || IsRHSOfMemberAccess(ctx);
         auto* parentAsParserRuleCtx = polymorphic_downcast<ParserRuleContext*>(ctx->parent);
-        return zeroDist ? FindRuleInAstThatIs0AwayWrtPointerDistance<TargetRule>(parentAsParserRuleCtx) // if still valid, recurse
-                        : nullptr;
+        return zeroDist
+                   ? FindRuleInAstThatIs0AwayWrtPointerDistance<TargetRule>(parentAsParserRuleCtx) // if still valid, recurse
+                   : nullptr;
     }
 
     //! checks if your current rule is at distance 0 of a subscript []; according to pointer arithmetic distance.
@@ -1116,7 +1173,7 @@ namespace AZ::ShaderCompiler
         return As<azslParser::VariableDeclarationContext*>(ctx->parent->parent);
     }
 
-    inline azslParser::TypeContext* ExtractTypeFromUnnamedVariableDeclarator(AstUnnamedVarDecl* ctx, azslParser::FunctionParamContext** funcParamContextOut = nullptr)
+    inline azslParser::TypeContext* ExtractTypeFromUnnamedVariableDeclarator(AstUnnamedVarDecl * ctx, azslParser::FunctionParamContext * *funcParamContextOut = nullptr)
     {
         auto* paramCtx = ParamContextOverUnnamedVariableDeclarator(ctx);
         if (paramCtx != nullptr)
@@ -1138,8 +1195,9 @@ namespace AZ::ShaderCompiler
     /// move up the AST into parent rules to ry to get a name. in case of function parameters, name can be omitted so this function may return null
     inline Token* ExtractVariableNameIdentifier(AstUnnamedVarDecl* ctx)
     {
-        return Is<AstNamedVarDecl>(ctx->parent) ? polymorphic_downcast<AstNamedVarDecl*>(ctx->parent)->Name
-                                                : polymorphic_downcast<azslParser::FunctionParamContext*>(ctx->parent)->Name;
+        return Is<AstNamedVarDecl>(ctx->parent)
+                   ? polymorphic_downcast<AstNamedVarDecl*>(ctx->parent)->Name
+                   : polymorphic_downcast<azslParser::FunctionParamContext*>(ctx->parent)->Name;
     }
 
     inline ParserRuleContext* GetParentIfIsNamedVarDecl_OtherwiseIdentity(AstUnnamedVarDecl* ctx)
@@ -1161,8 +1219,8 @@ namespace AZ::ShaderCompiler
     {
         auto* typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx);
         return typeCtx->predefinedType() &&
-               typeCtx->predefinedType()->samplerStatePredefinedType() &&
-               typeCtx->predefinedType()->samplerStatePredefinedType()->SamplerComparisonState();
+            typeCtx->predefinedType()->samplerStatePredefinedType() &&
+            typeCtx->predefinedType()->samplerStatePredefinedType()->SamplerComparisonState();
     }
 
     inline azslParser::StorageFlagsContext* ExtractStorageFlagsFromUnnamedVariableDeclarator(AstUnnamedVarDecl* ctx)
@@ -1172,26 +1230,43 @@ namespace AZ::ShaderCompiler
 
     inline StorageFlag AsFlag(azslParser::StorageFlagContext* ctx)
     {
-        return ctx->Const()            ? StorageFlag::Const
-             : ctx->Extern()           ? StorageFlag::Extern
-             : ctx->Groupshared()      ? StorageFlag::Groupshared
-             : ctx->Precise()          ? StorageFlag::Precise
-             : ctx->Static()           ? StorageFlag::Static
-             : ctx->Uniform()          ? StorageFlag::Uniform
-             : ctx->Volatile()         ? StorageFlag::Volatile
-             : ctx->Globallycoherent() ? StorageFlag::Globallycoherent
-             : ctx->RowMajor()         ? StorageFlag::RowMajor
-             : ctx->ColumnMajor()      ? StorageFlag::ColumnMajor
-             : ctx->In()               ? StorageFlag::In
-             : ctx->Out()              ? StorageFlag::Out
-             : ctx->Inout()            ? StorageFlag::InOut
-             : ctx->Inline()           ? StorageFlag::Inline
-             : ctx->Option()           ? StorageFlag::Option
-             : ctx->Rootconstant()     ? StorageFlag::Rootconstant
-             : ctx->Unsigned()         ? StorageFlag::Unsigned
-            // Everything else can still be stored, but won't be checked in any special way:
-            // linear, centroid, noninterpolation, noperspective, sample, point, line, triangle, lineadk, triangleadj, indices, vertices, etc...
-             : StorageFlag::Other;
+        return ctx->Const()
+                   ? StorageFlag::Const
+                   : ctx->Extern()
+                   ? StorageFlag::Extern
+                   : ctx->Groupshared()
+                   ? StorageFlag::Groupshared
+                   : ctx->Precise()
+                   ? StorageFlag::Precise
+                   : ctx->Static()
+                   ? StorageFlag::Static
+                   : ctx->Uniform()
+                   ? StorageFlag::Uniform
+                   : ctx->Volatile()
+                   ? StorageFlag::Volatile
+                   : ctx->Globallycoherent()
+                   ? StorageFlag::Globallycoherent
+                   : ctx->RowMajor()
+                   ? StorageFlag::RowMajor
+                   : ctx->ColumnMajor()
+                   ? StorageFlag::ColumnMajor
+                   : ctx->In()
+                   ? StorageFlag::In
+                   : ctx->Out()
+                   ? StorageFlag::Out
+                   : ctx->Inout()
+                   ? StorageFlag::InOut
+                   : ctx->Inline()
+                   ? StorageFlag::Inline
+                   : ctx->Option()
+                   ? StorageFlag::Option
+                   : ctx->Rootconstant()
+                   ? StorageFlag::Rootconstant
+                   : ctx->Unsigned()
+                   ? StorageFlag::Unsigned
+                   // Everything else can still be stored, but won't be checked in any special way:
+                   // linear, centroid, noninterpolation, noperspective, sample, point, line, triangle, lineadk, triangleadj, indices, vertices, etc...
+                   : StorageFlag::Other;
     }
 
     inline bool IsFlag(azslParser::StorageFlagContext* ctx, StorageFlag flag)
@@ -1205,14 +1280,15 @@ namespace AZ::ShaderCompiler
     struct ExtractedTypeExt
     {
         UnqualifiedName m_name;
-        AstType*        m_node = nullptr;
+        AstType* m_node = nullptr;
     };
+
     // composed type parts. 'Buffer<float4>' will have 'Buffer' as core and 'float4' as genericParam
     struct ExtractedComposedType
     {
         ExtractedTypeExt m_core;
         ExtractedTypeExt m_genericParam; // note: could be made recursive one day. use unique_ptr here
-        ArrayDimensions  m_genericDimensions; // can expand generic dimensions too later. for MSTexture, IO patch, matrix<t,N,M> etc...
+        ArrayDimensions m_genericDimensions; // can expand generic dimensions too later. for MSTexture, IO patch, matrix<t,N,M> etc...
     };
 
     // Compose middleEnd configurations, wraps minimal user options from command line.
@@ -1234,9 +1310,13 @@ namespace AZ::ShaderCompiler
     inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstPredefinedTypeNode* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         if (ctx->bufferPredefinedType())
-        {   // use aggregate initialization syntax to construct the return type (tops 4 elements, but here we fillup 2 only)
-            return {ExtractedTypeExt{UnqualifiedName{ctx->bufferPredefinedType()->bufferType()->getText()}},                   // m_core
-                    ExtractedTypeExt{UnqualifiedName{ctx->bufferPredefinedType()->scalarOrVectorOrMatrixType()->getText()}}};  // m_genericParam
+        {
+            // use aggregate initialization syntax to construct the return type (tops 4 elements, but here we fillup 2 only)
+            return {
+                ExtractedTypeExt{UnqualifiedName{ctx->bufferPredefinedType()->bufferType()->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{ctx->bufferPredefinedType()->scalarOrVectorOrMatrixType()->getText()}}
+            }; // m_genericParam
         }
         else if (ctx->genericMatrixPredefinedType())
         {
@@ -1247,27 +1327,39 @@ namespace AZ::ShaderCompiler
                 genericDims->push_back(intLit1);
                 genericDims->push_back(intLit2);
             }
-            return {ExtractedTypeExt{UnqualifiedName{ctx->genericMatrixPredefinedType()->Matrix()->getText()}},       // m_core
-                    ExtractedTypeExt{UnqualifiedName{ctx->genericMatrixPredefinedType()->scalarType()->getText()}}};  // m_genericParam
+            return {
+                ExtractedTypeExt{UnqualifiedName{ctx->genericMatrixPredefinedType()->Matrix()->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{ctx->genericMatrixPredefinedType()->scalarType()->getText()}}
+            }; // m_genericParam
         }
         else if (ctx->streamOutputPredefinedType())
         {
             auto* core = ctx->streamOutputPredefinedType()->streamOutputObjectType();
             AstType* genericCtx = ctx->streamOutputPredefinedType()->type();
-            return {ExtractedTypeExt{UnqualifiedName{core->getText()}},                     // m_core
-                    ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}};  // for the generic, since this is a type context, we will return it as a node, and let the client recurse if needed.
+            return {
+                ExtractedTypeExt{UnqualifiedName{core->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}
+            }; // for the generic, since this is a type context, we will return it as a node, and let the client recurse if needed.
         }
         else if (ctx->structuredBufferPredefinedType())
         {
             auto* core = ctx->structuredBufferPredefinedType()->structuredBufferName();
             AstType* genericCtx = ctx->structuredBufferPredefinedType()->type();
-            return {ExtractedTypeExt{UnqualifiedName{core->getText()}},                     // m_core
-                    ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}};  // same as above
+            return {
+                ExtractedTypeExt{UnqualifiedName{core->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}
+            }; // same as above
         }
         else if (ctx->genericTexturePredefinedType())
         {
-            return {ExtractedTypeExt{UnqualifiedName{ctx->genericTexturePredefinedType()->textureType()->getText()}},         // m_core
-                    ExtractedTypeExt{UnqualifiedName{ctx->genericTexturePredefinedType()->scalarOrVectorType()->getText()}}}; // m_genericParam
+            return {
+                ExtractedTypeExt{UnqualifiedName{ctx->genericTexturePredefinedType()->textureType()->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{ctx->genericTexturePredefinedType()->scalarOrVectorType()->getText()}}
+            }; // m_genericParam
         }
         else if (ctx->msTexturePredefinedType())
         {
@@ -1276,8 +1368,11 @@ namespace AZ::ShaderCompiler
             {
                 genericDims->push_back(intLit);
             }
-            return {ExtractedTypeExt{UnqualifiedName{ctx->msTexturePredefinedType()->textureTypeMS()->getText()}},        // m_core
-                    ExtractedTypeExt{UnqualifiedName{ctx->msTexturePredefinedType()->scalarOrVectorType()->getText()}}};  // m_genericParam
+            return {
+                ExtractedTypeExt{UnqualifiedName{ctx->msTexturePredefinedType()->textureTypeMS()->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{ctx->msTexturePredefinedType()->scalarOrVectorType()->getText()}}
+            }; // m_genericParam
         }
         else if (ctx->genericVectorType())
         {
@@ -1286,34 +1381,43 @@ namespace AZ::ShaderCompiler
             {
                 genericDims->push_back(intLit);
             }
-            return {ExtractedTypeExt{UnqualifiedName{ctx->genericVectorType()->Vector()->getText()}},        // m_core
-                    ExtractedTypeExt{UnqualifiedName{ctx->genericVectorType()->scalarType()->getText()}}};   // m_genericParam
+            return {
+                ExtractedTypeExt{UnqualifiedName{ctx->genericVectorType()->Vector()->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{ctx->genericVectorType()->scalarType()->getText()}}
+            }; // m_genericParam
         }
         else if (ctx->constantBufferTemplated())
         {
             auto coreName = ctx->constantBufferTemplated()->CBCoreType->getText();
             AstType* genericCtx = ctx->constantBufferTemplated()->GenericTypeName;
-            return {ExtractedTypeExt{UnqualifiedName{coreName}},                                       // m_core
-                    ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}};  // same as previous 2 comments above
+            return {
+                ExtractedTypeExt{UnqualifiedName{coreName}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{genericCtx->getText()}, genericCtx}
+            }; // same as previous 2 comments above
         }
         else if (ctx->genericSubpassInputPredefinedType())
         {
-            return { ExtractedTypeExt{UnqualifiedName{ctx->genericSubpassInputPredefinedType()->subpassInputType()->getText()}},    // m_core
-                    ExtractedTypeExt{UnqualifiedName{ctx->genericSubpassInputPredefinedType()->scalarOrVectorType()->getText()}} }; // m_genericParam
+            return {
+                ExtractedTypeExt{UnqualifiedName{ctx->genericSubpassInputPredefinedType()->subpassInputType()->getText()}},
+                // m_core
+                ExtractedTypeExt{UnqualifiedName{ctx->genericSubpassInputPredefinedType()->scalarOrVectorType()->getText()}}
+            }; // m_genericParam
         }
         // all other rules are getable without artefacts for sure from a simple getText
-        return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}}};     // only core, no generic part.
+        return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}}}; // only core, no generic part.
     }
 
     //! from a special rule: scalarOrVectorOrMatrixType
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::ScalarOrVectorOrMatrixTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::ScalarOrVectorOrMatrixTypeContext * ctx, std::vector<tree::TerminalNode*> * genericDims = nullptr)
     {
         return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}}};
-                // for now there is no generic part, but mind it when you fix the grammar to support generic vector.
+        // for now there is no generic part, but mind it when you fix the grammar to support generic vector.
     }
 
     //! from userDefinedType context
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::UserDefinedTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::UserDefinedTypeContext * ctx, std::vector<tree::TerminalNode*> * genericDims = nullptr)
     {
         if (ctx->idExpression())
         {
@@ -1321,11 +1425,15 @@ namespace AZ::ShaderCompiler
         }
         assert(ctx->anyStructuredTypeDefinition());
         auto* anyStructLikeCtx = ctx->anyStructuredTypeDefinition();
-        auto structName = VisitFirstNonNull([](auto* ctx) { return ExtractNameFromAnyContextWithName(ctx); },
-                                            anyStructLikeCtx->classDefinition(),
-                                            anyStructLikeCtx->interfaceDefinition(),
-                                            anyStructLikeCtx->enumDefinition(),
-                                            anyStructLikeCtx->structDefinition());
+        auto structName = VisitFirstNonNull(
+            [](auto* ctx)
+            {
+                return ExtractNameFromAnyContextWithName(ctx);
+            },
+            anyStructLikeCtx->classDefinition(),
+            anyStructLikeCtx->interfaceDefinition(),
+            anyStructLikeCtx->enumDefinition(),
+            anyStructLikeCtx->structDefinition());
         return {ExtractedTypeExt{UnqualifiedName{structName}}};
     }
 
@@ -1354,9 +1462,8 @@ namespace AZ::ShaderCompiler
     {
         // Semantic name and index
         auto semanticName = hlslSemantic->getText();
-        size_t index      = semanticName.find_last_not_of("0123456789") + 1;
-        int semanticIndex = (index == semanticName.length()) ?
-                            0 : std::stoi(semanticName.substr(index));
+        size_t index = semanticName.find_last_not_of("0123456789") + 1;
+        int semanticIndex = (index == semanticName.length()) ? 0 : std::stoi(semanticName.substr(index));
 
         auto colon = semanticName.find_first_of(":");
         auto firstChar = (colon == std::string::npos) ? 0 : colon + 1;
@@ -1365,7 +1472,7 @@ namespace AZ::ShaderCompiler
 
         bool isSystemValue = (hlslSemantic->Name->HLSLSemanticSystem() != nullptr);
 
-        return { semanticName, semanticIndex, isSystemValue };
+        return {semanticName, semanticIndex, isSystemValue};
     }
 
     inline bool HasStandardInitializer(AstVarInitializer* ctx)

@@ -19,26 +19,27 @@
 
 namespace AZ::ShaderCompiler
 {
-    using MapOfBeginToSpanAndUid = std::map<ssize_t, std::pair< misc::Interval, IdentifierUID> >;
+    using MapOfBeginToSpanAndUid = std::map<ssize_t, std::pair<misc::Interval, IdentifierUID>>;
     using MapOfIntervalToUid = std::map<Interval<ssize_t>, IdentifierUID>;
 
     struct CodeReflection : Backend
     {
         CodeReflection(IntermediateRepresentation* ir, TokenStream* tokens, std::ostream& out)
-            : Backend(ir, tokens),
-              m_out(out)
-        {}
+            : Backend(ir, tokens)
+            , m_out(out)
+        {
+        }
 
         // bring all non code emitting features here.
 
         //! Reflect information about vertex and compute stage inputs
-        Json::Value GetShaderEntries(const char * const sEntry = nullptr) const;
+        Json::Value GetShaderEntries(const char* const sEntry = nullptr) const;
 
         //! Reflect information about fragment stage outputs
-        Json::Value GetOutputMergerLayout(const char * const psEntry = nullptr) const;
+        Json::Value GetOutputMergerLayout(const char* const psEntry = nullptr) const;
 
         //! Dumps reflected information about fragment stage outputs
-        void DumpOutputMergerLayout(const char * const psEntry = nullptr) const;
+        void DumpOutputMergerLayout(const char* const psEntry = nullptr) const;
 
         //! Dumps reflected information about vertex and compute shader entries
         void DumpShaderEntries() const;
@@ -60,7 +61,6 @@ namespace AZ::ShaderCompiler
         void AnalyzeOptionRanks() const;
 
     private:
-
         //! Builds member variable packing information and adds it to the membersContainer
         uint32_t BuildMemberLayout(Json::Value& membersContainer, std::string_view namePrefix, const IdentifierUID& memberId, const bool isArrayItr, const Options& options, const AZ::ShaderCompiler::Packing::Layout layoutPacking, uint32_t& offset) const;
 
@@ -89,7 +89,7 @@ namespace AZ::ShaderCompiler
         bool IsPotentialEntryPoint(const IdentifierUID& uid) const;
 
         // Estimate a score proportional to how much code is "child" to the AST node at `location`
-        int AnalyzeImpact(TokensLocation const& location) const;
+        int AnalyzeImpact(const TokensLocation& location) const;
 
         // Recursive internal detail version
         void AnalyzeImpact(ParserRuleContext* astNode, int& scoreAccumulator) const;
@@ -99,9 +99,10 @@ namespace AZ::ShaderCompiler
 
         //! Useful for static analysis on dependencies or option ranks
         void GenerateTokenScopeIntervalToUidReverseMap() const;
-        mutable MapOfBeginToSpanAndUid m_functionIntervals;  //< only functions because they are guaranteed to be disjointed (largely simplifies queries)
-        mutable IntervalCollection<ssize_t> m_intervals;  //< augmented version with anonymous blocks (slower query)
-        mutable MapOfIntervalToUid m_intervalToUid;  //< side by side data since we don't want to weight the interval struct with a payload
+
+        mutable MapOfBeginToSpanAndUid m_functionIntervals; //< only functions because they are guaranteed to be disjointed (largely simplifies queries)
+        mutable IntervalCollection<ssize_t> m_intervals; //< augmented version with anonymous blocks (slower query)
+        mutable MapOfIntervalToUid m_intervalToUid; //< side by side data since we don't want to weight the interval struct with a payload
 
         std::ostream& m_out;
     };

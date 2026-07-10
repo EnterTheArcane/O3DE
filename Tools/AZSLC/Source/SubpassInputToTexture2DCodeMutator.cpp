@@ -28,6 +28,7 @@ namespace AZ::ShaderCompiler
             OnEnterLoad(ctx);
         }
     }
+
     ///////////////////////////////////////////////////////////////////////
 
     ///////////////////////////////////////////////////////////////////////
@@ -46,10 +47,11 @@ namespace AZ::ShaderCompiler
     {
         // Get all variables that are members of something of type Texture2DMS
         // We use this function pointer to find SRGs that have no references.
-        auto subpassInputFilterFunc = +[](KindInfo* kindInfo) {
+        auto subpassInputFilterFunc = +[](KindInfo* kindInfo)
+        {
             const auto* varInfo = kindInfo->GetSubAs<VarInfo>();
             return varInfo->m_typeInfoExt.m_coreType.m_typeClass == TypeClass::SubpassInput;
-            };
+        };
 
         std::vector<IdentifierUID> subpassInputVariables = m_ir->GetFilteredSymbolsOfSubType<VarInfo>(subpassInputFilterFunc);
         MutateTypeOfMultiSampleVariables(subpassInputVariables);
@@ -66,7 +68,7 @@ namespace AZ::ShaderCompiler
         if (children.size() == 3)
         {
             std::string symbolName = Replace(children[0]->getText(), "::", "/");
-            return UnqualifiedName{ symbolName };
+            return UnqualifiedName{symbolName};
         }
         return UnqualifiedName();
     }
@@ -166,11 +168,11 @@ namespace AZ::ShaderCompiler
             {
             case SubpassInputType::SubpassInput:
             case SubpassInputType::SubpassInputDS:
-                typeId.m_name = isSupported ? QualifiedName{ "?SubpassInput" } : QualifiedName{ "?Texture2D" };
+                typeId.m_name = isSupported ? QualifiedName{"?SubpassInput"} : QualifiedName{"?Texture2D"};
                 break;
             case SubpassInputType::SubpassInputMS:
             case SubpassInputType::SubpassInputDSMS:
-                typeId.m_name = isSupported ? QualifiedName{ "?SubpassInputMS" } : QualifiedName{ "?Texture2DMS" };
+                typeId.m_name = isSupported ? QualifiedName{"?SubpassInputMS"} : QualifiedName{"?Texture2DMS"};
                 break;
             default:
                 break;
@@ -180,6 +182,7 @@ namespace AZ::ShaderCompiler
 
         return mutationCount;
     }
+
     bool SubpassInputToTexture2DCodeMutator::IsSubpassInputSupported(const SubpassInputType type)
     {
         bool isDepthStencilView = type == SubpassInputType::SubpassInputDS || type == SubpassInputType::SubpassInputDSMS;

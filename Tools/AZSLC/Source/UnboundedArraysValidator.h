@@ -23,6 +23,7 @@ namespace AZ::ShaderCompiler
     struct UnboundedArraysValidator final
     {
         UnboundedArraysValidator() = default;
+
         ~UnboundedArraysValidator() = default;
 
         struct Options
@@ -40,13 +41,22 @@ namespace AZ::ShaderCompiler
         void SetOptions(const Options& options);
 
         //! Validates, semantically speaking, if a variable/field can be added to a SRG.
-        bool CheckFieldCanBeAddedToSrg(bool isUnboundedArray, const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
+        bool CheckFieldCanBeAddedToSrg(
+            bool isUnboundedArray,
+            const IdentifierUID& srgUid,
+            const IdentifierUID& varUid,
+            const VarInfo& varInfo,
+            TypeClass typeClass,
             std::string* errorMessage = nullptr);
 
     private:
         //! Helper for CheckFieldCanBeAddedToSrg. Only called if @varUid was declared as an unbounded array.
         //! If it returns false, *errorMessage will have the details.
-        bool CheckUnboundedArrayFieldCanBeAddedToSrg(const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
+        bool CheckUnboundedArrayFieldCanBeAddedToSrg(
+            const IdentifierUID& srgUid,
+            const IdentifierUID& varUid,
+            const VarInfo& varInfo,
+            TypeClass typeClass,
             std::string* errorMessage = nullptr);
 
         //! Returns the space index that corresponds to the given SRG.
@@ -61,6 +71,5 @@ namespace AZ::ShaderCompiler
         std::unordered_map<IdentifierUID, SpaceIndex> m_srgToSpaceIndex;
         //! Keeps track of max SpaceIndex value in m_srgToSpaceIndex.
         SpaceIndex m_maxSpaceIndex = 0;
-
     };
 } // namespace AZ::ShaderCompiler

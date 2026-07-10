@@ -41,7 +41,8 @@ namespace AZ::ShaderCompiler
             return (*s_emitters)[key];
         }
         catch (...)
-        {   // We should never return a default emitter here. This method searches by name only
+        {
+            // We should never return a default emitter here. This method searches by name only
             return nullptr;
         }
     }
@@ -57,7 +58,7 @@ namespace AZ::ShaderCompiler
 
         if (s_emitters->find(key) != s_emitters->end())
         {
-            throw std::runtime_error{ "PlatformEmitter::RegisterEmitter cannot register two platforms with the same key!" };
+            throw std::runtime_error{"PlatformEmitter::RegisterEmitter cannot register two platforms with the same key!"};
         }
         s_emitters->try_emplace(key, platformEmitter);
     }
@@ -95,9 +96,9 @@ namespace AZ::ShaderCompiler
     {
         // in the general case, we output normal HLSL `var decl : register(b0, space0);`
         // no special header, but the post colon part is the footer
-        std::string bindingSpaceStringlet { stringifiedLogicalSpace ? ", space" + *stringifiedLogicalSpace : "" };
-        std::string footer {ConcatString(" : register(", registerTypeLetter, bindInfoRegisterIndex, bindingSpaceStringlet, ")")};
-        return { {}, footer };
+        std::string bindingSpaceStringlet{stringifiedLogicalSpace ? ", space" + *stringifiedLogicalSpace : ""};
+        std::string footer{ConcatString(" : register(", registerTypeLetter, bindInfoRegisterIndex, bindingSpaceStringlet, ")")};
+        return {{}, footer};
     }
 
     uint32_t PlatformEmitter::AlignRootConstants(uint32_t size) const

@@ -23,7 +23,7 @@ namespace AZ::ShaderCompiler
         m_accessSymbol = accessSymbol;
     }
 
-    void SymbolTranslation::SetGetSeenatFunctor(std::function< std::vector<Seenat>& (QualifiedNameView) > getSeenats)
+    void SymbolTranslation::SetGetSeenatFunctor(std::function<std::vector<Seenat>&(QualifiedNameView)> getSeenats)
     {
         m_getSeenats = getSeenats;
     }
@@ -35,37 +35,40 @@ namespace AZ::ShaderCompiler
         assert(GetParentName(originalSymbol.GetName()) != landingScope);
         auto findIterator = m_landingScope.find(originalSymbol.GetName());
         if (findIterator != m_landingScope.end())
-        {   // if we are re-registering the same symbol, nothing to do. but check that the landingScope is the same as originally registered:
+        {
+            // if we are re-registering the same symbol, nothing to do. but check that the landingScope is the same as originally registered:
             assert(findIterator->second.m_landingScope == landingScope);
             return;
         }
         m_landingScope[originalSymbol.GetName()].m_landingScope = landingScope;
         // let's pre-cache the locations of all occurrences of this symbol in the program, for quick lookup later when we only have tokenID.
         HomonymVisitor hv(m_accessSymbol);
-        hv(originalSymbol,
-           [&, this](const Seenat& at, RE relation)
-           {
-               if (relation == RE::Self)
-               {   // that's the definition point itself...
-                   auto span = at.m_where.m_expressionSpan;
-                   m_definitionCtxStartTokenOfMigratedSymbol[span.a] = make_pair(at.m_referredDefinition.GetName(), span.b);
-               }
-               else if (relation == RE::Reference)
-               {
-                   PreCacheTokenOfReference_(at);  // register tokenId of the seenat, to lookup maps that will give us the IDExpressionDesc& quickly later
-               }
-               else if (relation == RE::OverloadSet)
-               {
-                   // when we are over the definition of an overload, we don't need to register it, since it will have its own RegisterLandingScope call.
-                   // however! there will be no such call from the "naked" overload-set, even though it may store references to call sites that hasn't been resolved.
-                   // so we will do a shallow recursion here to get its references, to be sure to get them to mutate too.
-                   if (!IsLeafDecoratedByArguments(at.m_referredDefinition.GetName()))
-                   {
-                       RegisterLandingScope(at.m_referredDefinition, landingScope);
-                   }
-               }
-           },
-           RelationshipExtentFlag{RE::Self} | RE::Reference | RE::OverloadSet);
+        hv(
+            originalSymbol,
+            [&, this](const Seenat& at, RE relation)
+            {
+                if (relation == RE::Self)
+                {
+                    // that's the definition point itself...
+                    auto span = at.m_where.m_expressionSpan;
+                    m_definitionCtxStartTokenOfMigratedSymbol[span.a] = make_pair(at.m_referredDefinition.GetName(), span.b);
+                }
+                else if (relation == RE::Reference)
+                {
+                    PreCacheTokenOfReference_(at); // register tokenId of the seenat, to lookup maps that will give us the IDExpressionDesc& quickly later
+                }
+                else if (relation == RE::OverloadSet)
+                {
+                    // when we are over the definition of an overload, we don't need to register it, since it will have its own RegisterLandingScope call.
+                    // however! there will be no such call from the "naked" overload-set, even though it may store references to call sites that hasn't been resolved.
+                    // so we will do a shallow recursion here to get its references, to be sure to get them to mutate too.
+                    if (!IsLeafDecoratedByArguments(at.m_referredDefinition.GetName()))
+                    {
+                        RegisterLandingScope(at.m_referredDefinition, landingScope);
+                    }
+                }
+            },
+            RelationshipExtentFlag{RE::Self} | RE::Reference | RE::OverloadSet);
     }
 
     void SymbolTranslation::AddCustomBehavior(QualifiedNameView originalSymbol, BehaviorEventFlag on, TranslationBehaviorDelegate action)
@@ -92,7 +95,8 @@ namespace AZ::ShaderCompiler
         while (m_accessSymbol(collisionCandidate) || mappedRenameIter != m_mappedRenames.end())
         {
             if (mappedRenameIter != m_mappedRenames.end() && kindIsFunction)
-            {   // overloads HAVE to end up with the same name (if we disambiguate we're losing overloading).
+            {
+                // overloads HAVE to end up with the same name (if we disambiguate we're losing overloading).
                 // verify that the original symbol of that collision, refers to the same overload-set:
                 if (BelongsToOverloadSet_(mappedRenameIter->second, originalSymbol))
                 {
@@ -105,8 +109,8 @@ namespace AZ::ShaderCompiler
             ++counter;
             mappedRenameIter = m_mappedRenames.find(collisionCandidate);
         }
-        m_renames[originalSymbol] = collisionCandidate;  // cache for rename lookups
-        m_mappedRenames[collisionCandidate] = originalSymbol;  // cache for reverse lookups
+        m_renames[originalSymbol] = collisionCandidate; // cache for rename lookups
+        m_mappedRenames[collisionCandidate] = originalSymbol; // cache for reverse lookups
     }
 
     QualifiedNameView SymbolTranslation::GetLandingScope(QualifiedNameView originalSymbol) const
@@ -120,18 +124,21 @@ namespace AZ::ShaderCompiler
         auto landingScopeIter = m_landingScope.find(params.m_originalPath);
         params.m_foundMutation = (landingScopeIter == m_landingScope.end()) ? nullptr : &landingScopeIter->second;
         const auto cacheIter = m_renames.find(params.m_originalPath);
-        if (cacheIter == m_renames.end())  // no translation-cache
+        if (cacheIter == m_renames.end()) // no translation-cache
         {
             if (!params.m_foundMutation)
-            {   // no migration registered
+            {
+                // no migration registered
                 // check parents.
                 auto parent = GetParentName(params.m_originalPath);
                 if (parent.empty() || parent == "/")
-                {   // no parent, just copy the input.
+                {
+                    // no parent, just copy the input.
                     params.m_result = params.m_originalPath;
                 }
                 else
-                {   // go down the stack (leftward in the nestings) A/B/C -> A/B
+                {
+                    // go down the stack (leftward in the nestings) A/B/C -> A/B
                     FindTranslation_Parameters recursiveParams{parent};
                     FindTranslation_(recursiveParams);
                     // as we climb the callstack, reconstruct the result by restitching left and right parts G/B -> G/B/C
@@ -139,13 +146,15 @@ namespace AZ::ShaderCompiler
                 }
             }
             else
-            {   // in case of a registered migration request
-                MigrateDisambiguateAndCache(params.m_originalPath);  // execute the evolved logic and cache it.
-                params.m_result = m_renames.find(params.m_originalPath)->second;  // get from cache
+            {
+                // in case of a registered migration request
+                MigrateDisambiguateAndCache(params.m_originalPath); // execute the evolved logic and cache it.
+                params.m_result = m_renames.find(params.m_originalPath)->second; // get from cache
             }
         }
         else
-        {   // we have a cache, use that.
+        {
+            // we have a cache, use that.
             params.m_result = cacheIter->second;
         }
     }
@@ -154,13 +163,14 @@ namespace AZ::ShaderCompiler
     {
         FindTranslation_Parameters translationParams{originalSymbol};
         FindTranslation_(translationParams);
-        const QualifiedName& renamed = translationParams.m_result;  // QualifiedName are mangled
+        const QualifiedName& renamed = translationParams.m_result; // QualifiedName are mangled
         // DeclarationSite is for grammar contexts that usually don't accept more than identifiers. (no nested name specifiers)
         // the ReferenceSite strategy is to emit the fully qualified HLSL all the time.
         //   we could try to reduce verbosity by using FindLeastQualifiedName but that'll be for later.
         // Unmangling by convention will un-decorate function names to strip them to their core name. So be consistent for both strategy.
-        auto translation = qualificationStrategy == UsageContext::DeclarationSite ? std::string{RemoveLastParenthesisGroup(ExtractLeaf(renamed))}
-                                                                                  : UnMangle(std::string{renamed});
+        auto translation = qualificationStrategy == UsageContext::DeclarationSite
+                               ? std::string{RemoveLastParenthesisGroup(ExtractLeaf(renamed))}
+                               : UnMangle(std::string{renamed});
         // find a potential callback
         if (translationParams.m_foundMutation
             && translationParams.m_foundMutation->m_customBehavior
@@ -175,8 +185,9 @@ namespace AZ::ShaderCompiler
     std::pair<QualifiedNameView, ssize_t> SymbolTranslation::OverOriginalDefinitionOf(ssize_t tokenId) const
     {
         auto iterator = m_definitionCtxStartTokenOfMigratedSymbol.find(tokenId);
-        return iterator != m_definitionCtxStartTokenOfMigratedSymbol.end() ? std::make_pair(QualifiedNameView{iterator->second.first}, iterator->second.second)
-                                                                           : std::make_pair(QualifiedNameView{}, -1_ssz);
+        return iterator != m_definitionCtxStartTokenOfMigratedSymbol.end()
+                   ? std::make_pair(QualifiedNameView{iterator->second.first}, iterator->second.second)
+                   : std::make_pair(QualifiedNameView{}, -1_ssz);
     }
 
     SymbolTranslation::IDExpressionDesc SymbolTranslation::GetIdExpression(ssize_t tokenId) const
@@ -187,7 +198,7 @@ namespace AZ::ShaderCompiler
         // └────maps─┘
         //
         // …then tok1 → idexpr
-        auto& t2t    = m_anyTokenIdToFirstTokenIdOfAnIdExpr;
+        auto& t2t = m_anyTokenIdToFirstTokenIdOfAnIdExpr;
         auto& ft2ide = m_firstTokenIdToIdExpression;
 
         auto ftIt = t2t.find(tokenId);
@@ -197,7 +208,7 @@ namespace AZ::ShaderCompiler
         return idIt == ft2ide.end() ? IDExpressionDesc{} : idIt->second;
     }
 
-    void SymbolTranslation::PreCacheTokenOfReference_(const Seenat &at)
+    void SymbolTranslation::PreCacheTokenOfReference_(const Seenat& at)
     {
         IDExpressionDesc& idExprDesc = m_firstTokenIdToIdExpression[at.m_where.m_expressionSpan.a];
         idExprDesc.m_span = at.m_where.m_expressionSpan;
@@ -220,8 +231,8 @@ namespace AZ::ShaderCompiler
     {
         std::string_view core = RemoveLastParenthesisGroup(originalName1);
         auto* coreSymbol = m_accessSymbol(QualifiedNameView{core});
-        return coreSymbol &&   // not nullptr (the set exists), and...
-            (core == originalName2    // either the overload-set itself is directly the same symbol, or...
-             || coreSymbol->GetSubRefAs<OverloadSetInfo>().Has({originalName2}));   // the symbol we're looking for, belongs to that set.
+        return coreSymbol && // not nullptr (the set exists), and...
+        (core == originalName2 // either the overload-set itself is directly the same symbol, or...
+            || coreSymbol->GetSubRefAs<OverloadSetInfo>().Has({originalName2})); // the symbol we're looking for, belongs to that set.
     }
 }

@@ -56,7 +56,6 @@
 #define AZSLC_FOR_EACH(pppredicate, ...)\
     AZSLC_FOR_EACH_(AZSLC_FOR_EACH_NARG(__VA_ARGS__), pppredicate, 0, __VA_ARGS__)
 
-
 #define GEN_ONE_ENUMERATOR_LINE(X, val)          X,
 #define GEN_ONE_ENUMERATOR_LINE_INIT(X, val)     X = val,
 #define GEN_ONE_ENUMERATOR_LINE_INIT_PWR(X, val) X = 0x00000001 << (val),
@@ -155,16 +154,22 @@ struct EnumTypeName\
 
 namespace AZ::Tests
 {
-    MAKE_REFLECTABLE_ENUM(MyEnum,
-        Enumerand1, Enumerand2, Enumerand3);
+    MAKE_REFLECTABLE_ENUM(
+        MyEnum,
+        Enumerand1,
+        Enumerand2,
+        Enumerand3);
 
     static_assert(MyEnum::Enumerand3 == 2);
     static_assert(MyEnum::ToStr(MyEnum::Enumerand3) == "Enumerand3");
     static_assert(MyEnum::FromStr("Enumerand3") == MyEnum::Enumerand3);
 
     // POWER version
-    MAKE_REFLECTABLE_ENUM_POWER(MyEnumFlaggable,
-        Flag1, Flag2, Flag3);
+    MAKE_REFLECTABLE_ENUM_POWER(
+        MyEnumFlaggable,
+        Flag1,
+        Flag2,
+        Flag3);
 
     // test executed:
     inline void DoAsserts4()
@@ -172,9 +177,18 @@ namespace AZ::Tests
         int i = 0;
         for (auto e : MyEnum::Enumerate{})
         {
-            if (i == 0) assert(e == MyEnum::Enumerand1);
-            if (i == 1) assert(e == MyEnum::Enumerand2);
-            if (i == 2) assert(e == MyEnum::Enumerand3);
+            if (i == 0)
+            {
+                assert(e == MyEnum::Enumerand1);
+            }
+            if (i == 1)
+            {
+                assert(e == MyEnum::Enumerand2);
+            }
+            if (i == 2)
+            {
+                assert(e == MyEnum::Enumerand3);
+            }
             ++i;
         }
 
@@ -194,7 +208,6 @@ namespace AZ::Tests
 
         static_assert(MyEnumFlaggable::ToStr(MyEnumFlaggable::Flag1) == "Flag1");
         static_assert(MyEnumFlaggable::FromStr("Flag2") == MyEnumFlaggable::Flag2);
-
     } // builds cleanly with gcc 8 --pedantic, clang 7 --pedantic, msvc 2017 /permissive- /Wall
 }
 #endif

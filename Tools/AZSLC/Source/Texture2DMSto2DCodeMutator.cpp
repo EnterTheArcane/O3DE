@@ -42,6 +42,7 @@ namespace AZ::ShaderCompiler
             OnEnterGetDimensions(ctx);
         }
     }
+
     ///////////////////////////////////////////////////////////////////////
 
     ///////////////////////////////////////////////////////////////////////
@@ -55,6 +56,7 @@ namespace AZ::ShaderCompiler
         }
         return &itor->second;
     }
+
     ///////////////////////////////////////////////////////////////////////
 
     void Texture2DMSto2DCodeMutator::RunMiddleEndMutations()
@@ -74,7 +76,7 @@ namespace AZ::ShaderCompiler
         if (children.size() == 3)
         {
             std::string symbolName = Replace(children[0]->getText(), "::", "/");
-            return UnqualifiedName{ symbolName };
+            return UnqualifiedName{symbolName};
         }
         return UnqualifiedName();
     }
@@ -264,7 +266,8 @@ namespace AZ::ShaderCompiler
 
         // Get all variables that are members of something of type Texture2DMS
         // We use this function pointer to find SRGs that have no references.
-        auto texture2DMSFilterFunc = +[](KindInfo* kindInfo) {
+        auto texture2DMSFilterFunc = +[](KindInfo* kindInfo)
+        {
             const auto* varInfo = kindInfo->GetSubAs<VarInfo>();
             return varInfo->m_typeInfoExt.m_coreType.m_typeClass == TypeClass::MultisampledTexture;
         };
@@ -277,11 +280,11 @@ namespace AZ::ShaderCompiler
             auto typeName = typeId.GetName();
             if (typeName == "?Texture2DMS")
             {
-                typeId.m_name = QualifiedName{ "?Texture2D" };
+                typeId.m_name = QualifiedName{"?Texture2D"};
             }
             else
             {
-                typeId.m_name = QualifiedName{ "?Texture2DArray" };
+                typeId.m_name = QualifiedName{"?Texture2DArray"};
             }
             ++mutationCount;
         }
@@ -292,7 +295,8 @@ namespace AZ::ShaderCompiler
     void Texture2DMSto2DCodeMutator::MutateMultiSampleSystemSemantics()
     {
         //Let's find all variables that have a system semantic.
-        auto variablesWithSystemSemanticFilterFunc = +[](KindInfo* kindInfo) {
+        auto variablesWithSystemSemanticFilterFunc = +[](KindInfo* kindInfo)
+        {
             const auto* varInfo = kindInfo->GetSubAs<VarInfo>();
             if (!varInfo->m_declNode)
             {
@@ -329,13 +333,13 @@ namespace AZ::ShaderCompiler
             if (ParamContextOverUnnamedVariableDeclarator(varInfo->m_declNode))
             {
                 // This is a function parameter.
-                IdentifierUID functionUid = IdentifierUID{ GetParentName(uid.GetName()) };
+                IdentifierUID functionUid = IdentifierUID{GetParentName(uid.GetName())};
                 DropMultiSamplingSystemSemanticFromFunction(uid, varInfo, systemSemanticName, functionUid);
             }
             else
             {
                 // This is a variable within a struct
-                IdentifierUID structUid = IdentifierUID{ GetParentName(uid.GetName()) };
+                IdentifierUID structUid = IdentifierUID{GetParentName(uid.GetName())};
                 MutateMultiSamplingSystemSemanticInStruct(uid, varInfo, systemSemanticName, structUid);
             }
         }
@@ -354,16 +358,28 @@ namespace AZ::ShaderCompiler
 
     //! A helper method that figures out how a function argument should look like
     //! when mutated into a local variable.
-    static std::string GetLocalVariableStringFromFunctionArgument(TokenStream* stream, const UnqualifiedName& uqName, AstUnnamedVarDecl* ctx, const char * initializationValue)
+    static std::string GetLocalVariableStringFromFunctionArgument(TokenStream* stream, const UnqualifiedName& uqName, AstUnnamedVarDecl* ctx, const char* initializationValue)
     {
         azslParser::FunctionParamContext* paramCtx = nullptr;
         auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
         auto tokens = NodeTokens(typeCtx, stream);
         std::vector<std::string> stringlets;
-        TransformCopy(tokens, stringlets, [&](Token* t) { return t->getText(); });
+        TransformCopy(
+            tokens,
+            stringlets,
+            [&](Token* t)
+            {
+                return t->getText();
+            });
         std::vector<std::string> filtered;
-        std::copy_if(stringlets.begin(), stringlets.end(), std::back_inserter(filtered), [&](auto subtok)
-                     { return subtok != "in" && subtok != "out" && subtok != "inout" && !IsAllWhitespaces(subtok); });
+        std::copy_if(
+            stringlets.begin(),
+            stringlets.end(),
+            std::back_inserter(filtered),
+            [&](auto subtok)
+            {
+                return subtok != "in" && subtok != "out" && subtok != "inout" && !IsAllWhitespaces(subtok);
+            });
         std::string typeHlsl = Join(filtered, " ");
         if (initializationValue)
         {
@@ -461,5 +477,4 @@ namespace AZ::ShaderCompiler
         mutation.m_replace.emplace(newCode);
         m_mutations.emplace(tokenIndex, mutation);
     }
-
 } //namespace AZ::ShaderCompiler

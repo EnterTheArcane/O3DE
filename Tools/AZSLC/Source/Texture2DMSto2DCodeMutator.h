@@ -33,20 +33,28 @@ namespace AZ::ShaderCompiler
     //!       variables or lines of codes have mutations available.
     struct Texture2DMSto2DCodeMutator
         : public azslParserBaseListener
-        , public ICodeEmissionMutator
+          , public ICodeEmissionMutator
     {
         Texture2DMSto2DCodeMutator() = delete;
-        explicit Texture2DMSto2DCodeMutator(IntermediateRepresentation* ir, CommonTokenStream* stream) : m_ir(ir), m_stream(stream) {}
-        virtual ~Texture2DMSto2DCodeMutator() = default;
+
+        explicit Texture2DMSto2DCodeMutator(IntermediateRepresentation* ir, CommonTokenStream* stream)
+            : m_ir(ir)
+            , m_stream(stream)
+        {
+        }
+
+        ~Texture2DMSto2DCodeMutator() override = default;
 
         ///////////////////////////////////////////////////////////////////////
         // azslParserBaseListener Overrides ...
         void enterFunctionCallExpression(azslParser::FunctionCallExpressionContext* ctx) override;
+
         ///////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////
         // ICodeEmissionMutator Overrides ...
         const CodeMutation* GetMutation(ssize_t tokenId) const override;
+
         ///////////////////////////////////////////////////////////////////////
 
         //! Should be called at the end of the IntermediateRepresentation::MiddleEnd() transformations.
@@ -91,7 +99,8 @@ namespace AZ::ShaderCompiler
 
         //! Given an unqualified symbol name, checks within the current parsing scope
         //! if the symbol is a MultiSampling type of variable.
-        enum class TextureMSType { None, Texture2DMS, Texture2DMSArray };
+        enum class TextureMSType { None, Texture2DMS, Texture2DMSArray, };
+
         TextureMSType GetMultiSampledTextureClass(const UnqualifiedName& uqSymbolName);
 
         //! Cached when RunMiddleEndMutations is called.
@@ -101,6 +110,6 @@ namespace AZ::ShaderCompiler
 
         //! A map of TokenIndex to Mutation. If a TokenIndex is present,
         //! it means it should produce mutated text during emission.
-        std::unordered_map< ssize_t, CodeMutation > m_mutations;
+        std::unordered_map<ssize_t, CodeMutation> m_mutations;
     };
 } // namespace AZ::ShaderCompiler

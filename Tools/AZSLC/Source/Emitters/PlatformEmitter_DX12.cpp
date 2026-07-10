@@ -46,19 +46,19 @@ namespace AZ::ShaderCompiler
                 switch (param.m_type)
                 {
                 case RootParamType::SrgConstantCB:
-                {
-                    assert(param.m_registerRange == 1);
-                    rootParam << "            \"CBV(b" << std::to_string(location.m_registerIndex)
-                              << ", space = " << std::to_string(location.m_logicalSpace)
-                              << ", visibility=SHADER_VISIBILITY_ALL)";
-                    rootAttrList.push_back(rootParam.str());
-                    break;
-                }
+                    {
+                        assert(param.m_registerRange == 1);
+                        rootParam << "            \"CBV(b" << std::to_string(location.m_registerIndex)
+                            << ", space = " << std::to_string(location.m_logicalSpace)
+                            << ", visibility=SHADER_VISIBILITY_ALL)";
+                        rootAttrList.push_back(rootParam.str());
+                        break;
+                    }
                 case RootParamType::RootConstantCB:
                     rootParam << "            \"RootConstants(num32BitConstants=" << std::to_string(param.m_num32BitConstants)
-                              << ", b" << std::to_string(location.m_registerIndex)
-                              << ", space = " << std::to_string(location.m_logicalSpace)
-                              << ", visibility=SHADER_VISIBILITY_ALL)";
+                        << ", b" << std::to_string(location.m_registerIndex)
+                        << ", space = " << std::to_string(location.m_logicalSpace)
+                        << ", visibility=SHADER_VISIBILITY_ALL)";
                     rootAttrList.push_back(rootParam.str());
                     break;
                 default:
@@ -78,7 +78,7 @@ namespace AZ::ShaderCompiler
                 {
                     std::stringstream rootParam;
                     rootParam << RootParamType::ToStr(param.m_type)
-                        << "(" << ToLower(BindingType::ToStr(RootParamTypeToBindingType(param.m_type)));  // eg "CBV(b" or "SRV(t" or "Sampler(s"
+                        << "(" << ToLower(BindingType::ToStr(RootParamTypeToBindingType(param.m_type))); // eg "CBV(b" or "SRV(t" or "Sampler(s"
                     rootParam << std::to_string(param.m_registerBinding.m_pair[querySet].m_registerIndex)
                         << ", space = " << std::to_string(param.m_registerBinding.m_pair[querySet].m_logicalSpace)
                         << ", numDescriptors = " << std::to_string(param.m_registerRange) << ")";
@@ -118,9 +118,9 @@ namespace AZ::ShaderCompiler
                     {
                         Streamable&& s{MakeOStreamStreamable{rootParam}};
                         s << "            \"StaticSampler(s" << std::to_string(param.m_registerBinding.m_pair[querySet].m_registerIndex)
-                          << ", space = " << std::to_string(param.m_registerBinding.m_pair[querySet].m_logicalSpace)
-                          << ", visibility=SHADER_VISIBILITY_ALL"
-                          << samplerInfo << ")";
+                            << ", space = " << std::to_string(param.m_registerBinding.m_pair[querySet].m_logicalSpace)
+                            << ", visibility=SHADER_VISIBILITY_ALL"
+                            << samplerInfo << ")";
                         rootAttrList.push_back(rootParam.str());
                     }
                 }

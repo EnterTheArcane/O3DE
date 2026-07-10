@@ -34,7 +34,12 @@ namespace AZ::ShaderCompiler
     {
     public:
         PadToAttributeMutator() = delete;
-        explicit PadToAttributeMutator(IntermediateRepresentation& ir) : m_ir(ir) {}
+
+        explicit PadToAttributeMutator(IntermediateRepresentation& ir)
+            : m_ir(ir)
+        {
+        }
+
         ~PadToAttributeMutator() = default;
 
         //! Called each time a [[pad_to(N)]] line is found when the input file is being parsed.
@@ -49,7 +54,6 @@ namespace AZ::ShaderCompiler
         void RunMutationsForPadToAttributes(const MiddleEndConfiguration& middleEndconfigration);
 
     private:
-
         using MapOfVarInfoUidToPadding = std::unordered_map<IdentifierUID, uint32_t>;
         using MapOfScopeUidToPaddingMap = std::unordered_map<IdentifierUID, MapOfVarInfoUidToPadding>;
 
@@ -75,26 +79,30 @@ namespace AZ::ShaderCompiler
 
         // Inserts the requested paddings to the scope named @scopeUid.
         // @classInfo is the ClassInfo data for @scopeUid.
-        void InsertScopePaddings(ClassInfo* classInfo,
-                                  const IdentifierUID& scopeUid, const MapOfVarInfoUidToPadding& varInfoUidToPadMap,
-                                  const MiddleEndConfiguration& middleEndconfigration);
+        void InsertScopePaddings(
+            ClassInfo* classInfo,
+            const IdentifierUID& scopeUid,
+            const MapOfVarInfoUidToPadding& varInfoUidToPadMap,
+            const MiddleEndConfiguration& middleEndconfigration);
 
         // Recursive function that returns the size of a variable @memberId.
         // Additionally in the in-out parameter @offset it accepts the starting offset
         // of the variable and updates it to what should be the offset of the next variable.
-        uint32_t CalculateMemberLayout(const IdentifierUID& memberId,
-                                       const bool isArrayItr,
-                                       const bool emitRowMajor,
-                                       const AZ::ShaderCompiler::Packing::Layout layoutPacking,
-                                       uint32_t& offset /*in-out*/) const;
+        uint32_t CalculateMemberLayout(
+            const IdentifierUID& memberId,
+            const bool isArrayItr,
+            const bool emitRowMajor,
+            const AZ::ShaderCompiler::Packing::Layout layoutPacking,
+            uint32_t& offset /*in-out*/) const;
 
         // Recursive function, companion of CalculateMemberLayout() that is called
         // when a variable is of type struct, class or interface.
         // Returns the whole size of the struct, class or interface.
-        uint32_t CalculateUserDefinedMemberLayout(const IdentifierUID& exportedTypeId,
-                                                  const bool emitRowMajor,
-                                                  const AZ::ShaderCompiler::Packing::Layout layoutPacking,
-                                                  uint32_t& startAt /*in-out*/) const;
+        uint32_t CalculateUserDefinedMemberLayout(
+            const IdentifierUID& exportedTypeId,
+            const bool emitRowMajor,
+            const AZ::ShaderCompiler::Packing::Layout layoutPacking,
+            uint32_t& startAt /*in-out*/) const;
 
         // Adds the minimum amount of variables to @classInfo until the struct/class/SRG grows in size by @numBytesToAdd
         // @param classInfo The ClassInfo pointer that belongs to @scopeUid.

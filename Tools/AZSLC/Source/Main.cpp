@@ -54,7 +54,7 @@ namespace AZ::ShaderCompiler
     void SetMerge(SetType& dest, SetType& src)
     {
         // set has no C++17 merge(), unlike std::set.
-        for (auto it = src.begin(); it != src.end(); )
+        for (auto it = src.begin(); it != src.end();)
         {
             if (dest.find(*it) == dest.end())
             {
@@ -69,9 +69,12 @@ namespace AZ::ShaderCompiler
     }
 
     template <typename TypeClassFilterPredicate = std::nullptr_t>
-    void VisitTokens(const antlr4::Recognizer* recognizer,
-                     MapOfStringViewToSetOfString& acceptedToken, std::set<std::string>& notTypes1,  // out
-                     TypeClassFilterPredicate tcFilter = nullptr)
+    void VisitTokens(
+        const antlr4::Recognizer* recognizer,
+        MapOfStringViewToSetOfString& acceptedToken,
+        std::set<std::string>& notTypes1,
+        // out
+        TypeClassFilterPredicate tcFilter = nullptr)
     {
         // loop over all keywords
         const auto& vocabulary = recognizer->getVocabulary();
@@ -81,7 +84,7 @@ namespace AZ::ShaderCompiler
             auto stdToken = vocabulary.getLiteralName(ii);
             std::string_view token(stdToken.data(), stdToken.size());
             token = Trim(token, "\"'"); // because AntlR gives us e.g "'float'"
-            if (!token.empty())         // empty when there is a complex rule (not a straight unconditional keyword)
+            if (!token.empty()) // empty when there is a complex rule (not a straight unconditional keyword)
             {
                 TypeClass tc = AnalyzeTypeClass(TentativeName{std::string{token}});
                 bool accept = true;
@@ -119,10 +122,7 @@ namespace AZ::ShaderCompiler
         // now we'll use it to construct parseable generic type expressions
         enum class RetryStateMachine
         {
-            OneTypeGenericParameter,
-            OneTypeAndDimensionGenericParameters,
-            OneTypeAndTwoDimensionsGenericParameters,
-            End,
+            OneTypeGenericParameter, OneTypeAndDimensionGenericParameters, OneTypeAndTwoDimensionsGenericParameters, End,
         };
 
         constexpr auto isNotTypeKey = TypeClass::ToStr(TypeClass::IsNotType);
@@ -158,7 +158,8 @@ namespace AZ::ShaderCompiler
                     break;
                 }
                 tc = AnalyzeTypeClass(TentativeName{attemptedTypeName});
-            } while (tc == TypeClass::IsNotType && state != RetryStateMachine::End);
+            }
+            while (tc == TypeClass::IsNotType && state != RetryStateMachine::End);
 
             // re-register at the correct place (if passes filter):
             bool accept = true;
@@ -201,7 +202,14 @@ namespace AZ::ShaderCompiler
     void DumpPredefinedVocabulary(const azslLexer* lexer)
     {
         MapOfStringViewToSetOfString classifiedTokens;
-        ClassifyAllTokens(lexer, classifiedTokens /*out*/, [](TypeClass tc) { return IsPredefinedType(tc); });
+        ClassifyAllTokens(
+            lexer,
+            classifiedTokens /*out*/
+            ,
+            [](TypeClass tc)
+            {
+                return IsPredefinedType(tc);
+            });
         DumpClassifiedTokensToYaml(classifiedTokens);
     }
 
@@ -213,7 +221,7 @@ namespace AZ::ShaderCompiler
         {
             if (token->getType() == azslLexer::LineDirective)
             {
-                LineDirectiveInfo directiveInfo{ 0, 0 };
+                LineDirectiveInfo directiveInfo{0, 0};
                 const auto lineText = token->getText();
                 //                    the sharp
                 //                        |  any whitespaces
@@ -292,15 +300,21 @@ namespace AZ::ShaderCompiler::Main
             return;
         }
         std::cout << "Symbol found. kind: " << Kind::ToStr(ir.GetKind(symbol->first)) << ". Homonyms list:\n";
-        HomonymVisitor hv{[&ir](QualifiedNameView qnv) { return ir.GetKindInfo({{qnv}}); }};
-        hv(symbol->first,
-           [](const Seenat &at, RelationshipExtent category)
-             {
-                 std::cout << "- {categ: " << RelationshipExtent::ToStr(category)
-                           << ", id: " << Decorate("'", at.m_referredDefinition.GetName())
-                           << ", at: ':" << at.m_where.m_line << ":" << at.m_where.m_charPos + 1 << "'"
-                           << ", token#: " << at.m_where.m_focusedTokenId << "}\n";
-             },
+        HomonymVisitor hv{
+            [&ir](QualifiedNameView qnv)
+            {
+                return ir.GetKindInfo({{qnv}});
+            }
+        };
+        hv(
+            symbol->first,
+            [](const Seenat& at, RelationshipExtent category)
+            {
+                std::cout << "- {categ: " << RelationshipExtent::ToStr(category)
+                    << ", id: " << Decorate("'", at.m_referredDefinition.GetName())
+                    << ", at: ':" << at.m_where.m_line << ":" << at.m_where.m_charPos + 1 << "'"
+                    << ", token#: " << at.m_where.m_focusedTokenId << "}\n";
+            },
             visitOptions);
     }
 
@@ -349,7 +363,7 @@ int main(int argc, const char* argv[])
     using namespace AZ;
     using namespace AZ::ShaderCompiler::Main;
 
-    CLI::App cli{ "Amazon Shader Language Compiler" };
+    CLI::App cli{"Amazon Shader Language Compiler"};
 
     bool printVersion = false;
     cli.add_flag("--version", printVersion, "Prints version information");
@@ -391,7 +405,9 @@ int main(int argc, const char* argv[])
     cli.add_flag("--pack-opengl", packOpenGL, "Pack buffers using strict OpenGL packing rules (Vector-strict std140 for uniforms and std430 for storage buffers).");
 
     std::vector<std::string> namespaces;
-    cli.add_option("--namespace", namespaces,
+    cli.add_option(
+        "--namespace",
+        namespaces,
         "Activate an attribute namespace. May be used multiple times to activate multiple namespaces. "
         "Activating a namespace may also activate corresponding API-specific features, like dx for DirectX 12, vk for Vulkan, and mt for Metal.");
 
@@ -432,12 +448,18 @@ int main(int argc, const char* argv[])
     cli.add_flag("--strip-unused-srgs", stripUnusedSrgs, "Strips unused SRGs.");
 
     bool noMS = false;
-    cli.add_flag("--no-ms", noMS, "Transforms usage of Texture2DMS/Texture2DMSArray and related functions and semantics into plain Texture2D/Texture2DArray "
+    cli.add_flag(
+        "--no-ms",
+        noMS,
+        "Transforms usage of Texture2DMS/Texture2DMSArray and related functions and semantics into plain Texture2D/Texture2DArray "
         "equivalents. This is useful for allowing shader authors to easily write AZSL code that can be compiled into alternatives to work with both a "
         "multisample render pipeline and a non-MS render pipeline.");
 
     bool noAlignmentValidation = false;
-    cli.add_flag("--no-alignment-validation", noAlignmentValidation, "Skips checking for potential alignment issues related to differences between dxil and spirv."
+    cli.add_flag(
+        "--no-alignment-validation",
+        noAlignmentValidation,
+        "Skips checking for potential alignment issues related to differences between dxil and spirv."
         "By default, potential alignment discrepancies will fail compilation.");
 
     bool visitDirectReferences = false;
@@ -482,7 +504,10 @@ int main(int argc, const char* argv[])
     cli.add_flag("--Wx3", warningOpts[Warn::EnumType::Wx3], "Treat level-3 and below warnings as errors.");
 
     std::string minDescriptors;
-    cli.add_option("--min-descriptors", minDescriptors, "Comma-separated list of limits corresponding to "
+    cli.add_option(
+        "--min-descriptors",
+        minDescriptors,
+        "Comma-separated list of limits corresponding to "
         "<set,space,sampler,texture,buffer> descriptors. Emits a warning if a count overshoots a limit. Use -1 to specify \"no limit\".");
 
     bool verbose = false;
@@ -524,7 +549,7 @@ int main(int argc, const char* argv[])
         std::ifstream ifs;
         if (!useStdin)
         {
-            ifs = std::ifstream{ inputFile }; // try to open as file
+            ifs = std::ifstream{inputFile}; // try to open as file
         }
 
         std::istream& in{useStdin ? std::cin : ifs};
@@ -563,7 +588,7 @@ int main(int argc, const char* argv[])
         parser.removeErrorListeners();
         azslParserEventListener.m_isKeywordPredicate = IsKeyword;
         parser.addErrorListener(&azslParserEventListener);
-        tree::ParseTree *tree = parser.compilationUnit();
+        tree::ParseTree* tree = parser.compilationUnit();
 
         if (ast)
         {
@@ -577,19 +602,25 @@ int main(int argc, const char* argv[])
         }
 
         if (syntax)
-        { // if we are here with no exception then the syntax pass is valid.
+        {
+            // if we are here with no exception then the syntax pass is valid.
         }
         else // continue with semantic, and later emission
         {
             if (!useStdin)
             {
-                std::filesystem::path inSource{ inputFile };
+                std::filesystem::path inSource{inputFile};
                 ir.m_metaData.m_insource = std::filesystem::absolute(inSource).lexically_normal().generic_string();
             }
 
             // Enable attribute namespaces
-            std::for_each(namespaces.begin(), namespaces.end(),
-                [&](const std::string& space) { ir.AddAttributeNamespaceFilter(space); });
+            std::for_each(
+                namespaces.begin(),
+                namespaces.end(),
+                [&](const std::string& space)
+                {
+                    ir.AddAttributeNamespaceFilter(space);
+                });
 
             SubpassInputSupportFlag subpassInputSupport = Backend::GetPlatformEmitter(&ir).GetSubpassInputSupport();
             if (noSubpassInput)
@@ -601,12 +632,19 @@ int main(int argc, const char* argv[])
             Texture2DMSto2DCodeMutator texture2DMSto2DCodeMutator(&ir, &tokens);
             SubpassInputToTexture2DCodeMutator subpassInputToTexture2DCodeMutator(&ir, &tokens, subpassInputSupport);
             SemaCheckListener semanticListener{&ir};
-            warningCout.m_onErrorCallback = [](std::string_view message) {
+            warningCout.m_onErrorCallback = [](std::string_view message)
+            {
                 throw AzslcException{WX_WARNINGS_AS_ERRORS, "as-error", std::string{message}};
             };
             ParseWarningLevel(warningOpts, warningCout);
             bool nonValidativeOptions[] = {full, ia, om, srg, options, dumpsym, ast, bindingdep, !visitName.empty(), stripUnusedSrgs};
-            bool anyNonValidativeOption = std::any_of(std::begin(nonValidativeOptions), std::end(nonValidativeOptions), [](bool opt) { return opt; });
+            bool anyNonValidativeOption = std::any_of(
+                std::begin(nonValidativeOptions),
+                std::end(nonValidativeOptions),
+                [](bool opt)
+                {
+                    return opt;
+                });
             semanticListener.m_silentPrintExtensions = !semantic || verbose; // print-extensions are useful for interested parties; but not normal operation.
             if (noMS)
             {
@@ -642,12 +680,14 @@ int main(int argc, const char* argv[])
 
             if (!minDescriptors.empty())
             {
-                sscanf(minDescriptors.c_str(), "%d,%d,%d,%d,%d",
-                       &emitOptions.m_minAvailableDescriptors.m_descriptorsTotal,
-                       &emitOptions.m_minAvailableDescriptors.m_spaces,
-                       &emitOptions.m_minAvailableDescriptors.m_samplers,
-                       &emitOptions.m_minAvailableDescriptors.m_textures,
-                       &emitOptions.m_minAvailableDescriptors.m_buffers);
+                sscanf(
+                    minDescriptors.c_str(),
+                    "%d,%d,%d,%d,%d",
+                    &emitOptions.m_minAvailableDescriptors.m_descriptorsTotal,
+                    &emitOptions.m_minAvailableDescriptors.m_spaces,
+                    &emitOptions.m_minAvailableDescriptors.m_samplers,
+                    &emitOptions.m_minAvailableDescriptors.m_textures,
+                    &emitOptions.m_minAvailableDescriptors.m_buffers);
             }
 
             if (*maxSpacesOpt)
@@ -689,12 +729,14 @@ int main(int argc, const char* argv[])
             }
 
             // middle end logic
-            MiddleEndConfiguration middleEndConfigration{emitOptions.m_rootConstantsMaxSize,
-                                                         emitOptions.m_packConstantBuffers,
-                                                         emitOptions.m_packDataBuffers,
-                                                         emitOptions.m_forceMatrixRowMajor,
-                                                         emitOptions.m_padRootConstantCB,
-                                                         emitOptions.m_skipAlignmentValidation};
+            MiddleEndConfiguration middleEndConfigration{
+                emitOptions.m_rootConstantsMaxSize,
+                emitOptions.m_packConstantBuffers,
+                emitOptions.m_packDataBuffers,
+                emitOptions.m_forceMatrixRowMajor,
+                emitOptions.m_padRootConstantCB,
+                emitOptions.m_skipAlignmentValidation
+            };
             ir.MiddleEnd(middleEndConfigration, &lineFinder);
             if (noMS)
             {
@@ -723,17 +765,21 @@ int main(int argc, const char* argv[])
             {
                 using RE = RelationshipExtent;
                 RelationshipExtentFlag visitOptions{RE::Self}; // at least self.  + optional things as listed here-under
-                std::array<std::pair<bool, RE::EnumType>, 4> optToRelation = {{{visitDirectReferences, RE::Reference},
-                    {visitFamily, RE::Family},
-                    {visitOverloadSet, RE::OverloadSet},
-                    {visitRecursively, RE::Recursive}}};
-                for (auto &&possibleOption : optToRelation)
+                std::array<std::pair<bool, RE::EnumType>, 4> optToRelation = {
+                    {
+                        {visitDirectReferences, RE::Reference},
+                        {visitFamily, RE::Family},
+                        {visitOverloadSet, RE::OverloadSet},
+                        {visitRecursively, RE::Recursive}
+                    }
+                };
+                for (auto&& possibleOption : optToRelation)
                 {
                     visitOptions |= possibleOption.first ? possibleOption.second : RE::EnumType(0);
                 }
                 PrintVisitSymbol(ir, visitName, visitOptions);
             }
-            else if (!semantic)  // do emission
+            else if (!semantic) // do emission
             {
                 verboseCout << "--Emission/Reflection--\n";
                 std::ofstream mainOutFile;
@@ -752,7 +798,7 @@ int main(int argc, const char* argv[])
                 CodeReflection reflecter{&ir, &tokens, out};
 
                 // Lambda to create an output stream and perform an output action
-                auto prepareOutputAndCall = [&](const std::string &suffix, std::function<void(CodeReflection&)> action)
+                auto prepareOutputAndCall = [&](const std::string& suffix, std::function<void(CodeReflection&)> action)
                 {
                     std::string outputName;
                     if (useOutputFile)
@@ -778,7 +824,8 @@ int main(int argc, const char* argv[])
                 };
 
                 if (full)
-                { // Combine the default emission and the ia, om, srg, options, bindingdep commands
+                {
+                    // Combine the default emission and the ia, om, srg, options, bindingdep commands
                     CodeEmitter emitter{&ir, &tokens, out, &lineFinder};
                     if (noMS)
                     {
@@ -791,26 +838,55 @@ int main(int argc, const char* argv[])
                     emitter << "// HLSL emission by " << versionString << "\n";
                     emitter.Run(emitOptions);
 
-                    prepareOutputAndCall("ia", [&](CodeReflection& r) { r.DumpShaderEntries(); });
-                    prepareOutputAndCall("om", [&](CodeReflection& r) { r.DumpOutputMergerLayout(); });
-                    prepareOutputAndCall("srg", [&](CodeReflection& r) { r.DumpSRGLayout(emitOptions, &lineFinder); });
-                    prepareOutputAndCall("options", [&](CodeReflection& r) { r.DumpVariantList(emitOptions); });
-                    prepareOutputAndCall("bindingdep", [&](CodeReflection& r) { r.DumpResourceBindingDependencies(emitOptions); });
+                    prepareOutputAndCall(
+                        "ia",
+                        [&](CodeReflection& r)
+                        {
+                            r.DumpShaderEntries();
+                        });
+                    prepareOutputAndCall(
+                        "om",
+                        [&](CodeReflection& r)
+                        {
+                            r.DumpOutputMergerLayout();
+                        });
+                    prepareOutputAndCall(
+                        "srg",
+                        [&](CodeReflection& r)
+                        {
+                            r.DumpSRGLayout(emitOptions, &lineFinder);
+                        });
+                    prepareOutputAndCall(
+                        "options",
+                        [&](CodeReflection& r)
+                        {
+                            r.DumpVariantList(emitOptions);
+                        });
+                    prepareOutputAndCall(
+                        "bindingdep",
+                        [&](CodeReflection& r)
+                        {
+                            r.DumpResourceBindingDependencies(emitOptions);
+                        });
                 }
                 else if (ia)
-                { // Reflect the Input Assembler layout and the Compute shader entries
+                {
+                    // Reflect the Input Assembler layout and the Compute shader entries
                     reflecter.DumpShaderEntries();
                 }
                 else if (om)
-                { // Reflect the Input Assembler layout
+                {
+                    // Reflect the Input Assembler layout
                     reflecter.DumpOutputMergerLayout();
                 }
                 else if (srg)
-                { // Reflect the Shader Resource Groups layout
+                {
+                    // Reflect the Shader Resource Groups layout
                     reflecter.DumpSRGLayout(emitOptions, &lineFinder);
                 }
                 else if (options)
-                { // Reflect the list of available variant options for this shader
+                {
+                    // Reflect the list of available variant options for this shader
                     reflecter.DumpVariantList(emitOptions);
                 }
                 else if (bindingdep)
@@ -818,7 +894,8 @@ int main(int argc, const char* argv[])
                     reflecter.DumpResourceBindingDependencies(emitOptions);
                 }
                 else
-                { // Emit the shader source code
+                {
+                    // Emit the shader source code
                     CodeEmitter emitter{&ir, &tokens, out, &lineFinder};
                     if (noMS)
                     {

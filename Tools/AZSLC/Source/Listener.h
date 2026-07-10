@@ -21,46 +21,85 @@ namespace AZ::ShaderCompiler
 
         SemaCheckListener(IntermediateRepresentation* ir)
             : m_ir(ir)
-        {}
+        {
+        }
 
         void enterIdExpression(azslParser::IdExpressionContext* ctx) override;
+
         void enterSrgSemantic(azslParser::SrgSemanticContext* ctx) override;
+
         void enterInterfaceDefinition(azslParser::InterfaceDefinitionContext* ctx) override;
+
         void enterStructDefinition(azslParser::StructDefinitionContext* ctx) override;
+
         void enterClassDefinition(azslParser::ClassDefinitionContext* ctx) override;
+
         void enterEnumDefinition(azslParser::EnumDefinitionContext* ctx) override;
+
         void enterEnumeratorDeclarator(azslParser::EnumeratorDeclaratorContext* ctx) override;
+
         void enterSamplerBodyDeclaration(azslParser::SamplerBodyDeclarationContext* ctx) override;
+
         void exitSamplerBodyDeclaration(azslParser::SamplerBodyDeclarationContext* ctx) override;
+
         void enterSrgDefinition(azslParser::SrgDefinitionContext* ctx) override;
+
         void exitSrgDefinition(azslParser::SrgDefinitionContext* ctx) override;
+
         void enterSrgSemanticMemberDeclaration(azslParser::SrgSemanticMemberDeclarationContext* ctx) override;
+
         void exitClassDefinition(azslParser::ClassDefinitionContext* ctx) override;
+
         void exitSrgSemantic(azslParser::SrgSemanticContext* ctx) override;
+
         void exitInterfaceDefinition(azslParser::InterfaceDefinitionContext* ctx) override;
+
         void exitStructDefinition(azslParser::StructDefinitionContext* ctx) override;
+
         void exitEnumDefinition(azslParser::EnumDefinitionContext* ctx) override;
+
         void exitFunctionDefinition(azslParser::FunctionDefinitionContext* ctx) override;
+
         void enterFunctionDefinition(azslParser::FunctionDefinitionContext* ctx) override;
+
         void exitFunctionDeclaration(azslParser::FunctionDeclarationContext* ctx) override;
+
         void enterFunctionDeclaration(azslParser::FunctionDeclarationContext* ctx) override;
+
         void exitLeadingTypeFunctionSignature(azslParser::LeadingTypeFunctionSignatureContext* ctx) override;
+
         void exitFunctionParam(azslParser::FunctionParamContext* ctx) override;
+
         void enterNamedVariableDeclarator(azslParser::NamedVariableDeclaratorContext* ctx) override;
+
         void enterBaseList(azslParser::BaseListContext* ctx) override;
+
         void exitBaseList(azslParser::BaseListContext* ctx) override;
+
         void enterCompilerExtensionStatement(azslParser::CompilerExtensionStatementContext* ctx) override;
+
         void enterGlobalAttribute(azslParser::GlobalAttributeContext* ctx) override;
+
         void enterAttachedAttribute(azslParser::AttachedAttributeContext* ctx) override;
+
         void exitTypedefStatement(azslParser::TypedefStatementContext* ctx) override;
+
         void exitTypealiasStatement(azslParser::TypealiasStatementContext* ctx) override;
+
         void exitTypeofExpression(azslParser::TypeofExpressionContext* ctx) override;
+
         void enterForStatement(azslParser::ForStatementContext* ctx) override;
+
         void exitForStatement(azslParser::ForStatementContext* ctx) override;
+
         void enterBlockStatement(azslParser::BlockStatementContext* ctx) override;
+
         void exitBlockStatement(azslParser::BlockStatementContext* ctx) override;
+
         void enterSwitchBlock(azslParser::SwitchBlockContext* ctx) override;
+
         void exitSwitchBlock(azslParser::SwitchBlockContext* ctx) override;
+
         void enterFunctionCallExpression(azslParser::FunctionCallExpressionContext* ctx) override;
 
         void visitTerminal(tree::TerminalNode* node) override;

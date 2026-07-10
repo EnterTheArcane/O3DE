@@ -42,6 +42,7 @@ namespace AZ
     {
         using runtime_error::runtime_error;
     };
+
     //! Type-heterogeneity-preserving multi pointer object single visitor.
     //! Returns whatever the passed functor would.
     //! Throws if all passed objects are null.
@@ -52,11 +53,11 @@ namespace AZ
         {
             return functor(object);
         }
-        throw AllNull{ "no non-null object passed" };
+        throw AllNull{"no non-null object passed"};
     }
 
     template <typename Lambda, typename T, typename... TOther>
-    std::invoke_result_t<Lambda, T*> VisitFirstNonNull(Lambda functor, T*object, TOther*... rest) noexcept(false)
+    std::invoke_result_t<Lambda, T*> VisitFirstNonNull(Lambda functor, T* object, TOther*... rest) noexcept(false)
     {
         if (object)
         {
@@ -115,14 +116,14 @@ namespace AZ
     {
         return Slice(haystack, 0, needle.size()).find(needle, 0) != std::string::npos;
         // visual studio bug prevents us from using constexpr here
-    //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
+        //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
     }
 
     inline bool EndsWith(std::string_view haystack, std::string_view needle)
     {
         return Slice(haystack, haystack.size() - needle.size(), haystack.size()).find(needle, 0) != std::string::npos;
         // visual studio bug prevents us from using constexpr here
-    //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
+        //https://developercommunity.visualstudio.com/content/problem/275141/c2131-expression-did-not-evaluate-to-a-constant-fo.html
     }
 
     //! ability to create size_t literals
@@ -202,13 +203,27 @@ namespace AZ
     //! Erase-Remove algorithm which removes all whitespaces from a string.
     inline std::string RemoveWhitespaces(std::string haystack)
     {
-        haystack.erase(std::remove_if(haystack.begin(), haystack.end(), [](unsigned char c) {return std::isspace(c); }), haystack.end());
+        haystack.erase(
+            std::remove_if(
+                haystack.begin(),
+                haystack.end(),
+                [](unsigned char c)
+                {
+                    return std::isspace(c);
+                }),
+            haystack.end());
         return haystack;
     }
 
     inline bool IsAllWhitespaces(std::string_view s)
     {
-        return std::all_of(s.begin(), s.end(), [&](char c) { return std::isspace(c); });
+        return std::all_of(
+            s.begin(),
+            s.end(),
+            [&](char c)
+            {
+                return std::isspace(c);
+            });
     }
 
     //! tells whether a position in a string is surrounded by round braces
@@ -227,8 +242,9 @@ namespace AZ
         int nesting = 0;
         for (size_t pos = 0; pos <= charPosition && pos < hayLen; ++pos)
         {
-            nesting += haystack[pos] == '(' ? 1
-                : (haystack[pos] == ')' ? -1 : 0);
+            nesting += haystack[pos] == '('
+                           ? 1
+                           : (haystack[pos] == ')' ? -1 : 0);
         }
         return nesting > 0;
     }
@@ -264,64 +280,71 @@ namespace AZ
         return haystack;
     }
 
-    template< typename Iter >
+    template <typename Iter>
     std::string Join(Iter begin, Iter end, std::string_view separator = "")
     {
         if (!(begin != end))
+        {
             return "";
+        }
 
         std::stringstream ss;
         Streamable&& wrap{MakeOStreamStreamable{ss}};
         wrap << *begin;
 
-        auto aggregate = [&wrap, &separator](auto s) { wrap << separator.data() << s; };
+        auto aggregate = [&wrap, &separator](auto s)
+        {
+            wrap << separator.data() << s;
+        };
         std::for_each(++begin, end, aggregate);
 
         return ss.str();
     }
 
-    template< typename Iterator, typename Predicate >
+    template <typename Iterator, typename Predicate>
     bool Contains(Iterator begin, Iterator end, Predicate p)
     {
         return std::find_if(begin, end, p) != end;
     }
 
     //! argument in rangeV3-style version:
-    template< typename Container >
+    template <typename Container>
     std::string Join(const Container& c, std::string_view separator = "")
     {
         return Join(c.begin(), c.end(), separator);
     }
 
     //! argument in rangeV3-style version:
-    template< typename Container, typename Predicate >
+    template <typename Container, typename Predicate>
     bool Contains(const Container& c, Predicate p)
     {
         return Contains(c.begin(), c.end(), p);
     }
 
     //! closest possible form of python's `in` keyword
-    template< typename Element, typename Container >
+    template <typename Element, typename Container>
     bool IsIn(const Element& element, const Container& container)
     {
         return std::find(container.begin(), container.end(), element) != container.end();
     }
 
     //! generate a new container with copy-and-mutated elements
-    template< typename Container, typename ContainerOut, typename Functor >
+    template <typename Container, typename ContainerOut, typename Functor>
     void TransformCopy(const Container& in, ContainerOut& out, Functor mutator)
     {
         std::transform(in.begin(), in.end(), std::back_inserter(out), mutator);
     }
 
-    enum class CopyIfPolicy { ForAll, InterruptAtFirstFalse };
+    enum class CopyIfPolicy { ForAll, InterruptAtFirstFalse, };
 
     //! inserts elements into the output iterator if they pass a predicate
-    template< typename InputIterator, typename Predicate, typename OutputIterator >
-    void CopyIf(InputIterator begin, InputIterator end,
-                Predicate pred,
-                OutputIterator out,
-                CopyIfPolicy policy)
+    template <typename InputIterator, typename Predicate, typename OutputIterator>
+    void CopyIf(
+        InputIterator begin,
+        InputIterator end,
+        Predicate pred,
+        OutputIterator out,
+        CopyIfPolicy policy)
     {
         for (auto it = begin; it != end; ++it)
         {
@@ -349,15 +372,24 @@ namespace AZ
                 char next = *it;
                 switch (next)
                 {
-                case '\\': c = '\\'; break;
-                case 'a': c = '\a';  break;
-                case 'b': c = '\b';  break;
-                case 'f': c = '\f';  break;
-                case 'n': c = '\n';  break;
-                case 'r': c = '\r';  break;
-                case 't': c = '\t';  break;
-                case 'v': c = '\v';  break;
-                case '"': c = '\"';  break;
+                case '\\': c = '\\';
+                    break;
+                case 'a': c = '\a';
+                    break;
+                case 'b': c = '\b';
+                    break;
+                case 'f': c = '\f';
+                    break;
+                case 'n': c = '\n';
+                    break;
+                case 'r': c = '\r';
+                    break;
+                case 't': c = '\t';
+                    break;
+                case 'v': c = '\v';
+                    break;
+                case '"': c = '\"';
+                    break;
                 default:
                     out << '\\';
                     c = next;
@@ -370,7 +402,7 @@ namespace AZ
         return out.str();
     }
 
-    template< typename T >
+    template <typename T>
     inline std::string ToString(T anything)
     {
         std::ostringstream oss;
@@ -388,17 +420,17 @@ namespace AZ
         return s;
     }
 
-    inline std::string ToString(const char* const  s)
+    inline std::string ToString(const char* const s)
     {
         return s;
     }
 
     inline std::string ToString(std::string_view sv)
     {
-        return std::string{ sv };
+        return std::string{sv};
     }
 
-    template<typename... Types>
+    template <typename... Types>
     std::string ConcatString(Types&&... args)
     {
         std::string ret;
@@ -406,7 +438,7 @@ namespace AZ
         return ret;
     }
 
-    template<typename... Args>
+    template <typename... Args>
     std::string FormatString(const char* format, Args... args)
     {
         int size = snprintf(nullptr, 0, format, args...) + 1; // Extra space for '\0'
@@ -424,6 +456,7 @@ namespace AZ
     {
         return value == tocheck;
     }
+
     // Any argument count version
     template <typename T, typename U, typename... Args>
     bool IsOneOf(T value, U khead, Args... tail)
@@ -443,8 +476,8 @@ namespace AZ
     template <typename DestT, typename SrcT>
     bool Is(SrcT source)
     {
-        using PtrDestT = std::conditional_t< std::is_pointer_v<DestT>, DestT, DestT* >;
-        using ConsistentDestT = std::conditional_t< std::is_pointer_v<SrcT>, PtrDestT, DestT >;
+        using PtrDestT = std::conditional_t<std::is_pointer_v<DestT>, DestT, DestT*>;
+        using ConsistentDestT = std::conditional_t<std::is_pointer_v<SrcT>, PtrDestT, DestT>;
         return As<ConsistentDestT>(source) != nullptr;
     }
 
@@ -454,6 +487,7 @@ namespace AZ
     {
         return false;
     }
+
     // checks if a passed pointer to an instance, is-base-or-derived-of any one of the given types in the template argument list.
     // verify that As< at-least-one-of-args >(base) returns non-null
     template <typename Head, typename... Tail, typename Deduced>
@@ -480,63 +514,66 @@ namespace AZ
             {
 #ifndef NDEBUG
                 using It = typename EnumTypeTemplateParam::Iterator;
-                assert(*(++It{ EnumType(4) }) == 8);  // verify that the reflectable enum is a power enum (flag-able).
+                assert(*(++It{ EnumType(4) }) == 8); // verify that the reflectable enum is a power enum (flag-able).
 #endif
             }
         }
-        Flag(EnumType e) : m_value{ static_cast<UnderlyingT>(e) }
-        {}
 
-        friend Flag operator & (Flag f, EnumType e)
+        Flag(EnumType e)
+            : m_value{static_cast<UnderlyingT>(e)}
+        {
+        }
+
+        friend Flag operator &(Flag f, EnumType e)
         {
             return EnumType(f.m_value & static_cast<UnderlyingT>(e));
         }
 
-        friend Flag operator & (Flag lhs, Flag rhs)
+        friend Flag operator &(Flag lhs, Flag rhs)
         {
             return Flag(EnumType(lhs.m_value & rhs.m_value));
         }
 
-        friend Flag operator | (Flag f, EnumType e)
+        friend Flag operator |(Flag f, EnumType e)
         {
             return EnumType(f.m_value | static_cast<UnderlyingT>(e));
         }
 
-        friend Flag& operator &= (Flag& f, EnumType e)
+        friend Flag& operator &=(Flag& f, EnumType e)
         {
             f.m_value &= static_cast<UnderlyingT>(e);
             return f;
         }
 
-        friend Flag& operator &= (Flag& f, const Flag& f2)
+        friend Flag& operator &=(Flag& f, const Flag& f2)
         {
             f.m_value &= f2.m_value;
             return f;
         }
 
-        friend Flag& operator |= (Flag& f, EnumType e)
+        friend Flag& operator |=(Flag& f, EnumType e)
         {
             f.m_value |= static_cast<UnderlyingT>(e);
             return f;
         }
 
-        friend Flag& operator |= (Flag& f, const Flag& f2)
+        friend Flag& operator |=(Flag& f, const Flag& f2)
         {
             f.m_value |= f2.m_value;
             return f;
         }
 
-        friend Flag operator ~ (const Flag& a_f)
+        friend Flag operator ~(const Flag& a_f)
         {
             return Flag(EnumType(~a_f.m_value));
         }
 
-        bool operator == (const Flag& rhs) const
+        bool operator ==(const Flag& rhs) const
         {
             return m_value == rhs.m_value;
         }
 
-        bool operator != (const Flag& rhs) const
+        bool operator !=(const Flag& rhs) const
         {
             return m_value != rhs.m_value;
         }
@@ -576,8 +613,8 @@ namespace AZ
     }
 
     //! Log(N) query to find the first immediately lower or equal element in a map's keys
-    template< typename T, typename U >
-    auto Infimum(std::map<T, U> const& ctr, T query)
+    template <typename T, typename U>
+    auto Infimum(const std::map<T, U>& ctr, T query)
     {
         auto it = ctr.upper_bound(query);
         return it == ctr.begin() ? ctr.end() : --it;
@@ -589,7 +626,7 @@ namespace AZ
     //!   map-keys are segment start points.
     //!   segments don't overlap.
     //! returns: iterator to found interval key, or cend()
-    template< typename T, typename U, typename IntervalCheckPredicate >
+    template <typename T, typename U, typename IntervalCheckPredicate>
     auto FindIntervalInDisjointSet(const std::map<T, U>& ctr, const T& query, IntervalCheckPredicate&& isInIntervalPredicate)
     {
         auto inf = Infimum(ctr, query);
@@ -600,24 +637,42 @@ namespace AZ
     //! Log(N) disjointed segments belong query
     //! segments are represented by their start points in the key, and last point in values. segments can't overlap.
     //! returns: iterator to found interval key, or cend()
-    template< typename T, typename U>
+    template <typename T, typename U>
     auto FindIntervalInDisjointSet(const std::map<T, U>& ctr, const T& query)
     {
-        return FindIntervalInDisjointSet(ctr, query, [](T q, U last) {return q <= last; });
+        return FindIntervalInDisjointSet(
+            ctr,
+            query,
+            [](T q, U last)
+            {
+                return q <= last;
+            });
     }
 
-    template< typename T >
+    template <typename T>
     struct Interval
     {
-        bool IsEmpty() const { return b < a; }
-        bool operator== (Interval const& rhs) const { return a == rhs.a && b == rhs.b; }
-        bool operator< (Interval const& rhs) const { return a < rhs.a || (a == rhs.a && b < rhs.b); }
+        bool IsEmpty() const
+        {
+            return b < a;
+        }
+
+        bool operator==(const Interval& rhs) const
+        {
+            return a == rhs.a && b == rhs.b;
+        }
+
+        bool operator<(const Interval& rhs) const
+        {
+            return a < rhs.a || (a == rhs.a && b < rhs.b);
+        }
+
         T a = (T)0;
         T b = (T)-1;
     };
 
     //! In case of potential overlaps (not disjointed), this structure can support "is in" queries
-    template< typename T >
+    template <typename T>
     struct IntervalCollection
     {
         using IntervalT = Interval<T>;
@@ -631,14 +686,20 @@ namespace AZ
         void Seal()
         {
             m_oblasts = m_obfirsts;
-            std::sort(m_obfirsts.begin(), m_obfirsts.end(), [](auto i1, auto i2)
-                      {
-                          return i1.a < i2.a;
-                      });
-            std::sort(m_oblasts.begin(), m_oblasts.end(), [](auto i1, auto i2)
-                      {
-                          return i1.b < i2.b;
-                      });
+            std::sort(
+                m_obfirsts.begin(),
+                m_obfirsts.end(),
+                [](auto i1, auto i2)
+                {
+                    return i1.a < i2.a;
+                });
+            std::sort(
+                m_oblasts.begin(),
+                m_oblasts.end(),
+                [](auto i1, auto i2)
+                {
+                    return i1.b < i2.b;
+                });
             m_sealed = true;
         }
 
@@ -647,24 +708,38 @@ namespace AZ
         {
             assert(m_sealed);
             // find the "set" of intervals starting before:
-            auto firstsSubEnd = std::lower_bound(m_obfirsts.begin(), m_obfirsts.end(),
-                                                 query,
-                                                 [=](auto interv, T q) { return interv.a <= q; });
+            auto firstsSubEnd = std::lower_bound(
+                m_obfirsts.begin(),
+                m_obfirsts.end(),
+                query,
+                [=](auto interv, T q)
+                {
+                    return interv.a <= q;
+                });
 
             // find the "set" of intervals ending after:
             static std::vector<IntervalT> endAfter;
             endAfter.clear();
-            CopyIf(m_oblasts.rbegin(), m_oblasts.rend(),  // reverse iteration
-                   [=](auto interv) { return interv.b >= query; },
-                   std::back_inserter(endAfter),
-                   CopyIfPolicy::InterruptAtFirstFalse);
+            CopyIf(
+                m_oblasts.rbegin(),
+                m_oblasts.rend(),
+                // reverse iteration
+                [=](auto interv)
+                {
+                    return interv.b >= query;
+                },
+                std::back_inserter(endAfter),
+                CopyIfPolicy::InterruptAtFirstFalse);
             // for set_intersection to work, the less<> predicate has to work for both ranges
             std::sort(endAfter.begin(), endAfter.end());
 
             std::set<IntervalT> result;
-            std::set_intersection(m_obfirsts.begin(), firstsSubEnd,
-                                  endAfter.begin(), endAfter.end(),
-                                  std::inserter(result, result.end()));
+            std::set_intersection(
+                m_obfirsts.begin(),
+                firstsSubEnd,
+                endAfter.begin(),
+                endAfter.end(),
+                std::inserter(result, result.end()));
             return result;
         }
 
@@ -679,19 +754,19 @@ namespace AZ
             return bag.empty() ? IntervalT{-1, -2} : *bag.rbegin();
         }
 
-        std::vector<IntervalT> m_obfirsts;  // ordered by "firsts"
-        std::vector<IntervalT> m_oblasts;   // ordered by "lasts"
+        std::vector<IntervalT> m_obfirsts; // ordered by "firsts"
+        std::vector<IntervalT> m_oblasts; // ordered by "lasts"
         bool m_sealed = false;
     };
 
-    template< typename Deduced >
+    template <typename Deduced>
     decltype(auto) CastToRValueReference(Deduced&& value)
     {
         return static_cast<std::remove_reference_t<Deduced>&&>(value);
     }
 
     //! add a missing operator for convenience and shortness of code
-    inline bool operator == (std::string_view lhs, char rhs)
+    inline bool operator ==(std::string_view lhs, char rhs)
     {
         return lhs.length() == 1 && lhs[0] == rhs;
     }
@@ -714,8 +789,8 @@ namespace AZ
     }
 
     //! Insert rhs at the end of lhs
-    template<typename T>
-    void AppendVector(std::vector<T>& lhs, std::vector<T> const& rhs)
+    template <typename T>
+    void AppendVector(std::vector<T>& lhs, const std::vector<T>& rhs)
     {
         using std::begin, std::end;
         lhs.insert(end(lhs), begin(rhs), end(rhs));
@@ -723,32 +798,37 @@ namespace AZ
 
     //! Stable algorithm to uniquify elements of a vector (preserving order).
     //! Solution Mohammed Hossain/Yuri https://stackoverflow.com/a/34341344/893406
-    template<typename T>
+    template <typename T>
     size_t RemoveDuplicatesKeepOrder(std::vector<T>& vec)
     {
         std::unordered_set<T> seen;
-        auto newEnd = std::remove_if(vec.begin(), vec.end(), [&seen](const T& value)
-                                     {
-                                         if (seen.find(value) != std::end(seen))
-                                             return true;
+        auto newEnd = std::remove_if(
+            vec.begin(),
+            vec.end(),
+            [&seen](const T& value)
+            {
+                if (seen.find(value) != std::end(seen))
+                {
+                    return true;
+                }
 
-                                         seen.insert(value);
-                                         return false;
-                                     });
+                seen.insert(value);
+                return false;
+            });
         vec.erase(newEnd, vec.end());
         return vec.size();
     }
 
     //! Append rhs to lhs and remove duplicates
-    template<typename T>
-    void StableMerge(std::vector<T>& lhs, std::vector<T> const& rhs)
+    template <typename T>
+    void StableMerge(std::vector<T>& lhs, const std::vector<T>& rhs)
     {
         AppendVector(lhs, rhs);
         RemoveDuplicatesKeepOrder(lhs);
     }
 
     //! Conditional swap algorithm
-    template<typename T>
+    template <typename T>
     void SwapIf(T&& a, T&& b, bool condition)
     {
         if (condition)
@@ -794,7 +874,7 @@ namespace AZ::Tests
         assert(EndsWith("nice", "nice"));
 
         // initializer list
-        auto list = { "nice", "things", "come", "to", "an", "end" };
+        auto list = {"nice", "things", "come", "to", "an", "end"};
         assert(Decorate("", Join(list.begin(), list.end(), ", "), ".") == "nice, things, come, to, an, end.");
 
         assert(Undecorate("///", Decorate("///", "/my nice string/")) == "/my nice string/"sv);
@@ -802,7 +882,7 @@ namespace AZ::Tests
         assert(Undecorate("\"", "\"decorated\"") == "decorated"sv);
 
         // or collection
-        std::set<std::string> myset = { "zz", "mm", "aa", "bb" };
+        std::set<std::string> myset = {"zz", "mm", "aa", "bb"};
         assert(Join(myset.begin(), myset.end()) == "aabbmmzz");
 
         assert(Trim("\"stuff\"", "\"") == "stuff"sv);
@@ -821,7 +901,7 @@ namespace AZ::Tests
 
         {
             using Map = std::map<int, int>;
-            Map intervals{ {2,5}, {8,9} };
+            Map intervals{{2, 5}, {8, 9}};
 
             auto red = Infimum(intervals, 4);
             assert(red->first == 2);
@@ -855,9 +935,15 @@ namespace AZ::Tests
         assert(IsIn("hibou", std::initializer_list<const char*>{ "chouette", "hibou", "jay" }));
         assert(!IsIn("hibou", std::initializer_list<const char*>{ "chouette", "jay" }));
 
-        Interval<int> intvs[] = {{0,10}, {1,5}, {3,3}, {7,9}, {12,15}};
+        Interval<int> intvs[] = {{0, 10}, {1, 5}, {3, 3}, {7, 9}, {12, 15}};
         IntervalCollection<int> ic;
-        std::for_each(std::begin(intvs), std::end(intvs), [&](auto i) {ic.Add(i); });
+        std::for_each(
+            std::begin(intvs),
+            std::end(intvs),
+            [&](auto i)
+            {
+                ic.Add(i);
+            });
         ic.Seal();
         assert(ic.GetClosestIntervalSurrounding(-3).IsEmpty());
         assert((ic.GetClosestIntervalSurrounding(0) == Interval<int>{0,10}));

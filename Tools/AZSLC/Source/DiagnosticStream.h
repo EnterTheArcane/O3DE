@@ -21,46 +21,67 @@
 namespace AZ
 {
     //! stream manipulator: new line and flush
-    struct Endl {};
+    struct Endl
+    {
+    };
 
     //! stream manipulator: warning severity level
-    MAKE_REFLECTABLE_ENUM(Warn,
-        W0,     // Suppress all warnings
-        W1,     // Display level 1 (severe) warnings [default]
-        W2,     // Display level 1 & 2 warnings
-        W3,     // Display level 1 & 2 & 3 warnings
-        Wx,     // Treats any currently ativated warning, as error
-        Wx1,    // Warnings up to level 1 are errors
-        Wx2,    // Warnings up to level 2 are errors
-        Wx3     // Warnings up to level 3 are errors
+    MAKE_REFLECTABLE_ENUM(
+        Warn,
+        W0,
+        // Suppress all warnings
+        W1,
+        // Display level 1 (severe) warnings [default]
+        W2,
+        // Display level 1 & 2 warnings
+        W3,
+        // Display level 1 & 2 & 3 warnings
+        Wx,
+        // Treats any currently ativated warning, as error
+        Wx1,
+        // Warnings up to level 1 are errors
+        Wx2,
+        // Warnings up to level 2 are errors
+        Wx3 // Warnings up to level 3 are errors
     );
 
     //! stream manipulator: stack up a severity level on a DiagnosticStream object (streams used for warnings have stateful warning levels, they can be backup-ed and restored thanks to this)
     //! you can use it by making an instance: e.g.: warningCout << PushLevel{} << Warn::W3 << "my warning level 3" << PopLevel{};
-    struct PushLevel {};
+    struct PushLevel
+    {
+    };
 
     //! stream manipulator: pop a severity level on a DiagnosticStream object (restore the previous level before the push)
-    struct PopLevel {};
+    struct PopLevel
+    {
+    };
 
     //! recover the level (as integer) value of an enumerator
     inline int ExtractLevel(Warn level)
     {
-        return level == Warn::Wx ? -1
-            : (level >= Warn::Wx1 ? level - Warn::Wx1 + 1
-                : level);
+        return level == Warn::Wx
+                   ? -1
+                   : (level >= Warn::Wx1
+                          ? level - Warn::Wx1 + 1
+                          : level);
     }
 
     struct DiagnosticStream
     {
-        DiagnosticStream() : m_wrappedStream(std::cout)
-        {}
-        DiagnosticStream(decltype(std::cout)& streamToWrap) : m_wrappedStream(streamToWrap)
-        {}
+        DiagnosticStream()
+            : m_wrappedStream(std::cout)
+        {
+        }
 
-        typedef DiagnosticStream Self;
+        DiagnosticStream(decltype(std::cout)& streamToWrap)
+            : m_wrappedStream(streamToWrap)
+        {
+        }
 
-        template< typename Any >
-        Self& operator<< (Any&& thing)
+        using Self = DiagnosticStream;
+
+        template <typename Any>
+        Self& operator<<(Any&& thing)
         {
             if (m_on && PassLevelFilter())
             {
@@ -74,12 +95,12 @@ namespace AZ
             return *this;
         }
 
-        Self& operator<< (Warn::EnumType& level)
+        Self& operator<<(Warn::EnumType& level)
         {
-            return operator<<(Warn::EnumType{ level });  // create an xvalue
+            return operator<<(Warn::EnumType{level}); // create an xvalue
         }
 
-        Self& operator<< (Warn::EnumType&& level)
+        Self& operator<<(Warn::EnumType&& level)
         {
             assert(level > Warn::W0); // silent warning messages make no sense.
             assert(level < Warn::Wx); // don't stream manipulators other than warning levels (error manipulators don't make sense)
@@ -87,23 +108,23 @@ namespace AZ
             return *this;
         }
 
-        Self& operator<< (PushLevel& level)
+        Self& operator<<(PushLevel& level)
         {
-            return operator<<(PushLevel{ level });
+            return operator<<(PushLevel{level});
         }
 
-        Self& operator<< (PushLevel&& level)
+        Self& operator<<(PushLevel&& level)
         {
             m_activeManipulator.push(m_activeManipulator.top());
             return *this;
         }
 
-        Self& operator<< (PopLevel& level)
+        Self& operator<<(PopLevel& level)
         {
-            return operator<<(PopLevel{ level });
+            return operator<<(PopLevel{level});
         }
 
-        Self& operator<< (PopLevel&& level)
+        Self& operator<<(PopLevel&& level)
         {
             if (m_activeManipulator.size() > 1)
             {
@@ -113,13 +134,13 @@ namespace AZ
         }
 
         // non-templates functions have priority over templates, when the type matches.
-        Self& operator<< (Endl&)
+        Self& operator<<(Endl&)
         {
-            return operator<<(Endl{});  // pass an unnamed temporary, therefore an xvalue, therefore matching the function thereunder.
+            return operator<<(Endl{}); // pass an unnamed temporary, therefore an xvalue, therefore matching the function thereunder.
         }
 
         // Endl types here are not compatible with any << operator overload defined in basic_ostream. so we need to 'branch' out, using overloading.
-        Self& operator<< (Endl&&)
+        Self& operator<<(Endl&&)
         {
             if (m_on)
             {
@@ -157,18 +178,18 @@ namespace AZ
         // current level should be visible
         bool PassLevelFilter() const
         {
-            return AsError()  // errors must be displayed, even if the stream setting is stricter
+            return AsError() // errors must be displayed, even if the stream setting is stricter
                 || ExtractLevel(m_activeManipulator.top()) <= ExtractLevel(m_warningLevel);
         }
 
     public:
         bool m_on = true;
         decltype(std::cout)& m_wrappedStream;
-        std::function< void(std::string_view) > m_onErrorCallback;  //!< receive a message in case of a streamed element of a warning level enough to trigger an error
+        std::function<void(std::string_view)> m_onErrorCallback; //!< receive a message in case of a streamed element of a warning level enough to trigger an error
 
     private:
-        Warn m_warningAsErrorLevel = Warn::EndEnumeratorSentinel_;  //!< no warning is an error by default
-        Warn m_warningLevel = Warn::W1;                             //!< current activated level setting. default warning is W1
-        std::stack<Warn> m_activeManipulator{ {Warn::W1} };              //!< store manipulators. start with an initial value corresponding to the default filter.
+        Warn m_warningAsErrorLevel = Warn::EndEnumeratorSentinel_; //!< no warning is an error by default
+        Warn m_warningLevel = Warn::W1; //!< current activated level setting. default warning is W1
+        std::stack<Warn> m_activeManipulator{{Warn::W1}}; //!< store manipulators. start with an initial value corresponding to the default filter.
     };
 }

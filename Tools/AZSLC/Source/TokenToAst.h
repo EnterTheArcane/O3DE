@@ -34,8 +34,7 @@ namespace AZ::ShaderCompiler
         }
 
     protected:
-
         // generic tokenid to ast pointer map
-        std::unordered_map< ssize_t, AstNode* > m_tokenToAst;
+        std::unordered_map<ssize_t, AstNode*> m_tokenToAst;
     };
 }

@@ -8,7 +8,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <map>
 #include <string>
@@ -19,8 +18,8 @@ namespace AZ::ShaderCompiler
     //! this is not part of the AST, that is why this is not in AzslcUtils.h
     struct LineDirectiveInfo
     {
-        size_t m_physicalTokenLine;  //!< line where the preprocessor token appears
-        size_t m_forcedLineNumber;   //!< the line number as specified (parsed from syntax input)
+        size_t m_physicalTokenLine; //!< line where the preprocessor token appears
+        size_t m_forcedLineNumber; //!< the line number as specified (parsed from syntax input)
         std::string m_containingFilename;
     };
 
@@ -51,22 +50,24 @@ namespace AZ::ShaderCompiler
             //
             // the error is on physical line 3, but should be reported as being on line 5 (physical-distance + line## - 1)
             const size_t physicalDistance = physicalLine - lineInfo.m_physicalTokenLine;
-            return physicalDistance + lineInfo.m_forcedLineNumber - 1;  // virtual line
+            return physicalDistance + lineInfo.m_forcedLineNumber - 1; // virtual line
         }
 
         //! More compact API for those who just need the final count adjustment, without access to the LineDirectiveInfo
         size_t GetVirtualLineNumber(size_t physicalLine) const
         {
             const LineDirectiveInfo* found = GetNearestPreprocessorLineDirective(physicalLine);
-            return found ? GetVirtualLineNumber(*found, physicalLine)
-                         : physicalLine;  // Return unadjusted in case of abscence of a virtual space.
+            return found
+                       ? GetVirtualLineNumber(*found, physicalLine)
+                       : physicalLine; // Return unadjusted in case of abscence of a virtual space.
         }
 
         const std::string& GetVirtualFileName(size_t physicalLine) const
         {
             const LineDirectiveInfo* found = GetNearestPreprocessorLineDirective(physicalLine);
-            return found ? found->m_containingFilename
-                         : m_physicalSourceFileName;  // Return unadjusted in case of abscence of a virtual space.
+            return found
+                       ? found->m_containingFilename
+                       : m_physicalSourceFileName; // Return unadjusted in case of abscence of a virtual space.
         }
 
         void PushLineDirective(const LineDirectiveInfo& ldi)
@@ -80,6 +81,6 @@ namespace AZ::ShaderCompiler
         }
 
         std::map<size_t, LineDirectiveInfo> m_lineMap;
-        std::string                         m_physicalSourceFileName;
+        std::string m_physicalSourceFileName;
     };
 }

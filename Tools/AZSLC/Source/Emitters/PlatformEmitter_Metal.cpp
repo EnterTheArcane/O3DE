@@ -51,7 +51,7 @@ namespace AZ::ShaderCompiler
     uint32_t PlatformEmitter_Metal::AlignRootConstants(uint32_t size) const
     {
         return Packing::AlignUp(size, Packing::s_bytesPerRegister);
-	}
+    }
 
     SubpassInputSupportFlag PlatformEmitter_Metal::GetSubpassInputSupport() const
     {

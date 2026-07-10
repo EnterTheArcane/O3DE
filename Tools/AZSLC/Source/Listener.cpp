@@ -21,14 +21,15 @@ namespace AZ::ShaderCompiler
         UnqualifiedName currentIdCtxUqName = ExtractNameFromIdExpression(ctx);
         auto* memberAccessExpr = As<AstMemberAccess*>(ctx->parent);
         assert(IsRHSOfMemberAccess(ctx) == !!memberAccessExpr);
-        if (memberAccessExpr)  // if direct parent is MAE, it's guaranteed this current idExpression is RHS. (because LHS of MAE is expression, not idExpression)
+        if (memberAccessExpr) // if direct parent is MAE, it's guaranteed this current idExpression is RHS. (because LHS of MAE is expression, not idExpression)
         {
             // we are in `a.b::c` (which can happen legally c.f. https://stackoverflow.com/q/56253767/893406)
-            bool isAbsolute = ctx->qualifiedId() && ctx->qualifiedId()->nestedNameSpecifier()->GlobalSROToken != nullptr;  // qualified and fully.
+            bool isAbsolute = ctx->qualifiedId() && ctx->qualifiedId()->nestedNameSpecifier()->GlobalSROToken != nullptr; // qualified and fully.
             // in MAE (MemberAccessExpression) the LHS (left-hand-side) determines what scope we should look into, for this idExpression.
             // in this context (MAE), a member accessed through a dot, `lhs.field` means the scope of interest is typeof(lhs).
-            QualifiedName startupScope = isAbsolute ? QualifiedName{"/"}  // no need to do any Join if the RHS is absolute
-                                                    : m_ir->m_sema.TypeofExpr(memberAccessExpr->LHSExpr); // relative to the scope of the type of LHS
+            QualifiedName startupScope = isAbsolute
+                                             ? QualifiedName{"/"} // no need to do any Join if the RHS is absolute
+                                             : m_ir->m_sema.TypeofExpr(memberAccessExpr->LHSExpr); // relative to the scope of the type of LHS
             if (isAbsolute || m_ir->m_sema.VerifyLHSExprOfMAExprIsValid(memberAccessExpr).first)
             {
                 m_ir->m_sema.RegisterSeenat(ctx, startupScope);
@@ -36,15 +37,17 @@ namespace AZ::ShaderCompiler
         }
         else if (auto* typeofExpression = As<azslParser::TypeofExpressionContext*>(ctx->parent))
         {
-            QualifiedName startupScope = typeofExpression->Expr ? m_ir->m_sema.TypeofExpr(typeofExpression->Expr)
-                                                                : m_ir->m_sema.TypeofExpr(typeofExpression->type());
+            QualifiedName startupScope = typeofExpression->Expr
+                                             ? m_ir->m_sema.TypeofExpr(typeofExpression->Expr)
+                                             : m_ir->m_sema.TypeofExpr(typeofExpression->type());
             if (m_ir->m_sema.VerifyTypeIsScopeComposable(startupScope).first)
             {
                 m_ir->m_sema.RegisterSeenat(ctx, startupScope);
             }
         }
         else
-        {   // simple direct reference registration. no outer context needs to be considered that can alter the symbol it refers to.
+        {
+            // simple direct reference registration. no outer context needs to be considered that can alter the symbol it refers to.
             m_ir->m_sema.RegisterSeenat(ctx);
         }
     }
@@ -70,7 +73,7 @@ namespace AZ::ShaderCompiler
     void SemaCheckListener::enterClassDefinition(azslParser::ClassDefinitionContext* ctx)
     {
         m_ir->m_sema.RegisterClass(ctx);
-        if (!ctx->baseList())  // if there is a base list, we can't enter the scope that early. it has to be at base list exit.
+        if (!ctx->baseList()) // if there is a base list, we can't enter the scope that early. it has to be at base list exit.
         {
             m_ir->m_scope.EnterScope(ctx->Name->getText(), ctx->LeftBrace()->getSourceInterval().a);
         }
@@ -166,10 +169,11 @@ namespace AZ::ShaderCompiler
         // Forbid function definitions inside "struct"s.
         if (m_ir->m_sema.IsScopeStruct())
         {
-            throw AzslcException(ADVANCED_SYNTAX_FUNCTION_IN_STRUCT,
-                                 "Syntax",
-                                 ctx->start,
-                                 "structs cannot have member functions; consider using a class.");
+            throw AzslcException(
+                ADVANCED_SYNTAX_FUNCTION_IN_STRUCT,
+                "Syntax",
+                ctx->start,
+                "structs cannot have member functions; consider using a class.");
         }
 
         auto signature = ctx->hlslFunctionDefinition()->leadingTypeFunctionSignature();
@@ -205,10 +209,11 @@ namespace AZ::ShaderCompiler
         // Forbid function declarations inside "struct"s.
         if (m_ir->m_sema.IsScopeStruct())
         {
-            throw AzslcException(ADVANCED_SYNTAX_FUNCTION_IN_STRUCT,
-                                 "Syntax",
-                                 ctx->start,
-                                 "structs cannot have member functions; consider using a class.");
+            throw AzslcException(
+                ADVANCED_SYNTAX_FUNCTION_IN_STRUCT,
+                "Syntax",
+                ctx->start,
+                "structs cannot have member functions; consider using a class.");
         }
 
         auto signature = ctx->hlslFunctionDeclaration()->leadingTypeFunctionSignature();
@@ -226,9 +231,10 @@ namespace AZ::ShaderCompiler
     }
 
     void SemaCheckListener::exitFunctionParam(azslParser::FunctionParamContext* ctx)
-    {   // we use the exit rule to let the time to inlined-UDT-decl to get registered through the type rule visit first.
+    {
+        // we use the exit rule to let the time to inlined-UDT-decl to get registered through the type rule visit first.
         auto& funcInfo = m_ir->m_sema.GetCurrentScopeSubInfoAs<FunctionInfo>();
-        if (funcInfo.m_multiFwds != FMF_FwdDeclRedundancy)  // when in that state, we don't accept parameter registration
+        if (funcInfo.m_multiFwds != FMF_FwdDeclRedundancy) // when in that state, we don't accept parameter registration
         {
             if (!ctx->Name)
             {
@@ -249,16 +255,16 @@ namespace AZ::ShaderCompiler
 
     void SemaCheckListener::enterBaseList(azslParser::BaseListContext* ctx)
     {
-
         m_ir->m_sema.RegisterBases(ctx);
     }
 
     void SemaCheckListener::exitBaseList(azslParser::BaseListContext* ctx)
     {
         // if there was a base list, we deferred entering in scope
-        auto* classDefCtx = polymorphic_downcast<AstClassDeclNode*>(ctx->parent);  // baseList is only used in that context
-        m_ir->m_scope.EnterScope(classDefCtx->Name->getText(),
-                                 classDefCtx->LeftBrace()->getSourceInterval().a);
+        auto* classDefCtx = polymorphic_downcast<AstClassDeclNode*>(ctx->parent); // baseList is only used in that context
+        m_ir->m_scope.EnterScope(
+            classDefCtx->Name->getText(),
+            classDefCtx->LeftBrace()->getSourceInterval().a);
     }
 
     void SemaCheckListener::enterCompilerExtensionStatement(azslParser::CompilerExtensionStatementContext* ctx)
@@ -354,7 +360,7 @@ namespace AZ::ShaderCompiler
         throw std::runtime_error{"Attribute specifier declared from unhandled parent type!"};
     }
 
-    template< typename AttributeContextT >
+    template <typename AttributeContextT>
     static void DoAttributeRegistration(AttributeContextT* ctx, AttributeScope scope, IntermediateRepresentation* ir)
     {
         // Attributes can be filtered out by namespace.
@@ -365,12 +371,13 @@ namespace AZ::ShaderCompiler
             return;
         }
 
-        ir->RegisterAttributeSpecifier(scope,
-                                       GetAttributeCategory(ctx),
-                                       ctx->getStart()->getLine(),
-                                       Namespace,
-                                       ctx->Name->getText(),
-                                       ctx->attributeArgumentList());
+        ir->RegisterAttributeSpecifier(
+            scope,
+            GetAttributeCategory(ctx),
+            ctx->getStart()->getLine(),
+            Namespace,
+            ctx->Name->getText(),
+            ctx->attributeArgumentList());
     }
 
     void SemaCheckListener::enterGlobalAttribute(azslParser::GlobalAttributeContext* ctx)
@@ -399,8 +406,11 @@ namespace AZ::ShaderCompiler
             && ctx->SubQualification->qualifiedId()
             && ctx->SubQualification->qualifiedId()->nestedNameSpecifier()->GlobalSROToken)
         {
-            throw AzslcException(ADVANCED_SYNTAX_DOUBLE_SCOPE_RESOLUTION, "Syntax", ctx->SubQualification->qualifiedId()->nestedNameSpecifier()->GlobalSROToken,
-                                 "double scope resolution operator forbidden at this position");
+            throw AzslcException(
+                ADVANCED_SYNTAX_DOUBLE_SCOPE_RESOLUTION,
+                "Syntax",
+                ctx->SubQualification->qualifiedId()->nestedNameSpecifier()->GlobalSROToken,
+                "double scope resolution operator forbidden at this position");
         }
     }
 
@@ -418,8 +428,8 @@ namespace AZ::ShaderCompiler
 
     void SemaCheckListener::enterBlockStatement(azslParser::BlockStatementContext* ctx)
     {
-        if (!Is< azslParser::HlslFunctionDefinitionContext >(ctx->parent)  // not function because we already entered
-            && !Is< azslParser::ForStatementContext >(ctx->parent))  // not for statement because we already entered
+        if (!Is<azslParser::HlslFunctionDefinitionContext>(ctx->parent) // not function because we already entered
+            && !Is<azslParser::ForStatementContext>(ctx->parent)) // not for statement because we already entered
         {
             m_ir->m_sema.MakeAndEnterAnonymousScope("bk", ctx->start);
         }
@@ -427,8 +437,8 @@ namespace AZ::ShaderCompiler
 
     void SemaCheckListener::exitBlockStatement(azslParser::BlockStatementContext* ctx)
     {
-        if (!Is< azslParser::HlslFunctionDefinitionContext >(ctx->parent)  // not function, because we already exited
-            && !Is< azslParser::ForStatementContext >(ctx->parent))  // not for statement, because we exited in exitForStatement
+        if (!Is<azslParser::HlslFunctionDefinitionContext>(ctx->parent) // not function, because we already exited
+            && !Is<azslParser::ForStatementContext>(ctx->parent)) // not for statement, because we exited in exitForStatement
         {
             m_ir->m_scope.ExitScope(ctx->stop->getTokenIndex());
         }
@@ -446,7 +456,7 @@ namespace AZ::ShaderCompiler
 
     void SemaCheckListener::enterFunctionCallExpression(azslParser::FunctionCallExpressionContext* ctx)
     {
-        for(azslParserBaseListener* mutator : m_functionCallMutators)
+        for (azslParserBaseListener* mutator : m_functionCallMutators)
         {
             mutator->enterFunctionCallExpression(ctx);
         }

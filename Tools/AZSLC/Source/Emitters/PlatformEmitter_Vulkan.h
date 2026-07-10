@@ -24,11 +24,14 @@ namespace AZ::ShaderCompiler
         static const PlatformEmitter* RegisterPlatformEmitter() noexcept(false);
 
         [[nodiscard]]
-        std::string GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const override final;
+        std::string GetRootConstantsView(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const final;
 
         SubpassInputSupportFlag GetSubpassInputSupport() const override;
 
     private:
-        PlatformEmitter_Vulkan() : PlatformEmitter_CommonVulkan {} {};
+        PlatformEmitter_Vulkan()
+            : PlatformEmitter_CommonVulkan{}
+        {
+        };
     };
 }

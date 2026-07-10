@@ -25,7 +25,8 @@ namespace AZ::ShaderCompiler
 {
     // type classes before canonicalization.
     // post canonicalization, you can't have generic arithmetic nor typeof.
-    MAKE_REFLECTABLE_ENUM (TypeClass,
+    MAKE_REFLECTABLE_ENUM(
+        TypeClass,
         // Error case
         IsNotType,
         // The void type
@@ -33,9 +34,11 @@ namespace AZ::ShaderCompiler
         // Predefined
         Scalar,
         Vector,
-        GenericVector,  // vector<t,d>
+        GenericVector,
+        // vector<t,d>
         Matrix,
-        GenericMatrix,  // matrix<t,d1,d2>
+        GenericMatrix,
+        // matrix<t,d1,d2>
         Texture,
         GenericTexture,
         MultisampledTexture,
@@ -49,7 +52,8 @@ namespace AZ::ShaderCompiler
         StreamOutput,
         LibrarySubobject,
         OtherViewBufferType,
-        OtherPredefined,  // IO patch
+        OtherPredefined,
+        // IO patch
         // Not predefined
         Struct,
         Class,
@@ -104,12 +108,14 @@ namespace AZ::ShaderCompiler
 
     // type that behaves like its generic parameter
     inline bool IsChameleon(TypeClass typeClass)
-    {  // IO patch are not strict chameleon because they behave like an array. if we consider array collapsing then maybe they are.
+    {
+        // IO patch are not strict chameleon because they behave like an array. if we consider array collapsing then maybe they are.
         return typeClass.IsOneOf(TypeClass::StructuredBuffer, TypeClass::Buffer, TypeClass::StreamOutput, TypeClass::ConstantBuffer);
     }
 
     inline bool HasGenericParameter(TypeClass typeClass)
-    { // TODO: to add InputPath/OutputPatch because it has a generic parameter. (when you do it, update ExtractGenericTypeParameterNameFromAstContext)
+    {
+        // TODO: to add InputPath/OutputPatch because it has a generic parameter. (when you do it, update ExtractGenericTypeParameterNameFromAstContext)
         return IsChameleon(typeClass) || IsGenericArithmetic(typeClass) || typeClass.IsOneOf(TypeClass::GenericTexture, TypeClass::MultisampledTexture, TypeClass::GenericSubpassInput);
     }
 
@@ -119,7 +125,8 @@ namespace AZ::ShaderCompiler
     }
 
     inline bool IsViewType(TypeClass typeClass)
-    {   // note that a constant buffer is not a view type
+    {
+        // note that a constant buffer is not a view type
         return IsViewTypeBuffer(typeClass)
             || typeClass.IsOneOf(TypeClass::Texture, TypeClass::GenericTexture, TypeClass::MultisampledTexture, TypeClass::Sampler, TypeClass::SubpassInput, TypeClass::GenericSubpassInput);
     }
@@ -133,55 +140,58 @@ namespace AZ::ShaderCompiler
     // Get TypeClass for type inside a predefined context
     inline TypeClass AnalyzeTypeClass(azslParser::PredefinedTypeContext* predefinedNode)
     {
-        TypeClass toReturn = TypeClass::OtherPredefined;  // default value if nothing of the under was non null.
-        using PredefinedNodeT = std::remove_pointer_t<decltype(predefinedNode)>;  // DRY
+        TypeClass toReturn = TypeClass::OtherPredefined; // default value if nothing of the under was non null.
+        using PredefinedNodeT = std::remove_pointer_t<decltype(predefinedNode)>; // DRY
         // map TypeClasses to the same indexes than the context functions list
-        std::array<TypeClass, 18> contextClasses = { TypeClass::Scalar,
-                                                TypeClass::Vector,
-                                                TypeClass::GenericVector,
-                                                TypeClass::Matrix,
-                                                TypeClass::GenericMatrix,
-                                                TypeClass::Texture,
-                                                TypeClass::MultisampledTexture,
-                                                TypeClass::SubpassInput,
-                                                TypeClass::GenericTexture,
-                                                TypeClass::GenericSubpassInput,
-                                                TypeClass::Sampler,
-                                                TypeClass::StructuredBuffer,
-                                                TypeClass::Buffer,
-                                                TypeClass::ByteAddressBuffer,
-                                                TypeClass::ConstantBuffer,
-                                                TypeClass::StreamOutput,
-                                                TypeClass::OtherViewBufferType,
-                                                TypeClass::LibrarySubobject};
+        std::array<TypeClass, 18> contextClasses = {
+            TypeClass::Scalar,
+            TypeClass::Vector,
+            TypeClass::GenericVector,
+            TypeClass::Matrix,
+            TypeClass::GenericMatrix,
+            TypeClass::Texture,
+            TypeClass::MultisampledTexture,
+            TypeClass::SubpassInput,
+            TypeClass::GenericTexture,
+            TypeClass::GenericSubpassInput,
+            TypeClass::Sampler,
+            TypeClass::StructuredBuffer,
+            TypeClass::Buffer,
+            TypeClass::ByteAddressBuffer,
+            TypeClass::ConstantBuffer,
+            TypeClass::StreamOutput,
+            TypeClass::OtherViewBufferType,
+            TypeClass::LibrarySubobject
+        };
         // create a constexpr valuelist of member function pointers
-        using FunctionList = ValueTplList< &PredefinedNodeT::scalarType,
-                                           &PredefinedNodeT::vectorType,
-                                           &PredefinedNodeT::genericVectorType,
-                                           &PredefinedNodeT::matrixType,
-                                           &PredefinedNodeT::genericMatrixPredefinedType,
-                                           &PredefinedNodeT::texturePredefinedType,
-                                           &PredefinedNodeT::msTexturePredefinedType,
-                                           &PredefinedNodeT::subpassInputPredefinedType,
-                                           &PredefinedNodeT::genericTexturePredefinedType,
-                                           &PredefinedNodeT::genericSubpassInputPredefinedType,
-                                           &PredefinedNodeT::samplerStatePredefinedType,
-                                           &PredefinedNodeT::structuredBufferPredefinedType,
-                                           &PredefinedNodeT::bufferPredefinedType,
-                                           &PredefinedNodeT::byteAddressBufferTypes,
-                                           &PredefinedNodeT::constantBufferTemplated,
-                                           &PredefinedNodeT::streamOutputPredefinedType,
-                                           &PredefinedNodeT::otherViewResourceType,
-                                           &PredefinedNodeT::subobjectType>;
-        static_assert( countTemplateParameters_v<FunctionList> == contextClasses.size() );
+        using FunctionList = ValueTplList<&PredefinedNodeT::scalarType,
+                                          &PredefinedNodeT::vectorType,
+                                          &PredefinedNodeT::genericVectorType,
+                                          &PredefinedNodeT::matrixType,
+                                          &PredefinedNodeT::genericMatrixPredefinedType,
+                                          &PredefinedNodeT::texturePredefinedType,
+                                          &PredefinedNodeT::msTexturePredefinedType,
+                                          &PredefinedNodeT::subpassInputPredefinedType,
+                                          &PredefinedNodeT::genericTexturePredefinedType,
+                                          &PredefinedNodeT::genericSubpassInputPredefinedType,
+                                          &PredefinedNodeT::samplerStatePredefinedType,
+                                          &PredefinedNodeT::structuredBufferPredefinedType,
+                                          &PredefinedNodeT::bufferPredefinedType,
+                                          &PredefinedNodeT::byteAddressBufferTypes,
+                                          &PredefinedNodeT::constantBufferTemplated,
+                                          &PredefinedNodeT::streamOutputPredefinedType,
+                                          &PredefinedNodeT::otherViewResourceType,
+                                          &PredefinedNodeT::subobjectType>;
+        static_assert(countTemplateParameters_v<FunctionList> == contextClasses.size());
         // This meta-loop will be unfolded at build time, therefore the generic lambda will be instantiated individually (by each type)
-        ForEachValue<FunctionList>([&toReturn, &predefinedNode, &contextClasses](auto ctxMemFn, auto index)
-                                    {
-                                        if ((predefinedNode->*ctxMemFn)())  // pointer-to-member-function call.
-                                        {
-                                            toReturn = contextClasses[index];
-                                        }
-                                    });
+        ForEachValue<FunctionList>(
+            [&toReturn, &predefinedNode, &contextClasses](auto ctxMemFn, auto index)
+            {
+                if ((predefinedNode->*ctxMemFn)()) // pointer-to-member-function call.
+                {
+                    toReturn = contextClasses[index];
+                }
+            });
         return toReturn;
     }
 
@@ -230,10 +240,10 @@ namespace AZ::ShaderCompiler
     // Don't let too wild uncontrolled input sneak in there, there may be vectors of attack.
     inline TypeClass AnalyzeTypeClass(std::string_view typeName)
     {
-        assert(typeName.find("/") == std::string::npos);  // forgot to unmangle ? use the TentativeName overload in these cases
+        assert(typeName.find("/") == std::string::npos); // forgot to unmangle ? use the TentativeName overload in these cases
         // Construct a mini program of the form "type a();" and check the AST.
         // Deduce the type class from the node.
-        std::string miniprogram { typeName };
+        std::string miniprogram{typeName};
         miniprogram += " a();";
         ANTLRInputStream input(miniprogram.c_str(), miniprogram.size());
         azslLexer lexer(&input);
@@ -243,19 +253,19 @@ namespace AZ::ShaderCompiler
         parser.removeErrorListeners();
         azslParser::CompilationUnitContext* unit = parser.compilationUnit();
         bool failCondition = parser.getNumberOfSyntaxErrors() > 0
-                          || unit->Declarations.empty()
-                          || unit->Declarations[0]->attributedFunctionDeclaration() == nullptr
-                          || unit->Declarations[0]->attributedFunctionDeclaration()->functionDeclaration() == nullptr
-                          || unit->Declarations[0]->attributedFunctionDeclaration()->functionDeclaration()->hlslFunctionDeclaration() == nullptr;
+            || unit->Declarations.empty()
+            || unit->Declarations[0]->attributedFunctionDeclaration() == nullptr
+            || unit->Declarations[0]->attributedFunctionDeclaration()->functionDeclaration() == nullptr
+            || unit->Declarations[0]->attributedFunctionDeclaration()->functionDeclaration()->hlslFunctionDeclaration() == nullptr;
         AstType* typeNode = nullptr;
         if (!failCondition)
         {
             typeNode = unit->Declarations[0]->
-                            attributedFunctionDeclaration()->
-                                functionDeclaration()->
-                                    hlslFunctionDeclaration()->
-                                        leadingTypeFunctionSignature()->
-                                            type();
+                       attributedFunctionDeclaration()->
+                       functionDeclaration()->
+                       hlslFunctionDeclaration()->
+                       leadingTypeFunctionSignature()->
+                       type();
         }
         return AnalyzeTypeClass(typeNode);
     }
@@ -264,6 +274,7 @@ namespace AZ::ShaderCompiler
     {
         std::string mangled;
     };
+
     // try to analyze a type with a few iterations to remove mangling while the result is NotAType
     inline TypeClass AnalyzeTypeClass(TentativeName typeName)
     {
@@ -281,9 +292,10 @@ namespace AZ::ShaderCompiler
     /// Verifies that our hardcoded strings don't have typo, by checking against the lexer-extracted keywords stored in the Scalar array.
     inline bool CheckExistScalarType(std::string_view scalarName)
     {
-        return std::find(Predefined::Scalar.begin(),
-                         Predefined::Scalar.end(),
-                         scalarName) != Predefined::Scalar.end();
+        return std::find(
+            Predefined::Scalar.begin(),
+            Predefined::Scalar.end(),
+            scalarName) != Predefined::Scalar.end();
     };
 
     /// Assert validity of the type string, and form a "?<type>" tainted string to host a scalar type
@@ -302,9 +314,10 @@ namespace AZ::ShaderCompiler
             // establish the conversion rank:
             auto getIndex = [](std::string_view s) -> int
             {
-                auto const& Scalars = Predefined::Scalar;
-                return ::std::distance(Scalars.begin(),
-                                       ::std::find(Scalars.begin(), Scalars.end(), s));
+                const auto& Scalars = Predefined::Scalar;
+                return ::std::distance(
+                    Scalars.begin(),
+                    ::std::find(Scalars.begin(), Scalars.end(), s));
             };
             // According to https://en.cppreference.com/w/cpp/language/usual_arithmetic_conversions
             //   - No two signed have the same rank (even if same siezeof)
@@ -316,7 +329,8 @@ namespace AZ::ShaderCompiler
             {
                 {getIndex("bool"), 1},
                 {getIndex("int16_t"), 2},
-                {getIndex("uint16_t"), 3}, // unsigned wins in case of subrank draw, according to arithmetic conversion rules
+                {getIndex("uint16_t"), 3},
+                // unsigned wins in case of subrank draw, according to arithmetic conversion rules
                 {getIndex("int"), 4},
                 {getIndex("uint"), 5},
                 {getIndex("dword"), 6},
@@ -324,14 +338,15 @@ namespace AZ::ShaderCompiler
                 {getIndex("uint32_t"), 8},
                 {getIndex("int64_t"), 9},
                 {getIndex("uint64_t"), 10},
-                {getIndex("half"), 11 << 5},  // floats win all conversions, even halfs
+                {getIndex("half"), 11 << 5},
+                // floats win all conversions, even halfs
                 {getIndex("float"), 12 << 5},
                 {getIndex("double"), 13 << 5},
             };
             // `basesize` getter, but 1 for bool: (physical size of extern bool is considered 32bits in HLSL)
             auto getRankSizeof = [&](int scalarId)
             {
-                assert(std::string_view{"bool"} == Predefined::Scalar[0]);  // verify that 0 is the hard index of bool.
+                assert(std::string_view{"bool"} == Predefined::Scalar[0]); // verify that 0 is the hard index of bool.
                 bool isBool = scalarId == 0;
                 return isBool ? 1 : m_baseSize;
             };
@@ -365,7 +380,7 @@ namespace AZ::ShaderCompiler
 
         bool IsScalar() const
         {
-            return m_rows <= 1 && m_cols <= 1;  // float, float1, float1x1 are scalars.
+            return m_rows <= 1 && m_cols <= 1; // float, float1, float1x1 are scalars.
         }
 
         //! Non-created state
@@ -377,8 +392,7 @@ namespace AZ::ShaderCompiler
         //! For pretty print
         std::string UnderlyingScalarToStr() const
         {
-            return m_underlyingScalar >= 0 && m_underlyingScalar < AZ::ShaderCompiler::Predefined::Scalar.size() ?
-                AZ::ShaderCompiler::Predefined::Scalar[m_underlyingScalar] : "<NA>";
+            return m_underlyingScalar >= 0 && m_underlyingScalar < AZ::ShaderCompiler::Predefined::Scalar.size() ? AZ::ShaderCompiler::Predefined::Scalar[m_underlyingScalar] : "<NA>";
         }
 
         //! Create a canonicalized mangled name that should represent the identity of this arithmetic type.
@@ -398,11 +412,11 @@ namespace AZ::ShaderCompiler
             }
         }
 
-        uint32_t m_baseSize = 0;                 //< In bytes. Size of 0 indicates TypeRefInfo which hasn't been resolved or is a struct
-        uint32_t m_rows = 0;                     //< 0 means it's not a matrix (effective Rows = 1). 1 or more means a Matrix
-        uint32_t m_cols = 0;                     //< 0 means it's not a vector (effective Cols = 1). 1 or more means a Vector or Matrix
-        int      m_conversionRank = 0;           //< Used in conversions and promotions
-        int      m_underlyingScalar = -1;        //< Index into AZ::ShaderCompiler::Predefined::Scalar, all fundamentals end up in a scalar at its leaf.
+        uint32_t m_baseSize = 0; //< In bytes. Size of 0 indicates TypeRefInfo which hasn't been resolved or is a struct
+        uint32_t m_rows = 0; //< 0 means it's not a matrix (effective Rows = 1). 1 or more means a Matrix
+        uint32_t m_cols = 0; //< 0 means it's not a vector (effective Cols = 1). 1 or more means a Vector or Matrix
+        int m_conversionRank = 0; //< Used in conversions and promotions
+        int m_underlyingScalar = -1; //< Index into AZ::ShaderCompiler::Predefined::Scalar, all fundamentals end up in a scalar at its leaf.
     };
 
     //! TypeRefInfo holds resolved immutable information of a core type (the `matrix2x2` in `column_major matrix2x2 a[3];`)
@@ -412,11 +426,13 @@ namespace AZ::ShaderCompiler
     struct TypeRefInfo
     {
         TypeRefInfo() = default;
+
         TypeRefInfo(IdentifierUID typeId, const ArithmeticTraits& fundamentalInfo, TypeClass typeClass)
-            : m_arithmeticInfo{fundamentalInfo},
-              m_typeClass{typeClass},
-              m_typeId{typeId}
-        {}
+            : m_typeId{typeId}
+            , m_typeClass{typeClass}
+            , m_arithmeticInfo{fundamentalInfo}
+        {
+        }
 
         //! is plain data: sum type or fundamental. but not enum; because we don't know what underlying they have.
         const bool IsPackable() const
@@ -434,32 +450,36 @@ namespace AZ::ShaderCompiler
         //! if the type is a SubpassInput, it's an input attachment
         bool IsInputAttachment(const azslLexer* lexer) const
         {
-            auto stdSvToAzSv = [](std::string_view sv) { return std::string_view(sv.data(), sv.size()); };
+            auto stdSvToAzSv = [](std::string_view sv)
+            {
+                return std::string_view(sv.data(), sv.size());
+            };
             return IsViewType(m_typeClass)
-                 && (  m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInput)), "\'")
+                && (m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInput)), "\'")
                     || m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputMS)), "\'")
                     || m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDS)), "\'")
                     || m_typeId.GetNameLeaf() == Trim(stdSvToAzSv(lexer->getVocabulary().getLiteralName(azslLexer::SubpassInputDSMS)), "\'"));
         }
 
-        friend bool operator == (const TypeRefInfo& lhs, const TypeRefInfo& rhs)
+        friend bool operator ==(const TypeRefInfo& lhs, const TypeRefInfo& rhs)
         {
             return lhs.m_typeId == rhs.m_typeId;
         }
-        friend bool operator != (const TypeRefInfo& lhs, const TypeRefInfo& rhs)
+
+        friend bool operator !=(const TypeRefInfo& lhs, const TypeRefInfo& rhs)
         {
-            return !operator==(lhs,rhs);
+            return !operator==(lhs, rhs);
         }
 
-        IdentifierUID     m_typeId;
-        TypeClass         m_typeClass;
-        ArithmeticTraits  m_arithmeticInfo;
+        IdentifierUID m_typeId;
+        TypeClass m_typeClass;
+        ArithmeticTraits m_arithmeticInfo;
     };
 
     //! Run a syntactic analysis of an arithmetic type name and extract info on its composition
     inline ArithmeticTraits CreateArithmeticTraits(QualifiedName a_typeName)
     {
-        assert(IsArithmetic( /*slow*/AnalyzeTypeClass(TentativeName{a_typeName}) ));  // no need to call this function if you don't have a fundamental (non void)
+        assert(IsArithmetic( /*slow*/AnalyzeTypeClass(TentativeName{a_typeName}) )); // no need to call this function if you don't have a fundamental (non void)
         assert(!IsGenericArithmetic( /*slow*/AnalyzeTypeClass(TentativeName{a_typeName}) ));
         // ↑ fatal aspect. The input needs to be canonicalized earlier to minimize this function's complexity.
 
@@ -472,7 +492,8 @@ namespace AZ::ShaderCompiler
         // The digits always appear at the end of the type, so we can count back to resolve them
         auto& colsChar = typeName.at(baseTypeLen - 1);
         if (isdigit(colsChar))
-        {   // Fundamental types ending with a digit are either vectors (1, 2, 3, 4) or matrices (1x1, 2x2, 3x3, 4x4, etc)
+        {
+            // Fundamental types ending with a digit are either vectors (1, 2, 3, 4) or matrices (1x1, 2x2, 3x3, 4x4, etc)
 
             // Vectors' sizes are defined in components, we opt to put those in Columns for consistency with the Matrix type below.
             // A float3x4 matrix in DXC is represented as class.matrix.float.3.4 = type { [3 x <4 x float>] }
@@ -481,7 +502,8 @@ namespace AZ::ShaderCompiler
             assert(toReturn.m_cols >= 1 && toReturn.m_cols <= 4); // We should not be hitting asserts with any shader input, this is a bug in the tool
 
             if (baseTypeLen >= 2)
-            {   // It's possible we are in a matrix type so let's check for rows too!
+            {
+                // It's possible we are in a matrix type so let's check for rows too!
 
                 // Documentation: https://docs.microsoft.com/en-us/windows/desktop/direct3dhlsl/dx-graphics-hlsl-per-component-math
                 // A matrix is a data structure that contains rows and columns of data.The data can be any of the scalar data types,
@@ -513,7 +535,7 @@ namespace AZ::ShaderCompiler
 
         auto it = ::std::find(AZ::ShaderCompiler::Predefined::Scalar.begin(), AZ::ShaderCompiler::Predefined::Scalar.end(), baseType);
         assert(it != AZ::ShaderCompiler::Predefined::Scalar.end()); // baseType must exist in the Scalar bag by program invariant.
-        toReturn.m_underlyingScalar = static_cast<int>( std::distance(AZ::ShaderCompiler::Predefined::Scalar.begin(), it) );
+        toReturn.m_underlyingScalar = static_cast<int>(std::distance(AZ::ShaderCompiler::Predefined::Scalar.begin(), it));
         toReturn.ResolveBaseSizeAndRank();
         return toReturn;
     }
@@ -548,15 +570,22 @@ namespace AZ::ShaderCompiler
         return _1;
     }
 
-    MAKE_REFLECTABLE_ENUM(RootParamType,
-        SRV,               // t
-        UAV,               // u
-        Sampler,           // s
-        CBV,               // b, bound under an SrgTable as a View. Used for external buffers
-        SrgConstantCB,     // b, bound through a root descriptor. Used for SRG Constants.
-        RootConstantCB     // b, bound through a CB under root signature. Used for root constants.
+    MAKE_REFLECTABLE_ENUM(
+        RootParamType,
+        SRV,
+        // t
+        UAV,
+        // u
+        Sampler,
+        // s
+        CBV,
+        // b, bound under an SrgTable as a View. Used for external buffers
+        SrgConstantCB,
+        // b, bound through a root descriptor. Used for SRG Constants.
+        RootConstantCB // b, bound through a CB under root signature. Used for root constants.
     );
-    MAKE_REFLECTABLE_ENUM(BindingType, T, U, S, B);  //!< as HLSL register type. (please keep in the same order as RootParamType for simple mapping)
+
+    MAKE_REFLECTABLE_ENUM(BindingType, T, U, S, B); //!< as HLSL register type. (please keep in the same order as RootParamType for simple mapping)
 
     //! map SRV->T | UAV->U | Sampler->S | CBV,SrgConsant,RootConstant->B
     BindingType RootParamTypeToBindingType(RootParamType paramType);

@@ -30,10 +30,10 @@ namespace AZ::ShaderCompiler
         {
             QualifiedName azirName{"?"}; // AZIR prefix for predefined types
             azirName += symbol;
-            auto& [uid, kindInfo] = st.AddIdentifier(azirName, Kind::Type);  // the kind is Type because all predefined are stored as such.
-            auto& typeInfo        = kindInfo.GetSubAfterInitAs<Kind::Type>();
-            auto typeClass        = TypeClass::FromStr(bag.m_name);
-            auto arithmetic       = IsNonGenericArithmetic(typeClass) ? CreateArithmeticTraits(azirName) : ArithmeticTraits{}; // TODO: canonicalize generics
+            auto& [uid, kindInfo] = st.AddIdentifier(azirName, Kind::Type); // the kind is Type because all predefined are stored as such.
+            auto& typeInfo = kindInfo.GetSubAfterInitAs<Kind::Type>();
+            auto typeClass = TypeClass::FromStr(bag.m_name);
+            auto arithmetic = IsNonGenericArithmetic(typeClass) ? CreateArithmeticTraits(azirName) : ArithmeticTraits{}; // TODO: canonicalize generics
             typeInfo = TypeRefInfo{uid, arithmetic, typeClass};
         }
     }
@@ -53,7 +53,12 @@ namespace AZ::ShaderCompiler
         // another helpful canonicalization is for types.
         // let's register all predefined so that TypeRef can be simplified to IdentifierUID
         // the (pack op ...) is a C++17 unary-right-fold-expression using comma as op
-        std::apply([&st](auto&&... args) {(AddTypeBag(args, st), ...);}, AZ::ShaderCompiler::Predefined::All);
+        std::apply(
+            [&st](auto&&... args)
+            {
+                (AddTypeBag(args, st), ...);
+            },
+            AZ::ShaderCompiler::Predefined::All);
 
         verboseCout.m_on = oldVerbosity;
         verboseCout << " done\n";
@@ -62,7 +67,7 @@ namespace AZ::ShaderCompiler
     }
 
     SymbolAggregator::SymbolAggregator()
-        : m_fixed{ InitFixedTable() }
+        : m_fixed{InitFixedTable()}
     {
     }
 
@@ -75,7 +80,8 @@ namespace AZ::ShaderCompiler
     {
         auto toReturn = m_elastic.GetIdAndKindInfo(symbol);
         if (!toReturn)
-        {   // I am going to go ahead and tolerate returning of non const data to the fixed table.
+        {
+            // I am going to go ahead and tolerate returning of non const data to the fixed table.
             // Not ideal, but will cause much lost time and pondering, if we don't consider it through non-const Gets.
             toReturn = const_cast<std::remove_const_t<decltype(m_fixed)>&>(m_fixed).GetIdAndKindInfo(symbol);
         }
@@ -102,10 +108,14 @@ namespace AZ::ShaderCompiler
         };
 
         if (checkPolicy == AddIdentifierChecks::ReservedNames && (
-                IsIn(symbol, ReservedNames) || IsIn(ExtractLeaf(symbol), ReservedNames) ))
+            IsIn(symbol, ReservedNames) || IsIn(ExtractLeaf(symbol), ReservedNames)))
         {
-            throw AzslcException(ADVANCED_RESERVED_NAME_USED, "Symbol", lineNumber, std::nullopt,
-                                 ConcatString(symbol, " is a reserved name"));
+            throw AzslcException(
+                ADVANCED_RESERVED_NAME_USED,
+                "Symbol",
+                lineNumber,
+                std::nullopt,
+                ConcatString(symbol, " is a reserved name"));
         }
         auto& symAndKind = m_elastic.AddIdentifier(symbol, kind, lineNumber);
         AttachAccumulatedAttributes(symAndKind.first);
@@ -122,7 +132,8 @@ namespace AZ::ShaderCompiler
     {
         using namespace std::string_literals;
         if (IsRooted(name))
-        {   // It is possible that fully-qualified symbols find their way inside unqualified-tainted names.
+        {
+            // It is possible that fully-qualified symbols find their way inside unqualified-tainted names.
             // For the reason mentioned in the comment decorating ExtractNameFromIdExpression() function. please refer.
             // Even fully qualified inputs must go through lookup resolution (to solve inherited access)
             return LookupSymbol(QualifiedNameView{"/"}, UnqualifiedNameView{Slice(name, 1, -1)});
@@ -166,23 +177,24 @@ namespace AZ::ShaderCompiler
                 }
             }
             path = LevelUp(path);
-        } while (!got && !exit);
+        }
+        while (!got && !exit);
         return got;
     }
 
     UnqualifiedName SymbolAggregator::FindLeastQualifiedName(QualifiedNameView scope, IdentifierUID uid)
     {
         // start from the completely unqualified version:
-        IdAndKind*          got;
-        UnqualifiedName     name;
-        QualifiedName       target = RemoveLastParenthesisGroup(uid.GetName());
-        UnqualifiedName     nextname = ExtractLeaf(target);
+        IdAndKind* got;
+        UnqualifiedName name;
+        QualifiedName target = RemoveLastParenthesisGroup(uid.GetName());
+        UnqualifiedName nextname = ExtractLeaf(target);
         std::vector<std::string_view> split = SplitPath(uid.m_name);
-        bool                found = false;
-        int                 numsplits = static_cast<int>(split.size());
-        for (int i = numsplits - 2;  // start from leaf-1 (e.g. from "/A/B/Leaf", name is already Leaf, we need to prepend "B", then "A")
-             i >= -1 && !found;  // loop until found, or for "all elements in the split, +1" (for the opportunity to try out the last nextname)
-             --i)                // progressively add qualifiers
+        bool found = false;
+        int numsplits = static_cast<int>(split.size());
+        for (int i = numsplits - 2; // start from leaf-1 (e.g. from "/A/B/Leaf", name is already Leaf, we need to prepend "B", then "A")
+             i >= -1 && !found; // loop until found, or for "all elements in the split, +1" (for the opportunity to try out the last nextname)
+             --i) // progressively add qualifiers
         {
             name = nextname;
             got = LookupSymbol(scope, name);
@@ -214,19 +226,24 @@ namespace AZ::ShaderCompiler
     const std::vector<AttributeInfo>* SymbolAggregator::GetAttributeList(const IdentifierUID& uid) const
     {
         auto attrList = m_idToAttributeMap.find(uid);
-        return attrList == m_idToAttributeMap.end() ?
-              nullptr
-            : &attrList->second;
+        return attrList == m_idToAttributeMap.end()
+                   ? nullptr
+                   : &attrList->second;
     }
 
     static std::optional<AttributeInfo> FindAttributeByNameInList(const std::vector<AttributeInfo>& attrList, const std::string& attributeName)
     {
-        auto iter = std::find_if(attrList.begin(), attrList.end(),
-            [=](const auto& attrInfo) { return attrInfo.m_attribute == attributeName; });
+        auto iter = std::find_if(
+            attrList.begin(),
+            attrList.end(),
+            [=](const auto& attrInfo)
+            {
+                return attrInfo.m_attribute == attributeName;
+            });
 
-        return iter == attrList.end() ?
-              std::nullopt
-            : std::optional{ *iter };
+        return iter == attrList.end()
+                   ? std::nullopt
+                   : std::optional{*iter};
     }
 
     std::optional<AttributeInfo> SymbolAggregator::GetAttribute(const IdentifierUID& uid, const std::string& attributeName) const
@@ -263,9 +280,10 @@ namespace AZ::ShaderCompiler
         {
             name = Slice(name, 0, name.find_first_of(disambiguatorChar));
             KindInfo& ki = GetIdAndKindInfo(QualifiedNameView{name})->second;
-            return std::make_tuple(ki.IsKindOneOf(Kind::Function, Kind::OverloadSet),
-                                   ki.IsKindOneOf(Kind::Variable),
-                                   IsKindOneOfTypeRelated(ki.GetKind()));
+            return std::make_tuple(
+                ki.IsKindOneOf(Kind::Function, Kind::OverloadSet),
+                ki.IsKindOneOf(Kind::Variable),
+                IsKindOneOfTypeRelated(ki.GetKind()));
         };
         // instanciate an empty solver and fill it up with the elastic symbols from the aggregator to reorder them
         DependencySolver<IdentifierUID, 50_maxdep_pernode> solver;
@@ -306,9 +324,9 @@ namespace AZ::ShaderCompiler
                 bool curIsT = std::get<2>(isFunctionOrVariableOrType(disambiguated.GetName()));
                 bool isNestedType = curIsT && symbolDepth > 0;
                 // verifying !lastIsFunction, permits to break dependency cycles.
-                if (sameParentAsLast && !lastIsFunction && !(isNestedType && parentIsT))  // in "class C { int a; struct S{}; };"  `S` cannot depend on `a` otherwise `a` is pulled out of C
+                if (sameParentAsLast && !lastIsFunction && !(isNestedType && parentIsT)) // in "class C { int a; struct S{}; };"  `S` cannot depend on `a` otherwise `a` is pulled out of C
                 {
-                    solver.AddDependency(disambiguated, lastSymbolAtCurrentLevel.top());  // make link:  ● 'g_fog' ← ● 'class C'
+                    solver.AddDependency(disambiguated, lastSymbolAtCurrentLevel.top()); // make link:  ● 'g_fog' ← ● 'class C'
                 }
                 lastSymbolAtCurrentLevel.top() = disambiguated;
             }
@@ -318,49 +336,51 @@ namespace AZ::ShaderCompiler
                 // establish vertical links
                 std::string path;
                 IdentifierUID parent;
-                ForEachPathPart(disambiguated.GetName(), [this, &solver, &path, &parent, &isFunctionOrVariableOrType](PathPart part)
-                                {
-                                    path = JoinPath(path, part.m_slice);
-                                    auto [isFunc, isVar, _] = isFunctionOrVariableOrType(path);
-                                    IdentifierUID current{QualifiedNameView{path}};
-                                    bool parentIsEmptyOrRoot = parent.IsEmpty() || parent.GetName() == "/";
-                                    if (!parentIsEmptyOrRoot)
-                                    {
-                                        if (isFunc)
-                                        {
-                                            // functions depends on containing-scope's content
-                                            // e.g.
-                                            //    SRG A {
-                                            //       T var;
-                                            //       void Func() { var=x; }  // Func depends on var
-                                            //    }
-                                            // since the Emitter will pull Func out, we need it to appear after var.
-                                            // and var will be defined by the mutated form of A.
-                                            //   A problem this poses, is if any var depends on Func.
-                                            //   Which would be possible through initializers. example:
-                                            //      SRG A {
-                                            //         int getzero();
-                                            //         int var = getzero();
-                                            //      }
-                                            //   This situation is ill-formed
-                                            solver.AddDependency(current, parent);
-                                        }
-                                        else if (!isVar)
-                                        {
-                                            // types cannot depend on their containing symbol, it's the other way around.
-                                            //    class A {
-                                            //       class B{ A a; }; // error (A is incomplete)
-                                            //    };
-                                            // however, since symbol migrations in the Emitter may pull B out,
-                                            // we need B to appear before A. therefore A depends on B.
-                                            solver.AddDependency(parent, current);
-                                        }
-                                    }
-                                    if (!(isFunc || isVar) || parentIsEmptyOrRoot)
-                                    {
-                                        parent = current;
-                                    }
-                                });
+                ForEachPathPart(
+                    disambiguated.GetName(),
+                    [this, &solver, &path, &parent, &isFunctionOrVariableOrType](PathPart part)
+                    {
+                        path = JoinPath(path, part.m_slice);
+                        auto [isFunc, isVar, _] = isFunctionOrVariableOrType(path);
+                        IdentifierUID current{QualifiedNameView{path}};
+                        bool parentIsEmptyOrRoot = parent.IsEmpty() || parent.GetName() == "/";
+                        if (!parentIsEmptyOrRoot)
+                        {
+                            if (isFunc)
+                            {
+                                // functions depends on containing-scope's content
+                                // e.g.
+                                //    SRG A {
+                                //       T var;
+                                //       void Func() { var=x; }  // Func depends on var
+                                //    }
+                                // since the Emitter will pull Func out, we need it to appear after var.
+                                // and var will be defined by the mutated form of A.
+                                //   A problem this poses, is if any var depends on Func.
+                                //   Which would be possible through initializers. example:
+                                //      SRG A {
+                                //         int getzero();
+                                //         int var = getzero();
+                                //      }
+                                //   This situation is ill-formed
+                                solver.AddDependency(current, parent);
+                            }
+                            else if (!isVar)
+                            {
+                                // types cannot depend on their containing symbol, it's the other way around.
+                                //    class A {
+                                //       class B{ A a; }; // error (A is incomplete)
+                                //    };
+                                // however, since symbol migrations in the Emitter may pull B out,
+                                // we need B to appear before A. therefore A depends on B.
+                                solver.AddDependency(parent, current);
+                            }
+                        }
+                        if (!(isFunc || isVar) || parentIsEmptyOrRoot)
+                        {
+                            parent = current;
+                        }
+                    });
             }
         }
         assert(solver.m_order.size() == m_elastic.m_order.size());
@@ -372,4 +392,4 @@ namespace AZ::ShaderCompiler
         }
         m_elastic.m_order = std::move(solver.m_order);
     }
-}  // end of namespace AZ::ShaderCompiler
+} // end of namespace AZ::ShaderCompiler

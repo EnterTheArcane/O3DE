@@ -18,12 +18,16 @@ namespace AZ::ShaderCompiler
     {
         if (!options.m_maxSpaces)
         {
-            throw std::runtime_error{ "--max-spaces must be greater than 0" };
+            throw std::runtime_error{"--max-spaces must be greater than 0"};
         }
         m_options = options;
     }
 
-    bool UnboundedArraysValidator::CheckUnboundedArrayFieldCanBeAddedToSrg(const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
+    bool UnboundedArraysValidator::CheckUnboundedArrayFieldCanBeAddedToSrg(
+        const IdentifierUID& srgUid,
+        const IdentifierUID& varUid,
+        const VarInfo& varInfo,
+        TypeClass typeClass,
         std::string* errorMessage)
     {
         if (!CanBeDeclaredAsUnboundedArray(typeClass))
@@ -38,7 +42,12 @@ namespace AZ::ShaderCompiler
         return true;
     }
 
-    bool UnboundedArraysValidator::CheckFieldCanBeAddedToSrg(bool isUnboundedArray, const IdentifierUID& srgUid, const IdentifierUID& varUid, const VarInfo& varInfo, TypeClass typeClass,
+    bool UnboundedArraysValidator::CheckFieldCanBeAddedToSrg(
+        bool isUnboundedArray,
+        const IdentifierUID& srgUid,
+        const IdentifierUID& varUid,
+        const VarInfo& varInfo,
+        TypeClass typeClass,
         std::string* errorMessage)
     {
         if (isUnboundedArray)
@@ -83,5 +92,4 @@ namespace AZ::ShaderCompiler
         }
         return spaceIndex;
     }
-
 } // namespace AZ::ShaderCompiler

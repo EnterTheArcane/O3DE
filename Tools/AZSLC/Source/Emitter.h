@@ -30,18 +30,17 @@ namespace AZ::ShaderCompiler
 {
     enum class EmitFunctionAs
     {
-        Declaration,
-        Definition
+        Declaration, Definition,
     };
 
     struct CodeEmitter : Backend
     {
         CodeEmitter(IntermediateRepresentation* ir, TokenStream* tokens, std::ostream& out, PreprocessorLineDirectiveFinder* lineFinder)
-            :
-            Backend(ir, tokens),
-            m_out(out),
-            m_lineFinder(lineFinder)
-        {}
+            : Backend(ir, tokens)
+            , m_out(out)
+            , m_lineFinder(lineFinder)
+        {
+        }
 
         //! Create a companion database of mutations on the IR, through which the emitter backend can query symbols scope and names.
         //! The state of changes is stored in the AZ::ShaderCompiler::SymbolTranslation class
@@ -64,19 +63,21 @@ namespace AZ::ShaderCompiler
         //! Write the HLSL formatted shape of an attribute into a stream
         static void EmitAttribute(const AttributeInfo& attrInfo, Streamable& outstream);
 
-        void AddCodeMutator(ICodeEmissionMutator* codeMutator) { m_codeMutators.push_back(codeMutator); }
+        void AddCodeMutator(ICodeEmissionMutator* codeMutator)
+        {
+            m_codeMutators.push_back(codeMutator);
+        }
 
         //! It would be nice that the clients don't push text through the passed "out" stream since it's not observed by the line counter;
         //! use this API in case of custom client text pushing.
-        template< typename Streamable >
-        CodeEmitter& operator << (Streamable&& s)
+        template <typename Streamable>
+        CodeEmitter& operator <<(Streamable&& s)
         {
             m_out << s;
             return *this;
         }
 
     protected:
-
         //! Emits the closest preprocessor generated "#line <int> <filepath>" directive located before
         //! @originalLineNumber. Keeps track of the best finds so the #line directives are not emitted more than once.
         void EmitPreprocessorLineDirective(size_t originalLineNumber);
@@ -95,14 +96,16 @@ namespace AZ::ShaderCompiler
 
         void EmitEnum(const IdentifierUID& uid, const ClassInfo& classInfo, const Options& options);
 
-		//! Emits root constants
+        //! Emits root constants
         void EmitRootConstants(const RootSigDesc& rootSig, const Options& options) const;
 
-		//! Emits get function declarations for root constant members
+        //! Emits get function declarations for root constant members
         void EmitGetterFunctionDeclarationsForRootConstants(const IdentifierUID& uid) const;
 
         struct Except : std::initializer_list<std::string>
-        {};
+        {
+        };
+
         //! Emit all attributes accumulated over a symbol. Omit an optional list of attributes passed as 2nd argument.
         void EmitAllAttachedAttributes(const IdentifierUID& uid, Except = {}) const;
 
@@ -110,13 +113,19 @@ namespace AZ::ShaderCompiler
         void EmitGetFunctionsForRootConstants(const ClassInfo& classInfo, std::string_view bufferName) const;
 
         //! That is a list of code elements we possibly want to emit (e.g when we emit a variable declaration)
-        MAKE_REFLECTABLE_ENUM_POWER( VarDeclHas,
-            InOutModifiers,  // when we emit in the context of function parameters, HLSL in out keywords are important
-            HlslSemantics,   //  : TEXCOORD sort of element
-            Initializer,     // = val;  sort of element
-            OptionDefine,    // an option define is not a code element but an indicator that we're emitting a shader option
-            NoType,          // in the usual declaration 'Type varname', omit the type. this is used for enumerators
-            NoModifiers      // modifiers are storage flags (const, precise, rowmajor...)
+        MAKE_REFLECTABLE_ENUM_POWER(
+            VarDeclHas,
+            InOutModifiers,
+            // when we emit in the context of function parameters, HLSL in out keywords are important
+            HlslSemantics,
+            //  : TEXCOORD sort of element
+            Initializer,
+            // = val;  sort of element
+            OptionDefine,
+            // an option define is not a code element but an indicator that we're emitting a shader option
+            NoType,
+            // in the usual declaration 'Type varname', omit the type. this is used for enumerators
+            NoModifiers // modifiers are storage flags (const, precise, rowmajor...)
         );
 
         using VarDeclHasFlag = Flag<VarDeclHas>;
@@ -128,8 +137,8 @@ namespace AZ::ShaderCompiler
         void EmitParameters(Iter begin, Iter end, const Options& options, bool withInitializer)
         {
             for (auto it = begin;
-                      it != end;
-                    ++it)
+                 it != end;
+                 ++it)
             {
                 const FunctionInfo::Parameter& param = *it;
                 auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(param.m_varId.GetName());
@@ -194,7 +203,10 @@ namespace AZ::ShaderCompiler
         //! Will copy function body original tokens, skipping comments, reformatting if possible, and translating variable declarations when needed, as well as mutating reference names of migrated SRG contents.
         void EmitTranspiledTokens(misc::Interval interval, Streamable& output) const override;
 
-        void EmitTranspiledTokens(misc::Interval interval) const { EmitTranspiledTokens(interval, m_out); }
+        void EmitTranspiledTokens(misc::Interval interval) const
+        {
+            EmitTranspiledTokens(interval, m_out);
+        }
 
         //! Move a symbol to a different scope. Currently used to strip SRGs of their symbols, so that SRGs are effectively erased.
         void MigrateASTSubTree(const IdentifierUID& azslSymbol, QualifiedNameView landingScope);
@@ -210,6 +222,7 @@ namespace AZ::ShaderCompiler
 
         //! Stateful check to normalize redundant declarations
         bool AlreadyEmittedFunctionDeclaration(const IdentifierUID& uid) const;
+
         bool AlreadyEmittedFunctionDefinition(const IdentifierUID& uid) const;
 
         //! Helper function used during GetTextInStream().

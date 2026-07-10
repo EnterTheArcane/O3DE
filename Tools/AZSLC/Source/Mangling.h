@@ -8,7 +8,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -37,9 +36,15 @@ namespace AZ::ShaderCompiler
         QualifiedName() = default;
 
         // Provide implicit compatibility from string_view for sheer convenience
-        QualifiedName(std::string_view sv) : std::string(sv) {}
+        QualifiedName(std::string_view sv)
+            : std::string(sv)
+        {
+        }
 
-        friend size_t hash_value(const QualifiedName& arg) { return std::hash<std::string>{}(arg); }
+        friend size_t hash_value(const QualifiedName& arg)
+        {
+            return std::hash<std::string>{}(arg);
+        }
     };
 
     //! In AZSL, Unqualified is a relative symbol. (can have some scope resolution operator, but not starting from global)
@@ -48,14 +53,20 @@ namespace AZ::ShaderCompiler
     {
         UnqualifiedName() = default;
 
-        UnqualifiedName(std::string_view sv) : std::string(sv) {}
+        UnqualifiedName(std::string_view sv)
+            : std::string(sv)
+        {
+        }
 
-        friend size_t hash_value(const UnqualifiedName& arg) { return std::hash<std::string>{}(arg); }
+        friend size_t hash_value(const UnqualifiedName& arg)
+        {
+            return std::hash<std::string>{}(arg);
+        }
     };
 
     // These 2 asserts verify that the whole exercise is functioning
-    static_assert( !std::is_convertible< QualifiedName, UnqualifiedName >::value );
-    static_assert( !std::is_convertible< UnqualifiedName, QualifiedName >::value );
+    static_assert(!std::is_convertible<QualifiedName, UnqualifiedName>::value);
+    static_assert(!std::is_convertible<UnqualifiedName, QualifiedName>::value);
     // Hereunder is the problem underlined by the nonexplicit conversion operator, we created a path,
     // that the compiler can take from one to another during explicit construction.
     // Ideally I want these asserts to verify. But we need to create the painful unordered requirements.
@@ -64,7 +75,7 @@ namespace AZ::ShaderCompiler
     //static_assert( !std::is_constructible< UnqualifiedName, QualifiedName >::value );
 }
 
-template<>
+template <>
 struct std::hash<AZ::ShaderCompiler::QualifiedName>
 {
     size_t operator()(const AZ::ShaderCompiler::QualifiedName& qn) const noexcept
@@ -73,7 +84,7 @@ struct std::hash<AZ::ShaderCompiler::QualifiedName>
     }
 };
 
-template<>
+template <>
 struct std::hash<AZ::ShaderCompiler::UnqualifiedName>
 {
     size_t operator()(const AZ::ShaderCompiler::UnqualifiedName& qn) const noexcept
@@ -90,11 +101,20 @@ namespace AZ::ShaderCompiler
         constexpr QualifiedNameView() = default;
 
         template <typename... Args>
-        explicit constexpr QualifiedNameView(Args&&... args) : std::string_view(std::forward<Args>(args)...) {}
+        explicit constexpr QualifiedNameView(Args&&... args)
+            : std::string_view(std::forward<Args>(args)...)
+        {
+        }
 
-        QualifiedNameView(const QualifiedName& qn) : std::string_view(static_cast<const std::string&>(qn)) {}
+        QualifiedNameView(const QualifiedName& qn)
+            : std::string_view(static_cast<const std::string&>(qn))
+        {
+        }
 
-        friend size_t hash_value(const QualifiedNameView& arg) { return std::hash<std::string_view>{}(arg); }
+        friend size_t hash_value(const QualifiedNameView& arg)
+        {
+            return std::hash<std::string_view>{}(arg);
+        }
     };
 
     struct UnqualifiedNameView : std::string_view
@@ -102,18 +122,27 @@ namespace AZ::ShaderCompiler
         constexpr UnqualifiedNameView() = default;
 
         template <typename... Args>
-        explicit constexpr UnqualifiedNameView(Args&&... args) : std::string_view(std::forward<Args>(args)...) {}
+        explicit constexpr UnqualifiedNameView(Args&&... args)
+            : std::string_view(std::forward<Args>(args)...)
+        {
+        }
 
-        UnqualifiedNameView(const UnqualifiedName& qn) : std::string_view(static_cast<const std::string&>(qn)) {}
+        UnqualifiedNameView(const UnqualifiedName& qn)
+            : std::string_view(static_cast<const std::string&>(qn))
+        {
+        }
 
-        friend size_t hash_value(const UnqualifiedNameView& arg) { return std::hash<std::string_view>{}(arg); }
+        friend size_t hash_value(const UnqualifiedNameView& arg)
+        {
+            return std::hash<std::string_view>{}(arg);
+        }
     };
 
-    static_assert(!std::is_convertible< QualifiedNameView, UnqualifiedNameView >::value);
-    static_assert(!std::is_convertible< UnqualifiedNameView, QualifiedNameView >::value);
+    static_assert(!std::is_convertible<QualifiedNameView, UnqualifiedNameView>::value);
+    static_assert(!std::is_convertible<UnqualifiedNameView, QualifiedNameView>::value);
 }
 
-template<>
+template <>
 struct std::hash<AZ::ShaderCompiler::QualifiedNameView>
 {
     size_t operator()(const AZ::ShaderCompiler::QualifiedNameView& qn) const noexcept
@@ -122,7 +151,7 @@ struct std::hash<AZ::ShaderCompiler::QualifiedNameView>
     }
 };
 
-template<>
+template <>
 struct std::hash<AZ::ShaderCompiler::UnqualifiedNameView>
 {
     size_t operator()(const AZ::ShaderCompiler::UnqualifiedNameView& qn) const noexcept
@@ -170,7 +199,7 @@ namespace AZ::ShaderCompiler
         // find matched parenthesis going backward
         for (auto iter = name.rbegin(); iter != name.rend(); ++iter)
         {
-            bool close = *iter == '(';  // since we go backward ( is the end of a group
+            bool close = *iter == '('; // since we go backward ( is the end of a group
             bool open = *iter == ')';
             level = open ? level + 1 : (close ? level - 1 : level);
             if (level <= 0)
@@ -200,7 +229,8 @@ namespace AZ::ShaderCompiler
     inline std::string ReplaceSeparators(std::string name, std::string_view replacement)
     {
         if (IsRooted(name))
-        {   // remove leading slash/questionmark to lighten output
+        {
+            // remove leading slash/questionmark to lighten output
             name = Slice(name, 1, -1);
         }
         return std::regex_replace(name, std::regex("\\/"), replacement.data());
@@ -210,9 +240,10 @@ namespace AZ::ShaderCompiler
 
     enum FlattenStrategy
     {
-        PreserveArgumentsUnicity,  //!< x(a) will be x_a
-        CollapseArguments          //!< x(a) will be x
+        PreserveArgumentsUnicity, //!< x(a) will be x_a
+        CollapseArguments, //!< x(a) will be x
     };
+
     //! can be used at emission to flatten symbols into the global scope.
     //! symbol names are stored with path separators. like such:
     //! name = "/MyStruct/m_myVar"
@@ -258,10 +289,11 @@ namespace AZ::ShaderCompiler
         auto lastSlash = anyname.rfind("/");
         while (WithinMatchedParentheses(anyname, lastSlash))
         {
-            lastSlash = anyname.rfind("/", lastSlash-1);
+            lastSlash = anyname.rfind("/", lastSlash - 1);
         }
         if (lastSlash == std::string::npos)
-        {   // if there is no slash at all, or is not rooted
+        {
+            // if there is no slash at all, or is not rooted
             return UnqualifiedNameView{RemoveFloatingMark(anyname)};
         }
         return UnqualifiedNameView{RemoveFloatingMark(Slice(anyname, lastSlash + 1, -1))};
@@ -284,23 +316,24 @@ namespace AZ::ShaderCompiler
     inline size_t CountParameters(std::string_view mangledFunctionName)
     {
         auto leaf = ExtractLeaf(mangledFunctionName);
-        return EndsWith(leaf, "()") || !EndsWith(leaf, ")")  // no-arg function or not-a-function
-            ? 0
-            : 1 + std::count(leaf.begin(), leaf.end(), ',');  // this isn't robust if types may hold comma (and it's the case for generics and function-types)
+        return EndsWith(leaf, "()") || !EndsWith(leaf, ")") // no-arg function or not-a-function
+                   ? 0
+                   : 1 + std::count(leaf.begin(), leaf.end(), ','); // this isn't robust if types may hold comma (and it's the case for generics and function-types)
     }
 
     enum class JoinPolicy
     {
-        EmptyMeansRoot,  // empty stem is joined as a root
-        EmptyMeansEmpty  // empty stem is nil and doesn't participate in join
+        EmptyMeansRoot, // empty stem is joined as a root
+        EmptyMeansEmpty, // empty stem is nil and doesn't participate in join
     };
+
     //! return "A/B" if passed stem="A/" and leaf="B"
     //!        "A/B" if passed stem="A"  and leaf="B"
     //!        "/A"  if passed stem=""   and leaf="A" (if policy is EmptyMeansRoot)
     //!        "A"   if passed stem=""   and leaf="A" (if policy is EmptyMeansEmpty)
     inline std::string JoinPath(std::string_view stem, std::string_view leaf, JoinPolicy policy = JoinPolicy::EmptyMeansRoot)
     {
-        if ((stem.empty() || leaf.empty() ) && policy == JoinPolicy::EmptyMeansEmpty)
+        if ((stem.empty() || leaf.empty()) && policy == JoinPolicy::EmptyMeansEmpty)
         {
             return std::string{stem.empty() ? leaf : stem};
         }
@@ -326,12 +359,14 @@ namespace AZ::ShaderCompiler
     inline std::string_view LevelUp(std::string_view path)
     {
         if (path == "/")
-        {   // special case
+        {
+            // special case
             return "/";
         }
 
         if (EndsWith(path, "/"))
-        {   // remove this nuisance early, to canonicalize input.
+        {
+            // remove this nuisance early, to canonicalize input.
             // -1 is the end, -2 is 1 earlier than end. (think python slices)
             path = Slice(path, 0, -2);
         }
@@ -341,7 +376,8 @@ namespace AZ::ShaderCompiler
             lastSlash = path.rfind("/", lastSlash - 1);
         }
         if (lastSlash == std::string::npos)
-        {   // no slash at all
+        {
+            // no slash at all
             return "";
         }
         return Slice(path, 0, lastSlash + 1);
@@ -374,8 +410,8 @@ namespace AZ::ShaderCompiler
     struct PathPart
     {
         std::string_view m_slice;
-        size_t      m_sliceBegin;
-        size_t      m_sliceLen;
+        size_t m_sliceBegin;
+        size_t m_sliceLen;
     };
 
     inline bool IsGlobal(QualifiedNameView sym)
@@ -424,10 +460,12 @@ namespace AZ::ShaderCompiler
         const size_t numSlashes = std::count(path.begin(), path.end(), '/'); // in the case of "/X(/a)" numSlashes overshoots, so we only use it for reservation
         std::vector<std::string_view> split;
         split.reserve(numSlashes);
-        ForEachPathPart(path, [&split](const PathPart& ppart)
-                        {
-                            split.push_back(ppart.m_slice);
-                        });
+        ForEachPathPart(
+            path,
+            [&split](const PathPart& ppart)
+            {
+                split.push_back(ppart.m_slice);
+            });
         return split;
     }
 
@@ -436,7 +474,7 @@ namespace AZ::ShaderCompiler
     //! however "/" and "/ns/" are invalid input. because they are ambiguous. fix your input first.
     inline size_t GetSymbolDepth(std::string_view mangledName)
     {
-        assert(!EndsWith(mangledName, "/"));  // principle of least astonishment -> make an error of this case
+        assert(!EndsWith(mangledName, "/")); // principle of least astonishment -> make an error of this case
         return std::count(mangledName.begin(), mangledName.end(), '/');
     }
 
@@ -454,7 +492,7 @@ namespace AZ::ShaderCompiler
 
     //! produce a string of the form "(/t1,/t2,/t3)"
     //! where `begin` and `end` represents a range over resolved types fully qualified names (FQN)
-    template< typename IteratorType >
+    template <typename IteratorType>
     inline std::string CreateDecorationOfFunction(IteratorType begin, IteratorType end)
     {
         static_assert(std::is_same_v<typename std::iterator_traits<IteratorType>::value_type, QualifiedNameView> || std::is_same_v<typename std::iterator_traits<IteratorType>::value_type, QualifiedName>);
@@ -497,12 +535,12 @@ namespace AZ::ShaderCompiler
         }
 
         // for hash table keying:
-        friend bool operator == (const IdentifierUID& lhs, const IdentifierUID& rhs)
+        friend bool operator ==(const IdentifierUID& lhs, const IdentifierUID& rhs)
         {
             return lhs.m_name == rhs.m_name;
         }
 
-        friend bool operator != (const IdentifierUID& lhs, const IdentifierUID& rhs)
+        friend bool operator !=(const IdentifierUID& lhs, const IdentifierUID& rhs)
         {
             return !operator==(lhs, rhs);
         }
@@ -513,22 +551,22 @@ namespace AZ::ShaderCompiler
         }
 
         // for ordered container insertion:
-        friend bool operator < (const IdentifierUID& lhs, const IdentifierUID& rhs)
+        friend bool operator <(const IdentifierUID& lhs, const IdentifierUID& rhs)
         {
             return lhs.m_name < rhs.m_name;
         }
 
-        friend std::ostream& operator << (std::ostream& stream, const IdentifierUID& id)
+        friend std::ostream& operator <<(std::ostream& stream, const IdentifierUID& id)
         {
             stream << id.m_name.c_str();
             return stream;
         }
 
-        QualifiedName m_name;  // mangled symbol's absolute unique name. example: "/sdk/gfx/Device" or "?float"
+        QualifiedName m_name; // mangled symbol's absolute unique name. example: "/sdk/gfx/Device" or "?float"
     };
 }
 
-template<>
+template <>
 struct std::hash<AZ::ShaderCompiler::IdentifierUID>
 {
     size_t operator()(const AZ::ShaderCompiler::IdentifierUID& arg) const noexcept
@@ -537,7 +575,7 @@ struct std::hash<AZ::ShaderCompiler::IdentifierUID>
     }
 };
 
-template<>
+template <>
 struct std::equal_to<AZ::ShaderCompiler::IdentifierUID>
 {
     bool operator()(const AZ::ShaderCompiler::IdentifierUID& lhs, const AZ::ShaderCompiler::IdentifierUID& rhs) const
@@ -553,14 +591,22 @@ namespace AZ::ShaderCompiler
     bool ContainsSameLeafName(const ContainerOfIdUID& ctr, UnqualifiedNameView uqName)
     {
         assert(!IsRooted(uqName));
-        return Contains(ctr.begin(), ctr.end(), [&](decltype(*ctr.begin()) elem) {return elem.GetNameLeaf() == uqName; });
+        return Contains(
+            ctr.begin(),
+            ctr.end(),
+            [&](decltype(*ctr.begin()) elem)
+            {
+                return elem.GetNameLeaf() == uqName;
+            });
     }
 }
 
 #ifndef NDEBUG
 namespace AZ::Tests
 {
-    inline void Func(AZ::ShaderCompiler::UnqualifiedName un) {}
+    inline void Func(AZ::ShaderCompiler::UnqualifiedName un)
+    {
+    }
 
     inline void DoAsserts5()
     {
@@ -640,7 +686,7 @@ namespace AZ::Tests
 
         QualifiedName qn;
         // moderately shameful that this compiles:
-        UnqualifiedName uqn{ qn };  // mitigation c.f. comment around the is_constructible earlier in this file
+        UnqualifiedName uqn{qn}; // mitigation c.f. comment around the is_constructible earlier in this file
         // desired:   (uncomment to verify)
         // UnqualifiedName uqn2 = qn;  Error C2440 'initializing': cannot convert from 'AZ::ShaderCompiler::QualifiedName' to 'AZ::ShaderCompiler::UnqualifiedName'
 

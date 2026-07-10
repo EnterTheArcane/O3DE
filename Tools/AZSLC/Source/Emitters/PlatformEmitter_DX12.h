@@ -23,14 +23,20 @@ namespace AZ::ShaderCompiler
         static const PlatformEmitter* RegisterPlatformEmitter() noexcept(false);
 
         [[nodiscard]]
-        std::string GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const override final;
+        std::string GetRootSig(const CodeEmitter& codeEmitter, const RootSigDesc& rootSig, const Options& options, BindingPair::Set signatureQuery) const final;
 
-        bool RequiresUniqueSpaceForUnboundedArrays() const override {return true;}
+        bool RequiresUniqueSpaceForUnboundedArrays() const override
+        {
+            return true;
+        }
 
         [[nodiscard]]
         std::string GetSpecializationConstant(const CodeEmitter& codeEmitter, const IdentifierUID& symbol, const Options& options) const override;
 
     private:
-        PlatformEmitter_DX12() : PlatformEmitter {} {};
+        PlatformEmitter_DX12()
+            : PlatformEmitter{}
+        {
+        };
     };
 }

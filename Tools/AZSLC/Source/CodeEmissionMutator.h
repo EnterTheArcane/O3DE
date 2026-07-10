@@ -43,5 +43,4 @@ namespace AZ::ShaderCompiler
         //! tokenIndex refers to the exact same integral as returned by antlr4::Token::getTokenIndex().
         virtual const CodeMutation* GetMutation(ssize_t tokenIndex) const = 0;
     };
-
 } // namespace AZ::ShaderCompiler

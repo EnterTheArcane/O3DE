@@ -24,7 +24,7 @@
 
 namespace AZ::ShaderCompiler
 {
-    namespace  // utility helpers to raise the abstraction level of SemanticOrchestrator's methods.
+    namespace // utility helpers to raise the abstraction level of SemanticOrchestrator's methods.
     {
         Packing::MatrixMajor ExtractMatrixMajorness(TypeQualifiers variableQualificationFlags)
         {
@@ -71,17 +71,21 @@ namespace AZ::ShaderCompiler
             auto ngFlags = Modifiers{StorageFlag::Option} | StorageFlag::Rootconstant;
             if (qualifier.m_flag & ngFlags)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_DISALLOWED_FUNCTION_MODIFIER, line,
-                    std::nullopt, " Functions can't have option or rootconstant qualified return types."};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_DISALLOWED_FUNCTION_MODIFIER,
+                    line,
+                    std::nullopt,
+                    " Functions can't have option or rootconstant qualified return types."
+                };
             }
         }
     }
 
     SemanticOrchestrator::SemanticOrchestrator(SymbolAggregator* sema, ScopeTracker* scope, azslLexer* lexer)
-        : m_symbols{ sema },
-          m_scope{ scope },
-          m_lexer{ lexer },
-          m_anonymousCounter{ 0 }
+        : m_symbols{sema}
+        , m_scope{scope}
+        , m_lexer{lexer}
+        , m_anonymousCounter{0}
     {
         assert(sema != nullptr && scope != nullptr);
     }
@@ -103,7 +107,8 @@ namespace AZ::ShaderCompiler
         auto nameOfParentScope = m_scope->GetNameOfCurParentScope();
         auto idAndKindPtr = m_symbols->GetIdAndKindInfo(nameOfParentScope);
         if (!idAndKindPtr)
-        {   // even parent scope will invariantly be registered. and the Levelup of '/' is '/'
+        {
+            // even parent scope will invariantly be registered. and the Levelup of '/' is '/'
             throw std::logic_error("Internal error: parent scope not registered");
         }
         return *idAndKindPtr;
@@ -123,22 +128,41 @@ namespace AZ::ShaderCompiler
         IdAndKind* scopeIdKind = LookupSymbol(extracted.m_core.m_name);
         if (!scopeIdKind)
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_SCOPE_NOT_FOUND,
-                ctx->start, ConcatString("scope ", extracted.m_core.m_name,
-                                         " for method ", uqName, " not found")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_SCOPE_NOT_FOUND,
+                ctx->start,
+                ConcatString(
+                    "scope ",
+                    extracted.m_core.m_name,
+                    " for method ",
+                    uqName,
+                    " not found")
+            };
         }
         auto [scopeUid, scopeKind] = *scopeIdKind;
         if (!scopeKind.IsKindOneOf(Kind::Class, Kind::ShaderResourceGroup))
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_DEPORTED_METHOD_DEFINITION,
-                ctx->start, "Only class and SRG may have deported method definitions"};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_DEPORTED_METHOD_DEFINITION,
+                ctx->start,
+                "Only class and SRG may have deported method definitions"
+            };
         }
         IdentifierUID holdingScope = GetCurrentScopeIdAndKind().first;
-        if (! (holdingScope.m_name == "/" || holdingScope == scopeUid))
+        if (!(holdingScope.m_name == "/" || holdingScope == scopeUid))
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_DEFINITION_FOREIGN_SCOPE,
-                ctx->start, ConcatString("definition of (", uqName,
-                                         ") method of ", scopeUid.m_name, " in foreign scope ", holdingScope.m_name, " is forbidden")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_DEFINITION_FOREIGN_SCOPE,
+                ctx->start,
+                ConcatString(
+                    "definition of (",
+                    uqName,
+                    ") method of ",
+                    scopeUid.m_name,
+                    " in foreign scope ",
+                    holdingScope.m_name,
+                    " is forbidden")
+            };
         }
         // between function name and the entrance into the function scope, the class scope is briefly activated.
         // this way, parameters may be specified as if in the scope of their holding function. e.g `ObjectOfCurrentScope MyClass::MyMethod(ObjectOfMyClass)`
@@ -148,26 +172,38 @@ namespace AZ::ShaderCompiler
 
         bool scopeIsClass = scopeKind.GetKind() == Kind::Class;
         // now let's check if that method was pre-declared in the class/SRG:
-        std::optional<IdentifierUID> optionalIdentifier = scopeIsClass ? scopeKind.GetSubRefAs<ClassInfo>().FindMemberFromLeafName(decoratedUqName)
-                                                                  : scopeKind.GetSubRefAs<SRGInfo>().FindMemberFromLeafName(decoratedUqName);
+        std::optional<IdentifierUID> optionalIdentifier = scopeIsClass
+                                                              ? scopeKind.GetSubRefAs<ClassInfo>().FindMemberFromLeafName(decoratedUqName)
+                                                              : scopeKind.GetSubRefAs<SRGInfo>().FindMemberFromLeafName(decoratedUqName);
         // note that if the method is not found, we could accept to add it anyway to provide an extension-method feature a la C#.
         // it would be great to require an attribute or a keyword for that though (like [[extends]])
         // for now, it will be forbidden to inject methods in classes from outside.
         if (!optionalIdentifier)
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_NO_DECLERATION, ctx->start,
-                ConcatString((scopeIsClass ? "class " : "SRG "), scopeUid.m_name, " doesn't have a declaration for ", decoratedUqName)};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_NO_DECLERATION,
+                ctx->start,
+                ConcatString((scopeIsClass ? "class " : "SRG "), scopeUid.m_name, " doesn't have a declaration for ", decoratedUqName)
+            };
         }
         // verify also the kind of the member
         auto* originalDeclarationAsFunc = m_symbols->GetAsSub<FunctionInfo>(*optionalIdentifier);
         if (!originalDeclarationAsFunc)
         {
             Kind realKindOfOriginallyDeclaredMember = m_symbols->GetIdAndKindInfo(optionalIdentifier->GetName())->second.GetKind();
-            throw AzslcOrchestratorException{ORCHESTRATOR_UNEXPECTED_KIND,
-                ctx->start, ConcatString((scopeIsClass ? "class " : "SRG "), scopeUid.m_name,
-                                         " holds a member ", optionalIdentifier->m_name,
-                                         " but it is of kind ", std::string{ Kind::ToStr(realKindOfOriginallyDeclaredMember) },
-                                         " instead of expected ", std::string{ Kind::ToStr(Kind::Function) })};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_UNEXPECTED_KIND,
+                ctx->start,
+                ConcatString(
+                    (scopeIsClass ? "class " : "SRG "),
+                    scopeUid.m_name,
+                    " holds a member ",
+                    optionalIdentifier->m_name,
+                    " but it is of kind ",
+                    std::string{Kind::ToStr(realKindOfOriginallyDeclaredMember)},
+                    " instead of expected ",
+                    std::string{Kind::ToStr(Kind::Function)})
+            };
         }
         // now we're good.
         // merge the type and the method name and call the classic register. RegisterFunction is going to re-run the decoration so just pass the naked name.
@@ -209,8 +245,9 @@ namespace AZ::ShaderCompiler
     IdAndKind& SemanticOrchestrator::RegisterFunction(QualifiedNameView fqUndecoratedName, AstFuncSig* ctx, AsFunc statementGenre)
     {
         // parameter validation: check the claim of the caller
-        assert((statementGenre == AsFunc::Declaration && Is<azslParser::HlslFunctionDeclarationContext*>(ctx->parent))
-            || (statementGenre == AsFunc::Definition  && Is<azslParser::HlslFunctionDefinitionContext*>(ctx->parent)));
+        assert(
+            (statementGenre == AsFunc::Declaration && Is<azslParser::HlslFunctionDeclarationContext*>(ctx->parent))
+            || (statementGenre == AsFunc::Definition && Is<azslParser::HlslFunctionDefinitionContext*>(ctx->parent)));
 
         auto line = ctx->Name->getLine();
         verboseCout << line << ": register func: " << fqUndecoratedName;
@@ -226,13 +263,19 @@ namespace AZ::ShaderCompiler
         {
             if (isScopeCompositeType)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_OVERLY_QUALIFIED, ctx->Name,
-                    ConcatString(ctx->getText(), " is overly qualified. In-class declarations spawn new identifiers, and don't have to refer to existing symbols.")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_OVERLY_QUALIFIED,
+                    ctx->Name,
+                    ConcatString(ctx->getText(), " is overly qualified. In-class declarations spawn new identifiers, and don't have to refer to existing symbols.")
+                };
             }
             else
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_DEPORTED_METHOD, ctx->Name,
-                    ConcatString(ctx->getText(), "is a deported method declaration, which is considered ill-formed. You can make it a definition (with a body), or delete that statement.")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_DEPORTED_METHOD,
+                    ctx->Name,
+                    ConcatString(ctx->getText(), "is a deported method declaration, which is considered ill-formed. You can make it a definition (with a body), or delete that statement.")
+                };
             }
         }
         IdAndKind* symbol = m_symbols->GetIdAndKindInfo(decoratedName);
@@ -240,7 +283,7 @@ namespace AZ::ShaderCompiler
 
         bool alreadyDeclared = !!symbol;
         bool alreadyDefined = funcInfo ? !!funcInfo->m_defNode : false;
-        if (!alreadyDeclared)  // brand new function
+        if (!alreadyDeclared) // brand new function
         {
             symbol = &m_symbols->AddIdentifier(decoratedName, Kind::Function, line);
             // prepare a virgin subinfo
@@ -250,23 +293,34 @@ namespace AZ::ShaderCompiler
         {
             if (statementGenre == AsFunc::Declaration)
             {
-                PrintWarning(Warn::W1, ctx->start, "ignored redundant redeclaration of function ", decoratedName,
-                             ", ", GetFirstSeenLineMessage(symbol->second));
+                PrintWarning(
+                    Warn::W1,
+                    ctx->start,
+                    "ignored redundant redeclaration of function ",
+                    decoratedName,
+                    ", ",
+                    GetFirstSeenLineMessage(symbol->second));
                 funcInfo->m_multiFwds = FMF_FwdDeclRedundancy;
                 return *symbol;
             }
             funcInfo->m_multiFwds = FMF_SeenDef;
             auto originalKind = symbol->second.GetKind();
-            if (originalKind != Kind::Function)  // verify that we're not transforming a lychee into a melon
+            if (originalKind != Kind::Function) // verify that we're not transforming a lychee into a melon
             {
                 ThrowRedeclarationAsDifferentKind(decoratedName, Kind::Function, symbol->second, line);
             }
 
-            if (alreadyDefined)  // verify that it's not a second definition
+            if (alreadyDefined) // verify that it's not a second definition
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_FUNCTION_ALREADY_DEFINED, ctx->Name,
-                    ConcatString("One Definition Rule: function ", symbol->first.m_name,
-                                 " is already defined ", GetFirstSeenLineMessage(symbol->second))};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_FUNCTION_ALREADY_DEFINED,
+                    ctx->Name,
+                    ConcatString(
+                        "One Definition Rule: function ",
+                        symbol->first.m_name,
+                        " is already defined ",
+                        GetFirstSeenLineMessage(symbol->second))
+                };
             }
 
             // this function was already declared before. (like a forward)
@@ -283,7 +337,8 @@ namespace AZ::ShaderCompiler
             // so for canonicalization we can consider that we never saw the arguments in declarations; but only as soon as we see a definition.
             // if we never store them, we won't be able to emit the declaration in the backend if it is the only thing we ever see.
             for (auto dependent : symbol->second.GetSubAs<FunctionInfo>()->GetParameters(true))
-            {   // delete AST-dependents (children) : the arguments.
+            {
+                // delete AST-dependents (children) : the arguments.
                 if (!dependent.m_varId.IsEmpty())
                 {
                     m_symbols->DeleteIdentifier(dependent.m_varId);
@@ -318,10 +373,19 @@ namespace AZ::ShaderCompiler
         ExtendedTypeInfo returnType = CreateExtendedTypeInfo(ctx->type(), {});
         if (alreadyDeclared && funcInfo->m_returnType != returnType)
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_FUNCTION_INCONSISTENT_RETURN_TYPE, ctx->type()->start,
-                                             ConcatString("function definition ",  decoratedName, ", ",
-                                                          GetFirstSeenLineMessage(symbol->second), ", had a different return type: ",
-                                                          funcInfo->m_returnType.GetDisplayName(), ", versus now seen: ", returnType.GetDisplayName())};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_FUNCTION_INCONSISTENT_RETURN_TYPE,
+                ctx->type()->start,
+                ConcatString(
+                    "function definition ",
+                    decoratedName,
+                    ", ",
+                    GetFirstSeenLineMessage(symbol->second),
+                    ", had a different return type: ",
+                    funcInfo->m_returnType.GetDisplayName(),
+                    ", versus now seen: ",
+                    returnType.GetDisplayName())
+            };
         }
         CheckFunctionReturnTypeModifierNotOptionNorRootconstant(returnType.m_qualifiers, line); // throws a diagnostic if needed
         returnType.m_qualifiers.OrMerge(funcInfo->m_returnType.m_qualifiers);
@@ -329,14 +393,21 @@ namespace AZ::ShaderCompiler
         assert(!funcInfo->m_returnType.IsEmpty());
         if (!funcInfo->m_returnType.IsClassFound())
         {
-            PrintWarning(Warn::W2, ctx->type()->start, "return type ", ctx->type()->getText(), " not understood.",
-                         " (for function ", decoratedName, ")");
+            PrintWarning(
+                Warn::W2,
+                ctx->type()->start,
+                "return type ",
+                ctx->type()->getText(),
+                " not understood.",
+                " (for function ",
+                decoratedName,
+                ")");
         }
 
         // try to fetch the overload-set:
         IdAndKind* overloadSetIdKind = m_symbols->GetIdAndKindInfo(fqUndecoratedName);
         OverloadSetInfo* overloadSet = overloadSetIdKind ? overloadSetIdKind->second.GetSubAs<OverloadSetInfo>() : nullptr;
-        if (!overloadSet)  // don't exist yet. it must be the first occurrence of this function's core name.
+        if (!overloadSet) // don't exist yet. it must be the first occurrence of this function's core name.
         {
             // create and prepare a brand new overload-set
             overloadSetIdKind = &m_symbols->AddIdentifier(fqUndecoratedName, Kind::OverloadSet, line);
@@ -349,8 +420,9 @@ namespace AZ::ShaderCompiler
         // don't register the parameters here because of two reasons:
         //  - the listener will naturally enter variableDeclarator rule which calls RegisterVar
         //  - the scope needs to be the function scope, and we will enter the scope only after function registration
-        if (isScopeCompositeType)    // vocabulary reminder: composite-type = product or sum type = class/struct/union/interface/enum
-        {   // we are now in a class-kind scope -> so this function is a method
+        if (isScopeCompositeType) // vocabulary reminder: composite-type = product or sum type = class/struct/union/interface/enum
+        {
+            // we are now in a class-kind scope -> so this function is a method
             funcInfo->m_isMethod = true;
             // access the class kindinfo and add a member:
             auto& classInfo = GetCurrentScopeSubInfoAs<ClassInfo>();
@@ -392,8 +464,8 @@ namespace AZ::ShaderCompiler
         // reconstruct the identifier of the enumInfo (since current scope may or may not be it, we can't rely on it)
         if (isScopedEnum)
         {
-            enumQn = GetCurrentScopeIdAndKind().first.m_name;  // the current scope IS the enum
-            assert(enumQn == QualifiedName{JoinPath(m_scope->GetNameOfCurParentScope(), parentName)});  // verify that we can reconstruct it
+            enumQn = GetCurrentScopeIdAndKind().first.m_name; // the current scope IS the enum
+            assert(enumQn == QualifiedName{JoinPath(m_scope->GetNameOfCurParentScope(), parentName)}); // verify that we can reconstruct it
         }
         else
         {
@@ -402,20 +474,25 @@ namespace AZ::ShaderCompiler
         auto& [enumId, parentKindInfo] = *m_symbols->GetIdAndKindInfo(enumQn);
         auto& enumInfo = parentKindInfo.GetSubRefAs<ClassInfo>();
 
-        size_t line            = ctx->Name->getLine();
-        auto enumeratorName    = UnqualifiedName{ctx->Name->getText()};
-        auto& [uid, var]       = AddIdentifier(enumeratorName, Kind::Variable, line);
-        auto& varInfo          = var.template GetSubAfterInitAs<Kind::Variable>();
+        size_t line = ctx->Name->getLine();
+        auto enumeratorName = UnqualifiedName{ctx->Name->getText()};
+        auto& [uid, var] = AddIdentifier(enumeratorName, Kind::Variable, line);
+        auto& varInfo = var.template GetSubAfterInitAs<Kind::Variable>();
         if (ctx->Value)
         {
             varInfo.m_constVal = FoldEvalStaticConstExprNumericValue(ctx->Value);
         }
         varInfo.m_declNodeEnum = ctx;
-        Modifiers modifiers    = Modifiers{StorageFlag::Static} |
+        Modifiers modifiers = Modifiers{StorageFlag::Static} |
             StorageFlag::Const | StorageFlag::Enumerator;
 
-        varInfo.m_typeInfoExt = ExtendedTypeInfo{CreateTypeRefInfo(UnqualifiedNameView{enumQn}, OnNotFoundOrWrongKind::Diagnose), {},
-                                                 {modifiers}, {}, {}};
+        varInfo.m_typeInfoExt = ExtendedTypeInfo{
+            CreateTypeRefInfo(UnqualifiedNameView{enumQn}, OnNotFoundOrWrongKind::Diagnose),
+            {},
+            {modifiers},
+            {},
+            {}
+        };
         enumInfo.PushMember(uid, Kind::Variable);
     }
 
@@ -428,15 +505,21 @@ namespace AZ::ShaderCompiler
         {
             if (auto* intLit = ctx->FrequencyValue->IntegerLiteral())
             {
-                size_t line           = ctx->Frequency->getLine();
-                auto frequencyId      = ctx->Frequency->getText();
-                auto uqNameView       = UnqualifiedNameView{ frequencyId };
-                auto& [uid, var]      = AddIdentifier(uqNameView, Kind::Variable, line);
-                auto& varInfo         = var.GetSubAfterInitAs<Kind::Variable>();
-                varInfo.m_constVal    = FoldEvalStaticConstExprNumericValue(intLit);
-                varInfo.m_declNode    = nullptr;
-                varInfo.m_typeInfoExt = ExtendedTypeInfo{CreateTypeRefInfo(UnqualifiedNameView{"int"}, OnNotFoundOrWrongKind::Diagnose), {},
-                                                         {}, {}, {}, Packing::MatrixMajor::Default };
+                size_t line = ctx->Frequency->getLine();
+                auto frequencyId = ctx->Frequency->getText();
+                auto uqNameView = UnqualifiedNameView{frequencyId};
+                auto& [uid, var] = AddIdentifier(uqNameView, Kind::Variable, line);
+                auto& varInfo = var.GetSubAfterInitAs<Kind::Variable>();
+                varInfo.m_constVal = FoldEvalStaticConstExprNumericValue(intLit);
+                varInfo.m_declNode = nullptr;
+                varInfo.m_typeInfoExt = ExtendedTypeInfo{
+                    CreateTypeRefInfo(UnqualifiedNameView{"int"}, OnNotFoundOrWrongKind::Diagnose),
+                    {},
+                    {},
+                    {},
+                    {},
+                    Packing::MatrixMajor::Default
+                };
                 srgSemanticInfo.PushMember(uid, Kind::Variable);
             }
         }
@@ -444,15 +527,21 @@ namespace AZ::ShaderCompiler
         {
             if (auto* intLit = ctx->VariantFallbackValue->IntegerLiteral())
             {
-                size_t line           = ctx->VariantFallback->getLine();
-                auto variantFallback  = ctx->VariantFallback->getText();
-                auto uqNameView       = UnqualifiedNameView{ variantFallback };
-                auto& [uid, var]      = AddIdentifier(uqNameView, Kind::Variable, line);
-                auto& varInfo         = var.GetSubAfterInitAs<Kind::Variable>();
-                varInfo.m_constVal    = FoldEvalStaticConstExprNumericValue(intLit);
-                varInfo.m_declNode    = nullptr;
-                varInfo.m_typeInfoExt = ExtendedTypeInfo{CreateTypeRefInfo(UnqualifiedNameView{"int"}, OnNotFoundOrWrongKind::Diagnose), {},
-                                                         {}, {}, {}, Packing::MatrixMajor::Default };
+                size_t line = ctx->VariantFallback->getLine();
+                auto variantFallback = ctx->VariantFallback->getText();
+                auto uqNameView = UnqualifiedNameView{variantFallback};
+                auto& [uid, var] = AddIdentifier(uqNameView, Kind::Variable, line);
+                auto& varInfo = var.GetSubAfterInitAs<Kind::Variable>();
+                varInfo.m_constVal = FoldEvalStaticConstExprNumericValue(intLit);
+                varInfo.m_declNode = nullptr;
+                varInfo.m_typeInfoExt = ExtendedTypeInfo{
+                    CreateTypeRefInfo(UnqualifiedNameView{"int"}, OnNotFoundOrWrongKind::Diagnose),
+                    {},
+                    {},
+                    {},
+                    {},
+                    Packing::MatrixMajor::Default
+                };
                 srgSemanticInfo.PushMember(uid, Kind::Variable);
             }
         }
@@ -460,22 +549,26 @@ namespace AZ::ShaderCompiler
 
     IdAndKind& SemanticOrchestrator::RegisterTypeAlias(std::string_view newIdentifier, AstType* existingTypeCtx, azslParser::TypeAliasingDefinitionStatementContext* ctx)
     {
-        UnqualifiedNameView newId { newIdentifier };
+        UnqualifiedNameView newId{newIdentifier};
         auto& idKind = AddIdentifier(newId, Kind::TypeAlias, ctx->start->getLine());
-        auto& [uid, kinfo]  = idKind;
-        TypeAliasInfo& aliasInfo  = kinfo.GetSubAfterInitAs<Kind::TypeAlias>();
-        aliasInfo.m_declNode      = ctx;
+        auto& [uid, kinfo] = idKind;
+        TypeAliasInfo& aliasInfo = kinfo.GetSubAfterInitAs<Kind::TypeAlias>();
+        aliasInfo.m_declNode = ctx;
         aliasInfo.m_canonicalType = CreateExtendedTypeInfo(existingTypeCtx, {});
         if (!aliasInfo.m_canonicalType.IsClassFound())
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_TYPEALIAS_TARGET, existingTypeCtx->start,
-                ConcatString("target type ", existingTypeCtx->getText() + " not understood in typealias expression")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_INVALID_TYPEALIAS_TARGET,
+                existingTypeCtx->start,
+                ConcatString("target type ", existingTypeCtx->getText() + " not understood in typealias expression")
+            };
         }
         assert(aliasInfo.m_canonicalType.m_coreType.m_typeClass != TypeClass::Alias);
         // further registration in containing scopes
         auto& [curScopeId, curScopeKind] = GetCurrentScopeIdAndKind();
         if (curScopeKind.IsKindOneOf(Kind::Struct, Kind::Class))
-        {   // we are now in a struct/class-kind scope -> so this typealias is a member object.
+        {
+            // we are now in a struct/class-kind scope -> so this typealias is a member object.
             // access the class kindinfo and add a member:
             // future: check protocol validation with associatedtype
             auto& classInfo = GetCurrentScopeSubInfoAs<ClassInfo>();
@@ -512,15 +605,15 @@ namespace AZ::ShaderCompiler
     IdAndKind* SemanticOrchestrator::RegisterVar(Token* nameIdentifier, AstUnnamedVarDecl* ctx)
     {
         azslParser::FunctionParamContext* paramCtx = nullptr;
-        auto typeCtx                    = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
-        auto idText                     = nameIdentifier->getText();
-        size_t line                     = nameIdentifier->getLine();
+        auto typeCtx = ExtractTypeFromUnnamedVariableDeclarator(ctx, &paramCtx);
+        auto idText = nameIdentifier->getText();
+        size_t line = nameIdentifier->getLine();
         verboseCout << ConcatString(line, ": var decl: ", idText, "\n");
-        auto uqNameView                 = UnqualifiedNameView{idText};
+        auto uqNameView = UnqualifiedNameView{idText};
         // Register the variable in the symbol table early:
-        IdAndKind& symbolRef            = AddIdentifier(uqNameView, Kind::Variable, line);
-        auto& [uid, kindInfo]           = symbolRef;
-        VarInfo& varInfo                = kindInfo.GetSubRefAs<VarInfo>();
+        IdAndKind& symbolRef = AddIdentifier(uqNameView, Kind::Variable, line);
+        auto& [uid, kindInfo] = symbolRef;
+        VarInfo& varInfo = kindInfo.GetSubRefAs<VarInfo>();
         // Discover array dimensions:
         ArrayDimensions arrayDims;
         TryFoldArrayDimensions(ctx, arrayDims);
@@ -534,16 +627,23 @@ namespace AZ::ShaderCompiler
         //  - an inversion between CreateExtendedTypeInfo call AddIdentifier call
         //  - an evolution in the mangling to be able to store 2 symbols of the same name in the same scope
         //        E.g "/!A" for type ::A (bang mark would mirror built-ins "?float")
-        varInfo.m_typeInfoExt           = CreateExtendedTypeInfo(typeCtx, arrayDims);
+        varInfo.m_typeInfoExt = CreateExtendedTypeInfo(typeCtx, arrayDims);
         assert(!varInfo.m_typeInfoExt.IsEmpty());
         // now fillup what we can, and already know, about that variable in the IR:
-        varInfo.m_declNode              = ctx;
-        varInfo.m_identifier            = uqNameView;
+        varInfo.m_declNode = ctx;
+        varInfo.m_identifier = uqNameView;
 
         if (!varInfo.m_typeInfoExt.IsClassFound())
         {
-            PrintWarning(Warn::W2, typeCtx->start, "variable type ", typeCtx->getText(), " not understood.",
-                         " (for variable ", idText, ")");
+            PrintWarning(
+                Warn::W2,
+                typeCtx->start,
+                "variable type ",
+                typeCtx->getText(),
+                " not understood.",
+                " (for variable ",
+                idText,
+                ")");
         }
         if (varInfo.GetTypeRefInfo().IsInputAttachment(m_lexer))
         {
@@ -564,30 +664,42 @@ namespace AZ::ShaderCompiler
         // Some semantic checks
         if (varInfo.CheckHasStorageFlag(StorageFlag::Inline))
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_INLINED_QUALIFIER, ctx->start,
-                "inline qualification on variables is ill-formed"};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_INVALID_INLINED_QUALIFIER,
+                ctx->start,
+                "inline qualification on variables is ill-formed"
+            };
         }
         bool global = curScopeId.GetName() == "/";
         bool isOption = varInfo.CheckHasStorageFlag(StorageFlag::Option);
         bool isRootconstant = varInfo.CheckHasStorageFlag(StorageFlag::Rootconstant);
-        bool hasExplicitLocalFlag = varInfo.CheckHasAnyStorageFlags({ StorageFlag::Static, StorageFlag::Groupshared });
+        bool hasExplicitLocalFlag = varInfo.CheckHasAnyStorageFlags({StorageFlag::Static, StorageFlag::Groupshared});
 
         if (isRootconstant || isOption)
         {
             if (arrayDims.IsArray())
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_NONGLOBAL_OPTION_OR_ROOTCONSTANT, ctx->start,
-                    "arrays can not be declared as rootconstants."};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_NONGLOBAL_OPTION_OR_ROOTCONSTANT,
+                    ctx->start,
+                    "arrays can not be declared as rootconstants."
+                };
             }
             if (!global)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_NONGLOBAL_OPTION_OR_ROOTCONSTANT, ctx->start,
-                    "rootconstant or option qualifier is only accepted at top-level scope"};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_NONGLOBAL_OPTION_OR_ROOTCONSTANT,
+                    ctx->start,
+                    "rootconstant or option qualifier is only accepted at top-level scope"
+                };
             }
             if (hasExplicitLocalFlag)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_QUALIFIER_MIX, ctx->start,
-                    "static, groupshared qualifiers cannot be used with the rootconstant or option qualifier"};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_QUALIFIER_MIX,
+                    ctx->start,
+                    "static, groupshared qualifiers cannot be used with the rootconstant or option qualifier"
+                };
             }
             if (varInfo.CheckHasStorageFlag(StorageFlag::Const))
             {
@@ -600,8 +712,11 @@ namespace AZ::ShaderCompiler
         {
             if (!varInfo.m_typeInfoExt.IsClassFound())
             {
-                const std::string message = FormatString("Unknown type '%s' for shader option '%.*s'",
-                    varInfo.m_typeInfoExt.GetDisplayName().c_str(), static_cast<int>(uqNameView.size()), uqNameView.data());
+                const std::string message = FormatString(
+                    "Unknown type '%s' for shader option '%.*s'",
+                    varInfo.m_typeInfoExt.GetDisplayName().c_str(),
+                    static_cast<int>(uqNameView.size()),
+                    uqNameView.data());
                 throw AzslcOrchestratorException{ORCHESTRATOR_UNKNOWN_OPTION_TYPE, ctx->start, message};
             }
             // we'll set that here, an option is better flagged as static const for simplicity during emission
@@ -620,8 +735,11 @@ namespace AZ::ShaderCompiler
             bool declaredAsSamplerComparison = TypeIsSamplerComparisonState(ctx);
             if (varInfo.m_samplerState->m_isComparison && !declaredAsSamplerComparison)
             {
-                PrintWarning(Warn::W3, ctx->start, "Comparison function found, sampler will be upgraded to SamplerComparisonState.\n",
-                             "Please use SamplerComparisonState if the use is intended, or remove the comparison function if not.");
+                PrintWarning(
+                    Warn::W3,
+                    ctx->start,
+                    "Comparison function found, sampler will be upgraded to SamplerComparisonState.\n",
+                    "Please use SamplerComparisonState if the use is intended, or remove the comparison function if not.");
             }
             varInfo.m_samplerState->m_isComparison |= declaredAsSamplerComparison;
         }
@@ -632,7 +750,7 @@ namespace AZ::ShaderCompiler
         }
 
         bool parentIsFuncDecl = IsParentRuleAFunctionDeclaration(paramCtx);
-        bool parentIsFuncDef  = IsParentRuleAFunctionDefinition(paramCtx);
+        bool parentIsFuncDef = IsParentRuleAFunctionDefinition(paramCtx);
         if (parentIsFuncDef || parentIsFuncDecl)
         {
             // We need to register each newly registered parameter variable ID, in the list of the function subinfo too:
@@ -641,40 +759,53 @@ namespace AZ::ShaderCompiler
         }
 
         bool isExtern = !varInfo.StorageFlagIsLocalLinkage(global || enclosedBySRG);
-        bool dxilLibraryFlagType = typeClass == TypeClass::LibrarySubobject;  // No need to check any semantic for subobjects. They just enrich the dxil metadata but don't participate in the program.
+        bool dxilLibraryFlagType = typeClass == TypeClass::LibrarySubobject; // No need to check any semantic for subobjects. They just enrich the dxil metadata but don't participate in the program.
         if (isExtern && !dxilLibraryFlagType)
         {
             if (global && !varInfo.CheckHasStorageFlag(StorageFlag::Rootconstant))
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_ILLEGAL_GLOBAL_VARIABLE, nameIdentifier,
-                    ConcatString(Decorate("'", idText), " extern global variables are ill-formed in AZSL. You might want an internal variable (static or groupshared), a rootconstant, an option, or to put your resource in a ShaderResourceGroup.") };
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_ILLEGAL_GLOBAL_VARIABLE,
+                    nameIdentifier,
+                    ConcatString(Decorate("'", idText), " extern global variables are ill-formed in AZSL. You might want an internal variable (static or groupshared), a rootconstant, an option, or to put your resource in a ShaderResourceGroup.")
+                };
             }
             if (HasStandardInitializer(ctx))
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_EXTERNAL_VARIABLE_WITH_INITIALIZER, nameIdentifier,
-                    ConcatString(Decorate("'", idText), " extern variables can't be initialized from the shader side, since their values are set by bindings.") };
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_EXTERNAL_VARIABLE_WITH_INITIALIZER,
+                    nameIdentifier,
+                    ConcatString(Decorate("'", idText), " extern variables can't be initialized from the shader side, since their values are set by bindings.")
+                };
             }
         }
 
-        bool isStaticConst = varInfo.CheckHasAllStorageFlags({ StorageFlag::Static, StorageFlag::Const });
+        bool isStaticConst = varInfo.CheckHasAllStorageFlags({StorageFlag::Static, StorageFlag::Const});
         if (curScopeKind.IsKindOneOf(Kind::Struct, Kind::Class))
-        {   // we are now in a struct/class-kind scope -> so this variable is a member object.
+        {
+            // we are now in a struct/class-kind scope -> so this variable is a member object.
             // access the class kindinfo and add a member:
             auto& classInfo = GetCurrentScopeSubInfoAs<ClassInfo>();
             classInfo.PushMember(uid, Kind::Variable);
 
             if (HasStandardInitializer(ctx) && !isStaticConst)
             {
-                throw AzslcOrchestratorException{ ORCHESTRATOR_MEMBER_VARIABLE_WITH_INITIALIZER, nameIdentifier,
-                    ConcatString(idText, " default-member-initializers are not supported.") };
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_MEMBER_VARIABLE_WITH_INITIALIZER,
+                    nameIdentifier,
+                    ConcatString(idText, " default-member-initializers are not supported.")
+                };
             }
         }
         if (curScopeKind.GetKind() == Kind::Interface)
         {
             // this is an impossible case because the parser doesn't accept these constructs.
             // but let's say one day we have an API that allows constructing AST programmatically.
-            throw AzslcOrchestratorException{ORCHESTRATOR_ILLEGAL_MEMBER_VARIABLE_IN_INTERFACE,
-                nameIdentifier, "member variables in interfaces are forbidden."};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_ILLEGAL_MEMBER_VARIABLE_IN_INTERFACE,
+                nameIdentifier,
+                "member variables in interfaces are forbidden."
+            };
         }
         if (enclosedBySRG)
         {
@@ -698,7 +829,8 @@ namespace AZ::ShaderCompiler
     // Helper to avoid code redundancy for a message that is used in three different places.
     static std::string GetNonEasyToFoldMessage(const ArrayDimensions& arrayDims)
     {
-        return ConcatString("array dimensions must be an easy-to-fold build time constant ( ",
+        return ConcatString(
+            "array dimensions must be an easy-to-fold build time constant ( ",
             arrayDims.ToString(),
             " ) in external resource declaration");
     }
@@ -708,8 +840,11 @@ namespace AZ::ShaderCompiler
         const bool isUnboundedArray = arrayDims.IsUnbounded();
         if (!isUnboundedArray && !arrayDims.AreAllDimsFullyConstantFolded())
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS, ctx->start,
-                GetNonEasyToFoldMessage(arrayDims)};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS,
+                ctx->start,
+                GetNonEasyToFoldMessage(arrayDims)
+            };
         }
 
         auto& [srgUid, srgKind] = GetCurrentScopeIdAndKind();
@@ -745,16 +880,23 @@ namespace AZ::ShaderCompiler
         {
             if (isUnboundedArray)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS, ctx->start,
-                    GetNonEasyToFoldMessage(arrayDims)};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS,
+                    ctx->start,
+                    GetNonEasyToFoldMessage(arrayDims)
+                };
             }
             if (!varInfo.GetTypeRefInfo().IsPackable())
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_NON_PACKABLE_TYPE_IN_SRG_CONSTANT, ctx->start,
-                    ConcatString(varInfo.GetTypeId().m_name,
-                                 " is of kind ",
-                                 TypeClass::ToStr(varInfo.GetTypeClass()),
-                                 " which is a non packable kind of type.")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_NON_PACKABLE_TYPE_IN_SRG_CONSTANT,
+                    ctx->start,
+                    ConcatString(
+                        varInfo.GetTypeId().m_name,
+                        " is of kind ",
+                        TypeClass::ToStr(varInfo.GetTypeClass()),
+                        " which is a non packable kind of type.")
+                };
             }
             auto& classInfo = srgInfo.m_implicitStruct;
             classInfo.PushMember(varUid, Kind::Variable);
@@ -763,8 +905,11 @@ namespace AZ::ShaderCompiler
         {
             if (isUnboundedArray)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS, ctx->start,
-                    GetNonEasyToFoldMessage(arrayDims)};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS,
+                    ctx->start,
+                    GetNonEasyToFoldMessage(arrayDims)
+                };
             }
             assert(varInfo.StorageFlagIsLocalLinkage(true));
             srgInfo.m_nonexternVariables.push_back(varUid);
@@ -777,7 +922,7 @@ namespace AZ::ShaderCompiler
         if (ctx == nullptr || ctx->standardVariableInitializer())
         {
             SamplerStateDesc defaultState;
-            defaultState.m_isDynamic = true;  // no initializer, or variable assignation both denotes a dynamic sampler.
+            defaultState.m_isDynamic = true; // no initializer, or variable assignation both denotes a dynamic sampler.
             return defaultState;
         }
         // Antlr auto-generates tons of methods for every rule, so we have to walk and parse them here.
@@ -785,32 +930,47 @@ namespace AZ::ShaderCompiler
 
         auto GetAddressMode = [](azslParser::AddressModeEnumContext* ctx) -> SamplerStateDesc::AddressMode
         {
-            return ctx->ADDRESS_MODE_WRAP()   ? SamplerStateDesc::AddressMode::Wrap
-                 : ctx->ADDRESS_MODE_CLAMP()  ? SamplerStateDesc::AddressMode::Clamp
-                 : ctx->ADDRESS_MODE_MIRROR() ? SamplerStateDesc::AddressMode::Mirror
-                 : ctx->ADDRESS_MODE_BORDER() ? SamplerStateDesc::AddressMode::Border
-                 :                              SamplerStateDesc::AddressMode::MirrorOnce;
+            return ctx->ADDRESS_MODE_WRAP()
+                       ? SamplerStateDesc::AddressMode::Wrap
+                       : ctx->ADDRESS_MODE_CLAMP()
+                       ? SamplerStateDesc::AddressMode::Clamp
+                       : ctx->ADDRESS_MODE_MIRROR()
+                       ? SamplerStateDesc::AddressMode::Mirror
+                       : ctx->ADDRESS_MODE_BORDER()
+                       ? SamplerStateDesc::AddressMode::Border
+                       : SamplerStateDesc::AddressMode::MirrorOnce;
         };
 
         auto GetCompFunc = [](azslParser::ComparisonFunctionEnumContext* ctx) -> SamplerStateDesc::ComparisonFunc
         {
-            return ctx->COMPARISON_FUNCTION_NEVER()         ? SamplerStateDesc::ComparisonFunc::Never
-                 : ctx->COMPARISON_FUNCTION_NEVER()         ? SamplerStateDesc::ComparisonFunc::Never
-                 : ctx->COMPARISON_FUNCTION_LESS()          ? SamplerStateDesc::ComparisonFunc::Less
-                 : ctx->COMPARISON_FUNCTION_EQUAL()         ? SamplerStateDesc::ComparisonFunc::Equal
-                 : ctx->COMPARISON_FUNCTION_LESS_EQUAL()    ? SamplerStateDesc::ComparisonFunc::LessEqual
-                 : ctx->COMPARISON_FUNCTION_GREATER()       ? SamplerStateDesc::ComparisonFunc::Greater
-                 : ctx->COMPARISON_FUNCTION_NOT_EQUAL()     ? SamplerStateDesc::ComparisonFunc::NotEqual
-                 : ctx->COMPARISON_FUNCTION_GREATER_EQUAL() ? SamplerStateDesc::ComparisonFunc::GreaterEqual
-                 :                                            SamplerStateDesc::ComparisonFunc::Always;
+            return ctx->COMPARISON_FUNCTION_NEVER()
+                       ? SamplerStateDesc::ComparisonFunc::Never
+                       : ctx->COMPARISON_FUNCTION_NEVER()
+                       ? SamplerStateDesc::ComparisonFunc::Never
+                       : ctx->COMPARISON_FUNCTION_LESS()
+                       ? SamplerStateDesc::ComparisonFunc::Less
+                       : ctx->COMPARISON_FUNCTION_EQUAL()
+                       ? SamplerStateDesc::ComparisonFunc::Equal
+                       : ctx->COMPARISON_FUNCTION_LESS_EQUAL()
+                       ? SamplerStateDesc::ComparisonFunc::LessEqual
+                       : ctx->COMPARISON_FUNCTION_GREATER()
+                       ? SamplerStateDesc::ComparisonFunc::Greater
+                       : ctx->COMPARISON_FUNCTION_NOT_EQUAL()
+                       ? SamplerStateDesc::ComparisonFunc::NotEqual
+                       : ctx->COMPARISON_FUNCTION_GREATER_EQUAL()
+                       ? SamplerStateDesc::ComparisonFunc::GreaterEqual
+                       : SamplerStateDesc::ComparisonFunc::Always;
         };
 
         auto GetRedcType = [](azslParser::ReductionTypeEnumContext* ctx) -> SamplerStateDesc::ReductionType
         {
-            return ctx->REDUCTION_TYPE_FILTER()     ? SamplerStateDesc::ReductionType::Filter
-                 : ctx->REDUCTION_TYPE_COMPARISON() ? SamplerStateDesc::ReductionType::Comparison
-                 : ctx->REDUCTION_TYPE_MINIMUM()    ? SamplerStateDesc::ReductionType::Minimum
-                 :                                    SamplerStateDesc::ReductionType::Maximum;
+            return ctx->REDUCTION_TYPE_FILTER()
+                       ? SamplerStateDesc::ReductionType::Filter
+                       : ctx->REDUCTION_TYPE_COMPARISON()
+                       ? SamplerStateDesc::ReductionType::Comparison
+                       : ctx->REDUCTION_TYPE_MINIMUM()
+                       ? SamplerStateDesc::ReductionType::Minimum
+                       : SamplerStateDesc::ReductionType::Maximum;
         };
 
         auto GetFilterType = [](azslParser::FilterModeEnumContext* ctx) -> SamplerStateDesc::FilterMode
@@ -820,9 +980,11 @@ namespace AZ::ShaderCompiler
 
         auto GetBorderColor = [](azslParser::BorderColorEnumContext* ctx) -> SamplerStateDesc::BorderColor
         {
-            return ctx->BORDER_COLOR_OPAQUE_BLACK()      ? SamplerStateDesc::BorderColor::OpaqueBlack
-                 : ctx->BORDER_COLOR_TRANSPARENT_BLACK() ? SamplerStateDesc::BorderColor::TransparentBlack
-                 :                                         SamplerStateDesc::BorderColor::OpaqueWhite;
+            return ctx->BORDER_COLOR_OPAQUE_BLACK()
+                       ? SamplerStateDesc::BorderColor::OpaqueBlack
+                       : ctx->BORDER_COLOR_TRANSPARENT_BLACK()
+                       ? SamplerStateDesc::BorderColor::TransparentBlack
+                       : SamplerStateDesc::BorderColor::OpaqueWhite;
         };
 
         // Now proceed with resolving the sampler state
@@ -907,37 +1069,53 @@ namespace AZ::ShaderCompiler
     IdAndKind& SemanticOrchestrator::RegisterSRG(AstSRGDeclNode* ctx)
     {
         auto idText = ctx->Name->getText();
-        size_t line        = ctx->Name->getLine();
+        size_t line = ctx->Name->getLine();
         verboseCout << line << ": srg decl: " << idText << "\n";
-        auto uqNameView    = UnqualifiedNameView{ idText };
-        IdAndKind* srgSym  = LookupSymbol(uqNameView);
+        auto uqNameView = UnqualifiedNameView{idText};
+        IdAndKind* srgSym = LookupSymbol(uqNameView);
         if (srgSym) // already exists
         {
-            if (ctx->Partial())  // case of a syntactically valid extension
+            if (ctx->Partial()) // case of a syntactically valid extension
             {
                 SRGInfo& srgInfo = srgSym->second.GetSubRefAs<SRGInfo>();
                 if (!srgInfo.IsPartial())
                 {
-                    throw AzslcOrchestratorException{ORCHESTRATOR_TRYING_TO_EXTEND_NOT_PARTIAL_SRG,
-                        ctx->Partial()->getSymbol(), ConcatString("Cannot extend ShaderResourceGroup ", uqNameView, " ",
-                                                                  GetFirstSeenLineMessage(srgSym->second),
-                                                                  " because its original declaration isn't 'partial'")};
+                    throw AzslcOrchestratorException{
+                        ORCHESTRATOR_TRYING_TO_EXTEND_NOT_PARTIAL_SRG,
+                        ctx->Partial()->getSymbol(),
+                        ConcatString(
+                            "Cannot extend ShaderResourceGroup ",
+                            uqNameView,
+                            " ",
+                            GetFirstSeenLineMessage(srgSym->second),
+                            " because its original declaration isn't 'partial'")
+                    };
                 }
-                return *srgSym;  // valid: both original and current SRG declaration statements carry partial.
+                return *srgSym; // valid: both original and current SRG declaration statements carry partial.
             }
-            throw AzslcOrchestratorException{ORCHESTRATOR_ODR_VIOLATION,
-                ctx->Name, ConcatString("ShaderResourceGroup ", uqNameView, " already exists, ", GetFirstSeenLineMessage(srgSym->second),
-                                        ". Consider using the 'partial' keyword (on both declaration sites) to extend a ShaderResourceGroup.")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_ODR_VIOLATION,
+                ctx->Name,
+                ConcatString(
+                    "ShaderResourceGroup ",
+                    uqNameView,
+                    " already exists, ",
+                    GetFirstSeenLineMessage(srgSym->second),
+                    ". Consider using the 'partial' keyword (on both declaration sites) to extend a ShaderResourceGroup.")
+            };
         }
         if (!ctx->Partial() && !ctx->Semantic)
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION,
-                ctx->Name, "A semantic is mandatory on the declaration of a non-partial ShaderResourceGroup."};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION,
+                ctx->Name,
+                "A semantic is mandatory on the declaration of a non-partial ShaderResourceGroup."
+            };
         }
-        auto& symbol       = AddIdentifier(uqNameView, Kind::ShaderResourceGroup, line);
+        auto& symbol = AddIdentifier(uqNameView, Kind::ShaderResourceGroup, line);
         // now fillup what we can about the kindinfo:
-        auto& [uid, info]  = symbol;
-        SRGInfo& srgInfo   = info.GetSubAfterInitAs<Kind::ShaderResourceGroup>();
+        auto& [uid, info] = symbol;
+        SRGInfo& srgInfo = info.GetSubAfterInitAs<Kind::ShaderResourceGroup>();
         srgInfo.m_declNode = ctx;
         srgInfo.m_implicitStruct.m_kind = Kind::Struct;
         return symbol;
@@ -958,8 +1136,11 @@ namespace AZ::ShaderCompiler
             auto baseSymbol = LookupSymbol(baseName);
             if (!baseSymbol)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_UNSPECIFIED_BASE_SYMBOL,
-                    ctx->start, ConcatString("Base symbol "s, baseName, " not found")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_UNSPECIFIED_BASE_SYMBOL,
+                    ctx->start,
+                    ConcatString("Base symbol "s, baseName, " not found")
+                };
             }
             // register base in the class info IR
             targetClassInfo->PushBase(baseSymbol->first);
@@ -971,7 +1152,7 @@ namespace AZ::ShaderCompiler
         auto& [uid, info] = idPair;
         Seenat seenat;
         seenat.m_referredDefinition = uid;
-        seenat.m_where              = location;
+        seenat.m_where = location;
         info.GetSeenats().emplace_back(seenat);
 
         const std::string verboseMessage = ConcatString(seenat.m_where.m_line, ": seenat registered for ", uid.m_name, " at col ", seenat.m_where.m_charPos + 1, "\n");
@@ -1014,21 +1195,30 @@ namespace AZ::ShaderCompiler
             auto& setInfo = maybeOverloadSet->second.GetSubRefAs<OverloadSetInfo>();
             // attempt direct matching or arity matching
             IdentifierUID concrete = setInfo.GetConcreteFunctionThatMatchesArgumentList(mangledArgList);
-            if (concrete.IsEmpty())  // failure case
+            if (concrete.IsEmpty()) // failure case
             {
                 std::stringstream message;
                 message << " unable to match arguments " << mangledArgList << " to a registered overload. candidates are:\n";
-                setInfo.ForEach([&](auto&& uid){ message << uid.GetName() << "\n"; });
+                setInfo.ForEach(
+                    [&](auto&& uid)
+                    {
+                        message << uid.GetName() << "\n";
+                    });
                 if (setInfo.HasHomogeneousReturnType())
                 {
                     verboseCout << (argumentListCtx ? std::to_string(argumentListCtx->start->getLine()) : "")
-                                << message.str() << " It is not an error since that overload-set has homogeneous return type\n";  // at this point of the source. further declaration can change that.
+                        << message.str() << " It is not an error since that overload-set has homogeneous return type\n"; // at this point of the source. further declaration can change that.
                 }
                 else
                 {
-                    throw AzslcOrchestratorException{ORCHESTRATOR_OVERLOAD_RESOLUTION_HARD_FAILURE, argumentListCtx ? argumentListCtx->start : nullptr,
-                                                     ConcatString(message.str(), " This is an error because functions belonging to this overload-set have heterogeneous return types.\n",
-                                                                  "Consider using type-casts to help type resolution.")};
+                    throw AzslcOrchestratorException{
+                        ORCHESTRATOR_OVERLOAD_RESOLUTION_HARD_FAILURE,
+                        argumentListCtx ? argumentListCtx->start : nullptr,
+                        ConcatString(
+                            message.str(),
+                            " This is an error because functions belonging to this overload-set have heterogeneous return types.\n",
+                            "Consider using type-casts to help type resolution.")
+                    };
                 }
             }
             else
@@ -1041,7 +1231,7 @@ namespace AZ::ShaderCompiler
 
     void SemanticOrchestrator::RegisterSeenat(AstIdExpr* ctx, QualifiedNameView startupScope)
     {
-        auto* argumentList = GetArgumentListIfBelongsToFunctionCall(ctx);  // no need to execute that in the loop body, extracted up-here.
+        auto* argumentList = GetArgumentListIfBelongsToFunctionCall(ctx); // no need to execute that in the loop body, extracted up-here.
 
         // an id-expression is made of nested parts: stuff::thing::leaf
         // for each part we need to register a reference to the symbol the nested name refers to.
@@ -1049,24 +1239,28 @@ namespace AZ::ShaderCompiler
         // the startupScope is not the first path of the path of each element, but the CONTEXT from which we start the lookup.
         // the lookup mechanism must sill execute. Just not necessarily from the current scope as startup context.
         std::string partialExpression;
-        ForEachIdExpressionPart(ctx, [&](const IdExpressionPart& part)
-                                    {   // this is not Schlemiel the painter
-                                        partialExpression += part.GetAZIRMangledText();
-                                        if (!part.IsScopeToken()) // scope token is the SRO "::"
-                                        {
-                                            auto* idToKind = ResolveOverload(m_symbols->LookupSymbol(startupScope, UnqualifiedNameView{partialExpression}),
-                                                                             argumentList);
-                                            if (idToKind)
-                                            {
-                                                auto tl = MakeTokensLocation(ctx, part.m_token);
-                                                RegisterSeenat(*idToKind, tl);
-                                            }
-                                            else
-                                            {
-                                                DiagnoseUndeclaredSub(ctx->start, startupScope, partialExpression);
-                                            }
-                                        }
-                                    });
+        ForEachIdExpressionPart(
+            ctx,
+            [&](const IdExpressionPart& part)
+            {
+                // this is not Schlemiel the painter
+                partialExpression += part.GetAZIRMangledText();
+                if (!part.IsScopeToken()) // scope token is the SRO "::"
+                {
+                    auto* idToKind = ResolveOverload(
+                        m_symbols->LookupSymbol(startupScope, UnqualifiedNameView{partialExpression}),
+                        argumentList);
+                    if (idToKind)
+                    {
+                        auto tl = MakeTokensLocation(ctx, part.m_token);
+                        RegisterSeenat(*idToKind, tl);
+                    }
+                    else
+                    {
+                        DiagnoseUndeclaredSub(ctx->start, startupScope, partialExpression);
+                    }
+                }
+            });
     }
 
     void SemanticOrchestrator::DiagnoseUndeclaredSub(Token* atToken, QualifiedNameView startupScope, std::string partialName) const
@@ -1092,7 +1286,8 @@ namespace AZ::ShaderCompiler
             PrintWarning(Warn::W3, atToken, "undeclared sub-symbol in idexpression: ", parent, " was found, but not ", partialName);
         }
         else
-        {   // that warning is probably going to fire a tad too much. repeated for all left-over elements on the right of an expression that failed early.
+        {
+            // that warning is probably going to fire a tad too much. repeated for all left-over elements on the right of an expression that failed early.
             // eg  i_did_a_typo_here_omg::not_found::not_found::not_found... you see the point.
             // but being here is our only chance to grab lone identifiers (completely unqualified).
             // so protect it for only that case.
@@ -1113,7 +1308,7 @@ namespace AZ::ShaderCompiler
     //! returns the looked up scope
     std::pair<bool, QualifiedName> SemanticOrchestrator::VerifyTypeIsScopeComposable(azslParser::ExpressionContext* typeScopeAnyExpression) const
     {
-         return VerifyTypeIsScopeComposable(TypeofExpr(typeScopeAnyExpression), typeScopeAnyExpression->getText(), typeScopeAnyExpression->start->getLine());
+        return VerifyTypeIsScopeComposable(TypeofExpr(typeScopeAnyExpression), typeScopeAnyExpression->getText(), typeScopeAnyExpression->start->getLine());
     }
 
     //! same function as above for already resolved typeof
@@ -1125,9 +1320,14 @@ namespace AZ::ShaderCompiler
         bool valid = true;
         if (!lhsSymbol)
         {
-            PrintWarning(Warn::W2, line, "unresolved member access ",
-                         "on undeclared type ", lhsTypeName,
-                         (lhsExpressionText ? " (of expression " + *lhsExpressionText + ")" : ""), ")");
+            PrintWarning(
+                Warn::W2,
+                line,
+                "unresolved member access ",
+                "on undeclared type ",
+                lhsTypeName,
+                (lhsExpressionText ? " (of expression " + *lhsExpressionText + ")" : ""),
+                ")");
             valid = false;
         }
         else // left side symbol exists
@@ -1137,10 +1337,18 @@ namespace AZ::ShaderCompiler
             {
                 auto outputStream = lhsKindInfo.GetKind() == Kind::Type ? verboseCout : warningCout;
                 // registered predefined types can have members, but we don't know them -> not important. But anything else is very likely an ill-formed source.
-                PrintWarning(outputStream, Warn::W1, line, std::nullopt, "ill-formed semantics: access of member ",
-                             " on an unsupported kind ", Kind::ToStr(lhsKindInfo.GetKind()),
-                             " (of believed type ", lhsSymbol->first.GetName(),
-                             (lhsExpressionText ? " from expression " + *lhsExpressionText : ""), ")");
+                PrintWarning(
+                    outputStream,
+                    Warn::W1,
+                    line,
+                    std::nullopt,
+                    "ill-formed semantics: access of member ",
+                    " on an unsupported kind ",
+                    Kind::ToStr(lhsKindInfo.GetKind()),
+                    " (of believed type ",
+                    lhsSymbol->first.GetName(),
+                    (lhsExpressionText ? " from expression " + *lhsExpressionText : ""),
+                    ")");
                 valid = false;
             }
         }
@@ -1158,7 +1366,8 @@ namespace AZ::ShaderCompiler
             PrintWarning(Warn::W3, rhsMember->start, "type tracking fail: ", rhsName, " is not a member of ", scopingType);
         }
         else // rhs symbol exists
-        {   // let's extract its type and return that.
+        {
+            // let's extract its type and return that.
             return GetTypeName(fullyResolved);
         }
         return {"<fail>"};
@@ -1168,22 +1377,26 @@ namespace AZ::ShaderCompiler
     {
         try
         {
-            return VisitFirstNonNull([this](auto* ctx) { return TypeofExpr(ctx); },
-                                     As<AstIdExpr*>(ctx),
-                                     As<azslParser::IdentifierExpressionContext*>(ctx),
-                                     As<azslParser::ParenthesizedExpressionContext*>(ctx),
-                                     As<azslParser::CastExpressionContext*>(ctx),
-                                     As<azslParser::MemberAccessExpressionContext*>(ctx),
-                                     As<azslParser::FunctionCallExpressionContext*>(ctx),
-                                     As<azslParser::ArrayAccessExpressionContext*>(ctx),
-                                     As<azslParser::ConditionalExpressionContext*>(ctx),
-                                     As<azslParser::AssignmentExpressionContext*>(ctx),
-                                     As<azslParser::NumericConstructorExpressionContext*>(ctx),
-                                     As<azslParser::LiteralExpressionContext*>(ctx),
-                                     As<azslParser::LiteralContext*>(ctx),
-                                     As<azslParser::PrefixUnaryExpressionContext*>(ctx),
-                                     As<azslParser::PostfixUnaryExpressionContext*>(ctx),
-                                     As<azslParser::BinaryExpressionContext*>(ctx));
+            return VisitFirstNonNull(
+                [this](auto* ctx)
+                {
+                    return TypeofExpr(ctx);
+                },
+                As<AstIdExpr*>(ctx),
+                As<azslParser::IdentifierExpressionContext*>(ctx),
+                As<azslParser::ParenthesizedExpressionContext*>(ctx),
+                As<azslParser::CastExpressionContext*>(ctx),
+                As<azslParser::MemberAccessExpressionContext*>(ctx),
+                As<azslParser::FunctionCallExpressionContext*>(ctx),
+                As<azslParser::ArrayAccessExpressionContext*>(ctx),
+                As<azslParser::ConditionalExpressionContext*>(ctx),
+                As<azslParser::AssignmentExpressionContext*>(ctx),
+                As<azslParser::NumericConstructorExpressionContext*>(ctx),
+                As<azslParser::LiteralExpressionContext*>(ctx),
+                As<azslParser::LiteralContext*>(ctx),
+                As<azslParser::PrefixUnaryExpressionContext*>(ctx),
+                As<azslParser::PostfixUnaryExpressionContext*>(ctx),
+                As<azslParser::BinaryExpressionContext*>(ctx));
         }
         catch (AllNull&)
         {
@@ -1196,8 +1409,9 @@ namespace AZ::ShaderCompiler
     {
         // among all possibilities Plus|Minus|Not|Tilde|PlusPlus|MinusMinus
         // only "Not" returns a bool, the rest is transparent and returns the same type as rhs
-        return ctx->prefixUnaryOperator()->start->getType() == azslLexer::Not ? MangleScalarType("bool")
-            : TypeofExpr(ctx->Expr);
+        return ctx->prefixUnaryOperator()->start->getType() == azslLexer::Not
+                   ? MangleScalarType("bool")
+                   : TypeofExpr(ctx->Expr);
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::PostfixUnaryExpressionContext* ctx) const
@@ -1215,10 +1429,11 @@ namespace AZ::ShaderCompiler
         }
         QualifiedName lhs = TypeofExpr(ctx->Left);
         QualifiedName rhs = TypeofExpr(ctx->Right);
-        TypeRefInfo typeInfoLhs = CreateTypeRefInfo(UnqualifiedNameView{lhs});  // We tolerate a cast here because GetTypeRefInfo was designed to lookup types, but TypeofExpr has already looked up the type.
+        TypeRefInfo typeInfoLhs = CreateTypeRefInfo(UnqualifiedNameView{lhs}); // We tolerate a cast here because GetTypeRefInfo was designed to lookup types, but TypeofExpr has already looked up the type.
         TypeRefInfo typeInfoRhs = CreateTypeRefInfo(UnqualifiedNameView{rhs});
         if (typeInfoLhs.m_arithmeticInfo.IsEmpty() || typeInfoRhs.m_arithmeticInfo.IsEmpty())
-        {   // Case that shouldn't work in AZSL yet (but may work in HLSL2021)
+        {
+            // Case that shouldn't work in AZSL yet (but may work in HLSL2021)
             //  -> UDT operator (would need support of operator overloading).
             // We arbitrarily assume a result "type of left expression".
             // (what we would really need to do is go get the return type of the overloaded operator)
@@ -1236,9 +1451,13 @@ namespace AZ::ShaderCompiler
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::ExpressionExtContext* ctx) const
     {
-        return VisitFirstNonNull([this](auto* ctx) { return TypeofExpr(ctx); },
-                                 As<azslParser::OtherExpressionContext*>(ctx),
-                                 As<azslParser::CommaExpressionContext*>(ctx));
+        return VisitFirstNonNull(
+            [this](auto* ctx)
+            {
+                return TypeofExpr(ctx);
+            },
+            As<azslParser::OtherExpressionContext*>(ctx),
+            As<azslParser::CommaExpressionContext*>(ctx));
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::OtherExpressionContext* ctx) const
@@ -1263,7 +1482,7 @@ namespace AZ::ShaderCompiler
         }
         else
         {
-            return GetTypeName(lookup);  // this call is often the leaf of the TypeofExpr call tree.
+            return GetTypeName(lookup); // this call is often the leaf of the TypeofExpr call tree.
         }
     }
 
@@ -1284,8 +1503,9 @@ namespace AZ::ShaderCompiler
         }
         // otherwise, RHS is relative to LHS -> it's a member of typeof(LHS)
         auto [valid, lhsType] = VerifyLHSExprOfMAExprIsValid(ctx);
-        return valid ? ComposeMemberNameWithScopeAndGetType(lhsType, ctx->Member)
-                     : QualifiedName{"<fail>"};
+        return valid
+                   ? ComposeMemberNameWithScopeAndGetType(lhsType, ctx->Member)
+                   : QualifiedName{"<fail>"};
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::FunctionCallExpressionContext* ctx) const
@@ -1305,7 +1525,8 @@ namespace AZ::ShaderCompiler
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::ArrayAccessExpressionContext* ctx) const
-    {   // typeof(myvariable[3]) is typeof(myvariable) minus brackets.  (e.g. int[] -> int)
+    {
+        // typeof(myvariable[3]) is typeof(myvariable) minus brackets.  (e.g. int[] -> int)
         // But because of a limitation, today the type of array variable is not described as type[], but only type
         // which means it is enough today to just return typeof(myvariable).
         // Again, this is loose since array access is not going to be semantically validated.
@@ -1314,43 +1535,53 @@ namespace AZ::ShaderCompiler
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::ParenthesizedExpressionContext* ctx) const
-    {   // parenthesis don't change the type, it's just a syntax precedence thing. so just forward to the inner expression.
+    {
+        // parenthesis don't change the type, it's just a syntax precedence thing. so just forward to the inner expression.
         return TypeofExpr(ctx->Expr);
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::CastExpressionContext* ctx) const
-    {   // typeof( (type)expr ) is typeof(type) so just forward to that sub rule.
+    {
+        // typeof( (type)expr ) is typeof(type) so just forward to that sub rule.
         // Note that the cast-expression can optionally specify array-ranks, but they are ignored today.
         return TypeofExpr(ctx->type());
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::ConditionalExpressionContext* ctx) const
-    {   // typeof(a ? b : c) is typeof(b) because b and c are forbidden to differ in type. DXC/clang is going to see to it.
+    {
+        // typeof(a ? b : c) is typeof(b) because b and c are forbidden to differ in type. DXC/clang is going to see to it.
         return TypeofExpr(ctx->TrueExpr);
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::AssignmentExpressionContext* ctx) const
-    {   // typeof(a = b) is typeof(a) because an assignment returns a reference to the left-hand-side as rvalue for the enclosing expression.
+    {
+        // typeof(a = b) is typeof(a) because an assignment returns a reference to the left-hand-side as rvalue for the enclosing expression.
         return TypeofExpr(ctx->Left);
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::NumericConstructorExpressionContext* ctx) const
-    {   // typeof(float2(0,0)) is float2
+    {
+        // typeof(float2(0,0)) is float2
         return LookupType(ctx->scalarOrVectorOrMatrixType()).GetName();
     }
 
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::TypeofExpressionContext* ctx) const
-    {   // typeof(typeof(..)) is typeof(..) | and typeof(A)::id is type of the symbol composed by `lookup-of-A`/id
-        auto leftType = ctx->Expr ? TypeofExpr(ctx->Expr)
-                                  : TypeofExpr(ctx->type());
+    {
+        // typeof(typeof(..)) is typeof(..) | and typeof(A)::id is type of the symbol composed by `lookup-of-A`/id
+        auto leftType = ctx->Expr
+                            ? TypeofExpr(ctx->Expr)
+                            : TypeofExpr(ctx->type());
         if (ctx->SubQualification)
         {
-            auto [valid, lhsType] = VerifyTypeIsScopeComposable(leftType,
-                                                                ctx->Expr ? ctx->Expr->getText()
-                                                                          : ctx->type()->getText(),
-                                                                ctx->start->getLine());
-            return valid ? ComposeMemberNameWithScopeAndGetType(lhsType, ctx->SubQualification)
-                         : QualifiedName{"<fail>"};
+            auto [valid, lhsType] = VerifyTypeIsScopeComposable(
+                leftType,
+                ctx->Expr
+                    ? ctx->Expr->getText()
+                    : ctx->type()->getText(),
+                ctx->start->getLine());
+            return valid
+                       ? ComposeMemberNameWithScopeAndGetType(lhsType, ctx->SubQualification)
+                       : QualifiedName{"<fail>"};
         }
         return leftType;
     }
@@ -1363,7 +1594,10 @@ namespace AZ::ShaderCompiler
     QualifiedName SemanticOrchestrator::TypeofExpr(azslParser::LiteralContext* ctx) const
     {
         // verifies that last or 1-before-last characters are a particular literal suffix. like in "56ul"
-        auto hasSuffix = [](auto node, char s){return tolower(node->getText().back()) == s || tolower(Slice(node->getText(), -3, -2) == s);};
+        auto hasSuffix = [](auto node, char s)
+        {
+            return tolower(node->getText().back()) == s || tolower(Slice(node->getText(), -3, -2) == s);
+        };
 
         if (ctx->True() || ctx->False())
         {
@@ -1371,14 +1605,17 @@ namespace AZ::ShaderCompiler
         }
         else if (auto* literal = ctx->IntegerLiteral())
         {
-            return hasSuffix(literal, 'u') ? MangleScalarType("uint")
-                 : MangleScalarType("int");
+            return hasSuffix(literal, 'u')
+                       ? MangleScalarType("uint")
+                       : MangleScalarType("int");
         }
         else if (auto* literal = ctx->FloatLiteral())
         {
-            return hasSuffix(literal, 'h') ? MangleScalarType("half")
-                 : hasSuffix(literal, 'l') ? MangleScalarType("double")
-                 : MangleScalarType("float");
+            return hasSuffix(literal, 'h')
+                       ? MangleScalarType("half")
+                       : hasSuffix(literal, 'l')
+                       ? MangleScalarType("double")
+                       : MangleScalarType("float");
         }
         return {"<fail>"};
     }
@@ -1440,27 +1677,43 @@ namespace AZ::ShaderCompiler
             auto& [baseUid, wannabeInfo] = *infoBase;
             if (!wannabeInfo.IsKindOneOf(Kind::Interface, Kind::Class))
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_INTERFACE, declNode->Class()->getSymbol(),
-                    ConcatString("base ", baseUid.m_name, " is not an interface or class (it is a "s,
-                                 Kind::ToStr(wannabeInfo.GetKind()).data(), ")")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_INTERFACE,
+                    declNode->Class()->getSymbol(),
+                    ConcatString(
+                        "base ",
+                        baseUid.m_name,
+                        " is not an interface or class (it is a "s,
+                        Kind::ToStr(wannabeInfo.GetKind()).data(),
+                        ")")
+                };
             }
             concreteBase += wannabeInfo.GetKind() == Kind::Class;
             if (concreteBase > 1)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_INTERFACE, declNode->Class()->getSymbol(),
-                                                ConcatString("class ", declNode->Name->getText(),
-                                                             " has multiple concrete bases. Only 1 concrete base allowed"s)};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_INTERFACE,
+                    declNode->Class()->getSymbol(),
+                    ConcatString(
+                        "class ",
+                        declNode->Name->getText(),
+                        " has multiple concrete bases. Only 1 concrete base allowed"s)
+                };
             }
             // verify interfaces full implementation
             if (wannabeInfo.GetKind() == Kind::Interface)
             {
                 auto& baseInfoAsClass = wannabeInfo.GetSubRefAs<ClassInfo>();
                 for (auto basemember : baseInfoAsClass.GetOrderedMembers())
-                {  // Check that any member present in base is present in this class
+                {
+                    // Check that any member present in base is present in this class
                     if (!classSubInfo.HasMember(basemember.GetNameLeaf()))
                     {
-                        throw AzslcOrchestratorException{ORCHESTRATOR_CLASS_REDEFINE, declNode->Class()->getSymbol(),
-                                                         ConcatString("class ", m_scope->m_currentScopeUID.m_name, " does not redefine ", basemember.m_name)};
+                        throw AzslcOrchestratorException{
+                            ORCHESTRATOR_CLASS_REDEFINE,
+                            declNode->Class()->getSymbol(),
+                            ConcatString("class ", m_scope->m_currentScopeUID.m_name, " does not redefine ", basemember.m_name)
+                        };
                     }
                 }
             }
@@ -1485,12 +1738,16 @@ namespace AZ::ShaderCompiler
             if (baseKind != Kind::Function)
             {
                 auto baseKindStr = Kind::ToStr(baseKind).data();
-                throw AzslcOrchestratorException{ORCHESTRATOR_HIDING_SYMBOL_BASE, ctx->Identifier()->getSymbol(),
-                    ConcatString("function ", thisFuncId.m_name, " is hiding a symbol of a base, that is not of Function kind, but is ", baseKindStr)};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_HIDING_SYMBOL_BASE,
+                    ctx->Identifier()->getSymbol(),
+                    ConcatString("function ", thisFuncId.m_name, " is hiding a symbol of a base, that is not of Function kind, but is ", baseKindStr)
+                };
             }
             auto& baseFuncSubInfo = baseFuncKind.GetSubRefAs<FunctionInfo>();
-            if (std::find(baseFuncSubInfo.m_overrides.begin(),  baseFuncSubInfo.m_overrides.end(), thisFuncId) == baseFuncSubInfo.m_overrides.end())
-            {   // this collection is not a set, and ValidateFunctionAndRegisterFamilySeenat may be called multiple times on the same symbol
+            if (std::find(baseFuncSubInfo.m_overrides.begin(), baseFuncSubInfo.m_overrides.end(), thisFuncId) == baseFuncSubInfo.m_overrides.end())
+            {
+                // this collection is not a set, and ValidateFunctionAndRegisterFamilySeenat may be called multiple times on the same symbol
                 baseFuncSubInfo.m_overrides.emplace_back(thisFuncId);
             }
             // == and register the (one) base in our own data too. two-way 1toN bridging. ==
@@ -1502,16 +1759,24 @@ namespace AZ::ShaderCompiler
         if (ctx->Override())
         {
             if (GetCurrentParentScopeIdAndKind().second.GetKind() != Kind::Class)
-            {   // free function case (or in interface !)
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_OVERRIDE_SPECIFIER_CLASS, ctx->Identifier()->getSymbol(),
-                    ConcatString("function ", thisFuncId.m_name, " has override specifier but is not part of a class")};
+            {
+                // free function case (or in interface !)
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_OVERRIDE_SPECIFIER_CLASS,
+                    ctx->Identifier()->getSymbol(),
+                    ConcatString("function ", thisFuncId.m_name, " has override specifier but is not part of a class")
+                };
             }
             else
-            {   // in-class case
+            {
+                // in-class case
                 if (!parentFunction)
                 {
-                    throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_OVERRIDE_SPECIFIER_BASE, ctx->Identifier()->getSymbol(),
-                        ConcatString("method ", thisFuncId.m_name, " has override specifier but is not found in any base")};
+                    throw AzslcOrchestratorException{
+                        ORCHESTRATOR_INVALID_OVERRIDE_SPECIFIER_BASE,
+                        ctx->Identifier()->getSymbol(),
+                        ConcatString("method ", thisFuncId.m_name, " has override specifier but is not found in any base")
+                    };
                 }
             }
         }
@@ -1523,16 +1788,26 @@ namespace AZ::ShaderCompiler
         // forbid mixup of overloading & default param values (because it wreaks the resolution technique)
         auto overloadSetId = IdentifierUID{QualifiedNameView{RemoveLastParenthesisGroup(thisFuncId.GetName())}};
         auto* overloadSet = m_symbols->GetAsSub<OverloadSetInfo>(overloadSetId);
-        if (overloadSet->HasOverloads())  // (at least 2 concrete functions)
+        if (overloadSet->HasOverloads()) // (at least 2 concrete functions)
         {
             bool thisFuncIsCulprit = funcInfo.HasAnyDefaultParameterValue();
-            bool previousFuncIsCulprit = overloadSet->AnyOf([this](auto&& uid){return this->HasAnyDefaultParameterValue(uid);});
+            bool previousFuncIsCulprit = overloadSet->AnyOf(
+                [this](auto&& uid)
+                {
+                    return this->HasAnyDefaultParameterValue(uid);
+                });
             if (thisFuncIsCulprit || previousFuncIsCulprit)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_NO_DEFAULT_PARAM_WITH_OVERLOADS, ctx->Identifier()->getSymbol(),
-                                                 ConcatString("can't use default arguments in conjunction with function overloading. (function ", thisFuncId.m_name,
-                                                              thisFuncIsCulprit ? " has defaults arguments, but overloads exist)"
-                                                                                : " overloads a function that has default arguments)")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_NO_DEFAULT_PARAM_WITH_OVERLOADS,
+                    ctx->Identifier()->getSymbol(),
+                    ConcatString(
+                        "can't use default arguments in conjunction with function overloading. (function ",
+                        thisFuncId.m_name,
+                        thisFuncIsCulprit
+                            ? " has defaults arguments, but overloads exist)"
+                            : " overloads a function that has default arguments)")
+                };
             }
         }
     }
@@ -1550,9 +1825,13 @@ namespace AZ::ShaderCompiler
                 if (srgInfo.m_semantic->GetNameLeaf() != semanticName)
                 {
                     const LineDirectiveInfo* originalSrglineInfo = AzslcException::s_lineFinder->GetNearestPreprocessorLineDirective(srgInfo.m_declNode->Semantic->getLine());
-                    std::string errorMsg = FormatString("'partial' extension of ShaderResourceGroup [%s] with semantic [%s] shall not bind a different semantic than [%s] found in line %u of %s",
-                        ctx->Name->getText().c_str(), semanticName.c_str(), srgInfo.m_semantic->GetNameLeaf().c_str(),
-                        originalSrglineInfo->m_forcedLineNumber, originalSrglineInfo->m_containingFilename.c_str());
+                    std::string errorMsg = FormatString(
+                        "'partial' extension of ShaderResourceGroup [%s] with semantic [%s] shall not bind a different semantic than [%s] found in line %u of %s",
+                        ctx->Name->getText().c_str(),
+                        semanticName.c_str(),
+                        srgInfo.m_semantic->GetNameLeaf().c_str(),
+                        originalSrglineInfo->m_forcedLineNumber,
+                        originalSrglineInfo->m_containingFilename.c_str());
                     throw AzslcOrchestratorException{ORCHESTRATOR_SRG_EXTENSION_HAS_DIFFERENT_SEMANTIC, ctx->Semantic, errorMsg};
                 }
                 // All is good.
@@ -1560,22 +1839,34 @@ namespace AZ::ShaderCompiler
             }
 
             // Make sure the SRG is referencing a registered srgSemantic (and of the correct kind)
-            auto uqName = UnqualifiedNameView{ semanticName };
+            auto uqName = UnqualifiedNameView{semanticName};
             auto semanticSymbol = LookupSymbol(uqName);
             if (!semanticSymbol)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION, ctx->ShaderResourceGroup()->getSymbol(),
-                                                 ConcatString("Declaration for semantic ", semanticName, " used in SRG ", ctx->Name->getText(), " was not found")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION,
+                    ctx->ShaderResourceGroup()->getSymbol(),
+                    ConcatString("Declaration for semantic ", semanticName, " used in SRG ", ctx->Name->getText(), " was not found")
+                };
             }
 
             auto& [semanticSymId, semanticSymKind] = *semanticSymbol;
             Kind kind = semanticSymKind.GetKind();
             if (kind != Kind::ShaderResourceGroupSemantic)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION_TYPE, ctx->ShaderResourceGroup()->getSymbol(),
-                                                 ConcatString("Declaration for ", semanticName, " used in SRG ", ctx->Name->getText(),
-                                                              " is a ", Kind::ToStr(kind).data(),
-                                                              " but expected a ", Kind::ToStr(Kind::ShaderResourceGroupSemantic).data())};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_SEMANTIC_DECLARATION_TYPE,
+                    ctx->ShaderResourceGroup()->getSymbol(),
+                    ConcatString(
+                        "Declaration for ",
+                        semanticName,
+                        " used in SRG ",
+                        ctx->Name->getText(),
+                        " is a ",
+                        Kind::ToStr(kind).data(),
+                        " but expected a ",
+                        Kind::ToStr(Kind::ShaderResourceGroupSemantic).data())
+                };
             }
             const IdentifierUID& srgId = GetCurrentScopeIdAndKind().first;
             auto* srgSemanticInfo = semanticSymKind.GetSubRefAs<ClassInfo>().Get<SRGSemanticInfo>();
@@ -1586,10 +1877,17 @@ namespace AZ::ShaderCompiler
             }
             else if (userSrgIterator->second != srgId)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_SRG_REUSES_A_FREQUENCY, ctx->ShaderResourceGroup()->getSymbol(),
-                                                 ConcatString("SRG ", ctx->Name->getText(), " reuses frequencyId "
-                                                              , userSrgIterator->first, " already used by ",
-                                                              userSrgIterator->second)};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_SRG_REUSES_A_FREQUENCY,
+                    ctx->ShaderResourceGroup()->getSymbol(),
+                    ConcatString(
+                        "SRG ",
+                        ctx->Name->getText(),
+                        " reuses frequencyId ",
+                        userSrgIterator->first,
+                        " already used by ",
+                        userSrgIterator->second)
+                };
             }
             // Good, the SRGSemantic is valid, remember a reference to its ID on the SRG:
             srgInfo.m_semantic = semanticSymId;
@@ -1601,30 +1899,41 @@ namespace AZ::ShaderCompiler
                 int keyLength = ((variantFallbackValue + kShaderVariantKeyRegisterSize - 1) / kShaderVariantKeyRegisterSize) * kShaderVariantKeyRegisterSize;
                 if (keyLength > variantFallbackValue)
                 {
-                    PrintWarning(Warn::W1, ctx->ShaderResourceGroup()->getSymbol(),
-                                 "ShaderVariantFallback requires ", variantFallbackValue,
-                                 " bits, but will be bumped up to ", keyLength, " bits for padding.");
+                    PrintWarning(
+                        Warn::W1,
+                        ctx->ShaderResourceGroup()->getSymbol(),
+                        "ShaderVariantFallback requires ",
+                        variantFallbackValue,
+                        " bits, but will be bumped up to ",
+                        keyLength,
+                        " bits for padding.");
                 }
 
                 // Find a name that doesn't collide with previous declarations
                 std::string svkName = kShaderVariantKeyFallbackVarName;
-                auto existingSymbol = LookupSymbol(UnqualifiedNameView{ svkName });
+                auto existingSymbol = LookupSymbol(UnqualifiedNameView{svkName});
                 while (existingSymbol)
                 {
                     //There is a name collision, add a suffix to the name and try again.
-                    svkName = + "z";
-                    existingSymbol = LookupSymbol(UnqualifiedNameView{ svkName });
+                    svkName = +"z";
+                    existingSymbol = LookupSymbol(UnqualifiedNameView{svkName});
                 }
 
                 size_t line = 0;
-                auto& [uid, var] = AddIdentifier(UnqualifiedNameView{ svkName }, Kind::Variable, line);
+                auto& [uid, var] = AddIdentifier(UnqualifiedNameView{svkName}, Kind::Variable, line);
                 auto& varInfo = var.GetSubAfterInitAs<Kind::Variable>();
                 varInfo.m_srgMember = true;
 
                 ArrayDimensions arrayDims;
                 arrayDims.PushBack(keyLength / kShaderVariantKeyRegisterSize);
-                varInfo.m_typeInfoExt = ExtendedTypeInfo{CreateTypeRefInfo(UnqualifiedNameView{"uint4"}, OnNotFoundOrWrongKind::Diagnose), {},
-                                                         {}, arrayDims, {}, Packing::MatrixMajor::Default };
+                varInfo.m_typeInfoExt = ExtendedTypeInfo{
+                    CreateTypeRefInfo(UnqualifiedNameView{"uint4"}, OnNotFoundOrWrongKind::Diagnose),
+                    {},
+                    {},
+                    arrayDims,
+                    {},
+                    Packing::MatrixMajor::Default
+                };
 
                 srgInfo.m_implicitStruct.PushMember(uid, Kind::Variable);
                 srgInfo.m_shaderVariantFallback = uid;
@@ -1644,8 +1953,11 @@ namespace AZ::ShaderCompiler
                 bool genericTypeLooksGood = IsFundamental(genericClass) || IsUserDefined(genericClass);
                 if (!genericTypeLooksGood)
                 {
-                    throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_EXTERNAL_BOUND_RESOURCE_VIEW, memberInfo.m_declNode->start,
-                                                     "externally bound resources can't be type-parameterized on view-types"};
+                    throw AzslcOrchestratorException{
+                        ORCHESTRATOR_INVALID_EXTERNAL_BOUND_RESOURCE_VIEW,
+                        memberInfo.m_declNode->start,
+                        "externally bound resources can't be type-parameterized on view-types"
+                    };
                 }
             }
         }
@@ -1659,24 +1971,41 @@ namespace AZ::ShaderCompiler
             auto genericClass = memberInfo.GetGenericParameterTypeClass();
             if (!IsUserDefined(genericClass))
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_GENERIC_TYPE_CONSTANTBUFFER, memberInfo.m_declNode->start,
-                    ConcatString("ConstantBuffer<T>'s generic type ", genericName,
-                                 " must be user defined, but seen as ", TypeClass::ToStr(genericClass).data())};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_GENERIC_TYPE_CONSTANTBUFFER,
+                    memberInfo.m_declNode->start,
+                    ConcatString(
+                        "ConstantBuffer<T>'s generic type ",
+                        genericName,
+                        " must be user defined, but seen as ",
+                        TypeClass::ToStr(genericClass).data())
+                };
             }
             // further checks by actually fetching the symbol
             IdAndKind* idkind = m_symbols->GetIdAndKindInfo(genericName);
             if (!idkind)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_UNDECLARED_GENERIC_TYPE_CONSTANTBUFFER, memberInfo.m_declNode->start,
-                    ConcatString("ConstantBuffer<T>'s generic type ", genericName,
-                                 " is not declared!")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_UNDECLARED_GENERIC_TYPE_CONSTANTBUFFER,
+                    memberInfo.m_declNode->start,
+                    ConcatString(
+                        "ConstantBuffer<T>'s generic type ",
+                        genericName,
+                        " is not declared!")
+                };
             }
             auto& [id, kind] = *idkind;
             if (kind.GetKind() != Kind::Struct)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_GENERIC_TYPE_CONSTANTBUFFER_STRUCT, memberInfo.m_declNode->start,
-                    ConcatString("ConstantBuffer<T>'s generic type ", genericName,
-                                 " must be a struct, but seen as ", Kind::ToStr(kind.GetKind()).data())};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_INVALID_GENERIC_TYPE_CONSTANTBUFFER_STRUCT,
+                    memberInfo.m_declNode->start,
+                    ConcatString(
+                        "ConstantBuffer<T>'s generic type ",
+                        genericName,
+                        " must be a struct, but seen as ",
+                        Kind::ToStr(kind.GetKind()).data())
+                };
             }
         }
     }
@@ -1688,7 +2017,7 @@ namespace AZ::ShaderCompiler
         std::string_view intrinsicVarNameFromLexer(stdIntrinsicVarNameFromLexer.data(), stdIntrinsicVarNameFromLexer.size());
         std::string_view intrinsicVarName = Trim(intrinsicVarNameFromLexer, "\'");
 
-        auto semanticSymbol = LookupSymbol(UnqualifiedNameView{ intrinsicVarName });
+        auto semanticSymbol = LookupSymbol(UnqualifiedNameView{intrinsicVarName});
         if (!semanticSymbol)
         {
             if (!required)
@@ -1696,10 +2025,13 @@ namespace AZ::ShaderCompiler
                 return std::nullopt;
             }
 
-            throw AzslcOrchestratorException{ORCHESTRATOR_LITERAL_REQUIRED_SRG_SEMANTIC, ctx->start,
-                                             ConcatString(intrinsicVarName, " is required in SRG semantic")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_LITERAL_REQUIRED_SRG_SEMANTIC,
+                ctx->start,
+                ConcatString(intrinsicVarName, " is required in SRG semantic")
+            };
         }
-        auto&[sId, sKind] = *semanticSymbol;
+        auto& [sId, sKind] = *semanticSymbol;
         auto& srgSubInfo = GetCurrentScopeSubInfoAs<ClassInfo>();
         if (!srgSubInfo.HasMember(sId))
         {
@@ -1711,8 +2043,10 @@ namespace AZ::ShaderCompiler
         int64_t retValue = 0;
         if (!TryGetConstExprValueAsInt64(varInfo.m_constVal, retValue))
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_INTEGER_CONSTANT,
-                                             ConcatString("Semantic pass error: couldn't get a meaningful integer constant for ", intrinsicVarName)};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_INVALID_INTEGER_CONSTANT,
+                ConcatString("Semantic pass error: couldn't get a meaningful integer constant for ", intrinsicVarName)
+            };
         }
 
         return retValue;
@@ -1725,8 +2059,11 @@ namespace AZ::ShaderCompiler
         (*semanticInfo).m_frequencyId = TryFoldSRGSemantic(ctx, azslParser::FrequencyId, true);
         if (*((*semanticInfo).m_frequencyId) > SRGSemanticInfo_MaxAllowedFrequency)
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_INVALID_RANGE_FREQUENCY_ID, ctx->Identifier()->getSymbol(),
-                                             ConcatString("ShaderResourceGroupSemantic must define a FrequencyId with value between 0 and ", SRGSemanticInfo_MaxAllowedFrequency)};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_INVALID_RANGE_FREQUENCY_ID,
+                ctx->Identifier()->getSymbol(),
+                ConcatString("ShaderResourceGroupSemantic must define a FrequencyId with value between 0 and ", SRGSemanticInfo_MaxAllowedFrequency)
+            };
         }
 
         (*semanticInfo).m_variantFallback = TryFoldSRGSemantic(ctx, azslParser::ShaderVariantFallback);
@@ -1739,14 +2076,14 @@ namespace AZ::ShaderCompiler
         {
             if (EndsWith(text, "u") || EndsWith(text, "U"))
             {
-                return static_cast<uint32_t> (std::stoul(text, nullptr, 0/*auto base to support 0#,0x# prefixes*/));
+                return static_cast<uint32_t>(std::stoul(text, nullptr, 0/*auto base to support 0#,0x# prefixes*/));
             }
 
             return int32_t{std::stoi(text, nullptr, 0)}; // stoi(...) resolves floats as integers, use hintAsInt = false if you need a float
         }
         else
         {
-            return float{ std::stof(text, nullptr) };
+            return float{std::stof(text, nullptr)};
         }
     }
 
@@ -1756,21 +2093,30 @@ namespace AZ::ShaderCompiler
         auto maybeSymbol = LookupSymbol(uqName);
         if (!maybeSymbol)
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_CONSTANT_FOLDING_FAULT, idExp->start,
-                                             ConcatString("in expected constant expression: identifier ", uqName, " not found")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_CONSTANT_FOLDING_FAULT,
+                idExp->start,
+                ConcatString("in expected constant expression: identifier ", uqName, " not found")
+            };
         }
         auto& [id, symbol] = *maybeSymbol;
         auto what = symbol.GetKind();
         if (what != Kind::Variable)
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_CONSTANT_FOLDING_FAULT, idExp->start,
-                                             ConcatString("in expected constant expression: identifier ", uqName, " did not refer to a variable, but a ", Kind::ToStr(what).data())};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_CONSTANT_FOLDING_FAULT,
+                idExp->start,
+                ConcatString("in expected constant expression: identifier ", uqName, " did not refer to a variable, but a ", Kind::ToStr(what).data())
+            };
         }
-        auto const& var = symbol.GetSubRefAs<VarInfo>();
+        const auto& var = symbol.GetSubRefAs<VarInfo>();
         if (std::holds_alternative<std::monostate>(var.m_constVal))
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_CONSTANT_FOLDING_FAULT, idExp->start,
-                                             ConcatString("in expected constant expression: variable ", id.m_name, " couldn't be folded to a constant (tip: use --semantic --verbose to diagnose why)")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_CONSTANT_FOLDING_FAULT,
+                idExp->start,
+                ConcatString("in expected constant expression: variable ", id.m_name, " couldn't be folded to a constant (tip: use --semantic --verbose to diagnose why)")
+            };
         }
         return var.m_constVal;
     }
@@ -1825,11 +2171,13 @@ namespace AZ::ShaderCompiler
         {
             // we are on a literal so we need to restrict down to integers only
             if (auto* intLit = litExpr->literal()->IntegerLiteral())
-            {   // easy case. we have the literal right there on a plate.
+            {
+                // easy case. we have the literal right there on a plate.
                 return FoldEvalStaticConstExprNumericValue(intLit);
             }
             else if (auto* floatLit = litExpr->literal()->FloatLiteral())
-            {   // easy case. we have the literal right there on a plate.
+            {
+                // easy case. we have the literal right there on a plate.
                 return FoldEvalStaticConstExprNumericValue(floatLit, false);
             }
             else
@@ -1854,7 +2202,7 @@ namespace AZ::ShaderCompiler
                 FoldFailedCommonMessage(expr->start) << ": initializer identifier " + uqName + " did not refer to a variable, but a " + Kind::ToStr(what).data();
                 return std::monostate{};
             }
-            auto const& var = symbol.GetSubRefAs<VarInfo>();
+            const auto& var = symbol.GetSubRefAs<VarInfo>();
             return var.m_constVal;
         }
         else
@@ -1873,7 +2221,7 @@ namespace AZ::ShaderCompiler
     {
         TypeClass toReturn = TypeClass::IsNotType;
         auto* idKind = m_symbols->GetIdAndKindInfo(typeId.GetName());
-        if (idKind)  // found
+        if (idKind) // found
         {
             auto& [_, kind] = *idKind;
             switch (kind.GetKind())
@@ -1901,14 +2249,21 @@ namespace AZ::ShaderCompiler
 
     IdentifierUID SemanticOrchestrator::LookupType(UnqualifiedNameView typeName, OnNotFoundOrWrongKind policy, std::optional<size_t> sourceline /*=std::nullopt*/) const
     {
-        auto getErrorIUID = [policy, typeName](){return policy == OnNotFoundOrWrongKind::Empty ? IdentifierUID{} : IdentifierUID{QualifiedName{typeName}};};
+        auto getErrorIUID = [policy, typeName]()
+        {
+            return policy == OnNotFoundOrWrongKind::Empty ? IdentifierUID{} : IdentifierUID{QualifiedName{typeName}};
+        };
         IdAndKind* type = LookupSymbol(UnqualifiedNameView{typeName});
         if (!type)
         {
             if (policy == OnNotFoundOrWrongKind::Diagnose)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_TYPE_LOOKUP_FAULT,
-                                                 sourceline, std::nullopt, ConcatString(" type ", std::string{ typeName }, " requested but not found.")};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_TYPE_LOOKUP_FAULT,
+                    sourceline,
+                    std::nullopt,
+                    ConcatString(" type ", std::string{typeName}, " requested but not found.")
+                };
             }
             else
             {
@@ -1923,9 +2278,16 @@ namespace AZ::ShaderCompiler
         {
             if (policy == OnNotFoundOrWrongKind::Diagnose)
             {
-                throw AzslcOrchestratorException{ORCHESTRATOR_TYPE_LOOKUP_FAULT,
-                    sourceline, std::nullopt, ConcatString(" type ", typeName.data(),
-                                                   " requested but found as ", Kind::ToStr(kind.GetKind()).data())};
+                throw AzslcOrchestratorException{
+                    ORCHESTRATOR_TYPE_LOOKUP_FAULT,
+                    sourceline,
+                    std::nullopt,
+                    ConcatString(
+                        " type ",
+                        typeName.data(),
+                        " requested but found as ",
+                        Kind::ToStr(kind.GetKind()).data())
+                };
             }
             else
             {
@@ -1964,15 +2326,19 @@ namespace AZ::ShaderCompiler
         auto extType = ExtractComposedTypeNamesFromAstContext(ctx, &genericDims);
         if (!TryFoldGenericArrayDimensions(extType, genericDims))
         {
-            throw AzslcOrchestratorException{ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS, ctx->start,
-                                             ConcatString("SemanticOrchestrator::CreateExtendedTypeInfo failed for type (", ctx->getText(), ")")};
+            throw AzslcOrchestratorException{
+                ORCHESTRATOR_ILLEGAL_FOLDABLE_ARRAY_DIMENSIONS,
+                ctx->start,
+                ConcatString("SemanticOrchestrator::CreateExtendedTypeInfo failed for type (", ctx->getText(), ")")
+            };
         }
         return CreateExtendedTypeInfo(extType, ExtractTypeQualifiers(ctx->storageFlags()), dims);
     }
 
-    ExtendedTypeInfo SemanticOrchestrator::CreateExtendedTypeInfo(const ExtractedComposedType& extractedComposed,
-                                                                  const TypeQualifiers& qualifiers,
-                                                                  ArrayDimensions dims) const
+    ExtendedTypeInfo SemanticOrchestrator::CreateExtendedTypeInfo(
+        const ExtractedComposedType& extractedComposed,
+        const TypeQualifiers& qualifiers,
+        ArrayDimensions dims) const
     {
         TypeRefInfo core = CreateTypeRefInfo(extractedComposed.m_core);
         TypeRefInfo generic = CreateTypeRefInfo(extractedComposed.m_genericParam);
@@ -1992,7 +2358,7 @@ namespace AZ::ShaderCompiler
     {
         IdAndKind* found = nullptr;
         auto& [containingScopeId, containingScopeKind] = GetCurrentParentScopeIdAndKind();
-        if (containingScopeKind.GetKind() == Kind::Class)  // only class can have bases in AZSL
+        if (containingScopeKind.GetKind() == Kind::Class) // only class can have bases in AZSL
         {
             // get currently parsed class info:
             auto& curClassInfo = GetCurrentParentScopeSubInfoAs<ClassInfo>();
@@ -2001,7 +2367,7 @@ namespace AZ::ShaderCompiler
             {
                 auto maybeBaseClass = m_symbols->GetIdAndKindInfo(base.m_name);
                 if (maybeBaseClass
-                    && maybeBaseClass->second.IsKindOneOf(Kind::Interface, Kind::Class))  // bases must be interfaces or classes, but we don't assume it's enforced prior to calls to this function
+                    && maybeBaseClass->second.IsKindOneOf(Kind::Interface, Kind::Class)) // bases must be interfaces or classes, but we don't assume it's enforced prior to calls to this function
                 {
                     const auto& baseClassInfo = maybeBaseClass->second.GetSubRefAs<ClassInfo>();
                     bool baseHasSameNameMember = baseClassInfo.HasMember(hidingCandidate.GetNameLeaf());
@@ -2009,11 +2375,19 @@ namespace AZ::ShaderCompiler
                     {
                         if (found)
                         {
-                            throw AzslcOrchestratorException{ORCHESTRATOR_MULTIPLE_HIDDEN_SYMBOLS,
-                                ConcatString("Found multiple symbols hidden by ", hidingCandidate.m_name,
-                                    " in bases of ", containingScopeId.m_name,
-                                    ". First was ", found->first.m_name,
-                                    ", now also found in ", base.m_name, ".")};
+                            throw AzslcOrchestratorException{
+                                ORCHESTRATOR_MULTIPLE_HIDDEN_SYMBOLS,
+                                ConcatString(
+                                    "Found multiple symbols hidden by ",
+                                    hidingCandidate.m_name,
+                                    " in bases of ",
+                                    containingScopeId.m_name,
+                                    ". First was ",
+                                    found->first.m_name,
+                                    ", now also found in ",
+                                    base.m_name,
+                                    ".")
+                            };
                         }
                         // reconstruct the UID found, and return that.
                         std::string reconstructedPath = JoinPath(base.m_name, hidingCandidate.GetNameLeaf());

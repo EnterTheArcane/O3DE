@@ -21,10 +21,9 @@ namespace AZ
     //! the number of '\n' (new line) characters that go through it.
     class NewLineCounterStream : public MakeOStreamStreamable
     {
-        typedef NewLineCounterStream Self;
+        using Self = NewLineCounterStream;
 
     public:
-
         using MakeOStreamStreamable::MakeOStreamStreamable;
 
         Self& operator<<(char c) override
@@ -37,10 +36,10 @@ namespace AZ
             return *this;
         }
 
-        Self& operator<<(const char * nts) override
+        Self& operator<<(const char* nts) override
         {
-            const char * tmp = nts;
-            while(char c = *tmp++)
+            const char* tmp = nts;
+            while (char c = *tmp++)
             {
                 if (c == '\n')
                 {
@@ -71,7 +70,10 @@ namespace AZ
             return *this;
         }
 
-        int GetLineCount() const { return m_lineCount; }
+        int GetLineCount() const
+        {
+            return m_lineCount;
+        }
 
     private:
         int m_lineCount = 0;

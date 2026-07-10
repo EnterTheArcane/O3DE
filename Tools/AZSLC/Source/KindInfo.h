@@ -31,16 +31,18 @@
 namespace AZ::ShaderCompiler
 {
     // This randomly generated GUID has less chance to collide with a user-defined variable, for example m_shaderVariantKey
-    static constexpr char       kShaderVariantKeyFallbackVarName[] = "m_SHADER_VARIANT_KEY_NAME_";
-    static constexpr uint32_t   kShaderVariantKeyElementSize       =   32;
-    static constexpr uint32_t   kShaderVariantKeyRegisterSize      =  128;
+    static constexpr char kShaderVariantKeyFallbackVarName[] = "m_SHADER_VARIANT_KEY_NAME_";
+    static constexpr uint32_t kShaderVariantKeyElementSize = 32;
+    static constexpr uint32_t kShaderVariantKeyRegisterSize = 128;
 
     // Maximum number of values for integer options (currently matched in Atom in ShaderAssetCreator.cpp and to be improved later).
-    static constexpr uint32_t   kIntegerMaxShaderVariantValues = 1000;
+    static constexpr uint32_t kIntegerMaxShaderVariantValues = 1000;
 
-    MAKE_REFLECTABLE_ENUM (Kind,
+    MAKE_REFLECTABLE_ENUM(
+        Kind,
         Namespace,
-        Type,    // non UDT only. Since UDT are struct/class/interface
+        Type,
+        // non UDT only. Since UDT are struct/class/interface
         TypeAlias,
         Variable,
         Function,
@@ -66,16 +68,18 @@ namespace AZ::ShaderCompiler
 
     struct EnumerationInfo
     {
-        bool         m_isScoped = false;
-        TypeRefInfo  m_underlyingType;
+        bool m_isScoped = false;
+        TypeRefInfo m_underlyingType;
     };
 
-    MAKE_REFLECTABLE_ENUM(AttributeScope,
+    MAKE_REFLECTABLE_ENUM(
+        AttributeScope,
         Global,
         Attached
     );
 
-    MAKE_REFLECTABLE_ENUM(AttributeCategory,
+    MAKE_REFLECTABLE_ENUM(
+        AttributeCategory,
         Single,
         Sequence
     );
@@ -83,17 +87,18 @@ namespace AZ::ShaderCompiler
     //! Store [[attributes(and, their, arguments)]]
     struct AttributeInfo
     {
-        AttributeScope    m_scope;
+        AttributeScope m_scope;
         AttributeCategory m_category;
-        size_t            m_lineNumber;
-        std::string            m_namespace;
-        std::string            m_attribute;
+        size_t m_lineNumber;
+        std::string m_namespace;
+        std::string m_attribute;
 
-        struct Argument : std::variant< std::monostate, bool, ConstNumericVal, std::string >
+        struct Argument : std::variant<std::monostate, bool, ConstNumericVal, std::string>
         {
             using variant::variant;
         };
-        std::vector<Argument>  m_argList;
+
+        std::vector<Argument> m_argList;
     };
 
     static bool TypeHasStorageFlag(const TypeQualifiers& typeQualifier, StorageFlag flag)
@@ -177,7 +182,13 @@ namespace AZ::ShaderCompiler
         std::optional<IdentifierUID> FindMemberFromLeafName(UnqualifiedNameView uqName) const
         {
             assert(IsLeaf(uqName));
-            auto item = std::find_if(m_members.begin(), m_members.end(), [&](decltype(*m_members.begin()) elem) {return elem.GetNameLeaf() == uqName; });
+            auto item = std::find_if(
+                m_members.begin(),
+                m_members.end(),
+                [&](decltype(*m_members.begin()) elem)
+                {
+                    return elem.GetNameLeaf() == uqName;
+                });
             return (item != m_members.end()) ? std::optional<IdentifierUID>{*item} : std::nullopt;
         }
 
@@ -189,10 +200,12 @@ namespace AZ::ShaderCompiler
             // define a single generic visitor functor for the variant.
             // We are lucky that all AST nodes have a start object.
             // So this code compiles and work for all 5 types of nodes.
-            return std::visit([](auto&& arg)
-                                   {
-                                       return static_cast<antlr4::ParserRuleContext*>(arg);
-                                   }, m_declNodeVt);
+            return std::visit(
+                [](auto&& arg)
+                {
+                    return static_cast<antlr4::ParserRuleContext*>(arg);
+                },
+                m_declNodeVt);
         }
 
         //! non-const version
@@ -204,10 +217,12 @@ namespace AZ::ShaderCompiler
         //! get Name token from declaration contexts
         const Token* GetDeclNodeNameToken() const
         {
-            return std::visit([](auto&& arg)
-                                   {
-                                       return arg->Name;
-                                   }, m_declNodeVt);
+            return std::visit(
+                [](auto&& arg)
+                {
+                    return arg->Name;
+                },
+                m_declNodeVt);
         }
 
         size_t GetOriginalLineNumber() const
@@ -220,31 +235,31 @@ namespace AZ::ShaderCompiler
         }
 
         //! Gets the concrete variant kind from SubInfo
-        template<typename T>
+        template <typename T>
         T* Get()
         {
             return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
         }
 
-        template<typename T>
+        template <typename T>
         const T* Get() const
         {
             return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
         }
 
-        Kind                           m_kind;   // which of class/struct/interface/srgsemantic ? (repetition of data in the upper KindInfo)
+        Kind m_kind; // which of class/struct/interface/srgsemantic ? (repetition of data in the upper KindInfo)
 
-        using DeclNode = std::variant< AstClassDeclNode*, AstStructDeclNode*, AstEnumDeclNode*, AstInterfaceDeclNode*, AstSRGSemanticDeclNode* >;
-        DeclNode                       m_declNodeVt;
+        using DeclNode = std::variant<AstClassDeclNode*, AstStructDeclNode*, AstEnumDeclNode*, AstInterfaceDeclNode*, AstSRGSemanticDeclNode*>;
+        DeclNode m_declNodeVt;
 
-        using SubKind  = std::variant< std::monostate, SRGSemanticInfo, EnumerationInfo >;
-        SubKind                        m_subInfo;
+        using SubKind = std::variant<std::monostate, SRGSemanticInfo, EnumerationInfo>;
+        SubKind m_subInfo;
 
     private:
-        std::unordered_set< IdentifierUID > m_members;      //!< Fast lookup
-        std::vector< IdentifierUID >        m_memberFields; //!< Only the member fields, in order of declaration. All member fields are members.
-        std::vector< IdentifierUID >        m_ordered;      //!< Ordered. all contained symbols
-        std::vector< IdentifierUID >        m_bases;
+        std::unordered_set<IdentifierUID> m_members; //!< Fast lookup
+        std::vector<IdentifierUID> m_memberFields; //!< Only the member fields, in order of declaration. All member fields are members.
+        std::vector<IdentifierUID> m_ordered; //!< Ordered. all contained symbols
+        std::vector<IdentifierUID> m_bases;
     };
 
     //! an extended type information gathers:
@@ -269,7 +284,7 @@ namespace AZ::ShaderCompiler
         {
             auto baseSize = m_coreType.m_arithmeticInfo.m_baseSize;
             bool isRowMajor = (m_mtxMajor == Packing::MatrixMajor::RowMajor ||
-                              (m_mtxMajor == Packing::MatrixMajor::Default && defaultRowMajor));
+                (m_mtxMajor == Packing::MatrixMajor::Default && defaultRowMajor));
             auto rows = m_coreType.m_arithmeticInfo.m_rows;
             auto cols = m_coreType.m_arithmeticInfo.m_cols;
             return PackAsVectorMatrix(layout, baseSize, rows, cols, isRowMajor);
@@ -328,7 +343,7 @@ namespace AZ::ShaderCompiler
             return TypeHasStorageFlag(m_qualifiers, flag);
         }
 
-        friend bool operator == (const ExtendedTypeInfo& lhs, const ExtendedTypeInfo& rhs)
+        friend bool operator ==(const ExtendedTypeInfo& lhs, const ExtendedTypeInfo& rhs)
         {
             static const Modifiers inconsequentialModifiers = Modifiers{StorageFlag::Extern}
                 | StorageFlag::Inline | StorageFlag::Static | StorageFlag::Volatile | StorageFlag::Uniform;
@@ -339,17 +354,18 @@ namespace AZ::ShaderCompiler
                 && lhs.m_arrayDims == rhs.m_arrayDims
                 && lhsTM == rhsTM;
         }
-        friend bool operator != (const ExtendedTypeInfo& lhs, const ExtendedTypeInfo& rhs)
+
+        friend bool operator !=(const ExtendedTypeInfo& lhs, const ExtendedTypeInfo& rhs)
         {
-            return !operator==(lhs,rhs);
+            return !operator==(lhs, rhs);
         }
 
         //! recreate a user-readable mangled name of the whole type, for diagnostic purposes
         //! this is not rigorous and does not constitute a mangling. the full feature is better served at emission side by GetExtendedTypeInfo function.
         std::string GetDisplayName() const
         {
-             return m_qualifiers.GetDisplayName() + " " + m_coreType.m_typeId.m_name +
-                 (m_genericParameter.IsEmpty() ? "" : Decorate("<", m_genericParameter.m_typeId.m_name, ">"));
+            return m_qualifiers.GetDisplayName() + " " + m_coreType.m_typeId.m_name +
+                (m_genericParameter.IsEmpty() ? "" : Decorate("<", m_genericParameter.m_typeId.m_name, ">"));
         }
 
         //! only use leaf form of names to compose a displayable reconstituted name
@@ -365,11 +381,11 @@ namespace AZ::ShaderCompiler
         //  This is because of a limitation called array collapsing. (which is kind of important for typeof and the seenat feature)
         //  If we store the array dimensions directly in TypeRefInfo, it will not be possible
         //  to support multiple different arrays of `int`s throughout the whole compilation unit.
-        TypeRefInfo          m_coreType;
-        TypeRefInfo          m_genericParameter;  // in case of Buffer<float> coreType is Buffer, genericParameter is float. note that genericParams can't be arrays since brackets are not part of the "type:" rule
-        TypeQualifiers       m_qualifiers;
-        ArrayDimensions      m_arrayDims;
-        ArrayDimensions      m_genericDims;
+        TypeRefInfo m_coreType;
+        TypeRefInfo m_genericParameter; // in case of Buffer<float> coreType is Buffer, genericParameter is float. note that genericParams can't be arrays since brackets are not part of the "type:" rule
+        TypeQualifiers m_qualifiers;
+        ArrayDimensions m_arrayDims;
+        ArrayDimensions m_genericDims;
         Packing::MatrixMajor m_mtxMajor = Packing::MatrixMajor::Default; // Can be changed by #pragmapack_matrix directive, or with the row_major or the column_major qualifiers.
     };
 
@@ -377,74 +393,99 @@ namespace AZ::ShaderCompiler
     struct TypeAliasInfo
     {
         azslParser::TypeAliasingDefinitionStatementContext* m_declNode = nullptr;
-        ExtendedTypeInfo m_canonicalType;  // ultimate (existing) target of the alias
+        ExtendedTypeInfo m_canonicalType; // ultimate (existing) target of the alias
     };
 
     struct VarInfo
     {
-        inline bool                CheckHasStorageFlag(StorageFlag flag) const;
+        inline bool CheckHasStorageFlag(StorageFlag flag) const;
+
         // variadic version for `all` (conjunction) check
-        inline bool                CheckHasAllStorageFlags(std::initializer_list<StorageFlag> vararg) const;
+        inline bool CheckHasAllStorageFlags(std::initializer_list<StorageFlag> vararg) const;
+
         // variadic version for `any` (disjunction) check
-        inline bool                CheckHasAnyStorageFlags(std::initializer_list<StorageFlag> vararg) const;
+        inline bool CheckHasAnyStorageFlags(std::initializer_list<StorageFlag> vararg) const;
+
         // checks if the storage flag should be treated as local linkage
-        inline bool                StorageFlagIsLocalLinkage(bool isGlobalOrSrgScope) const;
+        inline bool StorageFlagIsLocalLinkage(bool isGlobalOrSrgScope) const;
+
         // access variable's type's core identifier
-        inline IdentifierUID       GetTypeId() const;
+        inline IdentifierUID GetTypeId() const;
+
         // access variable's type's generic parameter if any (will return an empty identifier if not)
-        inline IdentifierUID       GetGenericParameterTypeId() const;
+        inline IdentifierUID GetGenericParameterTypeId() const;
+
         // get the variable's type's class
-        inline TypeClass           GetTypeClass() const;
+        inline TypeClass GetTypeClass() const;
+
         // get the variable's type's generic parameter type's class
-        inline TypeClass           GetGenericParameterTypeClass() const;
+        inline TypeClass GetGenericParameterTypeClass() const;
+
         // get the variable's type's ref info
-        inline TypeRefInfo         GetTypeRefInfo() const;
+        inline TypeRefInfo GetTypeRefInfo() const;
+
         // is the variable's type a sampler ?
-        inline bool                IsSampler() const;
-        inline bool                IsConstantBuffer() const;
+        inline bool IsSampler() const;
+
+        inline bool IsConstantBuffer() const;
+
         // is texture, sampler, buffer (all sorts except ConstantBuffer)
-        inline bool                IsViewType() const;
+        inline bool IsViewType() const;
+
         // access array dimensions. think of it as it they apply on the whole variable's type. (so not the generic type)
         // returns an ArrayDimensions struct const ref.
-        inline const auto&         GetArrayDimensions() const;
-        // Returns the line number, in the AZSL file, where this symbol is declared.
-        inline size_t              GetOriginalLineNumber () const;
+        inline const auto& GetArrayDimensions() const;
 
-        AstUnnamedVarDecl*         m_declNode = nullptr;
-        AstEnumeratorDecl*         m_declNodeEnum = nullptr;
-        UnqualifiedName            m_identifier;
-        bool                       m_srgMember = false;
-        bool                       m_isPublic = true;  // this isn't class access visibility, this is for generated fields
-        ConstNumericVal            m_constVal;   // (attempted folded) initializer value for simple scalars
+        // Returns the line number, in the AZSL file, where this symbol is declared.
+        inline size_t GetOriginalLineNumber() const;
+
+        AstUnnamedVarDecl* m_declNode = nullptr;
+        AstEnumeratorDecl* m_declNodeEnum = nullptr;
+        UnqualifiedName m_identifier;
+        bool m_srgMember = false;
+        bool m_isPublic = true; // this isn't class access visibility, this is for generated fields
+        ConstNumericVal m_constVal; // (attempted folded) initializer value for simple scalars
         std::optional<SamplerStateDesc> m_samplerState;
-        ExtendedTypeInfo           m_typeInfoExt;
-        int                        m_estimatedCostImpact = -1;  //!< Cached value calculated by AnalyzeOptionRanks
-        int                        m_specializationId= -1; //< id of the specialization. -1 means no specialization.
+        ExtendedTypeInfo m_typeInfoExt;
+        int m_estimatedCostImpact = -1; //!< Cached value calculated by AnalyzeOptionRanks
+        int m_specializationId = -1; //< id of the specialization. -1 means no specialization.
     };
 
     // VarInfo methods definitions
     bool VarInfo::CheckHasStorageFlag(StorageFlag flag) const
     {
-       return m_typeInfoExt.CheckHasStorageFlag(flag);
+        return m_typeInfoExt.CheckHasStorageFlag(flag);
     }
 
     bool VarInfo::CheckHasAllStorageFlags(std::initializer_list<StorageFlag> vararg) const
     {
-        return std::all_of(vararg.begin(), vararg.end(), [this](StorageFlag f) { return CheckHasStorageFlag(f); });
+        return std::all_of(
+            vararg.begin(),
+            vararg.end(),
+            [this](StorageFlag f)
+            {
+                return CheckHasStorageFlag(f);
+            });
     }
 
     bool VarInfo::CheckHasAnyStorageFlags(std::initializer_list<StorageFlag> vararg) const
     {
-        return std::any_of(vararg.begin(), vararg.end(), [this](StorageFlag f) { return CheckHasStorageFlag(f); });
+        return std::any_of(
+            vararg.begin(),
+            vararg.end(),
+            [this](StorageFlag f)
+            {
+                return CheckHasStorageFlag(f);
+            });
     }
 
     bool VarInfo::StorageFlagIsLocalLinkage(bool isGlobalOrSrgScope) const
     {
         // Options are hybrid, but we consider them local. Because hard options are defined (by macro).
-        bool forcedLocal = CheckHasAnyStorageFlags({ StorageFlag::Static, StorageFlag::Groupshared, StorageFlag::Option });
-        bool impliedExtern = isGlobalOrSrgScope && !forcedLocal;  // [not-explicitely-local AND global-scope (or SRG-scope)] implies extern
+        bool forcedLocal = CheckHasAnyStorageFlags({StorageFlag::Static, StorageFlag::Groupshared, StorageFlag::Option});
+        bool impliedExtern = isGlobalOrSrgScope && !forcedLocal; // [not-explicitely-local AND global-scope (or SRG-scope)] implies extern
         bool isExtern = impliedExtern
-            || CheckHasAnyStorageFlags({ StorageFlag::Extern, StorageFlag::Rootconstant });
+            || CheckHasAnyStorageFlags({StorageFlag::Extern, StorageFlag::Rootconstant});
         return !isExtern;
     }
 
@@ -557,7 +598,8 @@ namespace AZ::ShaderCompiler
             auto reconstructedId = IdentifierUID{QualifiedName{ConcatString(m_setFullName.m_name, mangledArgumentList)}};
             bool directMatch = m_functions.find(reconstructedId) != m_functions.end();
             if (!directMatch)
-            {   // attempt a fallback matching logic using arity.
+            {
+                // attempt a fallback matching logic using arity.
                 auto numArgs = CountParameters(mangledArgumentList);
                 return FindCandidateOfArity(numArgs);
             }
@@ -583,8 +625,12 @@ namespace AZ::ShaderCompiler
             std::string_view core = RemoveLastParenthesisGroup(functionBelongingToTheOverloadSet.GetName());
             if (core != m_setFullName.m_name)
             {
-                throw std::logic_error{ConcatString("Impossible to add function ", functionBelongingToTheOverloadSet.m_name,
-                                                    " to an overload-set that doesn't have the same core name or scope").c_str()};
+                throw std::logic_error{
+                    ConcatString(
+                        "Impossible to add function ",
+                        functionBelongingToTheOverloadSet.m_name,
+                        " to an overload-set that doesn't have the same core name or scope").c_str()
+                };
             }
             if (m_returnTypeSet.m_state != ReturnTypeSet::HeterogeneousUserDefinedType)
             {
@@ -592,7 +638,7 @@ namespace AZ::ShaderCompiler
                 if (!ok)
                 {
                     verboseCout << "WARN: function " << functionBelongingToTheOverloadSet.m_name
-                                << " is introducing heterogeneity of return types to its overload-set\n";
+                        << " is introducing heterogeneity of return types to its overload-set\n";
                 }
             }
             m_functions.insert(functionBelongingToTheOverloadSet);
@@ -605,45 +651,45 @@ namespace AZ::ShaderCompiler
             }
             else
             {
-                previousCandidateWithSameArgCount->second.Clear();  // keep the count key in the map, but map to empty as a sentinel for "unusable arity"
+                previousCandidateWithSameArgCount->second.Clear(); // keep the count key in the map, but map to empty as a sentinel for "unusable arity"
             }
         }
 
         //! run whatever you want on all overloads UID registered in the set
-        template< typename FunctorTakingUid >
+        template <typename FunctorTakingUid>
         void ForEach(FunctorTakingUid&& functor)
         {
             std::for_each(m_functions.begin(), m_functions.end(), functor);
         }
 
         //! queries whether any registered overloads has a positive result on the functor predicate
-        template< typename FunctorTakingUidReturningBool >
+        template <typename FunctorTakingUidReturningBool>
         bool AnyOf(FunctorTakingUidReturningBool&& functor)
         {
             return std::any_of(m_functions.begin(), m_functions.end(), functor);
         }
 
     private:
-
         //! helper to track their return type
         struct ReturnTypeSet
         {
             //! validate that all functions return manageable types
             bool Merge(ExtendedTypeInfo newType)
             {
-                if (m_state == NonInit)   // first call case
+                if (m_state == NonInit) // first call case
                 {
                     m_type = newType;
                     m_state = Homogeneous;
                 }
                 else if (m_state == Homogeneous)
                 {
-                    if (newType != *m_type)  // overloaded functions must in principle have the same return type
-                    {                        // but we can tolerate differences in case of simple types.
-                                             // (because they can't have renamed members that should go through translation)
+                    if (newType != *m_type) // overloaded functions must in principle have the same return type
+                    {
+                        // but we can tolerate differences in case of simple types.
+                        // (because they can't have renamed members that should go through translation)
                         bool newIsPredefined = IsPredefinedType(newType.m_coreType.m_typeClass);
                         bool oldIsPredefined = IsPredefinedType(m_type->m_coreType.m_typeClass);
-                        if(!(newIsPredefined && oldIsPredefined))
+                        if (!(newIsPredefined && oldIsPredefined))
                         {
                             m_state = HeterogeneousUserDefinedType;
                         }
@@ -652,25 +698,25 @@ namespace AZ::ShaderCompiler
                 }
                 return m_state == Homogeneous;
             }
+
             std::optional<ExtendedTypeInfo> m_type;
+
             enum State
             {
-                NonInit,
-                Homogeneous,
-                HeterogeneousUserDefinedType
+                NonInit, Homogeneous, HeterogeneousUserDefinedType,
             } m_state = NonInit;
-        } m_returnTypeSet;                //!< if the returnType is uniform across all overloads, it'll be cached here.
-        IdentifierUID m_setFullName;      //!< stores our own ID to be able to check that added functions share the scope and name.
-        std::set<IdentifierUID> m_functions;   //!< IDs of functions participating to an overload set.
+        } m_returnTypeSet; //!< if the returnType is uniform across all overloads, it'll be cached here.
+        IdentifierUID m_setFullName; //!< stores our own ID to be able to check that added functions share the scope and name.
+        std::set<IdentifierUID> m_functions; //!< IDs of functions participating to an overload set.
         std::unordered_map<size_t, IdentifierUID> m_argCounts; //!< number of parameters as keys to a unique candidate that has this count.
     };
 
     //! This is a small state machine for function registration step tracking (e.g. decl, decl, def)
     enum FunctionMultiForwards
     {
-        FMF_None,  // no redundant declarators
-        FMF_FwdDeclRedundancy,  // at least one redundant declarators (warning has been produced)
-        FMF_SeenDef  // now encountered definition block
+        FMF_None, // no redundant declarators
+        FMF_FwdDeclRedundancy, // at least one redundant declarators (warning has been produced)
+        FMF_SeenDef, // now encountered definition block
     };
 
     struct FunctionInfo
@@ -712,8 +758,14 @@ namespace AZ::ShaderCompiler
         //! e.g such as in "f(int i = 2)"
         bool HasAnyDefaultParameterValue() const
         {
-            bool list0has = std::any_of(m_parameters[0].begin(), m_parameters[0].end(), [](auto&& p){return !!p.m_defaultValueExpression;});
-            assert(!std::any_of(m_parameters[1].begin(), m_parameters[1].end(), [](auto&& p){return !!p.m_defaultValueExpression;}));  // check that nobody runs this query in the middle of Stash() + MergeDefaultParameters()
+            bool list0has = std::any_of(
+                m_parameters[0].begin(),
+                m_parameters[0].end(),
+                [](auto&& p)
+                {
+                    return !!p.m_defaultValueExpression;
+                });
+            assert(!std::any_of(m_parameters[1].begin(), m_parameters[1].end(), [](auto&& p){return !!p.m_defaultValueExpression;})); // check that nobody runs this query in the middle of Stash() + MergeDefaultParameters()
             return list0has;
         }
 
@@ -736,7 +788,7 @@ namespace AZ::ShaderCompiler
             ++m_currentList;
             for (Parameter& p : m_parameters[0])
             {
-                p.m_varId.Clear();  // mutate all variables to unnamed in the first list. because these symbols are getting deleted.
+                p.m_varId.Clear(); // mutate all variables to unnamed in the first list. because these symbols are getting deleted.
             }
         }
 
@@ -750,10 +802,15 @@ namespace AZ::ShaderCompiler
         {
             auto& paramList = m_parameters[m_currentList];
             const auto originalSize = paramList.size();
-            paramList.erase(std::remove_if(paramList.begin(), paramList.end(), [&](const Parameter& param)
-                {
-                    return param.m_varId == varName;
-                }), paramList.end());
+            paramList.erase(
+                std::remove_if(
+                    paramList.begin(),
+                    paramList.end(),
+                    [&](const Parameter& param)
+                    {
+                        return param.m_varId == varName;
+                    }),
+                paramList.end());
             return paramList.size() != originalSize;
         }
 
@@ -766,7 +823,8 @@ namespace AZ::ShaderCompiler
             if (m_currentList > 0) // we have 2 declaration sites (2 arg lists)
             {
                 if (m_parameters[0].size() != m_parameters[1].size())
-                {   // not a mainstreamed EC diagnostic, because this is probably an internal error. because functions identity incorporate arguments.
+                {
+                    // not a mainstreamed EC diagnostic, because this is probably an internal error. because functions identity incorporate arguments.
                     throw std::runtime_error{ConcatString(DiagLine(m_declNode->start), " function redeclaration not matching earlier appearance, during validation of parameters. Look for earlier warnings?").c_str()};
                 }
                 // merge all default values to first declaration
@@ -776,10 +834,15 @@ namespace AZ::ShaderCompiler
                     Parameter& p1 = m_parameters[1][i];
                     if (p0.m_defaultValueExpression && p1.m_defaultValueExpression)
                     {
-                        throw AzslcOrchestratorException{ORCHESTRATOR_NO_DOUBLE_DEFAULT_DECLARATION, p1.m_defaultValueExpression->start,
-                            ConcatString("default argument value declared twice. first seen at ",
-                                         p0.m_defaultValueExpression->start->getLine(), ":",
-                                         p1.m_defaultValueExpression->start->getCharPositionInLine() + 1)};
+                        throw AzslcOrchestratorException{
+                            ORCHESTRATOR_NO_DOUBLE_DEFAULT_DECLARATION,
+                            p1.m_defaultValueExpression->start,
+                            ConcatString(
+                                "default argument value declared twice. first seen at ",
+                                p0.m_defaultValueExpression->start->getLine(),
+                                ":",
+                                p1.m_defaultValueExpression->start->getCharPositionInLine() + 1)
+                        };
                     }
                     if (p1.m_defaultValueExpression)
                     {
@@ -803,16 +866,16 @@ namespace AZ::ShaderCompiler
             return 0;
         }
 
-        ExtendedTypeInfo          m_returnType;
-        AstFuncSig*               m_declNode     = nullptr;   //!< point to the AST node first declaring this function
-        AstFuncSig*               m_defNode      = nullptr;   //!< point to the AST node defining this function
-        bool                      m_isMethod     = false;
-        bool                      m_mustOverride = false;     //!< means is required to override, by override specifier keyword.
-        bool                      m_isVirtual    = false;     //!< is a method from an interface
-        std::vector< IdentifierUID >   m_overrides;                //!< list of implementing functions in child classes
-        std::optional< IdentifierUID > m_base;   //!< points to the overridden function in the base interface, if applies. only supports one base
-        FunctionMultiForwards     m_multiFwds    = FMF_None;  //!< presence of redundant prototype-only declarations
-        int                       m_costScore    = -1;        //!< heuristical static analysis of the amount of instructions contained
+        ExtendedTypeInfo m_returnType;
+        AstFuncSig* m_declNode = nullptr; //!< point to the AST node first declaring this function
+        AstFuncSig* m_defNode = nullptr; //!< point to the AST node defining this function
+        bool m_isMethod = false;
+        bool m_mustOverride = false; //!< means is required to override, by override specifier keyword.
+        bool m_isVirtual = false; //!< is a method from an interface
+        std::vector<IdentifierUID> m_overrides; //!< list of implementing functions in child classes
+        std::optional<IdentifierUID> m_base; //!< points to the overridden function in the base interface, if applies. only supports one base
+        FunctionMultiForwards m_multiFwds = FMF_None; //!< presence of redundant prototype-only declarations
+        int m_costScore = -1; //!< heuristical static analysis of the amount of instructions contained
         struct Parameter
         {
             IdentifierUID m_varId;
@@ -821,25 +884,33 @@ namespace AZ::ShaderCompiler
             std::vector<azslParser::ArrayRankSpecifierContext*> m_arrayRankSpecifiers;
             AstVarInitializer* m_defaultValueExpression = nullptr;
         };
+
         using ParameterList = std::vector<Parameter>;
+
     private:
-        std::array<ParameterList, 2> m_parameters;  //!< two lists. one for the original declaration site, and one for an eventual second site for deported definition
+        std::array<ParameterList, 2> m_parameters; //!< two lists. one for the original declaration site, and one for an eventual second site for deported definition
         int m_currentList = 0; //!< store index in m_parameters of currently edited list
     };
 
     struct SRGInfo
     {
-        std::optional< IdentifierUID > FindMemberFromLeafName(UnqualifiedNameView member) const
+        std::optional<IdentifierUID> FindMemberFromLeafName(UnqualifiedNameView member) const
         {
             auto inImplicit = m_implicitStruct.FindMemberFromLeafName(member);
             if (inImplicit)
             {
                 return inImplicit;
             }
-            const std::vector< IdentifierUID >* memberArrays[] = {&m_structs, &m_srViews, &m_samplers, &m_CBs, &m_nonexternVariables, &m_functions};
+            const std::vector<IdentifierUID>* memberArrays[] = {&m_structs, &m_srViews, &m_samplers, &m_CBs, &m_nonexternVariables, &m_functions};
             for (auto* vector : memberArrays)
             {
-                auto iterator = std::find_if(vector->begin(), vector->end(), [&member](const IdentifierUID& uid) { return uid.GetNameLeaf() == member; });
+                auto iterator = std::find_if(
+                    vector->begin(),
+                    vector->end(),
+                    [&member](const IdentifierUID& uid)
+                    {
+                        return uid.GetNameLeaf() == member;
+                    });
                 if (iterator != vector->end())
                 {
                     return *iterator;
@@ -848,77 +919,80 @@ namespace AZ::ShaderCompiler
             return std::nullopt;
         }
 
-        bool IsPartial() const { return m_declNode ? !!m_declNode->Partial() : false; }
+        bool IsPartial() const
+        {
+            return m_declNode ? !!m_declNode->Partial() : false;
+        }
 
         size_t GetOriginalLineNumber() const
         {
             return m_declNode ? m_declNode->start->getLine() : 0;
         }
 
-        AstSRGDeclNode*           m_declNode = nullptr;
-        ClassInfo                 m_implicitStruct;           // Implicit holding struct for SRG Constants
-        std::optional< IdentifierUID > m_shaderVariantFallback;
-        std::optional< IdentifierUID > m_semantic;
-        std::vector< IdentifierUID >   m_structs;
-        std::vector< IdentifierUID >   m_srViews;
-        std::vector< IdentifierUID >   m_samplers;
-        std::vector< IdentifierUID >   m_CBs;
-        std::vector< IdentifierUID >   m_nonexternVariables;
-        std::vector< IdentifierUID >   m_functions;
+        AstSRGDeclNode* m_declNode = nullptr;
+        ClassInfo m_implicitStruct; // Implicit holding struct for SRG Constants
+        std::optional<IdentifierUID> m_shaderVariantFallback;
+        std::optional<IdentifierUID> m_semantic;
+        std::vector<IdentifierUID> m_structs;
+        std::vector<IdentifierUID> m_srViews;
+        std::vector<IdentifierUID> m_samplers;
+        std::vector<IdentifierUID> m_CBs;
+        std::vector<IdentifierUID> m_nonexternVariables;
+        std::vector<IdentifierUID> m_functions;
         // We will cache here the unbounded arrays as the Semantic Orchestrator
         // discovers them. We are using a vector, instead of a Set/Map because
         // There can not be more than 4 unbounded arrays per SRG. For a small
         // amount of items a linear search in a vector is faster than Set/Map searching.
         // Later, during emission, we can easily change the order of appearance of these
         // variables.
-        std::vector< IdentifierUID >   m_unboundedArrays;
+        std::vector<IdentifierUID> m_unboundedArrays;
     };
 
-    static const uint32_t SRGSemanticInfo_MaxAllowedFrequency = 15;  // Maximum CB slots for all graphics API we support (common minimum)
+    static const uint32_t SRGSemanticInfo_MaxAllowedFrequency = 15; // Maximum CB slots for all graphics API we support (common minimum)
 
     //! store data about code semantics for any sort of thing in the language. (a "sort of thing in the language" is a Kind)
     struct KindInfo
     {
-        using AnyKind = std::variant< std::monostate, VarInfo, FunctionInfo, OverloadSetInfo, ClassInfo, SRGInfo, TypeRefInfo, TypeAliasInfo >;
+        using AnyKind = std::variant<std::monostate, VarInfo, FunctionInfo, OverloadSetInfo, ClassInfo, SRGInfo, TypeRefInfo, TypeAliasInfo>;
 
         using MapKindToTypesT = TypeList<
-            ConstVal< Kind::Type >,                        TypeRefInfo,
-            ConstVal< Kind::TypeAlias >,                   TypeAliasInfo,
-            ConstVal< Kind::Variable >,                    VarInfo,
-            ConstVal< Kind::Function >,                    FunctionInfo,
-            ConstVal< Kind::OverloadSet >,                 OverloadSetInfo,
-            ConstVal< Kind::Struct >,                      ClassInfo,
-            ConstVal< Kind::Class >,                       ClassInfo,
-            ConstVal< Kind::Enum >,                        ClassInfo,
-            ConstVal< Kind::Interface >,                   ClassInfo,
-            ConstVal< Kind::ShaderResourceGroup >,         SRGInfo,
-            ConstVal< Kind::ShaderResourceGroupSemantic >, ClassInfo
+            ConstVal<Kind::Type>, TypeRefInfo,
+            ConstVal<Kind::TypeAlias>, TypeAliasInfo,
+            ConstVal<Kind::Variable>, VarInfo,
+            ConstVal<Kind::Function>, FunctionInfo,
+            ConstVal<Kind::OverloadSet>, OverloadSetInfo,
+            ConstVal<Kind::Struct>, ClassInfo,
+            ConstVal<Kind::Class>, ClassInfo,
+            ConstVal<Kind::Enum>, ClassInfo,
+            ConstVal<Kind::Interface>, ClassInfo,
+            ConstVal<Kind::ShaderResourceGroup>, SRGInfo,
+            ConstVal<Kind::ShaderResourceGroupSemantic>, ClassInfo
         >;
 
         //! Helper-getter for the m_subInfo, directly accessed as its concrete type.
         //! Returns nullptr in case of wrong template type (T) query, versus currently stored data type.
-        template<typename T>
+        template <typename T>
         const T* GetSubAs() const
         {
             return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (const T*)nullptr;
         }
 
         //! mutable version
-        template<typename T>
+        template <typename T>
         T* GetSubAs()
         {
             return (std::holds_alternative<T>(m_subInfo)) ? &std::get<T>(m_subInfo) : (T*)nullptr;
         }
 
         //! Throwing version (bad_access) of above helper, gets a reference on success
-        template<typename T>
+        template <typename T>
         const T& GetSubRefAs() const noexcept(false)
         {
             return std::get<T>(m_subInfo);
         }
 
         //! mutable version
-        template<typename T>
+        template <typename T>
         T& GetSubRefAs() noexcept(false)
         {
             return std::get<T>(m_subInfo);
@@ -927,44 +1001,47 @@ namespace AZ::ShaderCompiler
         //! Set the kind from a runtime value
         void InitAs(Kind::EnumType k)
         {
-            assert( OkToAssignKind(k) ); // don't try to recycle KindInfo. re-create from scratch, or you have a bug.
+            assert(OkToAssignKind(k)); // don't try to recycle KindInfo. re-create from scratch, or you have a bug.
             m_kind = k;
             int typeIndex = -1;
-            ForEachType<MapKindToTypesT>([&typeIndex, k](auto inst, auto ii_c)
-                                         {
-                                             // the decltype(ii_c)::value is to prevent MSVC from crashing with an internal error. no kidding.
-                                             // using KeyAtii = At_t<ii_c, MapKindToTypesT>;  BOOM !
-                                             using KeyAtii = At_t<decltype(ii_c)::value, MapKindToTypesT>;
-                                             if constexpr (isIntegralConstant_v<KeyAtii>) // protection because we can't compare TypeRefInfo to Kind without a build error.
-                                             {
-                                                 if (KeyAtii{} == k) // found k in the maplist
-                                                 {
-                                                     using MappedType = At_t<ii_c + 1, MapKindToTypesT>;
-                                                     typeIndex = metaFind_v<MappedType, AnyKind>;
-                                                 }
-                                             }
-                                         });
+            ForEachType<MapKindToTypesT>(
+                [&typeIndex, k](auto inst, auto ii_c)
+                {
+                    // the decltype(ii_c)::value is to prevent MSVC from crashing with an internal error. no kidding.
+                    // using KeyAtii = At_t<ii_c, MapKindToTypesT>;  BOOM !
+                    using KeyAtii = At_t<decltype(ii_c)::value, MapKindToTypesT>;
+                    if constexpr (isIntegralConstant_v<KeyAtii>) // protection because we can't compare TypeRefInfo to Kind without a build error.
+                    {
+                        if (KeyAtii{} == k) // found k in the maplist
+                        {
+                            using MappedType = At_t<ii_c + 1, MapKindToTypesT>;
+                            typeIndex = metaFind_v<MappedType, AnyKind>;
+                        }
+                    }
+                });
             // if typeIndex is sill -1, it's possibly a Namespace or a kind that has no subinfo.
             IndexedFactory(m_subInfo, typeIndex);
         }
 
         //! For when you want to create a Kind that usually has no subinfo. mostly just Namespace.
-        template<Kind::EnumType k>
+        template <Kind::EnumType k>
         void InitAs()
         {
-            constexpr auto index = metaFind_v< ConstVal<k>, MapKindToTypesT >;
+            constexpr auto index = metaFind_v<ConstVal<k>, MapKindToTypesT>;
             if constexpr (index >= 0)
-            {   // k is applicable as a kind that has a subinfo, so we can use GetSubAfterInitAs to factorize.
+            {
+                // k is applicable as a kind that has a subinfo, so we can use GetSubAfterInitAs to factorize.
                 GetSubAfterInitAs<k>();
             }
             else
-            {   // factorize with the runtime initializer
+            {
+                // factorize with the runtime initializer
                 InitAs(k);
             }
         }
 
         //! At registering time, this helps initialize in an atomic way and respects proper class invariants.
-        template<Kind::EnumType k>
+        template <Kind::EnumType k>
         auto& GetSubAfterInitAs()
         {
             static_assert(k != Kind::Namespace, "There is no subinfo for namespaces. just initialize the m_kind member.");
@@ -972,8 +1049,8 @@ namespace AZ::ShaderCompiler
             InitAs(k);
 
             // lookup the concrete type from the kind since they can be mapped surjectively
-            using SubT = MetaFindValueNextToKey_t< ConstVal<k>, MapKindToTypesT >;
-            static_assert( !std::is_same_v<SubT, NotFoundT>, "did you pass a k value out of the Kind enum ?" );
+            using SubT = MetaFindValueNextToKey_t<ConstVal<k>, MapKindToTypesT>;
+            static_assert(!std::is_same_v<SubT, NotFoundT>, "did you pass a k value out of the Kind enum ?");
             // initialize the variant with an default constructed sub type:
             m_subInfo = SubT{};
             return GetSubRefAs<SubT>();
@@ -986,7 +1063,7 @@ namespace AZ::ShaderCompiler
         }
 
         //! direct query for convenience
-        template<typename... Those>
+        template <typename... Those>
         bool IsKindOneOf(Those... kinds) const
         {
             return m_kind.IsOneOf(kinds...);
@@ -1001,14 +1078,13 @@ namespace AZ::ShaderCompiler
 
         //! reproduce the apply API to publicize visitation of subinfo variant
         //! return: whatever visitation would return. normally deduced from return expressions of the visitor's operators().
-        template<typename Visitor>
+        template <typename Visitor>
         auto VisitSub(Visitor&& v) const
         {
             return std::visit(std::forward<Visitor>(v), m_subInfo);
         }
 
     private:
-
         // private method to check class invariants
         bool OkToAssignKind(Kind k) const
         {
@@ -1019,28 +1095,29 @@ namespace AZ::ShaderCompiler
         // == Members ==
 
         //! Precise kind of the symbol
-        Kind             m_kind;
+        Kind m_kind;
         //! Meat of the data for this symbol will have many specific attributes, so it goes in a variant
-        AnyKind          m_subInfo;
+        AnyKind m_subInfo;
         //! all reference (use) sites for this symbol
-        std::vector< Seenat > m_seenAt;
+        std::vector<Seenat> m_seenAt;
 
     public:
         // Meta API. query "type is alternative?" of subinfo variant
-        template<typename Alt>
-        static constexpr auto isSubAlternative_v = isContainedIn_v< Alt, decltype(KindInfo::m_subInfo) >;
+        template <typename Alt>
+        static constexpr auto isSubAlternative_v = isContainedIn_v<Alt, decltype(KindInfo::m_subInfo)>;
     };
 
     // usings for data model. of particular relevance for the SymbolTable.
-    using IdToKindMap            = std::unordered_map< IdentifierUID, KindInfo >;
-    using IdAndKind              = IdToKindMap::value_type;  // nicely destructurable! assign it like this: `auto& [uid, kind] = GetIdAndKind..`
+    using IdToKindMap = std::unordered_map<IdentifierUID, KindInfo>;
+    using IdAndKind = IdToKindMap::value_type; // nicely destructurable! assign it like this: `auto& [uid, kind] = GetIdAndKind..`
 
     struct GetSubKindInfoTypeName_Visitor
     {
         GetSubKindInfoTypeName_Visitor(IdentifierUID uid, bool forFunctionsGetReturnType)
-            : m_uid(uid),
-              m_forFunctionsGetReturnType(forFunctionsGetReturnType)
-        {}
+            : m_uid(uid)
+            , m_forFunctionsGetReturnType(forFunctionsGetReturnType)
+        {
+        }
 
         QualifiedName operator()(std::monostate) const
         {
@@ -1048,12 +1125,14 @@ namespace AZ::ShaderCompiler
         }
 
         QualifiedName operator()(const VarInfo& var) const
-        {   // for simplicity, note that arrays are collapsed to the underlying type (e.g. `int a[2]` has `int` type, not `int[]` type)
+        {
+            // for simplicity, note that arrays are collapsed to the underlying type (e.g. `int a[2]` has `int` type, not `int[]` type)
             return var.m_typeInfoExt.GetMimickedType();
         }
 
         QualifiedName operator()(const FunctionInfo& func) const
-        {   // maintenance note: historical behavior here was to collapse to return type.
+        {
+            // maintenance note: historical behavior here was to collapse to return type.
             // today, in intermediate type-chains evaluations, we are going to distinguish between function and function call.
             // this change is introduced to be able to make informed decisions on function-call-expression sites, amidst the bigger picture of overloads support.
             return m_forFunctionsGetReturnType ? func.m_returnType.GetMimickedType() : m_uid.GetName();
@@ -1063,14 +1142,16 @@ namespace AZ::ShaderCompiler
         {
             if (m_forFunctionsGetReturnType)
             {
-                return overloadSet.HasHomogeneousReturnType() ? overloadSet.GetUniformReturnType().GetMimickedType()
-                                                              : QualifiedNameView{"<fail>"};
+                return overloadSet.HasHomogeneousReturnType()
+                           ? overloadSet.GetUniformReturnType().GetMimickedType()
+                           : QualifiedNameView{"<fail>"};
             }
             return m_uid.GetName();
         }
 
         QualifiedName operator()(const ClassInfo&) const
-        {   // a class/struct/interface IS a type
+        {
+            // a class/struct/interface IS a type
             return m_uid.GetName();
         }
 
@@ -1094,11 +1175,12 @@ namespace AZ::ShaderCompiler
         IdentifierUID m_uid;
         bool m_forFunctionsGetReturnType;
     };
+
     enum class ForFunctionGetType
     {
-        Returned,
-        SelfIdentity
+        Returned, SelfIdentity,
     };
+
     //! Extract the: "canonical mimicked collapsed mangled" type name, from a symbol object. (the AZIR name)
     //!   why ?
     //!     canonical: vector<int,2> will be int2
@@ -1113,6 +1195,7 @@ namespace AZ::ShaderCompiler
     }
 
     static const size_t NoLine = 0_sz;
+
     struct GetOrigSourceLine_Visitor
     {
         size_t operator()(const VarInfo& var) const
@@ -1140,7 +1223,7 @@ namespace AZ::ShaderCompiler
             return tai.m_declNode ? tai.m_declNode->start->getLine() : NoLine;
         }
 
-        template<typename AnyNonCovered>
+        template <typename AnyNonCovered>
         size_t operator()(AnyNonCovered) const
         {
             return NoLine;
@@ -1161,8 +1244,14 @@ namespace AZ::ShaderCompiler
     inline void ThrowRedeclarationAsDifferentKind(std::string_view symbolName, Kind newKind, const KindInfo& kindInfo, std::optional<size_t> lineNumber = std::nullopt)
     {
         const std::string errorMessage = ConcatString(
-            "redeclaration of ", symbolName, " with a different kind: ", Kind::ToStr(newKind),
-            " but was ", Kind::ToStr(kindInfo.GetKind()), ", ", GetFirstSeenLineMessage(kindInfo));
+            "redeclaration of ",
+            symbolName,
+            " with a different kind: ",
+            Kind::ToStr(newKind),
+            " but was ",
+            Kind::ToStr(kindInfo.GetKind()),
+            ", ",
+            GetFirstSeenLineMessage(kindInfo));
         throw AzslcOrchestratorException(ORCHESTRATOR_ODR_VIOLATION, lineNumber, std::nullopt, errorMessage);
     }
 
@@ -1171,14 +1260,16 @@ namespace AZ::ShaderCompiler
         const TokensLocation operator()(const VarInfo& var) const
         {
             ParserRuleContext* node = GetParentIfIsNamedVarDecl_OtherwiseIdentity(var.m_declNode);
-            return node ? MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode))
-                        : TokensLocation{{}, -1, 0, 0};
+            return node
+                       ? MakeTokensLocation(node, ExtractVariableNameIdentifier(var.m_declNode))
+                       : TokensLocation{{}, -1, 0, 0};
         }
 
         const TokensLocation operator()(const FunctionInfo& func) const
         {
-            return MakeTokensLocation(func.m_defNode ? func.m_defNode : func.m_declNode,
-                                      func.m_defNode ? func.m_defNode->Name : func.m_declNode->Name);
+            return MakeTokensLocation(
+                func.m_defNode ? func.m_defNode : func.m_declNode,
+                func.m_defNode ? func.m_defNode->Name : func.m_declNode->Name);
         }
 
         const TokensLocation operator()(const ClassInfo& clInfo) const
@@ -1193,11 +1284,14 @@ namespace AZ::ShaderCompiler
 
         const TokensLocation operator()(const TypeAliasInfo taInfo) const
         {
-            return MakeTokensLocation(taInfo.m_declNode, taInfo.m_declNode->typealiasStatement() ? taInfo.m_declNode->typealiasStatement()->NewTypeName
-                                                                                                 : taInfo.m_declNode->typedefStatement()->NewTypeName);
+            return MakeTokensLocation(
+                taInfo.m_declNode,
+                taInfo.m_declNode->typealiasStatement()
+                    ? taInfo.m_declNode->typealiasStatement()->NewTypeName
+                    : taInfo.m_declNode->typedefStatement()->NewTypeName);
         }
 
-        template<typename AnyNonCovered>
+        template <typename AnyNonCovered>
         const TokensLocation operator()(AnyNonCovered) const
         {
             return {{}, -1, 0, 0};

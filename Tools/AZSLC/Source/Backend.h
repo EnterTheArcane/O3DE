@@ -29,7 +29,7 @@ namespace AZ::ShaderCompiler
 
     struct DescriptorCountBounds
     {
-        int m_descriptorsTotal = -1;   //!< negative values deactivate the check
+        int m_descriptorsTotal = -1; //!< negative values deactivate the check
         int m_spaces = -1;
         int m_samplers = -1;
         int m_textures = -1;
@@ -42,15 +42,15 @@ namespace AZ::ShaderCompiler
         bool m_useUniqueIndices = false;
         bool m_emitConstantBufferBody = false;
         bool m_emitRootSig = false;
-        bool m_forceMatrixRowMajor = false;     //!< False by default (HLSL standard)
-        bool m_forceEmitMajor = false;   //!< True if either -Zpc or -Zpr was specified
+        bool m_forceMatrixRowMajor = false; //!< False by default (HLSL standard)
+        bool m_forceEmitMajor = false; //!< True if either -Zpc or -Zpr was specified
         bool m_padRootConstantCB = false; //!< If True, the emitted root constant CB will padded to 16-byte boundary.
         bool m_skipAlignmentValidation = false; //! < If True, disables validation of a known DXC issue when certain word or 2-words size variables are preceded by some MatrixRxC variables.
-        DescriptorCountBounds m_minAvailableDescriptors;   //!< Hint about the targeted graphics API's minimal guaranteed usable descriptors
-        int m_maxSpaces = std::numeric_limits<int>::max();   //!< Maximum allocatable register logical space, after which register indexes will accumulate, but spaces will be capped
-        int m_rootConstantsMaxSize = std::numeric_limits<int>::max();   //!< Indicates the number of root constants to be allowed, 0 means root constants not enabled
-        Packing::Layout m_packConstantBuffers  = Packing::Layout::DirectXPacking; //!< Packing standard for constant buffers (uniform)
-        Packing::Layout m_packDataBuffers      = Packing::Layout::CStylePacking;  //!< Packing standard for data buffer views
+        DescriptorCountBounds m_minAvailableDescriptors; //!< Hint about the targeted graphics API's minimal guaranteed usable descriptors
+        int m_maxSpaces = std::numeric_limits<int>::max(); //!< Maximum allocatable register logical space, after which register indexes will accumulate, but spaces will be capped
+        int m_rootConstantsMaxSize = std::numeric_limits<int>::max(); //!< Indicates the number of root constants to be allowed, 0 means root constants not enabled
+        Packing::Layout m_packConstantBuffers = Packing::Layout::DirectXPacking; //!< Packing standard for constant buffers (uniform)
+        Packing::Layout m_packDataBuffers = Packing::Layout::CStylePacking; //!< Packing standard for data buffer views
         bool m_useSpecializationConstantsForOptions = false; //!< Use specialization constants for shader options
         int32_t m_subpassInputsOffset = 0; //< Offset to apply to the subpass index
     };
@@ -65,6 +65,7 @@ namespace AZ::ShaderCompiler
     struct BindingPair
     {
         MAKE_REFLECTABLE_ENUM(Set, Untainted, Merged);
+
         std::array<Binding, Set::EndEnumeratorSentinel_> m_pair;
     };
 
@@ -111,10 +112,10 @@ namespace AZ::ShaderCompiler
         //! Access total burned up resources, e.g for hardware capacity checks
         int GetAccumulated(BindingType r) const;
 
-        int m_space = 0;  //<! logical space
-        int m_registerPos[BindingType::EndEnumeratorSentinel_] = {0};   //!< register index, one by type.
-        int m_accumulated[BindingType::EndEnumeratorSentinel_] = {0};  //!< Counter for total usage independently from space increments
-        int m_accumulatedUnused[BindingType::EndEnumeratorSentinel_] = {0};  //!< Counter for holes created by indices unification
+        int m_space = 0; //<! logical space
+        int m_registerPos[BindingType::EndEnumeratorSentinel_] = {}; //!< register index, one by type.
+        int m_accumulated[BindingType::EndEnumeratorSentinel_] = {}; //!< Counter for total usage independently from space increments
+        int m_accumulatedUnused[BindingType::EndEnumeratorSentinel_] = {}; //!< Counter for holes created by indices unification
     };
 
     //! Because of space limitations on some devices, we needed to introduce SRG-merging.
@@ -125,7 +126,8 @@ namespace AZ::ShaderCompiler
     public:
         MultiBindingLocationMaker(const Options& options)
             : m_options(options)
-        {}
+        {
+        }
 
         void SignalIncrementSpace(std::function<void(int, int)> warningMessageFunctionForMinDescOvershoot);
 
@@ -148,11 +150,16 @@ namespace AZ::ShaderCompiler
     {
     public:
         Backend(IntermediateRepresentation* ir, TokenStream* tokens)
-        : m_ir(ir), m_tokens(tokens)
-        {}
+            : m_ir(ir)
+            , m_tokens(tokens)
+        {
+        }
 
         //! Gets the IntermediateRepresentation object
-        const IntermediateRepresentation* GetIR() const { return m_ir; }
+        const IntermediateRepresentation* GetIR() const
+        {
+            return m_ir;
+        }
 
         //! Make a string that lists all type qualifiers/modifiers in HLSL format
         static std::string GetTypeModifier(const ExtendedTypeInfo&, const Options& options, Modifiers bannedFlags = {});
@@ -175,7 +182,7 @@ namespace AZ::ShaderCompiler
         const PlatformEmitter& GetPlatformEmitter() const;
 
         //! Gets the next and increments tokenIndex. TokenIndex must be in the [misc::Interval.a, misc::Interval.b] range. Token cannot be nullptr.
-        auto GetNextToken(ssize_t& tokenIndex, size_t channel = Token::DEFAULT_CHANNEL) const -> antlr4::Token*;
+        antlr4::Token* GetNextToken(ssize_t& tokenIndex, size_t channel = Token::DEFAULT_CHANNEL) const;
 
         virtual void EmitTranspiledTokens(misc::Interval interval, Streamable& output) const;
 
@@ -195,8 +202,8 @@ namespace AZ::ShaderCompiler
 
         void SetupOptionsSpecializationId(const Options& options) const;
 
-        IntermediateRepresentation*      m_ir;
-        TokenStream*                     m_tokens;
+        IntermediateRepresentation* m_ir;
+        TokenStream* m_tokens;
 
         // On some platforms (DX12), descriptor arrays occupy an individual register slot, and spaces are used
         // to prevent overlapping ranges. When an unbounded array is encountered, we immediately assign it to
@@ -226,9 +233,13 @@ namespace AZ::ShaderCompiler
     // don't use for HLSL emission (this doesn't go through translation)
     std::string UnmangleTrimedName(const ExtendedTypeInfo& extTypeInfo);
 
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::AddressMode& addressMode);
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::ComparisonFunc& compFunc);
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::BorderColor& borderColor);
-    Streamable& operator << (Streamable& out, const SamplerStateDesc& samplerDesc);
-    Streamable& operator << (Streamable& out, const SamplerStateDesc::ReductionType& redcType);
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::AddressMode& addressMode);
+
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::ComparisonFunc& compFunc);
+
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::BorderColor& borderColor);
+
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc& samplerDesc);
+
+    Streamable& operator <<(Streamable& out, const SamplerStateDesc::ReductionType& redcType);
 }

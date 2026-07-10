@@ -16,7 +16,8 @@
 namespace AZ::ShaderCompiler
 {
     enum EasyToReadMaxDepCountInteger : size_t
-    {};
+    {
+    };
 
     constexpr EasyToReadMaxDepCountInteger operator ""_maxdep_pernode(unsigned long long n)
     {
@@ -25,7 +26,7 @@ namespace AZ::ShaderCompiler
 
     namespace detail
     {
-        template< typename T, size_t N >
+        template <typename T, size_t N>
         struct ElasticArray : std::array<T, N>
         {
             using Base = std::array<T, N>;
@@ -34,19 +35,24 @@ namespace AZ::ShaderCompiler
             using Base::operator[];
             using Base::begin;
 
-            auto end() -> decltype(Base::end());
-            auto end() const -> decltype(Base::end());
+            decltype(Base::end()) end();
+
+            decltype(Base::end()) end() const;
+
             auto at(size_t n) -> decltype(Base::at(n));
+
             auto at(size_t n) const -> decltype(Base::at(n));
+
             T& push_back(const T& t);
 
             size_t m_end = 0;
         };
 
-        template< typename ID, EasyToReadMaxDepCountInteger MaxDep >
+        template <typename ID, EasyToReadMaxDepCountInteger MaxDep>
         struct DependencySolverNode
         {
             void PushDep(ID d);
+
             bool DependsOn(ID d) const;
 
             // memory-inlined array to diminish fragmentatioon
@@ -55,7 +61,7 @@ namespace AZ::ShaderCompiler
         };
     }
 
-    template< typename NodeIdT, EasyToReadMaxDepCountInteger MaxDepPerNode >
+    template <typename NodeIdT, EasyToReadMaxDepCountInteger MaxDepPerNode>
     class DependencySolver
     {
     public:
@@ -72,20 +78,27 @@ namespace AZ::ShaderCompiler
 
         bool Has(ID node) const;
 
-        std::unordered_map< ID, Node > m_nodes;
-        std::vector< ID > m_order;
+        std::unordered_map<ID, Node> m_nodes;
+        std::vector<ID> m_order;
 
     private:
         // Tarjan Topological-Sort 1976
         void Visit(ID curNode);
 
         void ClearAllTemps();
+
         void PermMark(ID n);
+
         void TempMark(ID n);
+
         bool HasPermMark(ID n) const;
+
         bool HasTempMark(ID n) const;
+
         void RemoveTempMark(ID n);
+
         bool ExistsNodesWithoutPermanentMark() const;
+
         // get any node that is not marked
         ID SelectUnmarked();
 

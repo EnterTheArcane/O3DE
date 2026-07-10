@@ -86,14 +86,16 @@ namespace AZ::ShaderCompiler
 
         std::string registerString;
         if (!inputAttachmentIndexAttribute)
-        {   // fallback to the base behavior in non-input-attachment cases for the `.. : register();` syntax.
-            registerString = PlatformEmitter::GetDataViewHeaderFooter(codeEmitter,
+        {
+            // fallback to the base behavior in non-input-attachment cases for the `.. : register();` syntax.
+            registerString = PlatformEmitter::GetDataViewHeaderFooter(
+                codeEmitter,
                 symbol,
                 bindInfoRegisterIndex,
                 registerTypeLetter,
                 stringifiedLogicalSpace,
                 options).second;
         }
-        return { stream.str(), registerString };
+        return {stream.str(), registerString};
     }
 }

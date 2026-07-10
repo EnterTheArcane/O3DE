@@ -75,7 +75,7 @@ namespace AZ::ShaderCompiler
     void ScopeTracker::DumpScopeIntervals() const
     {
         std::cout << "\nScopeTracker::DumpScopeIntervals:\n";
-        for (auto const& [symId, interval] : m_scopeIntervals)
+        for (const auto& [symId, interval] : m_scopeIntervals)
         {
             std::cout << symId.GetName() << ": a=" << interval.a << ", b=" << interval.b << "\n";
         }

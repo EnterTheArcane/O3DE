@@ -30,7 +30,7 @@
 namespace AZ::ShaderCompiler
 {
     // to activate argument dependent lookup from template utilities in AzslcUtils, this must be in a reachable namespace
-    Streamable& operator << (Streamable& out, const AttributeInfo::Argument& arg)
+    Streamable& operator <<(Streamable& out, const AttributeInfo::Argument& arg)
     {
         if (std::holds_alternative<std::string>(arg))
         {
@@ -59,7 +59,7 @@ namespace AZ::ShaderCompiler
         return out;
     }
 
-    Streamable& operator << (Streamable& out, const AttributeInfo& attr)
+    Streamable& operator <<(Streamable& out, const AttributeInfo& attr)
     {
         if (!attr.m_namespace.empty())
         {
@@ -101,89 +101,89 @@ namespace AZ::ShaderCompiler
 
             switch (iteratedSymbolKind)
             {
-                // top-level enums, structs and classes, as well as immediate-type-declaration enum/structs (`struct S{} s;`)
+            // top-level enums, structs and classes, as well as immediate-type-declaration enum/structs (`struct S{} s;`)
             case Kind::Interface:
             case Kind::Struct:
             case Kind::Class:
             case Kind::Enum:
-            {
-                if (IsTopLevelThroughTranslation(iteratedSymbolUid))
                 {
-                    EmitPreprocessorLineDirective(iteratedSymbolName);
+                    if (IsTopLevelThroughTranslation(iteratedSymbolUid))
+                    {
+                        EmitPreprocessorLineDirective(iteratedSymbolName);
 
-                    auto* classInfo = m_ir->GetSymbolSubAs<ClassInfo>(iteratedSymbolName);
-                    iteratedSymbolKind == Kind::Enum ?
-                          EmitEnum(iteratedSymbolUid, *classInfo, options)
-                        : EmitStruct(*classInfo, iteratedSymbolName, options);
+                        auto* classInfo = m_ir->GetSymbolSubAs<ClassInfo>(iteratedSymbolName);
+                        iteratedSymbolKind == Kind::Enum
+                            ? EmitEnum(iteratedSymbolUid, *classInfo, options)
+                            : EmitStruct(*classInfo, iteratedSymbolName, options);
+                    }
+                    break;
                 }
-                break;
-            }
-                // typedefs
+            // typedefs
             case Kind::TypeAlias:
-            {
-                if (IsTopLevelThroughTranslation(iteratedSymbolUid))
                 {
-                    EmitPreprocessorLineDirective(iteratedSymbolName);
+                    if (IsTopLevelThroughTranslation(iteratedSymbolUid))
+                    {
+                        EmitPreprocessorLineDirective(iteratedSymbolName);
 
-                    auto* aliasInfo = m_ir->GetSymbolSubAs<TypeAliasInfo>(iteratedSymbolName);
-                    EmitTypeAlias(iteratedSymbolUid, *aliasInfo, options);
+                        auto* aliasInfo = m_ir->GetSymbolSubAs<TypeAliasInfo>(iteratedSymbolName);
+                        EmitTypeAlias(iteratedSymbolUid, *aliasInfo, options);
+                    }
+                    break;
                 }
-                break;
-            }
-                // global variables
+            // global variables
             case Kind::Variable:
-            {
-                if (IsTopLevelThroughTranslation(iteratedSymbolUid))
                 {
-                    auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(iteratedSymbolName);
-                    if (varInfo->CheckHasStorageFlag(StorageFlag::Enumerator))
-                    {   // Enumerators have already been emitted in the Kind::Enum case.
-                        // They act as static const, but no need to emit them here
-                        break;
-                    }
-
-                    // Option variables are emitted after the ShaderVariantFallback SRG
-                    if (varInfo->CheckHasStorageFlag(StorageFlag::Option))
+                    if (IsTopLevelThroughTranslation(iteratedSymbolUid))
                     {
-                        EmitShaderVariantOptionVariableDeclaration(iteratedSymbolUid, options);
-                        break;
-                    }
+                        auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(iteratedSymbolName);
+                        if (varInfo->CheckHasStorageFlag(StorageFlag::Enumerator))
+                        {
+                            // Enumerators have already been emitted in the Kind::Enum case.
+                            // They act as static const, but no need to emit them here
+                            break;
+                        }
 
-                    // a non-global extern is an SRG-variable. it should be emitted by EmitSRG
-                    bool global = IsGlobal(iteratedSymbolName);
-                    if (!global && !varInfo->StorageFlagIsLocalLinkage(global || varInfo->m_srgMember))
-                    {
-                        break;
-                    }
+                        // Option variables are emitted after the ShaderVariantFallback SRG
+                        if (varInfo->CheckHasStorageFlag(StorageFlag::Option))
+                        {
+                            EmitShaderVariantOptionVariableDeclaration(iteratedSymbolUid, options);
+                            break;
+                        }
 
-                    EmitPreprocessorLineDirective(iteratedSymbolName);
-                    EmitVariableDeclaration(*varInfo, iteratedSymbolUid, options, VarDeclHasFlag(VarDeclHas::Initializer));
-                    m_out << ";\n";
+                        // a non-global extern is an SRG-variable. it should be emitted by EmitSRG
+                        bool global = IsGlobal(iteratedSymbolName);
+                        if (!global && !varInfo->StorageFlagIsLocalLinkage(global || varInfo->m_srgMember))
+                        {
+                            break;
+                        }
+
+                        EmitPreprocessorLineDirective(iteratedSymbolName);
+                        EmitVariableDeclaration(*varInfo, iteratedSymbolUid, options, VarDeclHasFlag(VarDeclHas::Initializer));
+                        m_out << ";\n";
+                    }
+                    break;
                 }
-                break;
-            }
-                // SRG
+            // SRG
             case Kind::ShaderResourceGroup:
-            {
-                EmitPreprocessorLineDirective(iteratedSymbolName);
+                {
+                    EmitPreprocessorLineDirective(iteratedSymbolName);
 
-                auto* srgSub = m_ir->GetSymbolSubAs<SRGInfo>(iteratedSymbolName);
-                EmitSRG(*srgSub, iteratedSymbolUid, options, rootSig);
-                break;
-            }
-                // function
+                    auto* srgSub = m_ir->GetSymbolSubAs<SRGInfo>(iteratedSymbolName);
+                    EmitSRG(*srgSub, iteratedSymbolUid, options, rootSig);
+                    break;
+                }
+            // function
             case Kind::Function:
-            {
-                EmitPreprocessorLineDirective(iteratedSymbolName);
+                {
+                    EmitPreprocessorLineDirective(iteratedSymbolName);
 
-                auto* funcSub = m_ir->GetSymbolSubAs<FunctionInfo>(iteratedSymbolName);
-                const bool alreadyDeclared = AlreadyEmittedFunctionDeclaration(iteratedSymbolUid);
-                assert(!funcSub->IsEmpty());
-                const EmitFunctionAs form = (funcSub->HasUniqueDeclarationThroughDefinition() || alreadyDeclared) ?
-                    EmitFunctionAs::Definition : EmitFunctionAs::Declaration;
-                EmitFunction(*funcSub, iteratedSymbolUid, form, options);
-                break;
-            }
+                    auto* funcSub = m_ir->GetSymbolSubAs<FunctionInfo>(iteratedSymbolName);
+                    const bool alreadyDeclared = AlreadyEmittedFunctionDeclaration(iteratedSymbolUid);
+                    assert(!funcSub->IsEmpty());
+                    const EmitFunctionAs form = (funcSub->HasUniqueDeclarationThroughDefinition() || alreadyDeclared) ? EmitFunctionAs::Definition : EmitFunctionAs::Declaration;
+                    EmitFunction(*funcSub, iteratedSymbolUid, form, options);
+                    break;
+                }
             default: break;
             } // end switch on code entities kind
         } // end for all entities
@@ -228,22 +228,27 @@ namespace AZ::ShaderCompiler
     //! setup all scope migrations (srg content to global, local structs to global)
     void CodeEmitter::SetupScopeMigrations(const Options& options)
     {
-        m_translations.SetAccessSymbolQueryFunctor([this](QualifiedNameView qnv){return m_ir->GetKindInfo(IdentifierUID{qnv});});
-        m_translations.SetGetSeenatFunctor([this](QualifiedNameView qnv) -> std::vector<Seenat>&
-                                            {
-                                                auto* uidkind = m_ir->GetIdAndKindInfo(qnv);
-                                                if (uidkind)
-                                                {
-                                                    return uidkind->second.GetSeenats();
-                                                }
-                                                static std::vector<Seenat> s_empty;
-                                                return s_empty;
-                                            });
+        m_translations.SetAccessSymbolQueryFunctor(
+            [this](QualifiedNameView qnv)
+            {
+                return m_ir->GetKindInfo(IdentifierUID{qnv});
+            });
+        m_translations.SetGetSeenatFunctor(
+            [this](QualifiedNameView qnv) -> std::vector<Seenat>&
+            {
+                auto* uidkind = m_ir->GetIdAndKindInfo(qnv);
+                if (uidkind)
+                {
+                    return uidkind->second.GetSeenats();
+                }
+                static std::vector<Seenat> s_empty;
+                return s_empty;
+            });
 
-        auto globalScope = QualifiedNameView{ "/" };
+        auto globalScope = QualifiedNameView{"/"};
 
         // Global root constant custom behavior
-        for (auto&[uid, info] : m_ir->GetOrderedSymbolsOfSubType_2<VarInfo>())
+        for (auto& [uid, info] : m_ir->GetOrderedSymbolsOfSubType_2<VarInfo>())
         {
             bool isAlreadyGlobal = IsGlobal(uid.GetName());
             bool isNotContainedInType = !m_ir->IsNestedStructOrEnum(uid);
@@ -253,18 +258,19 @@ namespace AZ::ShaderCompiler
                 const auto& rootconstantClassInfo = *m_ir->GetSymbolSubAs<ClassInfo>(m_ir->m_rootConstantStructUID.m_name);
 
                 if (options.m_rootConstantsMaxSize && rootconstantClassInfo.HasMember(uid.GetNameLeaf())
-                    && varInfo->CheckHasAllStorageFlags({ StorageFlag::Rootconstant }))
+                    && varInfo->CheckHasAllStorageFlags({StorageFlag::Rootconstant}))
                 {
                     IdentifierUID constructRootconstantReference = *rootconstantClassInfo.FindMemberFromLeafName(uid.GetNameLeaf());
                     m_translations.RegisterLandingScope(uid, m_ir->m_rootConstantStructUID.GetName());
-                    m_translations.AddCustomBehavior(uid.GetName(),
+                    m_translations.AddCustomBehavior(
+                        uid.GetName(),
                         BehaviorEvent::OnReference,
                         [constructRootconstantReference](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
-                    {
-                        // Construct the rootconstant member name which is declared as global variable with the use of get functions.
-                        // Type _g_MyRootConstVar = GetShaderRootConst_Member(); So now we just return _g_MyRootConstVar;
-                        return GetGlobalRootConstantVarName(constructRootconstantReference.GetName());
-                    });
+                        {
+                            // Construct the rootconstant member name which is declared as global variable with the use of get functions.
+                            // Type _g_MyRootConstVar = GetShaderRootConst_Member(); So now we just return _g_MyRootConstVar;
+                            return GetGlobalRootConstantVarName(constructRootconstantReference.GetName());
+                        });
                 }
             }
         }
@@ -272,12 +278,14 @@ namespace AZ::ShaderCompiler
         // all SRGs -> erased. Migrate all their contents to global.
         for (auto& [srgUID, srgInfo] : m_ir->GetOrderedSymbolsOfSubType_2<SRGInfo>())
         {
-            std::array<decltype(srgInfo->m_structs)*, 6> allSrgMembersUidArrays = {&srgInfo->m_structs,
-                                                                              &srgInfo->m_srViews,
-                                                                              &srgInfo->m_samplers,
-                                                                              &srgInfo->m_CBs,
-                                                                              &srgInfo->m_nonexternVariables,
-                                                                              &srgInfo->m_functions};
+            std::array<decltype(srgInfo->m_structs)*, 6> allSrgMembersUidArrays = {
+                &srgInfo->m_structs,
+                &srgInfo->m_srViews,
+                &srgInfo->m_samplers,
+                &srgInfo->m_CBs,
+                &srgInfo->m_nonexternVariables,
+                &srgInfo->m_functions
+            };
             for (auto& array : allSrgMembersUidArrays)
             {
                 for (auto& member : *array)
@@ -298,41 +306,49 @@ namespace AZ::ShaderCompiler
             // add a special behavior for CB, because under cb-body switch, CBs are views, thus must be indexed.
             if (options.m_emitConstantBufferBody)
             {
-                for_each(srgInfo->m_CBs.begin(), srgInfo->m_CBs.end(), [this](const IdentifierUID& viewUid)
-                         {
-                             auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(viewUid.GetName());
-                             // all buffer types references must be mutated to [0]
-                             assert(varInfo->GetTypeClass() == TypeClass::ConstantBuffer);
-                             m_translations.AddCustomBehavior(viewUid.GetName(),
-                                                              BehaviorEvent::OnReference,
-                                                              [this](QualifiedNameView, UsageContext, const std::string& proposition, ssize_t tokenId)
-                                                              {
-                                                                  // in cb-body mode, CB are converted to views, a non-subscripted expression
-                                                                  // needs to be abstracted away (by adding [0]) to feel like a constant buffer access.
-                                                                  // but since we can have arrays of constant buffers in SRG, the user may have already subscripted
-                                                                  // the access, in that case we can't double the subscript or we'll emit an ill-formed program.
-                                                                  auto* ast = m_ir->m_tokenMap.GetNode(tokenId);
-                                                                  return proposition + (IsNextToArrayAccessExpression(ast) ? "" : "[0]");
-                                                              });
-                         });
+                for_each(
+                    srgInfo->m_CBs.begin(),
+                    srgInfo->m_CBs.end(),
+                    [this](const IdentifierUID& viewUid)
+                    {
+                        auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(viewUid.GetName());
+                        // all buffer types references must be mutated to [0]
+                        assert(varInfo->GetTypeClass() == TypeClass::ConstantBuffer);
+                        m_translations.AddCustomBehavior(
+                            viewUid.GetName(),
+                            BehaviorEvent::OnReference,
+                            [this](QualifiedNameView, UsageContext, const std::string& proposition, ssize_t tokenId)
+                            {
+                                // in cb-body mode, CB are converted to views, a non-subscripted expression
+                                // needs to be abstracted away (by adding [0]) to feel like a constant buffer access.
+                                // but since we can have arrays of constant buffers in SRG, the user may have already subscripted
+                                // the access, in that case we can't double the subscript or we'll emit an ill-formed program.
+                                auto* ast = m_ir->m_tokenMap.GetNode(tokenId);
+                                return proposition + (IsNextToArrayAccessExpression(ast) ? "" : "[0]");
+                            });
+                    });
             }
             else // in the else-case, we have dedicated structures for SRG constants, and references need a custom behavior
             {
-                for_each(srgInfo->m_implicitStruct.GetMemberFields().begin(), srgInfo->m_implicitStruct.GetMemberFields().end(), [this, srgUID=srgUID](IdentifierUID fieldUid)
-                         {
-                            // the natural suggestion from the translation system is going to be
-                            // to mutate MyRsc::m_f4 to MyRsc_SRGConstantStruct::MyRsc_m_f4
-                            // which is the "address" of the variable declaration, but not where the instance reside.
-                            // we need to mutate this to MyRsc_SRGConstantBuffer.MyRsc_m_f4
-                            m_translations.AddCustomBehavior(fieldUid.GetName(),
-                                                            BehaviorEvent::OnReference,
-                                                            [this, srgUID=srgUID](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
-                                                            {
-                                                                std::string constantBufferId = UnMangle(MakeSrgConstantsCBName(srgUID));
-                                                                std::string translatedFieldId = UnMangle(std::string{ExtractLeaf(ReMangle(proposition))});
-                                                                return constantBufferId + "." + translatedFieldId;
-                                                            });
-                         });
+                for_each(
+                    srgInfo->m_implicitStruct.GetMemberFields().begin(),
+                    srgInfo->m_implicitStruct.GetMemberFields().end(),
+                    [this, srgUID=srgUID](IdentifierUID fieldUid)
+                    {
+                        // the natural suggestion from the translation system is going to be
+                        // to mutate MyRsc::m_f4 to MyRsc_SRGConstantStruct::MyRsc_m_f4
+                        // which is the "address" of the variable declaration, but not where the instance reside.
+                        // we need to mutate this to MyRsc_SRGConstantBuffer.MyRsc_m_f4
+                        m_translations.AddCustomBehavior(
+                            fieldUid.GetName(),
+                            BehaviorEvent::OnReference,
+                            [this, srgUID=srgUID](QualifiedNameView, UsageContext, std::string proposition, ssize_t)
+                            {
+                                std::string constantBufferId = UnMangle(MakeSrgConstantsCBName(srgUID));
+                                std::string translatedFieldId = UnMangle(std::string{ExtractLeaf(ReMangle(proposition))});
+                                return constantBufferId + "." + translatedFieldId;
+                            });
+                    });
             }
         }
 
@@ -369,7 +385,6 @@ namespace AZ::ShaderCompiler
         }
         else
         {
-
             EmitGetShaderKeyFunctionDeclaration(symbolUid, varInfo->GetTypeRefInfo());
             m_out << ";\n\n";
 
@@ -451,8 +466,9 @@ namespace AZ::ShaderCompiler
                 m_out << GetPlatformEmitter().GetRootConstantsView(*this, rootSig, options, BindingPair::Set::Merged);
 
                 // Emit the get function definitions which returns root const member
-                EmitGetFunctionsForRootConstants(*rootConstInfo,
-                                                 GetTranslatedName(RootConstantsViewName, UsageContext::ReferenceSite));
+                EmitGetFunctionsForRootConstants(
+                    *rootConstInfo,
+                    GetTranslatedName(RootConstantsViewName, UsageContext::ReferenceSite));
             }
         }
     }
@@ -460,10 +476,12 @@ namespace AZ::ShaderCompiler
     void CodeEmitter::EmitPreprocessorLineDirective(size_t azslLineNumber)
     {
         if (azslLineNumber == 0)
-            return;  // protect for this invalid case. seems to happen for "virtual" symbols (like OverloadSet)
+        {
+            return; // protect for this invalid case. seems to happen for "virtual" symbols (like OverloadSet)
+        }
 
         size_t supposedVirtualLine = m_lineFinder->GetVirtualLineNumber(azslLineNumber);
-        size_t curHlslLine = m_out.GetLineCount() + 1;  // "lines" is a space that is 1-based indexed.
+        size_t curHlslLine = m_out.GetLineCount() + 1; // "lines" is a space that is 1-based indexed.
         auto lastEmitted = Infimum(m_alreadyEmittedPreprocessorLineDirectives, curHlslLine);
         if (lastEmitted != m_alreadyEmittedPreprocessorLineDirectives.end())
         {
@@ -478,12 +496,14 @@ namespace AZ::ShaderCompiler
 
             size_t curHlslPhysicalDistance = curHlslLine - lastEmitted->first;
             size_t lastVirtualSet = lastEmitted->second;
-            size_t nonAdjustedCurrentLandingLine = lastVirtualSet + curHlslPhysicalDistance - 1;  // -1 because line directives specify the NEXT line
+            size_t nonAdjustedCurrentLandingLine = lastVirtualSet + curHlslPhysicalDistance - 1; // -1 because line directives specify the NEXT line
             if (nonAdjustedCurrentLandingLine == supposedVirtualLine)
+            {
                 return; // no need to emit. we can skip
+            }
         }
         // get the original file as absolute path:
-        const std::string originalFileName = std::filesystem::absolute( std::filesystem::path(m_lineFinder->GetVirtualFileName(azslLineNumber).c_str()) ).lexically_normal().generic_string();
+        const std::string originalFileName = std::filesystem::absolute(std::filesystem::path(m_lineFinder->GetVirtualFileName(azslLineNumber).c_str())).lexically_normal().generic_string();
         // emit the line:
         m_out << "#line " << supposedVirtualLine << " \"" << originalFileName << "\"\n";
         // remember it:
@@ -502,11 +522,13 @@ namespace AZ::ShaderCompiler
     {
         std::string hlsl = clInfo.HasAnyBases() ? " : " : "";
         std::vector<std::string> mutatedBaseNames;
-        TransformCopy(clInfo.GetBases(), mutatedBaseNames,
-                      [&](const IdentifierUID& uid)
-                      {
-                          return GetTranslatedName(uid, UsageContext::ReferenceSite);
-                      });
+        TransformCopy(
+            clInfo.GetBases(),
+            mutatedBaseNames,
+            [&](const IdentifierUID& uid)
+            {
+                return GetTranslatedName(uid, UsageContext::ReferenceSite);
+            });
         hlsl += Join(mutatedBaseNames, ", ");
         return hlsl;
     }
@@ -528,11 +550,11 @@ namespace AZ::ShaderCompiler
         const auto tabs = "    ";
         if (hasName)
         {
-            EmitAllAttachedAttributes(IdentifierUID { QualifiedNameView{structuredSymName} });
+            EmitAllAttachedAttributes(IdentifierUID{QualifiedNameView{structuredSymName}});
             m_out << HlslStructuredDelcTagFromKind(classInfo.m_kind) << " "
-                  << GetTranslatedName(QualifiedNameView{structuredSymName}, UsageContext::DeclarationSite)
-                  << EmitInheritanceList(classInfo)
-                  << "\n{\n"; // conclusion of "class X : ::Stuff {"
+                << GetTranslatedName(QualifiedNameView{structuredSymName}, UsageContext::DeclarationSite)
+                << EmitInheritanceList(classInfo)
+                << "\n{\n"; // conclusion of "class X : ::Stuff {"
         }
 
         for (const IdentifierUID& memberUid : classInfo.GetOrderedMembers())
@@ -573,7 +595,7 @@ namespace AZ::ShaderCompiler
                 }
                 else
                 {
-                    assert(false);// "Unhandled KindInfo case in struct emission must be handled properly!"
+                    assert(false); // "Unhandled KindInfo case in struct emission must be handled properly!"
                 }
             }
         }
@@ -588,14 +610,16 @@ namespace AZ::ShaderCompiler
     {
         if (auto attrList = m_ir->m_symbols.GetAttributeList(uid))
         {
-            for_each(attrList->begin(), attrList->end(),
-                     [this, &omissionList](auto&& attrInfo)
-                     {
-                         if (!IsIn(attrInfo.m_attribute, omissionList))
-                         {
-                            EmitAttribute(attrInfo);
-                         }
-                     });
+            for_each(
+                attrList->begin(),
+                attrList->end(),
+                [this, &omissionList](auto&& attrInfo)
+                {
+                    if (!IsIn(attrInfo.m_attribute, omissionList))
+                    {
+                        EmitAttribute(attrInfo);
+                    }
+                });
         }
     }
 
@@ -646,7 +670,10 @@ namespace AZ::ShaderCompiler
         if (attrInfo.m_attribute == "verbatim")
         {
             outstream << (attrInfo.m_argList.begin() == attrInfo.m_argList.end() ? "" : Unescape(Undecorate("\"", *attrInfo.m_argList.begin())));
-            auto outVer = [&](const AttributeInfo::Argument& arg) { outstream << " " << Unescape(Undecorate("\"", arg)); };
+            auto outVer = [&](const AttributeInfo::Argument& arg)
+            {
+                outstream << " " << Unescape(Undecorate("\"", arg));
+            };
             std::for_each(std::next(attrInfo.m_argList.begin()), attrInfo.m_argList.end(), outVer);
             outstream << '\n';
         }
@@ -657,17 +684,17 @@ namespace AZ::ShaderCompiler
             {
                 if (std::holds_alternative<std::string>(attrInfo.m_argList[0]))
                 {
-                    std::string poFormat{ Trim(std::get<std::string>(attrInfo.m_argList[0]), "\"") };
+                    std::string poFormat{Trim(std::get<std::string>(attrInfo.m_argList[0]), "\"")};
                     outstream << "#pragma OutputFormatHint(default " << poFormat << ")\n";
                 }
                 else if (attrInfo.m_argList.size() > 1 &&
-                         std::holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]) &&
-                         std::holds_alternative<std::string>(attrInfo.m_argList[1]))
+                    std::holds_alternative<ConstNumericVal>(attrInfo.m_argList[0]) &&
+                    std::holds_alternative<std::string>(attrInfo.m_argList[1]))
                 {
                     const auto rtIndex = ExtractValueAsInt64(std::get<ConstNumericVal>(attrInfo.m_argList[0]), std::numeric_limits<int64_t>::min());
                     if (rtIndex >= 0 && rtIndex <= 7)
                     {
-                        std::string poFormat{ Trim(std::get<std::string>(attrInfo.m_argList[1]), "\"") };
+                        std::string poFormat{Trim(std::get<std::string>(attrInfo.m_argList[1]), "\"")};
                         outstream << "#pragma OutputFormatHint(target " << rtIndex << " " << poFormat << ")\n";
                     }
                 }
@@ -695,16 +722,16 @@ namespace AZ::ShaderCompiler
         {
             // We don't block any attributes we don't understand - pass them through
             outstream << ((attrInfo.m_category == AttributeCategory::Single) ? "[" : "[[")
-                      << attrInfo
-                      << ((attrInfo.m_category == AttributeCategory::Single) ? "]" : "]]")
-                      << "\n";
+                << attrInfo
+                << ((attrInfo.m_category == AttributeCategory::Single) ? "]" : "]]")
+                << "\n";
         }
     }
 
     void CodeEmitter::EmitTypeAlias(const IdentifierUID& uid, const TypeAliasInfo& aliasInfo, const Options& options) const
     {
         m_out << "typedef " << GetTranslatedName(aliasInfo.m_canonicalType, UsageContext::ReferenceSite, options)
-              << " " << GetTranslatedName(uid, UsageContext::DeclarationSite) << ";\n";
+            << " " << GetTranslatedName(uid, UsageContext::DeclarationSite) << ";\n";
     }
 
     void CodeEmitter::EmitEnum(const IdentifierUID& uid, const ClassInfo& classInfo, const Options& options)
@@ -720,10 +747,11 @@ namespace AZ::ShaderCompiler
         {
             // The variable can potentially have an initialization declaration as well
             const auto* varInfoPtr = m_ir->GetSymbolSubAs<VarInfo>(memberUid.m_name);
-            EmitVariableDeclaration(*varInfoPtr,
-                                    memberUid,
-                                    options,
-                                    VarDeclHasFlag(VarDeclHas::Initializer) | VarDeclHas::NoType | VarDeclHas::NoModifiers);
+            EmitVariableDeclaration(
+                *varInfoPtr,
+                memberUid,
+                options,
+                VarDeclHasFlag(VarDeclHas::Initializer) | VarDeclHas::NoType | VarDeclHas::NoModifiers);
             m_out << ",\n";
         }
         m_out << "};\n\n";
@@ -744,10 +772,10 @@ namespace AZ::ShaderCompiler
         // reproduce the signature `[attr] [modifiers] rettype [classnameFQN::] Name(params) [semantics]`
 
         bool emitAsDeclaration = entityConfiguration == EmitFunctionAs::Declaration;
-        bool emitAsDefinition  = entityConfiguration == EmitFunctionAs::Definition;
+        bool emitAsDefinition = entityConfiguration == EmitFunctionAs::Definition;
 
         bool riskDoubleEmission = emitAsDeclaration && AlreadyEmittedFunctionDeclaration(uid)
-                               || emitAsDefinition && AlreadyEmittedFunctionDefinition(uid);
+            || emitAsDefinition && AlreadyEmittedFunctionDefinition(uid);
         bool undefinedFunction = funcSub.IsUndefinedFunction();
         if (riskDoubleEmission
             || undefinedFunction && emitAsDefinition)
@@ -825,7 +853,6 @@ namespace AZ::ShaderCompiler
         }
         return nullptr;
     }
-
 
     void CodeEmitter::EmitVariableDeclaration(const VarInfo& varInfo, const IdentifierUID& uid, const Options& options, VarDeclHasFlag declOptions) const
     {
@@ -910,7 +937,7 @@ namespace AZ::ShaderCompiler
                     m_out << " ";
                     EmitTranspiledTokens(initClause->getSourceInterval());
                 }
-                else  // fallback on a potentially folded value, that has chances to work for constants like enumerators
+                else // fallback on a potentially folded value, that has chances to work for constants like enumerators
                 {
                     int64_t constVal;
                     if (TryGetConstExprValueAsInt64(varInfo.m_constVal, constVal))
@@ -1040,7 +1067,7 @@ namespace AZ::ShaderCompiler
 
         const std::string spaceX = ", space" + std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
         m_out << (varInfo->m_samplerState->m_isComparison ? "SamplerComparisonState " : "SamplerState ")
-              << ReplaceSeparators(sId.m_name, Underscore);
+            << ReplaceSeparators(sId.m_name, Underscore);
         if (bindInfo.m_isUnboundedArray)
         {
             m_out << "[]";
@@ -1071,18 +1098,24 @@ namespace AZ::ShaderCompiler
 
     std::string CodeEmitter::GetTranslatedName(const ExtendedTypeInfo& extTypeInfo, UsageContext context, const Options& options, Modifiers forbidden /*= {}*/, ssize_t tokenId /*= NotOverToken*/) const
     {
-        return GetExtendedTypeInfo(extTypeInfo, options, forbidden,
-                                   [this, context, tokenId](const TypeRefInfo& tri){ return GetTranslatedName(tri, context, tokenId); });
+        return GetExtendedTypeInfo(
+            extTypeInfo,
+            options,
+            forbidden,
+            [this, context, tokenId](const TypeRefInfo& tri)
+            {
+                return GetTranslatedName(tri, context, tokenId);
+            });
     }
 
     void CodeEmitter::EmitSRGDataView(const IdentifierUID& tId, const Options& options, const RootSigDesc& rootSig) const
     {
-        EmitAllAttachedAttributes(tId, Except{ { "input_attachment_index" } });
-        auto   bindSet = BindingPair::Set::Merged;
-        auto&  bindInfo = rootSig.Get(tId);
-        auto*  varInfo = m_ir->GetSymbolSubAs<VarInfo>(tId.m_name);
+        EmitAllAttachedAttributes(tId, Except{{"input_attachment_index"}});
+        auto bindSet = BindingPair::Set::Merged;
+        auto& bindInfo = rootSig.Get(tId);
+        auto* varInfo = m_ir->GetSymbolSubAs<VarInfo>(tId.m_name);
         std::string varType = GetTranslatedName(varInfo->m_typeInfoExt, UsageContext::DeclarationSite, options);
-        auto   registerTypeLetter = ToLower(BindingType::ToStr(RootParamTypeToBindingType(bindInfo.m_type)));
+        auto registerTypeLetter = ToLower(BindingType::ToStr(RootParamTypeToBindingType(bindInfo.m_type)));
         std::optional<std::string> stringifiedLogicalSpace = std::to_string(bindInfo.m_registerBinding.m_pair[bindSet].m_logicalSpace);
 
         // depending on platforms we may have supplementary attributes or/and type modifier.
@@ -1096,7 +1129,7 @@ namespace AZ::ShaderCompiler
         {
             m_out << "[]";
         }
-        else  if (bindInfo.m_registerRange > 1)
+        else if (bindInfo.m_registerRange > 1)
         {
             m_out << "[" << bindInfo.m_registerRange << "]";
         }
@@ -1129,8 +1162,12 @@ namespace AZ::ShaderCompiler
             assert(dims.m_dimensions.size() == 1); // This is generated variable, it must have exactly 1 array dimension
             if (arraySlot >= dims.m_dimensions[0])
             {
-                const std::string errorMessage = ConcatString("The option {", UnmangleTrimedName(getterUid.m_name), "} exceeds the number of bits (",
-                    AZ::ShaderCompiler::kShaderVariantKeyRegisterSize * dims.m_dimensions[0], ") allowed by the ShaderVariantFallback.\n",
+                const std::string errorMessage = ConcatString(
+                    "The option {",
+                    UnmangleTrimedName(getterUid.m_name),
+                    "} exceeds the number of bits (",
+                    AZ::ShaderCompiler::kShaderVariantKeyRegisterSize * dims.m_dimensions[0],
+                    ") allowed by the ShaderVariantFallback.\n",
                     "Either increase the limit or remove some options!");
                 throw AzslcEmitterException(EMITTER_OPTION_EXCEEDING_BITS_COUNT, errorMessage);
             }
@@ -1140,7 +1177,7 @@ namespace AZ::ShaderCompiler
         // The bit order within an element is swapped so the most significant option
         // is at 0x00000001 and the least significant (32th bit) is at 0x80000000.
         // This is tailored to the runtime to reduce CB compile times.
-        const char suffix[] = { 'x', 'y', 'z', 'w' };
+        const char suffix[] = {'x', 'y', 'z', 'w'};
 
         m_out << "\n";
 
@@ -1149,14 +1186,14 @@ namespace AZ::ShaderCompiler
         EmitGetShaderKeyFunctionDeclaration(getterUid, returnType);
 
         m_out << "\n{\n";
-        if (keySizeInBits > 0)  // Emit the option getter function body using CB access and bit decoding.
+        if (keySizeInBits > 0) // Emit the option getter function body using CB access and bit decoding.
         {
             m_out << "    uint shaderKey = ((" << GetTranslatedName(shaderKeyUid, UsageContext::ReferenceSite)
-                  << "[" << arraySlot << "]." << suffix[swizzle] << " >> " << keyOffsetBits << ") & " << mask << ")";
+                << "[" << arraySlot << "]." << suffix[swizzle] << " >> " << keyOffsetBits << ") & " << mask << ")";
             // Also we need to reproduce the "range minimal" value as an addition post big-field extraction.
             // because the CB compact storage into bits of an uint4 does not incorporate the offset of the range
             // because they are "useless" (compressable) entropy bits that would take space in the key.
-            if (returnType.m_typeId.m_name.find("int") != std::string::npos)  // if type int/uint/int16_t... then it's an integer range.
+            if (returnType.m_typeId.m_name.find("int") != std::string::npos) // if type int/uint/int16_t... then it's an integer range.
             {
                 if (auto attrInfo = m_ir->m_symbols.GetAttribute(getterUid, "range"))
                 {
@@ -1177,26 +1214,28 @@ namespace AZ::ShaderCompiler
                 // but it risks slowing down the shader runtime. Sort of a pay-what-you-use principle.
                 auto& enumClassInfo = *m_ir->GetSymbolSubAs<ClassInfo>(returnType.m_typeId.GetName());
                 auto& enumerators = enumClassInfo.GetOrderedMembers();
-                bool otherInitializers = std::any_of(enumerators.begin() + 1, enumerators.end(),
-                                                     [&](const IdentifierUID& e)
-                                                     {
-                                                         auto& var = *m_ir->GetSymbolSubAs<VarInfo>(e.GetName());
-                                                         return !!var.m_declNodeEnum->Value;
-                                                     });
+                bool otherInitializers = std::any_of(
+                    enumerators.begin() + 1,
+                    enumerators.end(),
+                    [&](const IdentifierUID& e)
+                    {
+                        auto& var = *m_ir->GetSymbolSubAs<VarInfo>(e.GetName());
+                        return !!var.m_declNodeEnum->Value;
+                    });
                 if (otherInitializers)
                 {
                     m_out << ";\n    switch (shaderKey)\n    {\n";
                     for (int i = 0; i < enumerators.size(); ++i)
                     {
                         m_out << "        case " << i << ": shaderKey = (" << GetTranslatedName(returnType, UsageContext::ReferenceSite) << ")"
-                              << GetTranslatedName(enumerators[i], UsageContext::ReferenceSite) << "; break;\n";
+                            << GetTranslatedName(enumerators[i], UsageContext::ReferenceSite) << "; break;\n";
                     }
                     m_out << "    }";
                 }
                 else
                 {
                     // add the value of the first enumerator (by emitting its name)
-                    m_out << " + (uint)" << GetTranslatedName(enumerators.front(), UsageContext::ReferenceSite);  // we can access front with no defense because keySize would be 0 if there are no enumerators.
+                    m_out << " + (uint)" << GetTranslatedName(enumerators.front(), UsageContext::ReferenceSite); // we can access front with no defense because keySize would be 0 if there are no enumerators.
                 }
             }
             m_out << ";\n";

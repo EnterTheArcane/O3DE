@@ -31,22 +31,28 @@ namespace AZ::ShaderCompiler
     //!       variables or lines of codes have mutations available.
     struct SubpassInputToTexture2DCodeMutator
         : public azslParserBaseListener
-        , public ICodeEmissionMutator
+          , public ICodeEmissionMutator
     {
         SubpassInputToTexture2DCodeMutator() = delete;
+
         explicit SubpassInputToTexture2DCodeMutator(IntermediateRepresentation* ir, CommonTokenStream*, SubpassInputSupportFlag subpassInputSupport)
             : m_ir(ir)
-            , m_subpassInputSupport(subpassInputSupport) {}
-        virtual ~SubpassInputToTexture2DCodeMutator() = default;
+            , m_subpassInputSupport(subpassInputSupport)
+        {
+        }
+
+        ~SubpassInputToTexture2DCodeMutator() override = default;
 
         ///////////////////////////////////////////////////////////////////////
         // azslParserBaseListener Overrides ...
         void enterFunctionCallExpression(azslParser::FunctionCallExpressionContext* ctx) override;
+
         ///////////////////////////////////////////////////////////////////////
 
         ///////////////////////////////////////////////////////////////////////
         // ICodeEmissionMutator Overrides ...
         const CodeMutation* GetMutation(ssize_t tokenId) const override;
+
         ///////////////////////////////////////////////////////////////////////
 
         //! Should be called at the end of the IntermediateRepresentation::MiddleEnd() transformations.
@@ -59,8 +65,10 @@ namespace AZ::ShaderCompiler
 
         //! Given an unqualified symbol name, checks within the current parsing scope
         //! if the symbol is a SubpassInput type of variable.
-        enum class SubpassInputType { None, SubpassInput, SubpassInputMS, SubpassInputDS, SubpassInputDSMS };
+        enum class SubpassInputType { None, SubpassInput, SubpassInputMS, SubpassInputDS, SubpassInputDSMS, };
+
         SubpassInputType GetSubpassInputClass(const UnqualifiedName& uqSymbolName);
+
         SubpassInputType GetSubpassInputClass(const VarInfo* varInfo);
 
         //! Changes the variable types:
@@ -77,7 +85,7 @@ namespace AZ::ShaderCompiler
 
         //! A map of TokenIndex to Mutation. If a TokenIndex is present,
         //! it means it should produce mutated text during emission.
-        std::unordered_map<ssize_t, CodeMutation > m_mutations;
+        std::unordered_map<ssize_t, CodeMutation> m_mutations;
 
         //! Subpass Input support.
         SubpassInputSupportFlag m_subpassInputSupport = SubpassInputSupportFlag::None;

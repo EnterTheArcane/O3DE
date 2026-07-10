@@ -60,21 +60,34 @@ namespace AZ::ShaderCompiler
         IdentifierUID idUID{symbol};
         auto fetchedIdIt = m_symbols.find(idUID);
         if (fetchedIdIt != m_symbols.end())
-        {   // found
+        {
+            // found
             if (kind != fetchedIdIt->second.GetKind())
             {
                 ThrowRedeclarationAsDifferentKind(symbol, kind, fetchedIdIt->second, lineNumber);
             }
             else
             {
-                throw AzslcException(ORCHESTRATOR_ODR_VIOLATION, "Semantic", lineNumber, std::nullopt,
-                                     ConcatString("ODR (One Definition Rule) violation. Redeclaration of ",
-                                                  Kind::ToStr(kind), " ", ExtractLeaf(symbol), " in ", LevelUp(symbol), "  ",
-                                                  GetFirstSeenLineMessage(fetchedIdIt->second), "\n"));
+                throw AzslcException(
+                    ORCHESTRATOR_ODR_VIOLATION,
+                    "Semantic",
+                    lineNumber,
+                    std::nullopt,
+                    ConcatString(
+                        "ODR (One Definition Rule) violation. Redeclaration of ",
+                        Kind::ToStr(kind),
+                        " ",
+                        ExtractLeaf(symbol),
+                        " in ",
+                        LevelUp(symbol),
+                        "  ",
+                        GetFirstSeenLineMessage(fetchedIdIt->second),
+                        "\n"));
             }
         }
         else
-        {   // not found
+        {
+            // not found
             fetchedIdIt = m_symbols.insert(IdToKindMap::value_type{idUID, {}}).first;
             verboseCout << "new identifier added to database. name " << idUID.m_name << " kind " << Kind::ToStr(kind) << "\n";
         }
@@ -84,4 +97,4 @@ namespace AZ::ShaderCompiler
         m_order.push_back(fetchedIdIt->first);
         return *fetchedIdIt;
     }
-}  // end of namespace AZ::ShaderCompiler
+} // end of namespace AZ::ShaderCompiler

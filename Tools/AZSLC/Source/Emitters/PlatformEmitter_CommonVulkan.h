@@ -35,6 +35,9 @@ namespace AZ::ShaderCompiler
             const Options& options) const override;
 
     protected:
-        PlatformEmitter_CommonVulkan() : PlatformEmitter {} {};
+        PlatformEmitter_CommonVulkan()
+            : PlatformEmitter{}
+        {
+        };
     };
 }
