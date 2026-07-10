@@ -386,7 +386,9 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void CodeEmitter::EmitShaderVariantOptionVariableDeclaration(const IdentifierUID& symbolUid, const Options& options) const
+    void CodeEmitter::EmitShaderVariantOptionVariableDeclaration(
+        const IdentifierUID& symbolUid,
+        const Options& options) const
     {
         assert(m_ir->GetKind(symbolUid) == Kind::Variable);
         assert(IsTopLevelThroughTranslation(symbolUid));
@@ -447,7 +449,9 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void CodeEmitter::EmitGetFunctionsForRootConstants(const ClassInfo& rootConstInfo, std::string_view bufferName) const
+    void CodeEmitter::EmitGetFunctionsForRootConstants(
+        const ClassInfo& rootConstInfo,
+        std::string_view bufferName) const
     {
         for (const auto& memberVar : rootConstInfo.GetMemberFields())
         {
@@ -756,7 +760,10 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void CodeEmitter::EmitTypeAlias(const IdentifierUID& uid, const TypeAliasInfo& aliasInfo, const Options& options) const
+    void CodeEmitter::EmitTypeAlias(
+        const IdentifierUID& uid,
+        const TypeAliasInfo& aliasInfo,
+        const Options& options) const
     {
         m_out << "typedef " << GetTranslatedName(aliasInfo.m_canonicalType, UsageContext::ReferenceSite, options)
             << " " << GetTranslatedName(uid, UsageContext::DeclarationSite) << ";\n";
@@ -802,7 +809,11 @@ namespace AZ::ShaderCompiler
         return m_alreadyEmittedFunctionDefinitions.find(uid) != m_alreadyEmittedFunctionDefinitions.end();
     }
 
-    void CodeEmitter::EmitFunction(const FunctionInfo& funcSub, const IdentifierUID& uid, const EmitFunctionAs entityConfiguration, const Options& options)
+    void CodeEmitter::EmitFunction(
+        const FunctionInfo& funcSub,
+        const IdentifierUID& uid,
+        const EmitFunctionAs entityConfiguration,
+        const Options& options)
     {
         // reproduce the signature `[attr] [modifiers] rettype [classnameFQN::] Name(params) [semantics]`
 
@@ -893,7 +904,11 @@ namespace AZ::ShaderCompiler
         return nullptr;
     }
 
-    void CodeEmitter::EmitVariableDeclaration(const VarInfo& varInfo, const IdentifierUID& uid, const Options& options, const VarDeclHasFlag declOptions) const
+    void CodeEmitter::EmitVariableDeclaration(
+        const VarInfo& varInfo,
+        const IdentifierUID& uid,
+        const Options& options,
+        const VarDeclHasFlag declOptions) const
     {
         // from MSDN: https://docs.microsoft.com/en-us/windows/desktop/direct3dhlsl/dx-graphics-hlsl-variable-syntax
         // [Storage_Class] [Type_Modifier] Type Name[Index] [: Semantic] [: Packoffset] [: Register]; [Annotations] [= Initial_Value]
@@ -1000,7 +1015,11 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    void CodeEmitter::EmitSRGCBUnified(const SRGInfo& srgInfo, IdentifierUID srgId, const Options& options, const RootSigDesc& rootSig)
+    void CodeEmitter::EmitSRGCBUnified(
+        const SRGInfo& srgInfo,
+        IdentifierUID srgId,
+        const Options& options,
+        const RootSigDesc& rootSig)
     {
         const auto bindSet = BindingPair::Set::Merged;
         // Use the uId of the SRG instead of a CBV, because we create a dummy placeholder CBV to hold the rest of the declarations:
@@ -1140,17 +1159,28 @@ namespace AZ::ShaderCompiler
         return m_translations.GetTranslatedName(mangledName, context, tokenId);
     }
 
-    std::string CodeEmitter::GetTranslatedName(const IdentifierUID& uid, const UsageContext context, const ssize_t tokenId /*= NotOverToken*/) const
+    std::string CodeEmitter::GetTranslatedName(
+        const IdentifierUID& uid,
+        const UsageContext context,
+        const ssize_t tokenId /*= NotOverToken*/) const
     {
         return GetTranslatedName(uid.m_name, context, tokenId);
     }
 
-    std::string CodeEmitter::GetTranslatedName(const TypeRefInfo& typeRef, const UsageContext context, const ssize_t tokenId /*= NotOverToken*/) const
+    std::string CodeEmitter::GetTranslatedName(
+        const TypeRefInfo& typeRef,
+        const UsageContext context,
+        const ssize_t tokenId /*= NotOverToken*/) const
     {
         return GetTranslatedName(typeRef.m_typeId, context, tokenId);
     }
 
-    std::string CodeEmitter::GetTranslatedName(const ExtendedTypeInfo& extTypeInfo, UsageContext context, const Options& options, const Modifiers forbidden /*= {}*/, ssize_t tokenId /*= NotOverToken*/) const
+    std::string CodeEmitter::GetTranslatedName(
+        const ExtendedTypeInfo& extTypeInfo,
+        UsageContext context,
+        const Options& options,
+        const Modifiers forbidden /*= {}*/,
+        ssize_t tokenId /*= NotOverToken*/) const
     {
         return GetExtendedTypeInfo(
             extTypeInfo,
@@ -1162,7 +1192,10 @@ namespace AZ::ShaderCompiler
             });
     }
 
-    void CodeEmitter::EmitSRGDataView(const IdentifierUID& tId, const Options& options, const RootSigDesc& rootSig) const
+    void CodeEmitter::EmitSRGDataView(
+        const IdentifierUID& tId,
+        const Options& options,
+        const RootSigDesc& rootSig) const
     {
         EmitAllAttachedAttributes(tId, Except{{"input_attachment_index"}});
         const auto bindSet = BindingPair::Set::Merged;
@@ -1194,13 +1227,21 @@ namespace AZ::ShaderCompiler
         m_out << ";\n\n";
     }
 
-    void CodeEmitter::EmitGetShaderKeyFunctionDeclaration(const IdentifierUID& getterUid, const TypeRefInfo& returnType) const
+    void CodeEmitter::EmitGetShaderKeyFunctionDeclaration(
+        const IdentifierUID& getterUid,
+        const TypeRefInfo& returnType) const
     {
         m_out << GetTranslatedName(returnType, UsageContext::ReferenceSite) << " ";
         m_out << GetShaderKeyFunctionName(getterUid);
     }
 
-    void CodeEmitter::EmitGetShaderKeyFunction(const IdentifierUID& shaderKeyUid, const IdentifierUID& getterUid, const uint32_t keySizeInBits, uint32_t keyOffsetBits, const std::string_view defaultValue, const TypeRefInfo& returnType) const
+    void CodeEmitter::EmitGetShaderKeyFunction(
+        const IdentifierUID& shaderKeyUid,
+        const IdentifierUID& getterUid,
+        const uint32_t keySizeInBits,
+        uint32_t keyOffsetBits,
+        const std::string_view defaultValue,
+        const TypeRefInfo& returnType) const
     {
         // Because we use uint on the shader source side no shader option can cross the 32-bit boundary
         // This is already ensured by the emission side, in Json::Value CodeEmitter::GetVariantList(...)
@@ -1281,15 +1322,21 @@ namespace AZ::ShaderCompiler
                     m_out << ";\n    switch (shaderKey)\n    {\n";
                     for (int i = 0; i < enumerators.size(); ++i)
                     {
-                        m_out << "        case " << i << ": shaderKey = (" << GetTranslatedName(returnType, UsageContext::ReferenceSite) << ")"
-                            << GetTranslatedName(enumerators[i], UsageContext::ReferenceSite) << "; break;\n";
+                        m_out
+                            << "        case "
+                            << i << ": shaderKey = ("
+                            << GetTranslatedName(returnType, UsageContext::ReferenceSite)
+                            << ")"
+                            << GetTranslatedName(enumerators[i], UsageContext::ReferenceSite)
+                            << "; break;\n";
                     }
                     m_out << "    }";
                 }
                 else
                 {
                     // add the value of the first enumerator (by emitting its name)
-                    m_out << " + (uint)" << GetTranslatedName(enumerators.front(), UsageContext::ReferenceSite); // we can access front with no defense because keySize would be 0 if there are no enumerators.
+                    m_out << " + (uint)" << GetTranslatedName(enumerators.front(), UsageContext::ReferenceSite);
+                    // we can access front with no defense because keySize would be 0 if there are no enumerators.
                 }
             }
             m_out << ";\n";
@@ -1314,7 +1361,11 @@ namespace AZ::ShaderCompiler
         m_out << "}\n\n";
     }
 
-    void CodeEmitter::EmitSRG(const SRGInfo& srgInfo, const IdentifierUID& srgId, const Options& options, const RootSigDesc& rootSig)
+    void CodeEmitter::EmitSRG(
+        const SRGInfo& srgInfo,
+        const IdentifierUID& srgId,
+        const Options& options,
+        const RootSigDesc& rootSig)
     {
         RootSigDesc::SrgDesc srgDesc;
         srgDesc.m_uid = srgId;

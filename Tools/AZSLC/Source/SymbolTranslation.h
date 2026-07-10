@@ -51,11 +51,14 @@ namespace AZ::ShaderCompiler
         //!   tokenId               often unavailable (=NotOverToken ==-1) but when available it indicates which token index we're iterating over in the original stream
         using TranslationBehaviorDelegate =
         std::function<
-            std::string (QualifiedNameView originalSymbol, UsageContext qualificationStrategy, std::string naturalRename, ssize_t tokenId)>;
+            std::string(QualifiedNameView originalSymbol, UsageContext qualificationStrategy, std::string naturalRename, ssize_t tokenId)>;
 
         //! register specific behaviors to post-mutate names differently than the default algorithm.
         //! a behavior is for one original symbol. it can trigger on declaration or reference or both
-        void AddCustomBehavior(QualifiedNameView originalSymbol, BehaviorEventFlag on, TranslationBehaviorDelegate action);
+        void AddCustomBehavior(
+            QualifiedNameView originalSymbol,
+            BehaviorEventFlag on,
+            TranslationBehaviorDelegate action);
 
         //! Create a declaration in the IR for a symbol "originalSymbol" at its destination scope registered previously.
         void MigrateDisambiguateAndCache(QualifiedNameView originalSymbol) const;
@@ -64,7 +67,10 @@ namespace AZ::ShaderCompiler
         QualifiedNameView GetLandingScope(QualifiedNameView originalSymbol) const;
 
         //! Get the translated name for a symbol in AZSL
-        std::string GetTranslatedName(QualifiedNameView originalSymbol, UsageContext qualificationStrategy, ssize_t tokenId) const;
+        std::string GetTranslatedName(
+            QualifiedNameView originalSymbol,
+            UsageContext qualificationStrategy,
+            ssize_t tokenId) const;
 
         //! In the idExpression:
         //! nested1::nested2::mutatedRightMost::expressionRightMost
@@ -108,7 +114,10 @@ namespace AZ::ShaderCompiler
         //! that is: mutate intermediate symbols by rewriting the path.
         //! emit a fully qualified valid HLSL expression after mutations.
         template <typename NextTokenFunctor>
-        std::string TranslateIdExpression(const IDExpressionDesc& idExprDesc, const ssize_t tokenId, const NextTokenFunctor& getNext) const
+        std::string TranslateIdExpression(
+            const IDExpressionDesc& idExprDesc,
+            const ssize_t tokenId,
+            const NextTokenFunctor& getNext) const
         {
             const std::string part1 = GetTranslatedName(idExprDesc.m_mutatedRightMost.m_symbol.m_name, UsageContext::ReferenceSite, tokenId);
             std::string part2;

@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include "Mangling.h"
-#include "Exception.h"
 #include "DiagnosticStream.h"
+#include "Exception.h"
+#include "Mangling.h"
 
 #include "antlr4-runtime.h"
 
@@ -136,7 +136,12 @@ namespace AZ::ShaderCompiler
 
     //! low level version with everything parameterizable
     template <typename... Types>
-    inline void PrintWarning(DiagnosticStream& stream, Warn::EnumType level, const std::optional<size_t> lineNumber, const std::optional<size_t> column, Types&&... messageBits)
+    inline void PrintWarning(
+        DiagnosticStream& stream,
+        Warn::EnumType level,
+        const std::optional<size_t> lineNumber,
+        const std::optional<size_t> column,
+        Types&&... messageBits)
     {
         std::string fileName;
         std::string virtualLine;
@@ -153,15 +158,10 @@ namespace AZ::ShaderCompiler
             columnText = ToString(*column);
         }
 
-        stream << PushLevel{} << level
-            << AzslcException::MakeErrorMessage(
-                fileName,
-                virtualLine,
-                columnText,
-                "",
-                false,
-                "",
-                ConcatString(messageBits..., "\n"))
+        stream
+            << PushLevel{}
+            << level
+            << AzslcException::MakeErrorMessage(fileName, virtualLine, columnText, "", false, "", ConcatString(messageBits..., "\n"))
             << PopLevel{};
     }
 
@@ -280,7 +280,9 @@ namespace AZ::ShaderCompiler
     }
 
     //! Safe way to call ExtractValueAsInt64 which returns false instead of throwing
-    inline bool TryGetConstExprValueAsInt64(const ConstNumericVal& foldedIdentifier, int64_t& returnValue) noexcept(true)
+    inline bool TryGetConstExprValueAsInt64(
+        const ConstNumericVal& foldedIdentifier,
+        int64_t& returnValue) noexcept(true)
     {
         if (std::holds_alternative<std::monostate>(foldedIdentifier))
         {
@@ -394,7 +396,10 @@ namespace AZ::ShaderCompiler
         //! {unbounded} is "[]"
         //! {unknown} is "[?]"
         //! {1,2} is "[1][2]"
-        std::string ToString(const std::string& prefix = "[", const std::string& separator = "][", const std::string& suffix = "]") const
+        std::string ToString(
+            const std::string& prefix = "[",
+            const std::string& separator = "][",
+            const std::string& suffix = "]") const
         {
             std::vector<std::string> asStrs;
             std::ranges::transform(
@@ -563,7 +568,10 @@ namespace AZ::ShaderCompiler
             return (value + mask) & ~mask;
         }
 
-        static uint32_t AlignStructToLargestMember(const Layout layout, const uint32_t currentSize, const uint32_t memberSize)
+        static uint32_t AlignStructToLargestMember(
+            const Layout layout,
+            const uint32_t currentSize,
+            const uint32_t memberSize)
         {
             if (memberSize == 0)
             {
@@ -786,7 +794,12 @@ namespace AZ::ShaderCompiler
         //! Packs the base size as a vector or a matrix
         //! Rows and/or cols can be 0. However, if Rows is greater than 0, Cols cannot be 0.
         //! Note! Regardless of major, matrices are defined as rows-by-columns! Rows == 0 means it's not a matrix
-        static uint32_t PackAsVectorMatrix(const Layout layout, const uint32_t baseSize, const uint32_t rows, const uint32_t cols, const bool rowMajor)
+        static uint32_t PackAsVectorMatrix(
+            const Layout layout,
+            const uint32_t baseSize,
+            const uint32_t rows,
+            const uint32_t cols,
+            const bool rowMajor)
         {
             if (cols <= 1 && rows <= 1)
             {
@@ -805,23 +818,23 @@ namespace AZ::ShaderCompiler
             switch (layout)
             {
             case Layout::CStylePacking:
-            {
-                uint32_t packedCols = cols;
-                if (cols == 0)
                 {
-                    packedCols = 1;
-                }
+                    uint32_t packedCols = cols;
+                    if (cols == 0)
+                    {
+                        packedCols = 1;
+                    }
 
-                uint32_t packedRows = rows;
-                if (rows == 0)
-                {
-                    packedRows = 1;
-                }
+                    uint32_t packedRows = rows;
+                    if (rows == 0)
+                    {
+                        packedRows = 1;
+                    }
 
-                return baseSize
-                    * packedCols
-                    * packedRows;
-            }
+                    return baseSize
+                        * packedCols
+                        * packedRows;
+                }
 
             case Layout::DirectXPacking:
                 if (rows > 0)
@@ -1293,7 +1306,9 @@ namespace AZ::ShaderCompiler
         return As<azslParser::VariableDeclarationContext*>(ctx->parent->parent);
     }
 
-    inline azslParser::TypeContext* ExtractTypeFromUnnamedVariableDeclarator(AstUnnamedVarDecl* ctx, azslParser::FunctionParamContext* * funcParamContextOut = nullptr)
+    inline azslParser::TypeContext* ExtractTypeFromUnnamedVariableDeclarator(
+        AstUnnamedVarDecl * ctx,
+        azslParser::FunctionParamContext * *funcParamContextOut = nullptr)
     {
         auto* paramCtx = ParamContextOverUnnamedVariableDeclarator(ctx);
         if (paramCtx != nullptr)
@@ -1476,12 +1491,16 @@ namespace AZ::ShaderCompiler
         bool m_skipAlignmentValidation;
     };
 
-    ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstType* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr);
+    ExtractedComposedType ExtractComposedTypeNamesFromAstContext(
+        AstType* ctx,
+        std::vector<tree::TerminalNode*>* genericDims = nullptr);
 
     // Oftentimes a type rule looks like: `genericTexture: TextureKeyword '<' type '>'` , this function extracts `type`.
     // Types parent of that ctx should have an AnalyzeClass that returns HasGenericParameter
     // for more power, this function can return an AstPointer to a type rule directly in case of availability.
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstPredefinedTypeNode* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(
+        AstPredefinedTypeNode* ctx,
+        std::vector<tree::TerminalNode*>* genericDims = nullptr)
     {
         if (ctx->bufferPredefinedType())
         {
@@ -1584,14 +1603,18 @@ namespace AZ::ShaderCompiler
     }
 
     //! from a special rule: scalarOrVectorOrMatrixType
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::ScalarOrVectorOrMatrixTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(
+        azslParser::ScalarOrVectorOrMatrixTypeContext * ctx,
+        std::vector<tree::TerminalNode*> * genericDims = nullptr)
     {
         return {ExtractedTypeExt{UnqualifiedName{ctx->getText()}}};
         // for now there is no generic part, but mind it when you fix the grammar to support generic vector.
     }
 
     //! from userDefinedType context
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(azslParser::UserDefinedTypeContext* ctx, std::vector<tree::TerminalNode*>* genericDims = nullptr)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(
+        azslParser::UserDefinedTypeContext * ctx,
+        std::vector<tree::TerminalNode*> * genericDims = nullptr)
     {
         if (ctx->idExpression())
         {
@@ -1612,7 +1635,9 @@ namespace AZ::ShaderCompiler
     }
 
     //! from type context (next to highest level)
-    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(AstType* ctx, std::vector<tree::TerminalNode*>* genericDims /*= nullptr*/)
+    inline ExtractedComposedType ExtractComposedTypeNamesFromAstContext(
+        AstType* ctx,
+        std::vector<tree::TerminalNode*>* genericDims /*= nullptr*/)
     {
         if (ctx->userDefinedType())
         {

@@ -25,13 +25,13 @@ namespace AZ::ShaderCompiler
         // include the startup symbol
         Self,
         // the seenat collection of a symbol
-        Reference
+        Reference,
         // up and down list of overrides
         Family,
         // group of overloads
         OverloadSet,
         // explore the entire homonymous graph, including e.g children's overloads's references. And e.g the base of an overload of a child
-        Recursive,
+        Recursive
     );
 
     using RelationshipExtentFlag = Flag<RelationshipExtent>;

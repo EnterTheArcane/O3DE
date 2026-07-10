@@ -17,7 +17,7 @@
 namespace AZ::ShaderCompiler
 {
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement
-    struct PlatformEmitter_Metal : PlatformEmitter_CommonVulkan
+    class PlatformEmitter_Metal : public PlatformEmitter_CommonVulkan
     {
     public:
         //! This method will be called once and only once when the platform emitter registers itself to the system.

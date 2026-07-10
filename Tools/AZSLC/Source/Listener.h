@@ -10,12 +10,13 @@
 
 #include "IntermediateRepresentation.h"
 
-#include <vector>
+#include "azslParserBaseListener.h"
 
 namespace AZ::ShaderCompiler
 {
-    struct SemaCheckListener : azslParserBaseListener
+    class SemaCheckListener : public azslParserBaseListener
     {
+    public:
         using Self = SemaCheckListener;
         using Base = azslParserBaseListener;
 

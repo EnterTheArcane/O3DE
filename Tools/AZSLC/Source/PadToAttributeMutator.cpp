@@ -126,7 +126,8 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    std::vector<IdentifierUID> PadToAttributeMutator::GetSortedScopeUidList(const MapOfScopeUidToPaddingMap& scopesToPad) const
+    std::vector<IdentifierUID> PadToAttributeMutator::GetSortedScopeUidList(
+        const MapOfScopeUidToPaddingMap& scopesToPad) const
     {
         std::vector<IdentifierUID> sortedList;
 
@@ -147,7 +148,10 @@ namespace AZ::ShaderCompiler
         return sortedList;
     }
 
-    void PadToAttributeMutator::ScopeUidSortVisitFunction(const IdentifierUID& scopeUid, std::unordered_set<IdentifierUID>& visitedScopes, std::vector<IdentifierUID>& sortedList) const
+    void PadToAttributeMutator::ScopeUidSortVisitFunction(
+        const IdentifierUID& scopeUid,
+        std::unordered_set<IdentifierUID>& visitedScopes,
+        std::vector<IdentifierUID>& sortedList) const
     {
         if (visitedScopes.count(scopeUid))
         {
@@ -176,7 +180,8 @@ namespace AZ::ShaderCompiler
         sortedList.push_back(scopeUid);
     }
 
-    std::vector<std::pair<IdentifierUID, IdentifierUID>> PadToAttributeMutator::GetVariablesOfScopeTypeThatRequirePadding(const ClassInfo* classInfo) const
+    std::vector<std::pair<IdentifierUID, IdentifierUID>>
+    PadToAttributeMutator::GetVariablesOfScopeTypeThatRequirePadding(const ClassInfo* classInfo) const
     {
         std::vector<std::pair<IdentifierUID, IdentifierUID>> retList;
         const auto& memberFields = classInfo->GetMemberFields();
@@ -242,7 +247,11 @@ namespace AZ::ShaderCompiler
                         scopeUid.m_name.data(),
                         padToBoundary);
                     const auto* varInfoPtr = m_ir.GetSymbolSubAs<VarInfo>(varUid.m_name);
-                    throw AzslcIrException{IR_PAD_TO_CASE_REQUIRES_POWER_OF_TWO, errorMsg, varInfoPtr->GetOriginalLineNumber()};
+                    throw AzslcIrException{
+                        IR_PAD_TO_CASE_REQUIRES_POWER_OF_TWO,
+                        errorMsg,
+                        varInfoPtr->GetOriginalLineNumber(),
+                    };
                 }
                 const uint32_t alignedOffset = Packing::AlignUp(nextMemberOffset, padToBoundary);
                 bytesToAdd = alignedOffset - nextMemberOffset;
@@ -453,7 +462,11 @@ namespace AZ::ShaderCompiler
             return floatNames[idx];
         };
 
-        auto createVariableInSymbolTable = [&](const QualifiedNameView parentName, std::string_view typeName, UnqualifiedName varName, int itemsCount = 0) -> IdentifierUID
+        auto createVariableInSymbolTable = [&](
+            const QualifiedNameView parentName,
+            std::string_view typeName,
+            UnqualifiedName varName,
+            int itemsCount = 0) -> IdentifierUID
         {
             const QualifiedName dummySymbolFieldName{JoinPath(parentName, varName)};
 

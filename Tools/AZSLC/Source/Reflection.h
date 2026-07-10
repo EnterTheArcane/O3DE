@@ -21,8 +21,9 @@ namespace AZ::ShaderCompiler
     using MapOfBeginToSpanAndUid = std::map<ssize_t, std::pair<misc::Interval, IdentifierUID>>;
     using MapOfIntervalToUid = std::map<Interval<ssize_t>, IdentifierUID>;
 
-    struct CodeReflection : Backend
+    class CodeReflection : public Backend
     {
+    public:
         CodeReflection(IntermediateRepresentation* ir, TokenStream* tokens, std::ostream& out)
             : Backend(ir, tokens)
             , m_out(out)

@@ -18,7 +18,7 @@
 
 namespace AZ::ShaderCompiler
 {
-    struct CodeEmitter;
+    class CodeEmitter;
 
     //! Modes of subpass input the emitter supports
     enum class SubpassInputSupportFlag : uint32_t
@@ -34,8 +34,9 @@ namespace AZ::ShaderCompiler
     };
 
     // PlatformEmitter is not a Backend by design. It's a supplement to CodeEmitter, not a replacement.
-    struct PlatformEmitter
+    class PlatformEmitter
     {
+    public:
         using SrgParamDesc = RootSigDesc::SrgParamDesc;
 
         //! Returns the default platform emitter. It's always guaranteed to exist.

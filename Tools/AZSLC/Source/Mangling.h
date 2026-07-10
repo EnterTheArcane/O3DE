@@ -360,7 +360,10 @@ namespace AZ::ShaderCompiler
     //!        "A/B" if passed stem="A"  and leaf="B"
     //!        "/A"  if passed stem=""   and leaf="A" (if policy is EmptyMeansRoot)
     //!        "A"   if passed stem=""   and leaf="A" (if policy is EmptyMeansEmpty)
-    inline std::string JoinPath(const std::string_view stem, const std::string_view leaf, const JoinPolicy policy = JoinPolicy::EmptyMeansRoot)
+    inline std::string JoinPath(
+        const std::string_view stem,
+        const std::string_view leaf,
+        const JoinPolicy policy = JoinPolicy::EmptyMeansRoot)
     {
         if ((stem.empty() || leaf.empty()) && policy == JoinPolicy::EmptyMeansEmpty)
         {

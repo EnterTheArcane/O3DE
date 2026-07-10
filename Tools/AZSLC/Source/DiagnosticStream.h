@@ -15,11 +15,15 @@
 #include <iostream>
 #include <ostream>
 #include <stack>
+#include <string>
 #include <string_view>
 #include <utility>
 
 namespace AZ
 {
+    template <typename... Types>
+    std::string ConcatString(Types&&... args);
+
     //! stream manipulator: new line and flush
     struct Endl
     {
@@ -43,7 +47,7 @@ namespace AZ
         // Warnings up to level 2 are errors
         Wx2,
         // Warnings up to level 3 are errors
-        Wx3,
+        Wx3
     );
 
     //! stream manipulator: stack up a severity level on a DiagnosticStream object (streams used for warnings have stateful warning levels, they can be backup-ed and restored thanks to this)

@@ -21,6 +21,8 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "azslLexer.h"
+
 namespace AZ::ShaderCompiler
 {
     // type classes before canonicalization.

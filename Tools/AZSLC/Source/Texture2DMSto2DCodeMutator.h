@@ -13,8 +13,7 @@
 #include "CodeEmissionMutator.h"
 #include "IntermediateRepresentation.h"
 
-#include <string>
-#include <unordered_map>
+#include "azslParserBaseListener.h"
 
 namespace AZ::ShaderCompiler
 {
@@ -30,10 +29,11 @@ namespace AZ::ShaderCompiler
     //!      calculate further code mutations.
     //!     - During code emission, the CodeEmitter invokes the ICodeEmissionMutator interface to see if token
     //!       variables or lines of codes have mutations available.
-    struct Texture2DMSto2DCodeMutator
+    class Texture2DMSto2DCodeMutator
         : public azslParserBaseListener
-          , public ICodeEmissionMutator
+        , public ICodeEmissionMutator
     {
+    public:
         Texture2DMSto2DCodeMutator() = delete;
 
         explicit Texture2DMSto2DCodeMutator(IntermediateRepresentation* ir, CommonTokenStream* stream)

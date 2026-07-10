@@ -12,148 +12,148 @@
 class  azslParser : public antlr4::Parser {
 public:
   enum {
-    AppendStructuredBuffer = 1, Bool = 2, Bool1 = 3, Bool2 = 4, Bool3 = 5, 
-    Bool4 = 6, Bool1x1 = 7, Bool1x2 = 8, Bool1x3 = 9, Bool1x4 = 10, Bool2x1 = 11, 
-    Bool2x2 = 12, Bool2x3 = 13, Bool2x4 = 14, Bool3x1 = 15, Bool3x2 = 16, 
-    Bool3x3 = 17, Bool3x4 = 18, Bool4x1 = 19, Bool4x2 = 20, Bool4x3 = 21, 
-    Bool4x4 = 22, Buffer = 23, BuiltInTriangleIntersectionAttributes = 24, 
-    ByteAddressBuffer = 25, Break = 26, Case = 27, CBuffer = 28, Centroid = 29, 
-    ConstantBuffer = 30, ConstantBufferCamel = 31, Class = 32, ColumnMajor = 33, 
-    Const = 34, ConsumeStructuredBuffer = 35, Continue = 36, Default = 37, 
-    Discard = 38, Do = 39, Double = 40, Double1 = 41, Double2 = 42, Double3 = 43, 
-    Double4 = 44, Double1x1 = 45, Double1x2 = 46, Double1x3 = 47, Double1x4 = 48, 
-    Double2x1 = 49, Double2x2 = 50, Double2x3 = 51, Double2x4 = 52, Double3x1 = 53, 
-    Double3x2 = 54, Double3x3 = 55, Double3x4 = 56, Double4x1 = 57, Double4x2 = 58, 
-    Double4x3 = 59, Double4x4 = 60, Else = 61, Enum = 62, Export = 63, Extern = 64, 
-    FeedbackTexture2D = 65, FeedbackTexture2DArray = 66, Float = 67, Float1 = 68, 
-    Float2 = 69, Float3 = 70, Float4 = 71, Float1x1 = 72, Float1x2 = 73, 
-    Float1x3 = 74, Float1x4 = 75, Float2x1 = 76, Float2x2 = 77, Float2x3 = 78, 
-    Float2x4 = 79, Float3x1 = 80, Float3x2 = 81, Float3x3 = 82, Float3x4 = 83, 
-    Float4x1 = 84, Float4x2 = 85, Float4x3 = 86, Float4x4 = 87, For = 88, 
-    Groupshared = 89, Globallycoherent = 90, Global = 91, Half = 92, Half1 = 93, 
-    Half2 = 94, Half3 = 95, Half4 = 96, Half1x1 = 97, Half1x2 = 98, Half1x3 = 99, 
-    Half1x4 = 100, Half2x1 = 101, Half2x2 = 102, Half2x3 = 103, Half2x4 = 104, 
-    Half3x1 = 105, Half3x2 = 106, Half3x3 = 107, Half3x4 = 108, Half4x1 = 109, 
-    Half4x2 = 110, Half4x3 = 111, Half4x4 = 112, If = 113, In = 114, Inline = 115, 
-    Rootconstant = 116, Inout = 117, InputPatch = 118, Int = 119, Int16_t = 120, 
-    Int32_t = 121, Int64_t = 122, Int1 = 123, Int2 = 124, Int3 = 125, Int4 = 126, 
-    Int1x1 = 127, Int1x2 = 128, Int1x3 = 129, Int1x4 = 130, Int2x1 = 131, 
-    Int2x2 = 132, Int2x3 = 133, Int2x4 = 134, Int3x1 = 135, Int3x2 = 136, 
-    Int3x3 = 137, Int3x4 = 138, Int4x1 = 139, Int4x2 = 140, Int4x3 = 141, 
-    Int4x4 = 142, Interface = 143, Line_ = 144, LineAdj = 145, Linear = 146, 
-    LineStream = 147, Long = 148, Matrix = 149, Nointerpolation = 150, Noperspective = 151, 
-    Option = 152, Out = 153, OutputPatch = 154, Override = 155, Partial = 156, 
-    Packoffset = 157, Point = 158, PointStream = 159, Precise = 160, RasterizerOrderedBuffer = 161, 
-    RasterizerOrderedByteAddressBuffer = 162, RasterizerOrderedStructuredBuffer = 163, 
-    RasterizerOrderedTexture1D = 164, RasterizerOrderedTexture1DArray = 165, 
-    RasterizerOrderedTexture2D = 166, RasterizerOrderedTexture2DArray = 167, 
-    RasterizerOrderedTexture3D = 168, RayDesc = 169, RaytracingAccelerationStructure = 170, 
-    Register = 171, Return = 172, RowMajor = 173, RWBuffer = 174, RWByteAddressBuffer = 175, 
-    RWStructuredBuffer = 176, RWTexture1D = 177, RWTexture1DArray = 178, 
-    RWTexture2D = 179, RWTexture2DArray = 180, RWTexture3D = 181, Sample = 182, 
-    Sampler = 183, SamplerCapitalS = 184, SamplerComparisonState = 185, 
-    SamplerStateCamel = 186, SamplerState = 187, Shared = 188, SNorm = 189, 
-    Static = 190, Struct = 191, StructuredBuffer = 192, SubpassInput = 193, 
-    SubpassInputMS = 194, SubpassInputDS = 195, SubpassInputDSMS = 196, 
-    Switch = 197, TBuffer = 198, Texture1D = 199, Texture1DArray = 200, 
-    Texture2D = 201, Texture2DArray = 202, Texture2DMS = 203, Texture2DMSArray = 204, 
-    Texture3D = 205, TextureCube = 206, TextureCubeArray = 207, Triangle = 208, 
-    TriangleAdj = 209, TriangleStream = 210, Uniform = 211, Uint = 212, 
-    Uint1 = 213, Uint2 = 214, Uint3 = 215, Uint4 = 216, Uint1x1 = 217, Uint1x2 = 218, 
-    Uint1x3 = 219, Uint1x4 = 220, Uint2x1 = 221, Uint2x2 = 222, Uint2x3 = 223, 
-    Uint2x4 = 224, Uint3x1 = 225, Uint3x2 = 226, Uint3x3 = 227, Uint3x4 = 228, 
-    Uint4x1 = 229, Uint4x2 = 230, Uint4x3 = 231, Uint4x4 = 232, Uint16_t = 233, 
-    Uint32_t = 234, Uint64_t = 235, UNorm = 236, Unsigned = 237, Dword = 238, 
-    Dword1 = 239, Dword2 = 240, Dword3 = 241, Dword4 = 242, Dword1x1 = 243, 
-    Dword1x2 = 244, Dword1x3 = 245, Dword1x4 = 246, Dword2x1 = 247, Dword2x2 = 248, 
-    Dword2x3 = 249, Dword2x4 = 250, Dword3x1 = 251, Dword3x2 = 252, Dword3x3 = 253, 
-    Dword3x4 = 254, Dword4x1 = 255, Dword4x2 = 256, Dword4x3 = 257, Dword4x4 = 258, 
-    Vector = 259, Volatile = 260, Void = 261, While = 262, StateObjectConfig = 263, 
-    LocalRootSignature = 264, GlobalRootSignature = 265, SubobjectToExportsAssociation = 266, 
-    RaytracingShaderConfig = 267, RaytracingPipelineConfig = 268, RaytracingPipelineConfig1 = 269, 
-    TriangleHitGroup = 270, ProceduralPrimitiveHitGroup = 271, ADDRESS_U = 272, 
-    ADDRESS_V = 273, ADDRESS_W = 274, BORDER_COLOR = 275, MIN_FILTER = 276, 
-    MAG_FILTER = 277, MIP_FILTER = 278, MAX_ANISOTROPY = 279, MAX_LOD = 280, 
-    MIN_LOD = 281, MIP_LOD_BIAS = 282, COMPARISON_FUNC = 283, REDUCTION_TYPE = 284, 
-    FILTER_MODE_POINT = 285, FILTER_MODE_LINEAR = 286, REDUCTION_TYPE_FILTER = 287, 
-    REDUCTION_TYPE_COMPARISON = 288, REDUCTION_TYPE_MINIMUM = 289, REDUCTION_TYPE_MAXIMUM = 290, 
-    ADDRESS_MODE_WRAP = 291, ADDRESS_MODE_MIRROR = 292, ADDRESS_MODE_CLAMP = 293, 
-    ADDRESS_MODE_BORDER = 294, ADDRESS_MODE_MIRROR_ONCE = 295, COMPARISON_FUNCTION_NEVER = 296, 
-    COMPARISON_FUNCTION_LESS = 297, COMPARISON_FUNCTION_EQUAL = 298, COMPARISON_FUNCTION_LESS_EQUAL = 299, 
-    COMPARISON_FUNCTION_GREATER = 300, COMPARISON_FUNCTION_NOT_EQUAL = 301, 
-    COMPARISON_FUNCTION_GREATER_EQUAL = 302, COMPARISON_FUNCTION_ALWAYS = 303, 
-    BORDER_COLOR_OPAQUE_BLACK = 304, BORDER_COLOR_TRANSPARENT_BLACK = 305, 
-    BORDER_COLOR_OPAQUE_WHITE = 306, LeftParen = 307, RightParen = 308, 
-    LeftBracket = 309, RightBracket = 310, LeftBrace = 311, RightBrace = 312, 
-    LeftDoubleBracket = 313, Less = 314, LessEqual = 315, Greater = 316, 
-    GreaterEqual = 317, LeftShift = 318, RightShift = 319, Plus = 320, PlusPlus = 321, 
-    Minus = 322, MinusMinus = 323, Star = 324, Div = 325, Mod = 326, And = 327, 
-    Or = 328, AndAnd = 329, OrOr = 330, Caret = 331, Not = 332, Tilde = 333, 
-    Question = 334, Colon = 335, ColonColon = 336, Semi = 337, Comma = 338, 
-    Assign = 339, StarAssign = 340, DivAssign = 341, ModAssign = 342, PlusAssign = 343, 
-    MinusAssign = 344, LeftShiftAssign = 345, RightShiftAssign = 346, AndAssign = 347, 
-    XorAssign = 348, OrAssign = 349, Equal = 350, NotEqual = 351, Dot = 352, 
-    True = 353, False = 354, KW_AssociatedType = 355, KW_TypeAlias = 356, 
-    KW_Typedef = 357, KW_Fundamental = 358, KW_Typeof = 359, FrequencyId = 360, 
-    ShaderVariantFallback = 361, ShaderResourceGroupSemantic = 362, ShaderResourceGroup = 363, 
-    KW_ext_print_message = 364, KW_ext_print_symbol = 365, KW_ext_prtsym_fully_qualified = 366, 
-    KW_ext_prtsym_least_qualified = 367, KW_ext_prtsym_constint_value = 368, 
-    HLSLSemanticStream = 369, HLSLSemanticSystem = 370, Identifier = 371, 
-    IntegerLiteral = 372, FloatLiteral = 373, StringLiteral = 374, PragmaDirective = 375, 
-    LineDirective = 376, Whitespace = 377, Newline = 378, BlockComment = 379, 
+    AppendStructuredBuffer = 1, Bool = 2, Bool1 = 3, Bool2 = 4, Bool3 = 5,
+    Bool4 = 6, Bool1x1 = 7, Bool1x2 = 8, Bool1x3 = 9, Bool1x4 = 10, Bool2x1 = 11,
+    Bool2x2 = 12, Bool2x3 = 13, Bool2x4 = 14, Bool3x1 = 15, Bool3x2 = 16,
+    Bool3x3 = 17, Bool3x4 = 18, Bool4x1 = 19, Bool4x2 = 20, Bool4x3 = 21,
+    Bool4x4 = 22, Buffer = 23, BuiltInTriangleIntersectionAttributes = 24,
+    ByteAddressBuffer = 25, Break = 26, Case = 27, CBuffer = 28, Centroid = 29,
+    ConstantBuffer = 30, ConstantBufferCamel = 31, Class = 32, ColumnMajor = 33,
+    Const = 34, ConsumeStructuredBuffer = 35, Continue = 36, Default = 37,
+    Discard = 38, Do = 39, Double = 40, Double1 = 41, Double2 = 42, Double3 = 43,
+    Double4 = 44, Double1x1 = 45, Double1x2 = 46, Double1x3 = 47, Double1x4 = 48,
+    Double2x1 = 49, Double2x2 = 50, Double2x3 = 51, Double2x4 = 52, Double3x1 = 53,
+    Double3x2 = 54, Double3x3 = 55, Double3x4 = 56, Double4x1 = 57, Double4x2 = 58,
+    Double4x3 = 59, Double4x4 = 60, Else = 61, Enum = 62, Export = 63, Extern = 64,
+    FeedbackTexture2D = 65, FeedbackTexture2DArray = 66, Float = 67, Float1 = 68,
+    Float2 = 69, Float3 = 70, Float4 = 71, Float1x1 = 72, Float1x2 = 73,
+    Float1x3 = 74, Float1x4 = 75, Float2x1 = 76, Float2x2 = 77, Float2x3 = 78,
+    Float2x4 = 79, Float3x1 = 80, Float3x2 = 81, Float3x3 = 82, Float3x4 = 83,
+    Float4x1 = 84, Float4x2 = 85, Float4x3 = 86, Float4x4 = 87, For = 88,
+    Groupshared = 89, Globallycoherent = 90, Global = 91, Half = 92, Half1 = 93,
+    Half2 = 94, Half3 = 95, Half4 = 96, Half1x1 = 97, Half1x2 = 98, Half1x3 = 99,
+    Half1x4 = 100, Half2x1 = 101, Half2x2 = 102, Half2x3 = 103, Half2x4 = 104,
+    Half3x1 = 105, Half3x2 = 106, Half3x3 = 107, Half3x4 = 108, Half4x1 = 109,
+    Half4x2 = 110, Half4x3 = 111, Half4x4 = 112, If = 113, In = 114, Inline = 115,
+    Rootconstant = 116, Inout = 117, InputPatch = 118, Int = 119, Int16_t = 120,
+    Int32_t = 121, Int64_t = 122, Int1 = 123, Int2 = 124, Int3 = 125, Int4 = 126,
+    Int1x1 = 127, Int1x2 = 128, Int1x3 = 129, Int1x4 = 130, Int2x1 = 131,
+    Int2x2 = 132, Int2x3 = 133, Int2x4 = 134, Int3x1 = 135, Int3x2 = 136,
+    Int3x3 = 137, Int3x4 = 138, Int4x1 = 139, Int4x2 = 140, Int4x3 = 141,
+    Int4x4 = 142, Interface = 143, Line_ = 144, LineAdj = 145, Linear = 146,
+    LineStream = 147, Long = 148, Matrix = 149, Nointerpolation = 150, Noperspective = 151,
+    Option = 152, Out = 153, OutputPatch = 154, Override = 155, Partial = 156,
+    Packoffset = 157, Point = 158, PointStream = 159, Precise = 160, RasterizerOrderedBuffer = 161,
+    RasterizerOrderedByteAddressBuffer = 162, RasterizerOrderedStructuredBuffer = 163,
+    RasterizerOrderedTexture1D = 164, RasterizerOrderedTexture1DArray = 165,
+    RasterizerOrderedTexture2D = 166, RasterizerOrderedTexture2DArray = 167,
+    RasterizerOrderedTexture3D = 168, RayDesc = 169, RaytracingAccelerationStructure = 170,
+    Register = 171, Return = 172, RowMajor = 173, RWBuffer = 174, RWByteAddressBuffer = 175,
+    RWStructuredBuffer = 176, RWTexture1D = 177, RWTexture1DArray = 178,
+    RWTexture2D = 179, RWTexture2DArray = 180, RWTexture3D = 181, Sample = 182,
+    Sampler = 183, SamplerCapitalS = 184, SamplerComparisonState = 185,
+    SamplerStateCamel = 186, SamplerState = 187, Shared = 188, SNorm = 189,
+    Static = 190, Struct = 191, StructuredBuffer = 192, SubpassInput = 193,
+    SubpassInputMS = 194, SubpassInputDS = 195, SubpassInputDSMS = 196,
+    Switch = 197, TBuffer = 198, Texture1D = 199, Texture1DArray = 200,
+    Texture2D = 201, Texture2DArray = 202, Texture2DMS = 203, Texture2DMSArray = 204,
+    Texture3D = 205, TextureCube = 206, TextureCubeArray = 207, Triangle = 208,
+    TriangleAdj = 209, TriangleStream = 210, Uniform = 211, Uint = 212,
+    Uint1 = 213, Uint2 = 214, Uint3 = 215, Uint4 = 216, Uint1x1 = 217, Uint1x2 = 218,
+    Uint1x3 = 219, Uint1x4 = 220, Uint2x1 = 221, Uint2x2 = 222, Uint2x3 = 223,
+    Uint2x4 = 224, Uint3x1 = 225, Uint3x2 = 226, Uint3x3 = 227, Uint3x4 = 228,
+    Uint4x1 = 229, Uint4x2 = 230, Uint4x3 = 231, Uint4x4 = 232, Uint16_t = 233,
+    Uint32_t = 234, Uint64_t = 235, UNorm = 236, Unsigned = 237, Dword = 238,
+    Dword1 = 239, Dword2 = 240, Dword3 = 241, Dword4 = 242, Dword1x1 = 243,
+    Dword1x2 = 244, Dword1x3 = 245, Dword1x4 = 246, Dword2x1 = 247, Dword2x2 = 248,
+    Dword2x3 = 249, Dword2x4 = 250, Dword3x1 = 251, Dword3x2 = 252, Dword3x3 = 253,
+    Dword3x4 = 254, Dword4x1 = 255, Dword4x2 = 256, Dword4x3 = 257, Dword4x4 = 258,
+    Vector = 259, Volatile = 260, Void = 261, While = 262, StateObjectConfig = 263,
+    LocalRootSignature = 264, GlobalRootSignature = 265, SubobjectToExportsAssociation = 266,
+    RaytracingShaderConfig = 267, RaytracingPipelineConfig = 268, RaytracingPipelineConfig1 = 269,
+    TriangleHitGroup = 270, ProceduralPrimitiveHitGroup = 271, ADDRESS_U = 272,
+    ADDRESS_V = 273, ADDRESS_W = 274, BORDER_COLOR = 275, MIN_FILTER = 276,
+    MAG_FILTER = 277, MIP_FILTER = 278, MAX_ANISOTROPY = 279, MAX_LOD = 280,
+    MIN_LOD = 281, MIP_LOD_BIAS = 282, COMPARISON_FUNC = 283, REDUCTION_TYPE = 284,
+    FILTER_MODE_POINT = 285, FILTER_MODE_LINEAR = 286, REDUCTION_TYPE_FILTER = 287,
+    REDUCTION_TYPE_COMPARISON = 288, REDUCTION_TYPE_MINIMUM = 289, REDUCTION_TYPE_MAXIMUM = 290,
+    ADDRESS_MODE_WRAP = 291, ADDRESS_MODE_MIRROR = 292, ADDRESS_MODE_CLAMP = 293,
+    ADDRESS_MODE_BORDER = 294, ADDRESS_MODE_MIRROR_ONCE = 295, COMPARISON_FUNCTION_NEVER = 296,
+    COMPARISON_FUNCTION_LESS = 297, COMPARISON_FUNCTION_EQUAL = 298, COMPARISON_FUNCTION_LESS_EQUAL = 299,
+    COMPARISON_FUNCTION_GREATER = 300, COMPARISON_FUNCTION_NOT_EQUAL = 301,
+    COMPARISON_FUNCTION_GREATER_EQUAL = 302, COMPARISON_FUNCTION_ALWAYS = 303,
+    BORDER_COLOR_OPAQUE_BLACK = 304, BORDER_COLOR_TRANSPARENT_BLACK = 305,
+    BORDER_COLOR_OPAQUE_WHITE = 306, LeftParen = 307, RightParen = 308,
+    LeftBracket = 309, RightBracket = 310, LeftBrace = 311, RightBrace = 312,
+    LeftDoubleBracket = 313, Less = 314, LessEqual = 315, Greater = 316,
+    GreaterEqual = 317, LeftShift = 318, RightShift = 319, Plus = 320, PlusPlus = 321,
+    Minus = 322, MinusMinus = 323, Star = 324, Div = 325, Mod = 326, And = 327,
+    Or = 328, AndAnd = 329, OrOr = 330, Caret = 331, Not = 332, Tilde = 333,
+    Question = 334, Colon = 335, ColonColon = 336, Semi = 337, Comma = 338,
+    Assign = 339, StarAssign = 340, DivAssign = 341, ModAssign = 342, PlusAssign = 343,
+    MinusAssign = 344, LeftShiftAssign = 345, RightShiftAssign = 346, AndAssign = 347,
+    XorAssign = 348, OrAssign = 349, Equal = 350, NotEqual = 351, Dot = 352,
+    True = 353, False = 354, KW_AssociatedType = 355, KW_TypeAlias = 356,
+    KW_Typedef = 357, KW_Fundamental = 358, KW_Typeof = 359, FrequencyId = 360,
+    ShaderVariantFallback = 361, ShaderResourceGroupSemantic = 362, ShaderResourceGroup = 363,
+    KW_ext_print_message = 364, KW_ext_print_symbol = 365, KW_ext_prtsym_fully_qualified = 366,
+    KW_ext_prtsym_least_qualified = 367, KW_ext_prtsym_constint_value = 368,
+    HLSLSemanticStream = 369, HLSLSemanticSystem = 370, Identifier = 371,
+    IntegerLiteral = 372, FloatLiteral = 373, StringLiteral = 374, PragmaDirective = 375,
+    LineDirective = 376, Whitespace = 377, Newline = 378, BlockComment = 379,
     LineComment = 380
   };
 
   enum {
-    RuleCompilationUnit = 0, RuleTopLevelDeclaration = 1, RuleIdExpression = 2, 
-    RuleUnqualifiedId = 3, RuleQualifiedId = 4, RuleNestedNameSpecifier = 5, 
-    RuleClassDefinitionStatement = 6, RuleClassDefinition = 7, RuleBaseList = 8, 
-    RuleClassMemberDeclaration = 9, RuleStructDefinitionStatement = 10, 
-    RuleStructDefinition = 11, RuleStructMemberDeclaration = 12, RuleAnyStructuredTypeDefinitionStatement = 13, 
-    RuleEnumDefinitionStatement = 14, RuleEnumDefinition = 15, RuleEnumKey = 16, 
-    RuleEnumeratorListDefinition = 17, RuleEnumeratorDeclarator = 18, RuleAnyStructuredTypeDefinition = 19, 
-    RuleInterfaceDefinitionStatement = 20, RuleInterfaceDefinition = 21, 
-    RuleInterfaceMemberDeclaration = 22, RuleConstantBufferTemplated = 23, 
-    RuleVariableDeclarationStatement = 24, RuleFunctionParams = 25, RuleFunctionParam = 26, 
-    RuleHlslSemantic = 27, RuleHlslSemanticName = 28, RuleAttributeArguments = 29, 
-    RuleAttributeArgumentList = 30, RuleAttribute = 31, RuleAttributeSpecifier = 32, 
-    RuleAttributeSpecifierSequence = 33, RuleAttributeSpecifierAny = 34, 
-    RuleBlock = 35, RuleStatement = 36, RuleForInitializer = 37, RuleSwitchLabel = 38, 
-    RuleSwitchSection = 39, RuleSwitchBlock = 40, RuleEmbeddedStatement = 41, 
-    RuleElseClause = 42, RuleExpression = 43, RuleExpressionExt = 44, RulePostfixUnaryOperator = 45, 
-    RulePrefixUnaryOperator = 46, RuleBinaryOperator = 47, RuleAssignmentOperator = 48, 
-    RuleArgumentList = 49, RuleArguments = 50, RuleVariableDeclaration = 51, 
-    RuleVariableDeclarators = 52, RuleUnnamedVariableDeclarator = 53, RuleNamedVariableDeclarator = 54, 
-    RuleVariableInitializer = 55, RuleStandardVariableInitializer = 56, 
-    RuleArrayElementInitializers = 57, RuleArrayRankSpecifier = 58, RulePackOffsetNode = 59, 
-    RuleStorageFlags = 60, RuleStorageFlag = 61, RuleType = 62, RulePredefinedType = 63, 
-    RuleSubobjectType = 64, RuleOtherViewResourceType = 65, RuleRtxBuiltInTypes = 66, 
-    RuleBufferPredefinedType = 67, RuleBufferType = 68, RuleByteAddressBufferTypes = 69, 
-    RulePatchPredefinedType = 70, RulePatchType = 71, RuleSamplerStatePredefinedType = 72, 
-    RuleScalarType = 73, RuleStreamOutputPredefinedType = 74, RuleStreamOutputObjectType = 75, 
-    RuleStructuredBufferPredefinedType = 76, RuleStructuredBufferName = 77, 
-    RuleTextureType = 78, RuleTexturePredefinedType = 79, RuleGenericTexturePredefinedType = 80, 
-    RuleTextureTypeMS = 81, RuleMsTexturePredefinedType = 82, RuleSubpassInputType = 83, 
-    RuleSubpassInputPredefinedType = 84, RuleGenericSubpassInputPredefinedType = 85, 
-    RuleVectorType = 86, RuleGenericVectorType = 87, RuleScalarOrVectorType = 88, 
-    RuleScalarOrVectorOrMatrixType = 89, RuleMatrixType = 90, RuleGenericMatrixPredefinedType = 91, 
-    RuleRegisterAllocation = 92, RuleSamplerStateProperty = 93, RuleLiteral = 94, 
-    RuleLeadingTypeFunctionSignature = 95, RuleHlslFunctionDefinition = 96, 
-    RuleHlslFunctionDeclaration = 97, RuleUserDefinedType = 98, RuleAssociatedTypeDeclaration = 99, 
-    RuleTypedefStatement = 100, RuleTypealiasStatement = 101, RuleTypeAliasingDefinitionStatement = 102, 
-    RuleTypeofExpression = 103, RuleGenericParameterList = 104, RuleGenericTypeDefinition = 105, 
-    RuleGenericConstraint = 106, RuleLanguageDefinedConstraint = 107, RuleFunctionDeclaration = 108, 
-    RuleAttributedFunctionDeclaration = 109, RuleFunctionDefinition = 110, 
-    RuleAttributedFunctionDefinition = 111, RuleCompilerExtensionStatement = 112, 
-    RuleSrgDefinition = 113, RuleAttributedSrgDefinition = 114, RuleSrgMemberDeclaration = 115, 
-    RuleSrgSemantic = 116, RuleAttributedSrgSemantic = 117, RuleSrgSemanticBodyDeclaration = 118, 
-    RuleSrgSemanticMemberDeclaration = 119, RuleSamplerBodyDeclaration = 120, 
-    RuleSamplerMemberDeclaration = 121, RuleMaxAnisotropyOption = 122, RuleMinFilterOption = 123, 
-    RuleMagFilterOption = 124, RuleMipFilterOption = 125, RuleReductionTypeOption = 126, 
-    RuleComparisonFunctionOption = 127, RuleAddressUOption = 128, RuleAddressVOption = 129, 
-    RuleAddressWOption = 130, RuleMinLodOption = 131, RuleMaxLodOption = 132, 
-    RuleMipLodBiasOption = 133, RuleBorderColorOption = 134, RuleFilterModeEnum = 135, 
-    RuleReductionTypeEnum = 136, RuleAddressModeEnum = 137, RuleComparisonFunctionEnum = 138, 
+    RuleCompilationUnit = 0, RuleTopLevelDeclaration = 1, RuleIdExpression = 2,
+    RuleUnqualifiedId = 3, RuleQualifiedId = 4, RuleNestedNameSpecifier = 5,
+    RuleClassDefinitionStatement = 6, RuleClassDefinition = 7, RuleBaseList = 8,
+    RuleClassMemberDeclaration = 9, RuleStructDefinitionStatement = 10,
+    RuleStructDefinition = 11, RuleStructMemberDeclaration = 12, RuleAnyStructuredTypeDefinitionStatement = 13,
+    RuleEnumDefinitionStatement = 14, RuleEnumDefinition = 15, RuleEnumKey = 16,
+    RuleEnumeratorListDefinition = 17, RuleEnumeratorDeclarator = 18, RuleAnyStructuredTypeDefinition = 19,
+    RuleInterfaceDefinitionStatement = 20, RuleInterfaceDefinition = 21,
+    RuleInterfaceMemberDeclaration = 22, RuleConstantBufferTemplated = 23,
+    RuleVariableDeclarationStatement = 24, RuleFunctionParams = 25, RuleFunctionParam = 26,
+    RuleHlslSemantic = 27, RuleHlslSemanticName = 28, RuleAttributeArguments = 29,
+    RuleAttributeArgumentList = 30, RuleAttribute = 31, RuleAttributeSpecifier = 32,
+    RuleAttributeSpecifierSequence = 33, RuleAttributeSpecifierAny = 34,
+    RuleBlock = 35, RuleStatement = 36, RuleForInitializer = 37, RuleSwitchLabel = 38,
+    RuleSwitchSection = 39, RuleSwitchBlock = 40, RuleEmbeddedStatement = 41,
+    RuleElseClause = 42, RuleExpression = 43, RuleExpressionExt = 44, RulePostfixUnaryOperator = 45,
+    RulePrefixUnaryOperator = 46, RuleBinaryOperator = 47, RuleAssignmentOperator = 48,
+    RuleArgumentList = 49, RuleArguments = 50, RuleVariableDeclaration = 51,
+    RuleVariableDeclarators = 52, RuleUnnamedVariableDeclarator = 53, RuleNamedVariableDeclarator = 54,
+    RuleVariableInitializer = 55, RuleStandardVariableInitializer = 56,
+    RuleArrayElementInitializers = 57, RuleArrayRankSpecifier = 58, RulePackOffsetNode = 59,
+    RuleStorageFlags = 60, RuleStorageFlag = 61, RuleType = 62, RulePredefinedType = 63,
+    RuleSubobjectType = 64, RuleOtherViewResourceType = 65, RuleRtxBuiltInTypes = 66,
+    RuleBufferPredefinedType = 67, RuleBufferType = 68, RuleByteAddressBufferTypes = 69,
+    RulePatchPredefinedType = 70, RulePatchType = 71, RuleSamplerStatePredefinedType = 72,
+    RuleScalarType = 73, RuleStreamOutputPredefinedType = 74, RuleStreamOutputObjectType = 75,
+    RuleStructuredBufferPredefinedType = 76, RuleStructuredBufferName = 77,
+    RuleTextureType = 78, RuleTexturePredefinedType = 79, RuleGenericTexturePredefinedType = 80,
+    RuleTextureTypeMS = 81, RuleMsTexturePredefinedType = 82, RuleSubpassInputType = 83,
+    RuleSubpassInputPredefinedType = 84, RuleGenericSubpassInputPredefinedType = 85,
+    RuleVectorType = 86, RuleGenericVectorType = 87, RuleScalarOrVectorType = 88,
+    RuleScalarOrVectorOrMatrixType = 89, RuleMatrixType = 90, RuleGenericMatrixPredefinedType = 91,
+    RuleRegisterAllocation = 92, RuleSamplerStateProperty = 93, RuleLiteral = 94,
+    RuleLeadingTypeFunctionSignature = 95, RuleHlslFunctionDefinition = 96,
+    RuleHlslFunctionDeclaration = 97, RuleUserDefinedType = 98, RuleAssociatedTypeDeclaration = 99,
+    RuleTypedefStatement = 100, RuleTypealiasStatement = 101, RuleTypeAliasingDefinitionStatement = 102,
+    RuleTypeofExpression = 103, RuleGenericParameterList = 104, RuleGenericTypeDefinition = 105,
+    RuleGenericConstraint = 106, RuleLanguageDefinedConstraint = 107, RuleFunctionDeclaration = 108,
+    RuleAttributedFunctionDeclaration = 109, RuleFunctionDefinition = 110,
+    RuleAttributedFunctionDefinition = 111, RuleCompilerExtensionStatement = 112,
+    RuleSrgDefinition = 113, RuleAttributedSrgDefinition = 114, RuleSrgMemberDeclaration = 115,
+    RuleSrgSemantic = 116, RuleAttributedSrgSemantic = 117, RuleSrgSemanticBodyDeclaration = 118,
+    RuleSrgSemanticMemberDeclaration = 119, RuleSamplerBodyDeclaration = 120,
+    RuleSamplerMemberDeclaration = 121, RuleMaxAnisotropyOption = 122, RuleMinFilterOption = 123,
+    RuleMagFilterOption = 124, RuleMipFilterOption = 125, RuleReductionTypeOption = 126,
+    RuleComparisonFunctionOption = 127, RuleAddressUOption = 128, RuleAddressVOption = 129,
+    RuleAddressWOption = 130, RuleMinLodOption = 131, RuleMaxLodOption = 132,
+    RuleMipLodBiasOption = 133, RuleBorderColorOption = 134, RuleFilterModeEnum = 135,
+    RuleReductionTypeEnum = 136, RuleAddressModeEnum = 137, RuleComparisonFunctionEnum = 138,
     RuleBorderColorEnum = 139
   };
 
@@ -313,7 +313,7 @@ public:
   class ReductionTypeEnumContext;
   class AddressModeEnumContext;
   class ComparisonFunctionEnumContext;
-  class BorderColorEnumContext; 
+  class BorderColorEnumContext;
 
   class  CompilationUnitContext : public antlr4::ParserRuleContext {
   public:
@@ -329,7 +329,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   CompilationUnitContext* compilationUnit();
@@ -353,7 +353,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TopLevelDeclarationContext* topLevelDeclaration();
@@ -369,7 +369,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   IdExpressionContext* idExpression();
@@ -384,7 +384,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   UnqualifiedIdContext* unqualifiedId();
@@ -400,7 +400,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   QualifiedIdContext* qualifiedId();
@@ -419,7 +419,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   NestedNameSpecifierContext* nestedNameSpecifier();
@@ -435,7 +435,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ClassDefinitionStatementContext* classDefinitionStatement();
@@ -458,7 +458,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ClassDefinitionContext* classDefinition();
@@ -477,7 +477,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   BaseListContext* baseList();
@@ -497,7 +497,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ClassMemberDeclarationContext* classMemberDeclaration();
@@ -513,7 +513,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StructDefinitionStatementContext* structDefinitionStatement();
@@ -534,7 +534,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StructDefinitionContext* structDefinition();
@@ -554,7 +554,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StructMemberDeclarationContext* structMemberDeclaration();
@@ -572,7 +572,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AnyStructuredTypeDefinitionStatementContext* anyStructuredTypeDefinitionStatement();
@@ -588,7 +588,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   EnumDefinitionStatementContext* enumDefinitionStatement();
@@ -609,7 +609,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   EnumDefinitionContext* enumDefinition();
@@ -617,14 +617,14 @@ public:
   class  EnumKeyContext : public antlr4::ParserRuleContext {
   public:
     EnumKeyContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-   
+
     EnumKeyContext() = default;
     void copyFrom(EnumKeyContext *context);
     using antlr4::ParserRuleContext::copyFrom;
 
     virtual size_t getRuleIndex() const override;
 
-   
+
   };
 
   class  UnscopedEnumContext : public EnumKeyContext {
@@ -668,7 +668,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   EnumeratorListDefinitionContext* enumeratorListDefinition();
@@ -687,7 +687,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   EnumeratorDeclaratorContext* enumeratorDeclarator();
@@ -705,7 +705,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AnyStructuredTypeDefinitionContext* anyStructuredTypeDefinition();
@@ -721,7 +721,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   InterfaceDefinitionStatementContext* interfaceDefinitionStatement();
@@ -742,7 +742,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   InterfaceDefinitionContext* interfaceDefinition();
@@ -759,7 +759,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   InterfaceMemberDeclarationContext* interfaceMemberDeclaration();
@@ -780,7 +780,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ConstantBufferTemplatedContext* constantBufferTemplated();
@@ -796,7 +796,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   VariableDeclarationStatementContext* variableDeclarationStatement();
@@ -815,7 +815,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   FunctionParamsContext* functionParams();
@@ -835,7 +835,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   FunctionParamContext* functionParam();
@@ -852,7 +852,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   HlslSemanticContext* hlslSemantic();
@@ -869,7 +869,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   HlslSemanticNameContext* hlslSemanticName();
@@ -887,7 +887,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributeArgumentsContext* attributeArguments();
@@ -904,7 +904,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributeArgumentListContext* attributeArgumentList();
@@ -912,14 +912,14 @@ public:
   class  AttributeContext : public antlr4::ParserRuleContext {
   public:
     AttributeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-   
+
     AttributeContext() = default;
     void copyFrom(AttributeContext *context);
     using antlr4::ParserRuleContext::copyFrom;
 
     virtual size_t getRuleIndex() const override;
 
-   
+
   };
 
   class  GlobalAttributeContext : public AttributeContext {
@@ -970,7 +970,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributeSpecifierContext* attributeSpecifier();
@@ -993,7 +993,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributeSpecifierSequenceContext* attributeSpecifierSequence();
@@ -1009,7 +1009,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributeSpecifierAnyContext* attributeSpecifierAny();
@@ -1029,7 +1029,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   BlockContext* block();
@@ -1046,7 +1046,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StatementContext* statement();
@@ -1062,7 +1062,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ForInitializerContext* forInitializer();
@@ -1070,14 +1070,14 @@ public:
   class  SwitchLabelContext : public antlr4::ParserRuleContext {
   public:
     SwitchLabelContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-   
+
     SwitchLabelContext() = default;
     void copyFrom(SwitchLabelContext *context);
     using antlr4::ParserRuleContext::copyFrom;
 
     virtual size_t getRuleIndex() const override;
 
-   
+
   };
 
   class  DefaultSwitchLabelContext : public SwitchLabelContext {
@@ -1121,7 +1121,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SwitchSectionContext* switchSection();
@@ -1139,7 +1139,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SwitchBlockContext* switchBlock();
@@ -1147,14 +1147,14 @@ public:
   class  EmbeddedStatementContext : public antlr4::ParserRuleContext {
   public:
     EmbeddedStatementContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-   
+
     EmbeddedStatementContext() = default;
     void copyFrom(EmbeddedStatementContext *context);
     using antlr4::ParserRuleContext::copyFrom;
 
     virtual size_t getRuleIndex() const override;
 
-   
+
   };
 
   class  DoStatementContext : public EmbeddedStatementContext {
@@ -1377,7 +1377,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ElseClauseContext* elseClause();
@@ -1385,14 +1385,14 @@ public:
   class  ExpressionContext : public antlr4::ParserRuleContext {
   public:
     ExpressionContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-   
+
     ExpressionContext() = default;
     void copyFrom(ExpressionContext *context);
     using antlr4::ParserRuleContext::copyFrom;
 
     virtual size_t getRuleIndex() const override;
 
-   
+
   };
 
   class  ParenthesizedExpressionContext : public ExpressionContext {
@@ -1590,14 +1590,14 @@ public:
   class  ExpressionExtContext : public antlr4::ParserRuleContext {
   public:
     ExpressionExtContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-   
+
     ExpressionExtContext() = default;
     void copyFrom(ExpressionExtContext *context);
     using antlr4::ParserRuleContext::copyFrom;
 
     virtual size_t getRuleIndex() const override;
 
-   
+
   };
 
   class  OtherExpressionContext : public ExpressionExtContext {
@@ -1641,7 +1641,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   PostfixUnaryOperatorContext* postfixUnaryOperator();
@@ -1661,7 +1661,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   PrefixUnaryOperatorContext* prefixUnaryOperator();
@@ -1693,7 +1693,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   BinaryOperatorContext* binaryOperator();
@@ -1718,7 +1718,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AssignmentOperatorContext* assignmentOperator();
@@ -1735,7 +1735,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ArgumentListContext* argumentList();
@@ -1753,7 +1753,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ArgumentsContext* arguments();
@@ -1771,7 +1771,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   VariableDeclarationContext* variableDeclaration();
@@ -1791,7 +1791,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   VariableDeclaratorsContext* variableDeclarators();
@@ -1815,7 +1815,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   UnnamedVariableDeclaratorContext* unnamedVariableDeclarator();
@@ -1832,7 +1832,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   NamedVariableDeclaratorContext* namedVariableDeclarator();
@@ -1849,7 +1849,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   VariableInitializerContext* variableInitializer();
@@ -1868,7 +1868,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StandardVariableInitializerContext* standardVariableInitializer();
@@ -1886,7 +1886,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ArrayElementInitializersContext* arrayElementInitializers();
@@ -1904,7 +1904,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ArrayRankSpecifierContext* arrayRankSpecifier();
@@ -1928,7 +1928,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   PackOffsetNodeContext* packOffsetNode();
@@ -1944,7 +1944,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StorageFlagsContext* storageFlags();
@@ -1989,7 +1989,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StorageFlagContext* storageFlag();
@@ -2008,7 +2008,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TypeContext* type();
@@ -2042,7 +2042,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   PredefinedTypeContext* predefinedType();
@@ -2065,7 +2065,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SubobjectTypeContext* subobjectType();
@@ -2080,7 +2080,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   OtherViewResourceTypeContext* otherViewResourceType();
@@ -2096,7 +2096,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   RtxBuiltInTypesContext* rtxBuiltInTypes();
@@ -2114,7 +2114,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   BufferPredefinedTypeContext* bufferPredefinedType();
@@ -2131,7 +2131,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   BufferTypeContext* bufferType();
@@ -2148,7 +2148,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ByteAddressBufferTypesContext* byteAddressBufferTypes();
@@ -2170,7 +2170,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   PatchPredefinedTypeContext* patchPredefinedType();
@@ -2186,7 +2186,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   PatchTypeContext* patchType();
@@ -2205,7 +2205,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SamplerStatePredefinedTypeContext* samplerStatePredefinedType();
@@ -2232,7 +2232,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ScalarTypeContext* scalarType();
@@ -2250,7 +2250,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StreamOutputPredefinedTypeContext* streamOutputPredefinedType();
@@ -2267,7 +2267,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StreamOutputObjectTypeContext* streamOutputObjectType();
@@ -2285,7 +2285,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StructuredBufferPredefinedTypeContext* structuredBufferPredefinedType();
@@ -2304,7 +2304,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   StructuredBufferNameContext* structuredBufferName();
@@ -2335,7 +2335,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TextureTypeContext* textureType();
@@ -2350,7 +2350,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TexturePredefinedTypeContext* texturePredefinedType();
@@ -2368,7 +2368,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   GenericTexturePredefinedTypeContext* genericTexturePredefinedType();
@@ -2384,7 +2384,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TextureTypeMSContext* textureTypeMS();
@@ -2405,7 +2405,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MsTexturePredefinedTypeContext* msTexturePredefinedType();
@@ -2423,7 +2423,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SubpassInputTypeContext* subpassInputType();
@@ -2438,7 +2438,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SubpassInputPredefinedTypeContext* subpassInputPredefinedType();
@@ -2456,7 +2456,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   GenericSubpassInputPredefinedTypeContext* genericSubpassInputPredefinedType();
@@ -2499,7 +2499,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   VectorTypeContext* vectorType();
@@ -2520,7 +2520,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   GenericVectorTypeContext* genericVectorType();
@@ -2536,7 +2536,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ScalarOrVectorTypeContext* scalarOrVectorType();
@@ -2553,7 +2553,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ScalarOrVectorOrMatrixTypeContext* scalarOrVectorOrMatrixType();
@@ -2680,7 +2680,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MatrixTypeContext* matrixType();
@@ -2704,7 +2704,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   GenericMatrixPredefinedTypeContext* genericMatrixPredefinedType();
@@ -2724,7 +2724,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   RegisterAllocationContext* registerAllocation();
@@ -2745,7 +2745,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SamplerStatePropertyContext* samplerStateProperty();
@@ -2765,7 +2765,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   LiteralContext* literal();
@@ -2791,7 +2791,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   LeadingTypeFunctionSignatureContext* leadingTypeFunctionSignature();
@@ -2807,7 +2807,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   HlslFunctionDefinitionContext* hlslFunctionDefinition();
@@ -2823,7 +2823,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   HlslFunctionDeclarationContext* hlslFunctionDeclaration();
@@ -2839,7 +2839,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   UserDefinedTypeContext* userDefinedType();
@@ -2858,7 +2858,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AssociatedTypeDeclarationContext* associatedTypeDeclaration();
@@ -2878,7 +2878,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TypedefStatementContext* typedefStatement();
@@ -2899,7 +2899,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TypealiasStatementContext* typealiasStatement();
@@ -2915,7 +2915,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TypeAliasingDefinitionStatementContext* typeAliasingDefinitionStatement();
@@ -2938,7 +2938,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   TypeofExpressionContext* typeofExpression();
@@ -2958,7 +2958,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   GenericParameterListContext* genericParameterList();
@@ -2975,7 +2975,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   GenericTypeDefinitionContext* genericTypeDefinition();
@@ -2991,7 +2991,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   GenericConstraintContext* genericConstraint();
@@ -3006,7 +3006,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   LanguageDefinedConstraintContext* languageDefinedConstraint();
@@ -3021,7 +3021,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   FunctionDeclarationContext* functionDeclaration();
@@ -3038,7 +3038,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributedFunctionDeclarationContext* attributedFunctionDeclaration();
@@ -3053,7 +3053,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   FunctionDefinitionContext* functionDefinition();
@@ -3070,7 +3070,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributedFunctionDefinitionContext* attributedFunctionDefinition();
@@ -3097,7 +3097,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   CompilerExtensionStatementContext* compilerExtensionStatement();
@@ -3122,7 +3122,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SrgDefinitionContext* srgDefinition();
@@ -3139,7 +3139,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributedSrgDefinitionContext* attributedSrgDefinition();
@@ -3160,7 +3160,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SrgMemberDeclarationContext* srgMemberDeclaration();
@@ -3178,7 +3178,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SrgSemanticContext* srgSemantic();
@@ -3195,7 +3195,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AttributedSrgSemanticContext* attributedSrgSemantic();
@@ -3213,7 +3213,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SrgSemanticBodyDeclarationContext* srgSemanticBodyDeclaration();
@@ -3236,7 +3236,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SrgSemanticMemberDeclarationContext* srgSemanticMemberDeclaration();
@@ -3254,7 +3254,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SamplerBodyDeclarationContext* samplerBodyDeclaration();
@@ -3281,7 +3281,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   SamplerMemberDeclarationContext* samplerMemberDeclaration();
@@ -3299,7 +3299,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MaxAnisotropyOptionContext* maxAnisotropyOption();
@@ -3317,7 +3317,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MinFilterOptionContext* minFilterOption();
@@ -3335,7 +3335,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MagFilterOptionContext* magFilterOption();
@@ -3353,7 +3353,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MipFilterOptionContext* mipFilterOption();
@@ -3371,7 +3371,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ReductionTypeOptionContext* reductionTypeOption();
@@ -3389,7 +3389,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ComparisonFunctionOptionContext* comparisonFunctionOption();
@@ -3407,7 +3407,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AddressUOptionContext* addressUOption();
@@ -3425,7 +3425,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AddressVOptionContext* addressVOption();
@@ -3443,7 +3443,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AddressWOptionContext* addressWOption();
@@ -3461,7 +3461,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MinLodOptionContext* minLodOption();
@@ -3479,7 +3479,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MaxLodOptionContext* maxLodOption();
@@ -3497,7 +3497,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   MipLodBiasOptionContext* mipLodBiasOption();
@@ -3515,7 +3515,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   BorderColorOptionContext* borderColorOption();
@@ -3531,7 +3531,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   FilterModeEnumContext* filterModeEnum();
@@ -3549,7 +3549,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ReductionTypeEnumContext* reductionTypeEnum();
@@ -3568,7 +3568,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   AddressModeEnumContext* addressModeEnum();
@@ -3590,7 +3590,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   ComparisonFunctionEnumContext* comparisonFunctionEnum();
@@ -3607,7 +3607,7 @@ public:
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
+
   };
 
   BorderColorEnumContext* borderColorEnum();

@@ -120,7 +120,8 @@ namespace AZ::ShaderCompiler
         }
     }
 
-    SubpassInputToTexture2DCodeMutator::SubpassInputType SubpassInputToTexture2DCodeMutator::GetSubpassInputClass(const UnqualifiedName& uqSymbolName)
+    SubpassInputToTexture2DCodeMutator::SubpassInputType SubpassInputToTexture2DCodeMutator::GetSubpassInputClass(
+        const UnqualifiedName& uqSymbolName)
     {
         if (uqSymbolName.empty())
         {
@@ -141,7 +142,8 @@ namespace AZ::ShaderCompiler
         return GetSubpassInputClass(varInfo);
     }
 
-    SubpassInputToTexture2DCodeMutator::SubpassInputType SubpassInputToTexture2DCodeMutator::GetSubpassInputClass(const VarInfo* varInfo)
+    SubpassInputToTexture2DCodeMutator::SubpassInputType SubpassInputToTexture2DCodeMutator::GetSubpassInputClass(
+        const VarInfo* varInfo)
     {
         if (varInfo->GetTypeClass() != TypeClass::SubpassInput)
         {
@@ -166,7 +168,8 @@ namespace AZ::ShaderCompiler
         return SubpassInputType::SubpassInput;
     }
 
-    size_t SubpassInputToTexture2DCodeMutator::MutateTypeOfMultiSampleVariables(const std::vector<IdentifierUID>& subpassInputVariables)
+    size_t SubpassInputToTexture2DCodeMutator::MutateTypeOfMultiSampleVariables(
+        const std::vector<IdentifierUID>& subpassInputVariables)
     {
         size_t mutationCount = 0;
         for (const auto& uid : subpassInputVariables)

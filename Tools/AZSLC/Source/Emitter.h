@@ -32,8 +32,9 @@ namespace AZ::ShaderCompiler
         Declaration, Definition,
     };
 
-    struct CodeEmitter : Backend
+    class CodeEmitter : public Backend
     {
+    public:
         CodeEmitter(
             IntermediateRepresentation* ir,
             TokenStream* tokens,

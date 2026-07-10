@@ -25,7 +25,7 @@
 
 namespace AZ::ShaderCompiler
 {
-    struct PlatformEmitter;
+    class PlatformEmitter;
 
     struct DescriptorCountBounds
     {
@@ -172,7 +172,11 @@ namespace AZ::ShaderCompiler
 
         //! Fabricate a HLSL snippet that represents the type stored in typeInfo. Relevant options relate to matrix qualifiers.
         //! \param banned is the Flag you can setup to list a collection of type qualifiers you don't want to reproduce.
-        std::string GetExtendedTypeInfo(const ExtendedTypeInfo& extTypeInfo, const Options& options, Modifiers banned, std::function<std::string(const TypeRefInfo&)> translator) const;
+        std::string GetExtendedTypeInfo(
+            const ExtendedTypeInfo& extTypeInfo,
+            const Options& options,
+            Modifiers banned,
+            std::function<std::string(const TypeRefInfo&)> translator) const;
 
         //! Returns the Platform Emitter that is registered to the namespace in the "ir".
         static const PlatformEmitter& GetPlatformEmitter(const IntermediateRepresentation* ir);
@@ -192,11 +196,21 @@ namespace AZ::ShaderCompiler
 
         RootSigDesc BuildSignatureDescription(const Options& options, int num32BitConst) const;
 
-        RootSigDesc::SrgParamDesc ReflectOneExternalResource(IdentifierUID id, MultiBindingLocationMaker& bindInfo, RootSigDesc& rootSig) const;
+        RootSigDesc::SrgParamDesc ReflectOneExternalResource(
+            IdentifierUID id,
+            MultiBindingLocationMaker& bindInfo,
+            RootSigDesc& rootSig) const;
 
-        RootSigDesc::SrgParamDesc ReflectOneExternalResourceAndWrapWithUnifyIndices(IdentifierUID id, MultiBindingLocationMaker& bindInfo, RootSigDesc& rootSig) const;
+        RootSigDesc::SrgParamDesc ReflectOneExternalResourceAndWrapWithUnifyIndices(
+            IdentifierUID id,
+            MultiBindingLocationMaker& bindInfo,
+            RootSigDesc& rootSig) const;
 
-        void AppendOptionRange(Json::Value& varOption, const IdentifierUID& varUid, const AZ::ShaderCompiler::VarInfo* varInfo, const Options& options) const;
+        void AppendOptionRange(
+            Json::Value& varOption,
+            const IdentifierUID& varUid,
+            const AZ::ShaderCompiler::VarInfo* varInfo,
+            const Options& options) const;
 
         Json::Value GetVariantList(const Options& options, bool includeEmpty = false) const;
 

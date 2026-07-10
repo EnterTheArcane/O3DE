@@ -103,7 +103,11 @@ namespace AZ::ShaderCompiler
         return m_fixed.GetIdAndKindInfo(symbol);
     }
 
-    IdAndKind& SymbolAggregator::AddIdentifier(QualifiedNameView symbol, const Kind kind, const std::optional<size_t> lineNumber /*=std::nullopt*/, const AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
+    IdAndKind& SymbolAggregator::AddIdentifier(
+        QualifiedNameView symbol,
+        const Kind kind,
+        const std::optional<size_t> lineNumber /*=std::nullopt*/,
+        const AddIdentifierChecks checkPolicy /*= AddIdentifierChecks::ReservedNames*/)
     {
         // check against reserved names
         static constexpr std::array<std::string_view, 2> ReservedNames = {
@@ -238,7 +242,9 @@ namespace AZ::ShaderCompiler
         return &attrList->second;
     }
 
-    static std::optional<AttributeInfo> FindAttributeByNameInList(const std::vector<AttributeInfo>& attrList, const std::string& attributeName)
+    static std::optional<AttributeInfo> FindAttributeByNameInList(
+        const std::vector<AttributeInfo>& attrList,
+        const std::string& attributeName)
     {
         const auto iter = std::find_if(
             attrList.begin(),
@@ -256,7 +262,9 @@ namespace AZ::ShaderCompiler
         return std::optional{*iter};
     }
 
-    std::optional<AttributeInfo> SymbolAggregator::GetAttribute(const IdentifierUID& uid, const std::string& attributeName) const
+    std::optional<AttributeInfo> SymbolAggregator::GetAttribute(
+        const IdentifierUID& uid,
+        const std::string& attributeName) const
     {
         std::optional<AttributeInfo> result;
         if (const auto attrList = GetAttributeList(uid))

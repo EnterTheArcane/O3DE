@@ -159,7 +159,10 @@ namespace AZ
     }
 
     //! surround a string with a prefix and a suffix
-    inline std::string Decorate(const std::string_view prefix, const std::string_view body, const std::string_view suffix)
+    inline std::string Decorate(
+        const std::string_view prefix,
+        const std::string_view body,
+        const std::string_view suffix)
     {
         std::stringstream ss;
         ss << prefix.data();
@@ -611,7 +614,10 @@ namespace AZ
     //!   segments don't overlap.
     //! returns: iterator to found interval key, or cend()
     template <typename T, typename U, typename IntervalCheckPredicate>
-    auto FindIntervalInDisjointSet(const std::map<T, U>& ctr, const T& query, IntervalCheckPredicate&& isInIntervalPredicate)
+    auto FindIntervalInDisjointSet(
+        const std::map<T, U>& ctr,
+        const T& query,
+        IntervalCheckPredicate&& isInIntervalPredicate)
     {
         auto inf = Infimum(ctr, query);
         const bool isInInterval = inf != ctr.end() && isInIntervalPredicate(query, inf->second);
